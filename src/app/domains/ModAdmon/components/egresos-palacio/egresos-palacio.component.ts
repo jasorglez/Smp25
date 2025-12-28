@@ -32,13 +32,14 @@ import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import { CustomersService } from 'app/services/customers.service';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent,
-    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component],
+    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -235,19 +236,18 @@ export class EgresosPalacioComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    popupParent: document.body,
     headerHeight: 24,
     rowHeight: 24,
     animateRows: true,
     masterDetail: true,
-    autoHeight: true,
-    getRowId: (params: any) => String(params.data.id),
     detailRowHeight: 700,
-    isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
-    isExternalFilterPresent: () => this.externalFilterActive,
+    suppressMenuHide: false,
+    popupParent: document.body,
+    isExternalFilterPresent: () => {
+      return this.externalFilterActive;
+    },
     doesExternalFilterPass: (node: any) => {
-      if (!this.externalFilterActive) return true;
       return node.data.visible !== false;
     },
     tooltipShowDelay: 500,
@@ -376,7 +376,7 @@ export class EgresosPalacioComponent {
 
   public defaultColDef: ColDef = {
     sortable: true,
-    filter: true,
+    filter: false,
     resizable: true,
     editable: false,
     wrapHeaderText: true,
@@ -616,7 +616,6 @@ export class EgresosPalacioComponent {
       {
         field: 'facturado',
         headerName: 'Comprobado',
-        type: 'boolean',
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
         editable: true,
@@ -669,22 +668,11 @@ export class EgresosPalacioComponent {
             params.data.date = params.oldValue;
             return false;
           }
-          const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
-          if (isNaN(date.getTime())) {
-            params.data.date = params.oldValue;
-            return false;
-          }
-          params.data.date = date;
           return true;
         },
-        cellEditorParams: {
-          dateFormat: 'dd/MM/yyyy',
-          datePickerFormat: 'dd/MM/yyyy'
-        }
       },
-
       {
-        field: 'idTypeComp', headerName: 'Tipo Comprobante', filter: true, editable: (params) => {
+        field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -711,7 +699,8 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'idExpend', headerName: 'Objeto de Gasto', filter: true, editable: (params) => {
+        field: 'idExpend', headerName: 'Objeto de Gasto',
+        editable: (params) => {
           if (params.data.__isNew) {
             return true;
           }
@@ -787,7 +776,6 @@ export class EgresosPalacioComponent {
       {
         field: 'subtotal',
         headerName: 'Subtotal',
-        type: 'number',
         editable: false,
         hide: true,
         width: 100,
@@ -797,11 +785,6 @@ export class EgresosPalacioComponent {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        type: 'number', filter: 'agSetColumnFilter',
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
@@ -824,11 +807,6 @@ export class EgresosPalacioComponent {
       {
         field: 'total',
         headerName: 'Comprobado',
-        type: 'number', filter: 'agSetColumnFilter',
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
         editable: false,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
@@ -851,7 +829,6 @@ export class EgresosPalacioComponent {
       {
         field: 'tax',
         headerName: 'Impuestos',
-        type: 'number',
         hide: true,
         editable: false,
         width: 100,
@@ -860,7 +837,6 @@ export class EgresosPalacioComponent {
       {
         field: 'isr',
         headerName: 'ISR',
-        type: 'number',
         editable: false,
         hide: true,
         width: 100,
@@ -949,6 +925,31 @@ export class EgresosPalacioComponent {
 
     event.data.__modified = true;
     this.notSavedChanges = true;
+  }
+
+  onCellDoubleClicked(event: CellDoubleClickedEvent) {
+    // Si es la columna "date", permitir edición con doble click
+    if (event.colDef.field === 'date') {
+      this.gridApi.startEditingCell({
+        rowIndex: event.rowIndex,
+        colKey: 'date'
+      });
+      return;
+    }
+
+    // Al hacer doble click en cualquier otra celda, mostrar todas las filas
+    // y colapsar cualquier detalle expandido
+    if (event.node.expanded) {
+      event.node.setExpanded(false);
+      event.node.data.detailType = null;
+    }
+
+    // Mostrar todas las filas
+    this.externalFilterActive = false;
+    this.gridApi.forEachNode((node) => {
+      node.data.visible = true;
+    });
+    this.gridApi.onFilterChanged();
   }
 
   onGridReady(params: GridReadyEvent) {

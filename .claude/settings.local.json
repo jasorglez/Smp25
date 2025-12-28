@@ -27,7 +27,8 @@
       "Bash(npm run build:nt:*)",
       "Bash(ng build:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

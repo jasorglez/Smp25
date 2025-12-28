@@ -1,6 +1,6 @@
 {
   "name": "bi-aug-24",
-  "version": "2.51.7",
+  "version": "2.51.20",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -39,15 +39,19 @@
     "dhtmlx-gantt": "^8.0.10",
     "echarts": "^5.5.1",
     "expr-eval": "^2.0.2",
-    "firebase": "^10.12.3",
+    "firebase": "^12.7.0",
+    "http-proxy-middleware": "^3.0.5",
     "leaflet": "^1.9.4",
     "ng-apexcharts": "1.12.0",
     "ng-bootstrap": "^1.6.3",
     "pdfmake": "^0.2.12",
     "pkijs": "^3.2.4",
+    "rollup": "^4.54.0",
     "rxjs": "~7.8.0",
     "sweetalert2": "^11.12.3",
     "tslib": "^2.3.0",
+    "webpack": "^5.104.1",
+    "webpack-dev-server": "^5.2.2",
     "xlsx": "^0.18.5",
     "zone.js": "~0.14.3"
   },

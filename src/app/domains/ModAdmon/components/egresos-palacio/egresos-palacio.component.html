@@ -92,6 +92,7 @@
         (cellValueChanged)="onCellValueChanged($event)"
         (rowSelected)="onSelectedRow($event)"
         (gridReady)="onGridReady($event)"
+        (cellDoubleClicked)="onCellDoubleClicked($event)"
         rowSelection="single"
         [class.disabled-grid]="!idAccount"
         [stopEditingWhenCellsLoseFocus]="true"
