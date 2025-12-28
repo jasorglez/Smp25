@@ -234,14 +234,12 @@ export class EgresosPalacioComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 25,
-    rowHeight: 20,
-    rowBuffer: 20,
+    headerHeight: 24,
+    rowHeight: 24,
+    animateRows: true,
     masterDetail: true,
     detailRowHeight: 700,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
-    suppressAnimationFrame: true,
-    animateRows: false,
     suppressMenuHide: false,
     popupParent: document.body,
     isExternalFilterPresent: () => {
@@ -479,7 +477,7 @@ export class EgresosPalacioComponent {
       },
 
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 130 },
-      { field: 'date',  headerName: 'Fecha', editable: false,  width: 155, filter: 'agDateColumnFilter',
+      { field: 'date',  headerName: 'Fecha', editable: true,  width: 155, filter: 'agDateColumnFilter',
           valueFormatter: (params) => {
             if (params.value) {
               return new Date(params.value).toLocaleDateString('es-MX');
@@ -491,13 +489,17 @@ export class EgresosPalacioComponent {
             comparator: (filterLocalDateAtMidnight: Date, cellValue: any) => {
               if (!cellValue) return -1;
               const cellDate = new Date(cellValue);
-              if (cellDate < filterLocalDateAtMidnight) {
+              // Comparar solo la fecha, ignorando la hora
+              const cellDateOnly = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+              const filterDateOnly = new Date(filterLocalDateAtMidnight.getFullYear(), filterLocalDateAtMidnight.getMonth(), filterLocalDateAtMidnight.getDate());
+              if (cellDateOnly < filterDateOnly) {
                 return -1;
-              } else if (cellDate > filterLocalDateAtMidnight) {
+              } else if (cellDateOnly > filterDateOnly) {
                 return 1;
               }
               return 0;
-            }
+            },
+            browserDatePicker: true
           }
       },
       {
@@ -556,7 +558,7 @@ export class EgresosPalacioComponent {
       },
 
       {
-        field: 'description', headerName: 'Descripción', editable: true, width: 155, filter: true,
+        field: 'description', headerName: 'Descripción', editable: false, width: 155, filter: true,
         wrapText: true,
         autoHeight: true,
         cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
@@ -704,11 +706,6 @@ export class EgresosPalacioComponent {
   }
 
   onCellDoubleClicked(event: CellDoubleClickedEvent) {
-    // Si es la columna "description", no hacer nada (dejar que se edite normalmente)
-    if (event.colDef.field === 'description') {
-      return;
-    }
-
     // Si es la columna "date", permitir edición con doble click
     if (event.colDef.field === 'date') {
       this.gridApi.startEditingCell({
