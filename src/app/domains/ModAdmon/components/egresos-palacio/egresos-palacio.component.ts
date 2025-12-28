@@ -157,6 +157,8 @@ export class EgresosPalacioComponent {
   // ✅ CORRECCIÓN: Agregar propiedad para datos pendientes
   private pendingMasterUpdate: any = null;
   private isGeneratingReport: boolean = false; // Flag para evitar múltiples clics
+  private lastSavedIds: number[] = []; // IDs de los registros que se acaban de guardar
+  private workingRowId: number | string | null = null; // ID del registro en el que se está trabajando (puede ser temp_ para nuevos)
   externalFilterActive: boolean = false;
   showform: string = '';
   branchs: any[] = [];
@@ -247,7 +249,129 @@ export class EgresosPalacioComponent {
     },
     doesExternalFilterPass: (node: any) => {
       return node.data.visible !== false;
+<<<<<<< HEAD
     }
+=======
+    },
+    tooltipShowDelay: 500,
+    tooltipHideDelay: 10000,
+    getRowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    getRowStyle: (params) => {
+      // Prioridad 1: Fila seleccionada (rojo claro)
+      if (params.node.isSelected()) {
+        return { backgroundColor: '#ffe6e6', color: '#000000', fontWeight: 'bold' };
+      }
+
+      // Prioridad 2: Fila en la que se está trabajando (amarillo destacado con borde)
+      if (params.data && this.workingRowId && params.data.id === this.workingRowId) {
+        return {
+          backgroundColor: '#fff9c4',
+          color: '#000000',
+          fontWeight: 'bold',
+          borderLeft: '4px solid #ffa000',
+          borderRight: '4px solid #ffa000'
+        };
+      }
+
+      // Prioridad 3: Filas recién guardadas (verde claro brillante)
+      if (params.data && this.lastSavedIds.includes(params.data.id)) {
+        return { backgroundColor: '#c8e6c9', color: '#000000', fontWeight: 'bold' };
+      }
+
+      // Prioridad 4: Validación de montos "Por Comprobar" vs "Comprobado"
+      if (params.data) {
+        const porComprobar = Number(params.data.totalComp) || 0;
+        const comprobado = Number(params.data.total) || 0;
+
+        // Si los montos no coinciden, resaltar en rojo
+        if (porComprobar !== comprobado && porComprobar > 0) {
+          const diferencia = Math.abs(porComprobar - comprobado);
+          return {
+            backgroundColor: '#ffe6e6',
+            color: '#cc0000',
+            fontWeight: 'bold',
+            borderLeft: '4px solid #cc0000',
+            borderRight: '4px solid #cc0000'
+          };
+        }
+      }
+
+      // Prioridad 5: Estados por defecto
+      if (params.data) {
+        switch (params.data.status) {
+          case 'Pendiente':
+            return { backgroundColor: '#cce5ff', color: '#000000' }; // Azul claro con texto negro
+          case 'Pagada':
+            return { backgroundColor: '#d4edda', color: '#000000' }; // Verde claro con texto negro
+          case 'Cancelada':
+            return { backgroundColor: '#f8d7da', color: '#000000' }; // Rojo claro con texto negro
+          case 'Entregada':
+            return { backgroundColor: '#fff3cd', color: '#000000' }; // Amarillo claro con texto negro
+          default:
+            return { color: '#000000' }; // Negro por defecto
+        }
+      }
+      return { color: '#000000' }; // Negro por defecto
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
+      if (event.column && event.column.getColId() !== 'pdfReport') {
+        event.node.setSelected(true);
+      }
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+    onCellKeyDown: (event: any) => {
+      // Cuando se presiona Enter
+      if (event.event.key === 'Enter' && !event.event.shiftKey) {
+        event.event.preventDefault();
+        event.event.stopPropagation();
+
+        const currentColumn = event.column ? event.column.getColId() : '';
+
+        // Secuencia de navegación: date -> idTypeComp -> idExpend -> totalComp
+        if (currentColumn === 'date') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'idTypeComp');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'idTypeComp'
+            });
+          }, 50);
+        } else if (currentColumn === 'idTypeComp') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'idExpend');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'idExpend'
+            });
+          }, 50);
+        } else if (currentColumn === 'idExpend') {
+          setTimeout(() => {
+            this.gridApi.setFocusedCell(event.node.rowIndex, 'totalComp');
+            this.gridApi.startEditingCell({
+              rowIndex: event.node.rowIndex,
+              colKey: 'totalComp'
+            });
+          }, 50);
+        }
+      }
+    },
+>>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
   };
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -258,8 +382,25 @@ export class EgresosPalacioComponent {
     sortable: true,
     filter: false,
     resizable: true,
+<<<<<<< HEAD
     lockPosition: false,
     enableRowGroup: true
+=======
+    editable: false,
+    wrapHeaderText: true,
+    autoHeaderHeight: true,
+    tooltipValueGetter: (params: any) => {
+      if (params.data) {
+        const porComprobar = Number(params.data.totalComp) || 0;
+        const comprobado = Number(params.data.total) || 0;
+        if (porComprobar !== comprobado && porComprobar > 0) {
+          const diferencia = Math.abs(porComprobar - comprobado);
+          return `⚠️ Falta Comprobar: $${diferencia.toFixed(2)}`;
+        }
+      }
+      return null;
+    }
+>>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
   };
 
   components = {
@@ -464,6 +605,20 @@ export class EgresosPalacioComponent {
             'Cancelada',
             'Pagada'
           ]
+        },
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.value;
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.value || ''}</span>`;
+          }
+
+          return params.value || '';
         }
       },
 
@@ -476,6 +631,7 @@ export class EgresosPalacioComponent {
         width: 100
       },
 
+<<<<<<< HEAD
       { field: 'numberDocument', headerName: '# Doc/Fac', editable: false, filter: true, width: 130 },
       { field: 'date',  headerName: 'Fecha', editable: true,  width: 155, filter: 'agDateColumnFilter',
           valueFormatter: (params) => {
@@ -500,6 +656,53 @@ export class EgresosPalacioComponent {
               return 0;
             },
             browserDatePicker: true
+=======
+      {
+        field: 'numberDocument',
+        headerName: '# Doc/Fac',
+        editable: false,
+        filter: true,
+        width: 120,
+        hide: false,
+        tooltipValueGetter: (params) => {
+          if (params.data) {
+            const porComprobar = Number(params.data.totalComp) || 0;
+            const comprobado = Number(params.data.total) || 0;
+            if (porComprobar !== comprobado && porComprobar > 0) {
+              const diferencia = Math.abs(porComprobar - comprobado);
+              return `Falta Comprobar: $${diferencia.toFixed(2)} (Por Comprobar: $${porComprobar.toFixed(2)} - Comprobado: $${comprobado.toFixed(2)})`;
+            }
+          }
+          return null;
+        }
+      },
+      {
+        field: 'date',
+        headerName: 'Fecha',
+        editable: true,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          //   excelMode: 'mac',
+          defaultToNothingSelected: true,
+        },
+        cellDataType: 'date',
+        width: 95,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = params.value instanceof Date ? params.value : new Date(params.value);
+          return this.formatDate(date);
+        },
+        valueGetter: (params) => {
+          // Asegurar que siempre devuelva un objeto Date
+          if (!params.data.date) return null;
+          return params.data.date instanceof Date ? params.data.date : new Date(params.data.date);
+        },
+        valueSetter: (params) => {
+          // Asegurar que siempre se guarde como objeto Date
+          if (!params.newValue) {
+            params.data.date = params.oldValue;
+            return false;
+>>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
           }
       },
       {
@@ -558,34 +761,53 @@ export class EgresosPalacioComponent {
       },
 
       {
+<<<<<<< HEAD
         field: 'description', headerName: 'Descripción', editable: false, width: 155, filter: true,
+=======
+        field: 'description',
+        headerName: 'Descripción',
+        editable: false, // No editable directamente, solo mediante modal
+        width: 155,
+        filter: true,
+>>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
         wrapText: true,
-        autoHeight: true,
-        cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
+        cellStyle: {
+          'white-space': 'normal',
+          'line-height': '1.4',
+          cursor: 'pointer',
+          textDecoration: 'underline dotted'
         },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+        onCellClicked: (event: any) => {
+          // Abrir modal con un solo clic para mejor UX
           if (!event.node.group) {
             this.modalServiceTable.showModal({
               params: event,
-              value: event.value,
+              value: event.value || '',
             });
           }
         },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          // También soportar doble clic
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value || '',
+            });
           }
-          return params.value;
+        },
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.value;
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.value || ''}</span>`;
+          }
+
+          return params.value || '';
         }
       },
 
@@ -603,7 +825,21 @@ export class EgresosPalacioComponent {
         headerName: 'Por Comprobar',
         editable: true,
         width: 140,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.valueFormatted || '';
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.valueFormatted || ''}</span>`;
+          }
+
+          return params.valueFormatted || '';
+        }
       },
 
       {
@@ -611,7 +847,21 @@ export class EgresosPalacioComponent {
         headerName: 'Comprobado',
         editable: false,
         width: 130,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        cellRenderer: (params: any) => {
+          if (!params.data) return params.valueFormatted || '';
+
+          const porComprobar = Number(params.data.totalComp) || 0;
+          const comprobado = Number(params.data.total) || 0;
+
+          if (porComprobar !== comprobado && porComprobar > 0) {
+            const diferencia = Math.abs(porComprobar - comprobado);
+            const tooltip = `Falta Comprobar: $${diferencia.toFixed(2)}`;
+            return `<span title="${tooltip}" class="cell-mismatch">${params.valueFormatted || ''}</span>`;
+          }
+
+          return params.valueFormatted || '';
+        }
       },
 
       {
@@ -644,20 +894,30 @@ export class EgresosPalacioComponent {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
+    this.workingRowId = event.data.id; // Marcar como fila de trabajo
     this.signalsService.setIdIncomeAndExpense(this.id);
+
+    // Refrescar el grid para actualizar el estilo de las filas
+    this.gridApi?.redrawRows();
   }
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
+      this.workingRowId = selectedNodes[0].data.id; // Marcar como fila de trabajo
       this.signalsService.setIdIncomeAndExpense(this.selectedIncomes.id);
     } else {
       this.selectedIncomes = null;
     }
+
+    // Refrescar el grid para actualizar el estilo de las filas
+    this.gridApi?.redrawRows();
   }
 
   onCellValueChanged(event: any) {
+    // Marcar la fila como fila de trabajo
+    this.workingRowId = event.data.id;
 
     // Si se cambió la fecha, actualizar automáticamente el mes y refrescar la celda
     if (event.colDef.field === 'date' && event.newValue) {
@@ -828,6 +1088,9 @@ export class EgresosPalacioComponent {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
 
+    // Marcar como fila de trabajo
+    this.workingRowId = tempId;
+
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
 
@@ -838,12 +1101,18 @@ export class EgresosPalacioComponent {
       // Refrescar la celda de fecha para aplicar el valueFormatter
       const rowNode = this.gridApi.getDisplayedRowAtIndex(newRowIndex);
       if (rowNode) {
+        // Seleccionar la nueva fila
+        rowNode.setSelected(true);
+
         this.gridApi.refreshCells({
           rowNodes: [rowNode],
           columns: ['date'],
           force: true
         });
       }
+
+      // Refrescar el grid para aplicar el estilo de fila de trabajo
+      this.gridApi.redrawRows();
 
       // Iniciar edición en la columna 'date' con la fecha actual
       this.gridApi.startEditingCell({
@@ -906,6 +1175,14 @@ export class EgresosPalacioComponent {
       return;
     }
 
+    // Guardar los IDs de las filas modificadas (para registros existentes)
+    const idsToHighlight = modifiedRows
+      .filter(row => !row.id.toString().startsWith('temp_'))
+      .map(row => row.id);
+
+    // Guardar los números de documento de las nuevas filas para encontrarlas después
+    const newRowDocNumbers: string[] = [];
+
     // Solo validar configuración si hay nuevas filas que necesitan número de documento
     let currentConsecutive = 0;
     if (newRows.length > 0) {
@@ -924,13 +1201,33 @@ export class EgresosPalacioComponent {
       // Generar números de documento para nuevas filas
       newRows.forEach(row => {
         currentConsecutive++;
-        row.numberDocument = `${this.prefixAndConsecutive[0].prefixexp}${currentConsecutive.toString().padStart(4, '0')}`;
+        const docNumber = `${this.prefixAndConsecutive[0].prefixexp}${currentConsecutive.toString().padStart(4, '0')}`;
+        row.numberDocument = docNumber;
+        newRowDocNumbers.push(docNumber);
       });
     }
 
     try {
       // Guardar los registros de egresos
-      await this.saveExpenditureRecords(newRows, modifiedRows);
+      const savedResults = await this.saveExpenditureRecords(newRows, modifiedRows);
+
+      // Agregar los IDs de los nuevos registros guardados
+      if (savedResults && savedResults.length > 0) {
+        savedResults.forEach((result: any) => {
+          if (result?.id) {
+            idsToHighlight.push(result.id);
+          }
+        });
+      }
+
+      // Guardar los IDs y números de documento para resaltarlos después de recargar
+      this.lastSavedIds = idsToHighlight;
+
+      // Si no se obtuvieron IDs de los resultados, usaremos los números de documento
+      if (newRowDocNumbers.length > 0 && idsToHighlight.length === modifiedRows.length) {
+        // Solo tenemos IDs de filas modificadas, necesitaremos buscar las nuevas por número de documento
+        this.lastSavedIds = [...idsToHighlight, ...newRowDocNumbers as any];
+      }
 
       // Éxito
       alerts.basicAlert(
@@ -944,7 +1241,55 @@ export class EgresosPalacioComponent {
 
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      await this.getExpenditure(); // Refrescar los datos
+
+      // Refrescar los datos
+      await this.getExpenditure();
+
+      // Después de recargar, seleccionar y hacer scroll al primer registro guardado
+      setTimeout(() => {
+        if (this.lastSavedIds.length > 0 && this.gridApi) {
+          let firstNodeFound: any = null;
+
+          // Buscar los nodos correspondientes y construir lista de IDs reales
+          const realIds: number[] = [];
+          this.gridApi.forEachNode((node) => {
+            // Buscar por ID numérico
+            if (typeof this.lastSavedIds[0] === 'number' && node.data.id === this.lastSavedIds[0]) {
+              if (!firstNodeFound) firstNodeFound = node;
+            }
+
+            // Buscar también por número de documento (para las filas nuevas)
+            this.lastSavedIds.forEach((savedId: any) => {
+              if (typeof savedId === 'string' && node.data.numberDocument === savedId) {
+                realIds.push(node.data.id);
+                if (!firstNodeFound) firstNodeFound = node;
+              } else if (typeof savedId === 'number' && node.data.id === savedId) {
+                realIds.push(node.data.id);
+              }
+            });
+          });
+
+          // Actualizar la lista con IDs reales
+          this.lastSavedIds = [...new Set([...this.lastSavedIds.filter(id => typeof id === 'number'), ...realIds])];
+
+          // Seleccionar y hacer scroll al primer nodo encontrado
+          if (firstNodeFound) {
+            firstNodeFound.setSelected(true);
+            this.gridApi.ensureNodeVisible(firstNodeFound, 'middle');
+            this.workingRowId = firstNodeFound.data.id;
+          }
+
+          // Refrescar el grid para aplicar los estilos de resaltado
+          this.gridApi.redrawRows();
+
+          // Limpiar el resaltado después de 5 segundos
+          setTimeout(() => {
+            this.lastSavedIds = [];
+            this.workingRowId = null;
+            this.gridApi?.redrawRows();
+          }, 5000);
+        }
+      }, 500);
 
     } catch (error) {
       console.error('Error crítico en saveChanges:', error);
@@ -969,6 +1314,19 @@ export class EgresosPalacioComponent {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+
+    // Mostrar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar egreso?',
+      `¿Está seguro que desea eliminar el egreso "${selectedData.numberDocument}"? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     selectedData.active = 0;
     this.incomesAndExpensesService.deleteIncomesAndExpenses(id).pipe(
       catchError((error) => {
@@ -990,11 +1348,6 @@ export class EgresosPalacioComponent {
           );
           this.getExpenditure();
 
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedIncomes = null;
         }
@@ -1030,7 +1383,7 @@ export class EgresosPalacioComponent {
   }
 
   // Método para guardar los registros de egresos
-  private async saveExpenditureRecords(newRows: any[], modifiedRows: any[]): Promise<void> {
+  private async saveExpenditureRecords(newRows: any[], modifiedRows: any[]): Promise<any[]> {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       this.trackingService.addLog(
@@ -1057,10 +1410,13 @@ export class EgresosPalacioComponent {
     const allObservables = [...addObservables, ...updateObservables];
 
     if (allObservables.length > 0) {
-      await lastValueFrom(
+      const results = await lastValueFrom(
         forkJoin(allObservables) // Usar forkJoin para ejecutar todas en paralelo
       );
+      return results || [];
     }
+
+    return [];
   }
 
   // Método para obtener el último consecutivo para una cuenta específica (EGRESOS)
@@ -1930,7 +2286,7 @@ export class EgresosPalacioComponent {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-    (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+    (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
     // Obtener información de la empresa y firmas
     const rootResponse: any = await lastValueFrom(

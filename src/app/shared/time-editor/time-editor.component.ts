@@ -1,6 +1,5 @@
 import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
-import { ICellEditorParams } from 'ag-grid-community';
 
 @Component({
   selector: 'app-time-editor',
@@ -30,7 +29,7 @@ import { ICellEditorParams } from 'ag-grid-community';
 })
 export class TimeEditorComponent implements ICellEditorAngularComp, AfterViewInit {
   @ViewChild('input') input: ElementRef;
-  private params: ICellEditorParams;
+  private params: any;
   value: string;
 
   ngAfterViewInit() {
@@ -39,7 +38,7 @@ export class TimeEditorComponent implements ICellEditorAngularComp, AfterViewIni
     });
   }
 
-  agInit(params: ICellEditorParams): void {
+  agInit(params: any): void {
     this.params = params;
     
     try {

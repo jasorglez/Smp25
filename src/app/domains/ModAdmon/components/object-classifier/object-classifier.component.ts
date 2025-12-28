@@ -496,13 +496,11 @@ export class ObjectClassifierComponent implements OnInit {
     this.gridApi.setGridOption('quickFilterText', this.filterForm.value.searchTerm);
 
     // Aplicar filtro de nivel si existe
-    const nivelFilter = this.gridApi.getFilterInstance('nivel');
-    if (nivelFilter) {
-      const nivel = this.filterForm.value.filterNivel;
-      const nivelFilterModel = nivel ? { type: 'equals', filter: nivel } : null;
-      (nivelFilter as any).setModel(nivelFilterModel);
+    const nivel = this.filterForm.value.filterNivel;
+    const nivelFilterModel = nivel ? { type: 'equals', filter: nivel } : null;
+    this.gridApi.setColumnFilterModel('nivel', nivelFilterModel).then(() => {
       this.gridApi.onFilterChanged();
-    }
+    });
   }
 
   revert(): void {

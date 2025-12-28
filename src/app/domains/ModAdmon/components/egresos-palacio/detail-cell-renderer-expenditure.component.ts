@@ -13,12 +13,11 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { CustomersService } from 'app/services/customers.service';
 import { EmployeesService } from 'app/services/employees.service';
-import { SignalsService } from 'app/services/signals.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-detail-cell-renderer-expenditure',
@@ -221,7 +220,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   private sanitizer = inject(DomSanitizer);
   private customersService = inject(CustomersService);
   private employeesService = inject(EmployeesService);
-  private signalsService = inject(SignalsService);
   private providerModalService = inject(ProviderModalService);
 
   rowData: any[] = [];
@@ -318,6 +316,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
+        // Recalcular totales y actualizar maestro inmediatamente
         this.recalculateTotals();
         // Update the count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
@@ -400,7 +399,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
   loadObjetosGastoHijos() {
     // Obtener el código del objeto de gasto del registro maestro
-    const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo;
+    const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo; 
 
     if (!objetoGastoCodigo || !this.context || !this.context.administrationService) {
       console.warn('No se puede cargar objetos de gasto hijos: falta objetoGastoCodigo o administrationService');
@@ -431,7 +430,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
   async loadProviders() {
     // Obtener idRoot del contexto o del signalsService
-    const idRoot = this.context?.idRoot || this.signalsService.getRootSelectedBySidebar()();
+    const idRoot = this.context?.idRoot 
 
     if (!idRoot) {
       console.warn('No se puede cargar proveedores/empleados: falta idRoot');
@@ -466,7 +465,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     if (isEmpleadosType) {
       // Cargar empleados cuando el tipo de comprobante es "Empleados"
-      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const idBranch = this.context?.componentParent?.idBranch; 
       const idBranchNegative = -Math.abs(idBranch); // Valor negativo del idBranch
 
       this.employeesService.getEmployees(idBranchNegative).subscribe({
@@ -821,6 +820,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
+    // Recalcular totales y actualizar maestro inmediatamente
+    this.recalculateTotals();
+
     // Update count in master grid
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
       this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
@@ -836,7 +838,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }, 0);
   }
 
-  deleteSelectedConcept() {
+  async deleteSelectedConcept() {
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un concepto para eliminar', 'warning');
@@ -844,6 +846,19 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     const selectedConcept = selectedRows[0];
+
+    // Mostrar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar concepto?',
+      `¿Está seguro que desea eliminar este concepto? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.delete) {
       this.context.CONCEPTS.delete({ data: selectedConcept, api: this.gridApi }, () => {
         this.rowData = this.rowData.filter(concept => concept.id !== selectedConcept.id);
@@ -926,6 +941,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     this.loadConceptsData();
     this.hasUnsavedChanges = false;
+
+    // Recalcular totales y actualizar maestro después de recargar los datos originales
+    setTimeout(() => {
+      this.recalculateTotals();
+    }, 100);
   }
 
   onCellValueChanged(event: any) {
@@ -988,12 +1008,43 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
       const totalFinalSum = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
       this.total = totalFinalSum;
+
+      // Actualizar el maestro inmediatamente con los nuevos totales
+      this.updateMasterTotals();
     } catch (error) {
       console.error('Error recalculando totales:', error);
       this.subtotal = 0;
       this.iva2 = 0;
       this.isr = 0;
       this.total = 0;
+
+      // Actualizar el maestro con valores en 0
+      this.updateMasterTotals();
+    }
+  }
+
+  /**
+   * Actualiza los totales en la fila del maestro inmediatamente
+   */
+  private updateMasterTotals() {
+    if (!this.context?.componentParent) {
+      return;
+    }
+
+    const expenditureId = this.params?.data?.id;
+    if (!expenditureId) {
+      return;
+    }
+
+    // Actualizar directamente en el componente padre
+    if (typeof this.context.componentParent.updateMasterRowInGrid === 'function') {
+      this.context.componentParent.updateMasterRowInGrid({
+        id: expenditureId,
+        subtotal: this.subtotal,
+        tax: this.iva2,
+        isr: this.isr,
+        total: this.total
+      });
     }
   }
 
@@ -1383,27 +1434,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
   }
 
-  private formatDate(dateString: string | null | undefined): string {
-    if (!dateString) {
-      return 'Sin fecha';
-    }
-
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return 'Fecha inválida';
-      }
-      return [
-        date.getDate().toString().padStart(2, '0'),
-        (date.getMonth() + 1).toString().padStart(2, '0'),
-        date.getFullYear()
-      ].join('/');
-    } catch (error) {
-      console.error('Error al formatear fecha:', error);
-      return 'Error en fecha';
-    }
-  }
-
   private getCurrentDateTime(): string {
     const now = new Date();
     const fecha = now.toLocaleDateString('es-ES', {
@@ -1418,6 +1448,20 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       hour12: false
     });
     return `${fecha} ${hora}`;
+  }
+
+  private formatDate(date: any): string {
+    if (!date) return '';
+    try {
+      const d = new Date(date);
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
   }
 
   private formatCurrency(amount: number): string {
@@ -1649,7 +1693,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }, 0);
   }
 
-  deleteSelectedDocumento() {
+  async deleteSelectedDocumento() {
     const selectedRows = this.gridApiDocumentos.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un documento para eliminar', 'warning');
@@ -1657,6 +1701,19 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     const selectedDocumento = selectedRows[0];
+
+    // Mostrar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar documento?',
+      `¿Está seguro que desea eliminar este documento comprobado? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     if (this.context && this.context.DOCUMENTOS_COMPROBADOS && this.context.DOCUMENTOS_COMPROBADOS.delete) {
       this.context.DOCUMENTOS_COMPROBADOS.delete({ data: selectedDocumento, api: this.gridApiDocumentos }, () => {
         this.documentosData = this.documentosData.filter(doc => doc.id !== selectedDocumento.id);

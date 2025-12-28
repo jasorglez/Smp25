@@ -1,7 +1,7 @@
 /* Fondo azul para la barra lateral */
 .sidebarback {
       background-color: #003366;  /* Fondo azul oscuro */
-      padding: 10px;
+      padding: 0;
       color: #FFFFFF;             /* Texto en blanco para contraste */
       width: 225px; /* Reducido 10% (de 250px a 225px) */
       transition: width 0.3s ease;
@@ -43,6 +43,7 @@
 
   /* Estilo para el select */
   .select-side {
+<<<<<<< HEAD
       font-size: 0.6rem; /* Letras muy pequeñas */
       color: #333;
       background-color: #FFFFFF;
@@ -52,6 +53,15 @@
       margin-bottom: 4px; /* Menos margen */
       height: 20px; /* Altura reducida para letras más pequeñas */
       line-height: 1.1; /* Línea más ajustada */
+=======
+      font-size: 0.85rem;
+      color: #333;
+      background-color: #FFFFFF;
+      border: 1px solid #CCCCCC;
+      border-radius: 4px;
+      padding: 4px;
+      margin-bottom: 5px;        /* Espacio entre selects */
+>>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
       transition: border-color 0.3s ease;
       width: 100%; /* Asegurar que ocupe todo el ancho disponible */
   }
@@ -60,10 +70,35 @@
       border-color: #87CEFA;      /* Borde azul claro en foco */
   }
 
+<<<<<<< HEAD
   /* Estilo para las opciones del select */
   .select-side option {
       font-size: 0.6rem;
       padding: 1px;
+=======
+  /* Estilo para los form-select del sidebar */
+  .sidebarback .form-select {
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      height: auto;
+      min-height: 30px;
+      margin-bottom: 5px !important;
+  }
+
+  .sidebarback .form-select option {
+      font-size: 0.85rem;
+      padding: 3px;
+  }
+
+  /* Reducir padding del contenedor de selects */
+  .sidebarback .overflow-auto {
+      padding: 8px;
+  }
+
+  /* Reducir tamaño de texto general en sidebar */
+  .sidebarback span:not(.visually-hidden) {
+      font-size: 0.85rem;
+>>>>>>> 92e62a43f37724f6cca931c72b85dbc486a15b3a
   }
 
   .nav-link i {

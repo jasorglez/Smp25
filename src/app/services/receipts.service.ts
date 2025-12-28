@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { lastValueFrom } from 'rxjs';
 import { OcAndReqsService } from './ocandreqs.service';
@@ -11,7 +11,7 @@ import { Base64EncodeService } from './base64encode.service';
 import { ProvidersService } from './providers.service';
 import { InandoutService } from './inandout.service';
 
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 interface BaseEntity {
   name: string;
@@ -599,7 +599,7 @@ export class ReceiptsService {
             paddingTop: (i, node) => 2,
             paddingBottom: (i, node) => 2,
           },
-        },
+        } as any,
         this.detailedReq.type == 'OC' && !this.isInOut
           ? {
               columns: [
@@ -692,7 +692,7 @@ export class ReceiptsService {
                     paddingBottom: (i, node) => 2,
                   },
                   margin: [0, 10, 0, 0],
-                },
+                } as any,
               ],
             }
           : {
@@ -722,7 +722,7 @@ export class ReceiptsService {
                         margin: [0, 35, 0, 35]
                       }],
                       alignment: 'center',
-                      border: [false, false]
+                      border: [false, false, false, false]
                     },
                     {
                       stack: [{
@@ -730,7 +730,7 @@ export class ReceiptsService {
                         margin: [0, 35, 0, 35]
                       }],
                       alignment: 'center',
-                      border: [false, false]
+                      border: [false, false, false, false]
                     },
                   ],
                   [
@@ -759,7 +759,7 @@ export class ReceiptsService {
               },
               layout: 'noBorders',
               margin: [0, 0, 0, 10],
-            }
+            } as any
           : {
               table: {
                 widths: ['*', '*'],
@@ -772,20 +772,20 @@ export class ReceiptsService {
                     this.detailedReq.type == 'OC'
                       ? {
                           image: 'signatureSolicitant',
-                          fit: ['*', 70],
+                          fit: [100, 70],
                           alignment: 'center',
-                        }
+                        } as any
                       : {
                           text: '',
-                          fit: ['*', 70],
+                          // fit removed for text
                           alignment: 'center',
-                          border: [false, false],
-                        },
+                          border: [false, false, false, false],
+                        } as any,
                     {
                       image: 'signature',
-                      fit: ['*', 70],
+                      fit: [100, 70],
                       alignment: 'center',
-                    },
+                    } as any,
                   ],
                   [
                     {
@@ -815,7 +815,7 @@ export class ReceiptsService {
               },
               layout: 'noBorders',
               margin: [0, 0, 0, 10],
-            },
+            } as any,
       ],
       images: this.isInOut
         ? {

@@ -4,6 +4,8 @@
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; font-size: 0.85em !important; }
 
+// AG Grid CSS
+// Aunque uses Enterprise, los estilos base residen en la carpeta de community
  /* Core Grid CSS */
  @import 'ag-grid-community/styles/ag-grid.css';
  /* Quartz Theme Specific CSS */
@@ -19,6 +21,10 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; font-size: 
  --ag-header-background-color: rgba(228, 237, 250);
  /* Changes the hover color of the row*/
  --ag-row-hover-color: rgba(0, 38, 255, 0.1);
+}
+
+.small-text-ag-grid {
+  --ag-font-size: 11px;
 }
 
 // DHTMLX Gantt CSS
@@ -107,14 +113,6 @@ body {
 
 .footer-section a:hover {
   text-decoration: underline;
-}
-
-.small-text-ag-grid {
-  --ag-font-size: 11px;
-}
-
-.ag-row-selected {
-  background-color: #6baefa !important; /* Verde suave */
 }
 
 .required-header {
