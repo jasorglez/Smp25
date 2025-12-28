@@ -4,7 +4,7 @@ import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ICellEditorParams, ICellEditorComp } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -65,7 +65,7 @@ import { lastValueFrom } from 'rxjs';
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
-        style="height: 400px; width: 100%;">
+        style="height: 700px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -138,7 +138,7 @@ import { lastValueFrom } from 'rxjs';
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onDocumentosGridReady($event)"
         (cellValueChanged)="onDocumentoCellValueChanged($event)"
-        style="height: 400px; width: 100%;">
+        style="height: 700px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -565,11 +565,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'Fecha',
         editable: true,
         cellDataType: 'date',
-        width: 100,
-        valueFormatter: (params) => this.formatDate(params.value),
-        cellEditorParams: {
-          dateFormat: 'dd/MM/yyyy',
-          datePickerFormat: 'dd/MM/yyyy'
+        width: 120,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = new Date(params.value);
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          return `${day}/${month}/${year}`;
         }
       },
       {
@@ -1525,48 +1528,33 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         width: 340,
         cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: {
-          options: this.providers.map(provider => ({
-            id: provider.id,
-            description: provider.displayText,
-            valueAddition: provider.id.toString(),
-            valueAddition2: provider.displayText
-          }))
-        },
-        cellRenderer: (params: any) => {
-          const value = params.value;
-          const displayText = value ? (this.providers.find(p => p.id === value)?.displayText || value) : '';
-
-          const container = document.createElement('div');
-          container.style.cssText = 'display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; padding: 0 4px;';
-
-          const textSpan = document.createElement('span');
-          textSpan.style.cssText = 'flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-          textSpan.textContent = displayText;
-
-          const addButton = document.createElement('button');
-          addButton.className = 'btn btn-sm btn-success add-provider-btn';
-          addButton.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 11px; line-height: 1;';
-          addButton.title = 'Agregar nuevo proveedor';
-          addButton.innerHTML = '<i class="bi bi-plus-circle"></i>';
-
-          container.appendChild(textSpan);
-          container.appendChild(addButton);
-
-          return container;
-        },
-        onCellClicked: (event: any) => {
-          const target = event.event.target as HTMLElement;
-
-          // Si se hizo clic en el botón "+" o en su icono
-          if (target.closest('.add-provider-btn')) {
-            event.event.stopPropagation();
-            this.openAddProviderModal();
-          }
+          options: [
+            ...this.providers.map(provider => ({
+              id: provider.id,
+              description: provider.displayText,
+              valueAddition: provider.id.toString(),
+              valueAddition2: provider.displayText
+            })),
+            {
+              id: -999,
+              description: '➕ Agregar nuevo proveedor...',
+              valueAddition: '-999',
+              valueAddition2: '➕ Agregar nuevo proveedor...'
+            }
+          ]
         },
         valueFormatter: (params) => {
-          if (!params.value) return '';
+          if (!params.value || params.value === -999) return '';
           const found = this.providers.find(provider => provider.id === params.value);
           return found ? found.displayText : params.value;
+        },
+        onCellValueChanged: (event: any) => {
+          if (event.newValue === -999) {
+            // Usuario seleccionó "Agregar nuevo proveedor"
+            event.data.idSpend = event.oldValue || null;
+            this.gridApiDocumentos.refreshCells({ rowNodes: [event.node], force: true });
+            this.openAddProviderModal();
+          }
         }
       },
       {
@@ -1584,35 +1572,22 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'Nombre Archivo',
         width: 350,
         editable: false,
-        cellRenderer: (params: any) => {
-          const hasFile = params.value && params.value.trim() !== '';
-          const fileName = hasFile ? this.getFileNameFromUrl(params.value) : 'Sin archivo';
-          const buttonClass = hasFile ? 'btn-success' : 'btn-primary';
-          const icon = hasFile ? 'bi-file-check' : 'bi-upload';
-          const previewButton = hasFile ? `
-            <button class="btn btn-info btn-sm preview-file-btn"
-                    data-row-id="${params.node.id}"
-                    title="Ver vista previa">
-              <i class="bi bi-eye"></i>
-            </button>
-          ` : '';
-          return `
-            <div class="d-flex align-items-center gap-2">
-              <button class="btn ${buttonClass} btn-sm upload-file-btn"
-                      data-row-id="${params.node.id}"
-                      title="Subir archivo">
-                <i class="bi ${icon}"></i>
-              </button>
-              ${previewButton}
-              <span class="text-truncate" style="font-size: 0.85rem;">${fileName}</span>
-            </div>
-          `;
+        valueFormatter: (params) => {
+          if (!params.value) return 'Haga clic para subir archivo...';
+          return this.getFileNameFromUrl(params.value);
+        },
+        cellStyle: (params) => {
+          if (!params.value) {
+            return { cursor: 'pointer', color: '#999', fontStyle: 'italic' };
+          }
+          return { cursor: 'pointer', color: '#0066cc', textDecoration: 'underline' };
         },
         onCellClicked: (params: any) => {
-          const target = params.event.target as HTMLElement;
-          if (target.classList.contains('upload-file-btn') || target.closest('.upload-file-btn')) {
+          if (!params.value) {
+            // No hay archivo, abrir diálogo para subir
             this.openFileUpload(params);
-          } else if (target.classList.contains('preview-file-btn') || target.closest('.preview-file-btn')) {
+          } else {
+            // Hay archivo, abrir vista previa
             this.openPreviewModal(params);
           }
         }
@@ -1808,7 +1783,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   openFileUpload(params: any) {
-    // Crear input file dinámico
     const input = document.createElement('input');
     input.type = 'file';
 

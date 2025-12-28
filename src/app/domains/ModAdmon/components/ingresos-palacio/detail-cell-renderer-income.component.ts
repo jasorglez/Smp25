@@ -55,7 +55,7 @@ import { lastValueFrom } from 'rxjs';
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
-        style="height: 400px; width: 100%;">
+        style="height: 700px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -297,17 +297,16 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       {
         field: 'dateExpend',
         headerName: 'Fecha',
-        type: 'date',
         editable: true,
-        width: 100,
+        cellDataType: 'date',
+        width: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
           const date = new Date(params.value);
-          return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-          });
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          return `${day}/${month}/${year}`;
         }
       },
       {
