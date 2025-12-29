@@ -384,8 +384,18 @@ export class IngresosPalacioComponent implements OnInit {
   }
 
   // Column Definitions: Defines the columns to be displayed.
+  // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
+  // que causa re-renderizado de filtros en cada ciclo de change detection
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    // Si ya fue inicializado, retornar la misma instancia
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    // Inicializar una sola vez
+    this._colMaster = [
       {
         field: 'countItems',
         headerName: 'Items',
@@ -532,8 +542,10 @@ export class IngresosPalacioComponent implements OnInit {
         width: 105
       },
 
-    ]
-  };
+    ];
+
+    return this._colMaster;
+  }
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
