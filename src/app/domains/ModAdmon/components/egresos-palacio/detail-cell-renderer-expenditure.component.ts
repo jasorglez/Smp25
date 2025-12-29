@@ -1270,7 +1270,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     return {
       table: {
         headerRows: 1,
-        widths: [70, 100, '*', 80],
+        widths: [50, 180, '*', 80],
         body: [
           // Encabezados
           [
@@ -1281,8 +1281,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           ],
           // Filas de conceptos
           ...this.rowData.map(concept => [
-            { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
-            { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+            { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+            { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
             { text: concept.description || '', style: 'tableCell' },
             { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
           ]),
@@ -1356,7 +1356,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       elementos.push({
         table: {
           headerRows: 1,
-          widths: [70, 100, '*', 80],
+          widths: [50, 180, '*', 80],
           body: [
             // Encabezados
             [
@@ -1367,8 +1367,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             ],
             // Filas de conceptos del grupo
             ...grupo.conceptos.map((concept: any) => [
-              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
-              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
               { text: concept.description || '', style: 'tableCell' },
               { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
             ]),

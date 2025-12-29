@@ -678,6 +678,17 @@ export class EgresosPalacioComponent {
             params.data.date = params.oldValue;
             return false;
           }
+
+          // Convertir el nuevo valor a Date y guardarlo
+          const newDate = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
+
+          if (isNaN(newDate.getTime())) {
+            // Fecha inválida, mantener valor anterior
+            params.data.date = params.oldValue;
+            return false;
+          }
+
+          params.data.date = newDate;
           return true;
         },
       },
@@ -2470,15 +2481,15 @@ export class EgresosPalacioComponent {
             width: 150
           }
         ],
-        margin: [0, 0, 0, 20]
+        margin: [0, 0, 0, 15]
       },
       // Línea separadora
       {
         canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#333333' }],
-        margin: [0, 0, 0, 15]
+        margin: [0, 0, 0, 10]
       },
       // DETALLES DEL EGRESO
-      { text: 'DETALLES DEL EGRESO', style: 'sectionTitle', margin: [0, 10, 0, 10] },
+      { text: 'DETALLES DEL EGRESO', style: 'sectionTitle', margin: [0, 5, 0, 8] },
       {
         table: {
           widths: ['25%', '75%'],
@@ -2497,7 +2508,7 @@ export class EgresosPalacioComponent {
           paddingLeft: () => 8,
           paddingRight: () => 8
         },
-        margin: [0, 0, 0, 15]
+        margin: [0, 0, 0, 10]
       },
       // Tabla de Conceptos - Condicional según mostrartodo
       ...(expense.mostrartodo === true && objetosNivel1.length > 0 && objetosNivel4.length > 0
@@ -2507,7 +2518,7 @@ export class EgresosPalacioComponent {
           {
             table: {
               headerRows: 1,
-              widths: [70, 100, '*', 80],
+              widths: [50, 180, '*', 80],
               body: [
                 [
                   { text: 'Fecha', style: 'tableHeader' },
@@ -2516,8 +2527,8 @@ export class EgresosPalacioComponent {
                   { text: 'Total', style: 'tableHeader', alignment: 'right' }
                 ],
                 ...concepts.map(concept => [
-                  { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
-                  { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+                  { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+                  { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
                   { text: concept.description || '', style: 'tableCell' },
                   { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
                 ]),
@@ -2539,7 +2550,7 @@ export class EgresosPalacioComponent {
               paddingLeft: () => 4,
               paddingRight: () => 4
             },
-            margin: [0, 0, 0, 20]
+            margin: [0, 0, 0, 10]
           }
         ])
     ];
@@ -2731,20 +2742,20 @@ export class EgresosPalacioComponent {
       if (index > 0) {
         elementos.push({
           canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: '#cccccc' }],
-          margin: [0, 10, 0, 10]
+          margin: [0, 5, 0, 5]
         });
       }
 
       elementos.push({
         text: grupo.nivel1Info.codigoNombre,
         style: 'groupTitle',
-        margin: [0, 10, 0, 5]
+        margin: [0, 5, 0, 3]
       });
 
       elementos.push({
         table: {
           headerRows: 1,
-          widths: [70, 100, '*', 80],
+          widths: [50, 180, '*', 80],
           body: [
             [
               { text: 'Fecha', style: 'tableHeader' },
@@ -2753,8 +2764,8 @@ export class EgresosPalacioComponent {
               { text: 'Total', style: 'tableHeader', alignment: 'right' }
             ],
             ...grupo.conceptos.map((concept: any) => [
-              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
-              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
               { text: concept.description || '', style: 'tableCell' },
               { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
             ]),
@@ -2776,13 +2787,13 @@ export class EgresosPalacioComponent {
           paddingLeft: () => 4,
           paddingRight: () => 4
         },
-        margin: [0, 0, 0, 5]
+        margin: [0, 0, 0, 3]
       });
     });
 
     elementos.push({
       canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#333333' }],
-      margin: [0, 15, 0, 5]
+      margin: [0, 10, 0, 3]
     });
 
     elementos.push({
@@ -2792,7 +2803,7 @@ export class EgresosPalacioComponent {
         { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', width: 100 },
         { text: this.formatCurrency(total), style: 'totalValue', alignment: 'right', width: 80 }
       ],
-      margin: [0, 5, 0, 20]
+      margin: [0, 3, 0, 10]
     });
 
     return elementos;
