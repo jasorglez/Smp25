@@ -46,7 +46,7 @@
         (gridReady)="onMasterGridReady($event)"
         [rowSelection]="'single'"
         [pivotPanelShow]="pivotPanelShow"
-        [rowGroupPanelShow]="rowGroupPanelShow"
+        
         [stopEditingWhenCellsLoseFocus]="true">
       </ag-grid-angular>
 
@@ -59,8 +59,7 @@
         [columnDefs]="colDetails"
         (gridReady)="onDetailGridReady($event)"
         [rowSelection]="'single'"
-        [pivotPanelShow]="pivotPanelShow"
-        [rowGroupPanelShow]="rowGroupPanelShow">
+        [pivotPanelShow]="pivotPanelShow">
       </ag-grid-angular>
     </div>
   </div>

@@ -119,9 +119,9 @@ export class EgresosPalacioComponent {
       await this.getBills();
       await this.getTypeComps();
       await this.getExpenditure();
-      await this.loadAuthorizers();
+   //   await this.loadAuthorizers();
       await this.getCurrentUser();
-      await this.obtenerBranchs();
+   //   await this.obtenerBranchs();
     });
 
     effect(() => {
@@ -531,17 +531,12 @@ export class EgresosPalacioComponent {
   }
 
   // Column Definitions: Defines the columns to be displayed.
-  // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
-  // que causa re-renderizado de filtros en cada ciclo de change detection
+  // Las columnas se reconstruyen dinámicamente para incluir las opciones actualizadas
+  // de typeComps y expenses después de que se cargan desde el servidor
   private _colMaster: ColDef[] = [];
 
   get colMaster(): ColDef[] {
-    // Si ya fue inicializado, retornar la misma instancia
-    if (this._colMaster.length > 0) {
-      return this._colMaster;
-    }
-
-    // Inicializar una sola vez
+    // Siempre reconstruir las definiciones de columnas con los datos actuales
     this._colMaster = [
       {
         headerName: '#',

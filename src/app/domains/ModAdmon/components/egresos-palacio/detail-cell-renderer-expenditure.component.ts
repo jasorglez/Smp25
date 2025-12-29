@@ -635,6 +635,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+
+    // Refrescar las columnas después de que los datos se carguen
+    // para asegurar que los combo boxes tengan las opciones correctas
+    setTimeout(() => {
+      if (this.gridApi && this.objetosGastoHijos.length > 0) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+      }
+    }, 500);
   }
 
   get colDefs(): ColDef[] {
@@ -1834,6 +1842,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   onDocumentosGridReady(params: GridReadyEvent) {
     this.gridApiDocumentos = params.api;
     this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion);
+
+    // Refrescar las columnas después de que los proveedores/empleados se carguen
+    // para asegurar que el combo box tenga las opciones correctas
+    setTimeout(() => {
+      if (this.gridApiDocumentos && this.providers.length > 0) {
+        this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion);
+      }
+    }, 500);
   }
 
   get colDefsComprobacion(): ColDef[] {
