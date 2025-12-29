@@ -678,6 +678,17 @@ export class EgresosPalacioComponent {
             params.data.date = params.oldValue;
             return false;
           }
+
+          // Convertir el nuevo valor a Date y guardarlo
+          const newDate = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
+
+          if (isNaN(newDate.getTime())) {
+            // Fecha inválida, mantener valor anterior
+            params.data.date = params.oldValue;
+            return false;
+          }
+
+          params.data.date = newDate;
           return true;
         },
       },
