@@ -912,7 +912,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       }
     }
 
-    this.rowData = [...this.rowData, newConcept];
+    // Agregar al PRINCIPIO del array para que sea visible inmediatamente
+    this.rowData = [newConcept, ...this.rowData];
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
@@ -922,10 +923,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     setTimeout(() => {
-      const lastRowIndex = this.rowData.length - 1;
-      this.gridApi.ensureIndexVisible(lastRowIndex);
+      // El nuevo registro está en el índice 0 (primera fila)
+      const newRowIndex = 0;
+      this.gridApi.ensureIndexVisible(newRowIndex);
       this.gridApi.startEditingCell({
-        rowIndex: lastRowIndex,
+        rowIndex: newRowIndex,
         colKey: idCatIng ? 'price' : 'idCatIng'
       });
     }, 0);
@@ -1989,7 +1991,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       __modified: false
     };
 
-    this.documentosData = [...this.documentosData, newDocumento];
+    // Agregar al PRINCIPIO del array para que sea visible inmediatamente
+    this.documentosData = [newDocumento, ...this.documentosData];
     this.hasUnsavedDocumentosChanges = true;
     this.gridApiDocumentos.setGridOption('rowData', this.documentosData);
 
@@ -1999,10 +2002,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     setTimeout(() => {
-      const lastRowIndex = this.documentosData.length - 1;
-      this.gridApiDocumentos.ensureIndexVisible(lastRowIndex);
+      // El nuevo registro está en el índice 0 (primera fila)
+      const newRowIndex = 0;
+      this.gridApiDocumentos.ensureIndexVisible(newRowIndex);
       this.gridApiDocumentos.startEditingCell({
-        rowIndex: lastRowIndex,
+        rowIndex: newRowIndex,
         colKey: 'idSpend'
       });
     }, 0);
