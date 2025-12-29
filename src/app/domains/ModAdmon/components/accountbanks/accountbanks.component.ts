@@ -114,9 +114,16 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     },
   };
 
+  private _colMaster: ColDef[] = [];
+  private _colDetails: ColDef[] = [];
+
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'idBanco',
         headerName: 'Banco',
@@ -252,11 +259,17 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           }),
       },
     ];
+
+    return this._colMaster;
   }
 
   // Column Definitions: Defines the columns to be displayed.
   get colDetails(): ColDef[] {
-    return [
+    if (this._colDetails.length > 0) {
+      return this._colDetails;
+    }
+
+    this._colDetails = [
       {
         field: 'numeroDocumento',
         headerName: 'Numero Documento',
@@ -363,6 +376,8 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         },
       },
     ];
+
+    return this._colDetails;
   }
 
   obtenerBanks() {

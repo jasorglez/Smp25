@@ -72,8 +72,15 @@ export class SaldosPalacioComponent {
     },
   };
 
+  private _colMaster: ColDef[] = [];
+  private _colDetails: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'idBanco',
         headerName: 'Banco',
@@ -156,10 +163,16 @@ export class SaldosPalacioComponent {
           }),
       },
     ];
+
+    return this._colMaster;
   }
 
   get colDetails(): ColDef[] {
-    return [
+    if (this._colDetails.length > 0) {
+      return this._colDetails;
+    }
+
+    this._colDetails = [
       {
         field: 'numeroDocumento',
         headerName: 'Numero Documento',
@@ -257,6 +270,8 @@ export class SaldosPalacioComponent {
         },
       },
     ];
+
+    return this._colDetails;
   }
 
   obtenerBanks() {

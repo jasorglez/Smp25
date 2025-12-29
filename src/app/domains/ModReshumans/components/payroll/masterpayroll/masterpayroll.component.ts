@@ -280,8 +280,14 @@ export class MasterPayrollComponent implements OnInit {
     };
   }
 
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         headerName: 'Sucursal',
         field: 'idBranch',
@@ -698,6 +704,8 @@ export class MasterPayrollComponent implements OnInit {
         }
       }
     ];
+
+    return this._colMaster;
   }
 
     parseLocalDate(input: string | Date): Date | null {

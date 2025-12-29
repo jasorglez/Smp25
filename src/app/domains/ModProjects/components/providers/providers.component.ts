@@ -93,8 +93,14 @@ export class ProvidersComponent {
     },
   };
 
+  private _columnDefs: ColDef[] = [];
+
   get columnDefs(): ColDef[] {
-    return [
+    if (this._columnDefs.length > 0) {
+      return this._columnDefs;
+    }
+
+    this._columnDefs = [
       {
         field: 'name',
         headerName: 'Nombre',
@@ -227,6 +233,8 @@ export class ProvidersComponent {
         editable: false,
       },
     ];
+
+    return this._columnDefs;
   }
 
   onSelectedRow(event: any) {

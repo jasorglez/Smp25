@@ -210,11 +210,17 @@ export class CustomersComponent implements CanComponentDeactivate {s
         });
       }
     },
-    
+
   };
 
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -736,6 +742,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
         },
       },
     ];
+
+    return this._colMaster;
   }
 
   obtenerDatos() {

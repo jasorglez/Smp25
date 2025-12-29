@@ -115,8 +115,14 @@ export class WarehousesComponent implements CanComponentDeactivate {
     },
   };
 
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'name',
         headerName: 'Nombre',
@@ -192,6 +198,8 @@ export class WarehousesComponent implements CanComponentDeactivate {
         cellEditor: 'agCheckboxCellEditor'
       },
     ];
+
+    return this._colMaster;
   }
 
   obtenerDatos() {

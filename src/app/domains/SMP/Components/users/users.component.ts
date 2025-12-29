@@ -303,8 +303,14 @@ constructor() {
     },
   };
 
+  private _columnDefs: ColDef[] = [];
+
   get columnDefs(): ColDef[] {
-    return [
+    if (this._columnDefs.length > 0) {
+      return this._columnDefs;
+    }
+
+    this._columnDefs = [
       {
         field: 'id',
         headerName: 'ID',
@@ -586,8 +592,10 @@ constructor() {
         },
         width: 90,
         hide: !this.authorizedPass
-      } 
+      }
     ];
+
+    return this._columnDefs;
   }
 
   selectedRowData: any = null;

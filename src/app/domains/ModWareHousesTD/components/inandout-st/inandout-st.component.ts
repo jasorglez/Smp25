@@ -265,8 +265,14 @@ export class InandoutStComponent implements OnInit {
     }
   };
 
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'countrow',
         headerName: 'Items',
@@ -397,6 +403,8 @@ export class InandoutStComponent implements OnInit {
         }
       }
     ];
+
+    return this._colMaster;
   }
 
   onCellClicked(event: any): void {

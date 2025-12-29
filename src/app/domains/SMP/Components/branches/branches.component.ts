@@ -200,6 +200,7 @@ export class BranchesComponent implements CanComponentDeactivate {
     }
   };
 
+  private _colMaster: ColDef[] = [];
 
   editRow(data: any) {
     this.isEditing = true;
@@ -218,6 +219,10 @@ export class BranchesComponent implements CanComponentDeactivate {
   }
 
   get colMaster(): ColDef[] {
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
     const columns: ColDef[] = [];
 
     // Agregar columna condicional
@@ -385,7 +390,8 @@ export class BranchesComponent implements CanComponentDeactivate {
       }
     );
 
-    return columns;
+    this._colMaster = columns;
+    return this._colMaster;
   }
 
   onMasterCellValueChanged(event: any) {

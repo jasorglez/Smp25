@@ -201,8 +201,14 @@ constructor() {
   }
 };
 
+  private _columnDefs: ColDef[] = [];
+
   get columnDefs(): ColDef[] {
-    return [
+    if (this._columnDefs.length > 0) {
+      return this._columnDefs;
+    }
+
+    this._columnDefs = [
       {
         field: 'id',
         hide: true
@@ -246,6 +252,8 @@ constructor() {
         editable: true
       }
     ];
+
+    return this._columnDefs;
   }
 
   selectedRowData: any = null;
