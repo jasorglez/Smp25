@@ -849,6 +849,15 @@ export class EgresosPalacioComponent {
         hide: true,
         editable: false,
         width: 105
+      },
+
+      {
+        field: 'mostrartodo',
+        headerName: 'Mostrar Todos',
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        editable: true,
+        width: 120
       }
 
     ]

@@ -127,20 +127,33 @@
   width: 70px;
 }
 
-/* Ocultar selects y textos cuando está colapsado */
-.collapsed .form-select,
-.collapsed .nav-link span {
+/* Ocultar selects cuando está colapsado */
+.collapsed .form-select {
   display: none;
 }
 
-/* Centrar íconos cuando está colapsado */
+/* Hacer textos pequeñitos cuando está colapsado */
+.collapsed .nav-link span {
+  font-size: 0.4rem !important; /* Mitad del tamaño */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50px;
+}
+
+/* Centrar contenido cuando está colapsado */
 .collapsed .nav-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 10px 0;
+  padding: 8px 2px;
+  text-align: center;
 }
 
 .collapsed .nav-link mat-icon {
   margin-right: 0;
+  margin-bottom: 2px;
 }
 
 /* Estilo del botón de colapsar */

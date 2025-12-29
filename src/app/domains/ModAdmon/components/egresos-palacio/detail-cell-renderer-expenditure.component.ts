@@ -400,34 +400,71 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   loadObjetosGastoHijos() {
-    // Obtener el código del objeto de gasto del registro maestro
-    const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo; 
-
-    if (!objetoGastoCodigo || !this.context || !this.context.administrationService) {
-      console.warn('No se puede cargar objetos de gasto hijos: falta objetoGastoCodigo o administrationService');
+    if (!this.context || !this.context.administrationService) {
+      console.warn('No se puede cargar objetos de gasto: falta administrationService');
       this.objetosGastoHijos = [];
       return;
     }
 
-    // Llamar al endpoint getEspecifica para obtener los objetos de gasto específicos usando el código
-    this.context.administrationService.getEspecifica(this.context.idRoot, objetoGastoCodigo).subscribe({
-      next: (data: any[]) => {
-        // Los datos ya vienen con id y codigoNombre
-        this.objetosGastoHijos = (data || []).map(obj => ({
-          ...obj,
-          displayText: obj.codigoNombre // Usar codigoNombre como displayText
-        }));
+    // Verificar si el checkbox "Mostrar Todos" está activado
+    const mostrarTodos = this.expenditureData?.mostrartodo === true;
 
-        // Actualizar las columnas del grid con los nuevos valores
-        if (this.gridApi) {
-          this.gridApi.setGridOption('columnDefs', this.colDefs);
+    if (mostrarTodos) {
+      // ✅ Checkbox ACTIVO → Mostrar TODOS los objetos de nivel 4
+      console.log('🔵 Checkbox ACTIVO - Cargando TODOS los objetos de nivel 4');
+      this.context.administrationService.getByNivelObjeto(this.context.idRoot, 4).subscribe({
+        next: (data: any[]) => {
+          // Formatear resultado: crear codigoNombre desde codigo + " - " + nombre
+          this.objetosGastoHijos = (data || []).map(obj => ({
+            id: obj.id,
+            codigoNombre: `${obj.codigo} - ${obj.nombre}`,
+            displayText: `${obj.codigo} - ${obj.nombre}`
+          }));
+
+          // Actualizar las columnas del grid con los nuevos valores
+          if (this.gridApi) {
+            this.gridApi.setGridOption('columnDefs', this.colDefs);
+          }
+          console.log('✅ Todos los objetos de nivel 4 cargados:', this.objetosGastoHijos.length);
+        },
+        error: (error) => {
+          console.error('❌ Error loading todos los objetos nivel 4:', error);
+          this.objetosGastoHijos = [];
         }
-      },
-      error: (error) => {
-        console.error('Error loading objetos de gasto específicos:', error);
+      });
+    } else {
+      // ✅ Checkbox INACTIVO → Mostrar solo objetos CONDICIONADOS (hijos del objeto específico)
+      const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo;
+
+      if (!objetoGastoCodigo) {
+        console.warn('No se puede cargar objetos condicionados: falta objetoGastoCodigo');
         this.objetosGastoHijos = [];
+        return;
       }
-    });
+
+      console.log('🔵 Checkbox INACTIVO - Cargando objetos CONDICIONADOS del objeto:', objetoGastoCodigo);
+      // Usar getEspecifica para obtener solo los hijos del objeto específico
+      this.context.administrationService.getEspecifica(this.context.idRoot, objetoGastoCodigo).subscribe({
+        next: (data: any[]) => {
+          // Formatear resultado: ya viene con codigoNombre
+          this.objetosGastoHijos = (data || []).map(obj => ({
+            id: obj.id,
+            codigoNombre: obj.codigoNombre,
+            displayText: obj.codigoNombre
+          }));
+
+          // Actualizar las columnas del grid con los nuevos valores
+          if (this.gridApi) {
+            this.gridApi.setGridOption('columnDefs', this.colDefs);
+          }
+          console.log('✅ Objetos condicionados cargados:', this.objetosGastoHijos.length);
+        },
+        error: (error) => {
+          console.error('❌ Error loading objetos condicionados:', error);
+          this.objetosGastoHijos = [];
+        }
+      });
+    }
   }
 
   async loadProviders() {
