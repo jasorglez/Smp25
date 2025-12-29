@@ -229,6 +229,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   objetosImpuesto: any[] = [];
   ivaPercent: number = 0;
   objetosGastoHijos: any[] = []; // Objetos de gasto nivel 4 (hijos del objeto de gasto seleccionado nivel 1)
+  objetosGastoNivel1: any[] = []; // Objetos de gasto nivel 1 (para agrupar en reporte)
   setupManagementInfo: any = null; // Información de firmas
   lastSelectedIdCatIng: number = 0; // Para copiar el último objeto de gasto seleccionado
   providers: any[] = []; // Proveedores para el combo box
@@ -328,6 +329,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     // Cargar información de firmas
     await this.loadSetupManagementInfo();
 
+    // Si el checkbox "Mostrar Todos" está activo, cargar objetos de nivel 1 y nivel 4 para agrupar
+    if (this.expenditureData?.mostrartodo === true) {
+      await this.loadObjetosNivel1();
+      await this.loadObjetosNivel4ParaReporte();
+    }
+
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
@@ -364,6 +371,48 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       } catch (error) {
         console.error('Error loading setup management info:', error);
         this.setupManagementInfo = null;
+      }
+    }
+  }
+
+  async loadObjetosNivel1() {
+    if (this.context?.administrationService && this.context?.idRoot) {
+      try {
+        console.log('🔵 Cargando objetos de nivel 1 para reporte agrupado...');
+        const data: any = await lastValueFrom(
+          this.context.administrationService.getByNivelObjeto(this.context.idRoot, 1)
+        );
+        this.objetosGastoNivel1 = (data || []).map((obj: any) => ({
+          id: obj.id,
+          codigo: obj.codigo,
+          nombre: obj.nombre,
+          codigoNombre: `${obj.codigo} - ${obj.nombre}`
+        }));
+        console.log('✅ Objetos nivel 1 cargados:', this.objetosGastoNivel1.length);
+      } catch (error) {
+        console.error('❌ Error loading objetos nivel 1:', error);
+        this.objetosGastoNivel1 = [];
+      }
+    }
+  }
+
+  async loadObjetosNivel4ParaReporte() {
+    if (this.context?.administrationService && this.context?.idRoot) {
+      try {
+        console.log('🔵 Cargando objetos de nivel 4 para mapeo en reporte...');
+        const data: any = await lastValueFrom(
+          this.context.administrationService.getByNivelObjeto(this.context.idRoot, 4)
+        );
+        this.objetosGastoHijos = (data || []).map((obj: any) => ({
+          id: obj.id,
+          codigo: obj.codigo,
+          nombre: obj.nombre,
+          codigoNombre: `${obj.codigo} - ${obj.nombre}`
+        }));
+        console.log('✅ Objetos nivel 4 cargados para reporte:', this.objetosGastoHijos.length);
+      } catch (error) {
+        console.error('❌ Error loading objetos nivel 4:', error);
+        this.objetosGastoHijos = [];
       }
     }
   }
@@ -1133,6 +1182,249 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }, 500);
   }
 
+  /**
+   * Mapea un ID de objeto nivel 4 a su código de nivel 1 padre
+   * Ej: idCatIng=145 (objeto "3111") → retorna "3000"
+   */
+  private getNivel1CodigoFromNivel4Id(idCatIng: number): string | null {
+    // Buscar el objeto nivel 4 en objetosGastoHijos
+    const objetoNivel4 = this.objetosGastoHijos.find(obj => obj.id === idCatIng);
+    if (!objetoNivel4 || !objetoNivel4.codigoNombre) {
+      return null;
+    }
+
+    // Extraer el código del codigoNombre (ej: "3111 - Dietas" → "3111")
+    const codigoMatch = objetoNivel4.codigoNombre.match(/^(\d+)/);
+    if (!codigoMatch) {
+      return null;
+    }
+
+    const codigoNivel4 = codigoMatch[1]; // "3111"
+
+    // Tomar el primer dígito y completar con ceros
+    const primerDigito = codigoNivel4.charAt(0); // "3"
+    const codigoNivel1 = `${primerDigito}000`; // "3000"
+
+    return codigoNivel1;
+  }
+
+  /**
+   * Agrupa los conceptos por objeto de gasto nivel 1
+   * Retorna un mapa: { "3000": { nivel1Info, conceptos[], subtotal }, ... }
+   */
+  private agruparConceptosPorNivel1(): Map<string, any> {
+    const grupos = new Map<string, any>();
+
+    // Iterar sobre cada concepto
+    this.rowData.forEach(concepto => {
+      const idCatIng = concepto.idCatIng;
+
+      // Obtener el código del nivel 1 padre
+      const codigoNivel1 = this.getNivel1CodigoFromNivel4Id(idCatIng);
+
+      if (!codigoNivel1) {
+        // Si no se puede determinar, agrupar en "Sin clasificar"
+        if (!grupos.has('sin-clasificar')) {
+          grupos.set('sin-clasificar', {
+            nivel1Info: { codigo: '', nombre: 'SIN CLASIFICAR', codigoNombre: 'SIN CLASIFICAR' },
+            conceptos: [],
+            subtotal: 0
+          });
+        }
+        const grupo = grupos.get('sin-clasificar');
+        grupo.conceptos.push(concepto);
+        grupo.subtotal += concepto.totalFinal || 0;
+        return;
+      }
+
+      // Buscar la información del objeto nivel 1
+      const nivel1Info = this.objetosGastoNivel1.find(obj => obj.codigo === codigoNivel1);
+
+      if (!nivel1Info) {
+        console.warn(`No se encontró info para nivel 1 código: ${codigoNivel1}`);
+        return;
+      }
+
+      // Crear el grupo si no existe
+      if (!grupos.has(codigoNivel1)) {
+        grupos.set(codigoNivel1, {
+          nivel1Info: nivel1Info,
+          conceptos: [],
+          subtotal: 0
+        });
+      }
+
+      // Agregar el concepto al grupo
+      const grupo = grupos.get(codigoNivel1);
+      grupo.conceptos.push(concepto);
+      grupo.subtotal += concepto.totalFinal || 0;
+    });
+
+    return grupos;
+  }
+
+  /**
+   * Genera la tabla simple de conceptos (sin agrupar)
+   */
+  private generarTablaSimple(): any {
+    return {
+      table: {
+        headerRows: 1,
+        widths: [70, 100, '*', 80],
+        body: [
+          // Encabezados
+          [
+            { text: 'Fecha', style: 'tableHeader' },
+            { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
+            { text: 'Descripción', style: 'tableHeader' },
+            { text: 'Total', style: 'tableHeader', alignment: 'right' }
+          ],
+          // Filas de conceptos
+          ...this.rowData.map(concept => [
+            { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
+            { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+            { text: concept.description || '', style: 'tableCell' },
+            { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+          ]),
+          // Fila de totales
+          [
+            { text: '', border: [false, false, false, false] },
+            { text: '', border: [false, false, false, false] },
+            { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
+            { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
+          ]
+        ]
+      },
+      layout: {
+        hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => '#333333',
+        vLineColor: () => '#cccccc',
+        paddingTop: () => 3,
+        paddingBottom: () => 3,
+        paddingLeft: () => 4,
+        paddingRight: () => 4
+      },
+      margin: [0, 0, 0, 20]
+    };
+  }
+
+  /**
+   * Genera las tablas agrupadas por objeto de gasto nivel 1
+   */
+  private generarTablaAgrupada(): any[] {
+    const elementos: any[] = [];
+
+    // Agrupar conceptos
+    const grupos = this.agruparConceptosPorNivel1();
+
+    // Convertir el Map a array y ordenar por código
+    const gruposOrdenados = Array.from(grupos.entries()).sort((a, b) => {
+      if (a[0] === 'sin-clasificar') return 1;
+      if (b[0] === 'sin-clasificar') return -1;
+      return a[0].localeCompare(b[0]);
+    });
+
+    // Generar una tabla por cada grupo
+    gruposOrdenados.forEach(([codigoNivel1, grupo], index) => {
+      // Línea separadora (solo después del primer grupo)
+      if (index > 0) {
+        elementos.push({
+          canvas: [
+            {
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 515,
+              y2: 0,
+              lineWidth: 0.5,
+              lineColor: '#cccccc'
+            }
+          ],
+          margin: [0, 10, 0, 10]
+        });
+      }
+
+      // Título del grupo (Objeto Nivel 1)
+      elementos.push({
+        text: grupo.nivel1Info.codigoNombre,
+        style: 'groupTitle',
+        margin: [0, 10, 0, 5]
+      });
+
+      // Tabla de conceptos del grupo
+      elementos.push({
+        table: {
+          headerRows: 1,
+          widths: [70, 100, '*', 80],
+          body: [
+            // Encabezados
+            [
+              { text: 'Fecha', style: 'tableHeader' },
+              { text: 'FOLIO FISCAL', style: 'tableHeader' },
+              { text: 'Descripción', style: 'tableHeader' },
+              { text: 'Total', style: 'tableHeader', alignment: 'right' }
+            ],
+            // Filas de conceptos del grupo
+            ...grupo.conceptos.map((concept: any) => [
+              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
+              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+              { text: concept.description || '', style: 'tableCell' },
+              { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+            ]),
+            // Fila de subtotal del grupo
+            [
+              { text: '', border: [false, false, false, false] },
+              { text: '', border: [false, false, false, false] },
+              { text: 'SUBTOTAL:', style: 'subtotalLabel', alignment: 'right', border: [false, true, false, false] },
+              { text: this.formatCurrency(grupo.subtotal), style: 'subtotalValue', alignment: 'right', border: [false, true, false, false] }
+            ]
+          ]
+        },
+        layout: {
+          hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => '#333333',
+          vLineColor: () => '#cccccc',
+          paddingTop: () => 3,
+          paddingBottom: () => 3,
+          paddingLeft: () => 4,
+          paddingRight: () => 4
+        },
+        margin: [0, 0, 0, 5]
+      });
+    });
+
+    // Línea separadora final
+    elementos.push({
+      canvas: [
+        {
+          type: 'line',
+          x1: 0,
+          y1: 0,
+          x2: 515,
+          y2: 0,
+          lineWidth: 2,
+          lineColor: '#333333'
+        }
+      ],
+      margin: [0, 15, 0, 5]
+    });
+
+    // Total general
+    elementos.push({
+      columns: [
+        { text: '', width: '*' },
+        { text: '', width: 170 },
+        { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', width: 100 },
+        { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', width: 80 }
+      ],
+      margin: [0, 5, 0, 20]
+    });
+
+    return elementos;
+  }
+
   private async generateReport() {
     try {
       // Verificar que tengamos los servicios necesarios en el contexto
@@ -1273,47 +1565,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             },
             margin: [0, 0, 0, 15]
           },
-          // Tabla de Conceptos (Detalle)
-          {
-            table: {
-              headerRows: 1,
-              widths: [70, 100, '*', 80],
-              body: [
-                // Encabezados
-                [
-                  { text: 'Fecha', style: 'tableHeader' },
-                  { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
-                  { text: 'Descripción', style: 'tableHeader' },
-                  { text: 'Total', style: 'tableHeader', alignment: 'right' }
-                ],
-                // Filas de conceptos
-                ...this.rowData.map(concept => [
-                  { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
-                  { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
-                  { text: concept.description || '', style: 'tableCell' },
-                  { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
-                ]),
-                // Fila de totales
-                [
-                  { text: '', border: [false, false, false, false] },
-                  { text: '', border: [false, false, false, false] },
-                  { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
-                  { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
-                ]
-              ]
-            },
-            layout: {
-              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#333333',
-              vLineColor: () => '#cccccc',
-              paddingTop: () => 3,
-              paddingBottom: () => 3,
-              paddingLeft: () => 4,
-              paddingRight: () => 4
-            },
-            margin: [0, 0, 0, 20]
-          },
+          // Tabla de Conceptos (Detalle) - Condicional según mostrartodo
+          ...(this.expenditureData?.mostrartodo === true
+            ? this.generarTablaAgrupada()
+            : [this.generarTablaSimple()]),
           // Footer con Firmas
           {
             table: {
@@ -1429,6 +1684,22 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             bold: true,
             color: '#cc0000'
           },
+          groupTitle: {
+            fontSize: 10,
+            bold: true,
+            color: '#0066cc',
+            fillColor: '#e6f2ff'
+          },
+          subtotalLabel: {
+            fontSize: 8,
+            bold: true,
+            color: '#333333'
+          },
+          subtotalValue: {
+            fontSize: 8,
+            bold: true,
+            color: '#0066cc'
+          },
           signatureTitle: {
             fontSize: 8,
             bold: true,
@@ -1505,7 +1776,27 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   private getObjetoGastoText(): string {
-    // Usar el texto del objeto de gasto que fue preparado en toggleReportDetail
+    // Si el checkbox "Mostrar Todos" está activo, concatenar todos los objetos nivel 1
+    if (this.expenditureData?.mostrartodo === true) {
+      // Agrupar conceptos para obtener los objetos nivel 1 únicos
+      const grupos = this.agruparConceptosPorNivel1();
+
+      // Extraer los nombres de los objetos nivel 1 y ordenarlos
+      const objetosNivel1 = Array.from(grupos.entries())
+        .filter(([codigo, grupo]) => codigo !== 'sin-clasificar') // Excluir "sin clasificar"
+        .sort((a, b) => a[0].localeCompare(b[0])) // Ordenar por código
+        .map(([codigo, grupo]) => grupo.nivel1Info.nombre); // Solo el nombre, sin código
+
+      // Si no hay objetos, retornar fallback
+      if (objetosNivel1.length === 0) {
+        return 'Sin objetos de gasto';
+      }
+
+      // Concatenar con " + "
+      return objetosNivel1.join(' + ');
+    }
+
+    // Comportamiento original cuando checkbox está inactivo
     if (this.expenditureData?.objetoGastoTexto) {
       return this.expenditureData.objetoGastoTexto;
     }

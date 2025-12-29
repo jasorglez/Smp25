@@ -2167,7 +2167,7 @@ export class EgresosPalacioComponent {
 
       const filteredExpenses = this.incomes.filter(expense => {
         const expenseDate = new Date(expense.date);
-        return expenseDate >= startDate && expenseDate <= endDate;
+        return expenseDate >= startDate && expenseDate <= endDate && expense.facturado === true;
       });
 
       if (filteredExpenses.length === 0) {
@@ -2282,6 +2282,39 @@ export class EgresosPalacioComponent {
     // Objeto para almacenar totales por grupo
     const groupTotals: Array<{ codigo: string; nombre: string; total: number; count: number }> = [];
 
+    // Cargar objetos nivel 1 y nivel 4 una sola vez (para todos los egresos con mostrartodo=true)
+    let objetosNivel1: any[] = [];
+    let objetosNivel4: any[] = [];
+    const necesitaObjetosNivel = groups.some(group =>
+      group.expenses.some(expense => expense.mostrartodo === true)
+    );
+
+    if (necesitaObjetosNivel) {
+      try {
+        const dataNivel1: any = await lastValueFrom(
+          this.administrationService.getByNivelObjeto(this.idRoot, 1)
+        );
+        objetosNivel1 = (dataNivel1 || []).map((obj: any) => ({
+          id: obj.id,
+          codigo: obj.codigo,
+          nombre: obj.nombre,
+          codigoNombre: `${obj.codigo} - ${obj.nombre}`
+        }));
+
+        const dataNivel4: any = await lastValueFrom(
+          this.administrationService.getByNivelObjeto(this.idRoot, 4)
+        );
+        objetosNivel4 = (dataNivel4 || []).map((obj: any) => ({
+          id: obj.id,
+          codigo: obj.codigo,
+          nombre: obj.nombre,
+          codigoNombre: `${obj.codigo} - ${obj.nombre}`
+        }));
+      } catch (error) {
+        console.error('Error cargando objetos nivel 1 y 4:', error);
+      }
+    }
+
     for (const group of groups) {
       let groupTotal = 0;
 
@@ -2304,7 +2337,15 @@ export class EgresosPalacioComponent {
         groupTotal += total;
 
         // Agregar contenido de este egreso (página individual)
-        content.push(...this.buildReportPage(expense, concepts, total, rootResponse, group));
+        content.push(...this.buildReportPage(
+          expense,
+          concepts,
+          total,
+          rootResponse,
+          group,
+          objetosNivel1,
+          objetosNivel4
+        ));
 
         // Agregar salto de página si no es el último egreso
         if (i < group.expenses.length - 1 || groups.indexOf(group) < groups.length - 1) {
@@ -2359,7 +2400,10 @@ export class EgresosPalacioComponent {
         totalValue: { fontSize: 9, bold: true, color: '#cc0000' },
         signatureTitle: { fontSize: 8, bold: true, color: '#333333' },
         signatureName: { fontSize: 8, color: '#000000' },
-        signatureLabel: { fontSize: 8, italics: true, color: '#666666' }
+        signatureLabel: { fontSize: 8, italics: true, color: '#666666' },
+        groupTitle: { fontSize: 10, bold: true, color: '#0066cc', fillColor: '#e6f2ff' },
+        subtotalLabel: { fontSize: 8, bold: true, color: '#333333' },
+        subtotalValue: { fontSize: 8, bold: true, color: '#0066cc' }
       }
     };
 
@@ -2374,8 +2418,22 @@ export class EgresosPalacioComponent {
     );
   }
 
-  private buildReportPage(expense: any, concepts: any[], total: number, rootResponse: any, group: any): any[] {
-    const objetoGastoTexto = `${group.codigo} - ${group.nombre}`;
+  private buildReportPage(
+    expense: any,
+    concepts: any[],
+    total: number,
+    rootResponse: any,
+    group: any,
+    objetosNivel1: any[],
+    objetosNivel4: any[]
+  ): any[] {
+    // Determinar el texto del objeto de gasto
+    let objetoGastoTexto: string;
+    if (expense.mostrartodo === true && objetosNivel1.length > 0 && objetosNivel4.length > 0) {
+      objetoGastoTexto = this.getObjetosNivel1Text(concepts, objetosNivel1, objetosNivel4);
+    } else {
+      objetoGastoTexto = `${group.codigo} - ${group.nombre}`;
+    }
 
     return [
       // Header con logo y título
@@ -2428,44 +2486,49 @@ export class EgresosPalacioComponent {
         },
         margin: [0, 0, 0, 15]
       },
-      // Tabla de Conceptos
-      {
-        table: {
-          headerRows: 1,
-          widths: [70, 100, '*', 80],
-          body: [
-            [
-              { text: 'Fecha', style: 'tableHeader' },
-              { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
-              { text: 'Descripción', style: 'tableHeader' },
-              { text: 'Total', style: 'tableHeader', alignment: 'right' }
-            ],
-            ...concepts.map(concept => [
-              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
-              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
-              { text: concept.description || '', style: 'tableCell' },
-              { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
-            ]),
-            [
-              { text: '', border: [false, false, false, false] },
-              { text: '', border: [false, false, false, false] },
-              { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
-              { text: this.formatCurrency(total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
-            ]
-          ]
-        },
-        layout: {
-          hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
-          vLineWidth: () => 0.5,
-          hLineColor: () => '#333333',
-          vLineColor: () => '#cccccc',
-          paddingTop: () => 3,
-          paddingBottom: () => 3,
-          paddingLeft: () => 4,
-          paddingRight: () => 4
-        },
-        margin: [0, 0, 0, 20]
-      }
+      // Tabla de Conceptos - Condicional según mostrartodo
+      ...(expense.mostrartodo === true && objetosNivel1.length > 0 && objetosNivel4.length > 0
+        ? this.generarTablaAgrupadaConsolidado(concepts, total, objetosNivel1, objetosNivel4)
+        : [
+          // Tabla simple (estructura original)
+          {
+            table: {
+              headerRows: 1,
+              widths: [70, 100, '*', 80],
+              body: [
+                [
+                  { text: 'Fecha', style: 'tableHeader' },
+                  { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
+                  { text: 'Descripción', style: 'tableHeader' },
+                  { text: 'Total', style: 'tableHeader', alignment: 'right' }
+                ],
+                ...concepts.map(concept => [
+                  { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
+                  { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+                  { text: concept.description || '', style: 'tableCell' },
+                  { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+                ]),
+                [
+                  { text: '', border: [false, false, false, false] },
+                  { text: '', border: [false, false, false, false] },
+                  { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
+                  { text: this.formatCurrency(total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
+                ]
+              ]
+            },
+            layout: {
+              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#333333',
+              vLineColor: () => '#cccccc',
+              paddingTop: () => 3,
+              paddingBottom: () => 3,
+              paddingLeft: () => 4,
+              paddingRight: () => 4
+            },
+            margin: [0, 0, 0, 20]
+          }
+        ])
     ];
   }
 
@@ -2568,6 +2631,172 @@ export class EgresosPalacioComponent {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+  }
+
+  /**
+   * Mapea un ID de objeto nivel 4 a su código de nivel 1 padre
+   */
+  private getNivel1CodigoFromNivel4Id(idCatIng: number, objetosNivel4: any[]): string | null {
+    const objetoNivel4 = objetosNivel4.find(obj => obj.id === idCatIng);
+    if (!objetoNivel4 || !objetoNivel4.codigo) {
+      return null;
+    }
+
+    const codigo = objetoNivel4.codigo;
+    const primerDigito = codigo.toString().charAt(0);
+    return `${primerDigito}000`;
+  }
+
+  /**
+   * Agrupa conceptos por objeto de gasto nivel 1
+   */
+  private agruparConceptosPorNivel1Consolidado(
+    concepts: any[],
+    objetosNivel1: any[],
+    objetosNivel4: any[]
+  ): Map<string, any> {
+    const grupos = new Map<string, any>();
+
+    concepts.forEach(concepto => {
+      const idCatIng = concepto.idCatIng;
+      const codigoNivel1 = this.getNivel1CodigoFromNivel4Id(idCatIng, objetosNivel4);
+
+      if (!codigoNivel1) {
+        if (!grupos.has('sin-clasificar')) {
+          grupos.set('sin-clasificar', {
+            nivel1Info: { codigo: '', nombre: 'SIN CLASIFICAR', codigoNombre: 'SIN CLASIFICAR' },
+            conceptos: [],
+            subtotal: 0
+          });
+        }
+        const grupo = grupos.get('sin-clasificar');
+        grupo.conceptos.push(concepto);
+        grupo.subtotal += concepto.totalFinal || 0;
+        return;
+      }
+
+      const nivel1Info = objetosNivel1.find(obj => obj.codigo === codigoNivel1);
+      if (!nivel1Info) {
+        return;
+      }
+
+      if (!grupos.has(codigoNivel1)) {
+        grupos.set(codigoNivel1, {
+          nivel1Info: nivel1Info,
+          conceptos: [],
+          subtotal: 0
+        });
+      }
+
+      const grupo = grupos.get(codigoNivel1);
+      grupo.conceptos.push(concepto);
+      grupo.subtotal += concepto.totalFinal || 0;
+    });
+
+    return grupos;
+  }
+
+  /**
+   * Genera tabla agrupada por nivel 1 para el reporte consolidado
+   */
+  private generarTablaAgrupadaConsolidado(
+    concepts: any[],
+    total: number,
+    objetosNivel1: any[],
+    objetosNivel4: any[]
+  ): any[] {
+    const elementos: any[] = [];
+    const grupos = this.agruparConceptosPorNivel1Consolidado(concepts, objetosNivel1, objetosNivel4);
+
+    const gruposOrdenados = Array.from(grupos.entries()).sort((a, b) => {
+      if (a[0] === 'sin-clasificar') return 1;
+      if (b[0] === 'sin-clasificar') return -1;
+      return a[0].localeCompare(b[0]);
+    });
+
+    gruposOrdenados.forEach(([codigoNivel1, grupo], index) => {
+      if (index > 0) {
+        elementos.push({
+          canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: '#cccccc' }],
+          margin: [0, 10, 0, 10]
+        });
+      }
+
+      elementos.push({
+        text: grupo.nivel1Info.codigoNombre,
+        style: 'groupTitle',
+        margin: [0, 10, 0, 5]
+      });
+
+      elementos.push({
+        table: {
+          headerRows: 1,
+          widths: [70, 100, '*', 80],
+          body: [
+            [
+              { text: 'Fecha', style: 'tableHeader' },
+              { text: 'FOLIO FISCAL', style: 'tableHeader' },
+              { text: 'Descripción', style: 'tableHeader' },
+              { text: 'Total', style: 'tableHeader', alignment: 'right' }
+            ],
+            ...grupo.conceptos.map((concept: any) => [
+              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
+              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
+              { text: concept.description || '', style: 'tableCell' },
+              { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+            ]),
+            [
+              { text: '', border: [false, false, false, false] },
+              { text: '', border: [false, false, false, false] },
+              { text: 'SUBTOTAL:', style: 'subtotalLabel', alignment: 'right', border: [false, true, false, false] },
+              { text: this.formatCurrency(grupo.subtotal), style: 'subtotalValue', alignment: 'right', border: [false, true, false, false] }
+            ]
+          ]
+        },
+        layout: {
+          hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => '#333333',
+          vLineColor: () => '#cccccc',
+          paddingTop: () => 3,
+          paddingBottom: () => 3,
+          paddingLeft: () => 4,
+          paddingRight: () => 4
+        },
+        margin: [0, 0, 0, 5]
+      });
+    });
+
+    elementos.push({
+      canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: '#333333' }],
+      margin: [0, 15, 0, 5]
+    });
+
+    elementos.push({
+      columns: [
+        { text: '', width: '*' },
+        { text: '', width: 170 },
+        { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', width: 100 },
+        { text: this.formatCurrency(total), style: 'totalValue', alignment: 'right', width: 80 }
+      ],
+      margin: [0, 5, 0, 20]
+    });
+
+    return elementos;
+  }
+
+  /**
+   * Obtiene el texto de objetos nivel 1 concatenados
+   */
+  private getObjetosNivel1Text(concepts: any[], objetosNivel1: any[], objetosNivel4: any[]): string {
+    const grupos = this.agruparConceptosPorNivel1Consolidado(concepts, objetosNivel1, objetosNivel4);
+
+    const objetosTexto = Array.from(grupos.entries())
+      .filter(([codigo, grupo]) => codigo !== 'sin-clasificar')
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([codigo, grupo]) => grupo.nivel1Info.nombre);
+
+    return objetosTexto.length > 0 ? objetosTexto.join(' + ') : 'Sin objetos de gasto';
   }
 
 }
