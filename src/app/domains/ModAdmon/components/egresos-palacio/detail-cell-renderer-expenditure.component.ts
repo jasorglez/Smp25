@@ -1161,12 +1161,20 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         console.log('✅ Guardado exitoso. El maestro ya fue actualizado por el componente padre.');
         this.hasUnsavedChanges = false;
 
-        // RECARGAR los conceptos desde el servidor para:
-        // 1. Limpiar los flags __modified y __isNew
-        // 2. Obtener los IDs reales de los conceptos nuevos
-        // 3. Asegurar sincronización con el servidor
-        console.log('🔄 DETALLE: Recargando conceptos desde el servidor...');
-        this.loadConceptsData();
+        // CERRAR el detalle y REFRESCAR el grid maestro (igual que ingresos)
+        console.log('🔄 DETALLE: Cerrando detalle y refrescando grid maestro...');
+        if (this.context?.componentParent) {
+          // Cerrar el detalle
+          this.context.componentParent.collapseReportDetail(expenditureId);
+
+          // Refrescar el grid maestro después de un momento para que se vea el cambio
+          setTimeout(() => {
+            if (this.context.componentParent.gridApi) {
+              this.context.componentParent.gridApi.refreshCells({ force: true });
+              console.log('✅ DETALLE: Grid maestro refrescado');
+            }
+          }, 200);
+        }
       } catch (error) {
         console.error('❌ Error al guardar:', error);
         // En caso de error, el padre ya mostró el alert
