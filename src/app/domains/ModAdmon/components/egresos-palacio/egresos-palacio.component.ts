@@ -247,7 +247,7 @@ export class EgresosPalacioComponent {
     rowHeight: 24,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 700,
+    detailRowHeight: 840,
     detailCellRenderer: DetailCellRendererExpenditureComponent,
     suppressMenuHide: false,
     popupParent: document.body,

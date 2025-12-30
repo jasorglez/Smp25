@@ -65,7 +65,7 @@ import { lastValueFrom } from 'rxjs';
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
-        style="height: 400px; width: 100%;">
+        style="height: 480px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -77,7 +77,7 @@ import { lastValueFrom } from 'rxjs';
           <i class="bi bi-x-lg"></i> Cerrar
         </button>
       </div>
-      <div class="report-content" style="height: 400px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content" style="height: 480px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <iframe
           *ngIf="pdfUrl"
           [src]="pdfUrl"
@@ -138,7 +138,7 @@ import { lastValueFrom } from 'rxjs';
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onDocumentosGridReady($event)"
         (cellValueChanged)="onDocumentoCellValueChanged($event)"
-        style="height: 400px; width: 100%;">
+        style="height: 480px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -1064,10 +1064,39 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return;
     }
 
-    // Filtrar solo los conceptos con precio mayor a 0
+    console.log('💾 GUARDANDO CAMBIOS - Sincronizando datos del grid...');
+
+    // PASO 1: Sincronizar datos del grid al array rowData
+    const syncedData: any[] = [];
+    this.gridApi.forEachNode(node => {
+      if (node.data) {
+        syncedData.push(node.data);
+      }
+    });
+    this.rowData = syncedData;
+
+    console.log('💾 Datos sincronizados. Total filas:', this.rowData.length);
+
+    // PASO 2: Recalcular total, iva2 y totalFinal para CADA concepto
+    this.rowData.forEach(concept => {
+      // Recalcular total = quantity * price
+      concept.total = Number(concept.quantity || 0) * Number(concept.price || 0);
+
+      // Recalcular IVA
+      concept.iva2 = concept.iva ? concept.total * (this.ivaPercent / 100) : 0;
+
+      // Recalcular total final
+      concept.totalFinal = concept.total + concept.iva2 - (concept.isr || 0);
+
+      console.log(`  💾 Concepto ${concept.id}: total=${concept.total}, iva2=${concept.iva2}, totalFinal=${concept.totalFinal}`);
+    });
+
+    // PASO 3: Filtrar solo los conceptos con precio mayor a 0
     const validConcepts = this.rowData.filter(concept =>
       concept.price && Number(concept.price) > 0
     );
+
+    console.log('💾 Conceptos válidos (precio > 0):', validConcepts.length);
 
     // Si no hay conceptos válidos, mostrar mensaje
     if (validConcepts.length === 0) {
@@ -1079,7 +1108,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return;
     }
 
-    // Validar que todos los conceptos válidos tengan campos obligatorios
+    // PASO 4: Validar que todos los conceptos válidos tengan campos obligatorios
     const hasEmptyFields = validConcepts.some(concept =>
       !concept.description ||
       !concept.quantity ||
@@ -1096,13 +1125,27 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return;
     }
 
-    // Eliminar de rowData los conceptos con precio = 0
+    // PASO 5: Eliminar de rowData los conceptos con precio = 0
     this.rowData = validConcepts;
     this.gridApi.setGridOption('rowData', this.rowData);
 
-    // Recalcular totales con solo los conceptos válidos
-    this.recalculateTotals();
+    // PASO 6: Recalcular totales GLOBALES (subtotal, iva2, isr, total)
+    console.log('💾 Recalculando totales globales...');
+    this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+    this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+    this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+    this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
 
+    console.log('💾 TOTALES GLOBALES:');
+    console.log('  💾 Subtotal:', this.subtotal);
+    console.log('  💾 IVA:', this.iva2);
+    console.log('  💾 ISR:', this.isr);
+    console.log('  💾 Total:', this.total);
+
+    // PASO 7: Actualizar el maestro inmediatamente con los totales calculados
+    this.updateMasterTotals();
+
+    // PASO 8: Guardar en el backend
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const expenditureId = this.params.data.id;
       const dataToSave = {
@@ -1112,6 +1155,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         isr: this.isr,
         total: this.total
       };
+      console.log('💾 Enviando al backend:', dataToSave);
       this.context.CONCEPTS.save(expenditureId, dataToSave);
       this.hasUnsavedChanges = false;
     }
