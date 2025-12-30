@@ -1053,7 +1053,8 @@ export class EgresosPalacioComponent {
             this.loadConceptsData(expenditureId, callback);
           },
           save: (expenditureId: number, data: any) => {
-            this.saveConceptsById(expenditureId, data);
+            // Retornar la Promise para que el hijo pueda esperar
+            return this.saveConceptsById(expenditureId, data);
           },
           delete: (params: any, callback: () => void) => {
             this.deleteConceptRow(params, callback);
@@ -1541,7 +1542,12 @@ export class EgresosPalacioComponent {
 
 
   private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; isr?: number; total: number }) {
-    if (!this.gridApi || !updatedData?.id) return;
+    if (!this.gridApi || !updatedData?.id) {
+      console.warn('⚠️ PADRE: No se puede actualizar maestro - gridApi o id no disponible');
+      return;
+    }
+
+    console.log('🔄 PADRE: Actualizando fila en grid. ID:', updatedData.id);
 
     const selectedNodes = this.gridApi.getSelectedNodes();
     const currentSelectedId = selectedNodes.length > 0 ? selectedNodes[0].data.id : null;
@@ -1550,6 +1556,14 @@ export class EgresosPalacioComponent {
 
     if (rowNode) {
       const currentData = rowNode.data;
+
+      console.log('🔄 PADRE: Valores ANTES de actualizar:', {
+        subtotal: currentData.subtotal,
+        tax: currentData.tax,
+        isr: currentData.isr,
+        total: currentData.total
+      });
+
       currentData.subtotal = updatedData.subtotal;
       currentData.tax = updatedData.tax;
       if (updatedData.isr !== undefined) {
@@ -1557,7 +1571,26 @@ export class EgresosPalacioComponent {
       }
       currentData.total = updatedData.total;
 
+      console.log('🔄 PADRE: Valores DESPUÉS de actualizar:', {
+        subtotal: currentData.subtotal,
+        tax: currentData.tax,
+        isr: currentData.isr,
+        total: currentData.total
+      });
+
+      // Aplicar la transacción para actualizar la fila
       this.gridApi.applyTransaction({ update: [currentData] });
+
+      // FORZAR el refresh de las celdas de totales después de un pequeño delay
+      // para asegurar que AG Grid procese la transacción primero
+      setTimeout(() => {
+        this.gridApi.refreshCells({
+          rowNodes: [rowNode],
+          columns: ['subtotal', 'tax', 'isr', 'total'],
+          force: true
+        });
+        console.log('✅ PADRE: Fila actualizada y celdas refrescadas');
+      }, 100);
 
       if (currentSelectedId === updatedData.id) {
         setTimeout(() => {
@@ -1874,6 +1907,9 @@ export class EgresosPalacioComponent {
   }
 
   async saveConceptsById(expenditureId: number, data: any) {
+    console.log('💾 PADRE: saveConceptsById iniciado. ID:', expenditureId);
+    console.log('💾 PADRE: Data recibida:', data);
+
     const conceptsData = data.concepts || data;
     const subtotal = data.subtotal || 0;
     const tax = data.tax || 0;
@@ -1881,6 +1917,20 @@ export class EgresosPalacioComponent {
 
     const newConcepts = conceptsData.filter((row: any) => row.__isNew);
     const modifiedConcepts = conceptsData.filter((row: any) => row.__modified && !row.__isNew);
+
+    console.log('💾 PADRE: Conceptos NUEVOS:', newConcepts.length);
+    console.log('💾 PADRE: Conceptos MODIFICADOS:', modifiedConcepts.length);
+    console.log('💾 PADRE: Total conceptos:', conceptsData.length);
+
+    if (modifiedConcepts.length > 0) {
+      console.log('💾 PADRE: Conceptos modificados:', modifiedConcepts.map(c => ({
+        id: c.id,
+        price: c.price,
+        total: c.total,
+        __modified: c.__modified,
+        __isNew: c.__isNew
+      })));
+    }
 
     try {
       // Guardar conceptos nuevos
@@ -1913,28 +1963,34 @@ export class EgresosPalacioComponent {
         this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDocument)
       );
 
+      // Mostrar mensaje de éxito solo si hubo cambios
       if (newConcepts.length > 0 || modifiedConcepts.length > 0) {
         alerts.basicAlert(
           'Conceptos guardados',
           'Se han guardado los conceptos correctamente.',
           'success'
         );
-
-        // Actualizar el contador de conceptos
-        this.updateExpenditureCountItems(expenditureId, conceptsData.length);
-
-        // Actualizar la fila del maestro con los nuevos totales incluyendo ISR
-        this.updateMasterRowInGrid({
-          id: expenditureId,
-          subtotal: subtotal,
-          tax: tax,
-          isr: data.isr,
-          total: total
-        });
-
-        // Refrescar la lista de egresos para mostrar totales actualizados
-        // setTimeout(() => this.getExpenditure(), 500);
       }
+
+      console.log('💾 PADRE: Actualizando maestro después de guardar. ID:', expenditureId);
+      console.log('💾 PADRE: Totales a actualizar:', { subtotal, tax, isr: data.isr, total });
+
+      // SIEMPRE actualizar el contador de conceptos (puede haber eliminaciones)
+      this.updateExpenditureCountItems(expenditureId, conceptsData.length);
+
+      // SIEMPRE actualizar la fila del maestro con los nuevos totales (pueden cambiar aunque no haya nuevos/modificados)
+      this.updateMasterRowInGrid({
+        id: expenditureId,
+        subtotal: subtotal,
+        tax: tax,
+        isr: data.isr,
+        total: total
+      });
+
+      console.log('✅ PADRE: Maestro actualizado con totales');
+
+      // Refrescar la lista de egresos para mostrar totales actualizados
+      // setTimeout(() => this.getExpenditure(), 500);
 
     } catch (error) {
       console.error('Error saving concepts:', error);

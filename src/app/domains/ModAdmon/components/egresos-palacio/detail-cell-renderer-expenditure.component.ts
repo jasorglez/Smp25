@@ -1058,7 +1058,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
   }
 
-  saveChanges() {
+  async saveChanges() {
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -1142,10 +1142,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     console.log('  💾 ISR:', this.isr);
     console.log('  💾 Total:', this.total);
 
-    // PASO 7: Actualizar el maestro inmediatamente con los totales calculados
-    this.updateMasterTotals();
-
-    // PASO 8: Guardar en el backend
+    // PASO 7: Guardar en el backend y ESPERAR a que termine
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const expenditureId = this.params.data.id;
       const dataToSave = {
@@ -1156,8 +1153,24 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         total: this.total
       };
       console.log('💾 Enviando al backend:', dataToSave);
-      this.context.CONCEPTS.save(expenditureId, dataToSave);
-      this.hasUnsavedChanges = false;
+
+      try {
+        // ESPERAR a que el backend termine de guardar
+        // El padre (egresos-palacio) actualizará el maestro después de guardar exitosamente
+        await this.context.CONCEPTS.save(expenditureId, dataToSave);
+        console.log('✅ Guardado exitoso. El maestro ya fue actualizado por el componente padre.');
+        this.hasUnsavedChanges = false;
+
+        // RECARGAR los conceptos desde el servidor para:
+        // 1. Limpiar los flags __modified y __isNew
+        // 2. Obtener los IDs reales de los conceptos nuevos
+        // 3. Asegurar sincronización con el servidor
+        console.log('🔄 DETALLE: Recargando conceptos desde el servidor...');
+        this.loadConceptsData();
+      } catch (error) {
+        console.error('❌ Error al guardar:', error);
+        // En caso de error, el padre ya mostró el alert
+      }
     }
   }
 
