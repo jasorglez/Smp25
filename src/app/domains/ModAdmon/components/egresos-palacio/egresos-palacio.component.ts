@@ -119,9 +119,9 @@ export class EgresosPalacioComponent {
       await this.getBills();
       await this.getTypeComps();
       await this.getExpenditure();
-   //   await this.loadAuthorizers();
+      //   await this.loadAuthorizers();
       await this.getCurrentUser();
-   //   await this.obtenerBranchs();
+      //   await this.obtenerBranchs();
     });
 
     effect(() => {
@@ -536,6 +536,9 @@ export class EgresosPalacioComponent {
   private _colMaster: ColDef[] = [];
 
   get colMaster(): ColDef[] {
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
     // Siempre reconstruir las definiciones de columnas con los datos actuales
     this._colMaster = [
       {
