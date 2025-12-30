@@ -122,6 +122,9 @@ export class EgresosPalacioComponent {
    //   await this.loadAuthorizers();
       await this.getCurrentUser();
    //   await this.obtenerBranchs();
+
+      // Refrescar columnas después de cargar typeComps y expenses
+      this.refreshColumnDefinitions();
     });
 
     effect(() => {
@@ -219,16 +222,20 @@ export class EgresosPalacioComponent {
   }
 
   async getBillingManagementInfo() {
-    this.administrationService.getBillingManagementInfo(this.idRoot).subscribe(
-      (data: any) => {
-        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-      },
-      (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
-      }
-    );
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Cuentas Bancarias`, 'Palacio Municipal - Egresos',
       this.trackingService.getEmail());
+    return new Promise<void>((resolve) => {
+      this.administrationService.getBillingManagementInfo(this.idRoot).subscribe(
+        (data: any) => {
+          this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
+          resolve();
+        },
+        (error) => {
+          console.error('Error al obtener la información de gestión de facturación:', error);
+          resolve();
+        }
+      );
+    });
   }
 
   private gridApi: GridApi;
@@ -400,62 +407,83 @@ export class EgresosPalacioComponent {
   };
 
   async getExpenditure() {
-    this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
-      next: (incomes) => {
-        // Filtrado y manejo de caso sin datos
-
-        const filtered = incomes?.filter(income => {
-          return income.type === "GASTO" && income.idAccount === this.idAccount
-        }) || [];
-
-        // Agregar propiedades para master-detail
-        this.incomes = filtered.map(income => ({
-          ...income,
-          date: income.date ? new Date(income.date) : null, // Convertir a Date
-          countItems: income.countItems || 0, // Usar valor de la BD si existe
-          countDocomps: income.countDocomps || 0, // Usar valor de la BD si existe
-          detailType: null,
-          detailData: [],
-          visible: true,
-          objetoGastoCodigo: this.expenses.find(e => e.id === income.idExpend)?.codigo || ''
-        }));
-
-        // Contadores se actualizan localmente al interactuar con el detalle
-      },
-      error: (err) => {
-        // Manejo de errores HTTP
-        console.error('Error obteniendo egresos. Código:', err.status, 'Detalles:', err);
-        this.incomes = [];
-      }
-    });
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Egresos`, 'Palacio Municipal - Egresos',
       this.trackingService.getEmail());
+    return new Promise<void>((resolve) => {
+      this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
+        next: (incomes) => {
+          // Filtrado y manejo de caso sin datos
+
+          const filtered = incomes?.filter(income => {
+            return income.type === "GASTO" && income.idAccount === this.idAccount
+          }) || [];
+
+          // Agregar propiedades para master-detail
+          this.incomes = filtered.map(income => {
+            const countItems = income.countItems || 0;
+            const countDocomps = income.countDocomps || 0;
+            console.log(`   Egreso ID ${income.id}: countItems=${countItems}, countDocomps=${countDocomps}`);
+            return {
+              ...income,
+              date: income.date ? new Date(income.date) : null, // Convertir a Date
+              countItems: countItems, // Usar valor de la BD si existe
+              countDocomps: countDocomps, // Usar valor de la BD si existe
+              detailType: null,
+              detailData: [],
+              visible: true,
+              objetoGastoCodigo: this.expenses.find(e => e.id === income.idExpend)?.codigo || ''
+            };
+          });
+
+          console.log('✅ Egresos cargados:', this.incomes.length);
+          resolve();
+        },
+        error: (err) => {
+          // Manejo de errores HTTP
+          console.error('❌ Error obteniendo egresos. Código:', err.status, 'Detalles:', err);
+          this.incomes = [];
+          resolve();
+        }
+      });
+    });
   }
 
   async getBills() {
-    this.administrationService.getByNivelObjeto(this.idRoot, 1).subscribe(
-      (data: any) => {
-        this.expenses = data;
-      },
-      error => {
-        console.error(error);
-      }
-    )
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Objetos de Gasto`, 'Palacio Municipal - Egresos',
       this.trackingService.getEmail());
+    return new Promise<void>((resolve) => {
+      this.administrationService.getByNivelObjeto(this.idRoot, 1).subscribe(
+        (data: any) => {
+          this.expenses = data;
+          console.log('✅ Objetos de Gasto cargados:', this.expenses.length);
+          resolve();
+        },
+        error => {
+          console.error('❌ Error cargando Objetos de Gasto:', error);
+          this.expenses = [];
+          resolve();
+        }
+      );
+    });
   }
 
   async getTypeComps() {
-    this.cataalogAdmonService.getCatalogs(this.idRoot, 'TYPECOMP').subscribe(
-      (data: any) => {
-        this.typeComps = data;
-      },
-      error => {
-        console.error(error);
-      }
-    )
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Tipos de Comprobante`, 'Palacio Municipal - Egresos',
       this.trackingService.getEmail());
+    return new Promise<void>((resolve) => {
+      this.cataalogAdmonService.getCatalogs(this.idRoot, 'TYPECOMP').subscribe(
+        (data: any) => {
+          this.typeComps = data;
+          console.log('✅ Tipos de Comprobante cargados:', this.typeComps.length);
+          resolve();
+        },
+        error => {
+          console.error('❌ Error cargando Tipos de Comprobante:', error);
+          this.typeComps = [];
+          resolve();
+        }
+      );
+    });
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -489,18 +517,22 @@ export class EgresosPalacioComponent {
   }
 
   async getCurrentUser() {
-    this.usersService.getUserByEmail(String(localStorage.getItem('mail'))).subscribe({
-      next: (response) => {
-        if (response?.data?.usersmall) {
-          this.currentUser = response.data.usersmall;
-        } else {
-          this.currentUser = 'Sin nombre';
+    return new Promise<void>((resolve) => {
+      this.usersService.getUserByEmail(String(localStorage.getItem('mail'))).subscribe({
+        next: (response) => {
+          if (response?.data?.usersmall) {
+            this.currentUser = response.data.usersmall;
+          } else {
+            this.currentUser = 'Sin nombre';
+          }
+          resolve();
+        },
+        error: (err) => {
+          console.error('Error obteniendo usuario:', err);
+          this.currentUser = 'Error al cargar';
+          resolve();
         }
-      },
-      error: (err) => {
-        console.error('Error obteniendo usuario:', err);
-        this.currentUser = 'Error al cargar';
-      }
+      });
     });
   }
 
@@ -531,12 +563,17 @@ export class EgresosPalacioComponent {
   }
 
   // Column Definitions: Defines the columns to be displayed.
-  // Las columnas se reconstruyen dinámicamente para incluir las opciones actualizadas
-  // de typeComps y expenses después de que se cargan desde el servidor
+  // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
+  // que causa re-renderizado de filtros en cada ciclo de change detection
   private _colMaster: ColDef[] = [];
 
   get colMaster(): ColDef[] {
-    // Siempre reconstruir las definiciones de columnas con los datos actuales
+    // Si ya fue inicializado, retornar la misma instancia
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    // Inicializar una sola vez
     this._colMaster = [
       {
         headerName: '#',
@@ -880,6 +917,18 @@ export class EgresosPalacioComponent {
 
     // Retornar la instancia inicializada
     return this._colMaster;
+  }
+
+  // Método para refrescar las definiciones de columnas (invalidar cache)
+  private refreshColumnDefinitions() {
+    console.log('🔄 Refrescando columnas. typeComps:', this.typeComps.length, 'expenses:', this.expenses.length);
+    this._colMaster = []; // Invalidar cache
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colMaster); // Forzar actualización
+      console.log('✅ Columnas actualizadas en el grid');
+    } else {
+      console.log('⚠️ Grid API no disponible aún');
+    }
   }
 
   onSelectedRow(event: any) {
@@ -1456,15 +1505,19 @@ export class EgresosPalacioComponent {
   }
 
   async getBankAccounts() {
-    this.administrationService.getAccountBanks(this.idRoot).subscribe(
-      (data: any) => {
-        this.bankAccounts = data;
-      },
-      error => {
-        console.error(error);
-        this.bankAccounts = []; // Vaciamos el array en caso de error
-      }
-    )
+    return new Promise<void>((resolve) => {
+      this.administrationService.getAccountBanks(this.idRoot).subscribe(
+        (data: any) => {
+          this.bankAccounts = data;
+          resolve();
+        },
+        error => {
+          console.error(error);
+          this.bankAccounts = []; // Vaciamos el array en caso de error
+          resolve();
+        }
+      );
+    });
   }
 
 
@@ -1763,9 +1816,14 @@ export class EgresosPalacioComponent {
   }
 
   updateExpenditureCountItems(expenditureId: number, count: number) {
+    console.log(`🔄 PADRE: updateExpenditureCountItems llamado. ID: ${expenditureId}, Nuevo Count: ${count}`);
     if (this.gridApi) {
+      let found = false;
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === expenditureId) {
+          found = true;
+          const oldCount = node.data.countItems;
+          console.log(`   Registro encontrado. ID: ${expenditureId}, Count anterior: ${oldCount}, Count nuevo: ${count}`);
           node.data.countItems = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
@@ -1779,26 +1837,37 @@ export class EgresosPalacioComponent {
             countDocomps: node.data.countDocomps || 0,
             modifiedBy: this.currentUser
           };
+          console.log(`   💾 Guardando en servidor:`, dataToSave);
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
             next: () => {
-              // Contador actualizado
+              console.log(`   ✅ Contador actualizado en servidor para ID ${expenditureId}`);
             },
             error: (error) => {
-              console.error('Error actualizando contador de items:', error);
+              console.error(`   ❌ Error actualizando contador de items para ID ${expenditureId}:`, error);
             }
           });
         }
       });
+      if (!found) {
+        console.warn(`   ⚠️ No se encontró el registro con ID ${expenditureId} en el grid`);
+      }
+    } else {
+      console.warn('   ⚠️ gridApi no está disponible');
     }
   }
 
   loadConceptsData(expenditureId: number, successCallback: any) {
+    console.log('🟢 PADRE: Cargando conceptos desde servidor para ID:', expenditureId);
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId).subscribe({
       next: (data: any) => {
+        console.log(`✅ PADRE: Conceptos recibidos del servidor para ID ${expenditureId}:`, data?.length || 0);
+        if (data && data.length > 0) {
+          console.log('   Primer concepto:', data[0]);
+        }
         successCallback(data);
       },
       error: (error) => {
-        console.error('Error loading concepts:', error);
+        console.error('❌ PADRE: Error loading concepts para ID', expenditureId, error);
         successCallback([]);
       }
     });
@@ -1881,7 +1950,10 @@ export class EgresosPalacioComponent {
     const conceptId = params.data.id;
 
     if (params.data.__isNew) {
-      params.api.applyTransaction({ remove: [params.data] });
+      // Solo aplicar transacción si se proporciona el api
+      if (params.api) {
+        params.api.applyTransaction({ remove: [params.data] });
+      }
       successCallback();
     } else {
       try {
@@ -1926,9 +1998,14 @@ export class EgresosPalacioComponent {
   }
 
   updateExpenditureCountDocomps(expenditureId: number, count: number) {
+    console.log(`🔄 PADRE: updateExpenditureCountDocomps llamado. ID: ${expenditureId}, Nuevo Count: ${count}`);
     if (this.gridApi) {
+      let found = false;
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === expenditureId) {
+          found = true;
+          const oldCount = node.data.countDocomps;
+          console.log(`   Registro encontrado. ID: ${expenditureId}, CountDocomps anterior: ${oldCount}, Nuevo: ${count}`);
           node.data.countDocomps = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
@@ -1942,26 +2019,34 @@ export class EgresosPalacioComponent {
             countDocomps: count,
             modifiedBy: this.currentUser
           };
+          console.log(`   💾 Guardando en servidor:`, dataToSave);
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
             next: () => {
-              // Contador actualizado
+              console.log(`   ✅ Contador de documentos actualizado en servidor para ID ${expenditureId}`);
             },
             error: (error) => {
-              console.error('Error actualizando contador de documentos:', error);
+              console.error(`   ❌ Error actualizando contador de documentos para ID ${expenditureId}:`, error);
             }
           });
         }
       });
+      if (!found) {
+        console.warn(`   ⚠️ No se encontró el registro con ID ${expenditureId} en el grid`);
+      }
+    } else {
+      console.warn('   ⚠️ gridApi no está disponible');
     }
   }
 
   loadDocumentosComprobados(expenditureId: number, successCallback: any) {
+    console.log('🟢 PADRE: Cargando documentos comprobados desde servidor para ID:', expenditureId);
     this.administrationService.getDocumentComprobados(expenditureId).subscribe({
       next: (data: any) => {
+        console.log(`✅ PADRE: Documentos comprobados recibidos del servidor para ID ${expenditureId}:`, data?.length || 0);
         successCallback(data);
       },
       error: (error) => {
-        console.error('Error loading documentos comprobados:', error);
+        console.error('❌ PADRE: Error loading documentos comprobados para ID', expenditureId, error);
         successCallback([]);
       }
     });
@@ -2009,7 +2094,10 @@ export class EgresosPalacioComponent {
     const documentoId = params.data.id;
 
     if (params.data.__isNew) {
-      params.api.applyTransaction({ remove: [params.data] });
+      // Solo aplicar transacción si se proporciona el api
+      if (params.api) {
+        params.api.applyTransaction({ remove: [params.data] });
+      }
       successCallback();
     } else {
       try {

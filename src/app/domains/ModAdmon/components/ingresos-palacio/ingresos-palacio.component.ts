@@ -303,17 +303,22 @@ export class IngresosPalacioComponent implements OnInit {
 
   async getIngresosCatalog() {
     // Obtener catálogo de ingresos nivel 2
-    this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2).subscribe(
-      (data: any) => {
-        this.ingresosCatalog = data || [];
-      },
-      error => {
-        console.error('Error cargando catálogo de ingresos:', error);
-        this.ingresosCatalog = [];
-      }
-    )
-    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Catálogo Ingresos`, 'Menu Administración - Palacio Municipal - Ingresos',
-         this.trackingService.getEmail() );
+    return new Promise<void>((resolve) => {
+      this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2).subscribe(
+        (data: any) => {
+          this.ingresosCatalog = data || [];
+          this.refreshColumnDefinitions(); // Refrescar columnas después de cargar datos
+          resolve();
+        },
+        error => {
+          console.error('Error cargando catálogo de ingresos:', error);
+          this.ingresosCatalog = [];
+          resolve();
+        }
+      );
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Catálogo Ingresos`, 'Menu Administración - Palacio Municipal - Ingresos',
+           this.trackingService.getEmail() );
+    });
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -545,6 +550,14 @@ export class IngresosPalacioComponent implements OnInit {
     ];
 
     return this._colMaster;
+  }
+
+  // Método para refrescar las definiciones de columnas
+  private refreshColumnDefinitions() {
+    this._colMaster = [];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colMaster);
+    }
   }
 
   onSelectedRow(event: any) {
