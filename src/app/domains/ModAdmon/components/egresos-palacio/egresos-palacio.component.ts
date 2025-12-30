@@ -119,7 +119,7 @@ export class EgresosPalacioComponent {
       await this.getBills();
       await this.getTypeComps();
       await this.getExpenditure();
-   //   await this.loadAuthorizers();
+      //   await this.loadAuthorizers();
       await this.getCurrentUser();
    //   await this.obtenerBranchs();
 
