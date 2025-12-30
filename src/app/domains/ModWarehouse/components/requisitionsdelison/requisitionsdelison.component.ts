@@ -111,6 +111,8 @@ export class RequisitionsDelisonComponent implements OnInit {
   // ✅ Contador local de consecutivos por sucursal (para evitar duplicados al agregar múltiples filas)
   private localConsecutivesByBranch: Map<number, number> = new Map();
 
+  private _colMaster: ColDef[] = [];
+
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
@@ -420,7 +422,11 @@ export class RequisitionsDelisonComponent implements OnInit {
   };
 
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'idReference',
         headerName: 'Sucursal',
@@ -755,6 +761,8 @@ export class RequisitionsDelisonComponent implements OnInit {
         editable: false
       },
     ];
+
+    return this._colMaster;
   }
 
   onCellClicked(event: any): void {
