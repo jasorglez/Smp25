@@ -108,6 +108,9 @@ export class RequisitionsDelisonComponent implements OnInit {
   // Datos del prefijo actual
   currentPrefixData: any = null;
 
+  // ✅ Contador local de consecutivos por sucursal (para evitar duplicados al agregar múltiples filas)
+  private localConsecutivesByBranch: Map<number, number> = new Map();
+
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
@@ -422,7 +425,8 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'idReference',
         headerName: 'Sucursal',
         width: 150,
-        editable: true, // ✅ Editable con selector nativo de AG Grid
+        // ✅ Solo editable si está en modo "Todas las sucursales" (idBranch negativo o no definido)
+        editable: () => !this.idBranch || this.idBranch < 0,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.branches.map(b => b.id),
@@ -443,6 +447,14 @@ export class RequisitionsDelisonComponent implements OnInit {
           const branchId = params.value;
           const branch = this.branches.find(b => b.id === branchId);
           return branch?.name || branch?.description || '';
+        },
+        // ✅ Estilo visual para indicar si es editable o no
+        cellStyle: () => {
+          // Si hay una sucursal específica seleccionada (no es "Todas"), hacer fondo gris
+          if (this.idBranch && this.idBranch > 0) {
+            return { backgroundColor: '#f0f0f0' }; // Gris = no editable
+          }
+          return {}; // Sin estilo = editable
         },
         valueSetter: (params: any) => {
           console.log('🔧 valueSetter idReference - newValue:', params.newValue, 'oldValue:', params.oldValue);
@@ -471,6 +483,102 @@ export class RequisitionsDelisonComponent implements OnInit {
               branchName: params.data.branch,
               idReference: params.data.idReference,
               isNew: params.data.__isNew
+            });
+
+            // 🔄 Obtener el prefijo y consecutivo de la nueva sucursal y actualizar el número de requisición
+            this.typexPrefixesService.getPrefix('branch', branchId).subscribe({
+              next: (prefixData: any) => {
+                // ✅ Si es una fila nueva, usar el contador local
+                let nextConsecutive: number;
+
+                if (params.data.__isNew) {
+                  let localConsecutive = this.localConsecutivesByBranch.get(branchId);
+
+                  if (localConsecutive === undefined) {
+                    // Primera vez que se asigna esta sucursal
+                    localConsecutive = (prefixData.consecutive || 0) + 1;
+                    this.localConsecutivesByBranch.set(branchId, localConsecutive);
+                  }
+
+                  nextConsecutive = localConsecutive;
+                  console.log(`🔢 Usando consecutivo local para sucursal ${branchId}: ${nextConsecutive}`);
+                } else {
+                  // Fila editada, usar consecutivo del servidor
+                  nextConsecutive = (prefixData.consecutive || 0) + 1;
+                  console.log(`📊 Usando consecutivo del servidor para sucursal ${branchId}: ${nextConsecutive}`);
+                }
+
+                const newRequisitionNumber = `${prefixData.prefix || ''}${nextConsecutive}`;
+                params.data.requisitionNumber = newRequisitionNumber;
+
+                console.log('✅ Número de requisición actualizado:', {
+                  oldNumber: params.data.requisitionNumber,
+                  newNumber: newRequisitionNumber,
+                  prefix: prefixData.prefix,
+                  consecutive: nextConsecutive,
+                  isNew: params.data.__isNew
+                });
+
+                // Guardar el prefixData para usarlo al guardar
+                this.currentPrefixData = prefixData;
+
+                // Forzar actualización del grid para mostrar el nuevo número
+                if (this.gridApi) {
+                  this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
+                }
+              },
+              error: (err) => {
+                console.error('❌ Error al obtener prefijo de la nueva sucursal:', err);
+
+                // ✅ Verificar si es una fila nueva o una fila editada
+                if (params.data.__isNew) {
+                  // 🗑️ Fila nueva: Eliminar la fila del grid
+                  console.log('❌ Fila nueva sin prefijo configurado. Eliminando fila...');
+
+                  alerts.basicAlert(
+                    'Error',
+                    'No se encontró configuración de prefijo para esta sucursal. La fila será eliminada.',
+                    'error'
+                  );
+
+                  // Eliminar de rowData y fullRowData
+                  this.rowData = this.rowData.filter(r => r.id !== params.data.id);
+                  this.fullRowData = this.fullRowData.filter(r => r.id !== params.data.id);
+
+                  // Actualizar el grid
+                  if (this.gridApi) {
+                    this.gridApi.setGridOption('rowData', this.rowData);
+                  }
+                } else {
+                  // 🔄 Fila editada: Restaurar al branch original
+                  console.log('❌ Fila editada sin prefijo configurado. Restaurando branch original...');
+
+                  alerts.basicAlert(
+                    'Advertencia',
+                    'No se encontró configuración de prefijo para esta sucursal. Se restaurará la sucursal original.',
+                    'warning'
+                  );
+
+                  // Restaurar al branch original (usando oldValue del params)
+                  const originalBranchId = params.oldValue;
+                  const originalBranch = this.branches.find(b => b.id === originalBranchId);
+
+                  if (originalBranch) {
+                    params.data.idReference = originalBranchId;
+                    params.data.branch = originalBranch.name || originalBranch.description;
+
+                    console.log('✅ Sucursal restaurada a:', {
+                      branchName: params.data.branch,
+                      idReference: params.data.idReference
+                    });
+
+                    // Forzar actualización del grid
+                    if (this.gridApi) {
+                      this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
+                    }
+                  }
+                }
+              }
             });
 
             // Marcar como modificado si no es nuevo
@@ -932,9 +1040,22 @@ export class RequisitionsDelisonComponent implements OnInit {
         console.log('✅ Prefijo obtenido:', prefixData);
         this.currentPrefixData = prefixData;
 
-        // Generar el número de requisición: prefix + (consecutive + 1)
-        const nextConsecutive = (prefixData.consecutive || 0) + 1;
-        const requisitionNumber = `${prefixData.prefix || ''}${nextConsecutive}`;
+        // ✅ Usar consecutivo local si ya existe, sino inicializarlo desde el servidor
+        let localConsecutive = this.localConsecutivesByBranch.get(selectedBranchId);
+
+        if (localConsecutive === undefined) {
+          // Primera vez que se agrega una fila para esta sucursal
+          localConsecutive = (prefixData.consecutive || 0) + 1;
+          this.localConsecutivesByBranch.set(selectedBranchId, localConsecutive);
+        } else {
+          // Ya existe un consecutivo local, incrementarlo
+          localConsecutive++;
+          this.localConsecutivesByBranch.set(selectedBranchId, localConsecutive);
+        }
+
+        // Generar el número de requisición: prefix + consecutivo local
+        const requisitionNumber = `${prefixData.prefix || ''}${localConsecutive}`;
+        console.log(`🔢 Consecutivo local para sucursal ${selectedBranchId}: ${localConsecutive}`);
 
         // Buscar el nombre de la sucursal
         const branch = this.branches.find(b => b.id === selectedBranchId);
@@ -1014,6 +1135,39 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Implement delete
   }
 
+  /**
+   * Recalcula los consecutivos locales basándose en las filas nuevas que existen actualmente.
+   * Útil para asegurar que no haya duplicados después de agregar/eliminar filas.
+   */
+  private recalculateLocalConsecutives(): void {
+    // Limpiar el Map actual
+    this.localConsecutivesByBranch.clear();
+
+    // Agrupar las filas nuevas por sucursal
+    const newRowsByBranch = new Map<number, any[]>();
+
+    this.rowData.filter(row => row.__isNew).forEach(row => {
+      const branchId = row.idReference;
+      if (!newRowsByBranch.has(branchId)) {
+        newRowsByBranch.set(branchId, []);
+      }
+      newRowsByBranch.get(branchId)!.push(row);
+    });
+
+    // Para cada sucursal, obtener el consecutivo del servidor y contar cuántas filas nuevas hay
+    newRowsByBranch.forEach((rows, branchId) => {
+      // El consecutivo local debería ser: consecutivo_servidor + cantidad_de_filas_nuevas
+      // Asumimos que ya se han agregado esas filas, entonces el próximo consecutivo sería:
+      this.typexPrefixesService.getPrefix('branch', branchId).subscribe({
+        next: (prefixData: any) => {
+          const nextConsecutive = (prefixData.consecutive || 0) + rows.length;
+          this.localConsecutivesByBranch.set(branchId, nextConsecutive);
+          console.log(`🔄 Consecutivo local recalculado para sucursal ${branchId}: ${nextConsecutive} (${rows.length} filas nuevas)`);
+        }
+      });
+    });
+  }
+
   async saveChanges(): Promise<void> {
     // Filtrar las filas nuevas o modificadas
     const itemsToSave = this.rowData.filter(row => row.__isNew || row.__modified);
@@ -1089,29 +1243,52 @@ export class RequisitionsDelisonComponent implements OnInit {
           });
         }
 
-        // Actualizar el consecutivo del prefijo después de crear nuevas requisiciones
-        if (this.currentPrefixData && this.idBranch) {
-          const newConsecutive = (this.currentPrefixData.consecutive || 0) + newItems.length;
+        // ✅ Actualizar los consecutivos de TODAS las sucursales que se usaron
+        // Agrupar las nuevas requisiciones por sucursal (idReference)
+        const itemsByBranch = new Map<number, any[]>();
 
-          const updatedPrefixData = {
-            reqType: 'branch',
-            idReqType: this.idBranch,
-            prefix: this.currentPrefixData.prefix,
-            consecutive: newConsecutive,
-            active: true
-          };
+        for (const item of newItems) {
+          const branchId = item.idReference;
+          if (!itemsByBranch.has(branchId)) {
+            itemsByBranch.set(branchId, []);
+          }
+          itemsByBranch.get(branchId)!.push(item);
+        }
 
-          console.log('🔄 Actualizando consecutivo del prefijo:', updatedPrefixData);
+        // Actualizar el consecutivo de cada sucursal
+        for (const [branchId, items] of itemsByBranch.entries()) {
+          console.log(`🔄 Actualizando consecutivo para sucursal ${branchId} (${items.length} requisiciones)`);
 
+          // Obtener el prefijo actual de esta sucursal
           await new Promise<void>((resolve, reject) => {
-            this.typexPrefixesService.updatePrefix('branch', this.idBranch, updatedPrefixData).subscribe({
-              next: () => {
-                console.log('✅ Consecutivo actualizado correctamente');
-                this.currentPrefixData.consecutive = newConsecutive;
-                resolve();
+            this.typexPrefixesService.getPrefix('branch', branchId).subscribe({
+              next: (prefixData: any) => {
+                const newConsecutive = (prefixData.consecutive || 0) + items.length;
+
+                const updatedPrefixData = {
+                  reqType: 'branch',
+                  idReqType: branchId,
+                  prefix: prefixData.prefix,
+                  consecutive: newConsecutive,
+                  active: true
+                };
+
+                console.log('📤 Actualizando consecutivo:', updatedPrefixData);
+
+                this.typexPrefixesService.updatePrefix('branch', branchId, updatedPrefixData).subscribe({
+                  next: () => {
+                    console.log(`✅ Consecutivo actualizado para sucursal ${branchId}: ${newConsecutive}`);
+                    resolve();
+                  },
+                  error: (err) => {
+                    console.error(`❌ Error al actualizar consecutivo de sucursal ${branchId}:`, err);
+                    hasErrors = true;
+                    reject(err);
+                  }
+                });
               },
               error: (err) => {
-                console.error('❌ Error al actualizar consecutivo:', err);
+                console.error(`❌ Error al obtener prefijo de sucursal ${branchId}:`, err);
                 hasErrors = true;
                 reject(err);
               }
@@ -1188,6 +1365,11 @@ export class RequisitionsDelisonComponent implements OnInit {
       // 3. Si todo salió bien, recargar datos y limpiar estados
       if (!hasErrors) {
         this.hasUnsavedChanges = false;
+
+        // ✅ Limpiar el contador local de consecutivos
+        this.localConsecutivesByBranch.clear();
+        console.log('🧹 Contador local de consecutivos limpiado');
+
         alerts.basicAlert('Guardado', `Se guardaron ${itemsToSave.length} requisiciones correctamente`, 'success');
 
         // Recargar las requisiciones desde el servidor
