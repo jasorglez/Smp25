@@ -113,6 +113,12 @@ constructor() {
        this.idUser = this.signalsService.getIdUSer()();
        this.userRoot = this.signalsService.getUserRoot()();
        this.isAdvanced = this.signalsService.getIsAdvanced();
+
+       if (this.gridApi) {
+         const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
+         this.gridApi.setColumnsVisible(['idRol'], showSecurity);
+       }
+
        this.obtenerDatos();
         this.getRoles();
       this.verification();
@@ -137,8 +143,6 @@ constructor() {
           console.log(this.empleadoCatalgos)
          // console.log('Datos obtenidos del servidor:', this.empleadoCatalgos);
 
-          // Actualizar el grid y esperar a que termine
-          this.gridApi.setGridOption('rowData', this.rowData);
 
           // Dar tiempo al grid para actualizar los datos
           setTimeout(() => {
@@ -268,6 +272,12 @@ constructor() {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Actualizar columnas por si los datos llegaron antes de que el grid estuviera listo
+    this.gridApi.setGridOption('columnDefs', this.columnDefs);
+
+    const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
+    this.gridApi.setColumnsVisible(['idRol'], showSecurity);
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -334,12 +344,12 @@ constructor() {
         filter: true,
         cellEditor: 'autocompleteEditor',
         flex: 1,
-        cellEditorParams: {
+        cellEditorParams: (params) => ({
           filterList: this.empleadoCatalgos.map(e => e.name),
           filterKey: 'name',
           placeholder: 'Nombre',
           minLength: 1
-        },
+        }),
         valueSetter: (params) => {
           const newValue = params.newValue?.toUpperCase() ?? '';
         

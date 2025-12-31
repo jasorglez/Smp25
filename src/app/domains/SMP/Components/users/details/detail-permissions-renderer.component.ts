@@ -290,7 +290,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     // Decidir qué mostrar:
     // Si tiene permiso de companies (empresas), mostrar root
     // Si no, mostrar branches directamente
-    this.isRootUser = this.showRoot || hasCompaniesPermission;
+    this.isRootUser =false;
     this.canSeeBranches = this.showRoot || hasBranchesPermission;
 
     // Cargar catálogos y datos
