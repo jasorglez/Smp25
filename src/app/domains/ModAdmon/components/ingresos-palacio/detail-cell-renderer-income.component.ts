@@ -617,7 +617,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       __modified: false
     };
 
-    this.rowData = [...this.rowData, newConcept];
+    this.rowData = [newConcept, ...this.rowData];
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
@@ -627,10 +627,10 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     }
 
     setTimeout(() => {
-      const lastRowIndex = this.rowData.length - 1;
-      this.gridApi.ensureIndexVisible(lastRowIndex);
+      const firstRowIndex = 0;
+      this.gridApi.ensureIndexVisible(firstRowIndex);
       this.gridApi.startEditingCell({
-        rowIndex: lastRowIndex,
+        rowIndex: firstRowIndex,
         colKey: 'idCatIng' // Focus en Detalle Ingreso
       });
     }, 0);
