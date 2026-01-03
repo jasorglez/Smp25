@@ -268,7 +268,7 @@ export class CustomersBillingComponent {
       codigoPostal: '',
       regimenFiscal: this.fiscalRegimes.length > 0 ? String(this.fiscalRegimes[0].id) : '',
       usoCfdi: 'G03',
-      correoFacturacion: 'info@x.com',
+      correoFacturacion: 'info@bi2.mx',
       active: true,
       __isNew: true,
     };

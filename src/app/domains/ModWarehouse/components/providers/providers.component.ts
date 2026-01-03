@@ -882,7 +882,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       rfc: '',
       city: '',
       mobile: '',
-      email: 'info@x.com',
+      email: 'info@bi2.mx',
       address: '',
       addressfiscal: '',
       state: '',

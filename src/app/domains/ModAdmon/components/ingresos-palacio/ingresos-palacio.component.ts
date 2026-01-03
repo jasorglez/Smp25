@@ -82,6 +82,7 @@ export class IngresosPalacioComponent implements OnInit {
 
     // Suscribirse a la solicitud de apertura del modal de contribuyente
     this.contribuyenteModalService.modalRequest$.subscribe((data) => {
+      console.log('📨 Componente padre recibió solicitud de abrir modal:', data);
       this.openContribuyenteModal(data.idRoot);
     });
   }
@@ -156,7 +157,7 @@ export class IngresosPalacioComponent implements OnInit {
     radio: 0,
     phone: '',
     mobile: '',
-    email: 'info@x.com',
+    email: 'info@bi2.mx',
     vigente: true,
     numCliente: 0,
     latitud: '',
@@ -259,8 +260,9 @@ export class IngresosPalacioComponent implements OnInit {
       return null;
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
-      if (event.column.getColId() !== 'pdfReport') {
+      // Seleccionar la fila al hacer clic en cualquier celda, excepto en las columnas de reportes
+      const colId = event.column.getColId();
+      if (colId !== 'pdfReport' && colId !== 'contributionReport') {
         event.node.setSelected(true);
       }
     },
@@ -456,6 +458,23 @@ export class IngresosPalacioComponent implements OnInit {
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
+        field: 'contributionReport',
+        headerName: 'Contribución',
+        width: 110,
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            console.log('🔵 Contribución Click detectado en Ingresos - ID:', node.data.id);
+            this.toggleReportDetail(node, 'contribution');
+          },
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#28a745',
+          title: 'Hacer clic para generar el reporte de Contribución'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', textAlign: 'center' }
+      },
+      {
         field: 'pdfReport',
         headerName: 'PDF',
         width: 80,
@@ -463,7 +482,7 @@ export class IngresosPalacioComponent implements OnInit {
         cellRendererParams: {
           onClick: (node: any) => {
             console.log('🔵 PDF Click detectado en Ingresos - ID:', node.data.id);
-            this.toggleReportDetail(node);
+            this.toggleReportDetail(node, 'report');
           },
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
@@ -995,11 +1014,11 @@ async saveChanges() {
     }
   }
 
-  async toggleReportDetail(node: any) {
-    console.log('🟢 toggleReportDetail llamado en Ingresos - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
+  async toggleReportDetail(node: any, reportType: 'report' | 'contribution' = 'report') {
+    console.log('🟢 toggleReportDetail llamado en Ingresos - ID:', node.data.id, 'tipo:', reportType, 'isGenerating:', this.isGeneratingReport);
 
     const api = this.gridApi;
-    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === reportType;
 
     if (isCurrentlyExpanded) {
       // Si ya está expandido con el reporte, colapsarlo
@@ -1064,12 +1083,12 @@ async saveChanges() {
       });
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
-      if (node.expanded && node.data.detailType !== 'report') {
+      if (node.expanded && node.data.detailType !== reportType) {
         node.setExpanded(false);
       }
 
-      // Cambiar el tipo de detalle a 'report'
-      node.data.detailType = 'report';
+      // Cambiar el tipo de detalle al tipo solicitado
+      node.data.detailType = reportType;
 
       // Agregar la descripción del catálogo formateada para el PDF
       if (node.data.idCustomer && this.ingresosCatalog) {
@@ -1398,6 +1417,7 @@ async saveChanges() {
   // ==================== MÉTODOS PARA EL MODAL DE CONTRIBUYENTE ====================
 
   openContribuyenteModal(idRoot: number) {
+    console.log('🟣 openContribuyenteModal ejecutado con idRoot:', idRoot);
     this.newContribuyente = {
       idRoot: idRoot,
       idBranch: this.idBranch || 0,
@@ -1416,7 +1436,7 @@ async saveChanges() {
       radio: 0,
       phone: '',
       mobile: '',
-      email: 'info@x.com',
+      email: 'info@bi2.mx',
       vigente: true,
       numCliente: 0,
       latitud: '',
@@ -1432,6 +1452,7 @@ async saveChanges() {
 
     this.showContribuyenteModal = true;
     document.body.classList.add('modal-open');
+    console.log('✅ Modal de contribuyente abierto. showContribuyenteModal =', this.showContribuyenteModal);
   }
 
   closeContribuyenteModal() {
@@ -1440,14 +1461,17 @@ async saveChanges() {
   }
 
   async saveNewContribuyente() {
-    if (!this.newContribuyente.company || !this.newContribuyente.nameContact) {
+    if (!this.newContribuyente.nameContact) {
       alerts.basicAlert(
         'Error',
-        'La Compañía y el Nombre de Contacto son obligatorios.',
+        'El Nombre del Contribuyente es obligatorio.',
         'error'
       );
       return;
     }
+
+    // Copiar nameContact a company (para el backend)
+    this.newContribuyente.company = this.newContribuyente.nameContact;
 
     try {
       const result: any = await lastValueFrom(
@@ -1462,7 +1486,7 @@ async saveChanges() {
 
       this.contribuyenteModalService.confirmSave({
         id: result.id,
-        name: this.newContribuyente.company
+        name: this.newContribuyente.nameContact
       });
 
       this.closeContribuyenteModal();

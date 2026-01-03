@@ -157,6 +157,7 @@
       </div>
     </div>
   </div>
+</div>
 
 <!-- Modal para agregar nuevo contribuyente -->
 <div class="modal fade" [class.show]="showContribuyenteModal" [style.display]="showContribuyenteModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="contribuyenteModalLabel" aria-hidden="true">
@@ -171,16 +172,16 @@
       <div class="modal-body">
         <form>
           <div class="mb-3">
-            <label for="contribuyenteCompany" class="form-label">Compañía <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="contribuyenteCompany" [(ngModel)]="newContribuyente.company" name="contribuyenteCompany" required>
-          </div>
-          <div class="mb-3">
-            <label for="contribuyenteContact" class="form-label">Nombre Contacto <span class="text-danger">*</span></label>
+            <label for="contribuyenteContact" class="form-label">Nombre Contribuyente <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="contribuyenteContact" [(ngModel)]="newContribuyente.nameContact" name="contribuyenteContact" required>
           </div>
           <div class="mb-3">
-            <label for="contribuyentePosition" class="form-label">Puesto</label>
-            <input type="text" class="form-control" id="contribuyentePosition" [(ngModel)]="newContribuyente.position" name="contribuyentePosition">
+            <label for="contribuyenteAddress" class="form-label">Dirección</label>
+            <input type="text" class="form-control" id="contribuyenteAddress" [(ngModel)]="newContribuyente.address" name="contribuyenteAddress">
+          </div>
+          <div class="mb-3">
+            <label for="contribuyenteCP" class="form-label">CP</label>
+            <input type="text" class="form-control" id="contribuyenteCP" [(ngModel)]="newContribuyente.cp" name="contribuyenteCP">
           </div>
           <div class="mb-3">
             <label for="contribuyentePhone" class="form-label">Teléfono</label>
@@ -196,7 +197,7 @@
         <button type="button" class="btn btn-secondary" (click)="closeContribuyenteModal()">
           <i class="bi bi-x-circle me-1"></i>Cancelar
         </button>
-        <button type="button" class="btn btn-success" (click)="saveNewContribuyente()" [disabled]="!newContribuyente.company || !newContribuyente.nameContact">
+        <button type="button" class="btn btn-success" (click)="saveNewContribuyente()" [disabled]="!newContribuyente.nameContact">
           <i class="bi bi-floppy me-1"></i>Guardar
         </button>
       </div>
@@ -206,4 +207,4 @@
 
 <!-- Backdrop del modal de contribuyente -->
 <div class="modal-backdrop fade" [class.show]="showContribuyenteModal" [style.display]="showContribuyenteModal ? 'block' : 'none'"></div>
-</div>
+
