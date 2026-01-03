@@ -210,6 +210,31 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
         });
       }
     },
+    onCellKeyDown: (event: any) => {
+      // Cuando se presiona Enter en nameContact, mover a cp
+      if (event.event.key === 'Enter' && !event.event.shiftKey) {
+        event.event.preventDefault();
+        event.event.stopPropagation();
+
+        const currentColumn = event.column.getColId();
+
+        // Si estamos en nameContact, mover a cp
+        if (currentColumn === 'nameContact') {
+          const rowIndex = event.node.rowIndex;
+          setTimeout(() => {
+            // Primero establecer el focus en la celda cp
+            this.gridApi.setFocusedCell(rowIndex, 'cp');
+
+            // Luego iniciar la edición inmediatamente
+            this.gridApi.startEditingCell({
+              rowIndex: rowIndex,
+              colKey: 'cp',
+              key: null // Esto asegura que se abra en modo edición limpio
+            });
+          }, 50);
+        }
+      }
+    }
 
   };
 
@@ -514,7 +539,7 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
           return true;
         },
         filter: true,
-        width: 300,
+        width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           if (this.infoCp && this.infoCp.length > 0) {
@@ -772,7 +797,7 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
       city: '',
       mobile: '',
       email: 'info@bi2.mx',
-      address: '',
+      address: 'SIN DIRECCION',
       addressfiscal: '',
       state: '',
       total: 0,

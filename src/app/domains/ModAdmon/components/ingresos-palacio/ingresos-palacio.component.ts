@@ -27,6 +27,8 @@ import { PdfButtonCellRendererComponent } from '../egresos-palacio/pdf-button-ce
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { CustomersService } from 'app/services/customers.service';
+import { ContribuyenteModalService } from './services/contribuyente-modal.service';
 
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -58,6 +60,8 @@ export class IngresosPalacioComponent implements OnInit {
   private BranchsService = inject(BranchsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private customerService = inject(CustomersService);
+  private contribuyenteModalService = inject(ContribuyenteModalService);
   authService = inject(AuthService);
   private formBuilder = inject(FormBuilder);
 
@@ -74,6 +78,11 @@ export class IngresosPalacioComponent implements OnInit {
       tipoReporte: ['GENERAL', Validators.required],
       fechaInicio: ['2024-10', Validators.required],
       fechaFin: [mes, Validators.required]
+    });
+
+    // Suscribirse a la solicitud de apertura del modal de contribuyente
+    this.contribuyenteModalService.modalRequest$.subscribe((data) => {
+      this.openContribuyenteModal(data.idRoot);
     });
   }
 
@@ -127,6 +136,39 @@ export class IngresosPalacioComponent implements OnInit {
   prefixAndConsecutive: any[] = [];
   tipos: any[] = [];
 
+  // Propiedades para el modal de contribuyente
+  showContribuyenteModal: boolean = false;
+  newContribuyente: any = {
+    idRoot: 0,
+    idBranch: 0,
+    idTypecop: 1, // CUSTOMERS
+    nameContact: '',
+    company: '',
+    rfc: '',
+    city: '',
+    position: 'CONTRIBUYENTE',
+    address: '',
+    addressFiscal: '',
+    cp: '',
+    state: '',
+    neighborhood: '',
+    total: 0,
+    radio: 0,
+    phone: '',
+    mobile: '',
+    email: 'info@x.com',
+    vigente: true,
+    numCliente: 0,
+    latitud: '',
+    longitud: '',
+    typeCustomer: '',
+    typework: '',
+    type: 'CUSTOMERS',
+    fieldContact: 0,
+    fieldBank: 0,
+    fieldCuenta: 0,
+    active: true
+  };
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -638,6 +680,7 @@ export class IngresosPalacioComponent implements OnInit {
         catalogsService: this.catalogsService,
         administrationService: this.administrationService,
         catalogadmonService: this.catalogadmonService,
+        customerService: this.customerService,
         rootService: this.rootService,
         base64EncodeService: this.base64EncodeService,
         ingresosCatalog: this.ingresosCatalog,
@@ -1350,6 +1393,88 @@ async saveChanges() {
 
   closeModal() {
     this.modalInstance?.hide();
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE CONTRIBUYENTE ====================
+
+  openContribuyenteModal(idRoot: number) {
+    this.newContribuyente = {
+      idRoot: idRoot,
+      idBranch: this.idBranch || 0,
+      idTypecop: 1, // CUSTOMERS
+      nameContact: '',
+      company: '',
+      rfc: '',
+      city: '',
+      position: 'CONTRIBUYENTE',
+      address: '',
+      addressFiscal: '',
+      cp: '',
+      state: '',
+      neighborhood: '',
+      total: 0,
+      radio: 0,
+      phone: '',
+      mobile: '',
+      email: 'info@x.com',
+      vigente: true,
+      numCliente: 0,
+      latitud: '',
+      longitud: '',
+      typeCustomer: '',
+      typework: '',
+      type: 'CUSTOMERS',
+      fieldContact: 0,
+      fieldBank: 0,
+      fieldCuenta: 0,
+      active: true
+    };
+
+    this.showContribuyenteModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeContribuyenteModal() {
+    this.showContribuyenteModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewContribuyente() {
+    if (!this.newContribuyente.company || !this.newContribuyente.nameContact) {
+      alerts.basicAlert(
+        'Error',
+        'La Compañía y el Nombre de Contacto son obligatorios.',
+        'error'
+      );
+      return;
+    }
+
+    try {
+      const result: any = await lastValueFrom(
+        this.customerService.addCustomer(this.newContribuyente)
+      );
+
+      alerts.basicAlert(
+        'Contribuyente creado',
+        'El contribuyente se ha creado correctamente.',
+        'success'
+      );
+
+      this.contribuyenteModalService.confirmSave({
+        id: result.id,
+        name: this.newContribuyente.company
+      });
+
+      this.closeContribuyenteModal();
+
+    } catch (error) {
+      console.error('Error creando contribuyente:', error);
+      alerts.basicAlert(
+        'Error',
+        `Error al crear el contribuyente. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
   }
 
 }

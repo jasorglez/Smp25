@@ -1,1 +1,11 @@
+// Resaltar la celda con focus en amarillo
+::ng-deep .ag-theme-quartz .ag-cell-focus {
+  background-color: #fff3cd !important;
+  border: 2px solid #ffc107 !important;
+}
 
+// Resaltar la celda que está siendo editada
+::ng-deep .ag-theme-quartz .ag-cell-inline-editing {
+  background-color: #fff3cd !important;
+  border: 2px solid #ffc107 !important;
+}

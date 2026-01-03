@@ -8,6 +8,8 @@ import { alerts } from 'app/helpers/alerts';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { ContribuyenteModalService } from './services/contribuyente-modal.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
@@ -16,7 +18,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-detail-cell-renderer-income',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -371,10 +373,15 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         field: 'idContribuyente',
         headerName: 'Contribuyente',
         editable: true,
-        width: 220,
-        cellEditor: 'agSelectCellEditor',
+        width: 280,
+        cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: {
-          values: this.contribuyentes.map(c => c.id)
+          options: this.contribuyentes.map(c => ({
+            id: c.id,
+            description: c.description,
+            valueAddition: c.id.toString(),
+            valueAddition2: c.description
+          }))
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
@@ -529,7 +536,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
 
   components = {
     multiLineEditorComponent: MultiLineEditorComponent,
-    searchableSelect: SearchableSelectComponent
+    searchableSelect: SearchableSelectComponent,
+    selectWithTooltipEditorV2: SelectWithTooltipEditorV2Component
   };
 
   addConcept() {
