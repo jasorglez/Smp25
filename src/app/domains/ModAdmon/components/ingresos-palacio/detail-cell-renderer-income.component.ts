@@ -541,6 +541,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       idExpense: 0,
       dateExpend: this.params.data.date, // Fecha de pago del maestro
       description: '',
+      idContribuyente: 0, // Contribuyente
       quantity: 1,
       unit: 'PARTICIPACIONES', // Valor por defecto
       claveUnidad: '',

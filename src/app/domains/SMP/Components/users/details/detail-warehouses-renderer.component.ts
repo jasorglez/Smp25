@@ -175,10 +175,14 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
           }
         },
         cellEditorParams: (params) => {
+          const usedRoles = this.warehousesRowData
+            .filter(row => row !== params.data && row.idRole)
+            .map(row => row.idRole);
+          const filteredRoles = this.catalogRoles
+            ? this.catalogRoles.filter(item => !usedRoles.includes(item.id))
+            : [];
           return {
-            values: this.catalogRoles 
-              ? this.catalogRoles.map(item => item.id)
-              : []
+            values: filteredRoles.map(item => item.id)
           };
         },
         valueFormatter: (params) => {
@@ -190,6 +194,15 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
           const newDeptId = params.newValue;
 
           if (params.data.idRole === newDeptId) return false;
+
+          const duplicateExists = this.warehousesRowData.some(
+            (row) => row !== params.data && row.idRole === newDeptId
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert('Departamento Duplicado', 'Este departamento ya ha sido asignado.', 'error');
+            return false;
+          }
 
           params.data.idRole = newDeptId;
 
@@ -224,10 +237,17 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           // Ensure catalogPosiciones data is available when creating editor
+          const currentRole = params.data.idRole;
+          const assignedPositions = this.warehousesRowData
+            .filter(row => row.idRole === currentRole && row !== params.data)
+            .map(row => row.idPosicion);
+
+          const filteredPosiciones = this.catalogPosiciones
+            ? this.catalogPosiciones.filter(item => !assignedPositions.includes(item.id))
+            : [];
+
           return {
-            values: this.catalogPosiciones 
-              ? this.catalogPosiciones.map(item => item.id)
-              : []
+            values: filteredPosiciones.map(item => item.id)
           };
         },
         valueFormatter: (params) => {
