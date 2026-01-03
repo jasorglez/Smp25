@@ -258,6 +258,54 @@ export class AccountbanksComponent implements CanComponentDeactivate {
             currency: 'MXN',
           }),
       },
+      {
+        field: 'maskin',
+        headerName: 'Mask In',
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return true;
+        },
+        width: 120,
+        filter: true,
+      },
+      {
+        field: 'consecin',
+        headerName: 'Consec In',
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return true;
+        },
+        width: 110,
+        filter: true,
+      },
+      {
+        field: 'maskex',
+        headerName: 'Mask Ex',
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return true;
+        },
+        width: 120,
+        filter: true,
+      },
+      {
+        field: 'consecex',
+        headerName: 'Consec Ex',
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return true;
+        },
+        width: 110,
+        filter: true,
+      },
     ];
 
     return this._colMaster;
@@ -513,6 +561,10 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       gasto: 0,
       depositoPagado: 0,
       saldo: 0,
+      maskin: '',
+      consecin: 0,
+      maskex: '',
+      consecex: 0,
       eAplicaFiscal: 'Si',
       active: true,
       __isNew: true,
@@ -687,6 +739,10 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       folioCheque: data.folioCheque || '',
       folioSinCheque: data.folioSinCheque || '',
       idBanco: data.idBanco || null,
+      maskin: data.maskin || '',
+      consecin: data.consecin || 0,
+      maskex: data.maskex || '',
+      consecex: data.consecex || 0,
       eAplicaFiscal: data.eAplicaFiscal || 'Si'
     };
 

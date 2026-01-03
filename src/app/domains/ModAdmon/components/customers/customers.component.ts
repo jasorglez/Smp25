@@ -426,7 +426,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
         },
       },
 
-    /*     {
+         {
         field: 'cp',
         headerName: 'CP',
         editable: (params) => {
@@ -444,7 +444,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
         },
       },
       
-      {
+   /*   {
         field: 'rfc',
         headerName: 'RFC',
         editable: (params) => {

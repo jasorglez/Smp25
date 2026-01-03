@@ -162,6 +162,34 @@ export class SaldosPalacioComponent {
             currency: 'MXN',
           }),
       },
+      {
+        field: 'maskin',
+        headerName: 'Mask In',
+        editable: false,
+        width: 120,
+        filter: true,
+      },
+      {
+        field: 'consecin',
+        headerName: 'Consec In',
+        editable: false,
+        width: 110,
+        filter: true,
+      },
+      {
+        field: 'maskex',
+        headerName: 'Mask Ex',
+        editable: false,
+        width: 120,
+        filter: true,
+      },
+      {
+        field: 'consecex',
+        headerName: 'Consec Ex',
+        editable: false,
+        width: 110,
+        filter: true,
+      },
     ];
 
     return this._colMaster;

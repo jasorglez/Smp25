@@ -116,6 +116,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   ivaPercent: number = 0;
   catalogosHijos: any[] = []; // Catálogos de nivel 3 (hijos del catálogo de ingreso seleccionado)
   setupManagementInfo: any = null; // Información de firmas
+  contribuyentes: any[] = []; // Lista de contribuyentes
 
   // Totals
   subtotal: number = 0;
@@ -145,6 +146,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       this.loadSATCatalogs();
       this.getBillingManagementInfo();
       this.loadCatalogosHijos(); // Cargar los catálogos hijos del catálogo de ingreso
+      this.loadContribuyentes(); // Cargar contribuyentes
       this.loadConceptsData();
     } else if (this.detailType === 'report') {
       this.loadConceptsDataForReport();
@@ -280,6 +282,26 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadContribuyentes() {
+    if (this.context && this.context.customerService && this.context.idRoot) {
+      this.context.customerService.getCustomersByCompany(this.context.idRoot, 'CUSTOMERS').subscribe({
+        next: (data: any[]) => {
+          this.contribuyentes = data || [];
+          console.log('Contribuyentes cargados:', this.contribuyentes);
+
+          // Actualizar las columnas del grid
+          if (this.gridApi) {
+            this.gridApi.setGridOption('columnDefs', this.colDefs);
+          }
+        },
+        error: (error) => {
+          console.error('Error loading contribuyentes:', error);
+          this.contribuyentes = [];
+        }
+      });
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
@@ -344,6 +366,21 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         type: 'text',
         editable: true,
         width: 250
+      },
+      {
+        field: 'idContribuyente',
+        headerName: 'Contribuyente',
+        editable: true,
+        width: 220,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.contribuyentes.map(c => c.id)
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.contribuyentes.find(c => c.id === params.value);
+          return found ? found.description : params.value;
+        }
       },
       {
         field: 'unit',
