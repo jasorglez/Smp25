@@ -575,7 +575,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         field: 'pedimiento',
         headerName: 'Pedimiento',
         width: 100,
-        editable: false,
+        editable: true,
         cellRenderer: (params: any) => {
           const input = document.createElement('input');
           input.type = 'checkbox';

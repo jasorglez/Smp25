@@ -2215,6 +2215,7 @@ export class EgresosPalacioComponent {
   openConsolidatedReportModal() {
     // Establecer fechas por defecto: primer y último día del MES ANTERIOR
     const now = new Date();
+
     // Retroceder un mes
     const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const firstDay = new Date(previousMonth.getFullYear(), previousMonth.getMonth(), 1);
@@ -2346,18 +2347,20 @@ export class EgresosPalacioComponent {
   // ==================== REPORTE EGRESOS (LISTADO COMPLETO) ====================
   private async generateReporteEgresos(filteredExpenses: any[]) {
     try {
-      console.log('📄 Generando reporte de egresos para', filteredExpenses.length, 'registros');
-
       // Paso 1: Cargar todos los conceptos de los egresos filtrados
       const allConcepts: any[] = [];
       for (const expense of filteredExpenses) {
         const concepts: any[] = await lastValueFrom(
           this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
         );
+
+        // ✅ IMPORTANTE: Calcular totalFinal para cada concepto
+        concepts.forEach(concept => {
+          concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+        });
+
         allConcepts.push(...concepts);
       }
-
-      console.log('📊 Total de conceptos cargados:', allConcepts.length);
 
       if (allConcepts.length === 0) {
         alerts.basicAlert(
@@ -2377,9 +2380,6 @@ export class EgresosPalacioComponent {
         this.administrationService.getByNivelObjeto(this.idRoot, 4)
       ) as any[];
 
-      console.log('📚 Objetos nivel 1 cargados:', objetosNivel1.length);
-      console.log('📚 Objetos nivel 4 cargados:', objetosNivel4.length);
-
       // Paso 3: Agrupar conceptos por categoría nivel 1 y partida nivel 4
       const agrupacionPorCategoria = this.agruparConceptosPorCategoria(
         allConcepts,
@@ -2387,13 +2387,11 @@ export class EgresosPalacioComponent {
         objetosNivel4
       );
 
-      console.log('📦 Categorías agrupadas:', agrupacionPorCategoria.size);
-
       // Paso 4: Generar el PDF
       await this.generateEgresosPDF(agrupacionPorCategoria);
 
     } catch (error) {
-      console.error('❌ Error generando reporte de egresos:', error);
+      console.error('Error generando reporte de egresos:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte de egresos', 'error');
     }
   }
@@ -2502,7 +2500,9 @@ export class EgresosPalacioComponent {
       : null;
 
     // Obtener nombre del mes desde reportStartDate
-    const startDate = new Date(this.reportStartDate);
+    // ✅ FIX: Parsear fecha sin zona horaria para evitar conversión
+    const [yearStr, monthStr, dayStr] = this.reportStartDate.split('-');
+    const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
     const monthName = this.getMonthName(startDate).toUpperCase();
     const year = startDate.getFullYear();
 
@@ -2568,7 +2568,7 @@ export class EgresosPalacioComponent {
     // Definición del documento
     const docDefinition: any = {
       pageSize: 'LETTER',
-      pageMargins: [40, 60, 40, 60],
+      pageMargins: [40, 55, 40, 60],
       background: watermarkBase64 ? [
         {
           image: 'watermark',
@@ -2608,14 +2608,14 @@ export class EgresosPalacioComponent {
               alignment: 'right'
             }
           ],
-          margin: [0, 0, 0, 10]
+          margin: [0, 0, 0, 9]
         },
         // Título del reporte
         {
           text: `INFORME DE INGRESOS Y EGRESOS CORRESPONDIENTES AL MES DE ${monthName} ${year} DE LOS INGRESOS PROPIOS DE LA HJMN`,
           style: 'reportTitle',
           alignment: 'center',
-          margin: [0, 10, 0, 20]
+          margin: [0, 5, 0, 14]
         },
         // Tabla de egresos
         {
@@ -2629,12 +2629,12 @@ export class EgresosPalacioComponent {
             vLineWidth: () => 0.5,
             hLineColor: () => '#000000',
             vLineColor: () => '#000000',
-            paddingTop: () => 4,
-            paddingBottom: () => 4,
+            paddingTop: () => 2,
+            paddingBottom: () => 2,
             paddingLeft: () => 6,
             paddingRight: () => 6
           },
-          margin: [0, 0, 0, 20]
+          margin: [0, 0, 0, 14]
         },
         // Resumen financiero
         {
@@ -2671,9 +2671,13 @@ export class EgresosPalacioComponent {
             hLineWidth: () => 0.5,
             vLineWidth: () => 0.5,
             hLineColor: () => '#000000',
-            vLineColor: () => '#000000'
+            vLineColor: () => '#000000',
+            paddingTop: () => 2,
+            paddingBottom: () => 2,
+            paddingLeft: () => 6,
+            paddingRight: () => 6
           },
-          margin: [0, 0, 0, 30]
+          margin: [0, 0, 0, 18]
         },
         // Firmas
         {
@@ -2681,27 +2685,27 @@ export class EgresosPalacioComponent {
             {
               stack: [
                 { text: firmas?.administratorTitle || 'TESORERO', style: 'firmaTitle', alignment: 'center' },
-                { text: '\n\n\n', margin: [0, 20, 0, 0] },
-                { text: '_______________________________', alignment: 'center' },
-                { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 5, 0, 0] }
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
               ],
               width: '33%'
             },
             {
               stack: [
                 { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'firmaTitle', alignment: 'center' },
-                { text: '\n\n\n', margin: [0, 20, 0, 0] },
-                { text: '_______________________________', alignment: 'center' },
-                { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 5, 0, 0] }
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
               ],
               width: '34%'
             },
             {
               stack: [
                 { text: firmas?.directorTitle || 'PRESIDENTE', style: 'firmaTitle', alignment: 'center' },
-                { text: '\n\n\n', margin: [0, 20, 0, 0] },
-                { text: '_______________________________', alignment: 'center' },
-                { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 5, 0, 0] }
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
               ],
               width: '33%'
             }
@@ -2739,7 +2743,7 @@ export class EgresosPalacioComponent {
           fontSize: 9,
           bold: true,
           color: '#000000',
-          margin: [0, 5, 0, 5]
+          margin: [0, 2, 0, 2]
         },
         categoriaRow: {
           fontSize: 8,
@@ -2775,7 +2779,7 @@ export class EgresosPalacioComponent {
           bold: true,
           fillColor: '#e0e0e0',
           color: '#000000',
-          margin: [0, 5, 0, 5]
+          margin: [0, 2, 0, 2]
         },
         resumenLabel: {
           fontSize: 8,
@@ -2791,12 +2795,12 @@ export class EgresosPalacioComponent {
           bold: true
         },
         firmaTitle: {
-          fontSize: 8,
+          fontSize: 7,
           bold: true,
           color: '#000000'
         },
         firmaNombre: {
-          fontSize: 8,
+          fontSize: 7,
           color: '#000000'
         }
       }
