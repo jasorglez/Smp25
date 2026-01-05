@@ -100,7 +100,6 @@ export class IngresosPalacioComponent implements OnInit {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idAccount = null;
 
-      await this.getBillingManagementInfo();
       await this.getBankAccounts();
       await this.getIncomes();
 
@@ -134,7 +133,6 @@ export class IngresosPalacioComponent implements OnInit {
   root: number;
   idBranch: number;
   bankAccounts: any[] = [];
-  prefixAndConsecutive: any[] = [];
   tipos: any[] = [];
 
   // Propiedades para el modal de contribuyente
@@ -212,16 +210,6 @@ export class IngresosPalacioComponent implements OnInit {
 
 
 
-  async getBillingManagementInfo() {
-    this.administrationService.getBillingManagementInfo(this.root).subscribe(
-      (data: any) => {
-        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-      },
-      (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
-      }
-    );
-  }
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -735,7 +723,7 @@ export class IngresosPalacioComponent implements OnInit {
     const newItem = {
       id: tempId,
       idAccount      : this._idAccount,
-      numberDocument : "",
+      // ✅ NO generar numberDocument - el backend lo hará automáticamente
       idBusinnes     : this.root,
       idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
       date           : fechaPago.toISOString(), // Pago = Entrega + 7 días
@@ -797,30 +785,27 @@ async saveChanges() {
     (row) => row.__modified && !row.__isNew
   );
 
-  // Solo validar configuración si hay nuevas filas que necesitan número de documento
-  let currentConsecutive = 0;
+  // ✅ VALIDACIÓN: Verificar que la cuenta tenga maskin configurado
   if (newRows.length > 0) {
-    if (!this.prefixAndConsecutive?.[0]) {
+    const selectedAccount = this.bankAccounts.find(acc => acc.id === this._idAccount);
+
+    if (!selectedAccount) {
+      alerts.basicAlert('Error', 'Debe seleccionar una cuenta bancaria', 'error');
+      return;
+    }
+
+    if (!selectedAccount.maskin || !selectedAccount.maskin.trim()) {
       alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
+        'Configuración incompleta',
+        'La cuenta seleccionada no tiene configurada una máscara de ingreso (maskin). Por favor, configure la cuenta en el módulo de Cuentas Bancarias.',
         'error'
       );
       return;
     }
-
-    // Obtener el último consecutivo específico de esta cuenta bancaria
-    currentConsecutive = await this.getLastConsecutiveForAccount(this._idAccount);
-
-    // Generar números de documento para nuevas filas
-    newRows.forEach(row => {
-      currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-    });
   }
 
   try {
-    // Guardar los registros de income
+    // Guardar los registros de income (el backend generará numberDocument automáticamente)
     await this.saveIncomeRecords(newRows, modifiedRows);
 
     // Éxito
@@ -940,6 +925,12 @@ async saveChanges() {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+
+    // ✅ NO enviar numberDocument - el backend lo generará automáticamente
+    if (cleanedData.__isNew || cleanedData.id?.toString().startsWith('temp_')) {
+      delete cleanedData.numberDocument;
+    }
+
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
@@ -1312,55 +1303,6 @@ async saveChanges() {
   }
 
 
-  /**
-   * Obtiene el último consecutivo usado para una cuenta bancaria específica
-   * Analiza todos los ingresos de la cuenta y extrae el número más alto
-   */
-  private async getLastConsecutiveForAccount(idAccount: number): Promise<number> {
-    try {
-      // Obtener todos los ingresos de esta cuenta bancaria desde el servidor
-      const allIncomes: any = await lastValueFrom(
-        this.incomesAndExpensesService.getIncomesAndExpenses(this.root)
-      );
-
-      // Filtrar solo los de esta cuenta y tipo DEPOSITO
-      const accountIncomes = allIncomes?.filter((income: any) =>
-        income.type === "DEPOSITO" &&
-        income.idAccount === idAccount &&
-        income.numberDocument
-      ) || [];
-
-      if (accountIncomes.length === 0) {
-        // Si no hay ingresos previos, empezar desde 0
-        return 0;
-      }
-
-      // Extraer los consecutivos numéricos de los números de documento
-      const prefix = this.prefixAndConsecutive[0].prefix;
-      const consecutives = accountIncomes
-        .map((income: any) => {
-          const numberDocument = income.numberDocument || '';
-          // Remover el prefijo y convertir a número
-          if (numberDocument.startsWith(prefix)) {
-            const numericPart = numberDocument.substring(prefix.length);
-            return parseInt(numericPart, 10);
-          }
-          return 0;
-        })
-        .filter((num: number) => !isNaN(num));
-
-      // Retornar el máximo consecutivo encontrado
-      const maxConsecutive = consecutives.length > 0 ? Math.max(...consecutives) : 0;
-
-      console.log(`✅ Último consecutivo para cuenta ${idAccount}: ${maxConsecutive}`);
-      return maxConsecutive;
-
-    } catch (error) {
-      console.error('Error obteniendo último consecutivo:', error);
-      // En caso de error, retornar 0 para empezar desde el principio
-      return 0;
-    }
-  }
   excel(){
     const modalElement = document.getElementById('optionExcel');
         if (modalElement) {
