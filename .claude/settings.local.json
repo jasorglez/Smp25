@@ -28,7 +28,9 @@
       "Bash(ng build:*)",
       "mcp__ide__getDiagnostics",
       "Bash(npm run:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(dir C:Developer /s /b)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

@@ -157,14 +157,14 @@
     <div class="modal-content">
       <div class="modal-header bg-info text-white">
         <h5 class="modal-title">
-          <i class="bi bi-file-earmark-pdf me-2"></i>Reporte Consolidado de Egresos
+          <i class="bi bi-file-earmark-pdf me-2"></i>Reportes de Egresos
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeConsolidatedReportModal()" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <p class="text-muted mb-3">
           <i class="bi bi-info-circle me-1"></i>
-          Seleccione el rango de fechas para generar el reporte consolidado agrupado por Objeto de Gasto.
+          Seleccione el rango de fechas y el tipo de reporte que desea generar.
         </p>
         <form>
           <div class="mb-3">
@@ -187,6 +187,54 @@
               name="reportEndDate"
               required>
           </div>
+
+          <!-- Tipo de Reporte -->
+          <div class="mb-3">
+            <label class="form-label">Tipo de Reporte <span class="text-danger">*</span></label>
+            <div class="d-flex flex-column gap-2">
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportConsolidado"
+                  value="consolidado"
+                  [(ngModel)]="reportType"
+                  checked>
+                <label class="form-check-label" for="reportConsolidado">
+                  <i class="bi bi-file-earmark-text me-1"></i>Consolidado
+                  <small class="text-muted d-block">Reporte agrupado por Objeto de Gasto</small>
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportAgrupado"
+                  value="agrupado"
+                  [(ngModel)]="reportType">
+                <label class="form-check-label" for="reportAgrupado">
+                  <i class="bi bi-collection me-1"></i>Agrupado
+                  <small class="text-muted d-block">Reporte agrupado por categoría</small>
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportEgresos"
+                  value="egresos"
+                  [(ngModel)]="reportType">
+                <label class="form-check-label" for="reportEgresos">
+                  <i class="bi bi-list-ul me-1"></i>Egresos
+                  <small class="text-muted d-block">Listado completo de egresos</small>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div class="alert alert-warning" *ngIf="isGeneratingConsolidatedReport">
             <div class="d-flex align-items-center">
               <div class="spinner-border spinner-border-sm me-2" role="status">

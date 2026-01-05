@@ -67,6 +67,7 @@ export class EgresosPalacioComponent {
   showConsolidatedReportModal: boolean = false;
   reportStartDate: string = '';
   reportEndDate: string = '';
+  reportType: string = 'consolidado'; // Tipo de reporte: consolidado, agrupado, egresos
   isGeneratingConsolidatedReport: boolean = false;
 
   // Propiedades para el modal de proveedor
@@ -114,7 +115,6 @@ export class EgresosPalacioComponent {
 
       if (!this.idRoot) return;
 
-      await this.getBillingManagementInfo();
       await this.getBankAccounts();
       await this.getBills();
       await this.getTypeComps();
@@ -180,7 +180,6 @@ export class EgresosPalacioComponent {
   triggerValue: number = 0;
 
   bankAccounts: any[] = [];
-  prefixAndConsecutive: any[] = [];
   typeComps: any[] = [];
 
   private _idAccount: number; // Variable de respaldo para el setter
@@ -221,22 +220,6 @@ export class EgresosPalacioComponent {
       this.trackingService.getEmail());
   }
 
-  async getBillingManagementInfo() {
-    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Cuentas Bancarias`, 'Palacio Municipal - Egresos',
-      this.trackingService.getEmail());
-    return new Promise<void>((resolve) => {
-      this.administrationService.getBillingManagementInfo(this.idRoot).subscribe(
-        (data: any) => {
-          this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-          resolve();
-        },
-        (error) => {
-          console.error('Error al obtener la información de gestión de facturación:', error);
-          resolve();
-        }
-      );
-    });
-  }
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -1097,7 +1080,7 @@ export class EgresosPalacioComponent {
     const newItem = {
       id: tempId,
       idAccount: this._idAccount,
-      numberDocument: "",
+      // ✅ NO generar numberDocument - el backend lo hará automáticamente
       idBusinnes: this.idRoot,
       idBranch: 0,
       date: now,
@@ -1223,28 +1206,23 @@ export class EgresosPalacioComponent {
     // Guardar los números de documento de las nuevas filas para encontrarlas después
     const newRowDocNumbers: string[] = [];
 
-    // Solo validar configuración si hay nuevas filas que necesitan número de documento
-    let currentConsecutive = 0;
+    // ✅ VALIDACIÓN: Verificar que la cuenta tenga maskex configurado
     if (newRows.length > 0) {
-      if (!this.prefixAndConsecutive?.[0]) {
+      const selectedAccount = this.bankAccounts.find(acc => acc.id === this._idAccount);
+
+      if (!selectedAccount) {
+        alerts.basicAlert('Error', 'Debe seleccionar una cuenta bancaria', 'error');
+        return;
+      }
+
+      if (!selectedAccount.maskex || !selectedAccount.maskex.trim()) {
         alerts.basicAlert(
-          'Error de configuración',
-          'La configuración de prefijo/consecutivo no está cargada correctamente',
+          'Configuración incompleta',
+          'La cuenta seleccionada no tiene configurada una máscara de egreso (maskex). Por favor, configure la cuenta en el módulo de Cuentas Bancarias.',
           'error'
         );
         return;
       }
-
-      // Obtener el último consecutivo específico de esta cuenta bancaria para EGRESOS
-      currentConsecutive = await this.getLastConsecutiveForAccountExp(this._idAccount);
-
-      // Generar números de documento para nuevas filas
-      newRows.forEach(row => {
-        currentConsecutive++;
-        const docNumber = `${this.prefixAndConsecutive[0].prefixexp}${currentConsecutive.toString().padStart(4, '0')}`;
-        row.numberDocument = docNumber;
-        newRowDocNumbers.push(docNumber);
-      });
     }
 
     try {
@@ -1410,6 +1388,11 @@ export class EgresosPalacioComponent {
     delete cleanedData.visible;
     delete cleanedData.objetoGastoCodigo;
 
+    // ✅ NO enviar numberDocument - el backend lo generará automáticamente
+    if (data.__isNew || cleanedData.id?.toString().startsWith('temp_')) {
+      delete cleanedData.numberDocument;
+    }
+
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
@@ -1459,51 +1442,6 @@ export class EgresosPalacioComponent {
     return [];
   }
 
-  // Método para obtener el último consecutivo para una cuenta específica (EGRESOS)
-  private async getLastConsecutiveForAccountExp(idAccount: number): Promise<number> {
-    try {
-      // Obtener todos los egresos de esta cuenta bancaria desde el servidor
-      const allExpenses: any = await lastValueFrom(
-        this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot)
-      );
-
-      // Filtrar solo los de esta cuenta y tipo GASTO
-      const accountExpenses = allExpenses?.filter((expense: any) =>
-        expense.type === "GASTO" &&
-        expense.idAccount === idAccount &&
-        expense.numberDocument
-      ) || [];
-
-      if (accountExpenses.length === 0) {
-        // Si no hay egresos previos, empezar desde 0
-        return 0;
-      }
-
-      // Extraer los consecutivos numéricos de los números de documento
-      const prefix = this.prefixAndConsecutive[0].prefixexp;
-      const consecutives = accountExpenses
-        .map((expense: any) => {
-          const numberDocument = expense.numberDocument || '';
-          // Remover el prefijo y convertir a número
-          if (numberDocument.startsWith(prefix)) {
-            const numericPart = numberDocument.substring(prefix.length);
-            return parseInt(numericPart, 10);
-          }
-          return 0;
-        })
-        .filter((num: number) => !isNaN(num));
-
-      // Retornar el máximo consecutivo encontrado
-      const maxConsecutive = consecutives.length > 0 ? Math.max(...consecutives) : 0;
-
-      return maxConsecutive;
-
-    } catch (error) {
-      console.error('Error obteniendo último consecutivo de egresos:', error);
-      // En caso de error, retornar 0 para empezar desde el principio
-      return 0;
-    }
-  }
 
   async getBankAccounts() {
     return new Promise<void>((resolve) => {
@@ -2275,21 +2213,26 @@ export class EgresosPalacioComponent {
   // ==================== MÉTODOS PARA REPORTE CONSOLIDADO ====================
 
   openConsolidatedReportModal() {
-    // Establecer fechas por defecto: primer y último día del mes actual
+    // Establecer fechas por defecto: primer y último día del MES ANTERIOR
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    // Retroceder un mes
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const firstDay = new Date(previousMonth.getFullYear(), previousMonth.getMonth(), 1);
+    const lastDay = new Date(previousMonth.getFullYear(), previousMonth.getMonth() + 1, 0);
 
     // Formatear fechas para input type="date" (YYYY-MM-DD)
     this.reportStartDate = this.formatDateForInput(firstDay);
     this.reportEndDate = this.formatDateForInput(lastDay);
+
+    // Resetear tipo de reporte a 'consolidado' por defecto
+    this.reportType = 'consolidado';
 
     this.showConsolidatedReportModal = true;
     document.body.classList.add('modal-open');
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Abrir modal de reporte consolidado',
+      'Abrir modal de reportes de egresos',
       'Palacio Municipal - Egresos',
       this.trackingService.getEmail()
     );
@@ -2343,18 +2286,25 @@ export class EgresosPalacioComponent {
         return;
       }
 
-      // Agrupar por Objeto de Gasto (idExpend)
-      const groupedByObjetoGasto = this.groupByObjetoGasto(filteredExpenses);
-
-      // Ordenar grupos por código de objeto de gasto
-      const sortedGroups = this.sortGroups(groupedByObjetoGasto);
-
-      // Generar PDF consolidado
-      await this.generateConsolidatedPDF(sortedGroups);
+      // Generar reporte según el tipo seleccionado
+      switch (this.reportType) {
+        case 'consolidado':
+          await this.generateReporteConsolidado(filteredExpenses);
+          break;
+        case 'agrupado':
+          await this.generateReporteAgrupado(filteredExpenses);
+          break;
+        case 'egresos':
+          await this.generateReporteEgresos(filteredExpenses);
+          break;
+        default:
+          alerts.basicAlert('Error', 'Tipo de reporte no válido', 'error');
+          return;
+      }
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        `Generar reporte consolidado del ${this.reportStartDate} al ${this.reportEndDate}`,
+        `Generar reporte ${this.reportType} del ${this.reportStartDate} al ${this.reportEndDate}`,
         'Palacio Municipal - Egresos',
         this.trackingService.getEmail()
       );
@@ -2363,11 +2313,514 @@ export class EgresosPalacioComponent {
       this.closeConsolidatedReportModal();
 
     } catch (error) {
-      console.error('Error generando reporte consolidado:', error);
-      alerts.basicAlert('Error', 'Error al generar el reporte consolidado', 'error');
+      console.error('Error generando reporte:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte', 'error');
     } finally {
       this.isGeneratingConsolidatedReport = false;
     }
+  }
+
+  // ==================== REPORTE CONSOLIDADO (AGRUPADO POR OBJETO DE GASTO) ====================
+  private async generateReporteConsolidado(filteredExpenses: any[]) {
+    // Agrupar por Objeto de Gasto (idExpend)
+    const groupedByObjetoGasto = this.groupByObjetoGasto(filteredExpenses);
+
+    // Ordenar grupos por código de objeto de gasto
+    const sortedGroups = this.sortGroups(groupedByObjetoGasto);
+
+    // Generar PDF consolidado
+    await this.generateConsolidatedPDF(sortedGroups);
+  }
+
+  // ==================== REPORTE AGRUPADO ====================
+  private async generateReporteAgrupado(filteredExpenses: any[]) {
+    // TODO: Implementar lógica del reporte agrupado
+    alerts.basicAlert(
+      'En desarrollo',
+      'El reporte Agrupado está en desarrollo. Por favor use el reporte Consolidado.',
+      'info'
+    );
+    console.log('Datos filtrados para reporte agrupado:', filteredExpenses);
+  }
+
+  // ==================== REPORTE EGRESOS (LISTADO COMPLETO) ====================
+  private async generateReporteEgresos(filteredExpenses: any[]) {
+    try {
+      console.log('📄 Generando reporte de egresos para', filteredExpenses.length, 'registros');
+
+      // Paso 1: Cargar todos los conceptos de los egresos filtrados
+      const allConcepts: any[] = [];
+      for (const expense of filteredExpenses) {
+        const concepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        );
+        allConcepts.push(...concepts);
+      }
+
+      console.log('📊 Total de conceptos cargados:', allConcepts.length);
+
+      if (allConcepts.length === 0) {
+        alerts.basicAlert(
+          'Sin datos',
+          'No se encontraron conceptos para los egresos seleccionados',
+          'warning'
+        );
+        return;
+      }
+
+      // Paso 2: Cargar catálogos de objetos de gasto nivel 1 y nivel 4
+      const objetosNivel1: any[] = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 1)
+      ) as any[];
+
+      const objetosNivel4: any[] = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 4)
+      ) as any[];
+
+      console.log('📚 Objetos nivel 1 cargados:', objetosNivel1.length);
+      console.log('📚 Objetos nivel 4 cargados:', objetosNivel4.length);
+
+      // Paso 3: Agrupar conceptos por categoría nivel 1 y partida nivel 4
+      const agrupacionPorCategoria = this.agruparConceptosPorCategoria(
+        allConcepts,
+        objetosNivel1,
+        objetosNivel4
+      );
+
+      console.log('📦 Categorías agrupadas:', agrupacionPorCategoria.size);
+
+      // Paso 4: Generar el PDF
+      await this.generateEgresosPDF(agrupacionPorCategoria);
+
+    } catch (error) {
+      console.error('❌ Error generando reporte de egresos:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte de egresos', 'error');
+    }
+  }
+
+  /**
+   * Agrupa los conceptos por categoría nivel 1 (1000, 2000, 3000)
+   * y dentro de cada categoría por partida nivel 4 (1131, 1322, etc.)
+   */
+  private agruparConceptosPorCategoria(
+    conceptos: any[],
+    objetosNivel1: any[],
+    objetosNivel4: any[]
+  ): Map<string, any> {
+    // Estructura: Map<codigoNivel1, { info, partidas: Map<codigoNivel4, { info, conceptos }> }>
+    const categorias = new Map<string, any>();
+
+    conceptos.forEach(concepto => {
+      // Obtener info del objeto nivel 4 (partida)
+      const objetoNivel4 = objetosNivel4.find(obj => obj.id === concepto.idCatIng);
+      if (!objetoNivel4) {
+        console.warn('⚠️ No se encontró objeto nivel 4 para idCatIng:', concepto.idCatIng);
+        return;
+      }
+
+      const codigoNivel4 = objetoNivel4.codigo || '';
+
+      // Determinar el código de la categoría nivel 1 (primer dígito + 000)
+      const primerDigito = codigoNivel4.charAt(0);
+      const codigoNivel1 = `${primerDigito}000`;
+
+      // Buscar info del objeto nivel 1
+      const objetoNivel1 = objetosNivel1.find(obj => obj.codigo === codigoNivel1);
+
+      // Si la categoría no existe, crearla
+      if (!categorias.has(codigoNivel1)) {
+        categorias.set(codigoNivel1, {
+          codigo: codigoNivel1,
+          nombre: objetoNivel1?.nombre || 'Sin clasificar',
+          total: 0,
+          partidas: new Map<string, any>()
+        });
+      }
+
+      const categoria = categorias.get(codigoNivel1);
+
+      // Si la partida no existe dentro de la categoría, crearla
+      if (!categoria.partidas.has(codigoNivel4)) {
+        categoria.partidas.set(codigoNivel4, {
+          codigo: codigoNivel4,
+          nombre: objetoNivel4.nombre || 'Sin nombre',
+          subtotal: 0,
+          conceptos: []
+        });
+      }
+
+      const partida = categoria.partidas.get(codigoNivel4);
+
+      // Agregar el concepto a la partida
+      partida.conceptos.push(concepto);
+      partida.subtotal += concepto.totalFinal || 0;
+
+      // Actualizar total de la categoría
+      categoria.total += concepto.totalFinal || 0;
+    });
+
+    // Ordenar partidas dentro de cada categoría por código
+    categorias.forEach(categoria => {
+      const partidasOrdenadas = new Map(
+        Array.from((categoria.partidas as Map<string, any>).entries()).sort((a, b) => a[0].localeCompare(b[0]))
+      );
+      categoria.partidas = partidasOrdenadas;
+    });
+
+    // Ordenar categorías por código
+    const categoriasOrdenadas = new Map(
+      Array.from(categorias.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+    );
+
+    return categoriasOrdenadas;
+  }
+
+  /**
+   * Genera el PDF del reporte de egresos
+   */
+  private async generateEgresosPDF(agrupacion: Map<string, any>) {
+    // Importar pdfMake dinámicamente
+    const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+    const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+    (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+    // Obtener información de la empresa y firmas
+    const rootResponse: any = await lastValueFrom(
+      this.rootService.getRootbyId(this.idRoot)
+    );
+
+    const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const watermarkBase64 = rootResponse.picture3
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+      : null;
+
+    const setupManagementInfo: any = await lastValueFrom(
+      this.administrationService.getSetupManagementInfo(this.idRoot)
+    );
+    const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+      ? setupManagementInfo[0]
+      : null;
+
+    // Obtener nombre del mes desde reportStartDate
+    const startDate = new Date(this.reportStartDate);
+    const monthName = this.getMonthName(startDate).toUpperCase();
+    const year = startDate.getFullYear();
+
+    // Calcular total general
+    let totalGeneral = 0;
+    agrupacion.forEach(categoria => {
+      totalGeneral += categoria.total;
+    });
+
+    // Construir tabla de egresos
+    const tableBody: any[] = [
+      // Encabezado
+      [
+        { text: 'CONCEPTO', style: 'tableHeader', alignment: 'left' },
+        { text: 'SUBTOTAL', style: 'tableHeader', alignment: 'right' },
+        { text: 'TOTAL', style: 'tableHeader', alignment: 'right' },
+        { text: '%', style: 'tableHeader', alignment: 'center' }
+      ]
+    ];
+
+    // Título de sección
+    tableBody.push([
+      { text: 'EGRESOS (INGRESOS PROPIOS)', style: 'sectionTitle', colSpan: 4, alignment: 'left' },
+      {}, {}, {}
+    ]);
+
+    // Recorrer cada categoría
+    agrupacion.forEach((categoria, codigoCategoria) => {
+      // Fila de categoría (1000 Servicios Personales)
+      tableBody.push([
+        { text: `${codigoCategoria} ${categoria.nombre}`, style: 'categoriaRow', alignment: 'left' },
+        { text: '', alignment: 'right' },
+        { text: `$ ${this.formatCurrencyNumber(categoria.total)}`, style: 'categoriaTotal', alignment: 'right' },
+        { text: '', alignment: 'center' }
+      ]);
+
+      // Recorrer partidas de la categoría
+      categoria.partidas.forEach((partida: any, codigoPartida: string) => {
+        tableBody.push([
+          { text: `${codigoPartida} ${partida.nombre}`, style: 'partidaRow', alignment: 'left' },
+          { text: `$ ${this.formatCurrencyNumber(partida.subtotal)}`, style: 'partidaSubtotal', alignment: 'right' },
+          { text: '', alignment: 'right' },
+          { text: '', alignment: 'center' }
+        ]);
+      });
+    });
+
+    // Fila de total general
+    tableBody.push([
+      { text: '', border: [false, false, false, false] },
+      { text: '', border: [false, false, false, false] },
+      { text: '', border: [false, false, false, false] },
+      { text: '', border: [false, false, false, false] }
+    ]);
+
+    tableBody.push([
+      { text: 'TOTAL DE EGRESOS', style: 'totalLabel', alignment: 'left', colSpan: 2 },
+      {},
+      { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'totalValue', alignment: 'right' },
+      { text: '', alignment: 'center' }
+    ]);
+
+    // Definición del documento
+    const docDefinition: any = {
+      pageSize: 'LETTER',
+      pageMargins: [40, 60, 40, 60],
+      background: watermarkBase64 ? [
+        {
+          image: 'watermark',
+          width: 400,
+          opacity: 0.15,
+          absolutePosition: { x: 106, y: 250 }
+        }
+      ] : [],
+      content: [
+        // Header con logos y título
+        {
+          columns: [
+            {
+              image: 'logo',
+              width: 60,
+              alignment: 'left'
+            },
+            {
+              stack: [
+                {
+                  text: rootResponse.name || 'H. JUNTA MUNICIPAL',
+                  style: 'companyName',
+                  alignment: 'center'
+                },
+                {
+                  text: rootResponse.address || 'DIRECCIÓN',
+                  style: 'companyInfo',
+                  alignment: 'center',
+                  fontSize: 8
+                }
+              ],
+              width: '*'
+            },
+            {
+              image: 'logo',
+              width: 60,
+              alignment: 'right'
+            }
+          ],
+          margin: [0, 0, 0, 10]
+        },
+        // Título del reporte
+        {
+          text: `INFORME DE INGRESOS Y EGRESOS CORRESPONDIENTES AL MES DE ${monthName} ${year} DE LOS INGRESOS PROPIOS DE LA HJMN`,
+          style: 'reportTitle',
+          alignment: 'center',
+          margin: [0, 10, 0, 20]
+        },
+        // Tabla de egresos
+        {
+          table: {
+            headerRows: 1,
+            widths: ['*', 100, 100, 40],
+            body: tableBody
+          },
+          layout: {
+            hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#000000',
+            vLineColor: () => '#000000',
+            paddingTop: () => 4,
+            paddingBottom: () => 4,
+            paddingLeft: () => 6,
+            paddingRight: () => 6
+          },
+          margin: [0, 0, 0, 20]
+        },
+        // Resumen financiero
+        {
+          table: {
+            widths: ['*', 100],
+            body: [
+              [
+                { text: 'RESUMEN DE INGRESOS Y EGRESOS DEL MES DE ' + monthName + ' ' + year, style: 'resumenTitle', colSpan: 2, alignment: 'center' },
+                {}
+              ],
+              [
+                { text: 'SALDO INICIAL', style: 'resumenLabel', alignment: 'left' },
+                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+              ],
+              [
+                { text: '(MAS) + INGRESOS DEL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+              ],
+              [
+                { text: '(IGUAL) = TOTAL DISPONIBLES EN EL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+              ],
+              [
+                { text: '(MENOS) - EGRESOS DEL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'resumenValueRed', alignment: 'right' }
+              ],
+              [
+                { text: '(IGUAL) = SALDO FINAL DEL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+              ]
+            ]
+          },
+          layout: {
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#000000',
+            vLineColor: () => '#000000'
+          },
+          margin: [0, 0, 0, 30]
+        },
+        // Firmas
+        {
+          columns: [
+            {
+              stack: [
+                { text: firmas?.administratorTitle || 'TESORERO', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n\n', margin: [0, 20, 0, 0] },
+                { text: '_______________________________', alignment: 'center' },
+                { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 5, 0, 0] }
+              ],
+              width: '33%'
+            },
+            {
+              stack: [
+                { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n\n', margin: [0, 20, 0, 0] },
+                { text: '_______________________________', alignment: 'center' },
+                { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 5, 0, 0] }
+              ],
+              width: '34%'
+            },
+            {
+              stack: [
+                { text: firmas?.directorTitle || 'PRESIDENTE', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n\n', margin: [0, 20, 0, 0] },
+                { text: '_______________________________', alignment: 'center' },
+                { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 5, 0, 0] }
+              ],
+              width: '33%'
+            }
+          ]
+        }
+      ],
+      images: watermarkBase64 ? {
+        logo: logoBase64,
+        watermark: watermarkBase64
+      } : {
+        logo: logoBase64
+      },
+      styles: {
+        companyName: {
+          fontSize: 11,
+          bold: true,
+          color: '#000000'
+        },
+        companyInfo: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        reportTitle: {
+          fontSize: 9,
+          bold: true,
+          color: '#000000'
+        },
+        tableHeader: {
+          fontSize: 8,
+          bold: true,
+          fillColor: '#e0e0e0',
+          color: '#000000'
+        },
+        sectionTitle: {
+          fontSize: 9,
+          bold: true,
+          color: '#000000',
+          margin: [0, 5, 0, 5]
+        },
+        categoriaRow: {
+          fontSize: 8,
+          bold: true,
+          color: '#000000'
+        },
+        categoriaTotal: {
+          fontSize: 8,
+          bold: true,
+          color: '#000000'
+        },
+        partidaRow: {
+          fontSize: 8,
+          color: '#000000',
+          margin: [10, 0, 0, 0]
+        },
+        partidaSubtotal: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        totalLabel: {
+          fontSize: 9,
+          bold: true,
+          color: '#000000'
+        },
+        totalValue: {
+          fontSize: 9,
+          bold: true,
+          color: '#000000'
+        },
+        resumenTitle: {
+          fontSize: 9,
+          bold: true,
+          fillColor: '#e0e0e0',
+          color: '#000000',
+          margin: [0, 5, 0, 5]
+        },
+        resumenLabel: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        resumenValue: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        resumenValueRed: {
+          fontSize: 8,
+          color: '#cc0000',
+          bold: true
+        },
+        firmaTitle: {
+          fontSize: 8,
+          bold: true,
+          color: '#000000'
+        },
+        firmaNombre: {
+          fontSize: 8,
+          color: '#000000'
+        }
+      }
+    };
+
+    // Generar y abrir el PDF
+    const pdf = pdfMake.createPdf(docDefinition);
+    pdf.open();
+
+    alerts.basicAlert(
+      'Reporte generado',
+      'El reporte de egresos se ha generado correctamente',
+      'success'
+    );
+  }
+
+  /**
+   * Formatea un número como moneda sin el símbolo $
+   */
+  private formatCurrencyNumber(amount: number): string {
+    return amount.toLocaleString('es-MX', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   }
 
   private groupByObjetoGasto(expenses: any[]): Map<number, any[]> {
