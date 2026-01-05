@@ -7,7 +7,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 import { ModalService } from 'app/services/modal.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, forkJoin, tap, map } from 'rxjs';
@@ -34,12 +34,14 @@ import { ProviderModalService } from './services/provider-modal.service';
 import { CustomersService } from 'app/services/customers.service';
 import { DatePipe } from '@angular/common';
 
+declare var bootstrap: any;
+
 @Component({
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent,
-    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe],
+    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -60,6 +62,7 @@ export class EgresosPalacioComponent {
   private customersService = inject(CustomersService);
   authService = inject(AuthService);
   public trackingService = inject(TrackingService);
+  private formBuilder = inject(FormBuilder);
 
   public isIncomeMode: boolean = false;
 
@@ -104,8 +107,18 @@ export class EgresosPalacioComponent {
     active: true
   };
 
-  async ngOnInit() {
+  myForm: FormGroup;
+  tipos: any[] = [];
+  private modalInstance: any = null;
 
+  async ngOnInit() {
+    const hoy = new Date();
+    const mes = this.obtenerAnoMes(hoy);
+    this.myForm = this.formBuilder.group({
+      tipoReporte: ['GENERAL', Validators.required],
+      fechaInicio: ['2024-10', Validators.required],
+      fechaFin: [mes, Validators.required]
+    });
   }
 
   constructor() {
@@ -206,6 +219,12 @@ export class EgresosPalacioComponent {
 
   get idAccount(): number {
     return this._idAccount;
+  }
+
+  obtenerAnoMes(fecha: Date): string {
+    const año = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    return `${año}-${mes}`;
   }
 
   obtenerBranchs() {
@@ -1448,6 +1467,13 @@ export class EgresosPalacioComponent {
       this.administrationService.getAccountBanks(this.idRoot).subscribe(
         (data: any) => {
           this.bankAccounts = data;
+          this.tipos = this.bankAccounts.map(acc => {
+            const [nombre, tipo] = acc.nameAccount.split('-');
+            return {
+              nombre: nombre.trim(),
+              tipo: tipo?.trim()
+            };
+          });
           resolve();
         },
         error => {
@@ -3429,6 +3455,59 @@ export class EgresosPalacioComponent {
       .map(([codigo, grupo]) => grupo.nivel1Info.nombre);
 
     return objetosTexto.length > 0 ? objetosTexto.join(' + ') : 'Sin objetos de gasto';
+  }
+
+  excel() {
+    const modalElement = document.getElementById('optionExcel');
+    if (modalElement) {
+      this.modalInstance = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',
+        keyboard: false
+      });
+      this.modalInstance.show();
+    }
+  }
+
+  onSubmit() {
+    if (this.myForm.invalid) {
+      alerts.basicAlert('Formulario inválido', 'Por favor, seleccione las fechas de inicio y fin.', 'error');
+      return;
+    }
+
+    const { fechaInicio, tipoReporte } = this.myForm.value;
+
+    this.incomesAndExpensesService.getExcelEgresos(fechaInicio, this.idRoot, tipoReporte).subscribe({
+      next: (base64String: string) => {
+        try {
+          const byteCharacters = atob(base64String);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `Reporte_Egresos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          this.closeModal();
+        } catch (error) {
+          console.error('Error al decodificar o descargar el archivo:', error);
+          alerts.basicAlert('Error', 'No se pudo procesar el archivo para la descarga.', 'error');
+        }
+      },
+      error: (err) => {
+        console.error('Error al generar el Excel:', err);
+        alerts.basicAlert('Error', 'Ocurrió un error al generar el reporte en el servidor.', 'error');
+      }
+    });
+  }
+
+  closeModal() {
+    this.modalInstance?.hide();
   }
 
 }
