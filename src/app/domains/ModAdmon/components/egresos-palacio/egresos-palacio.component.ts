@@ -2347,7 +2347,19 @@ export class EgresosPalacioComponent {
   // ==================== REPORTE EGRESOS (LISTADO COMPLETO) ====================
   private async generateReporteEgresos(filteredExpenses: any[]) {
     try {
-      // Paso 1: Cargar todos los conceptos de los egresos filtrados
+      // Paso 1: Obtener SALDO INICIAL e INGRESOS DEL MES
+      const saldoEIngresosResponse: any = await lastValueFrom(
+        this.administrationService.getSaldoEIngresosMes(
+          this.idAccount,
+          this.reportStartDate,
+          this.reportEndDate
+        )
+      );
+
+      const saldoInicial = saldoEIngresosResponse?.data?.saldoInicial || 0;
+      const ingresosMes = saldoEIngresosResponse?.data?.ingresosMes || 0;
+
+      // Paso 2: Cargar todos los conceptos de los egresos filtrados
       const allConcepts: any[] = [];
       for (const expense of filteredExpenses) {
         const concepts: any[] = await lastValueFrom(
@@ -2371,7 +2383,7 @@ export class EgresosPalacioComponent {
         return;
       }
 
-      // Paso 2: Cargar catálogos de objetos de gasto nivel 1 y nivel 4
+      // Paso 3: Cargar catálogos de objetos de gasto nivel 1 y nivel 4
       const objetosNivel1: any[] = await lastValueFrom(
         this.administrationService.getByNivelObjeto(this.idRoot, 1)
       ) as any[];
@@ -2380,15 +2392,15 @@ export class EgresosPalacioComponent {
         this.administrationService.getByNivelObjeto(this.idRoot, 4)
       ) as any[];
 
-      // Paso 3: Agrupar conceptos por categoría nivel 1 y partida nivel 4
+      // Paso 4: Agrupar conceptos por categoría nivel 1 y partida nivel 4
       const agrupacionPorCategoria = this.agruparConceptosPorCategoria(
         allConcepts,
         objetosNivel1,
         objetosNivel4
       );
 
-      // Paso 4: Generar el PDF
-      await this.generateEgresosPDF(agrupacionPorCategoria);
+      // Paso 5: Generar el PDF con los datos financieros
+      await this.generateEgresosPDF(agrupacionPorCategoria, saldoInicial, ingresosMes);
 
     } catch (error) {
       console.error('Error generando reporte de egresos:', error);
@@ -2476,7 +2488,7 @@ export class EgresosPalacioComponent {
   /**
    * Genera el PDF del reporte de egresos
    */
-  private async generateEgresosPDF(agrupacion: Map<string, any>) {
+  private async generateEgresosPDF(agrupacion: Map<string, any>, saldoInicial: number = 0, ingresosMes: number = 0) {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
@@ -2647,15 +2659,15 @@ export class EgresosPalacioComponent {
               ],
               [
                 { text: 'SALDO INICIAL', style: 'resumenLabel', alignment: 'left' },
-                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+                { text: `$${this.formatCurrencyNumber(saldoInicial)}`, style: 'resumenValue', alignment: 'right' }
               ],
               [
                 { text: '(MAS) + INGRESOS DEL MES', style: 'resumenLabel', alignment: 'left' },
-                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+                { text: `$${this.formatCurrencyNumber(ingresosMes)}`, style: 'resumenValue', alignment: 'right' }
               ],
               [
                 { text: '(IGUAL) = TOTAL DISPONIBLES EN EL MES', style: 'resumenLabel', alignment: 'left' },
-                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+                { text: `$${this.formatCurrencyNumber(saldoInicial + ingresosMes)}`, style: 'resumenValue', alignment: 'right' }
               ],
               [
                 { text: '(MENOS) - EGRESOS DEL MES', style: 'resumenLabel', alignment: 'left' },
@@ -2663,7 +2675,7 @@ export class EgresosPalacioComponent {
               ],
               [
                 { text: '(IGUAL) = SALDO FINAL DEL MES', style: 'resumenLabel', alignment: 'left' },
-                { text: '$0.00', style: 'resumenValue', alignment: 'right' }
+                { text: `$${this.formatCurrencyNumber(saldoInicial + ingresosMes - totalGeneral)}`, style: 'resumenValue', alignment: 'right' }
               ]
             ]
           },

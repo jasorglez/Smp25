@@ -62,6 +62,18 @@ export class AdministrationService {
     return this.http.get(`${environment.urlAdministration}/Incomeandexpense/Bussines/balance?id=${idAccount}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getSaldoEIngresosMes(idAccount: number, fechaInicio: string, fechaFin: string): Observable<any> {
+    const params = new HttpParams()
+      .set('idAccount', idAccount.toString())
+      .set('fechaInicio', fechaInicio)
+      .set('fechaFin', fechaFin);
+
+    return this.http.get(`${environment.urlAdministration}/Incomeandexpense/saldo-ingresos-mes`, {
+      params,
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
    updateRowsIncorExp(id: number, data: any): Observable<any> {
      return this.http.patch<any[]>(`${environment.urlAdministration}/Incomeandexpense/counts/${id}`, data, { headers: this.trackingService.getHeaders() });
    }
