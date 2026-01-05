@@ -261,6 +261,12 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'address',
+        headerName: 'Dirección',
+        editable: true,
+        flex: 2
+      },
+      {
         field: 'city',
         headerName: 'Ciudad',
         editable: true,
