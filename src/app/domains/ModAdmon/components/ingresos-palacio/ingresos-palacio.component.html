@@ -133,7 +133,9 @@
           <div class="mb-3">
             <label for="tipoReporte" class="form-label">Tipo de Reporte</label>
             <select id="tipoReporte" class="form-select" formControlName="tipoReporte">
-              <option *ngFor="let tipo of tipos" [value]="tipo.tipo">{{ tipo.tipo }}</option>
+              <option value="ESTATAL">ESTATAL</option>
+              <option value="MUNICIPAL">MUNICIPAL</option>
+              <option value="PROPIA">PROPIA</option>
               <option value="GENERAL">GENERAL</option>
             </select>
           </div>
