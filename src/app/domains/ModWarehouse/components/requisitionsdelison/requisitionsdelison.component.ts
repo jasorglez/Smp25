@@ -251,13 +251,17 @@ export class RequisitionsDelisonComponent implements OnInit {
         const branch = this.branches.find(b => b.id === req.idReference);
         const branchName = branch?.name || branch?.description || req.idReference?.toString() || '';
 
+        // ✅ Buscar el nombre del departamento usando idDepartament
+        const department = this.departamentos.find(d => d.id === req.idDepartament);
+        const departmentName = department?.description || department?.name || '';
+
         return {
           id: req.id,
           branch: branchName,
           requisitionNumber: req.folio || '',
           requestDate: req.dateCreate || new Date().toISOString(),
           departmentId: req.idDepartament || null,
-          departmentName: '',
+          departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
           solicitedBy: req.solicit || '',
           articlesCount: req.countrow || 0,
           articleNumber: '',
@@ -308,7 +312,11 @@ export class RequisitionsDelisonComponent implements OnInit {
           const branch = this.branches.find(b => b.id === req.idReference);
           const branchName = branch?.name || branch?.description || req.idReference?.toString() || '';
 
-          console.log(`📋 Requisición ${req.id}: idReference=${req.idReference} → Sucursal: ${branchName}, countrow: ${req.countrow}`);
+          // ✅ Buscar el nombre del departamento usando idDepartament
+          const department = this.departamentos.find(d => d.id === req.idDepartament);
+          const departmentName = department?.description || department?.name || '';
+
+          console.log(`📋 Requisición ${req.id}: idReference=${req.idReference} → Sucursal: ${branchName}, Depto: ${departmentName}, countrow: ${req.countrow}`);
 
           return {
             id: req.id,
@@ -316,7 +324,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             requisitionNumber: req.folio || '', // Número de requisición
             requestDate: req.dateCreate || new Date().toISOString(), // Fecha de creación
             departmentId: req.idDepartament || null,
-            departmentName: '', // Se debe buscar en catálogo de departamentos
+            departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
             solicitedBy: req.solicit || '', // Usuario que solicita
             articlesCount: req.countrow || 0, // Cantidad de artículos del servidor
             articleNumber: '',
@@ -434,15 +442,17 @@ export class RequisitionsDelisonComponent implements OnInit {
         // ✅ Solo editable si está en modo "Todas las sucursales" (idBranch negativo o no definido)
         editable: () => !this.idBranch || this.idBranch < 0,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.branches.map(b => b.id),
-          valueListGap: 0,
-          valueListMaxHeight: 220,
-          // Formatear cómo se muestra cada opción en el dropdown
-          formatValue: (value: any) => {
-            const branch = this.branches.find(b => b.id === value);
-            return branch?.name || branch?.description || value?.toString() || '';
-          }
+        cellEditorParams: () => {
+          return {
+            values: this.branches.map(b => b.id),
+            valueListGap: 0,
+            valueListMaxHeight: 220,
+            // Formatear cómo se muestra cada opción en el dropdown
+            formatValue: (value: any) => {
+              const branch = this.branches.find(b => b.id === value);
+              return branch?.name || branch?.description || value?.toString() || '';
+            }
+          };
         },
         valueGetter: (params: any) => {
           // Retornar el ID de la sucursal
@@ -644,32 +654,32 @@ export class RequisitionsDelisonComponent implements OnInit {
         valueSetter: (params: any) => {
           console.log('🔧 valueSetter departmentId - newValue:', params.newValue, 'oldValue:', params.oldValue);
 
-          if (params.newValue && typeof params.newValue === 'object') {
-            params.data.departmentId = params.newValue.id;
-            params.data.departmentName = params.newValue.name || params.newValue.description;
+          // ✅ El editor ahora retorna solo el ID (número)
+          const departmentId = params.newValue ? Number(params.newValue) : null;
 
-            console.log('✅ Departamento asignado:', {
-              departmentId: params.data.departmentId,
-              departmentName: params.data.departmentName,
-              isNew: params.data.__isNew
-            });
+          // Buscar el nombre del departamento en el catálogo
+          const department = this.departamentos.find(d => d.id === departmentId);
+          const departmentName = department?.description || department?.name || '';
 
-            // Marcar explícitamente como modificado
-            if (!params.data.__isNew) {
-              params.data.__modified = true;
-              console.log('🔴 Marcado como __modified');
-            }
-            this.hasUnsavedChanges = true;
-            console.log('💾 hasUnsavedChanges = true');
-            return true; // ✅ Retornar true para que AG Grid detecte el cambio
-          }
+          // Actualizar ambos campos
+          params.data.departmentId = departmentId;
+          params.data.departmentName = departmentName;
 
-          params.data.departmentId = params.newValue;
+          console.log('✅ Departamento asignado:', {
+            departmentId: params.data.departmentId,
+            departmentName: params.data.departmentName,
+            isNew: params.data.__isNew
+          });
+
+          // Marcar como modificado
           if (!params.data.__isNew) {
             params.data.__modified = true;
+            console.log('🔴 Marcado como __modified');
           }
           this.hasUnsavedChanges = true;
-          return true;
+          console.log('💾 hasUnsavedChanges = true');
+
+          return true; // ✅ Retornar true para que AG Grid detecte el cambio
         }
       },
       {
