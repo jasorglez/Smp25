@@ -165,6 +165,7 @@
             [groupDefaultExpanded]="1"
             (gridReady)="onGridReady($event)"
             (selectionChanged)="onSelectionChanged($event)"
+            (rowDragEnd)="onRowDragEnd($event)"
           >
           </ag-grid-angular>
         </div>
@@ -261,16 +262,25 @@
               </div>
             </div>
 
-            <!-- Nivel (readonly) -->
+            <!-- Nivel -->
             <div class="col-md-4 mb-3">
-              <label for="nivel" class="form-label">Nivel</label>
-              <input
-                type="text"
-                class="form-control form-control-sm"
+              <label for="nivel" class="form-label">
+                Nivel <span class="text-danger">*</span>
+              </label>
+              <select
+                class="form-select form-select-sm"
                 id="nivel"
-                [value]="getNombreNivel(modalForm.value.nivel)"
-                readonly
-              />
+                formControlName="nivel"
+                [disabled]="modalMode === 'create'"
+              >
+                <option [ngValue]="1">Capítulo (1)</option>
+                <option [ngValue]="2">Concepto (2)</option>
+                <option [ngValue]="3">Partida Genérica (3)</option>
+                <option [ngValue]="4">Partida Específica (4)</option>
+              </select>
+              <small class="form-text text-muted" *ngIf="modalMode === 'edit'">
+                Puede cambiar entre niveles compatibles
+              </small>
             </div>
 
             <!-- Es Hoja -->

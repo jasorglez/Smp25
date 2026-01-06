@@ -109,6 +109,17 @@ export class ObjectClassifierComponent implements OnInit {
       active: [true]
     });
 
+    // Escuchar cambios en el nivel para ajustar esHoja automáticamente
+    this.modalForm.get('nivel')?.valueChanges.subscribe(nivel => {
+      if (nivel === 4) {
+        // Nivel 4 (P. Específica) generalmente es hoja
+        this.modalForm.patchValue({ esHoja: true }, { emitEvent: false });
+      } else if (nivel === 3) {
+        // Nivel 3 (P. Genérica) puede ser padre de P. Específicas
+        this.modalForm.patchValue({ esHoja: false }, { emitEvent: false });
+      }
+    });
+
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       if (this.idCompany) {
@@ -247,6 +258,10 @@ export class ObjectClassifierComponent implements OnInit {
       width: 400,
       wrapText: true,
       autoHeight: true,
+      rowDrag: (params: any) => {
+        // Solo permitir arrastrar P. Específicas (nivel 4)
+        return params.data && params.data.nivel === 4;
+      },
       cellRendererParams: {
         suppressCount: true,
         innerRenderer: this.customTreeCellRenderer.bind(this)
@@ -318,6 +333,100 @@ export class ObjectClassifierComponent implements OnInit {
   onCellValueChanged(event: any): void {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+  }
+
+  async onRowDragEnd(event: any): Promise<void> {
+    const draggedNode = event.node;
+    const overNode = event.overNode;
+
+    // Validar que tenemos nodos válidos
+    if (!draggedNode || !draggedNode.data || !overNode || !overNode.data) {
+      console.warn('🔴 Drag end: nodos inválidos');
+      return;
+    }
+
+    const draggedItem = draggedNode.data;
+    const targetItem = overNode.data;
+
+    console.log('🔵 Drag End Event:', {
+      draggedItem: `${draggedItem.codigo} (nivel ${draggedItem.nivel})`,
+      targetItem: `${targetItem.codigo} (nivel ${targetItem.nivel})`,
+      draggedId: draggedItem.id,
+      targetId: targetItem.id
+    });
+
+    // Validar que el item arrastrado es nivel 4 (P. Específica)
+    if (draggedItem.nivel !== 4) {
+      alerts.basicAlert(
+        'Operación no permitida',
+        'Solo se pueden arrastrar Partidas Específicas (Nivel 4)',
+        'warning'
+      );
+      return;
+    }
+
+    // Validar que el destino es nivel 3 (P. Genérica)
+    if (targetItem.nivel !== 3) {
+      alerts.basicAlert(
+        'Destino no válido',
+        'Solo se pueden arrastrar Partidas Específicas a Partidas Genéricas (Nivel 3)',
+        'warning'
+      );
+      return;
+    }
+
+    // Si ya está en ese padre, no hacer nada
+    if (draggedItem.idPadre === targetItem.id) {
+      console.log('⚠️ El item ya pertenece a este padre');
+      return;
+    }
+
+    // Confirmar la operación
+    const result = await alerts.confirmAlert(
+      '¿Mover Partida Específica?',
+      `¿Desea mover "${draggedItem.codigo} - ${draggedItem.nombre}" a la Partida Genérica "${targetItem.codigo} - ${targetItem.nombre}"?`,
+      'question',
+      'Sí, mover'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      // Actualizar el idPadre del item arrastrado
+      const updateData = {
+        codigo: draggedItem.codigo,
+        nombre: draggedItem.nombre,
+        descripcion: draggedItem.descripcion || '',
+        nivel: draggedItem.nivel,
+        idPadre: targetItem.id, // Nuevo padre
+        esHoja: draggedItem.esHoja,
+        active: draggedItem.active,
+        idCompany: this.idCompany
+      };
+
+      console.log('🔄 Actualizando item:', updateData);
+
+      await this.adminService.updateObjectClassification(draggedItem.id, updateData).toPromise();
+
+      alerts.basicAlert(
+        '¡Movido!',
+        `La Partida Específica "${draggedItem.codigo}" se ha movido exitosamente a "${targetItem.codigo}"`,
+        'success'
+      );
+
+      // Recargar datos para reflejar el cambio
+      this.loadData();
+
+    } catch (error) {
+      console.error('❌ Error al mover item:', error);
+      alerts.basicAlert(
+        'Error',
+        'No se pudo mover la Partida Específica. Por favor intente nuevamente.',
+        'error'
+      );
+    }
   }
 
   loadData(): void {
@@ -496,13 +605,11 @@ export class ObjectClassifierComponent implements OnInit {
     this.gridApi.setGridOption('quickFilterText', this.filterForm.value.searchTerm);
 
     // Aplicar filtro de nivel si existe
-    const nivelFilter = this.gridApi.getFilterInstance('nivel');
-    if (nivelFilter) {
-      const nivel = this.filterForm.value.filterNivel;
-      const nivelFilterModel = nivel ? { type: 'equals', filter: nivel } : null;
-      (nivelFilter as any).setModel(nivelFilterModel);
+    const nivel = this.filterForm.value.filterNivel;
+    const nivelFilterModel = nivel ? { type: 'equals', filter: nivel } : null;
+    this.gridApi.setColumnFilterModel('nivel', nivelFilterModel).then(() => {
       this.gridApi.onFilterChanged();
-    }
+    });
   }
 
   revert(): void {
@@ -638,6 +745,75 @@ export class ObjectClassifierComponent implements OnInit {
     };
 
     try {
+      // Validaciones adicionales para cambio de nivel en modo edición
+      if (this.modalMode === 'edit' && this.modalEditingItem) {
+        const nivelOriginal = this.modalEditingItem.nivel;
+        const nivelNuevo = formData.nivel;
+
+        // Si está cambiando el nivel
+        if (nivelOriginal !== nivelNuevo) {
+          console.log(`🔄 Cambiando nivel de ${nivelOriginal} a ${nivelNuevo}`);
+
+          // Si está cambiando a nivel 4 (P. Específica), debe tener un padre nivel 3
+          if (nivelNuevo === 4) {
+            if (!formData.idPadre) {
+              alerts.basicAlert(
+                'Padre requerido',
+                'Una Partida Específica (nivel 4) debe tener una Partida Genérica (nivel 3) como padre',
+                'warning'
+              );
+              this.saving = false;
+              return;
+            }
+
+            // Verificar que el padre sea nivel 3
+            const parentItem = this.classifierTreeFlat.find(item => item.id === formData.idPadre);
+            if (parentItem && parentItem.nivel !== 3) {
+              alerts.basicAlert(
+                'Padre inválido',
+                'El padre de una Partida Específica debe ser una Partida Genérica (nivel 3)',
+                'warning'
+              );
+              this.saving = false;
+              return;
+            }
+
+            // Asegurar que es hoja
+            formData.esHoja = true;
+          }
+
+          // Si está cambiando a nivel 3 (P. Genérica), verificar que no tenga hijos
+          if (nivelNuevo === 3 && nivelOriginal === 4) {
+            const itemTree = this.modalEditingItem as IObjectClassifierTree;
+            if (itemTree.hijos && itemTree.hijos.length > 0) {
+              alerts.basicAlert(
+                'No se puede cambiar',
+                'No se puede cambiar a nivel 3 porque este item tiene hijos. Debe eliminar o reubicar los hijos primero.',
+                'warning'
+              );
+              this.saving = false;
+              return;
+            }
+
+            // Asegurar que puede tener hijos
+            formData.esHoja = false;
+          }
+
+          // Confirmar el cambio de nivel
+          const confirmResult = await alerts.confirmAlert(
+            'Confirmar cambio de nivel',
+            `¿Está seguro de cambiar de ${this.getNombreNivel(nivelOriginal)} a ${this.getNombreNivel(nivelNuevo)}?`,
+            'question',
+            'Sí, cambiar'
+          );
+
+          if (!confirmResult.isConfirmed) {
+            this.saving = false;
+            return;
+          }
+        }
+      }
+
       if (this.modalMode === 'create') {
         // Crear nuevo item
         await this.adminService.addObjectClassification(formData).toPromise();

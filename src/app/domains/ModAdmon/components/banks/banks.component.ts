@@ -106,8 +106,14 @@ export class BanksComponent implements CanComponentDeactivate {
     },
   };
 
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'name',
         headerName: 'Banco',
@@ -212,6 +218,8 @@ export class BanksComponent implements CanComponentDeactivate {
           return true;
         }, width: 95 },
     ];
+
+    return this._colMaster;
   }
 
   obtenerDatos() {

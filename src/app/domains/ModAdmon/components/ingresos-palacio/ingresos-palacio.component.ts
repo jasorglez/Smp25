@@ -27,7 +27,16 @@ import { PdfButtonCellRendererComponent } from '../egresos-palacio/pdf-button-ce
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
-import * as bootstrap from 'bootstrap';
+import { CustomersService } from 'app/services/customers.service';
+import { ContribuyenteModalService } from './services/contribuyente-modal.service';
+
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+
+declare var bootstrap: any;
 
 @Component({
   selector: 'app-ingresos-palacio',
@@ -51,6 +60,8 @@ export class IngresosPalacioComponent implements OnInit {
   private BranchsService = inject(BranchsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private customerService = inject(CustomersService);
+  private contribuyenteModalService = inject(ContribuyenteModalService);
   authService = inject(AuthService);
   private formBuilder = inject(FormBuilder);
 
@@ -68,6 +79,12 @@ export class IngresosPalacioComponent implements OnInit {
       fechaInicio: ['2024-10', Validators.required],
       fechaFin: [mes, Validators.required]
     });
+
+    // Suscribirse a la solicitud de apertura del modal de contribuyente
+    this.contribuyenteModalService.modalRequest$.subscribe((data) => {
+      console.log('📨 Componente padre recibió solicitud de abrir modal:', data);
+      this.openContribuyenteModal(data.idRoot);
+    });
   }
 
   constructor() {
@@ -83,7 +100,6 @@ export class IngresosPalacioComponent implements OnInit {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idAccount = null;
 
-      await this.getBillingManagementInfo();
       await this.getBankAccounts();
       await this.getIncomes();
 
@@ -117,9 +133,41 @@ export class IngresosPalacioComponent implements OnInit {
   root: number;
   idBranch: number;
   bankAccounts: any[] = [];
-  prefixAndConsecutive: any[] = [];
   tipos: any[] = [];
 
+  // Propiedades para el modal de contribuyente
+  showContribuyenteModal: boolean = false;
+  newContribuyente: any = {
+    idRoot: 0,
+    idBranch: 0,
+    idTypecop: 1, // CUSTOMERS
+    nameContact: '',
+    company: '',
+    rfc: '',
+    city: '',
+    position: 'CONTRIBUYENTE',
+    address: '',
+    addressFiscal: '',
+    cp: '',
+    state: '',
+    neighborhood: '',
+    total: 0,
+    radio: 0,
+    phone: '',
+    mobile: '',
+    email: 'info@bi2.mx',
+    vigente: true,
+    numCliente: 0,
+    latitud: '',
+    longitud: '',
+    typeCustomer: '',
+    typework: '',
+    type: 'CUSTOMERS',
+    fieldContact: 0,
+    fieldBank: 0,
+    fieldCuenta: 0,
+    active: true
+  };
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -162,16 +210,6 @@ export class IngresosPalacioComponent implements OnInit {
 
 
 
-  async getBillingManagementInfo() {
-    this.administrationService.getBillingManagementInfo(this.root).subscribe(
-      (data: any) => {
-        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-      },
-      (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
-      }
-    );
-  }
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -210,8 +248,9 @@ export class IngresosPalacioComponent implements OnInit {
       return null;
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
-      if (event.column.getColId() !== 'pdfReport') {
+      // Seleccionar la fila al hacer clic en cualquier celda, excepto en las columnas de reportes
+      const colId = event.column.getColId();
+      if (colId !== 'pdfReport' && colId !== 'contributionReport') {
         event.node.setSelected(true);
       }
     },
@@ -296,17 +335,22 @@ export class IngresosPalacioComponent implements OnInit {
 
   async getIngresosCatalog() {
     // Obtener catálogo de ingresos nivel 2
-    this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2).subscribe(
-      (data: any) => {
-        this.ingresosCatalog = data || [];
-      },
-      error => {
-        console.error('Error cargando catálogo de ingresos:', error);
-        this.ingresosCatalog = [];
-      }
-    )
-    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Catálogo Ingresos`, 'Menu Administración - Palacio Municipal - Ingresos',
-         this.trackingService.getEmail() );
+    return new Promise<void>((resolve) => {
+      this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2).subscribe(
+        (data: any) => {
+          this.ingresosCatalog = data || [];
+          this.refreshColumnDefinitions(); // Refrescar columnas después de cargar datos
+          resolve();
+        },
+        error => {
+          console.error('Error cargando catálogo de ingresos:', error);
+          this.ingresosCatalog = [];
+          resolve();
+        }
+      );
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Catálogo Ingresos`, 'Menu Administración - Palacio Municipal - Ingresos',
+           this.trackingService.getEmail() );
+    });
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -377,8 +421,18 @@ export class IngresosPalacioComponent implements OnInit {
   }
 
   // Column Definitions: Defines the columns to be displayed.
+  // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
+  // que causa re-renderizado de filtros en cada ciclo de change detection
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    // Si ya fue inicializado, retornar la misma instancia
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    // Inicializar una sola vez
+    this._colMaster = [
       {
         field: 'countItems',
         headerName: 'Items',
@@ -392,6 +446,23 @@ export class IngresosPalacioComponent implements OnInit {
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
       {
+        field: 'contributionReport',
+        headerName: 'Contribución',
+        width: 110,
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            console.log('🔵 Contribución Click detectado en Ingresos - ID:', node.data.id);
+            this.toggleReportDetail(node, 'contribution');
+          },
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#28a745',
+          title: 'Hacer clic para generar el reporte de Contribución'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', textAlign: 'center' }
+      },
+      {
         field: 'pdfReport',
         headerName: 'PDF',
         width: 80,
@@ -399,7 +470,7 @@ export class IngresosPalacioComponent implements OnInit {
         cellRendererParams: {
           onClick: (node: any) => {
             console.log('🔵 PDF Click detectado en Ingresos - ID:', node.data.id);
-            this.toggleReportDetail(node);
+            this.toggleReportDetail(node, 'report');
           },
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
@@ -525,8 +596,18 @@ export class IngresosPalacioComponent implements OnInit {
         width: 105
       },
 
-    ]
-  };
+    ];
+
+    return this._colMaster;
+  }
+
+  // Método para refrescar las definiciones de columnas
+  private refreshColumnDefinitions() {
+    this._colMaster = [];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colMaster);
+    }
+  }
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
@@ -606,6 +687,7 @@ export class IngresosPalacioComponent implements OnInit {
         catalogsService: this.catalogsService,
         administrationService: this.administrationService,
         catalogadmonService: this.catalogadmonService,
+        customerService: this.customerService,
         rootService: this.rootService,
         base64EncodeService: this.base64EncodeService,
         ingresosCatalog: this.ingresosCatalog,
@@ -641,7 +723,7 @@ export class IngresosPalacioComponent implements OnInit {
     const newItem = {
       id: tempId,
       idAccount      : this._idAccount,
-      numberDocument : "",
+      // ✅ NO generar numberDocument - el backend lo hará automáticamente
       idBusinnes     : this.root,
       idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
       date           : fechaPago.toISOString(), // Pago = Entrega + 7 días
@@ -703,30 +785,27 @@ async saveChanges() {
     (row) => row.__modified && !row.__isNew
   );
 
-  // Solo validar configuración si hay nuevas filas que necesitan número de documento
-  let currentConsecutive = 0;
+  // ✅ VALIDACIÓN: Verificar que la cuenta tenga maskin configurado
   if (newRows.length > 0) {
-    if (!this.prefixAndConsecutive?.[0]) {
+    const selectedAccount = this.bankAccounts.find(acc => acc.id === this._idAccount);
+
+    if (!selectedAccount) {
+      alerts.basicAlert('Error', 'Debe seleccionar una cuenta bancaria', 'error');
+      return;
+    }
+
+    if (!selectedAccount.maskin || !selectedAccount.maskin.trim()) {
       alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
+        'Configuración incompleta',
+        'La cuenta seleccionada no tiene configurada una máscara de ingreso (maskin). Por favor, configure la cuenta en el módulo de Cuentas Bancarias.',
         'error'
       );
       return;
     }
-
-    // Obtener el último consecutivo específico de esta cuenta bancaria
-    currentConsecutive = await this.getLastConsecutiveForAccount(this._idAccount);
-
-    // Generar números de documento para nuevas filas
-    newRows.forEach(row => {
-      currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-    });
   }
 
   try {
-    // Guardar los registros de income
+    // Guardar los registros de income (el backend generará numberDocument automáticamente)
     await this.saveIncomeRecords(newRows, modifiedRows);
 
     // Éxito
@@ -846,6 +925,12 @@ async saveChanges() {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+
+    // ✅ NO enviar numberDocument - el backend lo generará automáticamente
+    if (cleanedData.__isNew || cleanedData.id?.toString().startsWith('temp_')) {
+      delete cleanedData.numberDocument;
+    }
+
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
@@ -920,11 +1005,11 @@ async saveChanges() {
     }
   }
 
-  async toggleReportDetail(node: any) {
-    console.log('🟢 toggleReportDetail llamado en Ingresos - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
+  async toggleReportDetail(node: any, reportType: 'report' | 'contribution' = 'report') {
+    console.log('🟢 toggleReportDetail llamado en Ingresos - ID:', node.data.id, 'tipo:', reportType, 'isGenerating:', this.isGeneratingReport);
 
     const api = this.gridApi;
-    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === reportType;
 
     if (isCurrentlyExpanded) {
       // Si ya está expandido con el reporte, colapsarlo
@@ -989,12 +1074,12 @@ async saveChanges() {
       });
 
       // Si la fila está expandida con otro tipo de detalle, cerrarla
-      if (node.expanded && node.data.detailType !== 'report') {
+      if (node.expanded && node.data.detailType !== reportType) {
         node.setExpanded(false);
       }
 
-      // Cambiar el tipo de detalle a 'report'
-      node.data.detailType = 'report';
+      // Cambiar el tipo de detalle al tipo solicitado
+      node.data.detailType = reportType;
 
       // Agregar la descripción del catálogo formateada para el PDF
       if (node.data.idCustomer && this.ingresosCatalog) {
@@ -1218,55 +1303,6 @@ async saveChanges() {
   }
 
 
-  /**
-   * Obtiene el último consecutivo usado para una cuenta bancaria específica
-   * Analiza todos los ingresos de la cuenta y extrae el número más alto
-   */
-  private async getLastConsecutiveForAccount(idAccount: number): Promise<number> {
-    try {
-      // Obtener todos los ingresos de esta cuenta bancaria desde el servidor
-      const allIncomes: any = await lastValueFrom(
-        this.incomesAndExpensesService.getIncomesAndExpenses(this.root)
-      );
-
-      // Filtrar solo los de esta cuenta y tipo DEPOSITO
-      const accountIncomes = allIncomes?.filter((income: any) =>
-        income.type === "DEPOSITO" &&
-        income.idAccount === idAccount &&
-        income.numberDocument
-      ) || [];
-
-      if (accountIncomes.length === 0) {
-        // Si no hay ingresos previos, empezar desde 0
-        return 0;
-      }
-
-      // Extraer los consecutivos numéricos de los números de documento
-      const prefix = this.prefixAndConsecutive[0].prefix;
-      const consecutives = accountIncomes
-        .map((income: any) => {
-          const numberDocument = income.numberDocument || '';
-          // Remover el prefijo y convertir a número
-          if (numberDocument.startsWith(prefix)) {
-            const numericPart = numberDocument.substring(prefix.length);
-            return parseInt(numericPart, 10);
-          }
-          return 0;
-        })
-        .filter((num: number) => !isNaN(num));
-
-      // Retornar el máximo consecutivo encontrado
-      const maxConsecutive = consecutives.length > 0 ? Math.max(...consecutives) : 0;
-
-      console.log(`✅ Último consecutivo para cuenta ${idAccount}: ${maxConsecutive}`);
-      return maxConsecutive;
-
-    } catch (error) {
-      console.error('Error obteniendo último consecutivo:', error);
-      // En caso de error, retornar 0 para empezar desde el principio
-      return 0;
-    }
-  }
   excel(){
     const modalElement = document.getElementById('optionExcel');
         if (modalElement) {
@@ -1318,6 +1354,93 @@ async saveChanges() {
 
   closeModal() {
     this.modalInstance?.hide();
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE CONTRIBUYENTE ====================
+
+  openContribuyenteModal(idRoot: number) {
+    console.log('🟣 openContribuyenteModal ejecutado con idRoot:', idRoot);
+    this.newContribuyente = {
+      idRoot: idRoot,
+      idBranch: this.idBranch || 0,
+      idTypecop: 1, // CUSTOMERS
+      nameContact: '',
+      company: '',
+      rfc: '',
+      city: '',
+      position: 'CONTRIBUYENTE',
+      address: '',
+      addressFiscal: '',
+      cp: '',
+      state: '',
+      neighborhood: '',
+      total: 0,
+      radio: 0,
+      phone: '',
+      mobile: '',
+      email: 'info@bi2.mx',
+      vigente: true,
+      numCliente: 0,
+      latitud: '',
+      longitud: '',
+      typeCustomer: '',
+      typework: '',
+      type: 'CUSTOMERS',
+      fieldContact: 0,
+      fieldBank: 0,
+      fieldCuenta: 0,
+      active: true
+    };
+
+    this.showContribuyenteModal = true;
+    document.body.classList.add('modal-open');
+    console.log('✅ Modal de contribuyente abierto. showContribuyenteModal =', this.showContribuyenteModal);
+  }
+
+  closeContribuyenteModal() {
+    this.showContribuyenteModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewContribuyente() {
+    if (!this.newContribuyente.nameContact) {
+      alerts.basicAlert(
+        'Error',
+        'El Nombre del Contribuyente es obligatorio.',
+        'error'
+      );
+      return;
+    }
+
+    // Copiar nameContact a company (para el backend)
+    this.newContribuyente.company = this.newContribuyente.nameContact;
+
+    try {
+      const result: any = await lastValueFrom(
+        this.customerService.addCustomer(this.newContribuyente)
+      );
+
+      alerts.basicAlert(
+        'Contribuyente creado',
+        'El contribuyente se ha creado correctamente.',
+        'success'
+      );
+
+      this.contribuyenteModalService.confirmSave({
+        id: result.id,
+        name: this.newContribuyente.nameContact
+      });
+
+      this.closeContribuyenteModal();
+
+    } catch (error) {
+      console.error('Error creando contribuyente:', error);
+      alerts.basicAlert(
+        'Error',
+        `Error al crear el contribuyente. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
   }
 
 }

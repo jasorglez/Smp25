@@ -67,6 +67,22 @@
         >
           <i class="bi bi-trash"></i>
         </button>
+        <button
+          type="button"
+          class="btn btn-info"
+          (click)="openConsolidatedReportModal()"
+          [disabled]="!idAccount"
+          title="Generar Reporte Consolidado PDF"
+        >
+          <i class="bi bi-file-earmark-pdf"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-success position-relative"
+          (click)="excel()"
+          title="Exportar a Excel">
+          <img src='./assets/img/excel.png' width="17" height="17">
+        </button>
       </div>
     </div>
 
@@ -83,6 +99,7 @@
         (cellValueChanged)="onCellValueChanged($event)"
         (rowSelected)="onSelectedRow($event)"
         (gridReady)="onGridReady($event)"
+        (cellDoubleClicked)="onCellDoubleClicked($event)"
         rowSelection="single"
         [class.disabled-grid]="!idAccount"
         [stopEditingWhenCellsLoseFocus]="true"
@@ -140,3 +157,152 @@
 
 <!-- Backdrop del modal -->
 <div class="modal-backdrop fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'"></div>
+
+<!-- Modal para Reporte Consolidado -->
+<div class="modal fade" [class.show]="showConsolidatedReportModal" [style.display]="showConsolidatedReportModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Reportes de Egresos
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeConsolidatedReportModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Seleccione el rango de fechas y el tipo de reporte que desea generar.
+        </p>
+        <form>
+          <div class="mb-3">
+            <label for="reportStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="reportStartDate"
+              [(ngModel)]="reportStartDate"
+              name="reportStartDate"
+              required>
+          </div>
+          <div class="mb-3">
+            <label for="reportEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="reportEndDate"
+              [(ngModel)]="reportEndDate"
+              name="reportEndDate"
+              required>
+          </div>
+
+          <!-- Tipo de Reporte -->
+          <div class="mb-3">
+            <label class="form-label">Tipo de Reporte <span class="text-danger">*</span></label>
+            <div class="d-flex flex-column gap-2">
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportConsolidado"
+                  value="consolidado"
+                  [(ngModel)]="reportType"
+                  checked>
+                <label class="form-check-label" for="reportConsolidado">
+                  <i class="bi bi-file-earmark-text me-1"></i>Consolidado
+                  <small class="text-muted d-block">Reporte agrupado por Objeto de Gasto</small>
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportAgrupado"
+                  value="agrupado"
+                  [(ngModel)]="reportType">
+                <label class="form-check-label" for="reportAgrupado">
+                  <i class="bi bi-collection me-1"></i>Agrupado
+                  <small class="text-muted d-block">Reporte agrupado por categoría</small>
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportEgresos"
+                  value="egresos"
+                  [(ngModel)]="reportType">
+                <label class="form-check-label" for="reportEgresos">
+                  <i class="bi bi-list-ul me-1"></i>Egresos
+                  <small class="text-muted d-block">Listado completo de egresos</small>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-warning" *ngIf="isGeneratingConsolidatedReport">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Generando...</span>
+              </div>
+              <span>Generando reporte consolidado... Por favor espere.</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeConsolidatedReportModal()" [disabled]="isGeneratingConsolidatedReport">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-info"
+          (click)="generateConsolidatedReport()"
+          [disabled]="!reportStartDate || !reportEndDate || isGeneratingConsolidatedReport">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="optionExcel" tabindex="-1" aria-labelledby="optionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title" id="optionModalLabel">Exportar Ingresos a Excel</h5>
+        <button type="button" class="btn-close" (click)="closeModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form [formGroup]="myForm" (ngSubmit)="onSubmit()">
+          <div class="mb-3">
+            <label for="tipoReporte" class="form-label">Tipo de Reporte</label>
+            <select id="tipoReporte" class="form-select" formControlName="tipoReporte">
+              <option value="ESTATAL">ESTATAL</option>
+              <option value="MUNICIPAL">MUNICIPAL</option>
+              <option value="PROPIA">PROPIA</option>
+              <option value="GENERAL">GENERAL</option>
+            </select>
+          </div>
+          <div class="row g-3">
+            <div class="col">
+              <label for="fechaInicio" class="form-label">Fecha</label>
+              <input type="month" class="form-control" id="fechaInicio" min="2024-10"  formControlName="fechaInicio">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button type="submit" class="btn btn-success" [disabled]="myForm.invalid" (click)="onSubmit()">
+          <i class="bi bi-file-earmark-excel"></i> Exportar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop del modal de reporte consolidado -->
+<div class="modal-backdrop fade" [class.show]="showConsolidatedReportModal" [style.display]="showConsolidatedReportModal ? 'block' : 'none'"></div>

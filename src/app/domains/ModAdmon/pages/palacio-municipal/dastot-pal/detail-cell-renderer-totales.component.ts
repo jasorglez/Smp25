@@ -77,6 +77,15 @@ export class DetailCellRendererTotalesComponent {
       }
     },
     {
+      field: 'descripcion',
+      headerName: 'Descripción',
+      flex: 2,
+      valueGetter: (params) => {
+        // Obtener la descripción desde el contexto del padre
+        return this.params?.data?.nameAccount || '';
+      }
+    },
+    {
       field: 'date',
       headerName: 'Fecha',
       flex: 1,
@@ -111,7 +120,7 @@ export class DetailCellRendererTotalesComponent {
   gridOptions: any = {
     headerHeight: 28,
     rowHeight: 24,
-    domLayout: 'autoHeight',
+    domLayout: 'normal', // Cambiado de 'autoHeight' a 'normal' para habilitar scroll
     groupDefaultExpanded: 0, // Grupos contraídos por defecto
     suppressAggFuncInHeader: true, // No mostrar "(sum)" en el header
   };

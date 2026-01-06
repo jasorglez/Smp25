@@ -48,19 +48,12 @@ export class SelectDepartmentEditorComponent implements ICellEditorAngularComp, 
   getValue(): any {
     console.log('🎯 SelectDepartmentEditor.getValue() - selectedValue:', this.selectedValue);
 
-    const selectedOption = this.options.find(o => o.id == this.selectedValue);
+    // ✅ Retornar solo el ID (número), no el objeto completo
+    // AG Grid espera que el tipo de dato coincida con el campo (departmentId = número)
+    const selectedId = this.selectedValue ? Number(this.selectedValue) : null;
 
-    if (selectedOption) {
-      const result = {
-        id: selectedOption.id,
-        name: selectedOption.description
-      };
-      console.log('✅ Retornando objeto:', result);
-      return result;
-    }
-
-    console.log('⚠️ No se encontró opción, retornando valor crudo:', this.selectedValue);
-    return this.selectedValue;
+    console.log('✅ Retornando ID:', selectedId);
+    return selectedId;
   }
 
   isPopup(): boolean {

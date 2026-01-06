@@ -44,8 +44,7 @@ interface IncomeData {
     AgGridModule,
     FormsModule,
     CommonModule,
-    NgApexchartsModule,
-    DetailCellRendererTotalesComponent,
+    NgApexchartsModule
   ],
   templateUrl: './dasing-pal.component.html',
   styleUrl: './dasing-pal.component.scss',

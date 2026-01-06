@@ -300,8 +300,14 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   };
 
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'id',
         headerName: 'ID',
@@ -555,6 +561,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
         editable: true,
       },
     ];
+
+    return this._colMaster;
   }
 
   // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
@@ -874,7 +882,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       rfc: '',
       city: '',
       mobile: '',
-      email: 'info@x.com',
+      email: 'info@bi2.mx',
       address: '',
       addressfiscal: '',
       state: '',

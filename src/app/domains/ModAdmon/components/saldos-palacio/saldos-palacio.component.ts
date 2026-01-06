@@ -72,8 +72,15 @@ export class SaldosPalacioComponent {
     },
   };
 
+  private _colMaster: ColDef[] = [];
+  private _colDetails: ColDef[] = [];
+
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'idBanco',
         headerName: 'Banco',
@@ -101,7 +108,7 @@ export class SaldosPalacioComponent {
         field: 'nameAccount',
         headerName: 'Nombre Cuenta',
         editable: false,
-        width: 200,
+        width: 360,
         filter: true,
       },
       {
@@ -155,11 +162,45 @@ export class SaldosPalacioComponent {
             currency: 'MXN',
           }),
       },
+      {
+        field: 'maskin',
+        headerName: 'Mask In',
+        editable: false,
+        width: 120,
+        filter: true,
+      },
+      {
+        field: 'consecin',
+        headerName: 'Consec In',
+        editable: false,
+        width: 110,
+        filter: true,
+      },
+      {
+        field: 'maskex',
+        headerName: 'Mask Ex',
+        editable: false,
+        width: 120,
+        filter: true,
+      },
+      {
+        field: 'consecex',
+        headerName: 'Consec Ex',
+        editable: false,
+        width: 110,
+        filter: true,
+      },
     ];
+
+    return this._colMaster;
   }
 
   get colDetails(): ColDef[] {
-    return [
+    if (this._colDetails.length > 0) {
+      return this._colDetails;
+    }
+
+    this._colDetails = [
       {
         field: 'numeroDocumento',
         headerName: 'Numero Documento',
@@ -257,6 +298,8 @@ export class SaldosPalacioComponent {
         },
       },
     ];
+
+    return this._colDetails;
   }
 
   obtenerBanks() {

@@ -78,6 +78,16 @@ export class IncomesAndExpensesService {
     );
   }
 
+  getExcelEgresos(Mes: string, idCompany: number, Type: string): Observable<any> {
+    console.log("---",Mes, idCompany, Type)
+    return this.http.post<any>(
+      environment.urlAdministration +
+      `/Incomeandexpense/ProcesadorExcelEgresos?Mes=${Mes}&idCompany=${idCompany}&Type=${Type}`,
+      {}, // body vacío
+      { headers: this.tracking.getHeaders() }
+    );
+  }
+
   getIncomesByAccount(idBusiness: number, type: string, startDate: string, endDate: string): Observable<any> {
     return this.http.get<any[]>(`${environment.urlAdministration}/Incomeandexpense/income-by-account?idBusiness=${idBusiness}&type=${type}&startDate=${startDate}&endDate=${endDate}`, { headers: this.tracking.getHeaders() });
   }

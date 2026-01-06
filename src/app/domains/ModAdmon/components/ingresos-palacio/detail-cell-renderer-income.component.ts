@@ -8,15 +8,17 @@ import { alerts } from 'app/helpers/alerts';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { ContribuyenteModalService } from './services/contribuyente-modal.service';
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-detail-cell-renderer-income',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -55,7 +57,7 @@ import { lastValueFrom } from 'rxjs';
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
-        style="height: 400px; width: 100%;">
+        style="height: 700px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -85,6 +87,31 @@ import { lastValueFrom } from 'rxjs';
         </div>
       </div>
     </div>
+
+    <!-- Contribution Report View -->
+    <div class="report-detail-container" *ngIf="detailType === 'contribution'">
+      <div class="report-header d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Recibo de Contribución - Documento: {{ incomeData?.numberDocument || 'Sin Número' }}</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
+          <i class="bi bi-x-lg"></i> Cerrar
+        </button>
+      </div>
+      <div class="report-content" style="height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+        <iframe
+          *ngIf="pdfUrl"
+          [src]="pdfUrl"
+          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
+        </iframe>
+        <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
+          <div class="text-center">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              Generando reporte de contribución...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     .detail-grid-container {
@@ -107,6 +134,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private contribuyenteModalService = inject(ContribuyenteModalService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -116,6 +144,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   ivaPercent: number = 0;
   catalogosHijos: any[] = []; // Catálogos de nivel 3 (hijos del catálogo de ingreso seleccionado)
   setupManagementInfo: any = null; // Información de firmas
+  contribuyentes: any[] = []; // Lista de contribuyentes
 
   // Totals
   subtotal: number = 0;
@@ -132,6 +161,11 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     // Initial load will happen in agInit
+
+    // Suscribirse a la confirmación de guardado del modal de contribuyente
+    this.contribuyenteModalService.saveConfirmed$.subscribe((contribuyenteData) => {
+      this.onContribuyenteCreated(contribuyenteData);
+    });
   }
 
   agInit(params: ICellRendererParams): void {
@@ -145,8 +179,11 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       this.loadSATCatalogs();
       this.getBillingManagementInfo();
       this.loadCatalogosHijos(); // Cargar los catálogos hijos del catálogo de ingreso
+      this.loadContribuyentes(); // Cargar contribuyentes
       this.loadConceptsData();
-    } else if (this.detailType === 'report') {
+    } else if (this.detailType === 'report' || this.detailType === 'contribution') {
+      // Cargar contribuyentes para el reporte de contribución
+      this.loadContribuyentes();
       this.loadConceptsDataForReport();
     }
   }
@@ -280,6 +317,35 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadContribuyentes() {
+    console.log('🔄 loadContribuyentes iniciado');
+    if (this.context && this.context.customerService && this.context.idRoot) {
+      this.context.customerService.getCustomersByCompany(this.context.idRoot, 'CUSTOMERS').subscribe({
+        next: (data: any[]) => {
+          this.contribuyentes = data || [];
+          console.log('✅ Contribuyentes cargados:', this.contribuyentes.length, 'items');
+          console.log('📋 Primeros 3:', this.contribuyentes.slice(0, 3));
+
+          // Actualizar las columnas del grid
+          if (this.gridApi) {
+            this.gridApi.setGridOption('columnDefs', this.colDefs);
+            console.log('✅ Columnas actualizadas en el grid');
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error loading contribuyentes:', error);
+          this.contribuyentes = [];
+        }
+      });
+    } else {
+      console.warn('⚠️ No se puede cargar contribuyentes:', {
+        hasContext: !!this.context,
+        hasCustomerService: !!this.context?.customerService,
+        idRoot: this.context?.idRoot
+      });
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
@@ -297,17 +363,16 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       {
         field: 'dateExpend',
         headerName: 'Fecha',
-        type: 'date',
         editable: true,
-        width: 100,
+        cellDataType: 'date',
+        width: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
           const date = new Date(params.value);
-          return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-          });
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          return `${day}/${month}/${year}`;
         }
       },
       {
@@ -321,7 +386,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         field: 'idCatIng',
         headerName: 'Detalle Ingreso',
         editable: true,
-        width: 280,
+        width: 250,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.catalogosHijos.map(cat => cat.id)
@@ -345,6 +410,34 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         type: 'text',
         editable: true,
         width: 250
+      },
+      {
+        field: 'idContribuyente',
+        headerName: 'Contribuyente',
+        editable: true,
+        width: 230,
+        cellEditor: 'selectWithTooltipEditorV2',
+        cellEditorParams: {
+          options: [
+            ...this.contribuyentes.map(c => ({
+              id: c.id,
+              description: c.description,
+              valueAddition: c.id.toString(),
+              valueAddition2: c.description
+            })),
+            {
+              id: -999,
+              description: '➕ Agregar nuevo contribuyente...',
+              valueAddition: '-999',
+              valueAddition2: '➕ Agregar nuevo contribuyente...'
+            }
+          ]
+        },
+        valueFormatter: (params) => {
+          if (!params.value || params.value === -999) return '';
+          const found = this.contribuyentes.find(c => c.id === params.value);
+          return found ? found.description : params.value;
+        }
       },
       {
         field: 'unit',
@@ -493,7 +586,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
 
   components = {
     multiLineEditorComponent: MultiLineEditorComponent,
-    searchableSelect: SearchableSelectComponent
+    searchableSelect: SearchableSelectComponent,
+    selectWithTooltipEditorV2: SelectWithTooltipEditorV2Component
   };
 
   addConcept() {
@@ -505,6 +599,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       idExpense: 0,
       dateExpend: this.params.data.date, // Fecha de pago del maestro
       description: '',
+      idContribuyente: 0, // Contribuyente
       quantity: 1,
       unit: 'PARTICIPACIONES', // Valor por defecto
       claveUnidad: '',
@@ -522,7 +617,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       __modified: false
     };
 
-    this.rowData = [...this.rowData, newConcept];
+    this.rowData = [newConcept, ...this.rowData];
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
@@ -532,10 +627,10 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     }
 
     setTimeout(() => {
-      const lastRowIndex = this.rowData.length - 1;
-      this.gridApi.ensureIndexVisible(lastRowIndex);
+      const firstRowIndex = 0;
+      this.gridApi.ensureIndexVisible(firstRowIndex);
       this.gridApi.startEditingCell({
-        rowIndex: lastRowIndex,
+        rowIndex: firstRowIndex,
         colKey: 'idCatIng' // Focus en Detalle Ingreso
       });
     }, 0);
@@ -633,6 +728,23 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   }
 
   onCellValueChanged(event: any) {
+    console.log('🔵 onCellValueChanged disparado:', {
+      field: event.colDef.field,
+      oldValue: event.oldValue,
+      newValue: event.newValue
+    });
+
+    // Si se seleccionó "Agregar nuevo contribuyente"
+    if (event.colDef.field === 'idContribuyente' && event.newValue === -999) {
+      console.log('✅ Detectado: Agregar nuevo contribuyente');
+      event.data.idContribuyente = event.oldValue || null;
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      }
+      this.openAddContribuyenteModal();
+      return; // No marcar como modificado ni unsaved
+    }
+
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
 
@@ -817,35 +929,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
             style: 'sectionTitle',
             margin: [0, 10, 0, 10]
           },
-          {
-            table: {
-              widths: ['25%', '75%'],
-              body: [
-                [
-                  { text: 'FECHA PAGO:', style: 'masterLabel' },
-                  { text: this.formatDate(this.incomeData?.date), style: 'masterValue' }
-                ],
-                [
-                  { text: 'CATÁLOGO INGRESO:', style: 'masterLabel' },
-                  {
-                    text: `${this.getCatalogoIngresoText()}        $ ${this.formatCurrency(this.incomeData?.total || 0)}`,
-                    style: 'masterValue'
-                  }
-                ]
-              ]
-            },
-            layout: {
-              hLineWidth: () => 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#cccccc',
-              vLineColor: () => '#cccccc',
-              paddingTop: () => 5,
-              paddingBottom: () => 5,
-              paddingLeft: () => 8,
-              paddingRight: () => 8
-            },
-            margin: [0, 0, 0, 15]
-          },
+          this.getMasterDetailsTable(),
           // Tabla de Conceptos (Detalle)
           {
             table: {
@@ -859,8 +943,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
                   { text: 'Unidad', style: 'tableHeader', alignment: 'center' },
                   { text: 'Total', style: 'tableHeader', alignment: 'right' }
                 ],
-                // Filas de conceptos
-                ...this.rowData.map(concept => [
+                // Filas de conceptos (filtradas según tipo de reporte)
+                ...this.getFilteredConcepts().map(concept => [
                   { text: concept.description || '', style: 'tableCell' },
                   { text: concept.quantity || '', style: 'tableCell', alignment: 'center' },
                   { text: concept.unit || '', style: 'tableCell', alignment: 'center', fontSize: 7 },
@@ -871,7 +955,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
                   { text: '', border: [false, false, false, false] },
                   { text: '', border: [false, false, false, false] },
                   { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
-                  { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
+                  { text: this.formatCurrency(this.getFilteredTotal()), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
                 ]
               ]
             },
@@ -887,56 +971,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
             },
             margin: [0, 0, 0, 20]
           },
-          // Footer con Firmas
-          {
-            table: {
-              widths: ['33%', '34%', '33%'],
-              body: [
-                [
-                  { text: this.setupManagementInfo?.administratorTitle || 'TESORERO', style: 'signatureTitle', alignment: 'center' },
-                  { text: this.setupManagementInfo?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureTitle', alignment: 'center' },
-                  { text: this.setupManagementInfo?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureTitle', alignment: 'center' }
-                ],
-                [
-                  { text: ' ', margin: [0, 30, 0, 0] },
-                  { text: ' ', margin: [0, 30, 0, 0] },
-                  { text: ' ', margin: [0, 30, 0, 0] }
-                ],
-                [
-                  {
-                    text: '________________________________',
-                    alignment: 'center',
-                    border: [false, true, false, false],
-                    margin: [0, 0, 0, 5]
-                  },
-                  {
-                    text: '________________________________',
-                    alignment: 'center',
-                    border: [false, true, false, false],
-                    margin: [0, 0, 0, 5]
-                  },
-                  {
-                    text: '________________________________',
-                    alignment: 'center',
-                    border: [false, true, false, false],
-                    margin: [0, 0, 0, 5]
-                  }
-                ],
-                [
-                  { text: this.setupManagementInfo?.administratorName || '', style: 'signatureName', alignment: 'center' },
-                  { text: this.setupManagementInfo?.gerencyName || '', style: 'signatureName', alignment: 'center' },
-                  { text: this.setupManagementInfo?.directorName || '', style: 'signatureName', alignment: 'center' }
-                ],
-                [
-                  { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
-                  { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
-                  { text: 'Firma', style: 'signatureLabel', alignment: 'center' }
-                ]
-              ]
-            },
-            layout: 'noBorders',
-            margin: [0, 20, 0, 0]
-          }
+          // Footer con Firmas (varía según el tipo de reporte)
+          this.getSignaturesSection()
         ],
         images: watermarkBase64 ? {
           logo: logoBase64,
@@ -1052,11 +1088,13 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         console.warn('formatDate: Fecha inválida:', dateString);
         return 'Fecha inválida';
       }
-      return date.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
+
+      // Formato dd/mm/yyyy
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+
+      return `${day}/${month}/${year}`;
     } catch (error) {
       console.error('Error al formatear fecha:', error);
       return 'Error en fecha';
@@ -1100,6 +1138,259 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     }
 
     return 'Sin descripción';
+  }
+
+  // Método para abrir el modal de agregar contribuyente
+  openAddContribuyenteModal() {
+    console.log('🟢 openAddContribuyenteModal llamado');
+    console.log('📋 Context disponible:', {
+      hasContext: !!this.context,
+      idRoot: this.context?.idRoot
+    });
+
+    if (!this.context?.idRoot) {
+      console.warn('❌ No se puede abrir modal: falta idRoot');
+      return;
+    }
+
+    console.log('🚀 Llamando al servicio para abrir modal con idRoot:', this.context.idRoot);
+    // Solicitar al servicio que abra el modal en el componente padre
+    this.contribuyenteModalService.openModal({
+      idRoot: this.context.idRoot
+    });
+  }
+
+  // Método para manejar cuando se crea un nuevo contribuyente
+  onContribuyenteCreated(contribuyenteData: { id: number; name: string }) {
+    // Recargar la lista de contribuyentes
+    this.loadContribuyentes();
+
+    // Esperar a que se carguen los contribuyentes y luego auto-seleccionar el nuevo
+    setTimeout(() => {
+      // Buscar la fila actualmente seleccionada
+      const selectedNodes = this.gridApi?.getSelectedNodes();
+      if (selectedNodes && selectedNodes.length > 0) {
+        const selectedRow = selectedNodes[0];
+        selectedRow.setDataValue('idContribuyente', contribuyenteData.id);
+        this.hasUnsavedChanges = true;
+      }
+
+      // Refrescar la columna para mostrar el nuevo valor
+      if (this.gridApi) {
+        this.gridApi.refreshCells({
+          columns: ['idContribuyente'],
+          force: true
+        });
+      }
+    }, 500);
+  }
+
+  // Método auxiliar para generar la tabla de detalles del maestro
+  private getMasterDetailsTable(): any {
+    const baseRows = [];
+
+    if (this.detailType === 'contribution') {
+      // Reporte de contribución: FECHA PAGO y NOMBRE CONTRIBUYENTE en la misma fila
+      const contribuyenteNombre = this.getContribuyenteNombre();
+      baseRows.push([
+        { text: 'FECHA PAGO:', style: 'masterLabel' },
+        { text: this.formatDate(this.incomeData?.date), style: 'masterValue' },
+        { text: 'NOMBRE CONTRIBUYENTE:', style: 'masterLabel' },
+        { text: contribuyenteNombre, style: 'masterValue' }
+      ]);
+    } else {
+      // Reporte normal: Solo FECHA PAGO
+      baseRows.push([
+        { text: 'FECHA PAGO:', style: 'masterLabel' },
+        { text: this.formatDate(this.incomeData?.date), style: 'masterValue' }
+      ]);
+    }
+
+    // Agregar catálogo de ingreso (común para ambos tipos)
+    if (this.detailType === 'contribution') {
+      // Reporte de contribución: 4 columnas con TOTAL DE LA CONTRIBUCIÓN
+      baseRows.push([
+        { text: 'CATÁLOGO INGRESO:', style: 'masterLabel' },
+        { text: this.getCatalogoIngresoText(), style: 'masterValue' },
+        { text: 'TOTAL DE LA CONTRIBUCIÓN:', style: 'masterLabel' },
+        { text: `$ ${this.formatCurrency(this.getFilteredTotal())}`, style: 'masterValue' }
+      ]);
+    } else {
+      // Reporte normal: 2 columnas
+      baseRows.push([
+        { text: 'CATÁLOGO INGRESO:', style: 'masterLabel' },
+        { text: `${this.getCatalogoIngresoText()}        $ ${this.formatCurrency(this.incomeData?.total || 0)}`, style: 'masterValue' }
+      ]);
+    }
+
+    return {
+      table: {
+        widths: this.detailType === 'contribution' ? ['12%', '18%', '25%', '45%'] : ['25%', '75%'],
+        body: baseRows
+      },
+      layout: {
+        hLineWidth: () => 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => '#cccccc',
+        vLineColor: () => '#cccccc',
+        paddingTop: () => 5,
+        paddingBottom: () => 5,
+        paddingLeft: () => 8,
+        paddingRight: () => 8
+      },
+      margin: [0, 0, 0, 15]
+    };
+  }
+
+  // Método auxiliar para filtrar conceptos según tipo de reporte
+  private getFilteredConcepts(): any[] {
+    if (this.detailType === 'contribution') {
+      // Solo conceptos con unidad "CONTRIBUCION"
+      console.log('🔍 Filtrando conceptos para contribución');
+      console.log('🔍 Total rowData:', this.rowData.length);
+      this.rowData.forEach((concept, index) => {
+        console.log(`🔍 Concepto ${index}:`, {
+          unit: concept.unit,
+          idContribuyente: concept.idContribuyente,
+          description: concept.description
+        });
+      });
+
+      const filtered = this.rowData.filter(concept =>
+        concept.unit && concept.unit.toUpperCase() === 'CONTRIBUCION'
+      );
+      console.log('🔍 Conceptos filtrados:', filtered.length);
+      return filtered;
+    }
+    // Reporte normal: todos los conceptos
+    return this.rowData;
+  }
+
+  // Método auxiliar para calcular el total de conceptos filtrados
+  private getFilteredTotal(): number {
+    const filteredConcepts = this.getFilteredConcepts();
+    return filteredConcepts.reduce((acc, concept) => acc + (Number(concept.total) || 0), 0);
+  }
+
+  // Método auxiliar para obtener el nombre del contribuyente
+  private getContribuyenteNombre(): string {
+    // Buscar en los conceptos filtrados el primer contribuyente
+    const filteredConcepts = this.getFilteredConcepts();
+    console.log('🔍 getContribuyenteNombre - Conceptos filtrados:', filteredConcepts.length);
+    console.log('🔍 Primer concepto:', filteredConcepts[0]);
+    console.log('🔍 Array contribuyentes disponibles:', this.contribuyentes.length);
+
+    if (filteredConcepts.length > 0) {
+      const primerConcepto = filteredConcepts[0];
+      const idContribuyente = primerConcepto.idContribuyente;
+
+      console.log('🔍 idContribuyente del primer concepto:', idContribuyente);
+
+      if (idContribuyente) {
+        const contribuyente = this.contribuyentes.find(c => c.id === idContribuyente);
+        console.log('🔍 Contribuyente encontrado:', contribuyente);
+        return contribuyente ? contribuyente.description : 'Sin contribuyente (no encontrado en array)';
+      }
+      return 'Sin contribuyente (idContribuyente vacío)';
+    }
+    return 'Sin contribuyente (sin conceptos filtrados)';
+  }
+
+  // Método auxiliar para generar la sección de firmas según el tipo de reporte
+  private getSignaturesSection(): any {
+    if (this.detailType === 'contribution') {
+      // Reporte de contribución: Solo 2 firmas (sin Presidente Municipal)
+      return {
+        table: {
+          widths: ['50%', '50%'],
+          body: [
+            [
+              { text: this.setupManagementInfo?.administratorTitle || 'TESORERO', style: 'signatureTitle', alignment: 'center' },
+              { text: this.setupManagementInfo?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureTitle', alignment: 'center' }
+            ],
+            [
+              { text: ' ', margin: [0, 30, 0, 0] },
+              { text: ' ', margin: [0, 30, 0, 0] }
+            ],
+            [
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 5]
+              },
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 5]
+              }
+            ],
+            [
+              { text: this.setupManagementInfo?.administratorName || '', style: 'signatureName', alignment: 'center' },
+              { text: this.setupManagementInfo?.gerencyName || '', style: 'signatureName', alignment: 'center' }
+            ],
+            [
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' }
+            ]
+          ]
+        },
+        layout: 'noBorders',
+        margin: [0, 20, 0, 0]
+      };
+    } else {
+      // Reporte normal: 3 firmas (incluye Presidente Municipal)
+      return {
+        table: {
+          widths: ['33%', '34%', '33%'],
+          body: [
+            [
+              { text: this.setupManagementInfo?.administratorTitle || 'TESORERO', style: 'signatureTitle', alignment: 'center' },
+              { text: this.setupManagementInfo?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureTitle', alignment: 'center' },
+              { text: this.setupManagementInfo?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureTitle', alignment: 'center' }
+            ],
+            [
+              { text: ' ', margin: [0, 30, 0, 0] },
+              { text: ' ', margin: [0, 30, 0, 0] },
+              { text: ' ', margin: [0, 30, 0, 0] }
+            ],
+            [
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 5]
+              },
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 5]
+              },
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 5]
+              }
+            ],
+            [
+              { text: this.setupManagementInfo?.administratorName || '', style: 'signatureName', alignment: 'center' },
+              { text: this.setupManagementInfo?.gerencyName || '', style: 'signatureName', alignment: 'center' },
+              { text: this.setupManagementInfo?.directorName || '', style: 'signatureName', alignment: 'center' }
+            ],
+            [
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' }
+            ]
+          ]
+        },
+        layout: 'noBorders',
+        margin: [0, 20, 0, 0]
+      };
+    }
   }
 
   ngOnDestroy() {

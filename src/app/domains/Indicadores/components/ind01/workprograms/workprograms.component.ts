@@ -110,10 +110,16 @@ export class WorkprogramsComponent {
           '</div>';
       },
       set_value: function (node, value, task, section) {
-        node.querySelector('#task_color').value = value || '#ffffff';
+        const input = node.querySelector('#task_color') as HTMLInputElement;
+        if (input) input.value = value || '#ffffff';
       },
       get_value: function (node, task, section) {
-        return node.querySelector('#task_color').value;
+        const input = node.querySelector('#task_color') as HTMLInputElement;
+        return input ? input.value : '#ffffff';
+      },
+      focus: function (node) {
+        const input = node.querySelector('#task_color') as HTMLInputElement;
+        if (input) input.focus();
       }
     };
 
@@ -124,10 +130,16 @@ export class WorkprogramsComponent {
           '</div>';
       },
       set_value: function (node, value, task, section) {
-        node.querySelector('#currency_input').value = value || 0;
+        const input = node.querySelector('#currency_input') as HTMLInputElement;
+        if (input) input.value = value || 0;
       },
       get_value: function (node, task, section) {
-        return parseFloat(node.querySelector('#currency_input').value) || 0;
+        const input = node.querySelector('#currency_input') as HTMLInputElement;
+        return input ? parseFloat(input.value) || 0 : 0;
+      },
+      focus: function (node) {
+        const input = node.querySelector('#currency_input') as HTMLInputElement;
+        if (input) input.focus();
       }
     };
 
@@ -138,10 +150,16 @@ export class WorkprogramsComponent {
           '</div>';
       },
       set_value: function (node, value, task, section) {
-        node.querySelector('#number_input').value = value || 0;
+        const input = node.querySelector('#number_input') as HTMLInputElement;
+        if (input) input.value = value || 0;
       },
       get_value: function (node, task, section) {
-        return parseFloat(node.querySelector('#number_input').value) || 0;
+        const input = node.querySelector('#number_input') as HTMLInputElement;
+        return input ? parseFloat(input.value) || 0 : 0;
+      },
+      focus: function (node) {
+        const input = node.querySelector('#number_input') as HTMLInputElement;
+        if (input) input.focus();
       }
     };
 
@@ -182,7 +200,7 @@ export class WorkprogramsComponent {
     gantt.plugins({
       export_api: true,
       multiselect: true
-    });
+    } as any);
 
     // Definir escalas de zoom disponibles
     const zoomConfig = {
@@ -244,7 +262,7 @@ export class WorkprogramsComponent {
       ]
     };
 
-    gantt.ext.zoom.init(zoomConfig);
+    gantt.ext.zoom.init(zoomConfig as any);
     gantt.ext.zoom.setLevel("month"); // Establecer vista mensual por defecto
 
     gantt.config.lightbox.sections = [

@@ -100,6 +100,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
 
   // Data for dropdowns
   branches: any[] = [];
+  allBranches: any[] = [];
   roots: any[] = [];
   idRoot: number;
 
@@ -207,7 +208,8 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
               return params.data.name;
             }
             if (params.data?.idPermission) {
-              const foundBranch = this.branches.find((item: any) => item.id === params.data.idPermission);
+              const source = this.allBranches.length > 0 ? this.allBranches : this.branches;
+              const foundBranch = source.find((item: any) => item.id === params.data.idPermission);
               return foundBranch ? foundBranch.name : `ID: ${params.data.idPermission}`;
             }
             return params.value || '';
@@ -290,7 +292,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     // Decidir qué mostrar:
     // Si tiene permiso de companies (empresas), mostrar root
     // Si no, mostrar branches directamente
-    this.isRootUser = this.showRoot || hasCompaniesPermission;
+    this.isRootUser =false;
     this.canSeeBranches = this.showRoot || hasBranchesPermission;
 
     // Cargar catálogos y datos
@@ -315,8 +317,10 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
       // Cargar sucursales
       this.branchesService.getBranches(this.idRoot).subscribe(
         (data: any) => {
+          this.allBranches = data;
           this.branches = data;
           this.loadPermissionsData();
+          console.log('Branches loaded:', this.branches);
         },
         (error) => {
           if (error.status == 404) {
@@ -351,7 +355,16 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             ...row,
             // Asegurar que idPermission contenga el ID de la sucursal
             idPermission: row.idPermission || row.idBranch || row.id
+            
           }));
+
+          if (this.allBranches.length > 0) {
+            const assignedIds = this.permissionsRowData.map((p: any) => p.idPermission);
+            this.branches = this.allBranches.filter((b: any) => !assignedIds.includes(b.id));
+            if (this.permissionsGridApi) {
+              this.permissionsGridApi.setGridOption('columnDefs', this.permissionsColumnDefs);
+            }
+          }
 
           this.trackingService.addLog(
             this.trackingService.getnameComp(),
@@ -359,7 +372,8 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             'Menu Administracion Usuarios por Sucursal',
             this.trackingService.getEmail()
           );
-
+          
+          console.log('Data loaded:', this.permissionsRowData);
           setTimeout(() => {
             if (this.permissionsGridApi && this.branches.length > 0) {
               this.permissionsGridApi.refreshCells();

@@ -1,10 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TrackingService } from './tracking.service';
 import { auto } from '@popperjs/core';
 
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 export interface EstimateItem {
   clave: string;

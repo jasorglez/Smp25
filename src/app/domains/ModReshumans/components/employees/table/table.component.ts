@@ -223,9 +223,19 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   };
   
 
+  // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
+  // que causa re-renderizado de filtros en cada ciclo de change detection
+  private _colMaster: ColDef[] = [];
+
   get colMaster(): ColDef[] {
+    // Si ya fue inicializado, retornar la misma instancia
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    // Inicializar una sola vez basado en el modo
     if(this.isAdvanced == true){
-    return [
+    this._colMaster = [
       {
         headerName: '#',
         width: 50,
@@ -933,10 +943,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         width: 150,
       },
     ];
-
-    }else{
-
-      return [
+    } else {
+      this._colMaster = [
       {
         headerName: '#',
         width: 50,
@@ -1682,6 +1690,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
     ];
     }
+
+    // Retornar la instancia cacheada (inicializada en if o else)
+    return this._colMaster;
   }
 
   // ==================== MASTER METHODS ====================

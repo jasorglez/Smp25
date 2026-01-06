@@ -1291,7 +1291,23 @@ export const routes: Routes = [
                       }
                     }
                   ]
-                }
+                },
+              {
+                path: 'contribuyentes',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/palacio-contribuyente/palacio-contribuyente.component'
+                  ).then((c) => c.PalacioContribuyenteComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  type: 'CUSTOMERS',
+                  tracking: {
+                    logMessage: 'Click en Contribuyentes - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                },
+                canDeactivate: [UnsavedChangesGuard]
+              }
 
             ]
           },

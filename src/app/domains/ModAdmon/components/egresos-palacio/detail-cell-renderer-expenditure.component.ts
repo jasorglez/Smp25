@@ -4,7 +4,7 @@ import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ICellEditorParams, ICellEditorComp } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -13,12 +13,11 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { CustomersService } from 'app/services/customers.service';
 import { EmployeesService } from 'app/services/employees.service';
-import { SignalsService } from 'app/services/signals.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
-(pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-detail-cell-renderer-expenditure',
@@ -66,7 +65,7 @@ import { lastValueFrom } from 'rxjs';
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
-        style="height: 400px; width: 100%;">
+        style="height: 480px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -78,7 +77,7 @@ import { lastValueFrom } from 'rxjs';
           <i class="bi bi-x-lg"></i> Cerrar
         </button>
       </div>
-      <div class="report-content" style="height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content" style="height: 480px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <iframe
           *ngIf="pdfUrl"
           [src]="pdfUrl"
@@ -139,7 +138,7 @@ import { lastValueFrom } from 'rxjs';
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onDocumentosGridReady($event)"
         (cellValueChanged)="onDocumentoCellValueChanged($event)"
-        style="height: 400px; width: 100%;">
+        style="height: 480px; width: 100%;">
       </ag-grid-angular>
     </div>
 
@@ -221,7 +220,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   private sanitizer = inject(DomSanitizer);
   private customersService = inject(CustomersService);
   private employeesService = inject(EmployeesService);
-  private signalsService = inject(SignalsService);
   private providerModalService = inject(ProviderModalService);
 
   rowData: any[] = [];
@@ -231,6 +229,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   objetosImpuesto: any[] = [];
   ivaPercent: number = 0;
   objetosGastoHijos: any[] = []; // Objetos de gasto nivel 4 (hijos del objeto de gasto seleccionado nivel 1)
+  objetosGastoNivel1: any[] = []; // Objetos de gasto nivel 1 (para agrupar en reporte)
   setupManagementInfo: any = null; // Información de firmas
   lastSelectedIdCatIng: number = 0; // Para copiar el último objeto de gasto seleccionado
   providers: any[] = []; // Proveedores para el combo box
@@ -283,7 +282,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     //this.loadMeasures();  
   }
 
-  agInit(params: ICellRendererParams): void {
+  async agInit(params: ICellRendererParams): Promise<void> {
     this.params = params;
     this.context = params.context;
     this.expenditureData = params.data;
@@ -291,12 +290,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     if (this.detailType === 'concepts') {
       this.getBillingManagementInfo();
-      this.loadObjetosGastoHijos(); // Cargar los objetos de gasto nivel 4
+      await this.loadObjetosGastoHijos(); // Esperar a que cargue los objetos de gasto nivel 4
       this.loadConceptsData();
     } else if (this.detailType === 'report') {
       this.loadConceptsDataForReport();
     } else if (this.detailType === 'comprobacion') {
-      this.loadProviders(); // Cargar proveedores para el combo box
+      await this.loadProviders(); // Esperar a que cargue proveedores para el combo box
       this.loadDocumentosComprobados();
     }
   }
@@ -304,7 +303,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   loadConceptsData() {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
+      console.log('🔵 DETALLE: Cargando conceptos para egreso ID:', expenditureId);
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
+        console.log(`📊 DETALLE: Conceptos recibidos para ID ${expenditureId}:`, data.length);
         this.rowData = data.map(concept => ({
           ...concept,
           __isNew: false,
@@ -318,11 +319,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-        this.recalculateTotals();
         // Update the count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
+          console.log(`🔄 DETALLE: Actualizando contador en maestro. ID: ${expenditureId}, Count: ${this.rowData.length}`);
           this.context.CONCEPTS.updateCount(expenditureId, this.rowData.length);
         }
+        // Recalcular totales
+        this.recalculateTotals();
       });
     }
   }
@@ -330,6 +333,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   async loadConceptsDataForReport() {
     // Cargar información de firmas
     await this.loadSetupManagementInfo();
+
+    // Si el checkbox "Mostrar Todos" está activo, cargar objetos de nivel 1 y nivel 4 para agrupar
+    if (this.expenditureData?.mostrartodo === true) {
+      await this.loadObjetosNivel1();
+      await this.loadObjetosNivel4ParaReporte();
+    }
 
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
@@ -340,7 +349,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           concept.aplicaIsr = concept.aplicaIsr !== undefined ? concept.aplicaIsr : false;
           concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
         });
-        this.recalculateTotals();
+        // Calculate totals for report (without updating master)
+        this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+        this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+        this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+        this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
         // Generate report after data is loaded
         this.generateReport();
       });
@@ -363,6 +376,48 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       } catch (error) {
         console.error('Error loading setup management info:', error);
         this.setupManagementInfo = null;
+      }
+    }
+  }
+
+  async loadObjetosNivel1() {
+    if (this.context?.administrationService && this.context?.idRoot) {
+      try {
+        console.log('🔵 Cargando objetos de nivel 1 para reporte agrupado...');
+        const data: any = await lastValueFrom(
+          this.context.administrationService.getByNivelObjeto(this.context.idRoot, 1)
+        );
+        this.objetosGastoNivel1 = (data || []).map((obj: any) => ({
+          id: obj.id,
+          codigo: obj.codigo,
+          nombre: obj.nombre,
+          codigoNombre: `${obj.codigo} - ${obj.nombre}`
+        }));
+        console.log('✅ Objetos nivel 1 cargados:', this.objetosGastoNivel1.length);
+      } catch (error) {
+        console.error('❌ Error loading objetos nivel 1:', error);
+        this.objetosGastoNivel1 = [];
+      }
+    }
+  }
+
+  async loadObjetosNivel4ParaReporte() {
+    if (this.context?.administrationService && this.context?.idRoot) {
+      try {
+        console.log('🔵 Cargando objetos de nivel 4 para mapeo en reporte...');
+        const data: any = await lastValueFrom(
+          this.context.administrationService.getByNivelObjeto(this.context.idRoot, 4)
+        );
+        this.objetosGastoHijos = (data || []).map((obj: any) => ({
+          id: obj.id,
+          codigo: obj.codigo,
+          nombre: obj.nombre,
+          codigoNombre: `${obj.codigo} - ${obj.nombre}`
+        }));
+        console.log('✅ Objetos nivel 4 cargados para reporte:', this.objetosGastoHijos.length);
+      } catch (error) {
+        console.error('❌ Error loading objetos nivel 4:', error);
+        this.objetosGastoHijos = [];
       }
     }
   }
@@ -398,40 +453,81 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
   }
 
-  loadObjetosGastoHijos() {
-    // Obtener el código del objeto de gasto del registro maestro
-    const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo;
-
-    if (!objetoGastoCodigo || !this.context || !this.context.administrationService) {
-      console.warn('No se puede cargar objetos de gasto hijos: falta objetoGastoCodigo o administrationService');
+  async loadObjetosGastoHijos(): Promise<void> {
+    if (!this.context || !this.context.administrationService) {
+      console.warn('No se puede cargar objetos de gasto: falta administrationService');
       this.objetosGastoHijos = [];
-      return;
+      return Promise.resolve();
     }
 
-    // Llamar al endpoint getEspecifica para obtener los objetos de gasto específicos usando el código
-    this.context.administrationService.getEspecifica(this.context.idRoot, objetoGastoCodigo).subscribe({
-      next: (data: any[]) => {
-        // Los datos ya vienen con id y codigoNombre
-        this.objetosGastoHijos = (data || []).map(obj => ({
-          ...obj,
-          displayText: obj.codigoNombre // Usar codigoNombre como displayText
-        }));
+    // Verificar si el checkbox "Mostrar Todos" está activado
+    const mostrarTodos = this.expenditureData?.mostrartodo === true;
 
-        // Actualizar las columnas del grid con los nuevos valores
-        if (this.gridApi) {
-          this.gridApi.setGridOption('columnDefs', this.colDefs);
-        }
-      },
-      error: (error) => {
-        console.error('Error loading objetos de gasto específicos:', error);
+    if (mostrarTodos) {
+      // ✅ Checkbox ACTIVO → Mostrar TODOS los objetos de nivel 4
+      console.log('🔵 DETALLE: Checkbox ACTIVO - Cargando TODOS los objetos de nivel 4');
+      return new Promise<void>((resolve) => {
+        this.context.administrationService.getByNivelObjeto(this.context.idRoot, 4).subscribe({
+          next: (data: any[]) => {
+            // Formatear resultado: crear codigoNombre desde codigo + " - " + nombre
+            this.objetosGastoHijos = (data || []).map(obj => ({
+              id: obj.id,
+              codigoNombre: `${obj.codigo} - ${obj.nombre}`,
+              displayText: `${obj.codigo} - ${obj.nombre}`
+            }));
+
+            console.log('✅ DETALLE: Todos los objetos de nivel 4 cargados:', this.objetosGastoHijos.length);
+            // Actualizar las columnas del grid con los nuevos valores
+            this.refreshConceptsColumnDefinitions();
+            resolve();
+          },
+          error: (error) => {
+            console.error('❌ DETALLE: Error loading todos los objetos nivel 4:', error);
+            this.objetosGastoHijos = [];
+            resolve();
+          }
+        });
+      });
+    } else {
+      // ✅ Checkbox INACTIVO → Mostrar solo objetos CONDICIONADOS (hijos del objeto específico)
+      const objetoGastoCodigo = this.expenditureData?.objetoGastoCodigo;
+
+      if (!objetoGastoCodigo) {
+        console.warn('No se puede cargar objetos condicionados: falta objetoGastoCodigo');
         this.objetosGastoHijos = [];
+        return Promise.resolve();
       }
-    });
+
+      console.log('🔵 DETALLE: Checkbox INACTIVO - Cargando objetos CONDICIONADOS del objeto:', objetoGastoCodigo);
+      // Usar getEspecifica para obtener solo los hijos del objeto específico
+      return new Promise<void>((resolve) => {
+        this.context.administrationService.getEspecifica(this.context.idRoot, objetoGastoCodigo).subscribe({
+          next: (data: any[]) => {
+            // Formatear resultado: ya viene con codigoNombre
+            this.objetosGastoHijos = (data || []).map(obj => ({
+              id: obj.id,
+              codigoNombre: obj.codigoNombre,
+              displayText: obj.codigoNombre
+            }));
+
+            console.log('✅ DETALLE: Objetos condicionados cargados:', this.objetosGastoHijos.length);
+            // Actualizar las columnas del grid con los nuevos valores
+            this.refreshConceptsColumnDefinitions();
+            resolve();
+          },
+          error: (error) => {
+            console.error('❌ DETALLE: Error loading objetos condicionados:', error);
+            this.objetosGastoHijos = [];
+            resolve();
+          }
+        });
+      });
+    }
   }
 
   async loadProviders() {
     // Obtener idRoot del contexto o del signalsService
-    const idRoot = this.context?.idRoot || this.signalsService.getRootSelectedBySidebar()();
+    const idRoot = this.context?.idRoot 
 
     if (!idRoot) {
       console.warn('No se puede cargar proveedores/empleados: falta idRoot');
@@ -464,48 +560,56 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     // Determinar si el tipo de comprobante es "Empleados"
     const isEmpleadosType = this.isEmpleadosComprobanteWithTypeComps(typeComps);
 
+    console.log('🔵 DETALLE: Tipo de comprobante es Empleados?', isEmpleadosType);
+
     if (isEmpleadosType) {
       // Cargar empleados cuando el tipo de comprobante es "Empleados"
-      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const idBranch = this.context?.componentParent?.idBranch;
       const idBranchNegative = -Math.abs(idBranch); // Valor negativo del idBranch
 
-      this.employeesService.getEmployees(idBranchNegative).subscribe({
-        next: (data: any[]) => {
-          // Mapear los empleados con name
-          this.providers = (data || []).map(employee => ({
-            id: employee.id,
-            displayText: employee.name || 'Sin nombre'
-          }));
+      return new Promise<void>((resolve) => {
+        this.employeesService.getEmployees(idBranchNegative).subscribe({
+          next: (data: any[]) => {
+            // Mapear los empleados con name
+            this.providers = (data || []).map(employee => ({
+              id: employee.id,
+              displayText: employee.name || 'Sin nombre'
+            }));
 
-          // Actualizar las columnas del grid con los nuevos valores
-          if (this.gridApiDocumentos) {
-            this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion);
+            console.log('✅ DETALLE: Empleados cargados:', this.providers.length);
+            // Actualizar las columnas del grid con los nuevos valores
+            this.refreshDocumentosColumnDefinitions();
+            resolve();
+          },
+          error: (error) => {
+            console.error('❌ DETALLE: Error loading employees:', error);
+            this.providers = [];
+            resolve();
           }
-        },
-        error: (error) => {
-          console.error('Error loading employees:', error);
-          this.providers = [];
-        }
+        });
       });
     } else {
       // Cargar proveedores (comportamiento original)
-      this.customersService.getCustomersByCompany(idRoot, 'PROVIDERS').subscribe({
-        next: (data: any[]) => {
-          // Mapear los proveedores solo con name (company)
-          this.providers = (data || []).map(provider => ({
-            id: provider.id,
-            displayText: provider.name || 'Sin nombre'
-          }));
+      return new Promise<void>((resolve) => {
+        this.customersService.getCustomersByCompany(idRoot, 'PROVIDERS').subscribe({
+          next: (data: any[]) => {
+            // Mapear los proveedores solo con name (company)
+            this.providers = (data || []).map(provider => ({
+              id: provider.id,
+              displayText: provider.name || 'Sin nombre'
+            }));
 
-          // Actualizar las columnas del grid con los nuevos valores
-          if (this.gridApiDocumentos) {
-            this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion);
+            console.log('✅ DETALLE: Proveedores cargados:', this.providers.length);
+            // Actualizar las columnas del grid con los nuevos valores
+            this.refreshDocumentosColumnDefinitions();
+            resolve();
+          },
+          error: (error) => {
+            console.error('❌ DETALLE: Error loading providers:', error);
+            this.providers = [];
+            resolve();
           }
-        },
-        error: (error) => {
-          console.error('Error loading providers:', error);
-          this.providers = [];
-        }
+        });
       });
     }
   }
@@ -550,8 +654,41 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.gridApi.setGridOption('columnDefs', this.colDefs);
   }
 
+  // Método para refrescar las definiciones de columnas de conceptos (invalidar cache)
+  private refreshConceptsColumnDefinitions() {
+    console.log('🔄 DETALLE: Refrescando columnas de conceptos. Objetos disponibles:', this.objetosGastoHijos.length);
+    this._colDefs = []; // Invalidar cache
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colDefs); // Forzar actualización
+      console.log('✅ DETALLE: Columnas de conceptos actualizadas en el grid');
+    } else {
+      console.log('⚠️ DETALLE: Grid API de conceptos no disponible aún');
+    }
+  }
+
+  // Método para refrescar las definiciones de columnas de documentos (invalidar cache)
+  private refreshDocumentosColumnDefinitions() {
+    console.log('🔄 DETALLE: Refrescando columnas de documentos. Proveedores/Empleados disponibles:', this.providers.length);
+    this._colDefsComprobacion = []; // Invalidar cache
+    if (this.gridApiDocumentos) {
+      this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion); // Forzar actualización
+      console.log('✅ DETALLE: Columnas de documentos actualizadas en el grid');
+    } else {
+      console.log('⚠️ DETALLE: Grid API de documentos no disponible aún');
+    }
+  }
+
+  // Cache para las definiciones de columnas de conceptos
+  private _colDefs: ColDef[] = [];
+
   get colDefs(): ColDef[] {
-    return [
+    // Si ya fue inicializado, retornar la misma instancia (evita parpadeo)
+    if (this._colDefs.length > 0) {
+      return this._colDefs;
+    }
+
+    // Inicializar una sola vez
+    this._colDefs = [
       {
         headerName: '#',
         width: 50,
@@ -564,11 +701,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         headerName: 'Fecha',
         editable: true,
         cellDataType: 'date',
-        width: 100,
-        valueFormatter: (params) => this.formatDate(params.value),
-        cellEditorParams: {
-          dateFormat: 'dd/MM/yyyy',
-          datePickerFormat: 'dd/MM/yyyy'
+        width: 120,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const date = new Date(params.value);
+          const day = date.getDate().toString().padStart(2, '0');
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const year = date.getFullYear();
+          return `${day}/${month}/${year}`;
         }
       },
       {
@@ -719,6 +859,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         cellEditor: 'multiLineEditorComponent'
       }
     ];
+
+    // Retornar la instancia inicializada
+    return this._colDefs;
   }
 
   public gridOptions: any = {
@@ -726,9 +869,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
-    dateComponentParams: {
-      dateFormat: 'dd/MM/yyyy'
-    },
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -817,7 +957,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       }
     }
 
-    this.rowData = [...this.rowData, newConcept];
+    // Agregar al PRINCIPIO del array para que sea visible inmediatamente
+    this.rowData = [newConcept, ...this.rowData];
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
@@ -827,16 +968,17 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     setTimeout(() => {
-      const lastRowIndex = this.rowData.length - 1;
-      this.gridApi.ensureIndexVisible(lastRowIndex);
+      // El nuevo registro está en el índice 0 (primera fila)
+      const newRowIndex = 0;
+      this.gridApi.ensureIndexVisible(newRowIndex);
       this.gridApi.startEditingCell({
-        rowIndex: lastRowIndex,
-        colKey: idCatIng ? 'price' : 'idCatIng' // Focus en Precio si es copia, sino en Detalle Egreso
+        rowIndex: newRowIndex,
+        colKey: idCatIng ? 'price' : 'idCatIng'
       });
     }, 0);
   }
 
-  deleteSelectedConcept() {
+  async deleteSelectedConcept() {
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un concepto para eliminar', 'warning');
@@ -844,12 +986,69 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     const selectedConcept = selectedRows[0];
+
+    // Mostrar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar concepto?',
+      `¿Está seguro que desea eliminar este concepto? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    // Si es un registro nuevo (no guardado), eliminarlo solo localmente
+    if (selectedConcept.__isNew) {
+      console.log('🔵 Eliminando registro NUEVO:', selectedConcept.id);
+      console.log('🔵 Total ANTES de eliminar:', this.total);
+      console.log('🔵 rowData length ANTES:', this.rowData.length);
+
+      // Filtrar el concepto del array
+      this.rowData = this.rowData.filter(concept => concept.id !== selectedConcept.id);
+
+      console.log('🔵 rowData length DESPUÉS:', this.rowData.length);
+
+      // Eliminar del grid
+      this.gridApi.applyTransaction({ remove: [selectedConcept] });
+
+      this.hasUnsavedChanges = true;
+
+      // Recalcular totales
+      this.recalculateTotals();
+
+      console.log('🔵 Total DESPUÉS de eliminar:', this.total);
+
+      // Update count in master grid
+      if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
+        this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
+      }
+      return;
+    }
+
+    // Si es un registro existente, llamar al servicio del padre
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.delete) {
-      this.context.CONCEPTS.delete({ data: selectedConcept, api: this.gridApi }, () => {
+      console.log('🟢 Eliminando registro EXISTENTE:', selectedConcept.id);
+      console.log('🟢 Total ANTES de eliminar:', this.total);
+      console.log('🟢 rowData length ANTES:', this.rowData.length);
+
+      // NO pasar el api, para que el padre NO haga applyTransaction
+      this.context.CONCEPTS.delete({ data: selectedConcept }, () => {
+        // Filtrar el concepto del array local
         this.rowData = this.rowData.filter(concept => concept.id !== selectedConcept.id);
-        this.gridApi.setGridOption('rowData', this.rowData);
+
+        console.log('🟢 rowData length DESPUÉS del filter:', this.rowData.length);
+
+        // Eliminar del grid usando applyTransaction
+        this.gridApi.applyTransaction({ remove: [selectedConcept] });
+
         this.hasUnsavedChanges = true;
+
+        // Recalcular totales
         this.recalculateTotals();
+
+        console.log('🟢 Total DESPUÉS de eliminar:', this.total);
 
         // Update count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
@@ -859,16 +1058,45 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
   }
 
-  saveChanges() {
+  async saveChanges() {
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
-    // Filtrar solo los conceptos con precio mayor a 0
+    console.log('💾 GUARDANDO CAMBIOS - Sincronizando datos del grid...');
+
+    // PASO 1: Sincronizar datos del grid al array rowData
+    const syncedData: any[] = [];
+    this.gridApi.forEachNode(node => {
+      if (node.data) {
+        syncedData.push(node.data);
+      }
+    });
+    this.rowData = syncedData;
+
+    console.log('💾 Datos sincronizados. Total filas:', this.rowData.length);
+
+    // PASO 2: Recalcular total, iva2 y totalFinal para CADA concepto
+    this.rowData.forEach(concept => {
+      // Recalcular total = quantity * price
+      concept.total = Number(concept.quantity || 0) * Number(concept.price || 0);
+
+      // Recalcular IVA
+      concept.iva2 = concept.iva ? concept.total * (this.ivaPercent / 100) : 0;
+
+      // Recalcular total final
+      concept.totalFinal = concept.total + concept.iva2 - (concept.isr || 0);
+
+      console.log(`  💾 Concepto ${concept.id}: total=${concept.total}, iva2=${concept.iva2}, totalFinal=${concept.totalFinal}`);
+    });
+
+    // PASO 3: Filtrar solo los conceptos con precio mayor a 0
     const validConcepts = this.rowData.filter(concept =>
       concept.price && Number(concept.price) > 0
     );
+
+    console.log('💾 Conceptos válidos (precio > 0):', validConcepts.length);
 
     // Si no hay conceptos válidos, mostrar mensaje
     if (validConcepts.length === 0) {
@@ -880,7 +1108,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return;
     }
 
-    // Validar que todos los conceptos válidos tengan campos obligatorios
+    // PASO 4: Validar que todos los conceptos válidos tengan campos obligatorios
     const hasEmptyFields = validConcepts.some(concept =>
       !concept.description ||
       !concept.quantity ||
@@ -897,13 +1125,24 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return;
     }
 
-    // Eliminar de rowData los conceptos con precio = 0
+    // PASO 5: Eliminar de rowData los conceptos con precio = 0
     this.rowData = validConcepts;
     this.gridApi.setGridOption('rowData', this.rowData);
 
-    // Recalcular totales con solo los conceptos válidos
-    this.recalculateTotals();
+    // PASO 6: Recalcular totales GLOBALES (subtotal, iva2, isr, total)
+    console.log('💾 Recalculando totales globales...');
+    this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+    this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+    this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+    this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
 
+    console.log('💾 TOTALES GLOBALES:');
+    console.log('  💾 Subtotal:', this.subtotal);
+    console.log('  💾 IVA:', this.iva2);
+    console.log('  💾 ISR:', this.isr);
+    console.log('  💾 Total:', this.total);
+
+    // PASO 7: Guardar en el backend y ESPERAR a que termine
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const expenditureId = this.params.data.id;
       const dataToSave = {
@@ -913,8 +1152,33 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         isr: this.isr,
         total: this.total
       };
-      this.context.CONCEPTS.save(expenditureId, dataToSave);
-      this.hasUnsavedChanges = false;
+      console.log('💾 Enviando al backend:', dataToSave);
+
+      try {
+        // ESPERAR a que el backend termine de guardar
+        // El padre (egresos-palacio) actualizará el maestro después de guardar exitosamente
+        await this.context.CONCEPTS.save(expenditureId, dataToSave);
+        console.log('✅ Guardado exitoso. El maestro ya fue actualizado por el componente padre.');
+        this.hasUnsavedChanges = false;
+
+        // CERRAR el detalle y REFRESCAR el grid maestro (igual que ingresos)
+        console.log('🔄 DETALLE: Cerrando detalle y refrescando grid maestro...');
+        if (this.context?.componentParent) {
+          // Cerrar el detalle
+          this.context.componentParent.collapseReportDetail(expenditureId);
+
+          // Refrescar el grid maestro después de un momento para que se vea el cambio
+          setTimeout(() => {
+            if (this.context.componentParent.gridApi) {
+              this.context.componentParent.gridApi.refreshCells({ force: true });
+              console.log('✅ DETALLE: Grid maestro refrescado');
+            }
+          }, 200);
+        }
+      } catch (error) {
+        console.error('❌ Error al guardar:', error);
+        // En caso de error, el padre ya mostró el alert
+      }
     }
   }
 
@@ -945,11 +1209,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
         // Actualizar la fila en el grid
         if (this.gridApi) {
-          setTimeout(() => {
-            this.gridApi.applyTransactionAsync({
-              update: [event.data]
-            });
-          }, 0);
+          this.gridApi.applyTransaction({
+            update: [event.data]
+          });
         }
       }
     }
@@ -972,28 +1234,84 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       rowData.totalFinal = rowData.total + rowData.iva2 - (rowData.isr || 0);
 
       if (this.gridApi) {
-        this.gridApi.applyTransactionAsync({
+        this.gridApi.applyTransaction({
           update: [rowData]
         });
       }
 
-      this.recalculateTotals();
+      // Solo calcular totales locales sin actualizar el maestro
+      this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+      this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+      this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+      this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
     }
   }
 
   private recalculateTotals() {
     try {
-      this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+      console.log('📊 RECALCULANDO TOTALES...');
+      console.log('📊 rowData.length:', this.rowData.length);
+      console.log('📊 rowData IDs:', this.rowData.map(r => r.id));
+
+      this.subtotal = this.rowData.reduce((acc, row) => {
+        const total = Number(row.total) || 0;
+        console.log(`  - Row ${row.id}: total = ${total}`);
+        return acc + total;
+      }, 0);
+
       this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
       this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
-      const totalFinalSum = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
+
+      const totalFinalSum = this.rowData.reduce((acc, row) => {
+        const totalFinal = Number(row.totalFinal) || 0;
+        console.log(`  - Row ${row.id}: totalFinal = ${totalFinal}`);
+        return acc + totalFinal;
+      }, 0);
+
       this.total = totalFinalSum;
+
+      console.log('📊 TOTALES CALCULADOS:');
+      console.log('  - Subtotal:', this.subtotal);
+      console.log('  - IVA:', this.iva2);
+      console.log('  - ISR:', this.isr);
+      console.log('  - Total:', this.total);
+
+      // Actualizar el maestro inmediatamente con los nuevos totales
+      this.updateMasterTotals();
     } catch (error) {
-      console.error('Error recalculando totales:', error);
+      console.error('❌ Error recalculando totales:', error);
       this.subtotal = 0;
       this.iva2 = 0;
       this.isr = 0;
       this.total = 0;
+
+      // Actualizar el maestro con valores en 0
+      this.updateMasterTotals();
+    }
+  }
+
+  /**
+   * Actualiza los totales en la fila del maestro inmediatamente
+   */
+  private updateMasterTotals() {
+    if (!this.context?.componentParent) {
+      return;
+    }
+
+    const expenditureId = this.params?.data?.id;
+    if (!expenditureId) {
+      return;
+    }
+
+    // Actualizar directamente en el componente padre
+    if (typeof this.context.componentParent.updateMasterRowInGrid === 'function') {
+      this.context.componentParent.updateMasterRowInGrid({
+        id: expenditureId,
+        subtotal: this.subtotal,
+        tax: this.iva2,
+        isr: this.isr,
+        total: this.total
+      });
     }
   }
 
@@ -1047,6 +1365,249 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         });
       }
     }, 500);
+  }
+
+  /**
+   * Mapea un ID de objeto nivel 4 a su código de nivel 1 padre
+   * Ej: idCatIng=145 (objeto "3111") → retorna "3000"
+   */
+  private getNivel1CodigoFromNivel4Id(idCatIng: number): string | null {
+    // Buscar el objeto nivel 4 en objetosGastoHijos
+    const objetoNivel4 = this.objetosGastoHijos.find(obj => obj.id === idCatIng);
+    if (!objetoNivel4 || !objetoNivel4.codigoNombre) {
+      return null;
+    }
+
+    // Extraer el código del codigoNombre (ej: "3111 - Dietas" → "3111")
+    const codigoMatch = objetoNivel4.codigoNombre.match(/^(\d+)/);
+    if (!codigoMatch) {
+      return null;
+    }
+
+    const codigoNivel4 = codigoMatch[1]; // "3111"
+
+    // Tomar el primer dígito y completar con ceros
+    const primerDigito = codigoNivel4.charAt(0); // "3"
+    const codigoNivel1 = `${primerDigito}000`; // "3000"
+
+    return codigoNivel1;
+  }
+
+  /**
+   * Agrupa los conceptos por objeto de gasto nivel 1
+   * Retorna un mapa: { "3000": { nivel1Info, conceptos[], subtotal }, ... }
+   */
+  private agruparConceptosPorNivel1(): Map<string, any> {
+    const grupos = new Map<string, any>();
+
+    // Iterar sobre cada concepto
+    this.rowData.forEach(concepto => {
+      const idCatIng = concepto.idCatIng;
+
+      // Obtener el código del nivel 1 padre
+      const codigoNivel1 = this.getNivel1CodigoFromNivel4Id(idCatIng);
+
+      if (!codigoNivel1) {
+        // Si no se puede determinar, agrupar en "Sin clasificar"
+        if (!grupos.has('sin-clasificar')) {
+          grupos.set('sin-clasificar', {
+            nivel1Info: { codigo: '', nombre: 'SIN CLASIFICAR', codigoNombre: 'SIN CLASIFICAR' },
+            conceptos: [],
+            subtotal: 0
+          });
+        }
+        const grupo = grupos.get('sin-clasificar');
+        grupo.conceptos.push(concepto);
+        grupo.subtotal += concepto.totalFinal || 0;
+        return;
+      }
+
+      // Buscar la información del objeto nivel 1
+      const nivel1Info = this.objetosGastoNivel1.find(obj => obj.codigo === codigoNivel1);
+
+      if (!nivel1Info) {
+        console.warn(`No se encontró info para nivel 1 código: ${codigoNivel1}`);
+        return;
+      }
+
+      // Crear el grupo si no existe
+      if (!grupos.has(codigoNivel1)) {
+        grupos.set(codigoNivel1, {
+          nivel1Info: nivel1Info,
+          conceptos: [],
+          subtotal: 0
+        });
+      }
+
+      // Agregar el concepto al grupo
+      const grupo = grupos.get(codigoNivel1);
+      grupo.conceptos.push(concepto);
+      grupo.subtotal += concepto.totalFinal || 0;
+    });
+
+    return grupos;
+  }
+
+  /**
+   * Genera la tabla simple de conceptos (sin agrupar)
+   */
+  private generarTablaSimple(): any {
+    return {
+      table: {
+        headerRows: 1,
+        widths: [50, 180, '*', 80],
+        body: [
+          // Encabezados
+          [
+            { text: 'Fecha', style: 'tableHeader' },
+            { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
+            { text: 'Descripción', style: 'tableHeader' },
+            { text: 'Total', style: 'tableHeader', alignment: 'right' }
+          ],
+          // Filas de conceptos
+          ...this.rowData.map(concept => [
+            { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+            { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
+            { text: concept.description || '', style: 'tableCell' },
+            { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+          ]),
+          // Fila de totales
+          [
+            { text: '', border: [false, false, false, false] },
+            { text: '', border: [false, false, false, false] },
+            { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
+            { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
+          ]
+        ]
+      },
+      layout: {
+        hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+        vLineWidth: () => 0.5,
+        hLineColor: () => '#333333',
+        vLineColor: () => '#cccccc',
+        paddingTop: () => 3,
+        paddingBottom: () => 3,
+        paddingLeft: () => 4,
+        paddingRight: () => 4
+      },
+      margin: [0, 0, 0, 20]
+    };
+  }
+
+  /**
+   * Genera las tablas agrupadas por objeto de gasto nivel 1
+   */
+  private generarTablaAgrupada(): any[] {
+    const elementos: any[] = [];
+
+    // Agrupar conceptos
+    const grupos = this.agruparConceptosPorNivel1();
+
+    // Convertir el Map a array y ordenar por código
+    const gruposOrdenados = Array.from(grupos.entries()).sort((a, b) => {
+      if (a[0] === 'sin-clasificar') return 1;
+      if (b[0] === 'sin-clasificar') return -1;
+      return a[0].localeCompare(b[0]);
+    });
+
+    // Generar una tabla por cada grupo
+    gruposOrdenados.forEach(([codigoNivel1, grupo], index) => {
+      // Línea separadora (solo después del primer grupo)
+      if (index > 0) {
+        elementos.push({
+          canvas: [
+            {
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 515,
+              y2: 0,
+              lineWidth: 0.5,
+              lineColor: '#cccccc'
+            }
+          ],
+          margin: [0, 10, 0, 10]
+        });
+      }
+
+      // Título del grupo (Objeto Nivel 1)
+      elementos.push({
+        text: grupo.nivel1Info.codigoNombre,
+        style: 'groupTitle',
+        margin: [0, 10, 0, 5]
+      });
+
+      // Tabla de conceptos del grupo
+      elementos.push({
+        table: {
+          headerRows: 1,
+          widths: [50, 180, '*', 80],
+          body: [
+            // Encabezados
+            [
+              { text: 'Fecha', style: 'tableHeader' },
+              { text: 'FOLIO FISCAL', style: 'tableHeader' },
+              { text: 'Descripción', style: 'tableHeader' },
+              { text: 'Total', style: 'tableHeader', alignment: 'right' }
+            ],
+            // Filas de conceptos del grupo
+            ...grupo.conceptos.map((concept: any) => [
+              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
+              { text: concept.description || '', style: 'tableCell' },
+              { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+            ]),
+            // Fila de subtotal del grupo
+            [
+              { text: '', border: [false, false, false, false] },
+              { text: '', border: [false, false, false, false] },
+              { text: 'SUBTOTAL:', style: 'subtotalLabel', alignment: 'right', border: [false, true, false, false] },
+              { text: this.formatCurrency(grupo.subtotal), style: 'subtotalValue', alignment: 'right', border: [false, true, false, false] }
+            ]
+          ]
+        },
+        layout: {
+          hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => '#333333',
+          vLineColor: () => '#cccccc',
+          paddingTop: () => 3,
+          paddingBottom: () => 3,
+          paddingLeft: () => 4,
+          paddingRight: () => 4
+        },
+        margin: [0, 0, 0, 5]
+      });
+    });
+
+    // Línea separadora final
+    elementos.push({
+      canvas: [
+        {
+          type: 'line',
+          x1: 0,
+          y1: 0,
+          x2: 515,
+          y2: 0,
+          lineWidth: 2,
+          lineColor: '#333333'
+        }
+      ],
+      margin: [0, 15, 0, 5]
+    });
+
+    // Total general
+    elementos.push({
+      columns: [
+        { text: '', width: '*' },
+        { text: '', width: 170 },
+        { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', width: 100 },
+        { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', width: 80 }
+      ],
+      margin: [0, 5, 0, 20]
+    });
+
+    return elementos;
   }
 
   private async generateReport() {
@@ -1128,7 +1689,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
                     margin: [0, 5, 0, 0]
                   },
                   {
-                    text: this.getCurrentDateTime(),
+                    text: `Fecha de Pago: ${this.formatDate(this.expenditureData?.date)}`,
                     style: 'documentDate',
                     alignment: 'right',
                     margin: [0, 3, 0, 0]
@@ -1189,47 +1750,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             },
             margin: [0, 0, 0, 15]
           },
-          // Tabla de Conceptos (Detalle)
-          {
-            table: {
-              headerRows: 1,
-              widths: [70, 100, '*', 80],
-              body: [
-                // Encabezados
-                [
-                  { text: 'Fecha', style: 'tableHeader' },
-                  { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
-                  { text: 'Descripción', style: 'tableHeader' },
-                  { text: 'Total', style: 'tableHeader', alignment: 'right' }
-                ],
-                // Filas de conceptos
-                ...this.rowData.map(concept => [
-                  { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 7 },
-                  { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 7 },
-                  { text: concept.description || '', style: 'tableCell' },
-                  { text: this.formatCurrency(concept.total || 0), style: 'tableCell', alignment: 'right' }
-                ]),
-                // Fila de totales
-                [
-                  { text: '', border: [false, false, false, false] },
-                  { text: '', border: [false, false, false, false] },
-                  { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
-                  { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', border: [false, true, false, false] }
-                ]
-              ]
-            },
-            layout: {
-              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#333333',
-              vLineColor: () => '#cccccc',
-              paddingTop: () => 3,
-              paddingBottom: () => 3,
-              paddingLeft: () => 4,
-              paddingRight: () => 4
-            },
-            margin: [0, 0, 0, 20]
-          },
+          // Tabla de Conceptos (Detalle) - Condicional según mostrartodo
+          ...(this.expenditureData?.mostrartodo === true
+            ? this.generarTablaAgrupada()
+            : [this.generarTablaSimple()]),
           // Footer con Firmas
           {
             table: {
@@ -1345,6 +1869,22 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             bold: true,
             color: '#cc0000'
           },
+          groupTitle: {
+            fontSize: 10,
+            bold: true,
+            color: '#0066cc',
+            fillColor: '#e6f2ff'
+          },
+          subtotalLabel: {
+            fontSize: 8,
+            bold: true,
+            color: '#333333'
+          },
+          subtotalValue: {
+            fontSize: 8,
+            bold: true,
+            color: '#0066cc'
+          },
           signatureTitle: {
             fontSize: 8,
             bold: true,
@@ -1383,27 +1923,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
   }
 
-  private formatDate(dateString: string | null | undefined): string {
-    if (!dateString) {
-      return 'Sin fecha';
-    }
-
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return 'Fecha inválida';
-      }
-      return [
-        date.getDate().toString().padStart(2, '0'),
-        (date.getMonth() + 1).toString().padStart(2, '0'),
-        date.getFullYear()
-      ].join('/');
-    } catch (error) {
-      console.error('Error al formatear fecha:', error);
-      return 'Error en fecha';
-    }
-  }
-
   private getCurrentDateTime(): string {
     const now = new Date();
     const fecha = now.toLocaleDateString('es-ES', {
@@ -1420,6 +1939,20 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     return `${fecha} ${hora}`;
   }
 
+  private formatDate(date: any): string {
+    if (!date) return '';
+    try {
+      const d = new Date(date);
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
+  }
+
   private formatCurrency(amount: number): string {
     return amount.toLocaleString('es-MX', {
       minimumFractionDigits: 2,
@@ -1428,7 +1961,27 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   private getObjetoGastoText(): string {
-    // Usar el texto del objeto de gasto que fue preparado en toggleReportDetail
+    // Si el checkbox "Mostrar Todos" está activo, concatenar todos los objetos nivel 1
+    if (this.expenditureData?.mostrartodo === true) {
+      // Agrupar conceptos para obtener los objetos nivel 1 únicos
+      const grupos = this.agruparConceptosPorNivel1();
+
+      // Extraer los nombres de los objetos nivel 1 y ordenarlos
+      const objetosNivel1 = Array.from(grupos.entries())
+        .filter(([codigo, grupo]) => codigo !== 'sin-clasificar') // Excluir "sin clasificar"
+        .sort((a, b) => a[0].localeCompare(b[0])) // Ordenar por código
+        .map(([codigo, grupo]) => grupo.nivel1Info.nombre); // Solo el nombre, sin código
+
+      // Si no hay objetos, retornar fallback
+      if (objetosNivel1.length === 0) {
+        return 'Sin objetos de gasto';
+      }
+
+      // Concatenar con " + "
+      return objetosNivel1.join(' + ');
+    }
+
+    // Comportamiento original cuando checkbox está inactivo
     if (this.expenditureData?.objetoGastoTexto) {
       return this.expenditureData.objetoGastoTexto;
     }
@@ -1446,7 +1999,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   loadDocumentosComprobados() {
     if (this.context && this.context.DOCUMENTOS_COMPROBADOS && this.context.DOCUMENTOS_COMPROBADOS.load) {
       const expenditureId = this.params.data.id;
+      console.log('🔵 DETALLE: Cargando documentos comprobados para egreso ID:', expenditureId);
       this.context.DOCUMENTOS_COMPROBADOS.load(expenditureId, (data: any[]) => {
+        console.log(`📊 DETALLE: Documentos comprobados recibidos para ID ${expenditureId}:`, data.length);
         this.documentosData = data.map(doc => ({
           ...doc,
           __isNew: false,
@@ -1457,6 +2012,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
         // Update the count in master grid
         if (this.context && this.context.DOCUMENTOS_COMPROBADOS && this.context.DOCUMENTOS_COMPROBADOS.updateCount) {
+          console.log(`🔄 DETALLE: Actualizando contador de documentos en maestro. ID: ${expenditureId}, Count: ${this.documentosData.length}`);
           this.context.DOCUMENTOS_COMPROBADOS.updateCount(expenditureId, this.documentosData.length);
         }
       });
@@ -1468,12 +2024,21 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion);
   }
 
+  // Cache para las definiciones de columnas de documentos comprobados
+  private _colDefsComprobacion: ColDef[] = [];
+
   get colDefsComprobacion(): ColDef[] {
+    // Si ya fue inicializado, retornar la misma instancia (evita parpadeo)
+    if (this._colDefsComprobacion.length > 0) {
+      return this._colDefsComprobacion;
+    }
+
     // Determinar el nombre de la columna según el tipo de comprobante
     const isEmpleados = this.isEmpleadosComprobante();
     const providerColumnName = isEmpleados ? 'Empleado' : 'Proveedor';
 
-    return [
+    // Inicializar una sola vez
+    this._colDefsComprobacion = [
       {
         headerName: '#',
         width: 60,
@@ -1488,48 +2053,33 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         width: 340,
         cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: {
-          options: this.providers.map(provider => ({
-            id: provider.id,
-            description: provider.displayText,
-            valueAddition: provider.id.toString(),
-            valueAddition2: provider.displayText
-          }))
-        },
-        cellRenderer: (params: any) => {
-          const value = params.value;
-          const displayText = value ? (this.providers.find(p => p.id === value)?.displayText || value) : '';
-
-          const container = document.createElement('div');
-          container.style.cssText = 'display: flex; align-items: center; justify-content: space-between; width: 100%; height: 100%; padding: 0 4px;';
-
-          const textSpan = document.createElement('span');
-          textSpan.style.cssText = 'flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-          textSpan.textContent = displayText;
-
-          const addButton = document.createElement('button');
-          addButton.className = 'btn btn-sm btn-success add-provider-btn';
-          addButton.style.cssText = 'margin-left: 8px; padding: 2px 6px; font-size: 11px; line-height: 1;';
-          addButton.title = 'Agregar nuevo proveedor';
-          addButton.innerHTML = '<i class="bi bi-plus-circle"></i>';
-
-          container.appendChild(textSpan);
-          container.appendChild(addButton);
-
-          return container;
-        },
-        onCellClicked: (event: any) => {
-          const target = event.event.target as HTMLElement;
-
-          // Si se hizo clic en el botón "+" o en su icono
-          if (target.closest('.add-provider-btn')) {
-            event.event.stopPropagation();
-            this.openAddProviderModal();
-          }
+          options: [
+            ...this.providers.map(provider => ({
+              id: provider.id,
+              description: provider.displayText,
+              valueAddition: provider.id.toString(),
+              valueAddition2: provider.displayText
+            })),
+            {
+              id: -999,
+              description: '➕ Agregar nuevo proveedor...',
+              valueAddition: '-999',
+              valueAddition2: '➕ Agregar nuevo proveedor...'
+            }
+          ]
         },
         valueFormatter: (params) => {
-          if (!params.value) return '';
+          if (!params.value || params.value === -999) return '';
           const found = this.providers.find(provider => provider.id === params.value);
           return found ? found.displayText : params.value;
+        },
+        onCellValueChanged: (event: any) => {
+          if (event.newValue === -999) {
+            // Usuario seleccionó "Agregar nuevo proveedor"
+            event.data.idSpend = event.oldValue || null;
+            this.gridApiDocumentos.refreshCells({ rowNodes: [event.node], force: true });
+            this.openAddProviderModal();
+          }
         }
       },
       {
@@ -1548,34 +2098,24 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         width: 350,
         editable: false,
         cellRenderer: (params: any) => {
-          const hasFile = params.value && params.value.trim() !== '';
-          const fileName = hasFile ? this.getFileNameFromUrl(params.value) : 'Sin archivo';
-          const buttonClass = hasFile ? 'btn-success' : 'btn-primary';
-          const icon = hasFile ? 'bi-file-check' : 'bi-upload';
-          const previewButton = hasFile ? `
-            <button class="btn btn-info btn-sm preview-file-btn"
-                    data-row-id="${params.node.id}"
-                    title="Ver vista previa">
-              <i class="bi bi-eye"></i>
-            </button>
-          ` : '';
-          return `
-            <div class="d-flex align-items-center gap-2">
-              <button class="btn ${buttonClass} btn-sm upload-file-btn"
-                      data-row-id="${params.node.id}"
-                      title="Subir archivo">
-                <i class="bi ${icon}"></i>
-              </button>
-              ${previewButton}
-              <span class="text-truncate" style="font-size: 0.85rem;">${fileName}</span>
-            </div>
-          `;
+          if (!params.value) {
+            return 'Haga clic para subir archivo...';
+          }
+          const fileName = this.getFileNameFromUrl(params.value);
+          return `${fileName} <i class="bi bi-eye ms-2" style="color: #6c757d; font-size: 0.9rem;"></i>`;
+        },
+        cellStyle: (params) => {
+          if (!params.value) {
+            return { cursor: 'pointer', color: '#999', fontStyle: 'italic' };
+          }
+          return { cursor: 'pointer', color: '#0066cc' };
         },
         onCellClicked: (params: any) => {
-          const target = params.event.target as HTMLElement;
-          if (target.classList.contains('upload-file-btn') || target.closest('.upload-file-btn')) {
+          if (!params.value) {
+            // No hay archivo, abrir diálogo para subir
             this.openFileUpload(params);
-          } else if (target.classList.contains('preview-file-btn') || target.closest('.preview-file-btn')) {
+          } else {
+            // Hay archivo, abrir vista previa
             this.openPreviewModal(params);
           }
         }
@@ -1593,6 +2133,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       }
     ];
+
+    // Retornar la instancia inicializada
+    return this._colDefsComprobacion;
   }
 
   public gridOptionsComprobacion: any = {
@@ -1630,7 +2173,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       __modified: false
     };
 
-    this.documentosData = [...this.documentosData, newDocumento];
+    // Agregar al PRINCIPIO del array para que sea visible inmediatamente
+    this.documentosData = [newDocumento, ...this.documentosData];
     this.hasUnsavedDocumentosChanges = true;
     this.gridApiDocumentos.setGridOption('rowData', this.documentosData);
 
@@ -1640,16 +2184,17 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     setTimeout(() => {
-      const lastRowIndex = this.documentosData.length - 1;
-      this.gridApiDocumentos.ensureIndexVisible(lastRowIndex);
+      // El nuevo registro está en el índice 0 (primera fila)
+      const newRowIndex = 0;
+      this.gridApiDocumentos.ensureIndexVisible(newRowIndex);
       this.gridApiDocumentos.startEditingCell({
-        rowIndex: lastRowIndex,
+        rowIndex: newRowIndex,
         colKey: 'idSpend'
       });
     }, 0);
   }
 
-  deleteSelectedDocumento() {
+  async deleteSelectedDocumento() {
     const selectedRows = this.gridApiDocumentos.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un documento para eliminar', 'warning');
@@ -1657,10 +2202,42 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     const selectedDocumento = selectedRows[0];
+
+    // Mostrar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar documento?',
+      `¿Está seguro que desea eliminar este documento comprobado? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    // Si es un registro nuevo (no guardado), eliminarlo solo localmente
+    if (selectedDocumento.__isNew) {
+      this.documentosData = this.documentosData.filter(doc => doc.id !== selectedDocumento.id);
+      this.gridApiDocumentos.applyTransaction({ remove: [selectedDocumento] });
+      this.hasUnsavedDocumentosChanges = true;
+
+      // Update count in master grid
+      if (this.context && this.context.DOCUMENTOS_COMPROBADOS && this.context.DOCUMENTOS_COMPROBADOS.updateCount) {
+        this.context.DOCUMENTOS_COMPROBADOS.updateCount(this.params.data.id, this.documentosData.length);
+      }
+      return;
+    }
+
+    // Si es un registro existente, llamar al servicio del padre
     if (this.context && this.context.DOCUMENTOS_COMPROBADOS && this.context.DOCUMENTOS_COMPROBADOS.delete) {
-      this.context.DOCUMENTOS_COMPROBADOS.delete({ data: selectedDocumento, api: this.gridApiDocumentos }, () => {
+      // NO pasar el api, para que el padre NO haga applyTransaction
+      this.context.DOCUMENTOS_COMPROBADOS.delete({ data: selectedDocumento }, () => {
+        // Eliminar del array local
         this.documentosData = this.documentosData.filter(doc => doc.id !== selectedDocumento.id);
-        this.gridApiDocumentos.setGridOption('rowData', this.documentosData);
+
+        // Eliminar del grid usando applyTransaction (más eficiente que setGridOption)
+        this.gridApiDocumentos.applyTransaction({ remove: [selectedDocumento] });
+
         this.hasUnsavedDocumentosChanges = true;
 
         // Update count in master grid
@@ -1758,7 +2335,6 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   openFileUpload(params: any) {
-    // Crear input file dinámico
     const input = document.createElement('input');
     input.type = 'file';
 
@@ -1828,10 +2404,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   async uploadFileToFirebase(file: File, tipoDoc: string): Promise<string> {
-    // Importar Firebase Storage dinámicamente
+    // Importar Firebase Storage y la app inicializada
     const { getStorage, ref, uploadBytesResumable, getDownloadURL } = await import('firebase/storage');
+    const { app } = await import('app/firebase.config');
 
-    const storage = getStorage();
+    const storage = getStorage(app);
 
     // Determinar la carpeta según el tipo de documento
     let folder = 'documents';

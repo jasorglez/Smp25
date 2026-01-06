@@ -23,6 +23,12 @@ export class CustomersService {
     return this.http.get(`${environment.urlAdministration}/Customer/branch/${id}?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCustomersxPalace(idRoot: number) {
+    //const apiUrl = `${environment.urlAdministration}/Customer/palacio?idCompany=${idRoot}`;
+    //alert(apiUrl)  
+    return this.http.get(`${environment.urlAdministration}/Customer/palacio?idCompany=${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getProviders(id: number,type: string) {
     //const apiUrl = `${environment.urlAdministration}/Customer/branch/${id}?type=${type}`;      
     //alert(apiUrl)  
