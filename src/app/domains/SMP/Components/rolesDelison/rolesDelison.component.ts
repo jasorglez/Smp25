@@ -215,8 +215,14 @@ constructor(private currencyPipe: CurrencyPipe) {
   }
  };
 
+  private _columnDefs: ColDef[] = [];
+
   get columnDefs(): ColDef[] {
-    return [
+    if (this._columnDefs.length > 0) {
+      return this._columnDefs;
+    }
+
+    this._columnDefs = [
       {
         field: 'id',
         filter: 'agNumberColumnFilter',
@@ -261,13 +267,15 @@ constructor(private currencyPipe: CurrencyPipe) {
       {
         field: 'posiciones',
         headerName: 'Posiciones*',
-        
+
         hide: false,
         cellRenderer: this.createDetailToggleCellRenderer('posiciones'),
         flex: 1,
         cellStyle: { backgroundColor: '#d4edda' },
       },
     ];
+
+    return this._columnDefs;
   }
   createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
   return (params: any): HTMLElement => {
