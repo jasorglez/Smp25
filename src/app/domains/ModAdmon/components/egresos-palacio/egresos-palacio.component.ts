@@ -2937,8 +2937,8 @@ export class EgresosPalacioComponent {
     // Construir el contenido del PDF
     const content: any[] = [];
 
-    // Objeto para almacenar totales por grupo
-    const groupTotals: Array<{ codigo: string; nombre: string; total: number; count: number }> = [];
+    // Objeto para almacenar totales por grupo - usar Map para acumular por código nivel 1
+    const groupTotalsMap = new Map<string, { codigo: string; nombre: string; total: number; count: number }>();
 
     // Cargar objetos nivel 1 y nivel 4 una sola vez (para todos los egresos con mostrartodo=true)
     let objetosNivel1: any[] = [];
@@ -2974,8 +2974,6 @@ export class EgresosPalacioComponent {
     }
 
     for (const group of groups) {
-      let groupTotal = 0;
-
       for (let i = 0; i < group.expenses.length; i++) {
         const expense = group.expenses[i];
 
@@ -2992,7 +2990,41 @@ export class EgresosPalacioComponent {
 
         // Calcular totales
         const total = concepts.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
-        groupTotal += total;
+
+        // Si el egreso tiene mostrartodo=true, agrupar por niveles 1 REALES de los conceptos
+        if (expense.mostrartodo === true && objetosNivel1.length > 0 && objetosNivel4.length > 0) {
+          const gruposPorNivel1 = this.agruparConceptosPorNivel1Consolidado(concepts, objetosNivel1, objetosNivel4);
+
+          gruposPorNivel1.forEach((grupo, codigoNivel1) => {
+            if (codigoNivel1 === 'sin-clasificar') return; // Ignorar sin clasificar
+
+            const nivel1Info = grupo.nivel1Info;
+            if (!groupTotalsMap.has(codigoNivel1)) {
+              groupTotalsMap.set(codigoNivel1, {
+                codigo: nivel1Info.codigo,
+                nombre: nivel1Info.nombre,
+                total: 0,
+                count: 0
+              });
+            }
+            const entry = groupTotalsMap.get(codigoNivel1)!;
+            entry.total += grupo.subtotal;
+            entry.count += 1; // Incrementar count por este egreso
+          });
+        } else {
+          // Si no tiene mostrartodo, usar el nivel 1 del grupo (idExpend)
+          if (!groupTotalsMap.has(group.codigo)) {
+            groupTotalsMap.set(group.codigo, {
+              codigo: group.codigo,
+              nombre: group.nombre,
+              total: 0,
+              count: 0
+            });
+          }
+          const entry = groupTotalsMap.get(group.codigo)!;
+          entry.total += total;
+          entry.count += 1;
+        }
 
         // Agregar contenido de este egreso (página individual)
         content.push(...this.buildReportPage(
@@ -3010,15 +3042,22 @@ export class EgresosPalacioComponent {
           content.push({ text: '', pageBreak: 'after' });
         }
       }
-
-      // Guardar el total de este grupo
-      groupTotals.push({
-        codigo: group.codigo,
-        nombre: group.nombre,
-        total: groupTotal,
-        count: group.expenses.length
-      });
     }
+
+    // Asegurar que TODOS los niveles 1 aparezcan en el resumen, incluso sin egresos
+    this.expenses.forEach((objetoNivel1: any) => {
+      if (!groupTotalsMap.has(objetoNivel1.codigo)) {
+        groupTotalsMap.set(objetoNivel1.codigo, {
+          codigo: objetoNivel1.codigo,
+          nombre: objetoNivel1.nombre,
+          total: 0,
+          count: 0
+        });
+      }
+    });
+
+    // Convertir Map a array y ordenar por código
+    const groupTotals = Array.from(groupTotalsMap.values()).sort((a, b) => a.codigo.localeCompare(b.codigo));
 
     // Agregar página de resumen al final
     content.push({ text: '', pageBreak: 'after' });
