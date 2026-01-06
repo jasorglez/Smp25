@@ -15,6 +15,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
+import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 
 interface Catalog {
@@ -45,6 +46,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private branchsService = inject(BranchsService);
   private typexPrefixesService = inject(TypexPrefixesService);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
+  private rolesService = inject(RolesService);
 
   private gridApi!: GridApi;
   private isGeneratingReport: boolean = false;
@@ -99,11 +101,15 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   idRoot: number = null;
   idBranch: number = null;
+  idUser: number = null; // ID del usuario actual para obtener roles
   departamentos: any[] = [];
   branches: any[] = []; // Catálogo de sucursales
   branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
   currentUserName: string = ''; // Nombre del usuario actual
   selectedRequisitionId: number | null = null; // ID de la requisición seleccionada para PDF
+
+  // ✅ Cache de roles por sucursal: Map<idBranch, roles[]>
+  private rolesByBranchCache: Map<number, any[]> = new Map();
 
   // Datos del prefijo actual
   currentPrefixData: any = null;
@@ -123,9 +129,11 @@ export class RequisitionsDelisonComponent implements OnInit {
     setTimeout(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.currentUserName = this.signalsService.getDisplayName()() || 'Usuario';
+      this.idUser = this.signalsService.getIdUSer()(); // ✅ Obtener ID del usuario
 
       console.log('🏢 idRoot:', this.idRoot);
       console.log('👤 Usuario actual:', this.currentUserName);
+      console.log('🆔 idUser:', this.idUser);
       console.log('ℹ️ El idBranch se obtendrá desde el effect() cuando esté disponible');
 
       // ✅ Solo cargar si idRoot es válido
@@ -251,9 +259,9 @@ export class RequisitionsDelisonComponent implements OnInit {
         const branch = this.branches.find(b => b.id === req.idReference);
         const branchName = branch?.name || branch?.description || req.idReference?.toString() || '';
 
-        // ✅ Buscar el nombre del departamento usando idDepartament
-        const department = this.departamentos.find(d => d.id === req.idDepartament);
-        const departmentName = department?.description || department?.name || '';
+        // ✅ El nombre del departamento se obtendrá dinámicamente desde getRolesByBranchDelison
+        // cuando se visualice o edite la celda
+        const departmentName = '';
 
         return {
           id: req.id,
@@ -287,6 +295,9 @@ export class RequisitionsDelisonComponent implements OnInit {
       this.rowData = [...this.fullRowData];
       console.log('✅ Requisiciones de todas las sucursales cargadas:', this.fullRowData.length);
 
+      // ✅ Pre-cargar roles para todas las sucursales únicas en los datos
+      this.preloadRolesForRequisitions();
+
       // Refrescar el grid
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
@@ -312,11 +323,11 @@ export class RequisitionsDelisonComponent implements OnInit {
           const branch = this.branches.find(b => b.id === req.idReference);
           const branchName = branch?.name || branch?.description || req.idReference?.toString() || '';
 
-          // ✅ Buscar el nombre del departamento usando idDepartament
-          const department = this.departamentos.find(d => d.id === req.idDepartament);
-          const departmentName = department?.description || department?.name || '';
+          // ✅ El nombre del departamento se obtendrá dinámicamente desde getRolesByBranchDelison
+          // cuando se visualice o edite la celda (no se puede obtener aquí de forma sincrónica)
+          const departmentName = '';
 
-          console.log(`📋 Requisición ${req.id}: idReference=${req.idReference} → Sucursal: ${branchName}, Depto: ${departmentName}, countrow: ${req.countrow}`);
+          console.log(`📋 Requisición ${req.id}: idReference=${req.idReference} → Sucursal: ${branchName}, idDepartament: ${req.idDepartament}, countrow: ${req.countrow}`);
 
           return {
             id: req.id,
@@ -352,6 +363,9 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.rowData = [...this.fullRowData];
 
         console.log('✅ Requisiciones cargadas:', this.fullRowData.length);
+
+        // ✅ Pre-cargar roles para todas las sucursales únicas en los datos
+        this.preloadRolesForRequisitions();
 
         // Refrescar el grid si ya existe
         if (this.gridApi) {
@@ -638,38 +652,120 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'departmentId',
         headerName: 'Departamento que solicita',
         width: 200,
-        editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
-        cellEditor: 'selectDepartmentEditor',
+        editable: (params: any) => {
+          // ✅ Solo editable si la fila tiene una sucursal seleccionada
+          return params.data && params.data.idReference > 0;
+        },
+        cellEditor: 'agSelectCellEditor',
+        valueGetter: (params: any) => {
+          // ✅ Convertir el ID numérico a description para el editor
+          const departmentId = params.data?.departmentId;
+          if (!departmentId) return null;
+
+          const branchId = params.data?.idReference;
+          const cachedRoles = this.rolesByBranchCache.get(branchId);
+
+          if (cachedRoles) {
+            const role = cachedRoles.find(r => r.id === departmentId);
+            if (role) {
+              return role.description; // Retornar solo el description
+            }
+          }
+
+          return null;
+        },
         cellEditorParams: (params: any) => {
-          return {
-            options: this.departamentos
-          };
+          // ✅ Obtener roles según la sucursal de la fila
+          const branchId = params.data?.idReference;
+
+          if (!branchId || !this.idUser) {
+            console.warn('⚠️ No se puede obtener roles: branchId o idUser no disponible');
+            return { values: [] };
+          }
+
+          // ✅ Si ya tenemos los roles en cache, usarlos
+          if (this.rolesByBranchCache.has(branchId)) {
+            const roles = this.rolesByBranchCache.get(branchId) || [];
+            console.log(`✅ Usando roles en cache para sucursal ${branchId}:`, roles);
+
+            // Crear mapas bidireccionales
+            const descriptionToId: any = {};
+            const idToDescription: any = {};
+
+            roles.forEach(r => {
+              descriptionToId[r.description] = r.id;
+              idToDescription[r.id] = r.description;
+            });
+
+            // Guardar temporalmente para el valueSetter
+            (params.data as any).__roleMapDescToId = descriptionToId;
+            (params.data as any).__roleMapIdToDesc = idToDescription;
+
+            return {
+              values: roles.map(r => r.description), // Solo descriptions: ["PRUEBA", "OTRO", ...]
+              valueListGap: 0,
+              valueListMaxHeight: 220
+            };
+          }
+
+          console.warn('⚠️ Roles no encontrados en cache para sucursal', branchId);
+          return { values: [] };
         },
         valueFormatter: (params) => {
-          const foundItem = this.departamentos
-            ? this.departamentos.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : (params.value || '');
+          // ✅ Mostrar el nombre del departamento
+          if (!params.value) return '';
+
+          const branchId = params.data?.idReference;
+          const cachedRoles = this.rolesByBranchCache.get(branchId);
+
+          if (cachedRoles) {
+            const role = cachedRoles.find(r => r.id === params.value);
+            return role?.description || params.value?.toString() || '';
+          }
+
+          return params.data?.departmentName || params.value?.toString() || '';
         },
         valueSetter: (params: any) => {
           console.log('🔧 valueSetter departmentId - newValue:', params.newValue, 'oldValue:', params.oldValue);
 
-          // ✅ El editor ahora retorna solo el ID (número)
-          const departmentId = params.newValue ? Number(params.newValue) : null;
+          if (!params.newValue) {
+            params.data.departmentId = null;
+            params.data.departmentName = '';
+            return true;
+          }
 
-          // Buscar el nombre del departamento en el catálogo
-          const department = this.departamentos.find(d => d.id === departmentId);
-          const departmentName = department?.description || department?.name || '';
+          // ✅ El valor viene como description, usar el mapa para obtener el ID
+          const descToIdMap = (params.data as any).__roleMapDescToId;
 
-          // Actualizar ambos campos
-          params.data.departmentId = departmentId;
-          params.data.departmentName = departmentName;
+          if (descToIdMap && descToIdMap[params.newValue]) {
+            const departmentId = descToIdMap[params.newValue];
+            const departmentName = params.newValue;
 
-          console.log('✅ Departamento asignado:', {
-            departmentId: params.data.departmentId,
-            departmentName: params.data.departmentName,
-            isNew: params.data.__isNew
-          });
+            params.data.departmentId = departmentId;
+            params.data.departmentName = departmentName;
+
+            console.log('✅ Departamento asignado:', {
+              description: departmentName,
+              departmentId: departmentId,
+              isNew: params.data.__isNew
+            });
+          } else {
+            // Fallback: buscar en cache
+            const branchId = params.data.idReference;
+            const cachedRoles = this.rolesByBranchCache.get(branchId);
+
+            if (cachedRoles) {
+              const role = cachedRoles.find(r => r.description === params.newValue);
+              if (role) {
+                params.data.departmentId = role.id;
+                params.data.departmentName = role.description;
+                console.log('✅ Departamento asignado desde cache fallback:', role);
+              }
+            } else {
+              console.warn('⚠️ No se pudo mapear description a ID:', params.newValue);
+              return false;
+            }
+          }
 
           // Marcar como modificado
           if (!params.data.__isNew) {
@@ -679,8 +775,9 @@ export class RequisitionsDelisonComponent implements OnInit {
           this.hasUnsavedChanges = true;
           console.log('💾 hasUnsavedChanges = true');
 
-          return true; // ✅ Retornar true para que AG Grid detecte el cambio
-        }
+          return true;
+        },
+        cellEditorPopup: true
       },
       {
         field: 'solicitedBy',
@@ -780,6 +877,32 @@ export class RequisitionsDelisonComponent implements OnInit {
 
     const colId = event.column.getColId();
     const isDetailColumn = colId === 'articlesCount';
+    const isDepartmentColumn = colId === 'departmentId';
+
+    // ✅ Si se hace clic en la columna de departamento, pre-cargar los roles
+    if (isDepartmentColumn) {
+      const branchId = event.data?.idReference;
+
+      if (branchId && this.idUser && !this.rolesByBranchCache.has(branchId)) {
+        console.log(`🔄 Pre-cargando roles para sucursal ${branchId}...`);
+
+        this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
+          next: (roles: any[]) => {
+            const mappedRoles = roles.map(r => ({
+              id: r.id,
+              description: r.description,
+              name: r.description
+            }));
+
+            this.rolesByBranchCache.set(branchId, mappedRoles);
+            console.log(`✅ Roles pre-cargados para sucursal ${branchId}:`, mappedRoles);
+          },
+          error: (err) => {
+            console.error('❌ Error al pre-cargar roles:', err);
+          }
+        });
+      }
+    }
 
     if (isDetailColumn) {
       const node = event.node;
@@ -1151,6 +1274,54 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   deleteRequisition(): void {
     // Implement delete
+  }
+
+  /**
+   * Pre-carga los roles para todas las sucursales únicas presentes en las requisiciones
+   * Esto permite que el valueFormatter muestre los nombres correctamente al cargar
+   */
+  private preloadRolesForRequisitions(): void {
+    if (!this.idUser) {
+      console.warn('⚠️ No se puede pre-cargar roles: idUser no disponible');
+      return;
+    }
+
+    // Obtener sucursales únicas de todas las requisiciones
+    const uniqueBranchIds = new Set<number>();
+    this.rowData.forEach(row => {
+      if (row.idReference && row.idReference > 0) {
+        uniqueBranchIds.add(row.idReference);
+      }
+    });
+
+    console.log(`🔄 Pre-cargando roles para ${uniqueBranchIds.size} sucursales...`);
+
+    // Cargar roles para cada sucursal única
+    uniqueBranchIds.forEach(branchId => {
+      // Solo cargar si no están ya en cache
+      if (!this.rolesByBranchCache.has(branchId)) {
+        this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
+          next: (roles: any[]) => {
+            const mappedRoles = roles.map(r => ({
+              id: r.id,
+              description: r.description,
+              name: r.description
+            }));
+
+            this.rolesByBranchCache.set(branchId, mappedRoles);
+            console.log(`✅ Roles pre-cargados para sucursal ${branchId}:`, mappedRoles.length, 'roles');
+
+            // Refrescar el grid para que muestre los nombres
+            if (this.gridApi) {
+              this.gridApi.refreshCells({ force: true });
+            }
+          },
+          error: (err) => {
+            console.error(`❌ Error al pre-cargar roles para sucursal ${branchId}:`, err);
+          }
+        });
+      }
+    });
   }
 
   /**
