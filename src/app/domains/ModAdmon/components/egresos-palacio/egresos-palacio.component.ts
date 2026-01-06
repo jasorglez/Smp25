@@ -2537,6 +2537,12 @@ export class EgresosPalacioComponent {
       ? setupManagementInfo[0]
       : null;
 
+    // Obtener nombre de la cuenta bancaria seleccionada
+    const selectedAccount = this.bankAccounts.find(account => account.id === this.idAccount);
+    const accountName = selectedAccount
+      ? `${selectedAccount.nameAccount}-${selectedAccount.bankName}`.toUpperCase()
+      : 'INGRESOS PROPIOS';
+
     // Obtener nombre del mes desde reportStartDate
     // ✅ FIX: Parsear fecha sin zona horaria para evitar conversión
     const [yearStr, monthStr, dayStr] = this.reportStartDate.split('-');
@@ -2563,7 +2569,7 @@ export class EgresosPalacioComponent {
 
     // Título de sección
     tableBody.push([
-      { text: 'EGRESOS (INGRESOS PROPIOS)', style: 'sectionTitle', colSpan: 4, alignment: 'left' },
+      { text: `EGRESOS (${accountName})`, style: 'sectionTitle', colSpan: 4, alignment: 'left' },
       {}, {}, {}
     ]);
 
@@ -2650,7 +2656,7 @@ export class EgresosPalacioComponent {
         },
         // Título del reporte
         {
-          text: `INFORME DE INGRESOS Y EGRESOS CORRESPONDIENTES AL MES DE ${monthName} ${year} DE LOS INGRESOS PROPIOS DE LA HJMN`,
+          text: `INFORME DE EGRESOS CORRESPONDIENTES AL MES DE ${monthName} ${year}, ${accountName} DE LA JUNTA MUNICIPAL`,
           style: 'reportTitle',
           alignment: 'center',
           margin: [0, 5, 0, 14]
@@ -2973,6 +2979,12 @@ export class EgresosPalacioComponent {
       }
     }
 
+    // Obtener nombre de la cuenta bancaria seleccionada
+    const selectedAccount = this.bankAccounts.find(account => account.id === this.idAccount);
+    const accountName = selectedAccount
+      ? `${selectedAccount.nameAccount}-${selectedAccount.bankName}`.toUpperCase()
+      : 'INGRESOS PROPIOS';
+
     for (const group of groups) {
       for (let i = 0; i < group.expenses.length; i++) {
         const expense = group.expenses[i];
@@ -3034,7 +3046,8 @@ export class EgresosPalacioComponent {
           rootResponse,
           group,
           objetosNivel1,
-          objetosNivel4
+          objetosNivel4,
+          accountName
         ));
 
         // Agregar salto de página si no es el último egreso
@@ -3061,7 +3074,7 @@ export class EgresosPalacioComponent {
 
     // Agregar página de resumen al final
     content.push({ text: '', pageBreak: 'after' });
-    content.push(...this.buildSummaryPage(groupTotals, rootResponse));
+    content.push(...this.buildSummaryPage(groupTotals, rootResponse, accountName));
 
     // Definición del documento
     const docDefinition: any = {
@@ -3122,7 +3135,8 @@ export class EgresosPalacioComponent {
     rootResponse: any,
     group: any,
     objetosNivel1: any[],
-    objetosNivel4: any[]
+    objetosNivel4: any[],
+    accountName: string
   ): any[] {
     // Determinar el texto del objeto de gasto
     let objetoGastoTexto: string;
@@ -3140,7 +3154,7 @@ export class EgresosPalacioComponent {
           {
             stack: [
               { text: rootResponse.name || 'Empresa', style: 'companyName', alignment: 'center' },
-              { text: rootResponse.email || '', style: 'companyInfo', alignment: 'center' },
+              { text: rootResponse.address || '', style: 'companyInfo', alignment: 'center' },
               { text: rootResponse.web || '', style: 'companyInfo', alignment: 'center' }
             ],
             width: '*'
@@ -3160,6 +3174,15 @@ export class EgresosPalacioComponent {
       {
         canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#333333' }],
         margin: [0, 0, 0, 10]
+      },
+      // Cuenta bancaria
+      {
+        text: `CUENTA: ${accountName}`,
+        style: 'masterLabel',
+        alignment: 'center',
+        margin: [0, 0, 0, 10],
+        fontSize: 10,
+        bold: true
       },
       // DETALLES DEL EGRESO
       { text: 'DETALLES DEL EGRESO', style: 'sectionTitle', margin: [0, 5, 0, 8] },
@@ -3229,7 +3252,7 @@ export class EgresosPalacioComponent {
     ];
   }
 
-  private buildSummaryPage(groupTotals: Array<{ codigo: string; nombre: string; total: number; count: number }>, rootResponse: any): any[] {
+  private buildSummaryPage(groupTotals: Array<{ codigo: string; nombre: string; total: number; count: number }>, rootResponse: any, accountName: string): any[] {
     // Calcular el gran total
     const grandTotal = groupTotals.reduce((acc, group) => acc + group.total, 0);
     const totalCount = groupTotals.reduce((acc, group) => acc + group.count, 0);
@@ -3254,7 +3277,8 @@ export class EgresosPalacioComponent {
           {
             stack: [
               { text: 'RESUMEN CONSOLIDADO', style: 'documentTitle', alignment: 'right' },
-              { text: `Periodo: ${startDateFormatted} al ${endDateFormatted}`, style: 'documentDate', alignment: 'right', margin: [0, 5, 0, 0] }
+              { text: `Cuenta: ${accountName}`, style: 'documentNumber', alignment: 'right', margin: [0, 3, 0, 0] },
+              { text: `Periodo: ${startDateFormatted} al ${endDateFormatted}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }
             ],
             width: 180
           }
