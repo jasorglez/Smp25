@@ -372,8 +372,15 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     });
   }
 
+  private _colDefs: ColDef[] = [];
+  private _purchasesColDefs: ColDef[] = [];
+
   get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs.length > 0) {
+      return this._colDefs;
+    }
+
+    this._colDefs = [
       {
         headerName: '#',
         width: 50,
@@ -508,7 +515,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         field: 'numArticle',
         headerName: '# del Articulo',
         width: 120,
-        editable: true,
+        editable: false,
         valueSetter: (params: any) => {
           params.data.numArticle = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -622,6 +629,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       },
 
     ];
+
+    return this._colDefs;
   }
 
   checkPedimentoSelection() {
@@ -662,7 +671,11 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   };
 
   get purchasesColDefs(): ColDef[] {
-    return [
+    if (this._purchasesColDefs.length > 0) {
+      return this._purchasesColDefs;
+    }
+
+    this._purchasesColDefs = [
       {
         headerName: '#',
         width: 50,
@@ -692,6 +705,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         }
       }
     ];
+
+    return this._purchasesColDefs;
   }
 
   components = {

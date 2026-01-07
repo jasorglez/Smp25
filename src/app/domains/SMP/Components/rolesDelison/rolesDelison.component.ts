@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe  } from '@angular/common';
+import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, computed, effect, HostListener, inject, Injectable } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
@@ -37,7 +37,7 @@ import { AuthService } from 'app/services/auth.service';
     MatDialogModule,
     RolesDetailedDelisonComponent,
     PosicionDelisonComponent
-],
+  ],
   providers: [CurrencyPipe],
   templateUrl: './rolesDelison.component.html',
   styleUrl: './rolesDelison.component.scss',
@@ -57,20 +57,20 @@ export class RolesDelisonComponent {
   id: string;
   idRole: number = null;
   userRoot: number = 0;
-  authorizedPass:boolean = false;
+  authorizedPass: boolean = false;
 
-    // Agregar esta nueva variable para almacenar el ID de la última fila editada
-    private lastEditedRowId: number | string | null = null;
+  // Agregar esta nueva variable para almacenar el ID de la última fila editada
+  private lastEditedRowId: number | string | null = null;
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';
 
-  private usersService        = inject(UsersService);
+  private usersService = inject(UsersService);
 
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
-  private rolesService   = inject(RolesService);
+  private rolesService = inject(RolesService);
   private trackingService = inject(TrackingService);
   authService = inject(AuthService);
 
@@ -86,22 +86,22 @@ export class RolesDelisonComponent {
 
 
   verification(): boolean {
-  //const permissions = this.signalsService.getStoreFromPermissions();
-  if(this.userRoot == 1){
-    return this.authorizedPass = true;
+    //const permissions = this.signalsService.getStoreFromPermissions();
+    if (this.userRoot == 1) {
+      return this.authorizedPass = true;
+    }
+    return this.authorizedPass = false;
   }
-  return this.authorizedPass = false;
-}
 
 
-constructor(private currencyPipe: CurrencyPipe) {
+  constructor(private currencyPipe: CurrencyPipe) {
     effect(() => {
-       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-       // Usamos setTimeout para desacoplar la carga de datos del ciclo de renderizado actual.
-       // Esto evita el error "cannot get grid to draw rows when it is in the middle of drawing rows".
-       setTimeout(() => this.obtenerDatos(), 0);
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      // Usamos setTimeout para desacoplar la carga de datos del ciclo de renderizado actual.
+      // Esto evita el error "cannot get grid to draw rows when it is in the middle of drawing rows".
+      setTimeout(() => this.obtenerDatos(), 0);
     })
-}
+  }
 
   components = {
     multiLineEditor: MultiLineEditorComponent,
@@ -130,8 +130,8 @@ constructor(private currencyPipe: CurrencyPipe) {
 
 
   obtenerDatos() {
-    
-     this.rolesService.getRoles(this.idRoot).subscribe(
+
+    this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
         this.rowData = data.data;
         console.log('Roles:', this.rowData);
@@ -141,82 +141,88 @@ constructor(private currencyPipe: CurrencyPipe) {
         console.error('Error fetching data:', error);
       }
     );
-    
+
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
- // Column Definitions: Defines the columns to be displayed.
- public gridOptions: any = {
-  headerHeight: 25,
-  rowHeight: 20,
-  rowBuffer: 20,
-  getRowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-    // Puedes agregar aquí más lógica si es necesario, por ejemplo, actualizar datos seleccionados o activar pestañas
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  },
-  /*onCellKeyDown: (params) => {
-    if (params.event.key === 'Enter') {
-      // Obtener todas las columnas editables
-      const editableColumns = this.columnDefs.filter((col) => col.editable);
-      const currentColIndex = editableColumns.findIndex(
-        (col) => col.field === params.column.getColDef().field
-      );
-
-      if (currentColIndex < editableColumns.length - 1) {
-        // Añadir delay de 50ms antes de mover el foco
-        requestAnimationFrame(() => {
-          // Mover a la siguiente columna editable
-          params.api.startEditingCell({
-            rowIndex: params.node.rowIndex,
-            colKey: editableColumns[currentColIndex + 1].field,
-          });
-        }); // Retraso para permitir que termine la edición actual
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowBuffer: 20,
+    getRowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
       }
-      params.event.preventDefault(); // Prevenir comportamiento por defecto
-    }
-  },*/
-  //onCellClicked: (event) => this.onCellClicked(event),
-  masterDetail: true,
-  detailCellRendererSelector: (params) => {
-    // Decide qué renderizador usar basado en la propiedad 'detailType'
-    if (params.data.detailType === 'posiciones') {
-      return { 
-        component: 'PosicionDelisonComponent',
-        params: {
-          // Aquí puedes pasar parámetros específicos si es necesario
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+      // Puedes agregar aquí más lógica si es necesario, por ejemplo, actualizar datos seleccionados o activar pestañas
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
+    },
+    /*onCellKeyDown: (params) => {
+      if (params.event.key === 'Enter') {
+        // Obtener todas las columnas editables
+        const editableColumns = this.columnDefs.filter((col) => col.editable);
+        const currentColIndex = editableColumns.findIndex(
+          (col) => col.field === params.column.getColDef().field
+        );
+  
+        if (currentColIndex < editableColumns.length - 1) {
+          // Añadir delay de 50ms antes de mover el foco
+          requestAnimationFrame(() => {
+            // Mover a la siguiente columna editable
+            params.api.startEditingCell({
+              rowIndex: params.node.rowIndex,
+              colKey: editableColumns[currentColIndex + 1].field,
+            });
+          }); // Retraso para permitir que termine la edición actual
         }
-      };
+        params.event.preventDefault(); // Prevenir comportamiento por defecto
+      }
+    },*/
+    //onCellClicked: (event) => this.onCellClicked(event),
+    masterDetail: true,
+    detailCellRendererSelector: (params) => {
+      // Decide qué renderizador usar basado en la propiedad 'detailType'
+      if (params.data.detailType === 'posiciones') {
+        return {
+          component: 'PosicionDelisonComponent',
+          params: {
+            // Aquí puedes pasar parámetros específicos si es necesario
+          }
+        };
+      }
+      return undefined; // No mostrar detalle si no hay tipo
+    },
+    detailRowHeight: 600,
+    detailCellRendererParams: { // Parámetros/contexto global para todos los detalles
+      context: { rolesService: this.rolesService, trackingService: this.trackingService }
     }
-    return undefined; // No mostrar detalle si no hay tipo
-  },
-  detailRowHeight: 600,
-  detailCellRendererParams: { // Parámetros/contexto global para todos los detalles
-    context: { rolesService: this.rolesService, trackingService: this.trackingService }
-  }
- };
+  };
+
+  private _columnDefs: ColDef[] = [];
 
   get columnDefs(): ColDef[] {
-    return [
+    if (this._columnDefs.length > 0) {
+      return this._columnDefs;
+    }
+
+    this._columnDefs = [
       {
         field: 'id',
         filter: 'agNumberColumnFilter',
@@ -224,7 +230,7 @@ constructor(private currencyPipe: CurrencyPipe) {
       },
       {
         field: 'description',
-        headerName: 'Nombre *',
+        headerName: 'Departamentos *',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -261,26 +267,28 @@ constructor(private currencyPipe: CurrencyPipe) {
       {
         field: 'posiciones',
         headerName: 'Posiciones*',
-        
+
         hide: false,
         cellRenderer: this.createDetailToggleCellRenderer('posiciones'),
         flex: 1,
         cellStyle: { backgroundColor: '#d4edda' },
       },
     ];
+
+    return this._columnDefs;
   }
   createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
-  return (params: any): HTMLElement => {
-    const div = document.createElement('div');
-    if (detailType === 'posiciones') {
-      div.innerText = 'Ver posiciones';
-      div.style.cursor = 'pointer';
-      div.style.textDecoration = 'underline';
-      div.style.color = '#0d6efd';
-    }
-    return div;
-  };
-}
+    return (params: any): HTMLElement => {
+      const div = document.createElement('div');
+      if (detailType === 'posiciones') {
+        div.innerText = 'Ver posiciones';
+        div.style.cursor = 'pointer';
+        div.style.textDecoration = 'underline';
+        div.style.color = '#0d6efd';
+      }
+      return div;
+    };
+  }
 
   selectedRowData: any = null;
 
@@ -358,7 +366,7 @@ constructor(private currencyPipe: CurrencyPipe) {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
-    this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
   }
 
 
@@ -380,7 +388,7 @@ constructor(private currencyPipe: CurrencyPipe) {
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    console.log  ('Nuevas filas:', newRows);
+    console.log('Nuevas filas:', newRows);
 
     // Mostrar los datos de las filas nuevas que se van a enviar
     console.log('Filas nuevas que se van a enviar al servidor:');
@@ -399,13 +407,13 @@ constructor(private currencyPipe: CurrencyPipe) {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       console.log(cleanedData)
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Save Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
       return this.rolesService.addRoles(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Update Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
       return this.rolesService.updateRoles(row.id, cleanedData);
     });
 
@@ -515,7 +523,7 @@ constructor(private currencyPipe: CurrencyPipe) {
                 'Entrada eliminada satisfactoriamente.',
                 'success'
               );
-              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
+              this.trackingService.addLog(this.trackingService.getnameComp(), 'Delete Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
               this.notSavedChanges = false;
               this.selectedRowData = null;
             }
@@ -527,7 +535,7 @@ constructor(private currencyPipe: CurrencyPipe) {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
-    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro en Roles', 'Menu Administracion Roles',  this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Cancelar Salvar Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
