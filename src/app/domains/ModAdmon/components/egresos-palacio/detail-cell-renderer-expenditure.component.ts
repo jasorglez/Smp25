@@ -753,7 +753,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         width: 250,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
-          maxLength: 100,
+          maxLength: 250,
           cols: 50,
           rows: 3,
           onKeyDown: (event: KeyboardEvent) => {
@@ -1077,8 +1077,16 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     console.log('💾 Datos sincronizados. Total filas:', this.rowData.length);
 
-    // PASO 2: Recalcular total, iva2 y totalFinal para CADA concepto
+    // PASO 2: Validar longitud de description y truncar si excede 250 caracteres
+    const truncatedConcepts: string[] = [];
     this.rowData.forEach(concept => {
+      if (concept.description && concept.description.length > 250) {
+        const originalLength = concept.description.length;
+        concept.description = concept.description.substring(0, 250);
+        truncatedConcepts.push(`Concepto ID ${concept.id}: ${originalLength} caracteres truncado a 250`);
+        console.log(`⚠️ TRUNCADO: Concepto ${concept.id} de ${originalLength} a 250 caracteres`);
+      }
+
       // Recalcular total = quantity * price
       concept.total = Number(concept.quantity || 0) * Number(concept.price || 0);
 
@@ -1090,6 +1098,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
       console.log(`  💾 Concepto ${concept.id}: total=${concept.total}, iva2=${concept.iva2}, totalFinal=${concept.totalFinal}`);
     });
+
+    // Mostrar alerta si se truncaron conceptos
+    if (truncatedConcepts.length > 0) {
+      const message = `Se truncaron ${truncatedConcepts.length} concepto(s) que excedían 250 caracteres:\n\n${truncatedConcepts.join('\n')}`;
+      alerts.basicAlert('Conceptos truncados', message, 'warning');
+    }
 
     // PASO 3: Filtrar solo los conceptos con precio mayor a 0
     const validConcepts = this.rowData.filter(concept =>
@@ -2357,15 +2371,37 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       try {
         // Validar tipo de archivo
         if (tipoDoc === 'JPG' && !file.type.includes('image/jpeg')) {
-          alerts.basicAlert('Error', 'Por favor seleccione un archivo JPG', 'error');
+          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo JPG válido', 'error');
           return;
         }
         if (tipoDoc === 'PDF' && file.type !== 'application/pdf') {
-          alerts.basicAlert('Error', 'Por favor seleccione un archivo PDF', 'error');
+          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo PDF válido', 'error');
           return;
         }
         if (tipoDoc === 'XML' && !file.type.includes('xml')) {
-          alerts.basicAlert('Error', 'Por favor seleccione un archivo XML', 'error');
+          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo XML válido', 'error');
+          return;
+        }
+
+        // Validar tamaño del archivo (máximo 10 MB)
+        const maxSize = 10 * 1024 * 1024; // 10 MB en bytes
+        if (file.size > maxSize) {
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          alerts.basicAlert(
+            'Archivo muy grande',
+            `El archivo pesa ${sizeMB} MB. El tamaño máximo permitido es 10 MB.`,
+            'error'
+          );
+          return;
+        }
+
+        // Validar nombre del archivo (máximo 100 caracteres)
+        if (file.name.length > 100) {
+          alerts.basicAlert(
+            'Nombre muy largo',
+            `El nombre del archivo tiene ${file.name.length} caracteres. El máximo permitido es 100 caracteres.`,
+            'error'
+          );
           return;
         }
 
@@ -2392,11 +2428,19 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         });
 
         alerts.basicAlert('Éxito', 'Archivo subido correctamente', 'success');
-      } catch (error) {
-        console.error('Error subiendo archivo:', error);
+      } catch (error: any) {
         this.isUploading = false;
         this.uploadProgress = 0;
-        alerts.basicAlert('Error', 'Error al subir el archivo', 'error');
+
+        // Mostrar mensaje de error específico
+        let errorMessage = 'Error al subir el archivo';
+        if (error?.message) {
+          errorMessage += `: ${error.message}`;
+        } else if (error?.code) {
+          errorMessage += `: Código ${error.code}`;
+        }
+
+        alerts.basicAlert('Error de subida', errorMessage, 'error');
       }
     };
 

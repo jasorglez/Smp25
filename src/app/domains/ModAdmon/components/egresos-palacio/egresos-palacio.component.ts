@@ -2039,34 +2039,25 @@ export class EgresosPalacioComponent {
             countDocomps: count,
             modifiedBy: this.currentUser
           };
-          console.log(`   💾 Guardando en servidor:`, dataToSave);
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
             next: () => {
-              console.log(`   ✅ Contador de documentos actualizado en servidor para ID ${expenditureId}`);
+              // Contador actualizado
             },
             error: (error) => {
-              console.error(`   ❌ Error actualizando contador de documentos para ID ${expenditureId}:`, error);
+              // Error actualizando contador
             }
           });
         }
       });
-      if (!found) {
-        console.warn(`   ⚠️ No se encontró el registro con ID ${expenditureId} en el grid`);
-      }
-    } else {
-      console.warn('   ⚠️ gridApi no está disponible');
     }
   }
 
   loadDocumentosComprobados(expenditureId: number, successCallback: any) {
-    console.log('🟢 PADRE: Cargando documentos comprobados desde servidor para ID:', expenditureId);
     this.administrationService.getDocumentComprobados(expenditureId).subscribe({
       next: (data: any) => {
-        console.log(`✅ PADRE: Documentos comprobados recibidos del servidor para ID ${expenditureId}:`, data?.length || 0);
         successCallback(data);
       },
       error: (error) => {
-        console.error('❌ PADRE: Error loading documentos comprobados para ID', expenditureId, error);
         successCallback([]);
       }
     });
@@ -2101,7 +2092,6 @@ export class EgresosPalacioComponent {
       }
 
     } catch (error) {
-      console.error('Error saving documentos:', error);
       alerts.basicAlert(
         'Error',
         'Error al guardar los documentos.',
@@ -2125,7 +2115,6 @@ export class EgresosPalacioComponent {
         alerts.basicAlert('Documento eliminado', 'El documento se eliminó correctamente.', 'success');
         successCallback();
       } catch (error) {
-        console.error('Error deleting documento:', error);
         alerts.basicAlert(
           'Error',
           'Error al eliminar el documento.',
@@ -2202,10 +2191,6 @@ export class EgresosPalacioComponent {
       return;
     }
 
-    // Mostrar datos para copiar y probar en Swagger
-    const jsonData = JSON.stringify(this.newProvider, null, 2);
-    prompt('📋 COPIAR DATOS PARA SWAGGER:\n\nSelecciona todo (Ctrl+A) y copia (Ctrl+C):', jsonData);
-
     try {
       const result: any = await lastValueFrom(
         this.customersService.addCustomer(this.newProvider)
@@ -2227,7 +2212,6 @@ export class EgresosPalacioComponent {
       this.closeProviderModal();
 
     } catch (error) {
-      console.error('Error creando proveedor:', error);
       alerts.basicAlert(
         'Error',
         `Error al crear el proveedor. ${error?.error?.message || error?.message || 'Error desconocido'}`,
