@@ -13,6 +13,11 @@ import { alerts } from '../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { AuthService } from 'app/services/auth.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-saldos-palacio',
@@ -21,6 +26,8 @@ import { AuthService } from 'app/services/auth.service';
     RouterModule,
     DomainsModule,
     AgGridModule,
+    CommonModule,
+    FormsModule
   ],
   templateUrl: './saldos-palacio.component.html',
   styleUrl: './saldos-palacio.component.scss',
@@ -35,6 +42,14 @@ export class SaldosPalacioComponent {
 
   private trackingService = inject(TrackingService);
   private administrationService = inject(AdministrationService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
+
+  // Propiedades para el modal de reporte
+  showReportModal: boolean = false;
+  reportStartDate: string = '';
+  reportEndDate: string = '';
+  isGeneratingReport: boolean = false;
 
   saldoData: any[] = [];
   rowDetails: any[] = [];
@@ -435,5 +450,354 @@ export class SaldosPalacioComponent {
         this.trackingService.getEmail()
       );
     }
+  }
+
+  // ==================== MÉTODOS PARA REPORTE PDF ====================
+
+  openReportModal() {
+    if (!this.selectedRowData || !this.selectedRowData.id) {
+      alerts.basicAlert(
+        'Sin selección',
+        'Por favor seleccione una cuenta bancaria para generar el reporte',
+        'warning'
+      );
+      return;
+    }
+
+    // Establecer fechas por defecto: un mes antes
+    const now = new Date();
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    this.reportStartDate = this.formatDateForInput(previousMonth);
+    this.reportEndDate = this.formatDateForInput(now);
+
+    this.showReportModal = true;
+    document.body.classList.add('modal-open');
+
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Abrir modal de reporte de estado de cuenta',
+      'Palacio Municipal - Saldos',
+      this.trackingService.getEmail()
+    );
+  }
+
+  closeReportModal() {
+    this.showReportModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  private formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  async generateReport() {
+    if (!this.reportStartDate || !this.reportEndDate) {
+      alerts.basicAlert('Error', 'Por favor seleccione ambas fechas', 'error');
+      return;
+    }
+
+    if (new Date(this.reportStartDate) > new Date(this.reportEndDate)) {
+      alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
+      return;
+    }
+
+    this.isGeneratingReport = true;
+
+    try {
+      // Cargar datos del estado de cuenta con las fechas seleccionadas
+      const startDate = new Date(this.reportStartDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(this.reportEndDate);
+      endDate.setHours(23, 59, 59, 999);
+
+      // Filtrar rowDetails por rango de fechas
+      const filteredData = this.rowDetails.filter(row => {
+        const rowDate = new Date(row.fecha);
+        return rowDate >= startDate && rowDate <= endDate;
+      });
+
+      if (filteredData.length === 0) {
+        alerts.basicAlert(
+          'Sin datos',
+          'No se encontraron movimientos en el rango de fechas seleccionado',
+          'warning'
+        );
+        this.isGeneratingReport = false;
+        return;
+      }
+
+      // Generar PDF
+      await this.generatePDF(filteredData);
+
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Generar reporte de estado de cuenta del ${this.reportStartDate} al ${this.reportEndDate}`,
+        'Palacio Municipal - Saldos',
+        this.trackingService.getEmail()
+      );
+
+      // Cerrar modal
+      this.closeReportModal();
+
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte', 'error');
+    } finally {
+      this.isGeneratingReport = false;
+    }
+  }
+
+  private async generatePDF(data: any[]) {
+    // Importar pdfMake dinámicamente
+    const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+    const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+    (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+    // Obtener información de la empresa y firmas
+    const companyId = parseInt(localStorage.getItem('company') || '0');
+    const rootResponse: any = await lastValueFrom(
+      this.rootService.getRootbyId(companyId)
+    );
+
+    const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const watermarkBase64 = rootResponse.picture3
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+      : null;
+
+    const setupManagementInfo: any = await lastValueFrom(
+      this.administrationService.getSetupManagementInfo(companyId)
+    );
+    const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+      ? setupManagementInfo[0]
+      : null;
+
+    // Obtener nombre de la cuenta seleccionada
+    const accountInfo = this.selectedRowData;
+    const accountName = `${accountInfo.nameAccount} - ${accountInfo.bankName || ''}`.toUpperCase();
+
+    // Construir tabla del estado de cuenta
+    const tableBody: any[] = [
+      // Encabezado
+      [
+        { text: 'NÚMERO DOCUMENTO', style: 'tableHeader', alignment: 'left' },
+        { text: 'FECHA', style: 'tableHeader', alignment: 'center' },
+        { text: 'DESCRIPCIÓN', style: 'tableHeader', alignment: 'left' },
+        { text: 'TIPO', style: 'tableHeader', alignment: 'center' },
+        { text: 'INGRESO', style: 'tableHeader', alignment: 'right' },
+        { text: 'EGRESO', style: 'tableHeader', alignment: 'right' },
+        { text: 'SALDO', style: 'tableHeader', alignment: 'right' }
+      ]
+    ];
+
+    // Agregar filas de datos
+    data.forEach(row => {
+      tableBody.push([
+        { text: row.numeroDocumento || '', style: 'tableCell', alignment: 'left' },
+        { text: row.fecha || '', style: 'tableCell', alignment: 'center' },
+        { text: row.descripcion || '', style: 'tableCell', alignment: 'left' },
+        { text: row.tipo || '', style: 'tableCell', alignment: 'center' },
+        {
+          text: this.formatCurrencyNumber(row.deposito || 0),
+          style: 'tableCellAmount',
+          alignment: 'right',
+          color: row.deposito > 0 ? '#198754' : '#000000'
+        },
+        {
+          text: this.formatCurrencyNumber(row.gasto || 0),
+          style: 'tableCellAmount',
+          alignment: 'right',
+          color: row.gasto > 0 ? '#dc3545' : '#000000'
+        },
+        {
+          text: this.formatCurrencyNumber(row.saldo || 0),
+          style: 'tableCellAmount',
+          alignment: 'right',
+          color: row.saldo >= 0 ? '#198754' : '#dc3545',
+          bold: true
+        }
+      ]);
+    });
+
+    // Definición del documento
+    const docDefinition: any = {
+      pageSize: 'LETTER',
+      pageOrientation: 'landscape',
+      pageMargins: [40, 55, 40, 60],
+      background: watermarkBase64 ? [
+        {
+          image: 'watermark',
+          width: 400,
+          opacity: 0.15,
+          absolutePosition: { x: 206, y: 150 }
+        }
+      ] : [],
+      content: [
+        // Header con logos y título
+        {
+          columns: [
+            {
+              image: 'logo',
+              width: 60,
+              alignment: 'left'
+            },
+            {
+              stack: [
+                {
+                  text: rootResponse.name || 'H. JUNTA MUNICIPAL',
+                  style: 'companyName',
+                  alignment: 'center'
+                },
+                {
+                  text: rootResponse.address || '',
+                  style: 'companyInfo',
+                  alignment: 'center'
+                }
+              ],
+              width: '*'
+            },
+            {
+              image: 'logo',
+              width: 60,
+              alignment: 'right'
+            }
+          ],
+          margin: [0, 0, 0, 10]
+        },
+        // Título del reporte
+        {
+          text: `ESTADO DE CUENTA - ${accountName}`,
+          style: 'reportTitle',
+          alignment: 'center',
+          margin: [0, 5, 0, 5]
+        },
+        // Período
+        {
+          text: `Del ${this.reportStartDate} al ${this.reportEndDate}`,
+          style: 'reportSubtitle',
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
+        // Tabla de movimientos
+        {
+          table: {
+            headerRows: 1,
+            widths: [85, 70, '*', 70, 70, 70, 70],
+            body: tableBody
+          },
+          layout: {
+            hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#000000',
+            vLineColor: () => '#000000',
+            paddingTop: () => 2,
+            paddingBottom: () => 2,
+            paddingLeft: () => 4,
+            paddingRight: () => 4
+          },
+          margin: [0, 0, 0, 20]
+        },
+        // Firmas
+        {
+          columns: [
+            {
+              stack: [
+                { text: firmas?.administratorTitle || 'TESORERO', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 8 },
+                { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '33%'
+            },
+            {
+              stack: [
+                { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 8 },
+                { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '34%'
+            },
+            {
+              stack: [
+                { text: firmas?.directorTitle || 'PRESIDENTE', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 8 },
+                { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '33%'
+            }
+          ]
+        }
+      ],
+      images: watermarkBase64 ? {
+        logo: logoBase64,
+        watermark: watermarkBase64
+      } : {
+        logo: logoBase64
+      },
+      styles: {
+        companyName: {
+          fontSize: 11,
+          bold: true,
+          color: '#000000'
+        },
+        companyInfo: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        reportTitle: {
+          fontSize: 11,
+          bold: true,
+          color: '#000000'
+        },
+        reportSubtitle: {
+          fontSize: 9,
+          color: '#000000'
+        },
+        tableHeader: {
+          fontSize: 8,
+          bold: true,
+          fillColor: '#e0e0e0',
+          color: '#000000'
+        },
+        tableCell: {
+          fontSize: 7,
+          color: '#000000'
+        },
+        tableCellAmount: {
+          fontSize: 7
+        },
+        firmaTitle: {
+          fontSize: 8,
+          bold: true,
+          color: '#000000'
+        },
+        firmaNombre: {
+          fontSize: 8,
+          color: '#000000'
+        }
+      }
+    };
+
+    // Generar y abrir el PDF
+    const pdf = pdfMake.createPdf(docDefinition);
+    pdf.open();
+
+    alerts.basicAlert(
+      'Reporte generado',
+      'El estado de cuenta se ha generado correctamente',
+      'success'
+    );
+  }
+
+  private formatCurrencyNumber(amount: number): string {
+    return `$${amount.toLocaleString('es-MX', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
   }
 }
