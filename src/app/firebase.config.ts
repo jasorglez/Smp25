@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 
 
@@ -12,7 +12,8 @@ const firebaseConfig = {
   appId: "1:151993360357:web:127db5b6d20896fb84990c"
 };
 
-export const app = initializeApp(firebaseConfig);
+// Initialize Firebase only if it hasn't been initialized yet
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const db = getDatabase(app);
 
 

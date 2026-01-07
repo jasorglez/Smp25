@@ -145,8 +145,14 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     },
   };
 
+  private _warehousesColumnDefs: any[] = [];
+
   get warehousesColumnDefs(): any[] {
-    return [
+    if (this._warehousesColumnDefs.length > 0) {
+      return this._warehousesColumnDefs;
+    }
+
+    this._warehousesColumnDefs = [
       {
         field: 'id',
         headerName: 'ID',
@@ -292,6 +298,8 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
       },
 
     ];
+
+    return this._warehousesColumnDefs;
   }
 
   agInit(params: ICellRendererParams): void {
