@@ -84,7 +84,7 @@ export const routes: Routes = [
                 './domains/ModWarehouse/components/raw-materials/raw-materials.component'
               ).then((s) => s.RawMaterialsComponent)
           },
-          
+
           {
             path: 'purchaseorder',
             loadComponent: () => import('./domains/ModWarehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
@@ -96,7 +96,7 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModWarehouse/components/entrances/entrances.component').then((i) => i.EntrancesComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
-          
+
           {
             path: 'outings-st',
             loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then((i) => i.InandoutStComponent),
@@ -209,35 +209,23 @@ export const routes: Routes = [
                 path: 'primera-fase',
                 loadComponent: () =>
                   import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'PRIMERA_FASE' },
+                    './domains/ModWarehouse/components/materials/primera-fase/primera-fase.component'
+                  ).then((m) => m.PrimeraFaseComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
                 path: 'primera-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'PRIMERA_FASE_HISTORICO' },
-              },
-              {
-                path: 'segunda-fase',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'SEGUNDA_FASE' },
-                canDeactivate: [UnsavedChangesGuard],
+                    './domains/ModWarehouse/components/materials/primera-fase-historico/primera-fase-historico.component'
+                  ).then((m) => m.PrimeraFaseHistoricoComponent),
               },
               {
                 path: 'segunda-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'SEGUNDA_FASE_HISTORICO' },
+                    './domains/ModWarehouse/components/materials/segunda-fase-historico/segunda-fase-historico.component'
+                  ).then((m) => m.SegundaFaseHistoricoComponent),
               },
             ],
           },
@@ -574,7 +562,7 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/pages/procot/procot.component'
               ).then((o) => o.ProcotComponent),
-              canActivate: [MasterPermissionsGuard],
+            canActivate: [MasterPermissionsGuard],
             data: {
               permissions:
               {
@@ -606,7 +594,7 @@ export const routes: Routes = [
                     './domains/ModProjects/components/ot/generales/generales.component'
                   ).then((g) => g.GeneralesComponent),
               },
-              
+
               {
                 path: 'inspeccion',
                 loadComponent: () =>
@@ -621,7 +609,7 @@ export const routes: Routes = [
                     './domains/ModProjects/components/ot/Graficas/unidad.component'
                   ).then((u) => u.UnidadComponent),
               },
-             
+
               {
                 path: 'details',
                 loadComponent: () =>
@@ -681,21 +669,21 @@ export const routes: Routes = [
               }
             }
           },
-       
+
           {
             path: 'menu',
             loadComponent: () =>
               import('./domains/SMP/Pages/proccreatemenus/proccreatemenus.component').then(
                 (r) => r.ProccreatemenusComponent
               ),
-           canActivate: [TrackingGuard],
+            canActivate: [TrackingGuard],
             data: {
               tracking: {
                 logMessage: 'Click en Pestaña Configuración Módulo Menu',
                 category: 'Setup'
               }
             },
-             children: [
+            children: [
               { path: '', redirectTo: '', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
               {
@@ -710,13 +698,13 @@ export const routes: Routes = [
                 loadComponent: () =>
                   import(
                     './domains/SMP/Components/permission/permission.component'
-                  ).then((p) => p.PermissionComponent),            
+                  ).then((p) => p.PermissionComponent),
               },
               {
                 path: 'columnHider',
                 loadComponent: () =>
-                        import('./domains/SMP/Components/columnHider/columnHider.component').then(
-                (r) => r.columnHiderComponent),
+                  import('./domains/SMP/Components/columnHider/columnHider.component').then(
+                    (r) => r.columnHiderComponent),
               }
             ],
 
@@ -967,8 +955,8 @@ export const routes: Routes = [
               {
                 path: 'accountbanks',
                 loadComponent: () => import(
-                    './domains/ModAdmon/components/accountbanks/accountbanks.component'
-                  ).then((a) => a.AccountbanksComponent),
+                  './domains/ModAdmon/components/accountbanks/accountbanks.component'
+                ).then((a) => a.AccountbanksComponent),
                 canActivate: [TrackingGuard],
                 data: {
                   tracking: {
@@ -977,12 +965,12 @@ export const routes: Routes = [
                   }
                 },
               },
-              
-          {
-            path: 'providers',
-            loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
-            canDeactivate: [UnsavedChangesGuard],                       
-          },
+
+              {
+                path: 'providers',
+                loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
+                canDeactivate: [UnsavedChangesGuard],
+              },
 
 
             ],
@@ -1046,104 +1034,104 @@ export const routes: Routes = [
 
             ],
           },
+          {
+            path: 'page04',
+            loadComponent: () =>
+              import('./domains/ModAdmon/pages/pages04/pages04.component').then(
+                (p) => p.Pages04Component),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Facturacion Electronica',
+                category: 'Administration'
+              }
+            },
+            children: [
+              { path: '', redirectTo: 'facturacion', pathMatch: 'full' },
+              ...SharedModule.getRoutes(),
+
               {
-                path: 'page04',
+                path: 'facturacion',
                 loadComponent: () =>
-                  import('./domains/ModAdmon/pages/pages04/pages04.component').then(
-                    (p) => p.Pages04Component),
+                  import(
+                    './domains/ModAdmon/components/facturacion/facturacion.component'
+                  ).then((f) => f.FacturacionComponent),
                 canActivate: [TrackingGuard],
                 data: {
                   tracking: {
-                    logMessage: 'Click en Pestaña Facturacion Electronica',
+                    logMessage: 'Click en Pestaña Facturacion',
                     category: 'Administration'
                   }
                 },
-                children: [
-                  { path: '', redirectTo: 'facturacion', pathMatch: 'full' },
-                  ...SharedModule.getRoutes(),
-   
-                  {
-                    path: 'facturacion',
-                    loadComponent: () =>
-                      import(
-                        './domains/ModAdmon/components/facturacion/facturacion.component'
-                      ).then((f) => f.FacturacionComponent),
-                    canActivate: [TrackingGuard],
-                    data: {
-                      tracking: {
-                        logMessage: 'Click en Pestaña Facturacion',
-                        category: 'Administration'
-                      }
-                    },
-                  },
-   
-                  {
-                    path: 'catalogos-sat',
-                    loadComponent: () =>
-                      import(
-                        './domains/ModAdmon/components/catalogos-sat/catalogos-sat.component'
-                      ).then((c) => c.CatalogosSatComponent),
-                    children: [
-                      {
-                        path: 'clave-unidad',
-                        loadComponent: () =>
-                          import(
-                            './domains/ModAdmon/components/catalogos-sat/components/clave-unidad/clave-unidad.component'
-                          ).then((c) => c.ClaveUnidadComponent),
-                      },
-                      {
-                        path: 'forma-pago',
-                        loadComponent: () =>
-                          import(
-                            './domains/ModAdmon/components/catalogos-sat/components/forma-pago/forma-pago.component'
-                          ).then((f) => f.FormaPagoComponent),
-                      },
-                      {
-                        path: 'metodo-pago',
-                        loadComponent: () =>
-                          import(
-                            './domains/ModAdmon/components/catalogos-sat/components/metodo-pago/metodo-pago.component'
-                          ).then((m) => m.MetodoPagoComponent),
-                      },
-                      {
-                        path: 'moneda',
-                        loadComponent: () =>
-                          import(
-                            './domains/ModAdmon/components/catalogos-sat/components/moneda/moneda.component'
-                          ).then((m) => m.MonedaComponent),
-                      },
-                      {
-                        path: 'tipo-comprobante',
-                        loadComponent: () =>
-                          import(
-                            './domains/ModAdmon/components/catalogos-sat/components/tipo-comprobante/tipo-comprobante.component'
-                          ).then((t) => t.TipoComprobanteComponent),
-                      },
-                      {
-                        path: 'uso-cfdi',
-                        loadComponent: () =>
-                          import(
-                            './domains/ModAdmon/components/catalogos-sat/components/uso-cfdi/uso-cfdi.component'
-                          ).then((u) => u.UsoCfdiComponent),
-                      },
-                      {
-                        path: 'productos-servicios',
-                        loadComponent: () =>
-                          import(
-                            './domains/ModAdmon/components/catalogos-sat/components/productos-servicios/productos-servicios.component'
-                          ).then((p) => p.ProductosServiciosComponent),
-                      },
-                      {
-                        path: '',
-                        redirectTo: 'clave-unidad',
-                        pathMatch: 'full'
-                      }
-                    ],
-                    canDeactivate: [UnsavedChangesGuard],
-                  },
-   
-                ],
               },
+
+              {
+                path: 'catalogos-sat',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/components/catalogos-sat/catalogos-sat.component'
+                  ).then((c) => c.CatalogosSatComponent),
+                children: [
+                  {
+                    path: 'clave-unidad',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/components/clave-unidad/clave-unidad.component'
+                      ).then((c) => c.ClaveUnidadComponent),
+                  },
+                  {
+                    path: 'forma-pago',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/components/forma-pago/forma-pago.component'
+                      ).then((f) => f.FormaPagoComponent),
+                  },
+                  {
+                    path: 'metodo-pago',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/components/metodo-pago/metodo-pago.component'
+                      ).then((m) => m.MetodoPagoComponent),
+                  },
+                  {
+                    path: 'moneda',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/components/moneda/moneda.component'
+                      ).then((m) => m.MonedaComponent),
+                  },
+                  {
+                    path: 'tipo-comprobante',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/components/tipo-comprobante/tipo-comprobante.component'
+                      ).then((t) => t.TipoComprobanteComponent),
+                  },
+                  {
+                    path: 'uso-cfdi',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/components/uso-cfdi/uso-cfdi.component'
+                      ).then((u) => u.UsoCfdiComponent),
+                  },
+                  {
+                    path: 'productos-servicios',
+                    loadComponent: () =>
+                      import(
+                        './domains/ModAdmon/components/catalogos-sat/components/productos-servicios/productos-servicios.component'
+                      ).then((p) => p.ProductosServiciosComponent),
+                  },
+                  {
+                    path: '',
+                    redirectTo: 'clave-unidad',
+                    pathMatch: 'full'
+                  }
+                ],
+                canDeactivate: [UnsavedChangesGuard],
+              },
+
+            ],
+          },
 
           {
             path: 'palacio-municipal',
@@ -1234,64 +1222,64 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard]
               },
 
-                {
-                  path: 'dashboard-palacio',
-                  loadComponent: () =>
-                    import('./domains/ModAdmon/pages/palacio-municipal/dashboards-pal/dashboards-pal.component'
-                    ).then((c) => c.DashboardsPalComponent),
-                  canActivate: [TrackingGuard],
-                  data: {
-                    tracking: {
-                      logMessage: 'Click en Dashboard - Palacio Municipal',
-                      category: 'Administration'
-                    }
+              {
+                path: 'dashboard-palacio',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/palacio-municipal/dashboards-pal/dashboards-pal.component'
+                  ).then((c) => c.DashboardsPalComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Dashboard - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                },
+                canDeactivate: [UnsavedChangesGuard],
+                children: [
+                  { path: '', redirectTo: 'dasing-pal', pathMatch: 'full' },
+                  {
+                    path: 'dasing-pal',
+                    loadComponent: () =>
+                      import('./domains/ModAdmon/pages/palacio-municipal/dasing-pal/dasing-pal.component'
+                      ).then((c) => c.DasingPalComponent),
+                    canActivate: [TrackingGuard],
+                    data: {
+                      tracking: {
+                        logMessage: 'Click en Dashboard Ingresos - Palacio Municipal',
+                        category: 'Administration'
+                      }
+                    },
+                    canDeactivate: [UnsavedChangesGuard]
                   },
-                  canDeactivate: [UnsavedChangesGuard],
-                  children: [
-                    { path: '', redirectTo: 'dasing-pal', pathMatch: 'full' },
-                    {
-                      path: 'dasing-pal',
-                      loadComponent: () =>
-                        import('./domains/ModAdmon/pages/palacio-municipal/dasing-pal/dasing-pal.component'
-                        ).then((c) => c.DasingPalComponent),
-                      canActivate: [TrackingGuard],
-                      data: {
-                        tracking: {
-                          logMessage: 'Click en Dashboard Ingresos - Palacio Municipal',
-                          category: 'Administration'
-                        }
-                      },
-                      canDeactivate: [UnsavedChangesGuard]
+                  {
+                    path: 'dashegr-pal',
+                    loadComponent: () =>
+                      import('./domains/ModAdmon/pages/palacio-municipal/dashegr-pal/dashegr-pal.component'
+                      ).then((c) => c.DashegrPalComponent),
+                    canActivate: [TrackingGuard],
+                    data: {
+                      tracking: {
+                        logMessage: 'Click en Dashboard Egresos - Palacio Municipal',
+                        category: 'Administration'
+                      }
                     },
-                    {
-                      path: 'dashegr-pal',
-                      loadComponent: () =>
-                        import('./domains/ModAdmon/pages/palacio-municipal/dashegr-pal/dashegr-pal.component'
-                        ).then((c) => c.DashegrPalComponent),
-                      canActivate: [TrackingGuard],
-                      data: {
-                        tracking: {
-                          logMessage: 'Click en Dashboard Egresos - Palacio Municipal',
-                          category: 'Administration'
-                        }
-                      },
-                      canDeactivate: [UnsavedChangesGuard]
-                    },
-                    {
-                      path: 'dastot-pal',
-                      loadComponent: () =>
-                        import('./domains/ModAdmon/pages/palacio-municipal/dastot-pal/dastot-pal.component'
-                        ).then((c) => c.DastotPalComponent),
-                      canActivate: [TrackingGuard],
-                      data: {
-                        tracking: {
-                          logMessage: 'Click en Dashboard Total - Palacio Municipal',
-                          category: 'Administration'
-                        }
+                    canDeactivate: [UnsavedChangesGuard]
+                  },
+                  {
+                    path: 'dastot-pal',
+                    loadComponent: () =>
+                      import('./domains/ModAdmon/pages/palacio-municipal/dastot-pal/dastot-pal.component'
+                      ).then((c) => c.DastotPalComponent),
+                    canActivate: [TrackingGuard],
+                    data: {
+                      tracking: {
+                        logMessage: 'Click en Dashboard Total - Palacio Municipal',
+                        category: 'Administration'
                       }
                     }
-                  ]
-                },
+                  }
+                ]
+              },
               {
                 path: 'contribuyentes',
                 loadComponent: () =>
@@ -1855,7 +1843,7 @@ export const routes: Routes = [
         ],
       },
       {
-         path: 'shoppingTD',
+        path: 'shoppingTD',
         loadComponent: () =>
           import(
             './domains/ModShoppingTD/pages/procshoppingTD.component'
@@ -1868,7 +1856,7 @@ export const routes: Routes = [
           {
             path: 'materials-st',
             loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
-          },   
+          },
 
           {
             path: 'requisitions-st',
@@ -1876,7 +1864,7 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
           },
 
-            {
+          {
             path: 'quotes-st',
             loadComponent: () => import('./domains/ModWarehouse/components/quote/quote.component').then((q) => q.QuoteComponent),
             canDeactivate: [UnsavedChangesGuard],
@@ -1891,25 +1879,25 @@ export const routes: Routes = [
           {
             path: 'providers-st',
             loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
-            canDeactivate: [UnsavedChangesGuard],                       
+            canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'setupwarehouse',
             loadComponent: () => import('./domains/ModWarehouse/components/setupwarehouse/setupwarehouse.component').then((s) => s.SetupwarehouseComponent),
-            canDeactivate: [UnsavedChangesGuard],                       
+            canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'catalogs',
             loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then((s) => s.CatalogsComponent),
-            canDeactivate: [UnsavedChangesGuard],                       
+            canDeactivate: [UnsavedChangesGuard],
           },
 
         ]
       },
       {
-         path: 'warehousesTD',
+        path: 'warehousesTD',
         loadComponent: () =>
           import(
             './domains/ModWareHousesTD/pages/procwarehousesTD.component'
@@ -1926,18 +1914,18 @@ export const routes: Routes = [
               ),
           },
           {
-            path: 'warehouses', 
+            path: 'warehouses',
             loadComponent: () => import('./domains/ModWarehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'materials-st',
             loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
-          },         
+          },
           {
-             path: 'providers-st', loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
-                data: { type: 'PROVIDERS' }, // Parámetro para proveedores
-                canDeactivate: [UnsavedChangesGuard],
+            path: 'providers-st', loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
+            data: { type: 'PROVIDERS' }, // Parámetro para proveedores
+            canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'inventory-st',
@@ -1949,9 +1937,9 @@ export const routes: Routes = [
             data: { movementType: 'IN' }
           },
           {
-             path: 'outings-st',
-             loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then(c => c.InandoutStComponent),
-             data: { movementType: 'OUT' }
+            path: 'outings-st',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then(c => c.InandoutStComponent),
+            data: { movementType: 'OUT' }
           }
         ]
       },
@@ -1971,8 +1959,8 @@ export const routes: Routes = [
               import(
                 './domains/ModWarehouse/components/providers/providers.component'
               ).then((c) => c.ProvidersComponent),
-                data: { type: 'PROVIDERS' },
-                canDeactivate: [UnsavedChangesGuard],
+            data: { type: 'PROVIDERS' },
+            canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'materia-prima',
@@ -2001,35 +1989,23 @@ export const routes: Routes = [
                 path: 'primera-fase',
                 loadComponent: () =>
                   import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'PRIMERA_FASE' },
+                    './domains/ModWarehouse/components/materials/primera-fase/primera-fase.component'
+                  ).then((m) => m.PrimeraFaseComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
                 path: 'primera-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'PRIMERA_FASE_HISTORICO' },
-              },
-              {
-                path: 'segunda-fase',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'SEGUNDA_FASE' },
-                canDeactivate: [UnsavedChangesGuard],
+                    './domains/ModWarehouse/components/materials/primera-fase-historico/primera-fase-historico.component'
+                  ).then((m) => m.PrimeraFaseHistoricoComponent),
               },
               {
                 path: 'segunda-fase-historico',
                 loadComponent: () =>
                   import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'SEGUNDA_FASE_HISTORICO' },
+                    './domains/ModWarehouse/components/materials/segunda-fase-historico/segunda-fase-historico.component'
+                  ).then((m) => m.SegundaFaseHistoricoComponent),
               },
             ],
           },
@@ -2064,17 +2040,17 @@ export const routes: Routes = [
               import(
                 './domains/ModWarehouse/components/purchaseorderdelison/purchaseorderdelison.component'
               ).then((c) => c.PurchaseOrderDelisonComponent),
-                canDeactivate: [UnsavedChangesGuard],
+            canDeactivate: [UnsavedChangesGuard],
           },
-          
+
           {
             path: 'catalogs',
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')
                 .then((s) => s.CatalogsComponent),
-              canActivate: [MasterPermissionsGuard],
-              data: { permissions: { master: 'shoppingDelison', detailed: 'catalogs' } },
-              children: [
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'shoppingDelison', detailed: 'catalogs' } },
+            children: [
               {
                 path: 'cat-fam-sub',
                 loadComponent: () =>
@@ -2086,7 +2062,7 @@ export const routes: Routes = [
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },
-              
+
             ],
           },
           {
