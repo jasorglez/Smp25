@@ -135,6 +135,12 @@ export class IngresosPalacioComponent implements OnInit {
   bankAccounts: any[] = [];
   tipos: any[] = [];
 
+  // Propiedades para el modal de reporte PDF
+  showPdfModal: boolean = false;
+  pdfStartDate: string = '';
+  pdfEndDate: string = '';
+  isGeneratingPdfReport: boolean = false;
+
   // Propiedades para el modal de contribuyente
   showContribuyenteModal: boolean = false;
   newContribuyente: any = {
@@ -1441,6 +1447,598 @@ async saveChanges() {
         'error'
       );
     }
+  }
+
+  // ==================== MÉTODOS PARA EL REPORTE PDF DE INGRESOS ====================
+
+  openPdfModal() {
+    const now = new Date();
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    this.pdfStartDate = this.formatDateForInput(previousMonth);
+    this.pdfEndDate = this.formatDateForInput(now);
+    this.showPdfModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closePdfModal() {
+    this.showPdfModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  private formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private formatDateForDisplay(dateString: string): string {
+    // dateString viene en formato "YYYY-MM-DD"
+    // Convertir directamente sin usar new Date() para evitar problemas de zona horaria
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+    }
+    return dateString; // Fallback si el formato es incorrecto
+  }
+
+  async generatePdfReport() {
+    if (!this.pdfStartDate || !this.pdfEndDate) {
+      alerts.basicAlert(
+        'Fechas requeridas',
+        'Por favor seleccione las fechas de inicio y fin para el reporte.',
+        'warning'
+      );
+      return;
+    }
+
+    this.isGeneratingPdfReport = true;
+
+    try {
+      // Cargar datos de ingresos en el rango de fechas
+      const incomesData = await this.loadIncomesForDateRange(this.pdfStartDate, this.pdfEndDate);
+
+      // Cargar catálogo completo de ingresos con estructura jerárquica
+      const catalogData = await this.loadFullIngresosCatalog();
+
+      // Generar el PDF
+      await this.generateIngresosPDF(incomesData, catalogData);
+
+      this.closePdfModal();
+
+    } catch (error) {
+      console.error('Error generando reporte PDF:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al generar el reporte PDF.',
+        'error'
+      );
+    } finally {
+      this.isGeneratingPdfReport = false;
+    }
+  }
+
+  private async loadIncomesForDateRange(startDate: string, endDate: string): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
+        next: (incomes) => {
+          console.log('💰 Ingresos totales en BD:', incomes?.length || 0);
+          console.log('🏦 Filtrando por cuenta bancaria ID:', this._idAccount);
+
+          const filtered = incomes?.filter(income => {
+            // Filtro 1: Debe ser tipo DEPOSITO
+            if (income.type !== "DEPOSITO") return false;
+
+            // Filtro 2: Debe ser de la cuenta bancaria seleccionada
+            if (income.idAccount !== this._idAccount) return false;
+
+            // Filtro 3: Debe estar en el rango de fechas
+            const incomeDate = new Date(income.date);
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            return incomeDate >= start && incomeDate <= end;
+          }) || [];
+
+          console.log(`📅 Ingresos filtrados (${startDate} a ${endDate}, Cuenta: ${this._idAccount}):`, filtered.length);
+          console.log('💵 Detalle de ingresos filtrados:');
+          filtered.forEach((income, index) => {
+            console.log(`   ${index + 1}. idCustomer: ${income.idCustomer}, idAccount: ${income.idAccount}, Total: $${income.total}, Fecha: ${income.date}`);
+          });
+
+          resolve(filtered);
+        },
+        error: (err) => {
+          console.error('Error cargando ingresos:', err);
+          reject(err);
+        }
+      });
+    });
+  }
+
+  private async loadFullIngresosCatalog(): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.catalogadmonService.getCatalogs(this.root, 'INCOME').subscribe({
+        next: (data: any) => {
+          const catalogData = data || [];
+          console.log('🗂️ Catálogo cargado desde BD - Total de registros:', catalogData.length);
+          console.log('📋 Primeros 5 registros del catálogo:', catalogData.slice(0, 5));
+          resolve(catalogData);
+        },
+        error: (error) => {
+          console.error('Error cargando catálogo de ingresos:', error);
+          reject(error);
+        }
+      });
+    });
+  }
+
+  private async generateIngresosPDF(incomesData: any[], catalogData: any[]) {
+    try {
+      // Obtener información de root y logos
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.root));
+
+      const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+      const logo2Base64 = rootResponse.picture2
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+        : logoBase64;
+      const watermarkBase64 = rootResponse.picture3
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+        : null;
+
+      // Obtener información de la cuenta bancaria seleccionada
+      const selectedAccount = this.bankAccounts.find(acc => acc.id === this._idAccount);
+      const accountName = selectedAccount ? selectedAccount.nameAccount : 'CUENTA NO ESPECIFICADA';
+
+      // Construir estructura jerárquica del catálogo
+      const catalogTree = this.buildCatalogTree(catalogData);
+
+      // Agrupar ingresos por categoría y calcular totales
+      const reportData = this.buildReportData(catalogTree, incomesData);
+
+      // Obtener mes y año del rango de fechas
+      const startDate = new Date(this.pdfStartDate);
+      const monthName = this.getMonthName(startDate);
+      const year = startDate.getFullYear();
+
+      // Construir el documento PDF
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'portrait',
+        pageMargins: [40, 120, 40, 80],
+        header: {
+          margin: [40, 20, 40, 10],
+          columns: [
+            {
+              image: 'logo',
+              width: 60,
+              alignment: 'left'
+            },
+            {
+              stack: [
+                { text: rootResponse.name || 'H. JUNTA MUNICIPAL', style: 'headerTitle', alignment: 'center' },
+                { text: '2024-2027', style: 'headerSubtitle', alignment: 'center' },
+                { text: rootResponse.address || 'CALLE 22 S/N ENTRE 17 Y 19, COLONIA CENTRO', style: 'headerAddress', alignment: 'center' }
+              ],
+              width: '*',
+              margin: [0, 5, 0, 0]
+            },
+            {
+              image: 'logo2',
+              width: 60,
+              alignment: 'right'
+            }
+          ]
+        },
+        footer: (currentPage: number, pageCount: number) => {
+          // Solo mostrar firmas en la última página
+          if (currentPage === pageCount) {
+            return {
+              margin: [40, 10, 40, 20],
+              stack: [
+                {
+                  columns: [
+                    {
+                      stack: [
+                        { text: 'TESORERO', style: 'signatureLabel', alignment: 'center' },
+                        { text: '\n\n', fontSize: 8 },
+                        { text: '_______________________', alignment: 'center', fontSize: 9 },
+                        { text: rootResponse.treasurer || 'C. FELIX COLLI CHIM', style: 'signatureName', alignment: 'center' }
+                      ],
+                      width: '33%'
+                    },
+                    {
+                      stack: [
+                        { text: 'SINDICO DE HACIENDA', style: 'signatureLabel', alignment: 'center' },
+                        { text: '\n\n', fontSize: 8 },
+                        { text: '_______________________', alignment: 'center', fontSize: 9 },
+                        { text: rootResponse.syndic || 'MTRO. FELIPE CAHUM HAAS', style: 'signatureName', alignment: 'center' }
+                      ],
+                      width: '34%'
+                    },
+                    {
+                      stack: [
+                        { text: 'PRESIDENTE', style: 'signatureLabel', alignment: 'center' },
+                        { text: '\n\n', fontSize: 8 },
+                        { text: '_______________________', alignment: 'center', fontSize: 9 },
+                        { text: rootResponse.president || 'C. RAFAEL RENE NAAL NAAL', style: 'signatureName', alignment: 'center' }
+                      ],
+                      width: '33%'
+                    }
+                  ]
+                }
+              ]
+            };
+          }
+          // En otras páginas, footer vacío
+          return {};
+        },
+        content: [
+          {
+            text: `INFORME DE INGRESOS CORRESPONDIENTES AL MES DE ${monthName.toUpperCase()} ${year} DE LOS ${accountName.toUpperCase()} DE LA H.JMN`,
+            style: 'title',
+            margin: [0, 0, 0, 5]
+          },
+          {
+            text: `Del ${this.formatDateForDisplay(this.pdfStartDate)} al ${this.formatDateForDisplay(this.pdfEndDate)}`,
+            style: 'dateRange',
+            margin: [0, 0, 0, 15]
+          },
+          {
+            table: {
+              headerRows: 1,
+              widths: [300, 90, 90, 40], // CONCEPTO más estrecha, SUBTOTAL y TOTAL más anchas
+              body: this.buildTableBody(reportData)
+            },
+            layout: {
+              fillColor: (rowIndex: number) => {
+                if (rowIndex === 0) return '#f0ad4e';
+                return null;
+              },
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#000000',
+              vLineColor: () => '#000000'
+            }
+          }
+        ],
+        images: watermarkBase64 ? {
+          logo: logoBase64,
+          logo2: logo2Base64,
+          watermark: watermarkBase64
+        } : {
+          logo: logoBase64,
+          logo2: logo2Base64
+        },
+        background: watermarkBase64 ? {
+          image: 'watermark',
+          width: 300,
+          opacity: 0.15,
+          absolutePosition: { x: 150, y: 300 }
+        } : undefined,
+        styles: {
+          headerTitle: {
+            fontSize: 11,
+            bold: true,
+            color: '#000000'
+          },
+          headerSubtitle: {
+            fontSize: 10,
+            bold: true,
+            color: '#000000'
+          },
+          headerAddress: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          title: {
+            fontSize: 10,
+            bold: true,
+            alignment: 'center',
+            color: '#000000'
+          },
+          tableHeader: {
+            fontSize: 9,
+            bold: true,
+            color: '#ffffff',
+            fillColor: '#f0ad4e',
+            alignment: 'center'
+          },
+          parentCategory: {
+            fontSize: 9,
+            bold: true,
+            color: '#000000'
+          },
+          childCategory: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          groupHeader: {
+            fontSize: 8,
+            bold: true,
+            color: '#000000',
+            italics: true
+          },
+          currency: {
+            fontSize: 8,
+            alignment: 'right'
+          },
+          detailRow: {
+            fontSize: 7,
+            color: '#555555',
+            italics: true
+          },
+          detailAmount: {
+            fontSize: 7,
+            color: '#555555',
+            alignment: 'right'
+          },
+          signatureLabel: {
+            fontSize: 9,
+            bold: true,
+            color: '#000000'
+          },
+          signatureName: {
+            fontSize: 9,
+            color: '#000000'
+          },
+          dateRange: {
+            fontSize: 9,
+            alignment: 'center',
+            color: '#000000'
+          }
+        },
+        defaultStyle: {
+          fontSize: 8
+        }
+      };
+
+      pdfMake.createPdf(docDefinition).open();
+
+      // Tracking log
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Generación de Reporte PDF de Ingresos - Periodo: ${monthName} ${year}`,
+        'Menu Administración - Palacio Municipal - Ingresos',
+        this.trackingService.getEmail()
+      );
+
+    } catch (error) {
+      console.error('Error en generateIngresosPDF:', error);
+      throw error;
+    }
+  }
+
+  private buildCatalogTree(catalogData: any[]): any[] {
+    const map = new Map<number, any>();
+    const roots: any[] = [];
+
+    console.log('🌳 Construyendo árbol del catálogo - Registros totales:', catalogData.length);
+
+    // Mostrar TODOS los registros con su estructura
+    console.log('📋 TODOS LOS REGISTROS DEL CATÁLOGO:');
+    catalogData.forEach((item, index) => {
+      console.log(`   ${index + 1}. ID: ${item.id}, ParentID: ${item.parentId}, Desc: "${item.description}"`);
+    });
+
+    // Crear mapa de todos los nodos
+    catalogData.forEach(item => {
+      map.set(item.id, { ...item, children: [] });
+    });
+
+    console.log('\n   ✅ Mapa creado con', map.size, 'nodos');
+
+    // Construir jerarquía COMPLETA (todos los niveles)
+    catalogData.forEach(item => {
+      const node = map.get(item.id)!;
+
+      if (item.parentId && item.parentId !== 0 && map.has(item.parentId)) {
+        const parent = map.get(item.parentId)!;
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    console.log('\n   ✅ Raíces encontradas:', roots.length);
+
+    // Función recursiva para mostrar el árbol completo
+    const printTree = (nodes: any[], level: number = 0) => {
+      nodes.forEach(node => {
+        const indent = '   '.repeat(level);
+        console.log(`${indent}${'  '.repeat(level)}├─ [Nivel ${level}] "${node.description}" (ID: ${node.id}, hijos: ${node.children.length})`);
+        if (node.children && node.children.length > 0) {
+          printTree(node.children, level + 1);
+        }
+      });
+    };
+
+    console.log('\n🌲 ÁRBOL COMPLETO:');
+    printTree(roots);
+
+    return roots;
+  }
+
+  private buildReportData(catalogTree: any[], incomesData: any[]): any[] {
+    const reportRows: any[] = [];
+
+    console.log('🔵 Construyendo reporte - Procesando árbol completo');
+
+    // Función recursiva para calcular el total de un nodo y sus descendientes
+    const calculateNodeTotal = (node: any): number => {
+      // PRIMERO: Buscar ingresos directamente asociados con este nodo
+      const directTotal = incomesData
+        .filter(income => income.idCustomer === node.id)
+        .reduce((sum, income) => sum + (income.total || 0), 0);
+
+      // SEGUNDO: Sumar los totales de los hijos (si existen)
+      let childrenTotal = 0;
+      if (node.children && node.children.length > 0) {
+        childrenTotal = node.children.reduce((sum: number, child: any) =>
+          sum + calculateNodeTotal(child), 0);
+      }
+
+      const total = directTotal + childrenTotal;
+
+      // Log detallado si hay valores
+      if (total > 0) {
+        console.log(`💰 Nodo ID ${node.id} "${node.description}": Directo=$${directTotal.toFixed(2)}, Hijos=$${childrenTotal.toFixed(2)}, Total=$${total.toFixed(2)}`);
+      }
+
+      // Retornar la suma de ingresos directos + totales de hijos
+      return total;
+    };
+
+    // Función recursiva para procesar el árbol y generar las filas
+    const processNode = (node: any, level: number, parentRows: any[]) => {
+      const nodeTotal = calculateNodeTotal(node);
+
+      if (level === 1) {
+        // Nivel 1: Categorías principales (1.- IMPUESTOS, 2.-DERECHOS, etc.)
+        // Van en NEGRITAS con TOTAL
+        parentRows.push({
+          type: 'level1',
+          description: node.description,
+          subtotal: '',
+          total: nodeTotal,
+          percent: ''
+        });
+
+        // Procesar hijos
+        if (node.children && node.children.length > 0) {
+          node.children.forEach((child: any) => processNode(child, level + 1, parentRows));
+        }
+
+      } else if (level === 2) {
+        // Nivel 2: Agrupadores (POR SERVICIOS PUBLICOS, etc.)
+        // Van como encabezados de grupo
+        parentRows.push({
+          type: 'level2',
+          description: node.description,
+          subtotal: '',
+          total: '',
+          percent: ''
+        });
+
+        // Procesar hijos
+        if (node.children && node.children.length > 0) {
+          node.children.forEach((child: any) => processNode(child, level + 1, parentRows));
+        }
+
+      } else if (level === 3) {
+        // Nivel 3: Items finales (2.1, 2.2, 2.3, etc.)
+        // Van con SUBTOTAL
+        parentRows.push({
+          type: 'level3',
+          description: node.description,
+          subtotal: nodeTotal,
+          total: '',
+          percent: ''
+        });
+
+      } else if (level >= 4) {
+        // Si hay más niveles, tratarlos como nivel 3
+        parentRows.push({
+          type: 'level3',
+          description: node.description,
+          subtotal: nodeTotal,
+          total: '',
+          percent: ''
+        });
+      }
+    };
+
+    // Procesar el árbol completo
+    if (catalogTree.length > 0) {
+      const root = catalogTree[0]; // "A.- INGRESOS PROPIOS"
+
+      console.log(`📁 Procesando raíz: "${root.description}"`);
+
+      // Procesar todos los hijos de la raíz (nivel 1)
+      if (root.children && root.children.length > 0) {
+        root.children.forEach((child: any) => {
+          processNode(child, 1, reportRows);
+        });
+      }
+    }
+
+    console.log('\n📊 Total de filas generadas:', reportRows.length);
+    return reportRows;
+  }
+
+  private buildTableBody(reportData: any[]): any[][] {
+    const body: any[][] = [];
+
+    // Encabezado
+    body.push([
+      { text: 'CONCEPTO', style: 'tableHeader' },
+      { text: 'SUBTOTAL', style: 'tableHeader' },
+      { text: 'TOTAL', style: 'tableHeader' },
+      { text: '%', style: 'tableHeader' }
+    ]);
+
+    // Calcular total general (suma de todas las categorías nivel 1)
+    const totalGeneral = reportData
+      .filter(row => row.type === 'level1')
+      .reduce((sum, row) => sum + row.total, 0);
+
+    // Agregar filas
+    reportData.forEach(row => {
+      if (row.type === 'level1') {
+        // Nivel 1: Categorías principales (1.- IMPUESTOS, 2.-DERECHOS, etc.)
+        // Negritas con TOTAL
+        body.push([
+          { text: row.description, style: 'parentCategory', bold: true },
+          '',
+          {
+            text: row.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+            style: 'currency',
+            bold: true
+          },
+          ''
+        ]);
+
+      } else if (row.type === 'level2') {
+        // Nivel 2: Agrupadores (POR SERVICIOS PUBLICOS, etc.)
+        // Encabezados de grupo (mayúsculas)
+        body.push([
+          { text: row.description, style: 'groupHeader', margin: [0, 0, 0, 0] },
+          '',
+          '',
+          ''
+        ]);
+
+      } else if (row.type === 'level3') {
+        // Nivel 3: Items finales (2.1, 2.2, etc.)
+        // Indentados con SUBTOTAL
+        body.push([
+          { text: row.description, style: 'childCategory', margin: [10, 0, 0, 0] },
+          {
+            text: row.subtotal > 0 ? row.subtotal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+            style: 'currency'
+          },
+          '',
+          ''
+        ]);
+      }
+    });
+
+    // Fila de total general
+    body.push([
+      { text: 'TOTAL DE INGRESOS DEL MES', style: 'parentCategory', bold: true, fillColor: '#f0ad4e', color: '#ffffff' },
+      '',
+      {
+        text: totalGeneral.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        style: 'currency',
+        bold: true,
+        fillColor: '#f0ad4e',
+        color: '#ffffff'
+      },
+      { text: '', fillColor: '#f0ad4e' }
+    ]);
+
+    return body;
   }
 
 }

@@ -89,11 +89,18 @@
         
           <i class="bi bi-trash"></i>
         </button>
-         <button 
-              type="button" 
-              class="btn btn-success position-relative" 
+         <button
+              type="button"
+              class="btn btn-success position-relative"
               (click)="excel()">
             <img src='./assets/img/excel.png' width="17" height="17">
+         </button>
+         <button
+              type="button"
+              class="btn btn-danger"
+              (click)="openPdfModal()"
+              title="Generar Reporte PDF">
+            <i class="bi bi-file-earmark-pdf"></i>
          </button>
       </div>
     </div>
@@ -209,4 +216,70 @@
 
 <!-- Backdrop del modal de contribuyente -->
 <div class="modal-backdrop fade" [class.show]="showContribuyenteModal" [style.display]="showContribuyenteModal ? 'block' : 'none'"></div>
+
+<!-- Modal para Reporte de Ingresos PDF -->
+<div class="modal fade" [class.show]="showPdfModal" [style.display]="showPdfModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Reporte de Ingresos
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closePdfModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Seleccione el rango de fechas para generar el reporte de ingresos.
+        </p>
+        <form>
+          <div class="mb-3">
+            <label for="pdfStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="pdfStartDate"
+              [(ngModel)]="pdfStartDate"
+              name="pdfStartDate"
+              required>
+          </div>
+          <div class="mb-3">
+            <label for="pdfEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="pdfEndDate"
+              [(ngModel)]="pdfEndDate"
+              name="pdfEndDate"
+              required>
+          </div>
+
+          <div class="alert alert-warning" *ngIf="isGeneratingPdfReport">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Generando...</span>
+              </div>
+              <span>Generando reporte... Por favor espere.</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closePdfModal()" [disabled]="isGeneratingPdfReport">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          (click)="generatePdfReport()"
+          [disabled]="!pdfStartDate || !pdfEndDate || isGeneratingPdfReport">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop del modal de PDF -->
+<div class="modal-backdrop fade" [class.show]="showPdfModal" [style.display]="showPdfModal ? 'block' : 'none'"></div>
 

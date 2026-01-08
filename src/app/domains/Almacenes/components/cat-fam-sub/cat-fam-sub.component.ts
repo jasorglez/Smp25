@@ -60,6 +60,7 @@ export class CatFamSubComponent {
   showEditModal = false;
   // Datos del catálogo jerárquico
   treeData: any[] = [];
+  flattenedData: any[] = []; // Datos aplanados para AG-Grid
   selectedRowData: any = null;
   selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
   selectedColumnContext: 'category' | 'family' | 'subfamily' | null = null; // Columna clickeada
@@ -114,6 +115,7 @@ export class CatFamSubComponent {
     } catch (error) {
       console.error('Error al cargar datos del catálogo:', error);
       this.treeData = [];
+      this.updateFlattenedData();
       alerts.basicAlert(
         'Error',
         'Error al cargar los datos del catálogo.',
@@ -169,11 +171,20 @@ export class CatFamSubComponent {
         });
       });
     });
+
+    // Actualizar datos aplanados para el grid
+    this.updateFlattenedData();
   }
 
   // Configuración del grid
+  private _gridOptions: any = null;
+
   get gridOptions(): any {
-    return {
+    if (this._gridOptions) {
+      return this._gridOptions;
+    }
+
+    this._gridOptions = {
       headerHeight: 35,
       rowHeight: 28,
       animateRows: false, // Desactivar animaciones que pueden causar scroll inesperado
@@ -210,11 +221,19 @@ export class CatFamSubComponent {
         }
       }
     };
+
+    return this._gridOptions;
   }
 
   // Definición de 3 columnas separadas con chevrons funcionales
+  private _columnDefs: ColDef[] = [];
+
   get columnDefs(): ColDef[] {
-    return [
+    if (this._columnDefs.length > 0) {
+      return this._columnDefs;
+    }
+
+    this._columnDefs = [
       {
         headerName: 'Categoría',
         field: 'categoryDisplay',
@@ -381,6 +400,8 @@ export class CatFamSubComponent {
         cellRenderer: 'agCheckboxCellRenderer',
       }
     ];
+
+    return this._columnDefs;
   }
 
   // Selección de filas
@@ -783,9 +804,14 @@ export class CatFamSubComponent {
 
 
 
-  // Retornar datos filtrados por visibilidad para AG-Grid
+  // Actualizar datos aplanados (llamar cada vez que treeData cambie)
+  private updateFlattenedData(): void {
+    this.flattenedData = this.treeData.filter(item => item.isVisible);
+  }
+
+  // Retornar datos filtrados por visibilidad para AG-Grid (deprecated - usar flattenedData)
   flattenTreeData(): any[] {
-    return this.treeData.filter(item => item.isVisible);
+    return this.flattenedData;
   }
 
   // Métodos para manejar expand/collapse
@@ -823,9 +849,7 @@ export class CatFamSubComponent {
       });
 
       // Refrescar el grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      }
+      this.updateFlattenedData();
     }
   }
 
@@ -845,9 +869,7 @@ export class CatFamSubComponent {
       });
 
       // Refrescar el grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      }
+      this.updateFlattenedData();
     }
   }
 
@@ -1315,9 +1337,7 @@ export class CatFamSubComponent {
     });
 
     // Refrescar grid
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.flattenTreeData());
-    }
+    this.updateFlattenedData();
   }
 
   // Método para abrir el modal de materiales (placeholder)
