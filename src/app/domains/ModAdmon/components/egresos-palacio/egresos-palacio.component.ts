@@ -2267,8 +2267,15 @@ export class EgresosPalacioComponent {
       return;
     }
 
+    // ✅ FIX: Parsear fechas para validación sin zona horaria
+    const [startYearCheck, startMonthCheck, startDayCheck] = this.reportStartDate.split('-');
+    const startDateCheck = new Date(parseInt(startYearCheck), parseInt(startMonthCheck) - 1, parseInt(startDayCheck));
+
+    const [endYearCheck, endMonthCheck, endDayCheck] = this.reportEndDate.split('-');
+    const endDateCheck = new Date(parseInt(endYearCheck), parseInt(endMonthCheck) - 1, parseInt(endDayCheck));
+
     // Validar que la fecha de inicio no sea mayor que la fecha de término
-    if (new Date(this.reportStartDate) > new Date(this.reportEndDate)) {
+    if (startDateCheck > endDateCheck) {
       alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
       return;
     }
@@ -2276,10 +2283,13 @@ export class EgresosPalacioComponent {
     this.isGeneratingConsolidatedReport = true;
 
     try {
-      // Filtrar egresos por rango de fechas
-      const startDate = new Date(this.reportStartDate);
+      // ✅ FIX: Parsear fechas sin zona horaria para evitar conversión UTC
+      const [startYear, startMonth, startDay] = this.reportStartDate.split('-');
+      const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay));
       startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(this.reportEndDate);
+
+      const [endYear, endMonth, endDay] = this.reportEndDate.split('-');
+      const endDate = new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay));
       endDate.setHours(23, 59, 59, 999);
 
       const filteredExpenses = this.incomes.filter(expense => {
