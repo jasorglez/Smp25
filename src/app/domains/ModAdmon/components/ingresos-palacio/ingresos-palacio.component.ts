@@ -1549,14 +1549,13 @@ async saveChanges() {
                 allConcepts.push(...concepts);
               }
             } catch (error) {
-              console.error(`Error cargando conceptos para ingreso ${income.id}:`, error);
+              // Silenciar error
             }
           }
 
           resolve(allConcepts);
         },
         error: (err) => {
-          console.error('Error cargando ingresos:', err);
           reject(err);
         }
       });
@@ -1582,6 +1581,13 @@ async saveChanges() {
     try {
       // Obtener información de root y logos
       const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.root));
+
+      // Obtener información de firmas desde SetupManagement
+      const setupManagementInfo: any = await lastValueFrom(this.administrationService.getSetupManagementInfo(this.root));
+      const setupInfo = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+        ? setupManagementInfo[0]
+        : setupManagementInfo;
+      console.log('🖊️ Información de firmas:', setupInfo);
 
       const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
       const logo2Base64 = rootResponse.picture2
@@ -1645,28 +1651,28 @@ async saveChanges() {
                   columns: [
                     {
                       stack: [
-                        { text: 'TESORERO', style: 'signatureLabel', alignment: 'center' },
+                        { text: setupInfo?.administratorTitle || 'TESORERO', style: 'signatureLabel', alignment: 'center' },
                         { text: '\n\n', fontSize: 8 },
                         { text: '_______________________', alignment: 'center', fontSize: 9 },
-                        { text: rootResponse.treasurer || 'C. FELIX COLLI CHIM', style: 'signatureName', alignment: 'center' }
+                        { text: setupInfo?.administratorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
                       ],
                       width: '33%'
                     },
                     {
                       stack: [
-                        { text: 'SINDICO DE HACIENDA', style: 'signatureLabel', alignment: 'center' },
+                        { text: setupInfo?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureLabel', alignment: 'center' },
                         { text: '\n\n', fontSize: 8 },
                         { text: '_______________________', alignment: 'center', fontSize: 9 },
-                        { text: rootResponse.syndic || 'MTRO. FELIPE CAHUM HAAS', style: 'signatureName', alignment: 'center' }
+                        { text: setupInfo?.gerencyName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
                       ],
                       width: '34%'
                     },
                     {
                       stack: [
-                        { text: 'PRESIDENTE', style: 'signatureLabel', alignment: 'center' },
+                        { text: setupInfo?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureLabel', alignment: 'center' },
                         { text: '\n\n', fontSize: 8 },
                         { text: '_______________________', alignment: 'center', fontSize: 9 },
-                        { text: rootResponse.president || 'C. RAFAEL RENE NAAL NAAL', style: 'signatureName', alignment: 'center' }
+                        { text: setupInfo?.directorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
                       ],
                       width: '33%'
                     }
