@@ -8,24 +8,26 @@ import {
   GridApi,
   GridReadyEvent,
   ICellRendererParams,
+  GetDataPath,
 } from 'ag-grid-enterprise';
 import { alerts } from '../../../../../helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
-import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 interface ICatalogTree {
   id: number | string;
   idCompany: number;
   description: string;
   type: string;
-  parentId: number;
+  parentId: number | string;
+  parent_id?: number | string;  // Soporte para formato alternativo del backend
   active: number | boolean;
   children?: ICatalogTree[];
   __isNew?: boolean;
@@ -36,58 +38,58 @@ interface ICatalogTree {
   selector: 'app-cat-ingresos-palacio',
   standalone: true,
   imports: [
+    CommonModule,
     RouterModule,
     DomainsModule,
     AgGridModule,
     MultiLineEditorComponent,
+    ReactiveFormsModule,
   ],
   templateUrl: './cat-ingresos-palacio.component.html',
   styleUrl: './cat-ingresos-palacio.component.scss',
 })
-export class CatIngresosPalacioComponent implements CanComponentDeactivate {
+export class CatIngresosPalacioComponent {
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private catalogadmonService = inject(CatalogadmonService);
+  private fb = inject(FormBuilder);
+  private trackingService = inject(TrackingService);
+
+  // Modal variables
+  modalForm: FormGroup;
+  modalMode: 'create' | 'edit' = 'create';
+  modalParent: ICatalogTree | null = null;
+  modalEditingItem: ICatalogTree | null = null;
+  saving: boolean = false;
 
   constructor() {
+    this.modalForm = this.fb.group({
+      description: ['', Validators.required],
+      active: [true]
+    });
+
     this.obtenerDatos();
   }
-
-  private trackingService = inject(TrackingService);
 
   ngOnInit() {
     // Cargar datos cuando cambie el root
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
   }
 
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
-  }
-
-  notSavedChanges: boolean = false;
   catalogData: any[] = [];
   treeData: ICatalogTree[] = [];
+  loading: boolean = false;
 
-  newlyAddedRows: string[] = [];
   selectedRowData: any = null;
+  selectedItem: ICatalogTree | null = null;
 
-  id: string;
   idRoot: number;
-  private tempIdCounter: number = 0;
-
   private gridApi: GridApi;
 
-  currentIndex = 0;
-
-  frameworkComponents = {
-    multiLineEditor: MultiLineEditorComponent,
+  // GetDataPath para AG Grid Tree Data
+  public getDataPath: GetDataPath = (data: any) => {
+    return data.path || [];
   };
-
-  private modalServiceTable = inject(ModalService);
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -141,39 +143,19 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
       {
         field: 'description',
         headerName: 'Descripción',
-        editable: true,
+        editable: false,
         minWidth: 500,
         flex: 1,
         cellRenderer: 'agGroupCellRenderer',
         cellRendererParams: {
           suppressCount: true,
         },
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 200,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
       },
       {
         field: 'active',
         headerName: 'Activo',
-        editable: true,
+        editable: false,
         width: 100,
-        cellEditor: 'agCheckboxCellEditor',
         cellRenderer: (params: ICellRendererParams) => {
           return params.value
             ? '<i class="bi bi-check-circle-fill text-success"></i>'
@@ -185,20 +167,26 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
 
   // Construir árbol desde datos planos
   buildTreeFromFlat(flatData: any[]): any[] {
-    const map = new Map<number, any>();
+    const map = new Map<number | string, any>();
     const roots: any[] = [];
 
-    // Primero crear un mapa de todos los nodos
+    // Normalizar los datos y crear un mapa de todos los nodos
     flatData.forEach(item => {
-      map.set(item.id, { ...item, children: [] });
+      const normalizedItem = {
+        ...item,
+        parentId: item.parentId || item.parent_id || 0,
+        children: []
+      };
+      map.set(normalizedItem.id, normalizedItem);
     });
 
-    // Luego construir la jerarquía
+    // Construir la jerarquía
     flatData.forEach(item => {
+      const parentId = item.parentId || item.parent_id || 0;
       const node = map.get(item.id)!;
 
-      if (item.parentId && item.parentId !== 0 && map.has(item.parentId)) {
-        const parent = map.get(item.parentId)!;
+      if (parentId && parentId !== 0 && map.has(parentId)) {
+        const parent = map.get(parentId)!;
         parent.children.push(node);
       } else {
         roots.push(node);
@@ -213,7 +201,8 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
     let result: any[] = [];
 
     nodes.forEach(node => {
-      const currentPath = [...parentPath, node.description];
+      // Usar el ID como path único en lugar de la descripción
+      const currentPath = [...parentPath, String(node.id)];
       const flatNode = {
         ...node,
         path: currentPath
@@ -237,21 +226,40 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
       return;
     }
 
+    this.loading = true;
+
     // Usar el endpoint getCatalogs con el tipo específico para ingresos de palacio
     this.catalogadmonService.getCatalogs(this.idRoot, 'INCOME').subscribe({
       next: (data: any) => {
+        console.log('📊 Datos recibidos del backend:', data);
         this.catalogData = data || [];
 
         // Construir el árbol desde los datos planos
         const tree = this.buildTreeFromFlat(this.catalogData);
+        console.log('🌲 Árbol construido:', tree);
 
         // Convertir el árbol a formato plano con paths
         this.treeData = this.flattenTreeWithPath(tree);
+        console.log('📋 TreeData con paths:', this.treeData);
+
+        this.loading = false;
+
+        // Expandir el primer nivel después de cargar
+        setTimeout(() => {
+          if (this.gridApi) {
+            this.gridApi.forEachNode(node => {
+              if (node.level === 0) {
+                node.setExpanded(true);
+              }
+            });
+          }
+        }, 100);
       },
       error: (error) => {
         console.error('Error fetching catálogo ingresos palacio:', error);
         this.catalogData = [];
         this.treeData = [];
+        this.loading = false;
       },
     });
     this.trackingService.addLog(
@@ -262,114 +270,166 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
     );
   }
 
-  onSelectedRow(event: any) {
-    this.id = event.data.id;
-  }
-
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
+      this.selectedItem = selectedNodes[0].data;
       this.selectedRowData = selectedNodes[0].data;
+      console.log('✅ Item seleccionado:', this.selectedItem);
     } else {
+      this.selectedItem = null;
       this.selectedRowData = null;
+      console.log('❌ Sin selección');
     }
-  }
-
-  onCellValueChanged(event: any) {
-    event.data.__modified = true;
-    this.notSavedChanges = true;
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
 
-  addRow() {
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      idCompany: this.idRoot,
-      type: 'INCOME',
+  openCreateModal(parent?: ICatalogTree): void {
+    console.log('➕ Abriendo modal crear, padre:', parent);
+    this.modalMode = 'create';
+    this.modalParent = parent || null;
+    this.modalEditingItem = null;
+
+    // Resetear formulario con valores por defecto
+    this.modalForm.reset({
       description: '',
-      parentId: 0,
-      active: true,
-      __isNew: true,
-    };
+      active: true
+    });
 
-    // Agregar al array plano
-    this.catalogData = [newItem, ...this.catalogData];
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-
-    // Reconstruir el árbol
-    const tree = this.buildTreeFromFlat(this.catalogData);
-    this.treeData = this.flattenTreeWithPath(tree);
-
-    setTimeout(() => {
-      // Encontrar la fila agregada y comenzar a editarla
-      this.gridApi.forEachNode((node, index) => {
-        if (node.data.id === tempId) {
-          this.gridApi.startEditingCell({
-            rowIndex: node.rowIndex!,
-            colKey: 'description',
-          });
-        }
-      });
-    }, 100);
+    // Abrir modal
+    const modalElement = document.getElementById('modalIngresosPalacio');
+    if (modalElement) {
+      const modal = new (window as any).bootstrap.Modal(modalElement);
+      modal.show();
+    } else {
+      console.error('❌ Modal no encontrado: modalIngresosPalacio');
+    }
   }
 
-  async saveChanges() {
-    const isValid = this.catalogData.every((item) => item.description && item.description.trim() !== '');
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar el campo de descripción antes de guardar.',
-        'error'
-      );
+  openEditModal(item: ICatalogTree | null): void {
+    console.log('✏️ Abriendo modal editar, item:', item);
+    if (!item) {
+      alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para editar', 'warning');
       return;
     }
 
-    const newRows = this.catalogData.filter((row) => row.__isNew);
-    const modifiedRows = this.catalogData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
+    this.modalMode = 'edit';
+    this.modalParent = null;
+    this.modalEditingItem = item;
 
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.catalogadmonService.addCatalog(cleanedData);
+    // Cargar datos del item al formulario
+    this.modalForm.patchValue({
+      description: item.description || '',
+      active: item.active
     });
 
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.catalogadmonService.updateCatalog(row.id, cleanedData);
-    });
+    // Abrir modal
+    const modalElement = document.getElementById('modalIngresosPalacio');
+    if (modalElement) {
+      const modal = new (window as any).bootstrap.Modal(modalElement);
+      modal.show();
+    } else {
+      console.error('❌ Modal no encontrado: modalIngresosPalacio');
+    }
+  }
+
+  async saveItem(): Promise<void> {
+    if (this.modalForm.invalid) {
+      alerts.basicAlert('Formulario inválido', 'Por favor complete todos los campos requeridos', 'warning');
+      return;
+    }
+
+    this.saving = true;
+
+    // Determinar parentId según el modo
+    let parentId: number = 0;
+    if (this.modalMode === 'create') {
+      // Al crear: usar el padre seleccionado
+      if (this.modalParent) {
+        parentId = typeof this.modalParent.id === 'string'
+          ? parseInt(this.modalParent.id, 10)
+          : this.modalParent.id;
+      }
+    } else if (this.modalEditingItem) {
+      // Al editar: mantener el parentId original
+      const rawParentId = this.modalEditingItem.parentId || this.modalEditingItem.parent_id || 0;
+      parentId = typeof rawParentId === 'string'
+        ? parseInt(rawParentId, 10)
+        : rawParentId;
+    }
+
+    const formData = {
+      description: this.modalForm.value.description,
+      active: this.modalForm.value.active,
+      idCompany: this.idRoot,
+      type: 'INCOME',
+      parentId: parentId
+    };
+
+    console.log('💾 Guardando item:', { mode: this.modalMode, formData });
 
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        `Agregar/Actualizar Catálogo Ingresos Palacio`,
-        'Menu Administración - Palacio Municipal',
-        this.trackingService.getEmail()
-      );
+      if (this.modalMode === 'create') {
+        // Crear nuevo item
+        await lastValueFrom(this.catalogadmonService.addCatalog(formData));
 
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
+        alerts.basicAlert(
+          '¡Creado!',
+          'El ingreso ha sido creado exitosamente',
+          'success'
+        );
+
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Crear Catálogo Ingresos Palacio`,
+          'Menu Administración - Palacio Municipal',
+          this.trackingService.getEmail()
+        );
+      } else {
+        // Actualizar item existente
+        const itemId = typeof this.modalEditingItem!.id === 'string'
+          ? parseInt(this.modalEditingItem!.id, 10)
+          : this.modalEditingItem!.id;
+        await lastValueFrom(
+          this.catalogadmonService.updateCatalog(itemId, formData)
+        );
+
+        alerts.basicAlert(
+          '¡Actualizado!',
+          'El ingreso ha sido actualizado exitosamente',
+          'success'
+        );
+
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Actualizar Catálogo Ingresos Palacio`,
+          'Menu Administración - Palacio Municipal',
+          this.trackingService.getEmail()
+        );
+      }
+
+      // Cerrar modal
+      const modalElement = document.getElementById('modalIngresosPalacio');
+      if (modalElement) {
+        const modal = (window as any).bootstrap.Modal.getInstance(modalElement);
+        modal?.hide();
+      }
+
+      // Recargar datos
       this.obtenerDatos();
+
     } catch (error) {
-      console.error(error);
+      console.error('Error al guardar item:', error);
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'No se pudo guardar el ingreso. Por favor intente nuevamente.',
         'error'
       );
+    } finally {
+      this.saving = false;
     }
   }
 
@@ -387,8 +447,12 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    // Verificar si tiene hijos
-    const hasChildren = this.catalogData.some(item => item.parentId === id);
+    // Verificar si tiene hijos (soportar parentId y parent_id)
+    const hasChildren = this.catalogData.some(item => {
+      const itemParentId = item.parentId || item.parent_id;
+      return itemParentId === id;
+    });
+
     if (hasChildren) {
       alerts.basicAlert(
         'Eliminar catálogo',
@@ -433,8 +497,8 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
                 this.trackingService.getEmail()
               );
               this.obtenerDatos();
-              this.notSavedChanges = false;
               this.selectedRowData = null;
+              this.selectedItem = null;
             });
         }
       });
@@ -442,35 +506,11 @@ export class CatIngresosPalacioComponent implements CanComponentDeactivate {
 
   revert() {
     this.obtenerDatos();
-    this.notSavedChanges = false;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      `Cancelación del Registro`,
+      `Recargar Datos`,
       'Menu Administración - Palacio Municipal',
       this.trackingService.getEmail()
     );
-  }
-
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    delete cleanedData.consecutivo;
-    delete cleanedData.path;
-    delete cleanedData.children;
-
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
-    }
-
-    // Asegurar que tenga los campos correctos
-    cleanedData.idCompany = this.idRoot;
-    cleanedData.type = 'INCOME';
-
-    return cleanedData;
-  }
-
-  async canDeactivate(): Promise<boolean> {
-    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }
