@@ -1764,6 +1764,16 @@ async saveChanges() {
             fontSize: 8,
             alignment: 'right'
           },
+          detailRow: {
+            fontSize: 7,
+            color: '#555555',
+            italics: true
+          },
+          detailAmount: {
+            fontSize: 7,
+            color: '#555555',
+            alignment: 'right'
+          },
           signatureLabel: {
             fontSize: 9,
             bold: true,
@@ -1880,15 +1890,9 @@ async saveChanges() {
       return total;
     };
 
-    // Función helper para obtener ingresos directos de un nodo
-    const getDirectIncomes = (nodeId: number): any[] => {
-      return incomesData.filter(income => income.idCustomer === nodeId);
-    };
-
     // Función recursiva para procesar el árbol y generar las filas
     const processNode = (node: any, level: number, parentRows: any[]) => {
       const nodeTotal = calculateNodeTotal(node);
-      const directIncomes = getDirectIncomes(node.id);
 
       if (level === 1) {
         // Nivel 1: Categorías principales (1.- IMPUESTOS, 2.-DERECHOS, etc.)
@@ -1900,20 +1904,6 @@ async saveChanges() {
           total: nodeTotal,
           percent: ''
         });
-
-        // Agregar detalles de ingresos directos si existen
-        if (directIncomes.length > 0) {
-          directIncomes.forEach((income, index) => {
-            parentRows.push({
-              type: 'detail',
-              description: `    • Detalle ${index + 1}`,
-              detailAmount: income.total,
-              subtotal: '',
-              total: '',
-              percent: ''
-            });
-          });
-        }
 
         // Procesar hijos
         if (node.children && node.children.length > 0) {
@@ -1931,24 +1921,6 @@ async saveChanges() {
           percent: ''
         });
 
-        if (nodeTotal > 0) {
-          console.log(`📋 Nivel 2 "${node.description}" (ID: ${node.id}) - Total calculado: $${nodeTotal.toFixed(2)} (pero no se muestra en el reporte como encabezado)`);
-        }
-
-        // Agregar detalles de ingresos directos si existen
-        if (directIncomes.length > 0) {
-          directIncomes.forEach((income, index) => {
-            parentRows.push({
-              type: 'detail',
-              description: `      • Detalle ${index + 1}`,
-              detailAmount: income.total,
-              subtotal: '',
-              total: '',
-              percent: ''
-            });
-          });
-        }
-
         // Procesar hijos
         if (node.children && node.children.length > 0) {
           node.children.forEach((child: any) => processNode(child, level + 1, parentRows));
@@ -1957,32 +1929,13 @@ async saveChanges() {
       } else if (level === 3) {
         // Nivel 3: Items finales (2.1, 2.2, 2.3, etc.)
         // Van con SUBTOTAL
-        const row = {
+        parentRows.push({
           type: 'level3',
           description: node.description,
           subtotal: nodeTotal,
           total: '',
           percent: ''
-        };
-        parentRows.push(row);
-
-        if (nodeTotal > 0) {
-          console.log(`📝 Fila Nivel 3 agregada: "${node.description}" (ID: ${node.id}) - Subtotal: $${nodeTotal.toFixed(2)}`);
-        }
-
-        // Agregar detalles de ingresos directos si existen
-        if (directIncomes.length > 0) {
-          directIncomes.forEach((income, index) => {
-            parentRows.push({
-              type: 'detail',
-              description: `        • Detalle ${index + 1}`,
-              detailAmount: income.total,
-              subtotal: '',
-              total: '',
-              percent: ''
-            });
-          });
-        }
+        });
 
       } else if (level >= 4) {
         // Si hay más niveles, tratarlos como nivel 3
@@ -1993,20 +1946,6 @@ async saveChanges() {
           total: '',
           percent: ''
         });
-
-        // Agregar detalles si existen
-        if (directIncomes.length > 0) {
-          directIncomes.forEach((income, index) => {
-            parentRows.push({
-              type: 'detail',
-              description: `          • Detalle ${index + 1}`,
-              detailAmount: income.total,
-              subtotal: '',
-              total: '',
-              percent: ''
-            });
-          });
-        }
       }
     };
 
