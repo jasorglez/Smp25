@@ -1644,7 +1644,7 @@ async saveChanges() {
           columns: [
             {
               image: 'logo',
-              width: 60,
+              width: 90,
               alignment: 'left'
             },
             {
@@ -1658,7 +1658,7 @@ async saveChanges() {
             },
             {
               image: 'logo2',
-              width: 60,
+              width: 90,
               alignment: 'right'
             }
           ]
