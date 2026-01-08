@@ -2510,6 +2510,9 @@ export class EgresosPalacioComponent {
     );
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const logo2Base64 = rootResponse.picture2
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+      : logoBase64; // Si no hay picture2, usar picture
     const watermarkBase64 = rootResponse.picture3
       ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
       : null;
@@ -2631,7 +2634,7 @@ export class EgresosPalacioComponent {
               width: '*'
             },
             {
-              image: 'logo',
+              image: 'logo2',
               width: 60,
               alignment: 'right'
             }
@@ -2742,9 +2745,11 @@ export class EgresosPalacioComponent {
       ],
       images: watermarkBase64 ? {
         logo: logoBase64,
+        logo2: logo2Base64,
         watermark: watermarkBase64
       } : {
-        logo: logoBase64
+        logo: logoBase64,
+        logo2: logo2Base64
       },
       styles: {
         companyName: {
@@ -2913,6 +2918,9 @@ export class EgresosPalacioComponent {
     );
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const logo2Base64 = rootResponse.picture2
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+      : logoBase64; // Si no hay picture2, usar picture
     const watermarkBase64 = rootResponse.picture3
       ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
       : null;
@@ -3075,9 +3083,11 @@ export class EgresosPalacioComponent {
       content: content,
       images: watermarkBase64 ? {
         logo: logoBase64,
+        logo2: logo2Base64,
         watermark: watermarkBase64
       } : {
-        logo: logoBase64
+        logo: logoBase64,
+        logo2: logo2Base64
       },
       styles: {
         companyName: { fontSize: 14, bold: true, color: '#333333' },
@@ -3145,6 +3155,7 @@ export class EgresosPalacioComponent {
           },
           {
             stack: [
+              { image: 'logo2', width: 80, alignment: 'right', margin: [0, 0, 0, 5] },
               { text: 'RECIBO DE EGRESO', style: 'documentTitle', alignment: 'right' },
               { text: `No. ${expense.numberDocument || 'Sin Número'}`, style: 'documentNumber', alignment: 'right', margin: [0, 5, 0, 0] },
               { text: `Fecha de Pago: ${this.formatDate(expense.date)}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }
@@ -3260,6 +3271,7 @@ export class EgresosPalacioComponent {
           },
           {
             stack: [
+              { image: 'logo2', width: 80, alignment: 'right', margin: [0, 0, 0, 5] },
               { text: 'RESUMEN CONSOLIDADO', style: 'documentTitle', alignment: 'right' },
               { text: `Cuenta: ${accountName}`, style: 'documentNumber', alignment: 'right', margin: [0, 3, 0, 0] },
               { text: `Periodo: ${startDateFormatted} al ${endDateFormatted}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }

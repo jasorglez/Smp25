@@ -1643,6 +1643,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         rootResponse.picture
       );
 
+      // Convertir picture2 (segundo logo) a Base64
+      const logo2Base64 = rootResponse.picture2
+        ? await this.context.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+        : logoBase64; // Si no hay picture2, usar picture
+
       // Convertir picture3 (marca de agua) a Base64
       const watermarkBase64 = rootResponse.picture3
         ? await this.context.base64EncodeService.convertImageToBase64(rootResponse.picture3)
@@ -1691,6 +1696,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
               },
               {
                 stack: [
+                  {
+                    image: 'logo2',
+                    width: 80,
+                    alignment: 'right',
+                    margin: [0, 0, 0, 5]
+                  },
                   {
                     text: 'RECIBO DE EGRESO',
                     style: 'documentTitle',
@@ -1821,9 +1832,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         ],
         images: watermarkBase64 ? {
           logo: logoBase64,
+          logo2: logo2Base64,
           watermark: watermarkBase64
         } : {
-          logo: logoBase64
+          logo: logoBase64,
+          logo2: logo2Base64
         },
         styles: {
           companyName: {
