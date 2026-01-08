@@ -564,6 +564,9 @@ export class SaldosPalacioComponent {
     );
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const logo2Base64 = rootResponse.picture2
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+      : logoBase64; // Si no hay picture2, usar picture
     const watermarkBase64 = rootResponse.picture3
       ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
       : null;
@@ -660,7 +663,7 @@ export class SaldosPalacioComponent {
               width: '*'
             },
             {
-              image: 'logo',
+              image: 'logo2',
               width: 60,
               alignment: 'right'
             }
@@ -735,9 +738,11 @@ export class SaldosPalacioComponent {
       ],
       images: watermarkBase64 ? {
         logo: logoBase64,
+        logo2: logo2Base64,
         watermark: watermarkBase64
       } : {
-        logo: logoBase64
+        logo: logoBase64,
+        logo2: logo2Base64
       },
       styles: {
         companyName: {

@@ -80,7 +80,7 @@ export class RootComponent {
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
   headerHeight: 30,
-  rowHeight: 30,
+  rowHeight: 60,
   getRowClass: (params) => {
     // Verificar si la fila está seleccionada
     if (params.node.isSelected()) {
@@ -101,11 +101,17 @@ public gridOptions: any = {
         }
       });
     }
-  },
+  }
 };
 
+  private _columnDefs: ColDef[] = [];
+
   get columnDefs(): ColDef[] {
-    return [
+    if (this._columnDefs.length > 0) {
+      return this._columnDefs;
+    }
+
+    this._columnDefs = [
       {
         headerName: '#',
         valueGetter: (params) => {
@@ -313,6 +319,7 @@ public gridOptions: any = {
           field: 'picture'
         },
         editable: false,
+        width: 120
       },
       {
         field: 'picture2',
@@ -324,8 +331,8 @@ public gridOptions: any = {
           field: 'picture2'
         },
         editable: false,
+        width: 120
       },
-      
       {
         field: 'picture3',
         headerName: 'Footer',
@@ -336,8 +343,11 @@ public gridOptions: any = {
           field: 'picture3'
         },
         editable: false,
+        width: 120
       },
     ];
+
+    return this._columnDefs;
   }
 
   onSelectedRow(event: any) {

@@ -2267,8 +2267,15 @@ export class EgresosPalacioComponent {
       return;
     }
 
+    // ✅ FIX: Parsear fechas para validación sin zona horaria
+    const [startYearCheck, startMonthCheck, startDayCheck] = this.reportStartDate.split('-');
+    const startDateCheck = new Date(parseInt(startYearCheck), parseInt(startMonthCheck) - 1, parseInt(startDayCheck));
+
+    const [endYearCheck, endMonthCheck, endDayCheck] = this.reportEndDate.split('-');
+    const endDateCheck = new Date(parseInt(endYearCheck), parseInt(endMonthCheck) - 1, parseInt(endDayCheck));
+
     // Validar que la fecha de inicio no sea mayor que la fecha de término
-    if (new Date(this.reportStartDate) > new Date(this.reportEndDate)) {
+    if (startDateCheck > endDateCheck) {
       alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
       return;
     }
@@ -2276,10 +2283,13 @@ export class EgresosPalacioComponent {
     this.isGeneratingConsolidatedReport = true;
 
     try {
-      // Filtrar egresos por rango de fechas
-      const startDate = new Date(this.reportStartDate);
+      // ✅ FIX: Parsear fechas sin zona horaria para evitar conversión UTC
+      const [startYear, startMonth, startDay] = this.reportStartDate.split('-');
+      const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay));
       startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(this.reportEndDate);
+
+      const [endYear, endMonth, endDay] = this.reportEndDate.split('-');
+      const endDate = new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay));
       endDate.setHours(23, 59, 59, 999);
 
       const filteredExpenses = this.incomes.filter(expense => {
@@ -2510,6 +2520,9 @@ export class EgresosPalacioComponent {
     );
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const logo2Base64 = rootResponse.picture2
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+      : logoBase64; // Si no hay picture2, usar picture
     const watermarkBase64 = rootResponse.picture3
       ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
       : null;
@@ -2631,7 +2644,7 @@ export class EgresosPalacioComponent {
               width: '*'
             },
             {
-              image: 'logo',
+              image: 'logo2',
               width: 60,
               alignment: 'right'
             }
@@ -2742,9 +2755,11 @@ export class EgresosPalacioComponent {
       ],
       images: watermarkBase64 ? {
         logo: logoBase64,
+        logo2: logo2Base64,
         watermark: watermarkBase64
       } : {
-        logo: logoBase64
+        logo: logoBase64,
+        logo2: logo2Base64
       },
       styles: {
         companyName: {
@@ -2913,6 +2928,9 @@ export class EgresosPalacioComponent {
     );
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const logo2Base64 = rootResponse.picture2
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+      : logoBase64; // Si no hay picture2, usar picture
     const watermarkBase64 = rootResponse.picture3
       ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
       : null;
@@ -3075,9 +3093,11 @@ export class EgresosPalacioComponent {
       content: content,
       images: watermarkBase64 ? {
         logo: logoBase64,
+        logo2: logo2Base64,
         watermark: watermarkBase64
       } : {
-        logo: logoBase64
+        logo: logoBase64,
+        logo2: logo2Base64
       },
       styles: {
         companyName: { fontSize: 14, bold: true, color: '#333333' },
@@ -3145,6 +3165,7 @@ export class EgresosPalacioComponent {
           },
           {
             stack: [
+              { image: 'logo2', width: 80, alignment: 'right', margin: [0, 0, 0, 5] },
               { text: 'RECIBO DE EGRESO', style: 'documentTitle', alignment: 'right' },
               { text: `No. ${expense.numberDocument || 'Sin Número'}`, style: 'documentNumber', alignment: 'right', margin: [0, 5, 0, 0] },
               { text: `Fecha de Pago: ${this.formatDate(expense.date)}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }
@@ -3260,6 +3281,7 @@ export class EgresosPalacioComponent {
           },
           {
             stack: [
+              { image: 'logo2', width: 80, alignment: 'right', margin: [0, 0, 0, 5] },
               { text: 'RESUMEN CONSOLIDADO', style: 'documentTitle', alignment: 'right' },
               { text: `Cuenta: ${accountName}`, style: 'documentNumber', alignment: 'right', margin: [0, 3, 0, 0] },
               { text: `Periodo: ${startDateFormatted} al ${endDateFormatted}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }

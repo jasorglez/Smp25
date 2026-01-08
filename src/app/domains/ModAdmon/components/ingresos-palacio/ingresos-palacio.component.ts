@@ -135,6 +135,12 @@ export class IngresosPalacioComponent implements OnInit {
   bankAccounts: any[] = [];
   tipos: any[] = [];
 
+  // Propiedades para el modal de reporte PDF
+  showPdfModal: boolean = false;
+  pdfStartDate: string = '';
+  pdfEndDate: string = '';
+  isGeneratingPdfReport: boolean = false;
+
   // Propiedades para el modal de contribuyente
   showContribuyenteModal: boolean = false;
   newContribuyente: any = {
@@ -1441,6 +1447,560 @@ async saveChanges() {
         'error'
       );
     }
+  }
+
+  // ==================== MÉTODOS PARA EL REPORTE PDF DE INGRESOS ====================
+
+  openPdfModal() {
+    const now = new Date();
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    this.pdfStartDate = this.formatDateForInput(previousMonth);
+    this.pdfEndDate = this.formatDateForInput(now);
+    this.showPdfModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closePdfModal() {
+    this.showPdfModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  private formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private formatDateForDisplay(dateString: string): string {
+    // dateString viene en formato "YYYY-MM-DD"
+    // Convertir directamente sin usar new Date() para evitar problemas de zona horaria
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+    }
+    return dateString; // Fallback si el formato es incorrecto
+  }
+
+  async generatePdfReport() {
+    if (!this.pdfStartDate || !this.pdfEndDate) {
+      alerts.basicAlert(
+        'Fechas requeridas',
+        'Por favor seleccione las fechas de inicio y fin para el reporte.',
+        'warning'
+      );
+      return;
+    }
+
+    this.isGeneratingPdfReport = true;
+
+    try {
+      // Cargar conceptos de ingresos en el rango de fechas (tabla conceptsxIncorExp)
+      const conceptsData = await this.loadIncomesForDateRange(this.pdfStartDate, this.pdfEndDate);
+
+      // Cargar catálogo completo de ingresos con estructura jerárquica
+      const catalogData = await this.loadFullIngresosCatalog();
+
+      // Generar el PDF
+      await this.generateIngresosPDF(conceptsData, catalogData);
+
+      this.closePdfModal();
+
+    } catch (error) {
+      console.error('Error generando reporte PDF:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al generar el reporte PDF.',
+        'error'
+      );
+    } finally {
+      this.isGeneratingPdfReport = false;
+    }
+  }
+
+  private async loadIncomesForDateRange(startDate: string, endDate: string): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
+        next: async (incomes) => {
+          const filtered = incomes?.filter(income => {
+            // Filtro 1: Debe ser tipo DEPOSITO
+            if (income.type !== "DEPOSITO") return false;
+
+            // Filtro 2: Debe ser de la cuenta bancaria seleccionada
+            if (income.idAccount !== this._idAccount) return false;
+
+            // Filtro 3: Debe estar en el rango de fechas
+            // Convertir fechas a formato YYYY-MM-DD para comparación consistente sin problemas de zona horaria
+            const incomeDateObj = new Date(income.date);
+            const incomeDateStr = `${incomeDateObj.getFullYear()}-${String(incomeDateObj.getMonth() + 1).padStart(2, '0')}-${String(incomeDateObj.getDate()).padStart(2, '0')}`;
+
+            return incomeDateStr >= startDate && incomeDateStr <= endDate;
+          }) || [];
+
+          // Cargar los conceptos de cada ingreso filtrado
+          const allConcepts: any[] = [];
+          for (const income of filtered) {
+            try {
+              const concepts = await lastValueFrom(
+                this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(income.id)
+              );
+              if (concepts && concepts.length > 0) {
+                allConcepts.push(...concepts);
+              }
+            } catch (error) {
+              // Silenciar error
+            }
+          }
+
+          resolve(allConcepts);
+        },
+        error: (err) => {
+          reject(err);
+        }
+      });
+    });
+  }
+
+  private async loadFullIngresosCatalog(): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.catalogadmonService.getCatalogs(this.root, 'INCOME').subscribe({
+        next: (data: any) => {
+          const catalogData = data || [];
+          resolve(catalogData);
+        },
+        error: (error) => {
+          console.error('Error cargando catálogo de ingresos:', error);
+          reject(error);
+        }
+      });
+    });
+  }
+
+  private async generateIngresosPDF(conceptsData: any[], catalogData: any[]) {
+    try {
+      // Obtener información de root y logos
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.root));
+
+      // Obtener información de firmas desde SetupManagement
+      const setupManagementInfo: any = await lastValueFrom(this.administrationService.getSetupManagementInfo(this.root));
+      const setupInfo = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+        ? setupManagementInfo[0]
+        : setupManagementInfo;
+      console.log('🖊️ Información de firmas:', setupInfo);
+
+      const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+      const logo2Base64 = rootResponse.picture2
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+        : logoBase64;
+      const watermarkBase64 = rootResponse.picture3
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+        : null;
+
+      // Obtener información de la cuenta bancaria seleccionada
+      const selectedAccount = this.bankAccounts.find(acc => acc.id === this._idAccount);
+      const accountName = selectedAccount ? selectedAccount.nameAccount : 'CUENTA NO ESPECIFICADA';
+
+      // Construir estructura jerárquica del catálogo
+      const catalogTree = this.buildCatalogTree(catalogData);
+
+      // Procesar conceptos por categoría y calcular totales recursivamente
+      const reportData = this.buildReportData(catalogTree, conceptsData);
+
+      // Obtener mes y año del rango de fechas
+      const startDate = new Date(this.pdfStartDate);
+      const monthName = this.getMonthName(startDate);
+      const year = startDate.getFullYear();
+
+      // Construir el documento PDF
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'portrait',
+        pageMargins: [40, 120, 40, 80],
+        header: {
+          margin: [40, 20, 40, 10],
+          columns: [
+            {
+              image: 'logo',
+              width: 60,
+              alignment: 'left'
+            },
+            {
+              stack: [
+                { text: rootResponse.name || 'H. JUNTA MUNICIPAL', style: 'headerTitle', alignment: 'center' },
+                { text: '2024-2027', style: 'headerSubtitle', alignment: 'center' },
+                { text: rootResponse.address || 'CALLE 22 S/N ENTRE 17 Y 19, COLONIA CENTRO', style: 'headerAddress', alignment: 'center' }
+              ],
+              width: '*',
+              margin: [0, 5, 0, 0]
+            },
+            {
+              image: 'logo2',
+              width: 60,
+              alignment: 'right'
+            }
+          ]
+        },
+        footer: (currentPage: number, pageCount: number) => {
+          // Solo mostrar firmas en la última página
+          if (currentPage === pageCount) {
+            return {
+              margin: [40, 10, 40, 20],
+              stack: [
+                {
+                  columns: [
+                    {
+                      stack: [
+                        { text: setupInfo?.administratorTitle || 'TESORERO', style: 'signatureLabel', alignment: 'center' },
+                        { text: '\n\n', fontSize: 8 },
+                        { text: '_______________________', alignment: 'center', fontSize: 9 },
+                        { text: setupInfo?.administratorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
+                      ],
+                      width: '33%'
+                    },
+                    {
+                      stack: [
+                        { text: setupInfo?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureLabel', alignment: 'center' },
+                        { text: '\n\n', fontSize: 8 },
+                        { text: '_______________________', alignment: 'center', fontSize: 9 },
+                        { text: setupInfo?.gerencyName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
+                      ],
+                      width: '34%'
+                    },
+                    {
+                      stack: [
+                        { text: setupInfo?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureLabel', alignment: 'center' },
+                        { text: '\n\n', fontSize: 8 },
+                        { text: '_______________________', alignment: 'center', fontSize: 9 },
+                        { text: setupInfo?.directorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
+                      ],
+                      width: '33%'
+                    }
+                  ]
+                }
+              ]
+            };
+          }
+          // En otras páginas, footer vacío
+          return {};
+        },
+        content: [
+          {
+            text: `INFORME DE INGRESOS CORRESPONDIENTES AL MES DE ${monthName.toUpperCase()} ${year} DE LOS ${accountName.toUpperCase()} DE LA H.JMN`,
+            style: 'title',
+            margin: [0, 0, 0, 5]
+          },
+          {
+            text: `Del ${this.formatDateForDisplay(this.pdfStartDate)} al ${this.formatDateForDisplay(this.pdfEndDate)}`,
+            style: 'dateRange',
+            margin: [0, 0, 0, 15]
+          },
+          {
+            table: {
+              headerRows: 1,
+              widths: [300, 90, 90, 40], // CONCEPTO más estrecha, SUBTOTAL y TOTAL más anchas
+              body: this.buildTableBody(reportData)
+            },
+            layout: {
+              fillColor: (rowIndex: number) => {
+                if (rowIndex === 0) return '#f0ad4e';
+                return null;
+              },
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#000000',
+              vLineColor: () => '#000000'
+            }
+          }
+        ],
+        images: watermarkBase64 ? {
+          logo: logoBase64,
+          logo2: logo2Base64,
+          watermark: watermarkBase64
+        } : {
+          logo: logoBase64,
+          logo2: logo2Base64
+        },
+        background: watermarkBase64 ? {
+          image: 'watermark',
+          width: 300,
+          opacity: 0.15,
+          absolutePosition: { x: 150, y: 300 }
+        } : undefined,
+        styles: {
+          headerTitle: {
+            fontSize: 11,
+            bold: true,
+            color: '#000000'
+          },
+          headerSubtitle: {
+            fontSize: 10,
+            bold: true,
+            color: '#000000'
+          },
+          headerAddress: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          title: {
+            fontSize: 10,
+            bold: true,
+            alignment: 'center',
+            color: '#000000'
+          },
+          tableHeader: {
+            fontSize: 9,
+            bold: true,
+            color: '#ffffff',
+            fillColor: '#f0ad4e',
+            alignment: 'center'
+          },
+          parentCategory: {
+            fontSize: 9,
+            bold: true,
+            color: '#000000'
+          },
+          childCategory: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          groupHeader: {
+            fontSize: 8,
+            bold: true,
+            color: '#000000',
+            italics: true
+          },
+          currency: {
+            fontSize: 8,
+            alignment: 'right'
+          },
+          signatureLabel: {
+            fontSize: 9,
+            bold: true,
+            color: '#000000'
+          },
+          signatureName: {
+            fontSize: 9,
+            color: '#000000'
+          },
+          dateRange: {
+            fontSize: 9,
+            alignment: 'center',
+            color: '#000000'
+          }
+        },
+        defaultStyle: {
+          fontSize: 8
+        }
+      };
+
+      pdfMake.createPdf(docDefinition).open();
+
+      // Tracking log
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Generación de Reporte PDF de Ingresos - Periodo: ${monthName} ${year}`,
+        'Menu Administración - Palacio Municipal - Ingresos',
+        this.trackingService.getEmail()
+      );
+
+    } catch (error) {
+      console.error('Error en generateIngresosPDF:', error);
+      throw error;
+    }
+  }
+
+  private buildCatalogTree(catalogData: any[]): any[] {
+    const map = new Map<number, any>();
+    const roots: any[] = [];
+
+    // Crear mapa de todos los nodos
+    catalogData.forEach(item => {
+      map.set(item.id, { ...item, children: [] });
+    });
+
+    // Construir jerarquía COMPLETA (todos los niveles)
+    catalogData.forEach(item => {
+      const node = map.get(item.id)!;
+
+      if (item.parentId && item.parentId !== 0 && map.has(item.parentId)) {
+        const parent = map.get(item.parentId)!;
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    return roots;
+  }
+
+  private buildReportData(catalogTree: any[], conceptsData: any[]): any[] {
+    const reportRows: any[] = [];
+
+    // Función recursiva para calcular el total de un nodo y sus descendientes
+    const calculateNodeTotal = (node: any): number => {
+      // PRIMERO: Buscar conceptos directamente asociados con este nodo (por idCatIng)
+      const directTotal = conceptsData
+        .filter(concept => concept.idCatIng === node.id)
+        .reduce((sum, concept) => sum + (concept.total || 0), 0);
+
+      // SEGUNDO: Sumar los totales de los hijos (si existen)
+      let childrenTotal = 0;
+      if (node.children && node.children.length > 0) {
+        childrenTotal = node.children.reduce((sum: number, child: any) =>
+          sum + calculateNodeTotal(child), 0);
+      }
+
+      // Retornar la suma de conceptos directos + totales de hijos
+      return directTotal + childrenTotal;
+    };
+
+    // Función recursiva para procesar el árbol y generar las filas
+    const processNode = (node: any, level: number, parentRows: any[]) => {
+      const nodeTotal = calculateNodeTotal(node);
+
+      if (level === 1) {
+        // Nivel 1: Categorías principales (1.- IMPUESTOS, 2.-DERECHOS, etc.)
+        // Van en NEGRITAS con TOTAL
+        parentRows.push({
+          type: 'level1',
+          description: node.description,
+          subtotal: '',
+          total: nodeTotal,
+          percent: ''
+        });
+
+        // Procesar hijos
+        if (node.children && node.children.length > 0) {
+          node.children.forEach((child: any) => processNode(child, level + 1, parentRows));
+        }
+
+      } else if (level === 2) {
+        // Nivel 2: Agrupadores (POR SERVICIOS PUBLICOS, etc.)
+        // Van como encabezados de grupo
+        parentRows.push({
+          type: 'level2',
+          description: node.description,
+          subtotal: '',
+          total: '',
+          percent: ''
+        });
+
+        // Procesar hijos
+        if (node.children && node.children.length > 0) {
+          node.children.forEach((child: any) => processNode(child, level + 1, parentRows));
+        }
+
+      } else if (level === 3) {
+        // Nivel 3: Items finales (2.1, 2.2, 2.3, etc.)
+        // Van con SUBTOTAL
+        parentRows.push({
+          type: 'level3',
+          description: node.description,
+          subtotal: nodeTotal,
+          total: '',
+          percent: ''
+        });
+
+      } else if (level >= 4) {
+        // Si hay más niveles, tratarlos como nivel 3
+        parentRows.push({
+          type: 'level3',
+          description: node.description,
+          subtotal: nodeTotal,
+          total: '',
+          percent: ''
+        });
+      }
+    };
+
+    // Procesar el árbol completo
+    if (catalogTree.length > 0) {
+      const root = catalogTree[0]; // "A.- INGRESOS PROPIOS"
+
+      // Procesar todos los hijos de la raíz (nivel 1)
+      if (root.children && root.children.length > 0) {
+        root.children.forEach((child: any) => {
+          processNode(child, 1, reportRows);
+        });
+      }
+    }
+
+    return reportRows;
+  }
+
+  private buildTableBody(reportData: any[]): any[][] {
+    const body: any[][] = [];
+
+    // Encabezado
+    body.push([
+      { text: 'CONCEPTO', style: 'tableHeader' },
+      { text: 'SUBTOTAL', style: 'tableHeader' },
+      { text: 'TOTAL', style: 'tableHeader' },
+      { text: '%', style: 'tableHeader' }
+    ]);
+
+    // Calcular total general (suma de todas las categorías nivel 1)
+    const totalGeneral = reportData
+      .filter(row => row.type === 'level1')
+      .reduce((sum, row) => sum + row.total, 0);
+
+    // Agregar filas
+    reportData.forEach(row => {
+      if (row.type === 'level1') {
+        // Nivel 1: Categorías principales (1.- IMPUESTOS, 2.-DERECHOS, etc.)
+        // Negritas con TOTAL
+        body.push([
+          { text: row.description, style: 'parentCategory', bold: true },
+          '',
+          {
+            text: row.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+            style: 'currency',
+            bold: true
+          },
+          ''
+        ]);
+
+      } else if (row.type === 'level2') {
+        // Nivel 2: Agrupadores (POR SERVICIOS PUBLICOS, etc.)
+        // Encabezados de grupo (mayúsculas)
+        body.push([
+          { text: row.description, style: 'groupHeader', margin: [0, 0, 0, 0] },
+          '',
+          '',
+          ''
+        ]);
+
+      } else if (row.type === 'level3') {
+        // Nivel 3: Items finales (2.1, 2.2, etc.)
+        // Indentados con SUBTOTAL
+        body.push([
+          { text: row.description, style: 'childCategory', margin: [10, 0, 0, 0] },
+          {
+            text: row.subtotal > 0 ? row.subtotal.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+            style: 'currency'
+          },
+          '',
+          ''
+        ]);
+      }
+    });
+
+    // Fila de total general
+    body.push([
+      { text: 'TOTAL DE INGRESOS DEL MES', style: 'parentCategory', bold: true, fillColor: '#f0ad4e', color: '#ffffff' },
+      '',
+      {
+        text: totalGeneral.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        style: 'currency',
+        bold: true,
+        fillColor: '#f0ad4e',
+        color: '#ffffff'
+      },
+      { text: '', fillColor: '#f0ad4e' }
+    ]);
+
+    return body;
   }
 
 }
