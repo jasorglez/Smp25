@@ -38,81 +38,127 @@ export class SegundaFaseHistoricoComponent extends MaterialsBaseComponent {
       return this._columnDefs;
     }
 
-    // Mismas columnas que primera-fase
+    // Columnas estándar para histórico (no las de primera-fase)
     this._columnDefs = [
+      { field: 'vigente', headerName: 'Activo', editable: true, width: 100 },
       {
-        field: 'articulo',
-        headerName: 'Artículo',
-        editable: true,
-        width: 250,
-        flex: 1
-      },
-      {
-        field: 'fase',
-        headerName: 'Fase',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Primera', 'Segunda']
-        }
-      },
-      {
-        field: 'materiales',
-        headerName: 'Materiales',
+        field: 'id',
         editable: false,
+        width: 70,
+        hide: true,
+        filter: 'agNumberColumnFilter',
+        filterParams: {
+          filterOptions: ['equals'],
+        },
+      },
+      {
+        field: 'idProveedor',
+        headerName: 'Proveedor',
+        editable: false,
+      },
+      {
+        field: 'description',
+        headerName: 'Materia prima',
+        editable: true,
+        width: 285,
+        filter: true,
+      },
+      {
+        headerName: 'SubFamilia',
+      },
+      {
+        headerName: 'Descripcion',
+      },
+      {
+        headerName: 'Medidas',
+      },
+      {
+        field: 'weight',
+        headerName: 'Peso por unidad',
+        editable: true,
+        filter: true,
         width: 150,
-        cellStyle: { backgroundColor: '#e1f5fe', cursor: 'pointer', textDecoration: 'underline' },
-        cellRenderer: (params: any) => {
-          const count = params.data.materialesData ? params.data.materialesData.length : 0;
-          const div = document.createElement('div');
-          div.innerText = `${count} materiales`;
-          div.style.cursor = 'pointer';
-          div.style.textDecoration = 'underline';
-          return div;
-        }
       },
       {
-        field: 'costoFinal',
-        headerName: 'Costo Final',
+        field: 'insumo',
+        headerName: 'Num. Material',
         editable: true,
-        width: 130,
-        valueFormatter: (params) => {
-          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
-        }
+        filter: true,
+        width: 150,
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: () => {
+          return {
+            filterList: this.rowData.map((e) => e.insumo),
+            filterKey: 'insumo',
+            placeholder: 'Número Material',
+            minLength: 1,
+          };
+        },
+        cellStyle: { backgroundColor: '#d4edda' },
       },
       {
-        field: 'fechaCambio',
-        headerName: 'Fecha Cambio',
+        field: 'date',
+        headerName: 'Fecha de alta MP',
         editable: true,
-        width: 130,
+        width: 110,
+        cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
             return params.value.split('T')[0];
           }
           return '';
-        }
+        },
       },
       {
-        field: 'numArticulo',
-        headerName: 'Num Artículo',
+        field: 'typeMaterial',
+        headerName: 'Tipo Material',
         editable: true,
-        width: 130
+        filter: true,
+        width: 150,
       },
       {
-        field: 'parametros',
-        headerName: 'Parámetros',
+        headerName: "Peso por unidad"
+      },
+      {
+        field: 'idMedida',
+        headerName: 'Medidas',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.medidas ? this.medidas.map((item: any) => item.id) : [],
+        },
+        valueFormatter: (params) => {
+          const foundItem = this.medidas
+            ? this.medidas.find((item: any) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+      {
+        headerName: 'Empaquetado',
+      },
+      {
+        headerName: 'Caducidad (En meses)',
+      },
+      {
+        headerName: 'Tiempo de entrega (En semanas)',
+      },
+      {
+        field: 'picture',
+        headerName: 'Imagen',
         editable: false,
         width: 150,
-        cellStyle: { backgroundColor: '#fff9c4', cursor: 'pointer', textDecoration: 'underline' },
-        cellRenderer: (params: any) => {
-          const div = document.createElement('div');
-          div.innerText = 'Parámetros';
-          div.style.cursor = 'pointer';
-          div.style.textDecoration = 'underline';
-          return div;
-        }
-      }
+        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
+          this.imageHandlerService
+        ),
+        cellRendererParams: {
+          clicked: this.imageHandlerService.onImageCellClicked.bind(
+            this.imageHandlerService
+          ),
+          field: 'picture',
+        },
+      },
     ];
 
     return this._columnDefs;
@@ -123,35 +169,20 @@ export class SegundaFaseHistoricoComponent extends MaterialsBaseComponent {
       return this._gridOptions;
     }
 
+    // GridOptions estándar para histórico (sin master-detail)
     this._gridOptions = {
       headerHeight: 25,
       rowHeight: 20,
-      masterDetail: true,
-      isRowMaster: (dataItem: any) => {
-        return dataItem.historicoData && dataItem.historicoData.length > 0;
-      },
-      detailCellRendererSelector: (params: any) => {
-        if (params.data.detailType === 'historico') {
-          return { component: 'detailCellRendererHistorico' };
-        }
-        if (params.data.detailType === 'materiales') {
-          return { component: 'detailCellRendererMateriales' };
-        }
-        if (params.data.detailType === 'parametros') {
-          return { component: 'detailCellRendererParametros' };
-        }
-        return undefined;
-      },
-      getRowClass: (params) => {
+      getRowClass: (params: any) => {
         if (params.node.isSelected()) {
           return 'selected-row';
         }
         return '';
       },
-      onRowClicked: (event) => {
+      onRowClicked: (event: any) => {
         event.node.setSelected(true);
       },
-      onRowSelected: (event) => {
+      onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
           this.gridApi.forEachNode((node) => {
             if (node.id !== event.node.id) {
@@ -160,57 +191,9 @@ export class SegundaFaseHistoricoComponent extends MaterialsBaseComponent {
           });
         }
       },
-      onCellClicked: this.onCellClicked.bind(this),
     };
 
     return this._gridOptions;
-  }
-
-  override onCellClicked(event: any): void {
-    const colId = event.column.getColId();
-
-    if (colId === 'historico' || colId === 'materiales' || colId === 'parametros') {
-      const node = event.node;
-      const api = event.api;
-
-      let detailType = '';
-      if (colId === 'historico') detailType = 'historico';
-      if (colId === 'materiales') detailType = 'materiales';
-      if (colId === 'parametros') detailType = 'parametros';
-
-      const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
-
-      if (isCurrentlyExpanded) {
-        node.setExpanded(false);
-        api.forEachNode((otherNode: any) => {
-          otherNode.setRowHeight(undefined);
-        });
-        api.onRowHeightChanged();
-      } else {
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.expanded && otherNode.id !== node.id) {
-            otherNode.setExpanded(false);
-          }
-        });
-
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.id !== node.id) {
-            otherNode.setRowHeight(0);
-          }
-        });
-
-        if (node.expanded && event.data.detailType !== detailType) {
-          node.setExpanded(false);
-        }
-
-        event.data.detailType = detailType;
-        api.onRowHeightChanged();
-
-        setTimeout(() => {
-          node.setExpanded(true);
-        }, 0);
-      }
-    }
   }
 
   override obtenerDatos(): any {
