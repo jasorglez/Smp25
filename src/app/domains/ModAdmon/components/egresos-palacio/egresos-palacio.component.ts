@@ -2283,18 +2283,13 @@ export class EgresosPalacioComponent {
     this.isGeneratingConsolidatedReport = true;
 
     try {
-      // ✅ FIX: Parsear fechas sin zona horaria para evitar conversión UTC
-      const [startYear, startMonth, startDay] = this.reportStartDate.split('-');
-      const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay));
-      startDate.setHours(0, 0, 0, 0);
-
-      const [endYear, endMonth, endDay] = this.reportEndDate.split('-');
-      const endDate = new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay));
-      endDate.setHours(23, 59, 59, 999);
-
+      // ✅ FIX: Filtrar por comparación de strings YYYY-MM-DD para evitar problemas de zona horaria
       const filteredExpenses = this.incomes.filter(expense => {
-        const expenseDate = new Date(expense.date);
-        return expenseDate >= startDate && expenseDate <= endDate && expense.facturado === true;
+        // Convertir fecha del egreso a formato YYYY-MM-DD
+        const expenseDateObj = new Date(expense.date);
+        const expenseDateStr = `${expenseDateObj.getFullYear()}-${String(expenseDateObj.getMonth() + 1).padStart(2, '0')}-${String(expenseDateObj.getDate()).padStart(2, '0')}`;
+
+        return expenseDateStr >= this.reportStartDate && expenseDateStr <= this.reportEndDate && expense.facturado === true;
       });
 
       if (filteredExpenses.length === 0) {
@@ -2540,12 +2535,32 @@ export class EgresosPalacioComponent {
       ? `${selectedAccount.nameAccount}-${selectedAccount.bankName}`.toUpperCase()
       : 'INGRESOS PROPIOS';
 
-    // Obtener nombre del mes desde reportStartDate
-    // ✅ FIX: Parsear fecha sin zona horaria para evitar conversión
-    const [yearStr, monthStr, dayStr] = this.reportStartDate.split('-');
-    const startDate = new Date(parseInt(yearStr), parseInt(monthStr) - 1, parseInt(dayStr));
-    const monthName = this.getMonthName(startDate).toUpperCase();
-    const year = startDate.getFullYear();
+    // Obtener mes y año del rango de fechas de manera dinámica
+    // ✅ FIX: Parsear manualmente para evitar problemas de zona horaria
+    const [startYearStr, startMonthStr, startDayStr] = this.reportStartDate.split('-');
+    const startYear = parseInt(startYearStr);
+    const startMonth = parseInt(startMonthStr); // Mes 1-12
+
+    const [endYearStr, endMonthStr, endDayStr] = this.reportEndDate.split('-');
+    const endYear = parseInt(endYearStr);
+    const endMonth = parseInt(endMonthStr); // Mes 1-12
+
+    // Crear fechas para getMonthName (necesita objeto Date)
+    const startDateObj = new Date(startYear, startMonth - 1, 1);
+    const endDateObj = new Date(endYear, endMonth - 1, 1);
+
+    // Determinar el texto del periodo dinámicamente
+    let periodText = '';
+    if (startYear === endYear && startMonth === endMonth) {
+      // Mismo mes y año: "MES DE DICIEMBRE 2025"
+      periodText = `MES DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear}`;
+    } else if (startYear === endYear) {
+      // Mismo año, diferentes meses: "PERIODO DE NOVIEMBRE A DICIEMBRE 2025"
+      periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} A ${this.getMonthName(endDateObj).toUpperCase()} ${startYear}`;
+    } else {
+      // Diferentes años: "PERIODO DE DICIEMBRE 2024 A ENERO 2025"
+      periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear} A ${this.getMonthName(endDateObj).toUpperCase()} ${endYear}`;
+    }
 
     // Calcular total general
     let totalGeneral = 0;
@@ -2624,7 +2639,7 @@ export class EgresosPalacioComponent {
           columns: [
             {
               image: 'logo',
-              width: 60,
+              width: 90,
               alignment: 'left'
             },
             {
@@ -2645,7 +2660,7 @@ export class EgresosPalacioComponent {
             },
             {
               image: 'logo2',
-              width: 60,
+              width: 90,
               alignment: 'right'
             }
           ],
@@ -2653,7 +2668,7 @@ export class EgresosPalacioComponent {
         },
         // Título del reporte
         {
-          text: `INFORME DE EGRESOS CORRESPONDIENTES AL MES DE ${monthName} ${year}, ${accountName} DE LA JUNTA MUNICIPAL`,
+          text: `INFORME DE EGRESOS CORRESPONDIENTES AL ${periodText}, ${accountName} DE LA JUNTA MUNICIPAL`,
           style: 'reportTitle',
           alignment: 'center',
           margin: [0, 5, 0, 14]
@@ -2683,7 +2698,7 @@ export class EgresosPalacioComponent {
             widths: ['*', 100],
             body: [
               [
-                { text: 'RESUMEN DE INGRESOS Y EGRESOS DEL MES DE ' + monthName + ' ' + year, style: 'resumenTitle', colSpan: 2, alignment: 'center' },
+                { text: 'RESUMEN DE INGRESOS Y EGRESOS DEL ' + periodText, style: 'resumenTitle', colSpan: 2, alignment: 'center' },
                 {}
               ],
               [

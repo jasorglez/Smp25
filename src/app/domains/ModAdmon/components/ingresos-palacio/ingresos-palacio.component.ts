@@ -1607,10 +1607,32 @@ async saveChanges() {
       // Procesar conceptos por categoría y calcular totales recursivamente
       const reportData = this.buildReportData(catalogTree, conceptsData);
 
-      // Obtener mes y año del rango de fechas
-      const startDate = new Date(this.pdfStartDate);
-      const monthName = this.getMonthName(startDate);
-      const year = startDate.getFullYear();
+      // Obtener mes y año del rango de fechas de manera dinámica
+      // ✅ Parsear manualmente para evitar problemas de zona horaria
+      const [startYearStr, startMonthStr, startDayStr] = this.pdfStartDate.split('-');
+      const startYear = parseInt(startYearStr);
+      const startMonth = parseInt(startMonthStr); // Mes 1-12
+
+      const [endYearStr, endMonthStr, endDayStr] = this.pdfEndDate.split('-');
+      const endYear = parseInt(endYearStr);
+      const endMonth = parseInt(endMonthStr); // Mes 1-12
+
+      // Crear fechas para getMonthName (necesita objeto Date)
+      const startDateObj = new Date(startYear, startMonth - 1, 1);
+      const endDateObj = new Date(endYear, endMonth - 1, 1);
+
+      // Determinar el texto del periodo dinámicamente
+      let periodText = '';
+      if (startYear === endYear && startMonth === endMonth) {
+        // Mismo mes y año: "MES DE DICIEMBRE 2025"
+        periodText = `MES DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear}`;
+      } else if (startYear === endYear) {
+        // Mismo año, diferentes meses: "PERIODO DE NOVIEMBRE A DICIEMBRE 2025"
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} A ${this.getMonthName(endDateObj).toUpperCase()} ${startYear}`;
+      } else {
+        // Diferentes años: "PERIODO DE DICIEMBRE 2024 A ENERO 2025"
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear} A ${this.getMonthName(endDateObj).toUpperCase()} ${endYear}`;
+      }
 
       // Construir el documento PDF
       const docDefinition: any = {
@@ -1622,7 +1644,7 @@ async saveChanges() {
           columns: [
             {
               image: 'logo',
-              width: 60,
+              width: 90,
               alignment: 'left'
             },
             {
@@ -1636,7 +1658,7 @@ async saveChanges() {
             },
             {
               image: 'logo2',
-              width: 60,
+              width: 90,
               alignment: 'right'
             }
           ]
@@ -1686,7 +1708,7 @@ async saveChanges() {
         },
         content: [
           {
-            text: `INFORME DE INGRESOS CORRESPONDIENTES AL MES DE ${monthName.toUpperCase()} ${year} DE LOS ${accountName.toUpperCase()} DE LA H.JMN`,
+            text: `INFORME DE INGRESOS CORRESPONDIENTES AL ${periodText} DE LOS ${accountName.toUpperCase()} DE LA H.JMN`,
             style: 'title',
             margin: [0, 0, 0, 5]
           },
@@ -1799,7 +1821,7 @@ async saveChanges() {
       // Tracking log
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        `Generación de Reporte PDF de Ingresos - Periodo: ${monthName} ${year}`,
+        `Generación de Reporte PDF de Ingresos - Periodo: ${periodText}`,
         'Menu Administración - Palacio Municipal - Ingresos',
         this.trackingService.getEmail()
       );
