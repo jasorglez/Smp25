@@ -326,9 +326,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
         editable: true,
         valueSetter: (params) => {
           const rawValue = params.newValue;
+          // Permitir vacío, la validación de "al menos uno" se hace al guardar
           if (!rawValue || rawValue.toString().trim() === '') {
-            alerts.basicAlert('Campo requerido', 'La Compañía es obligatoria.', 'error');
-            return false;
+            params.data[params.colDef.field] = '';
+            return true;
           }
           params.data[params.colDef.field] = rawValue.toString().toUpperCase();
           return true;
@@ -367,17 +368,14 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
         valueSetter: (params) => {
           const rawValue = params.newValue;
-          if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-            return false;
+
+          // Permitir vacío, la validación de "al menos uno" se hace al guardar
+          if (!rawValue || typeof rawValue !== 'string' || rawValue.trim() === '') {
+            params.data[params.colDef.field] = '';
+            return true;
           }
 
           const normalizedValue = rawValue.trim().toUpperCase();
-
-          if (!normalizedValue) {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-            return false;
-          }
 
           const duplicateExists = this.contactoCatalog.some(
             (row, index) =>
@@ -410,9 +408,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
         editable: true,
         valueSetter: (params) => {
           const rawValue = params.newValue;
+          // Permitir vacío, el campo es opcional
           if (!rawValue || rawValue.toString().trim() === '') {
-            alerts.basicAlert('Campo requerido', 'El Puesto/Area es obligatorio.', 'error');
-            return false;
+            params.data[params.colDef.field] = '';
+            return true;
           }
           params.data[params.colDef.field] = rawValue.toString().toUpperCase();
           return true;
@@ -479,14 +478,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
         editable: true,
         valueSetter: (params) => {
           const rawValue = params.newValue;
-          if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El email es obligatorio', 'error');
-            return false;
+
+          // Permitir vacío, el email es opcional
+          if (!rawValue || typeof rawValue !== 'string' || rawValue.trim() === '') {
+            params.data[params.colDef.field] = '';
+            return true;
           }
 
           const normalizedValue = rawValue.trim().toLowerCase();
 
-          // Validar formato de email
+          // Validar formato de email solo si se proporciona
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!emailRegex.test(normalizedValue)) {
             alerts.basicAlert(
@@ -935,34 +936,23 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     let errorMessage = '';
     const isValid = this.rowData.every((item, index) => {
-      
-      // Validar Compañía
-      if (!item.company || item.company.toString().trim() === '') {
-        errorMessage = `Fila ${index + 1}: La Compañía es obligatoria.`;
+
+      // Validar que al menos Compañía o Contacto Principal estén llenos
+      const hasCompany = item.company && item.company.toString().trim() !== '';
+      const hasContact = item.nameContact && item.nameContact.toString().trim() !== '';
+
+      if (!hasCompany && !hasContact) {
+        errorMessage = `Fila ${index + 1}: Debe llenar al menos Compañía o Contacto Principal.`;
         return false;
       }
 
-      // Validar Contacto Principal
-      if (!item.nameContact || item.nameContact.toString().trim() === '') {
-        errorMessage = `Fila ${index + 1}: El Contacto Principal es obligatorio.`;
-        return false;
-      }
-
-      // Validar Puesto/Area
-      if (!item.position || item.position.toString().trim() === '') {
-        errorMessage = `Fila ${index + 1}: El Puesto/Area es obligatorio.`;
-        return false;
-      }
-
-      // Validar Email y formato
-      if (!item.email || item.email.toString().trim() === '') {
-        errorMessage = `Fila ${index + 1}: El Email es obligatorio.`;
-        return false;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(item.email)) {
-        errorMessage = `Fila ${index + 1}: El formato del Email es inválido.`;
-        return false;
+      // Validar formato de Email solo si está presente (el email es opcional)
+      if (item.email && item.email.toString().trim() !== '') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(item.email)) {
+          errorMessage = `Fila ${index + 1}: El formato del Email es inválido.`;
+          return false;
+        }
       }
 
       if (this.type === 'CUSTOMERS' && (!item.idTypecop || item.idTypecop === 0)) {
