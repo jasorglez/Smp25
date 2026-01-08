@@ -1,393 +1,394 @@
-// ============================================
-// Background & Overlay
-// ============================================
 .login-background {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  background-color: #0a0a1a;
   background-size: cover;
-  background-position: center;
+  background-position: center center;
+  background-repeat: no-repeat;
   z-index: 0;
-  animation: backgroundZoom 20s infinite alternate;
-  filter: brightness(0.9);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background:
+      radial-gradient(circle at 20% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 20%, rgba(0, 255, 157, 0.08) 0%, transparent 50%);
+    animation: neonPulse 8s ease-in-out infinite;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 255, 0.03) 2px,
+      rgba(0, 255, 255, 0.03) 4px
+    );
+    animation: scanlines 8s linear infinite;
+  }
 }
 
-@keyframes backgroundZoom {
-  from { transform: scale(1); }
-  to { transform: scale(1.08); }
+@keyframes neonPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: translate(-25%, -25%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-25%, -25%) scale(1.1);
+  }
+}
+
+@keyframes scanlines {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(10px);
+  }
 }
 
 .overlay {
   position: absolute;
   width: 100%;
   height: 100%;
-  backdrop-filter: blur(8px);
-  background: linear-gradient(
-    135deg,
-    rgba(13, 27, 62, 0.85) 0%,
-    rgba(30, 60, 114, 0.75) 50%,
-    rgba(13, 110, 253, 0.65) 100%
-  );
+  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.5);
 }
 
-// ============================================
-// Particles Animation
-// ============================================
-.particles {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  z-index: 1;
-}
-
-.particle {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 50%;
-  animation: float 15s infinite ease-in-out;
-
-  &:nth-child(odd) {
-    width: 4px;
-    height: 4px;
-    left: calc(5% * var(--i, 1));
-    animation-duration: 12s;
-  }
-
-  &:nth-child(even) {
-    width: 6px;
-    height: 6px;
-    right: calc(5% * var(--i, 1));
-    animation-duration: 18s;
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(100vh) translateX(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.6;
-  }
-  90% {
-    opacity: 0.4;
-  }
-  50% {
-    transform: translateY(-20vh) translateX(20px);
-    opacity: 0.8;
-  }
-}
-
-// ============================================
-// Login Box
-// ============================================
 .login-box {
   position: absolute;
   top: 50%;
   left: 50%;
   width: 100%;
-  max-width: 440px;
-  padding: 0 20px;
+  max-width: 420px;
   transform: translate(-50%, -50%);
-  z-index: 2;
-  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  opacity: 0;
+  z-index: 1;
+  animation: fadeInUpNeon 0.8s ease-out;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.3));
 }
 
-@keyframes fadeInUp {
-  from {
+@keyframes fadeInUpNeon {
+  0% {
     opacity: 0;
-    top: 60%;
+    transform: translate(-50%, -40%);
+    filter: blur(10px);
   }
-  to {
+  100% {
     opacity: 1;
-    top: 50%;
+    transform: translate(-50%, -50%);
+    filter: blur(0);
   }
 }
 
-// ============================================
-// Logo
-// ============================================
-.login-logo {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  .logo-wrapper {
-    position: relative;
-    display: inline-block;
-    padding: 2rem;
-    border-radius: 24px;
-
-    // Efecto glassmorphism
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(12px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg,
-        rgba(255, 255, 255, 0.2) 0%,
-        rgba(255, 255, 255, 0.05) 50%,
-        rgba(13, 110, 253, 0.1) 100%
-      );
-      border-radius: 24px;
-      z-index: -1;
-    }
-  }
-
-  .logo-img {
-    max-width: 280px;
-    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
-    position: relative;
-    z-index: 1;
-    display: block;
-  }
-}
-
-// ============================================
-// Card
-// ============================================
 .card {
-  backdrop-filter: blur(20px) saturate(180%);
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(16px) !important;
+  background: rgba(10, 10, 26, 0.85) !important;
+  border: 2px solid #00ffff !important;
+  box-shadow:
+    0 0 30px rgba(0, 255, 255, 0.3),
+    inset 0 0 20px rgba(0, 255, 255, 0.05) !important;
+  position: relative;
+  overflow: hidden;
+
+  h5 {
+    color: #00ffff !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow:
+      0 0 10px rgba(0, 255, 255, 0.8),
+      0 0 20px rgba(0, 255, 255, 0.5),
+      0 0 30px rgba(0, 255, 255, 0.3) !important;
+  }
+}
+
+
+// Estilo para el logo con fondo blur
+.logo-with-blur {
+  padding: 1.5rem;
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+  background: rgba(10, 10, 26, 0.6);
+  border: 2px solid #00ffff;
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.5),
+    inset 0 0 15px rgba(0, 255, 255, 0.1);
+  transition: all 0.3s ease;
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+    background: rgba(10, 10, 26, 0.8);
     transform: translateY(-5px);
+    box-shadow:
+      0 0 40px rgba(0, 255, 255, 0.8),
+      0 10px 30px rgba(255, 0, 255, 0.3),
+      inset 0 0 20px rgba(0, 255, 255, 0.2);
+    border-color: #ff00ff;
   }
 }
 
-// ============================================
-// Login Title
-// ============================================
-.login-title {
-  font-size: 1.75rem;
-  letter-spacing: -0.5px;
+button.btn-link {
+  color: #00ffff !important;
+  text-decoration: none !important;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5) !important;
+  transition: all 0.3s ease;
 
-  .title-gradient {
-    background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  i {
+    filter: drop-shadow(0 0 3px rgba(0, 255, 255, 0.6));
   }
 }
 
-// ============================================
-// Form Inputs
-// ============================================
-.input-group-custom {
+button.btn-link:hover {
+  color: #ff00ff !important;
+  text-shadow: 0 0 10px rgba(255, 0, 255, 0.8) !important;
+
+  i {
+    filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
+  }
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00ffff 0%, #00ff9d 100%) !important;
+  border: 2px solid #00ffff !important;
+  color: #0a0a1a !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.5),
+    inset 0 0 10px rgba(0, 255, 255, 0.2) !important;
+  transition: all 0.3s ease;
   position: relative;
+  overflow: hidden;
 
-  .input-icon {
+  &::before {
+    content: '';
     position: absolute;
-    left: 15px;
     top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-    color: #6c757d;
-    font-size: 1.1rem;
-    transition: all 0.3s ease;
-    pointer-events: none;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
   }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-3px);
+    background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%) !important;
+    border-color: #ff00ff !important;
+    color: #ffffff !important;
+    box-shadow:
+      0 0 30px rgba(255, 0, 255, 0.8),
+      0 5px 20px rgba(0, 255, 255, 0.4),
+      inset 0 0 15px rgba(255, 0, 255, 0.3) !important;
+
+    &::before {
+      width: 300px;
+      height: 300px;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+  }
+
+  i, span {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.form-floating {
+  position: relative;
+  margin-bottom: 1.5rem;
 
   .form-control {
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.9);
-    padding-left: 45px;
-    padding-right: 15px;
-    padding-top: 1.2rem;
-    padding-bottom: 0.6rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 1rem;
+    border: 2px solid #00ffff !important;
+    border-radius: 8px !important;
+    background: rgba(0, 255, 255, 0.05) !important;
+    padding: 1rem 1rem;
+    padding-top: 1.625rem;
+    padding-bottom: 0.625rem;
+    color: #00ffff !important;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.1) !important;
+    height: auto;
+    min-height: calc(3.5rem + 2px);
+
+    &::placeholder {
+      color: transparent;
+    }
 
     &:focus {
-      box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
-      border-color: #0d6efd;
-      background: #ffffff;
+      box-shadow:
+        0 0 20px rgba(0, 255, 255, 0.4),
+        inset 0 0 10px rgba(0, 255, 255, 0.1) !important;
+      border-color: #ff00ff !important;
+      background: rgba(255, 0, 255, 0.08) !important;
+      outline: none !important;
 
       ~ label {
-        color: #0d6efd;
-        font-weight: 600;
-      }
-
-      ~ .input-icon {
-        color: #0d6efd;
-        transform: translateY(-50%) scale(1.1);
+        color: #ff00ff !important;
+        opacity: 1;
+        transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+        text-shadow: 0 0 10px rgba(255, 0, 255, 0.8) !important;
       }
     }
 
-    &:not(:placeholder-shown) {
-      ~ label {
-        transform: scale(0.85) translateY(-0.9rem) translateX(0.15rem);
-      }
+    &:not(:placeholder-shown) ~ label {
+      opacity: 1;
+      transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+      color: #00ffff !important;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.6) !important;
     }
 
     &.is-invalid {
-      border-color: #dc3545;
-
-      ~ .input-icon {
-        color: #dc3545;
-      }
+      border-color: #ff0055;
+      box-shadow: 0 0 15px rgba(255, 0, 85, 0.5);
     }
   }
 
-  label {
-    padding-left: 45px;
-    color: #6c757d;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  > label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    padding: 1rem 1rem;
+    pointer-events: none;
+    border: 2px solid transparent;
+    transform-origin: 0 0;
+    transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+    color: rgba(0, 255, 255, 0.7) !important;
     font-weight: 500;
   }
 
   .invalid-feedback {
-    padding-left: 10px;
-    font-size: 0.875rem;
+    color: #ff0055;
+    text-shadow: 0 0 5px rgba(255, 0, 85, 0.5);
+    font-size: 0.85rem;
     margin-top: 0.5rem;
   }
 }
 
-// ============================================
-// Eye Toggle Button
-// ============================================
-.eye-toggle {
-  color: #6c757d;
-  text-decoration: none;
-  z-index: 15;
-  transition: all 0.3s ease;
-  padding: 0.5rem;
-  border-radius: 8px;
-
-  &:hover {
-    color: #0d6efd;
-    background: rgba(13, 110, 253, 0.1);
-  }
-
-  i {
-    font-size: 1.1rem;
-  }
-}
-
-// ============================================
-// Login Button
-// ============================================
-.login-btn {
-  background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
-  border: none;
-  border-radius: 12px;
-  font-size: 1.1rem;
-  letter-spacing: 0.5px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-
-  .btn-content {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn-shine {
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg,
-      transparent,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    );
-    transition: left 0.5s;
-  }
-
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 24px rgba(13, 110, 253, 0.4);
-
-    .btn-shine {
-      left: 100%;
-    }
-  }
-
-  &:active {
-    transform: translateY(-1px);
-  }
-}
-
-// ============================================
-// Footer
-// ============================================
 .footer-login {
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  font-size: 0.95rem;
+  color: #00ffff;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+  font-weight: 500;
 
-  .footer-link {
-    color: #ffffff;
+  a {
+    color: #00ff9d;
     text-decoration: none;
     transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    text-shadow: 0 0 8px rgba(0, 255, 157, 0.6);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
-      color: #0dcaf0;
+      color: #ff00ff;
+      text-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
     }
 
     i {
-      font-size: 1.1rem;
+      filter: drop-shadow(0 0 3px currentColor);
     }
-  }
-
-  .version-badge {
-    background: rgba(13, 110, 253, 0.8);
-    padding: 0.3rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 }
 
-// ============================================
-// Responsive Design
-// ============================================
-@media (max-width: 576px) {
-  .login-box {
-    max-width: 95%;
-  }
+/* Overlay de carga */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(10, 10, 26, 0.95);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+}
 
-  .login-logo .logo-img {
-    max-width: 280px;
-  }
+.loading-content {
+  text-align: center;
+  padding: 3rem;
+  border-radius: 20px;
+  background: rgba(10, 10, 26, 0.8);
+  border: 2px solid #00ffff;
+  box-shadow:
+    0 0 40px rgba(0, 255, 255, 0.6),
+    0 0 80px rgba(255, 0, 255, 0.4),
+    inset 0 0 20px rgba(0, 255, 255, 0.1);
+  position: relative;
 
-  .card-body {
-    padding: 2rem 1.5rem !important;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, #00ffff, #ff00ff, #00ff9d, #00ffff);
+    border-radius: 20px;
+    z-index: -1;
+    opacity: 0.3;
+    filter: blur(15px);
+    animation: neonBorderRotate 3s linear infinite;
   }
+}
 
-  .login-title {
-    font-size: 1.5rem;
-  }
+.loading-content .spinner-border {
+  width: 4rem;
+  height: 4rem;
+  border-width: 0.4em;
+  border-color: #00ffff;
+  border-right-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.8));
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-content h5 {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: #00ffff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow:
+    0 0 10px rgba(0, 255, 255, 0.8),
+    0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+.loading-content p {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+  color: #00ff9d;
+  text-shadow: 0 0 5px rgba(0, 255, 157, 0.6);
+}
+
+/* Animación para el botón con spinner */
+.btn[disabled] {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.2em;
+  border-color: #0a0a1a;
+  border-right-color: transparent;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
 }
