@@ -6,6 +6,9 @@
         <button type="button" class="btn btn-primary" (click)="refreshData()" [disabled]="loading" title="Actualizar">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
+        <button type="button" class="btn btn-danger" (click)="openReportModal()" [disabled]="loading || !selectedRowData" title="Generar Reporte PDF">
+          <i class="bi bi-file-earmark-pdf"></i>
+        </button>
         <button type="button" class="btn btn-success" (click)="exportToExcel()" [disabled]="loading" title="Exportar a Excel">
           <i class="bi bi-file-earmark-excel"></i>
         </button>
@@ -51,3 +54,69 @@
     </div>
   </div>
 </div>
+
+<!-- Modal para Reporte de Estado de Cuenta -->
+<div class="modal fade" [class.show]="showReportModal" [style.display]="showReportModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Reporte de Estado de Cuenta
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeReportModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Seleccione el rango de fechas para generar el estado de cuenta.
+        </p>
+        <form>
+          <div class="mb-3">
+            <label for="reportStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="reportStartDate"
+              [(ngModel)]="reportStartDate"
+              name="reportStartDate"
+              required>
+          </div>
+          <div class="mb-3">
+            <label for="reportEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="reportEndDate"
+              [(ngModel)]="reportEndDate"
+              name="reportEndDate"
+              required>
+          </div>
+
+          <div class="alert alert-warning" *ngIf="isGeneratingReport">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Generando...</span>
+              </div>
+              <span>Generando reporte... Por favor espere.</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeReportModal()" [disabled]="isGeneratingReport">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          (click)="generateReport()"
+          [disabled]="!reportStartDate || !reportEndDate || isGeneratingReport">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop del modal -->
+<div class="modal-backdrop fade" [class.show]="showReportModal" [style.display]="showReportModal ? 'block' : 'none'"></div>
