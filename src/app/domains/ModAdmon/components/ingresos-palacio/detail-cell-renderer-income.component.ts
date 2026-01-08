@@ -308,6 +308,13 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         // Actualizar las columnas del grid con los nuevos valores
         if (this.gridApi) {
           this.gridApi.setGridOption('columnDefs', this.colDefs);
+
+          // Refrescar las celdas de la columna idCatIng para que el valueFormatter
+          // se ejecute nuevamente con los catálogos ya cargados
+          this.gridApi.refreshCells({
+            columns: ['idCatIng'],
+            force: true
+          });
         }
       },
       error: (error) => {
