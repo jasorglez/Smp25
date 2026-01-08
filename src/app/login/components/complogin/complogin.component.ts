@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal,  OnInit } from '@angular/core';
+import { Component, computed, inject, signal,  OnInit, ViewEncapsulation } from '@angular/core';
 import { Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -24,6 +24,7 @@ import { environment } from '@env/environment';
   standalone: true,
   templateUrl: './complogin.component.html',
   styleUrls: ['./complogin.component.scss'],
+  encapsulation: ViewEncapsulation.None,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -44,9 +45,7 @@ export class ComploginComponent implements OnInit {
   picture     : string = '' ;
 
   images      : string[] = [
-    '../../../assets/img/building-4803602_1920.webp',
-    '../../../assets/img/architecture-3588171_1920.webp',
-    '../../../assets/img/entrepreneur-1340649_1920.webp',
+    '../../../assets/img/fondo_circuito.webp'
   ];
 
   private loginService    = inject(LoginService) ;
@@ -67,6 +66,7 @@ export class ComploginComponent implements OnInit {
 
   isAdvanced: boolean = false;
   formSubmitted = false;
+  isLoading = false;
   idBranch: number;
 
   valorcapturado = '' ;
@@ -106,6 +106,9 @@ export class ComploginComponent implements OnInit {
    // console.log('Email capturado:', this.trackingService.getEmail());
     this.trackingService.addLog('', "Inicio del Sistema ", "Origen del Formulario Login", this.emailcapt);
 
+    // Activar spinner
+    this.isLoading = true;
+
     this.auth.login(data).subscribe({
       next: (resp: any) => {
         localStorage.setItem('token', resp.data.token);
@@ -143,20 +146,27 @@ export class ComploginComponent implements OnInit {
                 }),
                 tap((permissionsData: any) => {
                   this.auth.setUserPermissions(permissionsData.permissions);
+                  // El spinner se mantiene hasta que navegue exitosamente
                   this.router.navigate(['/main']);
                 })
               ).subscribe({
-                error: (permError) => console.error('Error fetching user permissions:', permError)
+                error: (permError) => {
+                  console.error('Error fetching user permissions:', permError);
+                  this.isLoading = false;
+                }
               });
             }
           },
           error: (error) => {
             console.error('Error al obtener los datos del usuario:', error);
+            this.isLoading = false;
           }
         });
       },
       error: (err) => {
         console.log(err);
+        // Desactivar spinner en caso de error
+        this.isLoading = false;
         alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
       }
     });

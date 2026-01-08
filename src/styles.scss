@@ -1,26 +1,28 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 @import "@ng-select/ng-select/themes/default.theme.css";
 
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; font-size: 0.85em !important; }
+html,
+body {
+  height: 100%;
+}
 
 // AG Grid CSS
 // Aunque uses Enterprise, los estilos base residen en la carpeta de community
- /* Core Grid CSS */
- @import 'ag-grid-community/styles/ag-grid.css';
- /* Quartz Theme Specific CSS */
-   @import 'ag-grid-community/styles/ag-theme-quartz.css';
-   @import 'ag-grid-community/styles/ag-theme-alpine.css';
+/* Core Grid CSS */
+@import 'ag-grid-community/styles/ag-grid.css';
+/* Quartz Theme Specific CSS */
+@import 'ag-grid-community/styles/ag-theme-quartz.css';
+@import 'ag-grid-community/styles/ag-theme-alpine.css';
 
-.ag-theme-quartz, .ag-theme-quartz-dark {
- /* Changes the color of the grid text */
- --ag-foreground-color: rgb(14, 68, 145);
- /* Changes the color of the grid background */
- --ag-background-color: rgba(241, 247, 255);
- /* Changes the header color of the top row */
- --ag-header-background-color: rgba(228, 237, 250);
- /* Changes the hover color of the row*/
- --ag-row-hover-color: rgba(0, 38, 255, 0.1);
+.ag-theme-quartz,
+.ag-theme-quartz-dark {
+  /* Changes the color of the grid text */
+  --ag-foreground-color: rgb(14, 68, 145);
+  /* Changes the color of the grid background */
+  --ag-background-color: rgba(241, 247, 255);
+  /* Changes the header color of the top row */
+  --ag-header-background-color: rgba(228, 237, 250);
+  /* Changes the hover color of the row*/
+  --ag-row-hover-color: rgba(0, 38, 255, 0.1);
 }
 
 .small-text-ag-grid {
@@ -31,12 +33,19 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; font-size: 
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 
 body {
-  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  font-family: 'Roboto', "Helvetica Neue", sans-serif !important;
+  font-size: 0.85em !important;
   background-color: #f4f6f9;
+
+  // Fixed light theme
+  background-color: #f4f6f9;
+  color: #000000;
 }
 
 .light-blue-background {
-  background-color:  #f1f7ff; /* Light blue color */
+  background-color: #f1f7ff;
+  /* Light blue color */
 }
 
 .app-container {
@@ -63,7 +72,8 @@ body {
   transition: all 0.3s;
 }
 
-.sidebar .nav-link:hover, .sidebar .nav-link.active {
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
   color: #fff;
   background-color: #0b5ca3;
 }
@@ -76,13 +86,13 @@ body {
   flex: 1;
   padding: 20px;
   background-color: #fff;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   margin: 20px;
   border-radius: 8px;
 }
 
 .navbar {
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .main-footer {
@@ -90,7 +100,7 @@ body {
   color: #6c757d;
   padding: 5px 0;
   font-size: 0.9em;
-  box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .footer-content {
@@ -129,6 +139,7 @@ body {
     opacity: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
