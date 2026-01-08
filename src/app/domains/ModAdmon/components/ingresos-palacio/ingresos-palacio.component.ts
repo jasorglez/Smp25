@@ -1496,14 +1496,14 @@ async saveChanges() {
     this.isGeneratingPdfReport = true;
 
     try {
-      // Cargar datos de ingresos en el rango de fechas
-      const incomesData = await this.loadIncomesForDateRange(this.pdfStartDate, this.pdfEndDate);
+      // Cargar conceptos de ingresos en el rango de fechas (tabla conceptsxIncorExp)
+      const conceptsData = await this.loadIncomesForDateRange(this.pdfStartDate, this.pdfEndDate);
 
       // Cargar catálogo completo de ingresos con estructura jerárquica
       const catalogData = await this.loadFullIngresosCatalog();
 
       // Generar el PDF
-      await this.generateIngresosPDF(incomesData, catalogData);
+      await this.generateIngresosPDF(conceptsData, catalogData);
 
       this.closePdfModal();
 
@@ -1522,10 +1522,7 @@ async saveChanges() {
   private async loadIncomesForDateRange(startDate: string, endDate: string): Promise<any[]> {
     return new Promise((resolve, reject) => {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
-        next: (incomes) => {
-          console.log('💰 Ingresos totales en BD:', incomes?.length || 0);
-          console.log('🏦 Filtrando por cuenta bancaria ID:', this._idAccount);
-
+        next: async (incomes) => {
           const filtered = incomes?.filter(income => {
             // Filtro 1: Debe ser tipo DEPOSITO
             if (income.type !== "DEPOSITO") return false;
@@ -1541,13 +1538,22 @@ async saveChanges() {
             return incomeDate >= start && incomeDate <= end;
           }) || [];
 
-          console.log(`📅 Ingresos filtrados (${startDate} a ${endDate}, Cuenta: ${this._idAccount}):`, filtered.length);
-          console.log('💵 Detalle de ingresos filtrados:');
-          filtered.forEach((income, index) => {
-            console.log(`   ${index + 1}. idCustomer: ${income.idCustomer}, idAccount: ${income.idAccount}, Total: $${income.total}, Fecha: ${income.date}`);
-          });
+          // Cargar los conceptos de cada ingreso filtrado
+          const allConcepts: any[] = [];
+          for (const income of filtered) {
+            try {
+              const concepts = await lastValueFrom(
+                this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(income.id)
+              );
+              if (concepts && concepts.length > 0) {
+                allConcepts.push(...concepts);
+              }
+            } catch (error) {
+              console.error(`Error cargando conceptos para ingreso ${income.id}:`, error);
+            }
+          }
 
-          resolve(filtered);
+          resolve(allConcepts);
         },
         error: (err) => {
           console.error('Error cargando ingresos:', err);
@@ -1562,8 +1568,6 @@ async saveChanges() {
       this.catalogadmonService.getCatalogs(this.root, 'INCOME').subscribe({
         next: (data: any) => {
           const catalogData = data || [];
-          console.log('🗂️ Catálogo cargado desde BD - Total de registros:', catalogData.length);
-          console.log('📋 Primeros 5 registros del catálogo:', catalogData.slice(0, 5));
           resolve(catalogData);
         },
         error: (error) => {
@@ -1574,7 +1578,7 @@ async saveChanges() {
     });
   }
 
-  private async generateIngresosPDF(incomesData: any[], catalogData: any[]) {
+  private async generateIngresosPDF(conceptsData: any[], catalogData: any[]) {
     try {
       // Obtener información de root y logos
       const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.root));
@@ -1594,8 +1598,8 @@ async saveChanges() {
       // Construir estructura jerárquica del catálogo
       const catalogTree = this.buildCatalogTree(catalogData);
 
-      // Agrupar ingresos por categoría y calcular totales
-      const reportData = this.buildReportData(catalogTree, incomesData);
+      // Procesar conceptos por categoría y calcular totales recursivamente
+      const reportData = this.buildReportData(catalogTree, conceptsData);
 
       // Obtener mes y año del rango de fechas
       const startDate = new Date(this.pdfStartDate);
@@ -1764,16 +1768,6 @@ async saveChanges() {
             fontSize: 8,
             alignment: 'right'
           },
-          detailRow: {
-            fontSize: 7,
-            color: '#555555',
-            italics: true
-          },
-          detailAmount: {
-            fontSize: 7,
-            color: '#555555',
-            alignment: 'right'
-          },
           signatureLabel: {
             fontSize: 9,
             bold: true,
@@ -1814,20 +1808,10 @@ async saveChanges() {
     const map = new Map<number, any>();
     const roots: any[] = [];
 
-    console.log('🌳 Construyendo árbol del catálogo - Registros totales:', catalogData.length);
-
-    // Mostrar TODOS los registros con su estructura
-    console.log('📋 TODOS LOS REGISTROS DEL CATÁLOGO:');
-    catalogData.forEach((item, index) => {
-      console.log(`   ${index + 1}. ID: ${item.id}, ParentID: ${item.parentId}, Desc: "${item.description}"`);
-    });
-
     // Crear mapa de todos los nodos
     catalogData.forEach(item => {
       map.set(item.id, { ...item, children: [] });
     });
-
-    console.log('\n   ✅ Mapa creado con', map.size, 'nodos');
 
     // Construir jerarquía COMPLETA (todos los niveles)
     catalogData.forEach(item => {
@@ -1841,36 +1825,18 @@ async saveChanges() {
       }
     });
 
-    console.log('\n   ✅ Raíces encontradas:', roots.length);
-
-    // Función recursiva para mostrar el árbol completo
-    const printTree = (nodes: any[], level: number = 0) => {
-      nodes.forEach(node => {
-        const indent = '   '.repeat(level);
-        console.log(`${indent}${'  '.repeat(level)}├─ [Nivel ${level}] "${node.description}" (ID: ${node.id}, hijos: ${node.children.length})`);
-        if (node.children && node.children.length > 0) {
-          printTree(node.children, level + 1);
-        }
-      });
-    };
-
-    console.log('\n🌲 ÁRBOL COMPLETO:');
-    printTree(roots);
-
     return roots;
   }
 
-  private buildReportData(catalogTree: any[], incomesData: any[]): any[] {
+  private buildReportData(catalogTree: any[], conceptsData: any[]): any[] {
     const reportRows: any[] = [];
-
-    console.log('🔵 Construyendo reporte - Procesando árbol completo');
 
     // Función recursiva para calcular el total de un nodo y sus descendientes
     const calculateNodeTotal = (node: any): number => {
-      // PRIMERO: Buscar ingresos directamente asociados con este nodo
-      const directTotal = incomesData
-        .filter(income => income.idCustomer === node.id)
-        .reduce((sum, income) => sum + (income.total || 0), 0);
+      // PRIMERO: Buscar conceptos directamente asociados con este nodo (por idCatIng)
+      const directTotal = conceptsData
+        .filter(concept => concept.idCatIng === node.id)
+        .reduce((sum, concept) => sum + (concept.total || 0), 0);
 
       // SEGUNDO: Sumar los totales de los hijos (si existen)
       let childrenTotal = 0;
@@ -1879,15 +1845,8 @@ async saveChanges() {
           sum + calculateNodeTotal(child), 0);
       }
 
-      const total = directTotal + childrenTotal;
-
-      // Log detallado si hay valores
-      if (total > 0) {
-        console.log(`💰 Nodo ID ${node.id} "${node.description}": Directo=$${directTotal.toFixed(2)}, Hijos=$${childrenTotal.toFixed(2)}, Total=$${total.toFixed(2)}`);
-      }
-
-      // Retornar la suma de ingresos directos + totales de hijos
-      return total;
+      // Retornar la suma de conceptos directos + totales de hijos
+      return directTotal + childrenTotal;
     };
 
     // Función recursiva para procesar el árbol y generar las filas
@@ -1953,8 +1912,6 @@ async saveChanges() {
     if (catalogTree.length > 0) {
       const root = catalogTree[0]; // "A.- INGRESOS PROPIOS"
 
-      console.log(`📁 Procesando raíz: "${root.description}"`);
-
       // Procesar todos los hijos de la raíz (nivel 1)
       if (root.children && root.children.length > 0) {
         root.children.forEach((child: any) => {
@@ -1963,7 +1920,6 @@ async saveChanges() {
       }
     }
 
-    console.log('\n📊 Total de filas generadas:', reportRows.length);
     return reportRows;
   }
 
