@@ -2639,7 +2639,7 @@ export class EgresosPalacioComponent {
           columns: [
             {
               image: 'logo',
-              width: 60,
+              width: 90,
               alignment: 'left'
             },
             {
@@ -2660,7 +2660,7 @@ export class EgresosPalacioComponent {
             },
             {
               image: 'logo2',
-              width: 60,
+              width: 90,
               alignment: 'right'
             }
           ],
