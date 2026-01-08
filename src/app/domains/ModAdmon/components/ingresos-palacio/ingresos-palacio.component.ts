@@ -1531,11 +1531,11 @@ async saveChanges() {
             if (income.idAccount !== this._idAccount) return false;
 
             // Filtro 3: Debe estar en el rango de fechas
-            const incomeDate = new Date(income.date);
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+            // Convertir fechas a formato YYYY-MM-DD para comparación consistente sin problemas de zona horaria
+            const incomeDateObj = new Date(income.date);
+            const incomeDateStr = `${incomeDateObj.getFullYear()}-${String(incomeDateObj.getMonth() + 1).padStart(2, '0')}-${String(incomeDateObj.getDate()).padStart(2, '0')}`;
 
-            return incomeDate >= start && incomeDate <= end;
+            return incomeDateStr >= startDate && incomeDateStr <= endDate;
           }) || [];
 
           // Cargar los conceptos de cada ingreso filtrado
