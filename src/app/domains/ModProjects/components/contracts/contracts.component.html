@@ -17,9 +17,16 @@
           <button
             type="button"
             class="btn btn-warning ms-1 me-1"
-            (click)="editRow()"
+            (click)="revertChanges()"
           >
-            <i class="bi bi-pencil-square"></i>
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <button type="button" class="btn btn-success position-relative ms-1 me-1" (click)="saveChanges()" >
+            <i class="bi bi-floppy"></i>
+            <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges">
+              <span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
           </button>
           <button
             type="button"
