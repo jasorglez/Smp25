@@ -132,13 +132,14 @@
   display: none;
 }
 
-/* Hacer textos pequeñitos cuando está colapsado */
+/* Ocultar etiquetas de selects cuando está colapsado */
+.collapsed .overflow-auto > span > span {
+  display: none !important;
+}
+
+/* Ocultar completamente los textos cuando está colapsado */
 .collapsed .nav-link span {
-  font-size: 0.4rem !important; /* Mitad del tamaño */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 50px;
+  display: none !important;
 }
 
 /* Centrar contenido cuando está colapsado */
@@ -193,4 +194,9 @@
 .collapsed .brand-text,
 .collapsed .fw-bold {
   font-size: 0.8rem;
+}
+
+/* Ocultar texto del botón de colapsar cuando está colapsado */
+.collapsed .btn-collapse span {
+  display: none !important;
 }

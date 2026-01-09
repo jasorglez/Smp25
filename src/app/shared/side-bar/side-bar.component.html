@@ -43,7 +43,7 @@
       </option>
     </select>
     <span *ngIf="authService.hasDetailedPermission('principal', 'projects')">
-      Select Contracts
+      <span>Select Contracts</span>
       <select
         id="contract"
         (change)="onContractsSelected($event)"
@@ -59,7 +59,7 @@
         </option>
       </select>
 
-      Select Projects
+      <span>Select Projects</span>
       <select
         id="project"
         (change)="onProjectSelected($event)"
@@ -85,7 +85,7 @@
           routerLinkActive="active-link"
           (click)="Dashboard()"
         >
-          <mat-icon>dashboard</mat-icon> {{ "Dashboard" | translate }}
+          <mat-icon>dashboard</mat-icon> <span>{{ "Dashboard" | translate }}</span>
         </a>
       </li>
 
@@ -99,7 +99,7 @@
           routerLinkActive="active-link"
           (click)="Indicadores()"
         >
-          <mat-icon>bar_chart</mat-icon> {{ "indicators" | translate }}
+          <mat-icon>bar_chart</mat-icon> <span>{{ "indicators" | translate }}</span>
         </a>
       </li>
 
@@ -113,7 +113,7 @@
           routerLinkActive="active-link"
           (click)="Admonproc()"
         >
-          <mat-icon>menu_book</mat-icon> {{ "admins" | translate }}
+          <mat-icon>menu_book</mat-icon> <span>{{ "admins" | translate }}</span>
         </a>
       </li>
 
@@ -127,7 +127,7 @@
           routerLinkActive="active-link"
           (click)="warehouseproc()"
         >
-          <mat-icon>warehouse</mat-icon> {{ "buy" | translate }}
+          <mat-icon>warehouse</mat-icon> <span>{{ "buy" | translate }}</span>
         </a>
       </li>
       <li
@@ -140,7 +140,7 @@
           routerLinkActive="active-link"
           (click)="warehouseproc()"
         >
-          <mat-icon>warehouse</mat-icon> {{ "buy" | translate }}
+          <mat-icon>warehouse</mat-icon> <span>{{ "buy" | translate }}</span>
         </a>
       </li>
       <li
@@ -153,7 +153,7 @@
           routerLinkActive="active-link"
           (click)="warehouseproc()"
         >
-          <mat-icon>warehouse</mat-icon> {{ "buy" | translate }}
+          <mat-icon>warehouse</mat-icon> <span>{{ "buy" | translate }}</span>
         </a>
       </li>
 
@@ -167,7 +167,7 @@
           routerLinkActive="active-link"
           (click)="almacenesproc()"
         >
-          <mat-icon>inventory_2</mat-icon> Almacenes
+          <mat-icon>inventory_2</mat-icon> <span>Almacenes</span>
         </a>
       </li>
       <li
@@ -180,7 +180,7 @@
           routerLinkActive="active-link"
           (click)="almacenesproc()"
         >
-          <mat-icon>inventory_2</mat-icon> Almacenes
+          <mat-icon>inventory_2</mat-icon> <span>Almacenes</span>
         </a>
       </li>
 
@@ -194,7 +194,7 @@
           routerLinkActive="active-link"
           (click)="maintenanceproc()"
         >
-          <mat-icon>engineering</mat-icon> {{ "maintenance" | translate }}
+          <mat-icon>engineering</mat-icon> <span>{{ "maintenance" | translate }}</span>
         </a>
       </li>
 
@@ -205,7 +205,7 @@
           routerLinkActive="active-link"
           (click)="resourcesmenproc()"
         >
-          <mat-icon>diversity_3</mat-icon> {{ "resourcesmen" | translate }}
+          <mat-icon>diversity_3</mat-icon> <span>{{ "resourcesmen" | translate }}</span>
         </a>
       </li>
 
@@ -216,7 +216,7 @@
           routerLinkActive="active-link"
           (click)="salesproc()"
         >
-          <mat-icon>point_of_sale</mat-icon> {{ "sale" | translate }}
+          <mat-icon>point_of_sale</mat-icon> <span>{{ "sale" | translate }}</span>
         </a>
       </li>
 
@@ -227,7 +227,7 @@
           routerLinkActive="active-link"
           (click)="SmpSetup()"
         >
-          <mat-icon>settings</mat-icon> {{ "setup" | translate }}
+          <mat-icon>settings</mat-icon> <span>{{ "setup" | translate }}</span>
         </a>
       </li>
 
@@ -238,7 +238,7 @@
           routerLinkActive="active-link"
           (click)="SmpSetup()"
         >
-          <mat-icon>grading</mat-icon> {{ "projects" | translate }}
+          <mat-icon>grading</mat-icon> <span>{{ "projects" | translate }}</span>
         </a>
       </li>
 
@@ -249,7 +249,7 @@
           routerLinkActive="active-link"
           (click)="authService.logout()"
         >
-          <mat-icon>logout</mat-icon> Salir
+          <mat-icon>logout</mat-icon> <span>Salir</span>
         </a>
       </li>
     </ul>
