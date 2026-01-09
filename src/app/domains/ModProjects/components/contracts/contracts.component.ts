@@ -60,6 +60,7 @@ export class ContractsComponent {
   }
 
   @ViewChild('content') content!: TemplateRef<any>;
+  @ViewChild(ContractDetailsComponent) contractDetails!: ContractDetailsComponent;
 
   addContract: FormGroup;
 
@@ -536,6 +537,37 @@ export class ContractsComponent {
     this.initForm();
     this.isEditing = false;
     this.selectedRowData = null;
+  }
+
+  revertChanges() {
+    // Recargar los contratos desde el servidor
+    this.getContracts();
+
+    // Limpiar la selección actual
+    this.selectedRowData = null;
+
+    // Limpiar filtros del grid si existe
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+
+    // Cerrar la pestaña de detalles si está abierta
+    if (this.showDetailsTab) {
+      this.resetGridSize();
+    }
+
+    alerts.basicAlert(
+      'Cambios Revertidos',
+      'Los datos han sido recargados desde el servidor',
+      'success'
+    );
+  }
+
+  saveChanges() {
+    if (this.contractDetails) {
+      this.contractDetails.saveMasterChanges();
+    }
   }
 
 }
