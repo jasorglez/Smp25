@@ -1,52 +1,34 @@
 name: Deploy to Server
-
 on:
   push:
     branches: [main]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Install sshpass
-      run: sudo apt-get update && sudo apt-get install -y sshpass
-    
-    - name: Deploy with full output
-      run: |
-        # Crea archivo temporal con la clave
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/ssh_key
-        chmod 600 /tmp/ssh_key
-        
-        # Comandos a ejecutar
-        COMMANDS=$(cat << 'EOF'
-        set -x  # Activar modo debug
-        echo "🚀 Iniciando deploy..."
-        cd /bi/repos/Smp25
-        pwd
-        ls -la
-        
-        echo "=== 1. Deteniendo contenedores ==="
-        docker compose down 2>&1
-        
-        echo "=== 2. Actualizando código ==="
-        git pull origin main 2>&1
-        
-        echo "=== 3. Construyendo imagen ==="
-        docker compose build --no-cache 2>&1
-        
-        echo "=== 4. Iniciando contenedores ==="
-        docker compose up -d 2>&1
-        
-        echo "=== 5. Verificando ==="
-        docker ps 2>&1
-        docker compose logs --tail=20 2>&1
-        
-        echo "✅ ¡Deploy completado!"
-        EOF
-        )
-        
-        # Ejecuta via SSH con salida completa
-        ssh -o "StrictHostKeyChecking=no" \
-            -i /tmp/ssh_key \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "$COMMANDS"
+    - name: Deploy
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "INICIANDO..."
+          cd /bi/repos/Smp25
+          echo "PWD: $(pwd)"
+          
+          echo "1. DOCKER COMPOSE DOWN"
+          docker compose down
+          
+          echo "2. GIT PULL"
+          git pull origin main
+          
+          echo "3. DOCKER BUILD"
+          docker compose build --no-cache
+          
+          echo "4. DOCKER UP"
+          docker compose up -d
+          
+          echo "5. VERIFICACION"
+          docker ps
+          echo "FIN"
