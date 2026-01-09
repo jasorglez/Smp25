@@ -10,7 +10,7 @@ jobs:
     steps:
     - name: Deploy to Production
       run: |
-        # Crear y configurar clave SSH
+        # Configurar clave SSH
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
@@ -23,3 +23,7 @@ jobs:
         
         # Limpiar
         rm ~/.ssh/deploy_key
+      
+    - name: Deployment Status
+      if: success()
+      run: echo "✅ Deploy exitoso a biapp.com.mx"
