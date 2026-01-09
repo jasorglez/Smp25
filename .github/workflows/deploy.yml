@@ -1,34 +1,50 @@
 name: Deploy to Server
+
 on:
   push:
     branches: [main]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Deploy
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          echo "INICIANDO..."
-          cd /bi/repos/Smp25
-          echo "PWD: $(pwd)"
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        # Aceptar el host key
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+    
+    - name: Execute Deploy
+      run: |
+        ssh -v \
+          -o "ConnectTimeout=30" \
+          -o "StrictHostKeyChecking=accept-new" \
+          -i ~/.ssh/deploy_key \
+          ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+          "bash -c '
+          echo \"=== DEPLOY INICIADO ===\"
+          echo \"Hora: \$(date)\"
+          echo \"Usuario: \$(whoami)\"
           
-          echo "1. DOCKER COMPOSE DOWN"
+          cd /bi/repos/Smp25 || { echo \"ERROR: No existe el directorio\"; exit 1; }
+          echo \"Directorio: \$(pwd)\"
+          
+          echo \"1. Deteniendo contenedores...\"
           docker compose down
           
-          echo "2. GIT PULL"
+          echo \"2. Actualizando código...\"
           git pull origin main
           
-          echo "3. DOCKER BUILD"
+          echo \"3. Construyendo...\"
           docker compose build --no-cache
           
-          echo "4. DOCKER UP"
+          echo \"4. Iniciando...\"
           docker compose up -d
           
-          echo "5. VERIFICACION"
+          echo \"5. Verificando...\"
           docker ps
-          echo "FIN"
+          
+          echo \"=== DEPLOY COMPLETADO ===\"
+          '"
