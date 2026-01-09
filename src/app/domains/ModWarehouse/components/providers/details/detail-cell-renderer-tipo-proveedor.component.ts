@@ -17,7 +17,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <!-- Título y botones -->
-      <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+      <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;" *ngIf="!invited">
         <strong>Configurar Tipo de Proveedor (Cascada)</strong>
         <div class="d-flex gap-2">
           <button
@@ -100,6 +100,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
   hasChanges: boolean = false;
   private tempIdCounter: number = 0;
   private idRoot: number;
+  invited: boolean = false;
 
   // Datos reales desde endpoints
   categorias: any[] = [];      // Desde getCatalogs(idRoot, 'CATEGORY')
@@ -385,6 +386,7 @@ export class DetailCellRendererTipoProveedorComponent implements ICellRendererAn
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.invited = this.signalsService.getInvited()();
 
     // Cargar catálogos y datos del proveedor
     this.loadData();

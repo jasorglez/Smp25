@@ -18,7 +18,7 @@ import { FormsModule } from '@angular/forms';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { lastValueFrom } from 'rxjs';
-
+import { SignalsService } from 'app/services/signals.service';
 @Component({
   selector: 'app-saldos-palacio',
   standalone: true,
@@ -34,10 +34,12 @@ import { lastValueFrom } from 'rxjs';
 })
 export class SaldosPalacioComponent {
   authService = inject(AuthService);
+  signalsService = inject(SignalsService);
 
   constructor() {
     this.obtenerDatos();
     this.obtenerBanks();
+    this.invited = this.signalsService.getInvited()();
   }
 
   private trackingService = inject(TrackingService);
@@ -49,6 +51,7 @@ export class SaldosPalacioComponent {
   showReportModal: boolean = false;
   reportStartDate: string = '';
   reportEndDate: string = '';
+  invited: boolean = false;
   isGeneratingReport: boolean = false;
 
   saldoData: any[] = [];

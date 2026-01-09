@@ -40,7 +40,7 @@
             </ol>
           </nav>
         </div>
-        <div>
+        <div *ngIf="!invited">
           <button class="btn btn-success me-2" (click)="openCreateModal()" [disabled]="loading">
             <i class="bi bi-plus-circle me-1"></i> Nuevo Item
           </button>
@@ -79,7 +79,7 @@
       </select>
     </div>
 
-    <div class="col-md-5">
+    <div class="col-md-5" *ngIf="!invited">
       <div class="btn-group float-end" role="group">
         <button type="button" class="btn btn-outline-primary" [class.active]="viewMode === 'tree'"
           (click)="viewMode = 'tree'">
@@ -96,7 +96,7 @@
   <!-- Vista de Árbol -->
   <div *ngIf="viewMode === 'tree'" class="row">
     <!-- Botonera lateral -->
-    <div class="col-auto">
+    <div class="col-auto" *ngIf="!invited">
       <div class="d-flex flex-column gap-1">
         <button type="button" class="btn btn-primary" (click)="openCreateModal(selectedItem)" [disabled]="loading"
           title="Nuevo item">

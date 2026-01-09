@@ -99,6 +99,7 @@ export class IngresosPalacioComponent implements OnInit {
       this.root = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idAccount = null;
+      this.invited = this.signalsService.getInvited()();
 
       await this.getBankAccounts();
       await this.getIncomes();
@@ -126,6 +127,7 @@ export class IngresosPalacioComponent implements OnInit {
   id: number;
   notSavedChanges: boolean = false;
   private modalInstance: any = null;
+  invited: boolean = false;
   newlyAddedRows: string[] = [];
   myForm: FormGroup;
   selectedIncomes: any = null;

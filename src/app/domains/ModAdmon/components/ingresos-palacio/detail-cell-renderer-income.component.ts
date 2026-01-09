@@ -12,6 +12,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { ContribuyenteModalService } from './services/contribuyente-modal.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { SignalsService } from 'app/services/signals.service';
 import { lastValueFrom } from 'rxjs';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -28,7 +29,7 @@ import { lastValueFrom } from 'rxjs';
           <span class="badge bg-info me-2">IVA: {{ iva2 | currency:'MXN' }}</span>
           <span class="badge bg-primary">Total: {{ total | currency:'MXN' }}</span>
         </div>
-        <div class="d-flex">
+        <div class="d-flex" *ngIf="!invited">
           <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
@@ -134,12 +135,14 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private signalsService = inject(SignalsService);
   private contribuyenteModalService = inject(ContribuyenteModalService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   measures: any[] = [];
+  invited: boolean = false;
   objetosImpuesto: any[] = [];
   ivaPercent: number = 0;
   catalogosHijos: any[] = []; // Catálogos de nivel 3 (hijos del catálogo de ingreso seleccionado)
@@ -174,6 +177,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     this.incomeData = params.data;
     this.detailType = params.data.detailType || 'concepts';
 
+    this.invited = this.signalsService.getInvited()();
     if (this.detailType === 'concepts') {
       this.loadMeasures();
       this.loadSATCatalogs();

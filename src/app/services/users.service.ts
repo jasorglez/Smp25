@@ -92,7 +92,8 @@ export class UsersService {
         const userArray = datauser.data;
         if (userArray) {
           const user = userArray as any;
-          //console.log('User Findemail:', user);
+          console.log('User Findemail:', user);
+          
 
           // Asegúrate de que todas las propiedades existen en el objeto user
            const displayName = user.displayName || '';
@@ -104,10 +105,12 @@ export class UsersService {
            const id           = user.id   ;
            const signature = user.signature || '';
            const userRoot = user.isRoot || 0;
+           const Invited = user.invited || false;
          //  this.signalsService.setidUser(datauser.id); sigue una prueba
          this.signalsService.setDisplayName(displayName);
          this.signalsService.setUserRoot(userRoot);
          this.signalsService.setidUser(id);
+         this.signalsService.setInvited(Invited)
 
 
           return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature, userRoot};

@@ -2,7 +2,7 @@
 <div class="col-12 mt-3">
   <div class="row">
     <!-- Columna de botones -->
-    <div class="col-auto">
+    <div class="col-auto" *ngIf="!invited">
       <div class="d-flex flex-column gap-1">
         <!-- *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'providers','Pro_Pri','create')" -->
 
