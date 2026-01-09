@@ -7,6 +7,8 @@ import { AuthService } from 'app/services/auth.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { SignalsService } from 'app/services/signals.service';
+
 
 @Component({
   selector: 'app-detail-cell-renderer-banck',
@@ -17,7 +19,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
       style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;">
       <!-- Grid de Banckos -->
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
-        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;" *ngIf="!invited">
           <strong>Bancos de: {{ providerName }}</strong>
           <div>
             <button 
@@ -69,6 +71,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 })
 export class DetailCellRendererComponentBanck implements ICellRendererAngularComp {
   private administrationService = inject(AdministrationService);
+  private signalsService = inject(SignalsService);
   params: any;
   providerId: number;
   providerName: string;
@@ -79,6 +82,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   bankGridApi: any;
   selectedBank: any = null;
   banks: any[] = [];
+  invited: boolean = false;
 
   // ✅ NUEVO: Rastrear la última fila editada/modificada
   private lastEditedRowId: string | null = null;
@@ -446,7 +450,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     this.params = params;
     this.providerId = params.data.id;
     this.providerName = params.data.company || params.data.nameContact;
-
+    this.invited = this.signalsService.getInvited()();
     // Cargar primero el catálogo de bancos, LUEGO cargar los datos
     this.getBanks(() => {
       this.loadBankData();

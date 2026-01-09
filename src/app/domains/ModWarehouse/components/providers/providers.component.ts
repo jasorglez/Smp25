@@ -87,6 +87,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
   authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
 
+  invited: boolean = false;
+
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -104,7 +106,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.idRoot = this.idCompany; // Sincronizar idRoot con idCompany
-
+      this.invited = this.signalsService.getInvited()();
       if (this.idBranch && this.idCompany) {
         this.obtenerDatos();
         this.obtenerBranchs();

@@ -69,6 +69,7 @@ export class EgresosPalacioComponent {
   // Propiedades para el modal de reporte consolidado
   showConsolidatedReportModal: boolean = false;
   reportStartDate: string = '';
+  invited: boolean = false;
   reportEndDate: string = '';
   reportType: string = 'consolidado'; // Tipo de reporte: consolidado, agrupado, egresos
   isGeneratingConsolidatedReport: boolean = false;
@@ -125,7 +126,7 @@ export class EgresosPalacioComponent {
     effect(async () => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-
+      this.invited = this.signalsService.getInvited()();
       if (!this.idRoot) return;
 
       await this.getBankAccounts();

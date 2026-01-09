@@ -101,6 +101,7 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.invited = this.signalsService.getInvited()();
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
@@ -136,6 +137,7 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
   showBillingTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
+  invited: boolean = false;
   selectedRowData: any = null;
   isOpen: boolean = false;
   branchs: any[] = [];

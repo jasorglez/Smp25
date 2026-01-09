@@ -4,6 +4,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { AuthService } from 'app/services/auth.service';
 import { CustomersService } from 'app/services/customers.service';
+import { SignalsService } from 'app/services/signals.service';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 
@@ -18,7 +19,7 @@ import { alerts } from 'app/helpers/alerts';
       (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
       <!-- Grid de Contactos -->
      <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
-        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;" *ngIf="!invited">
           <strong>Contactos de: {{ providerName }}</strong>
           <div>
             <button 
@@ -72,6 +73,8 @@ import { alerts } from 'app/helpers/alerts';
 export class DetailCellRendererComponentContact implements ICellRendererAngularComp {
    private customersService = inject(CustomersService);
    authService = inject(AuthService);
+   private signalsService = inject(SignalsService);
+
 
   params: any;
   providerId: number;
@@ -83,6 +86,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
   name: string = '';
   contactGridApi: any;
   selectedContact: any = null;
+  invited: boolean = false;
 
   // ✅ NUEVO: Rastrear la última fila editada/modificada
   private lastEditedRowId: string | null = null;
@@ -490,7 +494,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     this.providerId = params.data.id;
     this.providerName = params.data.company || params.data.nameContact;
     this.name = params.data.nameContact;
-
+    this.invited = this.signalsService.getInvited()();
     
     // Cargar datos del grid de contactos
     this.loadContactData();

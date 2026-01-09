@@ -1,7 +1,7 @@
 <div class="col-12">
   <div class="row">  <!-- Fila principal contenedora -->
     <!-- Columna para botones verticales -->
-    <div class="col-auto">
+    <div class="col-auto" *ngIf="!invited">
       <div class="d-flex flex-column gap-1 me-3">  <!-- Contenedor vertical -->
         <button type="button" class="btn btn-primary" (click)="refreshData()" [disabled]="loading" title="Actualizar">
           <i class="bi bi-arrow-clockwise"></i>
