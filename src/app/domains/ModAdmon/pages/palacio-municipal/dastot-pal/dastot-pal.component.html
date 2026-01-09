@@ -3,24 +3,14 @@
   <div class="row mb-3">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
-        <h4 class="mb-0">Dashboard Total - Palacio Municipal</h4>
+        <h5 class="mb-0">Dashboard Total - Palacio Municipal</h5>
         <div class="d-flex gap-2 align-items-center">
           <label class="mb-0 me-2">Rango de Fechas:</label>
-          <input
-            type="date"
-            class="form-control form-control-sm"
-            [(ngModel)]="startDate"
-            (change)="onDateRangeChange()"
-            style="width: 150px"
-          />
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="startDate" (change)="onDateRangeChange()"
+            style="width: 150px" />
           <span>-</span>
-          <input
-            type="date"
-            class="form-control form-control-sm"
-            [(ngModel)]="endDate"
-            (change)="onDateRangeChange()"
-            style="width: 150px"
-          />
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="endDate" (change)="onDateRangeChange()"
+            style="width: 150px" />
         </div>
       </div>
     </div>
@@ -44,15 +34,9 @@
           <div *ngIf="errorMessage && !isLoading" class="alert alert-warning m-3">
             {{ errorMessage }}
           </div>
-          <ag-grid-angular
-            *ngIf="!isLoading && !errorMessage"
-            style="width: 100%; height: 400px"
-            class="ag-theme-quartz"
-            [rowData]="rowData"
-            [columnDefs]="columnDefs"
-            [gridOptions]="gridOptions"
-            (gridReady)="onGridReady($event)"
-          ></ag-grid-angular>
+          <ag-grid-angular *ngIf="!isLoading && !errorMessage" style="width: 100%; height: 400px"
+            class="ag-theme-quartz" [rowData]="rowData" [columnDefs]="columnDefs" [gridOptions]="gridOptions"
+            (gridReady)="onGridReady($event)"></ag-grid-angular>
         </div>
       </div>
     </div>
@@ -67,16 +51,10 @@
           <h6 class="mb-0">Distribución de Ingresos</h6>
         </div>
         <div class="card-body">
-          <apx-chart
-            #chartIngresos
-            [series]="chartIngresosOptions.series"
-            [chart]="chartIngresosOptions.chart"
-            [labels]="chartIngresosOptions.labels"
-            [colors]="chartIngresosOptions.colors"
-            [legend]="chartIngresosOptions.legend"
-            [dataLabels]="chartIngresosOptions.dataLabels"
-            [responsive]="chartIngresosOptions.responsive"
-          ></apx-chart>
+          <apx-chart #chartIngresos [series]="chartIngresosOptions.series" [chart]="chartIngresosOptions.chart"
+            [labels]="chartIngresosOptions.labels" [colors]="chartIngresosOptions.colors"
+            [legend]="chartIngresosOptions.legend" [dataLabels]="chartIngresosOptions.dataLabels"
+            [responsive]="chartIngresosOptions.responsive"></apx-chart>
 
           <!-- Totales Ingresos -->
           <div class="mt-2">
@@ -86,10 +64,10 @@
                 <div class="fw-bold" style="color: #00E396; font-size: 11px;">Estatal</div>
                 <div style="font-size: 14px;">
                   {{
-                    chartIngresosOptions.series[0]?.toLocaleString('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    })
+                  chartIngresosOptions.series[0]?.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                  })
                   }}
                 </div>
               </div>
@@ -97,10 +75,10 @@
                 <div class="fw-bold" style="color: #008FFB; font-size: 11px;">Municipal</div>
                 <div style="font-size: 14px;">
                   {{
-                    chartIngresosOptions.series[1]?.toLocaleString('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    })
+                  chartIngresosOptions.series[1]?.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                  })
                   }}
                 </div>
               </div>
@@ -108,10 +86,10 @@
                 <div class="fw-bold" style="color: #FEB019; font-size: 11px;">Propios</div>
                 <div style="font-size: 14px;">
                   {{
-                    chartIngresosOptions.series[2]?.toLocaleString('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    })
+                  chartIngresosOptions.series[2]?.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                  })
                   }}
                 </div>
               </div>
@@ -128,16 +106,10 @@
           <h6 class="mb-0">Distribución de Egresos</h6>
         </div>
         <div class="card-body">
-          <apx-chart
-            #chartEgresos
-            [series]="chartEgresosOptions.series"
-            [chart]="chartEgresosOptions.chart"
-            [labels]="chartEgresosOptions.labels"
-            [colors]="chartEgresosOptions.colors"
-            [legend]="chartEgresosOptions.legend"
-            [dataLabels]="chartEgresosOptions.dataLabels"
-            [responsive]="chartEgresosOptions.responsive"
-          ></apx-chart>
+          <apx-chart #chartEgresos [series]="chartEgresosOptions.series" [chart]="chartEgresosOptions.chart"
+            [labels]="chartEgresosOptions.labels" [colors]="chartEgresosOptions.colors"
+            [legend]="chartEgresosOptions.legend" [dataLabels]="chartEgresosOptions.dataLabels"
+            [responsive]="chartEgresosOptions.responsive"></apx-chart>
 
           <!-- Totales Egresos -->
           <div class="mt-2">
@@ -147,10 +119,10 @@
                 <div class="fw-bold" style="color: #00E396; font-size: 11px;">Estatal</div>
                 <div style="font-size: 14px;">
                   {{
-                    chartEgresosOptions.series[0]?.toLocaleString('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    })
+                  chartEgresosOptions.series[0]?.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                  })
                   }}
                 </div>
               </div>
@@ -158,10 +130,10 @@
                 <div class="fw-bold" style="color: #008FFB; font-size: 11px;">Municipal</div>
                 <div style="font-size: 14px;">
                   {{
-                    chartEgresosOptions.series[1]?.toLocaleString('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    })
+                  chartEgresosOptions.series[1]?.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                  })
                   }}
                 </div>
               </div>
@@ -169,10 +141,10 @@
                 <div class="fw-bold" style="color: #FEB019; font-size: 11px;">Propios</div>
                 <div style="font-size: 14px;">
                   {{
-                    chartEgresosOptions.series[2]?.toLocaleString('en-US', {
-                      style: 'currency',
-                      currency: 'USD'
-                    })
+                  chartEgresosOptions.series[2]?.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                  })
                   }}
                 </div>
               </div>
