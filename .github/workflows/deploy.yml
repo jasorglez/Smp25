@@ -2,42 +2,24 @@ name: Deploy
 on: 
   push:
     branches:
-      - main  # Solo deploya en push a main
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Deploy to Server
+    - name: Deploy to Production
       run: |
-        # Crear clave SSH
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/key
-        chmod 600 /tmp/key
+        # Crear y configurar clave SSH
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
         
         # Ejecutar deploy
-        ssh -o "StrictHostKeyChecking=no" \
-            -i /tmp/key \
+        ssh -o StrictHostKeyChecking=no \
+            -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            'bash -l -c "
-              set -e
-              cd /bi/repos/Smp25
-              
-              echo \"📥 1. Pulling latest code...\"
-              git pull origin main
-              
-              echo \"🛑 2. Stopping containers...\"
-              docker compose down
-              
-              echo \"🔨 3. Building new image...\"
-              docker compose build --no-cache
-              
-              echo \"🚀 4. Starting containers...\"
-              docker compose up -d
-              
-              echo \"✅ Deployment complete!\"
-              docker compose ps
-              docker compose logs --tail=50
-            "'
+            'bash -l /bi/repos/Smp25/deploy.sh'
         
-        # Limpiar clave
-        rm /tmp/key
+        # Limpiar
+        rm ~/.ssh/deploy_key
