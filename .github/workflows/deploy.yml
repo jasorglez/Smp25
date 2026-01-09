@@ -1,50 +1,40 @@
 name: Deploy to Server
-
 on:
   push:
     branches: [main]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        # Aceptar el host key
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
-    
-    - name: Execute Deploy
-      run: |
-        ssh -v \
-          -o "ConnectTimeout=30" \
-          -o "StrictHostKeyChecking=accept-new" \
-          -i ~/.ssh/deploy_key \
-          ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-          "bash -c '
-          echo \"=== DEPLOY INICIADO ===\"
-          echo \"Hora: \$(date)\"
-          echo \"Usuario: \$(whoami)\"
+    - name: Deploy with Full Output
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Activar modo debug y capturar TODO
+          set -x
+          exec 2>&1
           
-          cd /bi/repos/Smp25 || { echo \"ERROR: No existe el directorio\"; exit 1; }
-          echo \"Directorio: \$(pwd)\"
+          echo "=== INICIO ==="
+          cd /bi/repos/Smp25
+          echo "PWD: $(pwd)"
+          echo "GIT STATUS ANTES:"
+          git status --short
           
-          echo \"1. Deteniendo contenedores...\"
-          docker compose down
-          
-          echo \"2. Actualizando código...\"
+          echo "HACIENDO GIT PULL..."
           git pull origin main
+          echo "GIT STATUS DESPUÉS:"
+          git status --short
+          echo "ÚLTIMO COMMIT:"
+          git log --oneline -1
           
-          echo \"3. Construyendo...\"
+          echo "DOCKER COMPOSE..."
+          docker compose down
           docker compose build --no-cache
-          
-          echo \"4. Iniciando...\"
           docker compose up -d
           
-          echo \"5. Verificando...\"
+          echo "VERIFICACIÓN FINAL:"
           docker ps
-          
-          echo \"=== DEPLOY COMPLETADO ===\"
-          '"
+          echo "=== FIN ==="
