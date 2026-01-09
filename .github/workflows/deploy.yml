@@ -1,22 +1,43 @@
 name: Deploy
-on: push
+on: 
+  push:
+    branches:
+      - main  # Solo deploya en push a main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Simple SSH Deploy
+    - name: Deploy to Server
       run: |
-        # Crear clave
+        # Crear clave SSH
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/key
         chmod 600 /tmp/key
         
-        # Comando ÚNICO que funciona
+        # Ejecutar deploy
         ssh -o "StrictHostKeyChecking=no" \
             -i /tmp/key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "cd /bi/repos/Smp25 && \
-             echo '1. Git pull...' && git pull origin main && \
-             echo '2. Docker down...' && docker compose down && \
-             echo '3. Docker build...' && docker compose build --no-cache && \
-             echo '4. Docker up...' && docker compose up -d && \
-             echo '✅ Listo!' && docker ps"
+            'bash -l -c "
+              set -e
+              cd /bi/repos/Smp25
+              
+              echo \"📥 1. Pulling latest code...\"
+              git pull origin main
+              
+              echo \"🛑 2. Stopping containers...\"
+              docker compose down
+              
+              echo \"🔨 3. Building new image...\"
+              docker compose build --no-cache
+              
+              echo \"🚀 4. Starting containers...\"
+              docker compose up -d
+              
+              echo \"✅ Deployment complete!\"
+              docker compose ps
+              docker compose logs --tail=50
+            "'
+        
+        # Limpiar clave
+        rm /tmp/key
