@@ -53,41 +53,5 @@ export class MateriaPrimaComponent {
         this.trackingService.getEmail()
       );
     }
-
-    if (tabName === 'primera-fase') {
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Click en la Pestaña Primera Fase',
-        'Almacenes - Materia Prima',
-        this.trackingService.getEmail()
-      );
-    }
-
-    if (tabName === 'primera-fase-historico') {
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Click en la Pestaña Primera Fase Histórico',
-        'Almacenes - Materia Prima',
-        this.trackingService.getEmail()
-      );
-    }
-
-    if (tabName === 'segunda-fase') {
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Click en la Pestaña Segunda Fase',
-        'Almacenes - Materia Prima',
-        this.trackingService.getEmail()
-      );
-    }
-
-    if (tabName === 'segunda-fase-historico') {
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Click en la Pestaña Segunda Fase Histórico',
-        'Almacenes - Materia Prima',
-        this.trackingService.getEmail()
-      );
-    }
   }
 }
