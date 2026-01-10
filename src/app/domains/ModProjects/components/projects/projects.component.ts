@@ -212,8 +212,8 @@ export class ProjectsComponent {
         }},
     { field: 'number', headerName: 'Proyecto', flex: 1 },
     { field: 'name', headerName: 'Nombre', width: 100, filter: true, flex: 2 },
-    { field: 'idConsecutivo', headerName: 'ID PEMEX', flex: 1 },
-    { field: 'year', headerName: 'Year', flex: 1 },
+    { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
+    { field: 'year', headerName: 'Año', flex: 1 },
     { field: 'description', headerName: 'Descripcion', flex: 4 },
     {
       field: 'personal',
@@ -600,7 +600,6 @@ export class ProjectsComponent {
 
     return preparedData;
   }
-
 
   formatDateForBackend(dateString: string): string {
     if (!dateString) return '';
