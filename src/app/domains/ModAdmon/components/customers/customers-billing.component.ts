@@ -30,6 +30,7 @@ export class CustomersBillingComponent {
       this.idCustomer = this.signalsService.getIdClient()();
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
+      this.invited = this.signalsService.getInvited()();
     });
   }
 
@@ -45,6 +46,9 @@ export class CustomersBillingComponent {
   rowData: any;
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
+  
+invited: boolean = false;
+
 
   id: string;
   idCustomer: number;

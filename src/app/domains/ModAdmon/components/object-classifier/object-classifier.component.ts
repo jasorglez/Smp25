@@ -51,6 +51,7 @@ export class ObjectClassifierComponent implements OnInit {
   selectedItem: IObjectClassifierTree | null = null;
   selectedRowData: any = null;
   viewMode: 'tree' | 'list' = 'tree';
+  invited: boolean = false;
   hasUnsavedChanges: boolean = false;
   loading: boolean = false;
 
@@ -122,6 +123,7 @@ export class ObjectClassifierComponent implements OnInit {
 
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.invited = this.signalsService.getInvited()();
       if (this.idCompany) {
         this.loadData();
       }

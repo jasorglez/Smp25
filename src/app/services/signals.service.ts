@@ -773,7 +773,16 @@ getMasterUpdateTrigger() {
   private refresSecurity = signal<boolean>(false);
   private masterCatalog = signal<number>(null); 
   private IdProveedor = signal<number>(null);
+  private Invited = signal<boolean>(false);
 
+  setInvited(value: boolean){
+    this.Invited.set(value);
+  }
+
+  getInvited(){
+    return this.Invited;
+  }
+  
   setIdCatalogFamily(id: number){
     this.idCatalogFamily.set(id);
   }

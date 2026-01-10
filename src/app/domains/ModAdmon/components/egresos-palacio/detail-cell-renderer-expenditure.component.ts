@@ -13,6 +13,7 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { CustomersService } from 'app/services/customers.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { SignalsService } from 'app/services/signals.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -33,7 +34,7 @@ import { lastValueFrom } from 'rxjs';
           <span class="badge bg-warning me-2">ISR: {{ isr | currency:'MXN' }}</span>
           <span class="badge bg-primary">Total: {{ total | currency:'MXN' }}</span>
         </div>
-        <div class="d-flex">
+        <div class="d-flex" *ngIf="!invited">
           <button class="btn btn-outline-secondary btn-sm me-2" (click)="closeDetail()">
             <i class="bi bi-x-lg"></i> Cerrar
           </button>
@@ -97,7 +98,7 @@ import { lastValueFrom } from 'rxjs';
     </div>
 
     <!-- Documentos Comprobados View -->
-    <div class="detail-grid-container" *ngIf="detailType === 'comprobacion'">
+    <div class="detail-grid-container" *ngIf="detailType === 'comprobacion'" >
       <div class="detail-actions mb-2">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h6 class="mb-0">Documentos Comprobados</h6>
@@ -107,7 +108,7 @@ import { lastValueFrom } from 'rxjs';
             </div>
           </div>
         </div>
-        <div class="d-flex">
+        <div class="d-flex" *ngIf="!invited">
           <button class="btn btn-outline-secondary btn-sm me-2" (click)="closeDetail()">
             <i class="bi bi-x-lg"></i> Cerrar
           </button>
@@ -218,6 +219,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   private gridApiDocumentos!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private signalsService = inject(SignalsService);
   private customersService = inject(CustomersService);
   private employeesService = inject(EmployeesService);
   private providerModalService = inject(ProviderModalService);
@@ -227,6 +229,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   tempIdCounter: number = 0;
   measures: any[] = [];
   objetosImpuesto: any[] = [];
+  invited: boolean = false;
   ivaPercent: number = 0;
   objetosGastoHijos: any[] = []; // Objetos de gasto nivel 4 (hijos del objeto de gasto seleccionado nivel 1)
   objetosGastoNivel1: any[] = []; // Objetos de gasto nivel 1 (para agrupar en reporte)
@@ -287,7 +290,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.context = params.context;
     this.expenditureData = params.data;
     this.detailType = params.data.detailType || 'concepts';
-
+    this.invited = this.signalsService.getInvited()();
     if (this.detailType === 'concepts') {
       this.getBillingManagementInfo();
       await this.loadObjetosGastoHijos(); // Esperar a que cargue los objetos de gasto nivel 4

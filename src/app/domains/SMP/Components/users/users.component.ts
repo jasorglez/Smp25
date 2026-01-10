@@ -62,6 +62,7 @@ export class UsersComponent {
   empleadoCatalgos: any[] = [];
   idUser: number = null;
   isAdvanced: boolean = false;
+  invited: boolean = false;
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -113,7 +114,7 @@ constructor() {
        this.idUser = this.signalsService.getIdUSer()();
        this.userRoot = this.signalsService.getUserRoot()();
        this.isAdvanced = this.signalsService.getIsAdvanced();
-
+       this.invited = this.signalsService.getInvited()();
        if (this.gridApi) {
          const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
          this.gridApi.setColumnsVisible(['idRol'], showSecurity);
@@ -332,6 +333,12 @@ constructor() {
         field: 'active',
         hide: true
       },
+      /*{
+        field: 'invited',
+        headerName: 'Invitado',
+        hide: this.idUser == 42,
+        editable: true,
+      },*/
       {
         field: 'displayName',
         headerName: 'Nombre *',
@@ -676,6 +683,7 @@ constructor() {
       age: 0,
       id_company: this.idRoot,
       idDepartament: 1,
+      invited: false,
       phone: '',
       id_position: 0,
       picture: './assets/img/profile.png',

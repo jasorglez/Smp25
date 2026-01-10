@@ -60,6 +60,7 @@ export class ContractsComponent {
   }
 
   @ViewChild('content') content!: TemplateRef<any>;
+  @ViewChild(ContractDetailsComponent) contractDetails!: ContractDetailsComponent;
 
   addContract: FormGroup;
 
@@ -82,6 +83,7 @@ export class ContractsComponent {
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
+  private doubleClicked = false;
 
   // Declare the missing properties
   gridHeight: string = '80vh';
@@ -112,7 +114,21 @@ export class ContractsComponent {
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
-      // Puedes agregar aquí más lógica si es necesario, por ejemplo, actualizar datos seleccionados o activar pestañas
+      // Activar la pestaña de detalles con delay para evitar conflicto con doble click
+      setTimeout(async () => {
+        if (!this.doubleClicked) {
+          this.selectedRowData = event.data;
+          this.idContract = event.data.id;
+          this.signalsService.setIdContract(event.data.id);
+          this.notSavedChanges = true;
+          try {
+            await this.activateDetailsTab();
+          } catch (error) {
+            console.error('Error activando la pestaña de detalles:', error);
+          }
+        }
+        this.doubleClicked = false;
+      }, 300);
     },
     onRowSelected: (event) => {
       // Deseleccionar otras filas cuando se selecciona una nueva
@@ -154,23 +170,10 @@ export class ContractsComponent {
       console.warn('No hay datos en la fila seleccionada');
       return;
     }
-  
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro 
-    this.idContract = selectedRowData.id;
-    this.signalsService.setIdContract(selectedId);
-  
-    this.notSavedChanges = true;
-    this.selectedRowData = selectedRowData;
-  
 
-      try {
-        await this.activateDetailsTab();
-      } catch (error) {
-        console.error('Error activando la pestaña de préstamos:', error);
-      }
-    
+    this.doubleClicked = true;
+    this.selectedRowData = event.data;
+    this.editRow();
   }
 
   async activateDetailsTab() {
@@ -536,6 +539,37 @@ export class ContractsComponent {
     this.initForm();
     this.isEditing = false;
     this.selectedRowData = null;
+  }
+
+  revertChanges() {
+    // Recargar los contratos desde el servidor
+    this.getContracts();
+
+    // Limpiar la selección actual
+    this.selectedRowData = null;
+
+    // Limpiar filtros del grid si existe
+    if (this.gridApi) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+
+    // Cerrar la pestaña de detalles si está abierta
+    if (this.showDetailsTab) {
+      this.resetGridSize();
+    }
+
+    alerts.basicAlert(
+      'Cambios Revertidos',
+      'Los datos han sido recargados desde el servidor',
+      'success'
+    );
+  }
+
+  saveChanges() {
+    if (this.contractDetails) {
+      this.contractDetails.saveMasterChanges();
+    }
   }
 
 }

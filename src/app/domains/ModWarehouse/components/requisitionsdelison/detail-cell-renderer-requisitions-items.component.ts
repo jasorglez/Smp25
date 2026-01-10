@@ -15,6 +15,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { firstValueFrom } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
+import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
@@ -165,6 +166,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   private modalService = inject(ModalService);
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
+  private typexPrefixesService = inject(TypexPrefixesService);
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -646,7 +648,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     detailRowHeight: 400,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererRequisitionsPurchasesComponent,
-    rowSelection: 'single',
+    rowSelection: 'multiple',
     singleClickEdit: false, // Doble-click para editar (como tipo-proveedor)
     domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
     suppressHorizontalScroll: false,
@@ -878,45 +880,180 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       });
   }
 
-  saveMultiGuardar() {
+  async saveMultiGuardar() {
+    // 1. Validar que haya al menos un item seleccionado
     const checkedItems = this.rowData.filter(item => item.pedimiento === true);
     if (checkedItems.length === 0) {
       alerts.basicAlert('Sin selección', 'Por favor, marque al menos un item en la columna "Pedimento".', 'warning');
       return;
     }
 
-    // Asignar el número de pedimento actual y quitar el check
-    checkedItems.forEach(item => {
-      if (item.pedimentoNumber) {
-        // Si ya tiene un valor, añade el nuevo número separado por coma
-        item.pedimentoNumber += `,${this.pedimentoCounter}`;
-      } else {
-        // Si está vacío, simplemente asigna el número
-        item.pedimentoNumber = this.pedimentoCounter;
+    try {
+      console.log('🔵 ========== INICIANDO CREACIÓN DE COTIZACIÓN ==========');
+
+      // 2. Obtener datos de la requisición original
+      const requisicionOriginal = this.params.data;
+      console.log('📋 Requisición original:', requisicionOriginal);
+      console.log('   ID:', requisicionOriginal.id);
+      console.log('   Sucursal (idReference):', requisicionOriginal.idReference);
+      console.log('   Folio:', requisicionOriginal.requisitionNumber);
+
+      // 3. Consultar cuántas cotizaciones ya existen para esta requisición
+      const cotizacionesExistentes: any = await firstValueFrom(
+        this.ocAndReqsService.getOcAndReqs('requisition', requisicionOriginal.id, 'COTIZ')
+      );
+
+      const numCotizaciones = Array.isArray(cotizacionesExistentes) ? cotizacionesExistentes.length : 0;
+      const siguienteNumeroPedimento = numCotizaciones + 1;
+
+      console.log('📊 Cotizaciones existentes:', numCotizaciones);
+      console.log('🔢 Siguiente número de pedimento:', siguienteNumeroPedimento);
+
+      // 4. Obtener el prefijo de la sucursal para generar el folio
+      const prefixData: any = await firstValueFrom(
+        this.typexPrefixesService.getPrefix('branch', requisicionOriginal.idReference)
+      );
+
+      const siguienteConsecutivo = (prefixData.consecutive || 0) + 1;
+      const folioCotizacion = `${prefixData.prefix || ''}${siguienteConsecutivo}`;
+
+      console.log('📝 Prefijo obtenido:', prefixData);
+      console.log('📄 Folio de la cotización:', folioCotizacion);
+
+      // 5. Crear el maestro de la cotización
+      const maestroCotizacion = {
+        id: 0,
+        folio: folioCotizacion,
+        typeReference: 'requisition',
+        idReq: 0,
+        idReference: requisicionOriginal.id, // ✅ Relación con la requisición original
+        dateCreate: new Date().toISOString(),
+        idProvider: 0,
+        idDepartament: requisicionOriginal.departmentId || 0,
+        delivery: requisicionOriginal.delivery || 'NO APLICA',
+        deliveryTime: requisicionOriginal.deliveryTime || '1 DAY',
+        typeOc: requisicionOriginal.typeOc || 'INSUMOS',
+        dateSupply: requisicionOriginal.dateSupply || new Date().toISOString(),
+        idPayment: requisicionOriginal.idPayment || 0,
+        idCurrency: requisicionOriginal.idCurrency || 0,
+        conditions: requisicionOriginal.conditions || null,
+        idAuthorize: 0,
+        priority: requisicionOriginal.column8 || null,
+        solicit: requisicionOriginal.solicitedBy || '',
+        discount: 0,
+        ivaRetention: 0,
+        idSolicit: 0,
+        address: requisicionOriginal.address || null,
+        city: requisicionOriginal.city || null,
+        phone: requisicionOriginal.phone || null,
+        type: 'COTIZ', // ✅ Tipo = COTIZ
+        pedimento: siguienteNumeroPedimento, // ✅ Número de pedimento
+        compliancePedimento: 0,
+        complianceRequesicion: 0,
+        comments: requisicionOriginal.comments || null,
+        close: false,
+        active: true
+      };
+
+      console.log('📤 ========== MAESTRO COTIZACIÓN - DATA A ENVIAR ==========');
+      console.log(JSON.stringify(maestroCotizacion, null, 2));
+
+      // Crear el maestro en la BD
+      const cotizacionCreada: any = await firstValueFrom(
+        this.ocAndReqsService.addOcAndReq(maestroCotizacion)
+      );
+
+      console.log('✅ Cotización creada:', cotizacionCreada);
+      const idCotizacion = cotizacionCreada.id || cotizacionCreada.ID;
+
+      if (!idCotizacion) {
+        throw new Error('No se pudo obtener el ID de la cotización creada');
       }
-      item.pedimiento = false;
-    });
 
-    const message = `Pedimento ${this.pedimentoCounter} guardado con ${checkedItems.length} artículo(s).`;
+      console.log('🆔 ID de cotización creada:', idCotizacion);
 
-    this.hasPedimentoSelection = false; // Desactivar el botón
+      // 6. Crear los detalles de la cotización (items seleccionados)
+      console.log('📦 Creando detalles de la cotización...');
 
-    // 1. Guardar los datos modificados de vuelta en la fila maestra.
-    // ESTE ES EL CAMBIO CLAVE.
-    if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
-      // Llamamos a la función 'save' del contexto, que actualizará la fila maestra y la refrescará.
-      // Pasamos 'false' para evitar que muestre su propia alerta de "Guardado".
-      this.context.ITEMS.save(this.params.data.id, this.rowData, false);
+      for (const item of checkedItems) {
+        const detallePayload = {
+          idMovement: idCotizacion, // ✅ ID de la cotización recién creada
+          idSupplie: item.idSupplie || item.materialId || 0,
+          description: item.description || item.article || '',
+          nameArticle: item.nameArticle || item.article || '',
+          code: item.code || '',
+          intorext: item.intorext || 'Externo',
+          measure: item.measure || '',
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          total: item.total || 0,
+          type: 'COTIZ', // ✅ Tipo = COTIZ
+          idProvider: item.idProvider || 0,
+          comment: item.comment || '',
+          dateuse: item.dateuse || new Date().toISOString(),
+          active: true,
+          recurrent: item.recurrent || 'Recurrente',
+          numArticle: item.numArticle || '',
+          provint: item.provint || '',
+          typePriority: item.typePriority || 'Normal'
+        };
+
+        console.log('📤 Detalle a crear:', detallePayload);
+
+        await firstValueFrom(
+          this.ocAndReqsService.addReqItem(detallePayload)
+        );
+      }
+
+      console.log('✅ Todos los detalles fueron creados');
+
+      // 7. Actualizar el consecutivo del prefijo
+      const updatedPrefixData = {
+        reqType: 'branch',
+        idReqType: requisicionOriginal.idReference,
+        prefix: prefixData.prefix,
+        consecutive: siguienteConsecutivo,
+        active: true
+      };
+
+      await firstValueFrom(
+        this.typexPrefixesService.updatePrefix('branch', requisicionOriginal.idReference, updatedPrefixData)
+      );
+
+      console.log('✅ Consecutivo actualizado');
+
+      // 8. Actualizar la columna "Pedimento #" de los items seleccionados
+      checkedItems.forEach(item => {
+        if (item.pedimentoNumber) {
+          // Si ya tiene un valor, añadir el nuevo número separado por coma
+          item.pedimentoNumber += `,${siguienteNumeroPedimento}`;
+        } else {
+          // Si está vacío, asignar el número
+          item.pedimentoNumber = String(siguienteNumeroPedimento);
+        }
+        // Desmarcar el checkbox
+        item.pedimiento = false;
+      });
+
+      // 9. Guardar los datos modificados de vuelta en la fila maestra
+      if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
+        this.context.ITEMS.save(this.params.data.id, this.rowData, false);
+      }
+
+      // 10. Redibujar el grid
+      this.hasPedimentoSelection = false;
+      this.gridApi.redrawRows();
+
+      // 11. Mostrar mensaje de éxito
+      const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s). Pedimento #${siguienteNumeroPedimento}`;
+      alerts.basicAlert('Cotización Creada', message, 'success');
+
+      console.log('✅ ========== COTIZACIÓN CREADA EXITOSAMENTE ==========');
+
+    } catch (error) {
+      console.error('❌ Error al crear cotización:', error);
+      alerts.basicAlert('Error', 'No se pudo crear la cotización. Revise la consola para más detalles.', 'error');
     }
-
-    // Redibujar esta cuadrícula de detalle para que se actualicen los colores de las filas.
-    this.gridApi.redrawRows();
-
-    // 2. Incrementar el contador para la siguiente vuelta.
-    this.pedimentoCounter = (this.pedimentoCounter % 3) + 1;
-
-    // 3. Mostrar nuestra alerta específica de pedimentos.
-    alerts.basicAlert('Pedimento Guardado', message, 'success');
   }
 
   discardChanges() {

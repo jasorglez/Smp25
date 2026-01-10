@@ -54,6 +54,7 @@ export class CatIngresosPalacioComponent {
   private catalogadmonService = inject(CatalogadmonService);
   private fb = inject(FormBuilder);
   private trackingService = inject(TrackingService);
+  invited: boolean = false;
 
   // Modal variables
   modalForm: FormGroup;
@@ -74,6 +75,7 @@ export class CatIngresosPalacioComponent {
   ngOnInit() {
     // Cargar datos cuando cambie el root
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.invited = this.signalsService.getInvited()();
   }
 
   catalogData: any[] = [];
