@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { BehaviorSubject, map } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -452,9 +453,15 @@ export class TrackingService {
 }
 
   getIdUser(email: string) {
-    return this.http.get(`${environment.urlSecurity}/User/email/${email}`, {
+    return this.http.get<ApiResponse<any>>(`${environment.urlSecurity}/User/email/${email}`, {
       headers: this.getHeaders(),
-    });
+    }).pipe(
+      map(response => {
+        // Limpiar datos sensibles antes de devolver
+        const safeData = sanitizeUserData(response.data);
+        return { ...response, data: safeData };
+      })
+    );
   }
 
   formatearMoneda(valor: number): string {

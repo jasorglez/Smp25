@@ -177,6 +177,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
   idRoot: number | null = null;
+  providersCache: Map<string, any[]> = new Map(); // Cache para proveedores por material+tipo
 
   // PDF properties
   detailType: string = 'items';
@@ -248,6 +249,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           total: item.total || 0,
           type: item.type || 'REQUIS',
           idProvider: item.idProvider || 0,
+          nameProvider: item.nameProvider || '',
           comment: item.comment || '',
           dateuse: item.dateuse || new Date().toISOString(),
           active: item.active !== undefined ? item.active : true,
@@ -272,11 +274,22 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
         console.log('✅ Items cargados:', this.rowData.length);
 
+<<<<<<< HEAD
         // ✅ Actualizar el detailData en el maestro para que la columna "Cumplimiento Pedimento" funcione
         if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
           console.log('📊 Actualizando detailData en el maestro con', this.rowData.length, 'items');
           this.context.ITEMS.save(this.requisitionId, this.rowData, false);
         }
+=======
+        // Pre-cargar proveedores para todos los items que tienen material
+        this.rowData.forEach(item => {
+          const materialId = item.idSupplie || item.materialId || 0;
+          const type = item.intorext || 'Externo';
+          if (materialId > 0) {
+            this.loadProviders(materialId, type);
+          }
+        });
+>>>>>>> aef22daf59ac97b464a1d78d9798ac095be11079
 
         // ❌ NO actualizar el contador - ya viene del servidor con countrow
         // El contador articlesCount ya está correcto desde loadRequisitions()
@@ -331,6 +344,30 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         this.materials = [];
       }
     });
+  }
+
+  async loadProviders(materialId: number, type: string): Promise<any[]> {
+    const cacheKey = `${materialId}_${type}`;
+
+    // Verificar si ya están en caché
+    if (this.providersCache.has(cacheKey)) {
+      return this.providersCache.get(cacheKey)!;
+    }
+
+    try {
+      const providers = await firstValueFrom(
+        this.ocAndReqsService.getProviders(materialId, type)
+      );
+
+      // Guardar en caché
+      this.providersCache.set(cacheKey, providers);
+
+      console.log(`✅ Proveedores cargados para material ${materialId} tipo ${type}:`, providers.length);
+      return providers;
+    } catch (error) {
+      console.error('❌ Error al cargar proveedores:', error);
+      return [];
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -431,13 +468,24 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
             params.data.measure = selectedMaterial.measure || '';
             // ✅ CAMBIO 1: Actualizar # del artículo con el num-mat (código)
             params.data.numArticle = selectedMaterial.code || '';
+
+            // Limpiar el proveedor cuando cambia el material
+            params.data.idProvider = 0;
+            params.data.nameProvider = '';
+
             params.data.__modified = true;
             this.hasUnsavedChanges = true;
 
-            // Refrescar las celdas para mostrar el articleNumber actualizado
+            // Pre-cargar proveedores para el nuevo material
+            const type = params.data.intorext || 'Externo';
+            this.loadProviders(selectedMaterial.id, type).then(() => {
+              console.log(`✅ Proveedores pre-cargados para material ${selectedMaterial.id} tipo ${type}`);
+            });
+
+            // Refrescar las celdas para mostrar el articleNumber actualizado y limpiar proveedor
             this.gridApi.refreshCells({
               rowNodes: [params.node],
-              columns: ['articleNumber'],
+              columns: ['articleNumber', 'idProvider'],
               force: true
             });
 
@@ -501,15 +549,121 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         cellEditorParams: {
           values: ['Externo', 'Interno'] // ✅ CAMBIO 2: Externo primero para que sea el default
         },
+        valueSetter: (params: any) => {
+          const oldValue = params.data.intorext;
+          params.data.intorext = params.newValue;
+
+          // Si cambió el tipo, limpiar el proveedor y recargar la lista
+          if (oldValue !== params.newValue) {
+            params.data.idProvider = 0;
+            params.data.nameProvider = '';
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+
+            // Pre-cargar proveedores para el nuevo tipo
+            const materialId = params.data.idSupplie || params.data.materialId || 0;
+            if (materialId > 0) {
+              this.loadProviders(materialId, params.newValue).then(() => {
+                console.log(`✅ Proveedores pre-cargados para material ${materialId} tipo ${params.newValue}`);
+              });
+            }
+
+            // Refrescar la columna de proveedores para actualizar la lista
+            this.gridApi.refreshCells({
+              rowNodes: [params.node],
+              columns: ['idProvider'],
+              force: true
+            });
+          }
+
+          return true;
+        }
       },
       {
-        field: 'provint',
-        headerName: 'Proveedor Interno',
-        width: 100,
-        editable: true,
+        field: 'idProvider',
+        headerName: 'Proveedor',
+        width: 250,
+        editable: (params) => {
+          // Solo editable si hay un material seleccionado
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          return materialId > 0;
+        },
+        cellDataType: false,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: (params: any) => {
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          const type = params.data.intorext || 'Externo';
+
+          if (materialId === 0) {
+            console.warn('⚠️ No hay material seleccionado, no se pueden cargar proveedores');
+            return { options: [] };
+          }
+
+          const cacheKey = `${materialId}_${type}`;
+
+          // Buscar proveedores en el caché
+          const providers = this.providersCache.get(cacheKey) || [];
+
+          console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo: ${type}, Proveedores en caché: ${providers.length}`);
+
+          return {
+            options: providers.map(p => ({
+              id: p.idProvider,
+              description: p.providerName
+            }))
+          };
+        },
+        onCellClicked: async (params: any) => {
+          // Pre-cargar proveedores cuando se hace clic en la celda
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          const type = params.data.intorext || 'Externo';
+
+          if (materialId > 0) {
+            console.log(`🔄 Pre-cargando proveedores para material ${materialId} tipo ${type}`);
+            await this.loadProviders(materialId, type);
+          }
+        },
+        valueFormatter: (params: any) => {
+          // Mostrar el nombre del proveedor guardado en nameProvider
+          if (params?.data?.nameProvider) {
+            return params.data.nameProvider;
+          }
+          return params.value || '';
+        },
         valueSetter: (params: any) => {
-          params.data.provint = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
+          const newValue = params.newValue;
+
+          // SelectWithTooltipEditorV2 devuelve el ID del proveedor seleccionado
+          if (newValue && typeof newValue === 'number') {
+            params.data.idProvider = newValue;
+
+            // Buscar el nombre del proveedor en la caché
+            const materialId = params.data.idSupplie || params.data.materialId || 0;
+            const type = params.data.intorext || 'Externo';
+            const cacheKey = `${materialId}_${type}`;
+
+            if (this.providersCache.has(cacheKey)) {
+              const providers = this.providersCache.get(cacheKey)!;
+              const selectedProvider = providers.find(p => p.idProvider === newValue);
+              if (selectedProvider) {
+                params.data.nameProvider = selectedProvider.providerName;
+                console.log(`✅ Proveedor seleccionado: ${selectedProvider.providerName}`);
+              }
+            }
+
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+            return true;
+          }
+
+          return false;
+        },
+        cellStyle: (params: any) => {
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          if (materialId === 0) {
+            return { backgroundColor: '#f9f9f9', color: '#999', cursor: 'not-allowed' };
+          }
+          return { cursor: 'pointer' };
         }
       },
 
@@ -715,6 +869,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         recurrent: item.recurrent || 'Recurrente', // Enviar si es "Nuevo" o "Recurrente"
         typePriority: item.typePriority || 'Normal',
         idProvider: item.idProvider || 0,
+        nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
         dateuse: item.dateuse || new Date().toISOString(),
         active: item.active !== undefined ? item.active : true,
@@ -748,8 +903,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         total: item.total || 0,
         type: item.type || 'REQUIS',
         recurrent: item.recurrent || 'Recurrente', // Enviar si es "Nuevo" o "Recurrente"
-        typePriority: item.typePriority || 'Externo',
+        typePriority: item.typePriority || 'Normal',
         idProvider: item.idProvider || 0,
+        nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
         dateuse: item.dateuse || new Date().toISOString(),
         active: item.active !== undefined ? item.active : true,

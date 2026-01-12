@@ -205,28 +205,6 @@ export const routes: Routes = [
                   ).then((m) => m.CatFamSubComponent),
                 canDeactivate: [UnsavedChangesGuard],
               },
-              {
-                path: 'primera-fase',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/primera-fase/primera-fase.component'
-                  ).then((m) => m.PrimeraFaseComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'primera-fase-historico',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/primera-fase-historico/primera-fase-historico.component'
-                  ).then((m) => m.PrimeraFaseHistoricoComponent),
-              },
-              {
-                path: 'segunda-fase-historico',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/segunda-fase-historico/segunda-fase-historico.component'
-                  ).then((m) => m.SegundaFaseHistoricoComponent),
-              },
             ],
           },
           {
@@ -1984,28 +1962,6 @@ export const routes: Routes = [
                     './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
                   ).then((m) => m.CatFamSubComponent),
                 canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'primera-fase',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/primera-fase/primera-fase.component'
-                  ).then((m) => m.PrimeraFaseComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'primera-fase-historico',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/primera-fase-historico/primera-fase-historico.component'
-                  ).then((m) => m.PrimeraFaseHistoricoComponent),
-              },
-              {
-                path: 'segunda-fase-historico',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/segunda-fase-historico/segunda-fase-historico.component'
-                  ).then((m) => m.SegundaFaseHistoricoComponent),
               },
             ],
           },

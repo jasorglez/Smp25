@@ -15,6 +15,7 @@ import { BehaviorSubject, catchError, firstValueFrom, map, Observable, throwErro
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
+import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
 
 interface UserPermissions {
   id: number;
@@ -206,10 +207,14 @@ export class AuthService {
   private userPermissions: any;
 
   getUserId(email: string): Observable<number> {
-    return this.http.get<number>(`${environment.urlSecurity}/User/email/${email}`,
+    return this.http.get<ApiResponse<any>>(`${environment.urlSecurity}/User/email/${email}`,
       { headers: this.trackingService.getHeaders() }
     ).pipe(
-      map(data => data['data'].id),
+      map(response => {
+        // Limpiar datos sensibles antes de usar
+        const safeData = sanitizeUserData(response.data);
+        return safeData.id;
+      }),
       catchError(error => {
         console.error('Error al obtener el ID del usuario:', error);
         this.router.navigateByUrl('/login');
