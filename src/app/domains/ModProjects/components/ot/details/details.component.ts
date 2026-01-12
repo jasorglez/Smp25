@@ -14,6 +14,7 @@ import { alerts } from 'app/helpers/alerts';
 
 export interface OtDetails {
   id: number;
+  cuentaHoja: number;
   registerDate: string;
   timeLimit?: string;
   idProject: number;
@@ -52,7 +53,7 @@ export interface OtDetails {
   styleUrl: './details.component.scss'
 })
 export class DetailsComponent implements OnInit {
-  
+
   private fb = inject(FormBuilder);
   private otService = inject(OtService);
   private trackingService = inject(TrackingService);
@@ -64,8 +65,8 @@ export class DetailsComponent implements OnInit {
   private authService = inject(AuthService);
   private timeService = inject(TimeService);
   idcompany: number = 0;
-  catalogArea: any [] = [];
-  
+  catalogArea: any[] = [];
+
   public otForm: FormGroup;
   public isEditMode: boolean = false;
   public isLoading: boolean = false;
@@ -90,10 +91,10 @@ export class DetailsComponent implements OnInit {
       }
     });
   }
-  
-  obternerArea(){
+
+  obternerArea() {
     return this.catalogService.getPhases(this.idcompany).subscribe(
-      (data: any )=> {
+      (data: any) => {
         this.catalogArea = data
         console.log(this.catalogArea)
       },
@@ -102,6 +103,7 @@ export class DetailsComponent implements OnInit {
 
   private createForm(): FormGroup {
     return this.fb.group({
+      cuentaHoja: [{ value: 0, disabled: false }],
       registerDate: [new Date().toISOString().split('T')[0], [Validators.required]],
       idProject: [0, [Validators.required, Validators.min(1)]],
       otNumber: ['', [Validators.required, Validators.maxLength(50)]],
@@ -135,7 +137,7 @@ export class DetailsComponent implements OnInit {
   private initializeNewOt() {
     // Obtener el proyecto seleccionado del sidebar
     const selectedProject = this.signalsService.getProjectSelectedBySidebar();
-    
+
     this.otForm.patchValue({
       registerDate: new Date().toISOString().split('T')[0],
       idProject: selectedProject ? selectedProject() : 0,
@@ -149,21 +151,21 @@ export class DetailsComponent implements OnInit {
     this.otService.getOtDetails(id).subscribe({
       next: (data: any) => {
         const otData = data.data || data;
-        console.log('Datos de OT recibidos:', otData);  
+        console.log('Datos de OT recibidos:', otData);
         this.datos = otData;
-        
+
         // Verificar autorización del proyecto
         if (!this.checkProjectAuthorization(otData)) {
           this.router.navigate(['/projects/ot/ordenes']);
           return;
         }
-        
+
         setTimeout(() => {
           this.populateForm(otData);
           this.isLoading = false;
           this.cdr.detectChanges();
         }, 100);
-        
+
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           `Cargar Detalle OT ID: ${id}`,
@@ -195,11 +197,11 @@ export class DetailsComponent implements OnInit {
     // Convertir fechas al formato correcto para input date
     let registerDate = '';
     let timeLimit = '';
-    
+
     try {
-      registerDate = actualData.registerDate ? 
+      registerDate = actualData.registerDate ?
         new Date(actualData.registerDate).toISOString().split('T')[0] : '';
-      timeLimit = actualData.timeLimit ? 
+      timeLimit = actualData.timeLimit ?
         new Date(actualData.timeLimit).toISOString().split('T')[0] : '';
     } catch (error) {
       console.error('Error converting dates:', error);
@@ -207,6 +209,7 @@ export class DetailsComponent implements OnInit {
 
     // Poblar el formulario usando patchValue
     const formData = {
+      cuentaHoja: actualData.cuentaHoja !== undefined ? actualData.cuentaHoja : 0,
       registerDate: registerDate,
       idProject: actualData.idProject !== undefined ? actualData.idProject : 0,
       otNumber: actualData.otNumber !== undefined ? actualData.otNumber : '',
@@ -230,19 +233,25 @@ export class DetailsComponent implements OnInit {
       lectureWater: actualData.lectureWater !== undefined ? actualData.lectureWater : '',
       observations: actualData.observations !== undefined ? actualData.observations : '',
       results: actualData.results !== undefined ? actualData.results : '',
-      area: actualData.area !==  undefined ? actualData.area : '',
+      area: actualData.area !== undefined ? actualData.area : '',
       closed: actualData.closed !== undefined ? actualData.closed : false,
       closedApp: actualData.closedApp !== undefined ? actualData.closedApp : false,
       active: actualData.active !== undefined ? actualData.active : true
     };
 
     this.otForm.patchValue(formData);
+
+    // Si cuentaHoja tiene un valor de la DB, deshabilitar el campo
+    if (actualData.cuentaHoja !== undefined && actualData.cuentaHoja > 0) {
+      this.otForm.get('cuentaHoja')?.disable();
+    }
+
     this.otForm.updateValueAndValidity();
   }
 
   async onSubmit() {
-     console.log('Form valid:', this.otForm.valid);
-  console.log('Form errors:', this.getFormErrors());
+    console.log('Form valid:', this.otForm.valid);
+    console.log('Form errors:', this.getFormErrors());
     if (this.otForm.valid) {
       this.isLoading = true;
       const formData = await this.prepareFormData();
@@ -256,31 +265,31 @@ export class DetailsComponent implements OnInit {
       this.markFormGroupTouched();
       alerts.basicAlert('Formulario incompleto', 'Por favor complete todos los campos requeridos', 'warning');
     }
-    
+
   }
 
   // Método helper para debuggear
-getFormErrors() {
-  let formErrors: any = {};
-  Object.keys(this.otForm.controls).forEach(key => {
-    const controlErrors = this.otForm.get(key)?.errors;
-    if (controlErrors) {
-      formErrors[key] = controlErrors;
-    }
-  });
-  return formErrors;
-}
+  getFormErrors() {
+    let formErrors: any = {};
+    Object.keys(this.otForm.controls).forEach(key => {
+      const controlErrors = this.otForm.get(key)?.errors;
+      if (controlErrors) {
+        formErrors[key] = controlErrors;
+      }
+    });
+    return formErrors;
+  }
 
   private async prepareFormData(): Promise<OtDetails> {
     const formValue = this.otForm.value;
-    
+
     // Para nuevas OTs, asegurar que el idProject siempre sea el del signal
     let idProject = formValue.idProject;
     if (!this.isEditMode) {
       const selectedProject = this.signalsService.getProjectSelectedBySidebar();
       idProject = selectedProject ? selectedProject() : 0;
     }
-    
+
     // Manejar la lógica de closedAt basado en el estado de closed
     let closedAt: string | null = null;
     if (formValue.closed) {
@@ -295,9 +304,13 @@ getFormErrors() {
         closedAt = new Date().toISOString();
       }
     }
-    
+
+    // Obtener el valor de cuentaHoja (aunque esté deshabilitado)
+    const cuentaHoja = this.otForm.get('cuentaHoja')?.value;
+
     return {
       id: this.otId || 0,
+      cuentaHoja: cuentaHoja || 0,
       registerDate: new Date(formValue.registerDate).toISOString(),
       timeLimit: formValue.timeLimit ? new Date(formValue.timeLimit).toISOString() : '',
       idProject: idProject,
@@ -431,33 +444,33 @@ getFormErrors() {
     // Si el usuario tiene permisos para ver todas las OTs, verificar por empresa
     if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
       console.log('Usuario tiene permisos get-all-ot, verificando por empresa');
-      
+
       const otCompanyId = otData.idCompany || (Array.isArray(otData) ? otData[0]?.idCompany : otData.data?.idCompany);
-      
+
       if (!otCompanyId || this.idcompany !== otCompanyId) {
         console.warn(`Empresa no autorizada. Seleccionada: ${this.idcompany}, OT pertenece a: ${otCompanyId}`);
         return false;
       }
-      
+
       return true;
     }
-    
+
     // Si no tiene permisos especiales, verificar por proyecto como antes
     const selectedProject = this.signalsService.getProjectSelectedBySidebar();
-    
+
     if (!selectedProject) {
       console.warn('No hay proyecto seleccionado en el sidebar');
       return false;
     }
-    
+
     const selectedProjectId = selectedProject();
     const otProjectId = otData.idProject || (Array.isArray(otData) ? otData[0]?.idProject : otData.data?.idProject);
-    
+
     if (!otProjectId || selectedProjectId !== otProjectId) {
       console.warn(`Proyecto no autorizado. Seleccionado: ${selectedProjectId}, OT pertenece a: ${otProjectId}`);
       return false;
     }
-    
+
     return true;
   }
 

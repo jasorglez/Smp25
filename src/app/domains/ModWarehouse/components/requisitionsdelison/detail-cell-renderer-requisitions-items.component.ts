@@ -274,13 +274,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
         console.log('✅ Items cargados:', this.rowData.length);
 
-<<<<<<< HEAD
-        // ✅ Actualizar el detailData en el maestro para que la columna "Cumplimiento Pedimento" funcione
-        if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
-          console.log('📊 Actualizando detailData en el maestro con', this.rowData.length, 'items');
-          this.context.ITEMS.save(this.requisitionId, this.rowData, false);
-        }
-=======
         // Pre-cargar proveedores para todos los items que tienen material
         this.rowData.forEach(item => {
           const materialId = item.idSupplie || item.materialId || 0;
@@ -289,7 +282,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
             this.loadProviders(materialId, type);
           }
         });
->>>>>>> aef22daf59ac97b464a1d78d9798ac095be11079
 
         // ❌ NO actualizar el contador - ya viene del servidor con countrow
         // El contador articlesCount ya está correcto desde loadRequisitions()
