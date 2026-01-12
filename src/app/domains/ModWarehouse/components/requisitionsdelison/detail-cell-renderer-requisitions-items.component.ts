@@ -5,7 +5,6 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -193,11 +192,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
 
 
-  // Purchases related properties
-  purchasesData: any[] = [];
-  hasPurchaseUnsavedChanges: boolean = false;
-  purchasesTempIdCounter: number = 0;
-  purchasesGridApi!: any;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -214,7 +208,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     if (this.detailType === 'items') {
       this.loadMaterials();
       this.loadData();
-      this.loadPurchasesData();
     } else if (this.detailType === 'pdf') {
       this.generatePDF();
     }
@@ -263,10 +256,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           numArticle: item.numArticle || '',
           provint: item.provint || '',
           typePriority: item.typePriority || 'Normal',
-          pedimiento: false,
-          pedimentoNumber: '',
-          purchasesData: [], // Se puede cargar después si es necesario
-          purchasesExpanded: false,
+          pedimiento: item.pedimento || false, // ✅ Cargar desde backend, siempre debe ser false después de Multiguardar
+          pedimentoNumber: item.pedimentoNum || '', // ✅ String con números separados por coma (ej: "1,3,4,6")
           __isNew: false,
           __modified: false,
           saved: true
@@ -280,6 +271,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         }
 
         console.log('✅ Items cargados:', this.rowData.length);
+
+        // ✅ Actualizar el detailData en el maestro para que la columna "Cumplimiento Pedimento" funcione
+        if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
+          console.log('📊 Actualizando detailData en el maestro con', this.rowData.length, 'items');
+          this.context.ITEMS.save(this.requisitionId, this.rowData, false);
+        }
 
         // ❌ NO actualizar el contador - ya viene del servidor con countrow
         // El contador articlesCount ya está correcto desde loadRequisitions()
@@ -338,44 +335,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-
-    this.gridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (params: any) => {
-        params.successCallback(params.data.purchasesData || []);
-      },
-      context: {
-        componentParent: this,
-        gridApi: this.gridApi,
-        PURCHASES: {
-          load: (articleId: number, callback: (data: any[]) => void) => {
-            const article = this.rowData.find(r => r.id === articleId);
-            callback(article ? article.purchasesData || [] : []);
-          },
-          save: (articleId: number, data: any[]) => {
-            const article = this.rowData.find(r => r.id === articleId);
-            if (article) {
-              article.purchasesData = data;
-              this.gridApi.refreshCells({ force: true });
-              alerts.basicAlert('Guardado', 'Las compras han sido guardadas correctamente', 'success');
-            }
-          },
-          delete: (params: any, callback: () => void) => {
-            // Mock delete
-            callback();
-          },
-          updateCount: (articleId: number, count: number) => {
-            // Update count if needed
-          },
-          getRowClass: (params: any) => {
-            return 'detail-purchase-row';
-          }
-        }
-      }
-    });
   }
 
   private _colDefs: ColDef[] = [];
-  private _purchasesColDefs: ColDef[] = [];
 
   get colDefs(): ColDef[] {
     if (this._colDefs.length > 0) {
@@ -408,7 +370,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       {
         field: 'article',
         headerName: 'Articulos',
-        width: 300,
+        width: 200,
         cellDataType: false, // Desactivar auto-detección de tipo
         editable: (params) => {
           // Solo es editable con SelectWithTooltipEditorV2 si es "Recurrente"
@@ -644,10 +606,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     headerHeight: 25,
     rowHeight: 25,
     animateRows: true,
-    masterDetail: true,
-    detailRowHeight: 400,
-    isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererRequisitionsPurchasesComponent,
     rowSelection: 'multiple',
     singleClickEdit: false, // Doble-click para editar (como tipo-proveedor)
     domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
@@ -660,56 +618,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       return 'detail-purchase-row'; // Fila pendiente, color rosa
     }
   };
-
-  public purchasesGridOptions: any = {
-    headerHeight: 35,
-    rowHeight: 35,
-    animateRows: true,
-    rowSelection: 'single',
-    onCellValueChanged: (event: any) => {
-      event.data.__modified = true;
-      this.hasPurchaseUnsavedChanges = true;
-    }
-  };
-
-  get purchasesColDefs(): ColDef[] {
-    if (this._purchasesColDefs.length > 0) {
-      return this._purchasesColDefs;
-    }
-
-    this._purchasesColDefs = [
-      {
-        headerName: '#',
-        width: 50,
-        valueGetter: (params) => params.node.rowIndex + 1,
-        pinned: 'left',
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
-      },
-      {
-        field: 'supplier',
-        headerName: 'Proveedor',
-        width: 250,
-        editable: true,
-        valueSetter: (params: any) => {
-          params.data.supplier = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-      {
-        field: 'amount',
-        headerName: 'Monto',
-        width: 150,
-        editable: true,
-        type: 'numericColumn',
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return `$${params.value.toLocaleString()}`;
-        }
-      }
-    ];
-
-    return this._purchasesColDefs;
-  }
 
   components = {
     // No se necesita registrar SelectWithTooltipEditorV2Component aquí
@@ -811,7 +719,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         dateuse: item.dateuse || new Date().toISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
-        provint: item.provint || ''
+        provint: item.provint || '',
+        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
+        pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma
       };
 
       console.log('📤 POST - Enviando item nuevo al endpoint:', payload);
@@ -844,7 +754,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         dateuse: item.dateuse || new Date().toISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
-        provint: item.provint || ''
+        provint: item.provint || '',
+        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
+        pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma
       };
 
       console.log('📤 PUT - Enviando item modificado al endpoint:', payload);
@@ -1035,16 +947,55 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         item.pedimiento = false;
       });
 
-      // 9. Guardar los datos modificados de vuelta en la fila maestra
-      if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
-        this.context.ITEMS.save(this.params.data.id, this.rowData, false);
+      // 9. ✅ GUARDAR los items actualizados en la base de datos
+      console.log('📤 Guardando items de requisición con pedimentoNumber actualizado...');
+
+      for (const item of checkedItems) {
+        const updatePayload = {
+          id: item.id,
+          idMovement: this.requisitionId,
+          idSupplie: item.idSupplie || item.materialId || 0,
+          description: item.description || item.article || '',
+          nameArticle: item.nameArticle || item.article || '',
+          code: item.code || '',
+          intorext: item.intorext || 'Externo',
+          measure: item.measure || '',
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          total: item.total || 0,
+          type: item.type || 'REQUIS',
+          idProvider: item.idProvider || 0,
+          comment: item.comment || '',
+          dateuse: item.dateuse || new Date().toISOString(),
+          active: item.active !== undefined ? item.active : true,
+          recurrent: item.recurrent || 'Recurrente',
+          numArticle: item.numArticle || '',
+          provint: item.provint || '',
+          typePriority: item.typePriority || 'Normal',
+          pedimento: false, // ✅ SIEMPRE false después de Multiguardar para permitir múltiples cotizaciones
+          pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma (ej: "1,3,4,6")
+        };
+
+        console.log(`📤 Actualizando item ${item.id} con pedimentoNum: ${item.pedimentoNumber} (pedimento: false)`);
+
+        await firstValueFrom(
+          this.ocAndReqsService.updateReqItem(item.id.toString(), updatePayload)
+        );
       }
 
-      // 10. Redibujar el grid
+      console.log('✅ Items actualizados en la base de datos');
+
+      // 10. ✅ Actualizar el detailData en el maestro para refrescar "Cumplimiento Pedimento"
+      if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
+        console.log('📊 Actualizando detailData en el maestro después de Multiguardar');
+        this.context.ITEMS.save(this.requisitionId, this.rowData, false);
+      }
+
+      // 11. Redibujar el grid
       this.hasPedimentoSelection = false;
       this.gridApi.redrawRows();
 
-      // 11. Mostrar mensaje de éxito
+      // 12. Mostrar mensaje de éxito
       const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s). Pedimento #${siguienteNumeroPedimento}`;
       alerts.basicAlert('Cotización Creada', message, 'success');
 
@@ -1112,151 +1063,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       // Cargar los datos del artículo temporal guardados previamente en la fila.
       this.newArticle = { ...(event.data.newArticleInfo || { name: '', description: '', link: '', usage: '' }) };
       this.isNewArticleModalVisible = true;
-      return; // Detener para no interferir con la lógica de la otra cascada.
-    }
-
-
-    const colId = event.column.getColId();
-    const isPurchasesColumn = colId === 'purchases';
-
-    if (isPurchasesColumn) {
-      const node = event.node;
-      const api = event.api;
-
-      if (event.data.purchasesExpanded) {
-        // Close purchases cascade and show all rows
-        node.setExpanded(false);
-        event.data.purchasesExpanded = false;
-
-        // Restore all row heights
-        api.forEachNode((otherNode: any) => {
-          otherNode.setRowHeight(undefined);
-        });
-        api.onRowHeightChanged();
-        api.redrawRows();
-      } else {
-        // Close any other expanded purchases cascades
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.data.purchasesExpanded && otherNode.id !== node.id) {
-            otherNode.setExpanded(false);
-            otherNode.data.purchasesExpanded = false;
-          }
-        });
-
-        // Hide all other rows (set height to 0)
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.id !== node.id) {
-            otherNode.setRowHeight(0);
-          }
-        });
-
-        // Open purchases cascade for this row
-        event.data.purchasesExpanded = true;
-        node.setExpanded(true);
-
-        // Apply height changes
-        api.onRowHeightChanged();
-        api.redrawRows();
-      }
-    }
-  }
-
-  togglePurchasesCascade(node: any) {
-    const event = {
-      node: node,
-      api: this.gridApi,
-      data: node.data,
-      column: { getColId: () => 'purchases' }
-    };
-    this.onCellClicked(event);
-  }
-
-  // Purchases methods
-  onPurchasesGridReady(params: GridReadyEvent) {
-    this.purchasesGridApi = params.api;
-  }
-
-  addPurchase() {
-    const tempId = `temp_purchase_${this.purchasesTempIdCounter++}`;
-    const newPurchase = {
-      id: tempId,
-      supplier: '',
-      amount: 0,
-      __isNew: true,
-      __modified: false
-    };
-
-    this.purchasesData = [...this.purchasesData, newPurchase];
-    this.hasPurchaseUnsavedChanges = true;
-    this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
-
-    setTimeout(() => {
-      const lastRowIndex = this.purchasesData.length - 1;
-      this.purchasesGridApi.ensureIndexVisible(lastRowIndex);
-      this.purchasesGridApi.startEditingCell({
-        rowIndex: lastRowIndex,
-        colKey: 'supplier'
-      });
-    }, 0);
-  }
-
-  deleteSelectedPurchase() {
-    const selectedRows = this.purchasesGridApi.getSelectedRows();
-    if (selectedRows.length === 0) {
-      alerts.basicAlert('Selección requerida', 'Por favor seleccione una compra para eliminar', 'warning');
       return;
     }
-
-    const selectedPurchase = selectedRows[0];
-    // Mock delete - in real implementation, call service
-    this.purchasesData = this.purchasesData.filter(item => item.id !== selectedPurchase.id);
-    this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
-    this.hasPurchaseUnsavedChanges = true;
   }
 
-  savePurchaseChanges() {
-    if (!this.hasPurchaseUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
-      return;
-    }
-
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.save) {
-      const requisitionId = this.params.data.id;
-      this.context.PURCHASES.save(requisitionId, this.purchasesData);
-      this.hasPurchaseUnsavedChanges = false;
-    }
-  }
-
-  discardPurchaseChanges() {
-    if (!this.hasPurchaseUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
-      return;
-    }
-
-    this.loadPurchasesData();
-    this.hasPurchaseUnsavedChanges = false;
-  }
-
-  onPurchaseCellValueChanged(event: any) {
-    event.data.__modified = true;
-    this.hasPurchaseUnsavedChanges = true;
-  }
-
-  loadPurchasesData() {
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.load) {
-      const requisitionId = this.params.data.id;
-      this.context.PURCHASES.load(requisitionId, (data: any[]) => {
-        this.purchasesData = data.map(item => ({
-          ...item,
-          __isNew: false,
-          __modified: false
-        }));
-        if (this.purchasesGridApi) {
-          this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
-        }
-      });
-    }
-  }
 
   // ==================== PDF METHODS ====================
 

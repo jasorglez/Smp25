@@ -5,12 +5,11 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { DetailCellRendererPedimentosItemsComponent } from './detail-cell-renderer-pedimentos-items.component';
-import { DetailCellRendererProveedorQuoteComponent } from './detail-cell-renderer-proveedor-quote.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorQuoteComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent],
   template: `
     <div class="detail-grid-container">
       <ag-grid-angular
@@ -50,23 +49,16 @@ export class DetailCellRendererPedimentosComponent {
 
   buildRowData() {
     const pedimentos = this.params.data.pedimentos || [];
-    const providers = this.params.data.providers || [];
     this.rowData = [];
 
     pedimentos.forEach((pedimento: any) => {
       const fechaPedimento = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
-      const proveedor1 = providers[0]?.name || '';
-      const proveedor2 = providers[1]?.name || '';
-      const proveedor3 = providers[2]?.name || '';
 
       this.rowData.push({
         pedimento: pedimento.name,
         articulos: pedimento.items,
         pdf: 'PDF',
-        fechaPedimento: fechaPedimento,
-        proveedor1: proveedor1,
-        proveedor2: proveedor2,
-        proveedor3: proveedor3
+        fechaPedimento: fechaPedimento
       });
     });
   }
@@ -80,7 +72,7 @@ export class DetailCellRendererPedimentosComponent {
       },
       {
         field: 'articulos',
-        headerName: 'ARTICULO',
+        headerName: 'ARTICULOS',
         width: 200,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
@@ -107,36 +99,6 @@ export class DetailCellRendererPedimentosComponent {
         field: 'fechaPedimento',
         headerName: 'FECHA PEDIMENTO',
         width: 150
-      },
-      {
-        field: 'proveedor1',
-        headerName: 'PROVEEDOR 1',
-        width: 150,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProveedorCascade(node, 0),
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
-      },
-      {
-        field: 'proveedor2',
-        headerName: 'PROVEEDOR 2',
-        width: 150,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProveedorCascade(node, 1),
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
-      },
-      {
-        field: 'proveedor3',
-        headerName: 'PROVEEDOR 3',
-        width: 150,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProveedorCascade(node, 2),
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       }
     ];
   }
@@ -163,29 +125,6 @@ export class DetailCellRendererPedimentosComponent {
         if (otherNode.id !== node.id && otherNode.expanded) {
           otherNode.setExpanded(false);
         }
-      });
-      node.setExpanded(true);
-    }
-  }
-
-  toggleProveedorCascade(node: any, providerIndex: number) {
-    this.gridApi.setGridOption('detailCellRenderer', DetailCellRendererProveedorQuoteComponent);
-    node.setSelected(true);
-
-    const isCurrentlyExpanded = node.expanded;
-
-    if (isCurrentlyExpanded) {
-      node.setExpanded(false);
-    } else {
-      this.gridApi.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id && otherNode.expanded) {
-          otherNode.setExpanded(false);
-        }
-      });
-      // Set context for the provider
-      this.gridApi.setGridOption('detailCellRendererParams', {
-        selectedProviderIndex: providerIndex,
-        providers: this.params.data.providers
       });
       node.setExpanded(true);
     }

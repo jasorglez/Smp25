@@ -30,6 +30,7 @@ interface ICatalogTree {
   parent_id?: number | string;  // Soporte para formato alternativo del backend
   active: number | boolean;
   children?: ICatalogTree[];
+  path?: string[];
   __isNew?: boolean;
   __modified?: boolean;
 }
@@ -81,12 +82,14 @@ export class CatIngresosPalacioComponent {
   catalogData: any[] = [];
   treeData: ICatalogTree[] = [];
   loading: boolean = false;
+  newlyAddedRows: string[] = [];
 
   selectedRowData: any = null;
   selectedItem: ICatalogTree | null = null;
 
   idRoot: number;
   private gridApi: GridApi;
+  private tempIdCounter: number = 0;
 
   // GetDataPath para AG Grid Tree Data
   public getDataPath: GetDataPath = (data: any) => {
@@ -99,10 +102,8 @@ export class CatIngresosPalacioComponent {
     rowHeight: 30,
     treeData: true,
     animateRows: true,
-    groupDefaultExpanded: -1, // Expandir todos por defecto
     getDataPath: (data: any) => data.path,
-    showOpenedGroup: false, // No mostrar grupo abierto
-    groupDisplayType: 'custom', // Usar visualización personalizada
+    groupDisplayType: 'groupRows',
     suppressDragLeaveHidesColumns: true,
     rowGroupPanelShow: 'never',
     suppressRowClickSelection: true,
@@ -124,28 +125,16 @@ export class CatIngresosPalacioComponent {
         });
       }
     },
+    onCellValueChanged: this.onCellValueChanged.bind(this),
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
 
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'consecutivo',
-        headerName: '#',
-        editable: false,
-        filter: false,
-        width: 80,
-        valueGetter: (params) => {
-          // Generar consecutivo automático basado en el índice de la fila visible
-          if (params.node && params.node.rowIndex !== null) {
-            return params.node.rowIndex + 1;
-          }
-          return '';
-        },
-      },
-      {
         field: 'description',
         headerName: 'Descripción',
-        editable: false,
+        editable: true,
         minWidth: 500,
         flex: 1,
         cellRenderer: 'agGroupCellRenderer',
@@ -203,8 +192,8 @@ export class CatIngresosPalacioComponent {
     let result: any[] = [];
 
     nodes.forEach(node => {
-      // Usar el ID como path único en lugar de la descripción
-      const currentPath = [...parentPath, String(node.id)];
+      // Usar la descripción como path
+      const currentPath = [...parentPath, node.description];
       const flatNode = {
         ...node,
         path: currentPath
@@ -242,6 +231,12 @@ export class CatIngresosPalacioComponent {
 
         // Convertir el árbol a formato plano con paths
         this.treeData = this.flattenTreeWithPath(tree);
+        // Ordenar por id para mantener el orden del backend
+        this.treeData.sort((a, b) => {
+          const aId = typeof a.id === 'string' ? parseInt(a.id, 10) : a.id;
+          const bId = typeof b.id === 'string' ? parseInt(b.id, 10) : b.id;
+          return aId - bId;
+        });
         console.log('📋 TreeData con paths:', this.treeData);
 
         this.loading = false;
@@ -287,6 +282,46 @@ export class CatIngresosPalacioComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+  }
+
+  onCellValueChanged(event: any) {
+    console.log('Dato cambiado:', event.data);
+    event.data.__modified = true;
+  }
+
+  onCellDoubleClicked(event: CellDoubleClickedEvent) {
+    if (event.data) {
+      this.openEditModal(event.data);
+    }
+  }
+
+  addRow() {
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const newItem = {
+      id: tempId,
+      idCompany: this.idRoot,
+      description: '',
+      type: 'INCOME',
+      parentId: 0,
+      active: true,
+      path: [tempId],
+      __isNew: true,
+    };
+
+    this.treeData = [newItem, ...this.treeData];
+    this.newlyAddedRows.push(tempId);
+
+    // Start editing the new row
+    setTimeout(() => {
+      if (this.gridApi) {
+        const rowNode = this.gridApi.getDisplayedRowAtIndex(0);
+        rowNode?.setSelected(true);
+        this.gridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: 'description',
+        });
+      }
+    }, 50);
   }
 
   openCreateModal(parent?: ICatalogTree): void {
@@ -506,6 +541,44 @@ export class CatIngresosPalacioComponent {
       });
   }
 
+  async saveChanges() {
+    const newRows = this.treeData.filter((row) => row.__isNew);
+    const modifiedRows = this.treeData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return this.catalogadmonService.addCatalog(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      const itemId = typeof row.id === 'string' ? parseInt(row.id, 10) : row.id;
+      return this.catalogadmonService.updateCatalog(itemId, cleanedData);
+    });
+
+    try {
+      const responses = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han actualizado los datos correctamente.',
+        'success'
+      );
+      this.newlyAddedRows = [];
+      this.obtenerDatos();
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
   revert() {
     this.obtenerDatos();
     this.trackingService.addLog(
@@ -514,5 +587,17 @@ export class CatIngresosPalacioComponent {
       'Menu Administración - Palacio Municipal',
       this.trackingService.getEmail()
     );
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    delete cleanedData.path;
+    delete cleanedData.children;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
   }
 }

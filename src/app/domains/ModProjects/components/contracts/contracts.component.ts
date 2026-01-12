@@ -10,7 +10,7 @@ import { TrackingService } from '../../../../services/tracking.service';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CompanysService } from 'app/services/companys.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -83,6 +83,9 @@ export class ContractsComponent {
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
+
+  newlyAddedRows: string[] = [];
+  private tempIdCounter: number = 0;
   private doubleClicked = false;
 
   // Declare the missing properties
@@ -210,19 +213,71 @@ export class ContractsComponent {
 
 
   colMaster: ColDef[] = [
-    { field: 'numberContract', headerName: 'Contrato', filter: true, width: 30 },
-    { field: 'description', headerName: 'Descripcion', width: 285 },
-    { field: 'descripSmall', headerName: 'Corta', width: 100 },
-    { field: 'resident', headerName: 'Residente', width: 100, filter: true },
+    {
+      field: 'numberContract', headerName: 'Contrato', filter: true, width: 30,
+      editable: (params) => {
+        if (params.data.__isNew) {
+          return true;
+        }
+        return true;
+      }
+    },
+    {
+      field: 'description', headerName: 'Descripcion', width: 285,
+      editable: (params) => {
+        if (params.data.__isNew) {
+          return true;
+        }
+        return true;
+      }
+    },
+    {
+      field: 'descripSmall', headerName: 'Corta', width: 100,
+      editable: (params) => {
+        if (params.data.__isNew) {
+          return true;
+        }
+        return true;
+      }
+    },
+    {
+      field: 'resident', headerName: 'Residente', width: 100, filter: true,
+      editable: (params) => {
+        if (params.data.__isNew) {
+          return true;
+        }
+        return true;
+      }
+    },
     { field: 'name', headerName: 'Compañía', width: 100, filter: true },
-    { field: 'supervisor', headerName: 'Supervisor', width: 100, filter: true },
+    {
+      field: 'supervisor', headerName: 'Supervisor', width: 100, filter: true,
+      editable: (params) => {
+        if (params.data.__isNew) {
+          return true;
+        }
+        return true;
+      }
+    },
     {
       field: 'amountMx', headerName: 'Monto MX', width: 100,
-      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true
+      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true,
+      editable: (params) => {
+        if (params.data.__isNew) {
+          return true;
+        }
+        return true;
+      }
     },
     {
       field: 'amountDll', headerName: 'Monto DLL2', width: 100,
-      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true
+      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true,
+      editable: (params) => {
+        if (params.data.__isNew) {
+          return true;
+        }
+        return true;
+      }
     }
   ];
 

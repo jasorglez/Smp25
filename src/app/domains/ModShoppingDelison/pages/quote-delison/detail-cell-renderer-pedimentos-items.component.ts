@@ -63,16 +63,21 @@ export class DetailCellRendererPedimentosItemsComponent {
 
   buildRowData() {
     const articulos = this.params.data.articulos || [];
-    this.rowData = articulos.map((item: any, index: number) => ({
-      articulo: item.article,
-      numeroArticulo: index + 1,
-      cantidad: item.quantity,
-      tipo: item.tipo,
-      proveedorInterno: item.proveedorInterno,
-      tipoPrioridad: item.priority,
-      observacion: item.observaciones,
-      pedimento: this.params.data.pedimento
-    }));
+    console.log('📋 buildRowData - articulos recibidos:', articulos);
+    this.rowData = articulos.map((item: any, index: number) => {
+      console.log(`   Item ${index}: pedimentoNum = "${item.pedimentoNum}"`);
+      return {
+        articulo: item.article,
+        numeroArticulo: item.numArticle || (index + 1),
+        cantidad: item.quantity,
+        tipo: item.tipo,
+        proveedorInterno: item.proveedorInterno,
+        tipoPrioridad: item.priority,
+        observacion: item.observaciones,
+        pedimento: this.params.data.pedimento,
+        pedimentoNumber: item.pedimentoNum || '' // ✅ Backend usa "pedimentoNum"
+      };
+    });
   }
 
   checkPedimentoSelection() {
@@ -103,12 +108,12 @@ export class DetailCellRendererPedimentosItemsComponent {
       {
         field: 'articulo',
         headerName: 'Articulo',
-        width: 180
+        width: 120
       },
       {
         field: 'numeroArticulo',
         headerName: '# Articulo',
-        width: 140
+        width: 120
       },
       {
         field: 'cantidad',
@@ -137,8 +142,8 @@ export class DetailCellRendererPedimentosItemsComponent {
       },
        {
       field: 'pedimiento',
-      headerName: 'Pedimiento',
-      width: 140,
+      headerName: 'Pedimento',
+      width: 100,
       editable: false,
       cellRenderer: (params: any) => {
         const input = document.createElement('input');
@@ -157,6 +162,31 @@ export class DetailCellRendererPedimentosItemsComponent {
 
         return input;
       }
+      },
+      {
+        field: 'pedimentoNumber',
+        headerName: 'Pedimento #',
+        width: 140,
+        editable: false,
+        cellRenderer: (params: any) => {
+          if (!params.value) {
+            return ''; // Si no hay valor, la celda estará vacía.
+          }
+
+          const numbers = String(params.value).split(',');
+          const colorMap: { [key: string]: string } = {
+            '1': '#0d6efd', // Azul
+            '2': '#198754', // Verde
+            '3': '#6f42c1', // Púrpura
+          };
+
+          const coloredSpans = numbers.map(num => {
+            const color = colorMap[num.trim()] || 'black'; // Color por defecto si no está en el mapa
+            return `<span style="color: ${color}; font-weight: bold; padding: 0 2px;">${num.trim()}</span>`;
+          }).join(',');
+
+          return coloredSpans;
+        }
       },
     ];
   }

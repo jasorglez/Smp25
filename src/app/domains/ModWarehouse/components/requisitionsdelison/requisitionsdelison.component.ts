@@ -789,7 +789,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'articlesCount',
         headerName: 'Articulos que solicita',
-        width: 150,
+        width: 100,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
