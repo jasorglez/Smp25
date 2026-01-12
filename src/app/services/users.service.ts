@@ -9,6 +9,7 @@ import { map, Observable } from 'rxjs';
 
 import 'firebase/compat/database';
 import { SignalsService } from './signals.service';
+import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -41,9 +42,13 @@ export class UsersService {
     return this.http.get(`${environment.urlSecurity}/User/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getUserByEmail(email: string): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/User/email/${email}`, { headers: this.trackingService.getHeaders() });
-    }
+  getUserByEmail(email: string): Observable<SafeUserData> {
+    return this.http.get<ApiResponse<any>>(`${environment.urlSecurity}/User/email/${email}`,
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(
+      map(response => sanitizeUserData(response.data))
+    );
+  }
 
   addUser(data: any): Observable<any> {
     return this.http.post(`${environment.urlSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
@@ -82,42 +87,44 @@ export class UsersService {
 
   findEmail(email: string): Observable<any> {
     const headers = this.trackingService.getHeaders();
-    //  const headers = localStorage.getItem('token') ;
-    return this.http.get<any>(`${environment.urlSecurity}/User/email/${email}`, { headers }).pipe(
-      map(datauser => {
-
-       //console.log('dataUser', datauser);
-
-        // Asegúrate de que datauser contenga al menos un objeto
-        const userArray = datauser.data;
-        if (userArray) {
-          const user = userArray as any;
-          console.log('User Findemail:', user);
-          
-
-          // Asegúrate de que todas las propiedades existen en el objeto user
-           const displayName = user.displayName || '';
-           const picture = user.picture || '';
-           const email = user.email || '';
-           const applyproject = user.applyproject || '';
-           const applybranch = user.applybranch || '';
-           const applyplatform = user.applyplatform || ''; // Corregido de user.applybranch a user.applyplatform
-           const id           = user.id   ;
-           const signature = user.signature || '';
-           const userRoot = user.isRoot || 0;
-           const Invited = user.invited || false;
-         //  this.signalsService.setidUser(datauser.id); sigue una prueba
-         this.signalsService.setDisplayName(displayName);
-         this.signalsService.setUserRoot(userRoot);
-         this.signalsService.setidUser(id);
-         this.signalsService.setInvited(Invited)
-
-
-          return { displayName, picture, applyproject, applybranch, applyplatform, email, id, signature, userRoot};
-        } else {
+    return this.http.get<ApiResponse<any>>(`${environment.urlSecurity}/User/email/${email}`, { headers }).pipe(
+      map(response => {
+        if (!response.data) {
           // Si no se encontró ningún usuario, devuelve un objeto vacío
-          return { displayName: '', picture: '', applyproject: '', applybranch: '', applyplatform: '', email: '', signature: '',userRoot: 0 };
+          return {
+            displayName: '',
+            picture: '',
+            applyproject: '',
+            applybranch: '',
+            applyplatform: '',
+            email: '',
+            signature: '',
+            userRoot: 0
+          };
         }
+
+        // Limpiar datos sensibles
+        const safeUser = sanitizeUserData(response.data);
+        console.log('User Findemail (sanitized):', safeUser);
+
+        // Actualizar signals con datos seguros
+        this.signalsService.setDisplayName(safeUser.displayName);
+        this.signalsService.setUserRoot(safeUser.isRoot);
+        this.signalsService.setidUser(safeUser.id);
+        this.signalsService.setInvited(safeUser.invited);
+
+        // Devolver solo los campos necesarios (compatibilidad con código existente)
+        return {
+          displayName: safeUser.displayName,
+          picture: safeUser.picture,
+          applyproject: safeUser.applyProject,
+          applybranch: safeUser.applyBranch,
+          applyplatform: safeUser.applyPlatform,
+          email: safeUser.email,
+          id: safeUser.id,
+          signature: safeUser.signature,
+          userRoot: safeUser.isRoot
+        };
       })
     );
   }
