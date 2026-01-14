@@ -48,5 +48,9 @@ export class OcAndReqsService {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Detailsreqoc/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  
+  getProviders(id: number, type: string): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Material/providers-by-material?idMaterial=${id}&typeIntOrExt=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
 }

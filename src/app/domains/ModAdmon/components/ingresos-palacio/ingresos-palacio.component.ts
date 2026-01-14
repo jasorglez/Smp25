@@ -393,9 +393,9 @@ export class IngresosPalacioComponent implements OnInit {
 
   async getCurrentUser() {
     this.usersService.getUserByEmail(String(localStorage.getItem('mail'))).subscribe({
-      next: (response) => {
-        if (response?.data?.usersmall) {
-          this.currentUser = response.data.usersmall;
+      next: (user) => {
+        if (user?.usersmall) {
+          this.currentUser = user.usersmall;
         } else {
           this.currentUser = 'Sin nombre';
         }
@@ -533,13 +533,42 @@ export class IngresosPalacioComponent implements OnInit {
       },
 
       {
-        field: 'dateStamped', headerName: 'Entrega', editable: true, filter: true, cellDataType: 'date', width: 100, hide: true,
+        field: 'dateStamped', headerName: 'Entrega', editable: true, filter: true, cellDataType: 'date', 
+         width: 100, hide: true,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
-        field: 'date', headerName: 'Pago', editable: true, filter: true,cellDataType: 'date', width: 100,
-        valueFormatter: (params) => this.formatDate(params.value)
+          field: 'date', 
+          headerName: 'Pago', 
+          editable: true, 
+          filter: 'agSetColumnFilter',
+          filterParams: {
+            defaultToNothingSelected: true,
+          },
+          cellDataType: 'date', 
+          width: 120,
+          valueFormatter: (params) => this.formatDate(params.value),
+          valueGetter: (params) => {
+            if (!params.data.date) return null;
+            return params.data.date instanceof Date ? params.data.date : new Date(params.data.date);
+          },
+          valueSetter: (params) => {
+            if (!params.newValue) {
+              params.data.date = params.oldValue;
+              return false;
+            }
+
+            const newDate = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
+
+            if (isNaN(newDate.getTime())) {
+              params.data.date = params.oldValue;
+              return false;
+            }
+
+            params.data.date = newDate;
+            return true;
+          }
       },
 
       {
@@ -587,7 +616,8 @@ export class IngresosPalacioComponent implements OnInit {
       },
 
       {
-        field: 'paymentMonth', headerName: 'Mes', editable: true, width: 80,
+        field: 'paymentMonth', headerName: 'Mes', 
+        editable: true, width: 80, filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: [

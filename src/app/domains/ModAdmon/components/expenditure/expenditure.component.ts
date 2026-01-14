@@ -297,9 +297,9 @@ constructor() {
 
   async getCurrentUser() {
     this.usersService.getUserByEmail(String(localStorage.getItem('mail'))).subscribe({
-      next: (response) => {
-        if (response?.data?.usersmall) {
-          this.currentUser = response.data.usersmall;
+      next: (user) => {
+        if (user?.usersmall) {
+          this.currentUser = user.usersmall;
         } else {
           this.currentUser = 'Sin nombre';
         }

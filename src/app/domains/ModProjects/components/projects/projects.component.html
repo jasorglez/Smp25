@@ -10,8 +10,14 @@
       <!-- Columna del ag-grid -->
       <div class="col">
         <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
-          [rowData]="project" (selectionChanged)="onSelectionChanged($event)" class="ag-theme-quartz small-text-ag-grid"
-          [rowGroupPanelShow]="rowGroupPanelShow" [pivotPanelShow]="pivotPanelShow" [gridOptions]="gridOptions" [pagination]="true" (gridReady)="onGridReady($event)" [paginationPageSizeSelector]="paginationPageSizeSelector"
+          [rowData]="project" 
+          (selectionChanged)="onSelectionChanged($event)" 
+          class="ag-theme-quartz small-text-ag-grid"
+          
+          [gridOptions]="gridOptions" 
+          [pagination]="true" 
+          (gridReady)="onGridReady($event)" 
+          [paginationPageSizeSelector]="paginationPageSizeSelector"
           (cellDoubleClicked)="onCellDoubleClicked($event)" [components]="components" [stopEditingWhenCellsLoseFocus]="true" [context]="{ componentParent: this }">
         </ag-grid-angular>
       </div>
@@ -30,7 +36,7 @@
         <div class="col-6">
           <div class="mb-2">
             <input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control"
-              placeholder="ID PEMEX">
+              placeholder="IDENT OBRA">
           </div>
           <div class="mb-2">
             <input type="text" formControlName="number" id="number" class="form-control" placeholder="Orden de trabajo">

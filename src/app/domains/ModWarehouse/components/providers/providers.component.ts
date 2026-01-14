@@ -420,6 +420,17 @@ export class ProvidersComponent implements CanComponentDeactivate {
         }
       },
 
+      // Nuevo campo: Tipo (Interno/Externo)
+      {
+        field: 'typeIntOrExt',
+        headerName: 'Tipo',
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Interno', 'Externo']
+        },
+      },
+
       //Es un combo de Tipo de Proveedor qe le compro
       {
         field: 'typeProvider',
@@ -897,6 +908,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       longitud: '',
       idTypecop: 0,
       type: 'PROVIDERS',
+      typeIntOrExt: 'Externo',  // Tipo Interno/Externo por defecto
       fieldContact: 1,
       fieldBank: 0,
       fieldCuenta: 0,

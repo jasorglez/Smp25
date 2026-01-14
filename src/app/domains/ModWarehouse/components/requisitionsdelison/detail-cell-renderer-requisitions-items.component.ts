@@ -5,7 +5,6 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -178,6 +177,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
   idRoot: number | null = null;
+  providersCache: Map<string, any[]> = new Map(); // Cache para proveedores por material+tipo
 
   // PDF properties
   detailType: string = 'items';
@@ -193,11 +193,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
 
 
-  // Purchases related properties
-  purchasesData: any[] = [];
-  hasPurchaseUnsavedChanges: boolean = false;
-  purchasesTempIdCounter: number = 0;
-  purchasesGridApi!: any;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -214,7 +209,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     if (this.detailType === 'items') {
       this.loadMaterials();
       this.loadData();
-      this.loadPurchasesData();
     } else if (this.detailType === 'pdf') {
       this.generatePDF();
     }
@@ -255,6 +249,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           total: item.total || 0,
           type: item.type || 'REQUIS',
           idProvider: item.idProvider || 0,
+          nameProvider: item.nameProvider || '',
           comment: item.comment || '',
           dateuse: item.dateuse || new Date().toISOString(),
           active: item.active !== undefined ? item.active : true,
@@ -263,10 +258,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           numArticle: item.numArticle || '',
           provint: item.provint || '',
           typePriority: item.typePriority || 'Normal',
-          pedimiento: false,
-          pedimentoNumber: '',
-          purchasesData: [], // Se puede cargar después si es necesario
-          purchasesExpanded: false,
+          pedimiento: item.pedimento || false, // ✅ Cargar desde backend, siempre debe ser false después de Multiguardar
+          pedimentoNumber: item.pedimentoNum || '', // ✅ String con números separados por coma (ej: "1,3,4,6")
           __isNew: false,
           __modified: false,
           saved: true
@@ -280,6 +273,15 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         }
 
         console.log('✅ Items cargados:', this.rowData.length);
+
+        // Pre-cargar proveedores para todos los items que tienen material
+        this.rowData.forEach(item => {
+          const materialId = item.idSupplie || item.materialId || 0;
+          const type = item.intorext || 'Externo';
+          if (materialId > 0) {
+            this.loadProviders(materialId, type);
+          }
+        });
 
         // ❌ NO actualizar el contador - ya viene del servidor con countrow
         // El contador articlesCount ya está correcto desde loadRequisitions()
@@ -336,46 +338,35 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     });
   }
 
+  async loadProviders(materialId: number, type: string): Promise<any[]> {
+    const cacheKey = `${materialId}_${type}`;
+
+    // Verificar si ya están en caché
+    if (this.providersCache.has(cacheKey)) {
+      return this.providersCache.get(cacheKey)!;
+    }
+
+    try {
+      const providers = await firstValueFrom(
+        this.ocAndReqsService.getProviders(materialId, type)
+      );
+
+      // Guardar en caché
+      this.providersCache.set(cacheKey, providers);
+
+      console.log(`✅ Proveedores cargados para material ${materialId} tipo ${type}:`, providers.length);
+      return providers;
+    } catch (error) {
+      console.error('❌ Error al cargar proveedores:', error);
+      return [];
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-
-    this.gridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (params: any) => {
-        params.successCallback(params.data.purchasesData || []);
-      },
-      context: {
-        componentParent: this,
-        gridApi: this.gridApi,
-        PURCHASES: {
-          load: (articleId: number, callback: (data: any[]) => void) => {
-            const article = this.rowData.find(r => r.id === articleId);
-            callback(article ? article.purchasesData || [] : []);
-          },
-          save: (articleId: number, data: any[]) => {
-            const article = this.rowData.find(r => r.id === articleId);
-            if (article) {
-              article.purchasesData = data;
-              this.gridApi.refreshCells({ force: true });
-              alerts.basicAlert('Guardado', 'Las compras han sido guardadas correctamente', 'success');
-            }
-          },
-          delete: (params: any, callback: () => void) => {
-            // Mock delete
-            callback();
-          },
-          updateCount: (articleId: number, count: number) => {
-            // Update count if needed
-          },
-          getRowClass: (params: any) => {
-            return 'detail-purchase-row';
-          }
-        }
-      }
-    });
   }
 
   private _colDefs: ColDef[] = [];
-  private _purchasesColDefs: ColDef[] = [];
 
   get colDefs(): ColDef[] {
     if (this._colDefs.length > 0) {
@@ -408,7 +399,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       {
         field: 'article',
         headerName: 'Articulos',
-        width: 300,
+        width: 200,
         cellDataType: false, // Desactivar auto-detección de tipo
         editable: (params) => {
           // Solo es editable con SelectWithTooltipEditorV2 si es "Recurrente"
@@ -469,13 +460,24 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
             params.data.measure = selectedMaterial.measure || '';
             // ✅ CAMBIO 1: Actualizar # del artículo con el num-mat (código)
             params.data.numArticle = selectedMaterial.code || '';
+
+            // Limpiar el proveedor cuando cambia el material
+            params.data.idProvider = 0;
+            params.data.nameProvider = '';
+
             params.data.__modified = true;
             this.hasUnsavedChanges = true;
 
-            // Refrescar las celdas para mostrar el articleNumber actualizado
+            // Pre-cargar proveedores para el nuevo material
+            const type = params.data.intorext || 'Externo';
+            this.loadProviders(selectedMaterial.id, type).then(() => {
+              console.log(`✅ Proveedores pre-cargados para material ${selectedMaterial.id} tipo ${type}`);
+            });
+
+            // Refrescar las celdas para mostrar el articleNumber actualizado y limpiar proveedor
             this.gridApi.refreshCells({
               rowNodes: [params.node],
-              columns: ['articleNumber'],
+              columns: ['articleNumber', 'idProvider'],
               force: true
             });
 
@@ -539,17 +541,124 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         cellEditorParams: {
           values: ['Externo', 'Interno'] // ✅ CAMBIO 2: Externo primero para que sea el default
         },
-      },
-      {
-        field: 'provint',
-        headerName: 'Proveedor Interno',
-        width: 100,
-        editable: true,
         valueSetter: (params: any) => {
-          params.data.provint = params.newValue ? params.newValue.toUpperCase() : '';
+          const oldValue = params.data.intorext;
+          params.data.intorext = params.newValue;
+
+          // Si cambió el tipo, limpiar el proveedor y recargar la lista
+          if (oldValue !== params.newValue) {
+            params.data.idProvider = 0;
+            params.data.nameProvider = '';
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+
+            // Pre-cargar proveedores para el nuevo tipo
+            const materialId = params.data.idSupplie || params.data.materialId || 0;
+            if (materialId > 0) {
+              this.loadProviders(materialId, params.newValue).then(() => {
+                console.log(`✅ Proveedores pre-cargados para material ${materialId} tipo ${params.newValue}`);
+              });
+            }
+
+            // Refrescar la columna de proveedores para actualizar la lista
+            this.gridApi.refreshCells({
+              rowNodes: [params.node],
+              columns: ['idProvider'],
+              force: true
+            });
+          }
+
           return true;
         }
       },
+    
+    /*  {
+        field: 'idProvider',
+        headerName: 'Proveedor',
+        width: 250,
+        editable: (params) => {
+          // Solo editable si hay un material seleccionado
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          return materialId > 0;
+        },
+        cellDataType: false,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: (params: any) => {
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          const type = params.data.intorext || 'Externo';
+
+          if (materialId === 0) {
+            console.warn('⚠️ No hay material seleccionado, no se pueden cargar proveedores');
+            return { options: [] };
+          }
+
+          const cacheKey = `${materialId}_${type}`;
+
+          // Buscar proveedores en el caché
+          const providers = this.providersCache.get(cacheKey) || [];
+
+          console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo: ${type}, Proveedores en caché: ${providers.length}`);
+
+          return {
+            options: providers.map(p => ({
+              id: p.idProvider,
+              description: p.providerName
+            }))
+          };
+        },
+        onCellClicked: async (params: any) => {
+          // Pre-cargar proveedores cuando se hace clic en la celda
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          const type = params.data.intorext || 'Externo';
+
+          if (materialId > 0) {
+            console.log(`🔄 Pre-cargando proveedores para material ${materialId} tipo ${type}`);
+            await this.loadProviders(materialId, type);
+          }
+        },
+        valueFormatter: (params: any) => {
+          // Mostrar el nombre del proveedor guardado en nameProvider
+          if (params?.data?.nameProvider) {
+            return params.data.nameProvider;
+          }
+          return params.value || '';
+        },
+        valueSetter: (params: any) => {
+          const newValue = params.newValue;
+
+          // SelectWithTooltipEditorV2 devuelve el ID del proveedor seleccionado
+          if (newValue && typeof newValue === 'number') {
+            params.data.idProvider = newValue;
+
+            // Buscar el nombre del proveedor en la caché
+            const materialId = params.data.idSupplie || params.data.materialId || 0;
+            const type = params.data.intorext || 'Externo';
+            const cacheKey = `${materialId}_${type}`;
+
+            if (this.providersCache.has(cacheKey)) {
+              const providers = this.providersCache.get(cacheKey)!;
+              const selectedProvider = providers.find(p => p.idProvider === newValue);
+              if (selectedProvider) {
+                params.data.nameProvider = selectedProvider.providerName;
+                console.log(`✅ Proveedor seleccionado: ${selectedProvider.providerName}`);
+              }
+            }
+
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+            return true;
+          }
+
+          return false;
+        },
+        cellStyle: (params: any) => {
+          const materialId = params.data.idSupplie || params.data.materialId || 0;
+          if (materialId === 0) {
+            return { backgroundColor: '#f9f9f9', color: '#999', cursor: 'not-allowed' };
+          }
+          return { cursor: 'pointer' };
+        }
+      }, */
 
       {
         field: 'typePriority',
@@ -644,10 +753,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     headerHeight: 25,
     rowHeight: 25,
     animateRows: true,
-    masterDetail: true,
-    detailRowHeight: 400,
-    isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererRequisitionsPurchasesComponent,
     rowSelection: 'multiple',
     singleClickEdit: false, // Doble-click para editar (como tipo-proveedor)
     domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
@@ -660,56 +765,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       return 'detail-purchase-row'; // Fila pendiente, color rosa
     }
   };
-
-  public purchasesGridOptions: any = {
-    headerHeight: 35,
-    rowHeight: 35,
-    animateRows: true,
-    rowSelection: 'single',
-    onCellValueChanged: (event: any) => {
-      event.data.__modified = true;
-      this.hasPurchaseUnsavedChanges = true;
-    }
-  };
-
-  get purchasesColDefs(): ColDef[] {
-    if (this._purchasesColDefs.length > 0) {
-      return this._purchasesColDefs;
-    }
-
-    this._purchasesColDefs = [
-      {
-        headerName: '#',
-        width: 50,
-        valueGetter: (params) => params.node.rowIndex + 1,
-        pinned: 'left',
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
-      },
-      {
-        field: 'supplier',
-        headerName: 'Proveedor',
-        width: 250,
-        editable: true,
-        valueSetter: (params: any) => {
-          params.data.supplier = params.newValue ? params.newValue.toUpperCase() : '';
-          return true;
-        }
-      },
-      {
-        field: 'amount',
-        headerName: 'Monto',
-        width: 150,
-        editable: true,
-        type: 'numericColumn',
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return `$${params.value.toLocaleString()}`;
-        }
-      }
-    ];
-
-    return this._purchasesColDefs;
-  }
 
   components = {
     // No se necesita registrar SelectWithTooltipEditorV2Component aquí
@@ -807,11 +862,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         recurrent: item.recurrent || 'Recurrente', // Enviar si es "Nuevo" o "Recurrente"
         typePriority: item.typePriority || 'Normal',
         idProvider: item.idProvider || 0,
+        nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
         dateuse: item.dateuse || new Date().toISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
-        provint: item.provint || ''
+        provint: item.provint || '',
+        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
+        pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma
       };
 
       console.log('📤 POST - Enviando item nuevo al endpoint:', payload);
@@ -838,13 +896,16 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         total: item.total || 0,
         type: item.type || 'REQUIS',
         recurrent: item.recurrent || 'Recurrente', // Enviar si es "Nuevo" o "Recurrente"
-        typePriority: item.typePriority || 'Externo',
+        typePriority: item.typePriority || 'Normal',
         idProvider: item.idProvider || 0,
+        nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
         dateuse: item.dateuse || new Date().toISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
-        provint: item.provint || ''
+        provint: item.provint || '',
+        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
+        pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma
       };
 
       console.log('📤 PUT - Enviando item modificado al endpoint:', payload);
@@ -1035,16 +1096,55 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         item.pedimiento = false;
       });
 
-      // 9. Guardar los datos modificados de vuelta en la fila maestra
-      if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
-        this.context.ITEMS.save(this.params.data.id, this.rowData, false);
+      // 9. ✅ GUARDAR los items actualizados en la base de datos
+      console.log('📤 Guardando items de requisición con pedimentoNumber actualizado...');
+
+      for (const item of checkedItems) {
+        const updatePayload = {
+          id: item.id,
+          idMovement: this.requisitionId,
+          idSupplie: item.idSupplie || item.materialId || 0,
+          description: item.description || item.article || '',
+          nameArticle: item.nameArticle || item.article || '',
+          code: item.code || '',
+          intorext: item.intorext || 'Externo',
+          measure: item.measure || '',
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          total: item.total || 0,
+          type: item.type || 'REQUIS',
+          idProvider: item.idProvider || 0,
+          comment: item.comment || '',
+          dateuse: item.dateuse || new Date().toISOString(),
+          active: item.active !== undefined ? item.active : true,
+          recurrent: item.recurrent || 'Recurrente',
+          numArticle: item.numArticle || '',
+          provint: item.provint || '',
+          typePriority: item.typePriority || 'Normal',
+          pedimento: false, // ✅ SIEMPRE false después de Multiguardar para permitir múltiples cotizaciones
+          pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma (ej: "1,3,4,6")
+        };
+
+        console.log(`📤 Actualizando item ${item.id} con pedimentoNum: ${item.pedimentoNumber} (pedimento: false)`);
+
+        await firstValueFrom(
+          this.ocAndReqsService.updateReqItem(item.id.toString(), updatePayload)
+        );
       }
 
-      // 10. Redibujar el grid
+      console.log('✅ Items actualizados en la base de datos');
+
+      // 10. ✅ Actualizar el detailData en el maestro para refrescar "Cumplimiento Pedimento"
+      if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
+        console.log('📊 Actualizando detailData en el maestro después de Multiguardar');
+        this.context.ITEMS.save(this.requisitionId, this.rowData, false);
+      }
+
+      // 11. Redibujar el grid
       this.hasPedimentoSelection = false;
       this.gridApi.redrawRows();
 
-      // 11. Mostrar mensaje de éxito
+      // 12. Mostrar mensaje de éxito
       const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s). Pedimento #${siguienteNumeroPedimento}`;
       alerts.basicAlert('Cotización Creada', message, 'success');
 
@@ -1112,151 +1212,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       // Cargar los datos del artículo temporal guardados previamente en la fila.
       this.newArticle = { ...(event.data.newArticleInfo || { name: '', description: '', link: '', usage: '' }) };
       this.isNewArticleModalVisible = true;
-      return; // Detener para no interferir con la lógica de la otra cascada.
-    }
-
-
-    const colId = event.column.getColId();
-    const isPurchasesColumn = colId === 'purchases';
-
-    if (isPurchasesColumn) {
-      const node = event.node;
-      const api = event.api;
-
-      if (event.data.purchasesExpanded) {
-        // Close purchases cascade and show all rows
-        node.setExpanded(false);
-        event.data.purchasesExpanded = false;
-
-        // Restore all row heights
-        api.forEachNode((otherNode: any) => {
-          otherNode.setRowHeight(undefined);
-        });
-        api.onRowHeightChanged();
-        api.redrawRows();
-      } else {
-        // Close any other expanded purchases cascades
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.data.purchasesExpanded && otherNode.id !== node.id) {
-            otherNode.setExpanded(false);
-            otherNode.data.purchasesExpanded = false;
-          }
-        });
-
-        // Hide all other rows (set height to 0)
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.id !== node.id) {
-            otherNode.setRowHeight(0);
-          }
-        });
-
-        // Open purchases cascade for this row
-        event.data.purchasesExpanded = true;
-        node.setExpanded(true);
-
-        // Apply height changes
-        api.onRowHeightChanged();
-        api.redrawRows();
-      }
-    }
-  }
-
-  togglePurchasesCascade(node: any) {
-    const event = {
-      node: node,
-      api: this.gridApi,
-      data: node.data,
-      column: { getColId: () => 'purchases' }
-    };
-    this.onCellClicked(event);
-  }
-
-  // Purchases methods
-  onPurchasesGridReady(params: GridReadyEvent) {
-    this.purchasesGridApi = params.api;
-  }
-
-  addPurchase() {
-    const tempId = `temp_purchase_${this.purchasesTempIdCounter++}`;
-    const newPurchase = {
-      id: tempId,
-      supplier: '',
-      amount: 0,
-      __isNew: true,
-      __modified: false
-    };
-
-    this.purchasesData = [...this.purchasesData, newPurchase];
-    this.hasPurchaseUnsavedChanges = true;
-    this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
-
-    setTimeout(() => {
-      const lastRowIndex = this.purchasesData.length - 1;
-      this.purchasesGridApi.ensureIndexVisible(lastRowIndex);
-      this.purchasesGridApi.startEditingCell({
-        rowIndex: lastRowIndex,
-        colKey: 'supplier'
-      });
-    }, 0);
-  }
-
-  deleteSelectedPurchase() {
-    const selectedRows = this.purchasesGridApi.getSelectedRows();
-    if (selectedRows.length === 0) {
-      alerts.basicAlert('Selección requerida', 'Por favor seleccione una compra para eliminar', 'warning');
       return;
     }
-
-    const selectedPurchase = selectedRows[0];
-    // Mock delete - in real implementation, call service
-    this.purchasesData = this.purchasesData.filter(item => item.id !== selectedPurchase.id);
-    this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
-    this.hasPurchaseUnsavedChanges = true;
   }
 
-  savePurchaseChanges() {
-    if (!this.hasPurchaseUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
-      return;
-    }
-
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.save) {
-      const requisitionId = this.params.data.id;
-      this.context.PURCHASES.save(requisitionId, this.purchasesData);
-      this.hasPurchaseUnsavedChanges = false;
-    }
-  }
-
-  discardPurchaseChanges() {
-    if (!this.hasPurchaseUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
-      return;
-    }
-
-    this.loadPurchasesData();
-    this.hasPurchaseUnsavedChanges = false;
-  }
-
-  onPurchaseCellValueChanged(event: any) {
-    event.data.__modified = true;
-    this.hasPurchaseUnsavedChanges = true;
-  }
-
-  loadPurchasesData() {
-    if (this.context && this.context.PURCHASES && this.context.PURCHASES.load) {
-      const requisitionId = this.params.data.id;
-      this.context.PURCHASES.load(requisitionId, (data: any[]) => {
-        this.purchasesData = data.map(item => ({
-          ...item,
-          __isNew: false,
-          __modified: false
-        }));
-        if (this.purchasesGridApi) {
-          this.purchasesGridApi.setGridOption('rowData', this.purchasesData);
-        }
-      });
-    }
-  }
 
   // ==================== PDF METHODS ====================
 

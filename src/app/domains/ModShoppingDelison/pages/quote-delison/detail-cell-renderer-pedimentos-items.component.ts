@@ -9,26 +9,6 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   standalone: true,
   imports: [CommonModule, AgGridModule],
   template: `
-    <div class="d-flex justify-content-end gap-2 mb-2">
-      <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveItem()" title="Guardar cambios">
-        <i class="bi bi-floppy"></i>
-        <span
-          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-          *ngIf="masterNotSavedChanges">
-          <span class="visually-hidden">Hay cambios sin guardar</span>
-        </span>
-      </button>
-
-       <button type="button" class="btn btn-sm btn-warning" (click)="revertItem()" title="Deshacer cambios">
-         <i class="bi bi-arrow-clockwise"></i>
-       </button>
-
-       <button type="button" class="btn btn-sm btn-danger" (click)="deleteItem()" title="Eliminar requisición">
-         <i class="bi bi-trash"></i>
-       </button>
-
-    </div>
-
     <div class="detail-grid-container">
       <ag-grid-angular
         class="ag-theme-quartz small-text-ag-grid"
@@ -53,7 +33,6 @@ export class DetailCellRendererPedimentosItemsComponent {
   private context: any;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
-    masterNotSavedChanges: boolean = false;
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -63,16 +42,21 @@ export class DetailCellRendererPedimentosItemsComponent {
 
   buildRowData() {
     const articulos = this.params.data.articulos || [];
-    this.rowData = articulos.map((item: any, index: number) => ({
-      articulo: item.article,
-      numeroArticulo: index + 1,
-      cantidad: item.quantity,
-      tipo: item.tipo,
-      proveedorInterno: item.proveedorInterno,
-      tipoPrioridad: item.priority,
-      observacion: item.observaciones,
-      pedimento: this.params.data.pedimento
-    }));
+    console.log('📋 buildRowData - articulos recibidos:', articulos);
+    this.rowData = articulos.map((item: any, index: number) => {
+      console.log(`   Item ${index}: pedimentoNum = "${item.pedimentoNum}"`);
+      return {
+        articulo: item.article,
+        numeroArticulo: item.numArticle || (index + 1),
+        cantidad: item.quantity,
+        tipo: item.tipo,
+        proveedorInterno: item.proveedorInterno,
+        tipoPrioridad: item.priority,
+        observacion: item.observaciones,
+        pedimento: this.params.data.pedimento,
+        pedimentoNumber: item.pedimentoNum || '' // ✅ Backend usa "pedimentoNum"
+      };
+    });
   }
 
   checkPedimentoSelection() {
@@ -82,33 +66,15 @@ export class DetailCellRendererPedimentosItemsComponent {
 
   get colDefs(): ColDef[] {
     return [
-       {
-        field: 'recurrent',
-        headerName: 'Recurrente',
-        width: 120,
-        editable: (params) => {
-          // Solo es editable si el valor NO es 'Nuevo'.
-          return params.data.recurrent !== 'Nuevo';
-        },
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Recurrente', 'Nuevo']
-        },
-        valueSetter: (params: any) => {
-          params.data.recurrent = params.newValue;
-          return true;
-        }
-      },
-
       {
         field: 'articulo',
         headerName: 'Articulo',
-        width: 180
+        width: 200
       },
       {
         field: 'numeroArticulo',
         headerName: '# Articulo',
-        width: 140
+        width: 120
       },
       {
         field: 'cantidad',
@@ -128,35 +94,36 @@ export class DetailCellRendererPedimentosItemsComponent {
       {
         field: 'tipoPrioridad',
         headerName: 'Tipo Prioridad',
-        width: 200
+        width: 150
       },
       {
         field: 'observacion',
         headerName: 'Observacion',
-        width: 150
+        width: 200
       },
-       {
-      field: 'pedimiento',
-      headerName: 'Pedimiento',
-      width: 140,
-      editable: false,
-      cellRenderer: (params: any) => {
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = params.value === true;
-
-        input.addEventListener('change', () => {
-          params.data.pedimiento = input.checked;
-          params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
-          this.checkPedimentoSelection();
-          // Refresh master grid comments column
-          if (this.context && this.context.gridApi) {
-            this.context.gridApi.refreshCells({ force: true });
+      {
+        field: 'pedimentoNumber',
+        headerName: 'Pedimento #',
+        width: 140,
+        cellRenderer: (params: any) => {
+          if (!params.value) {
+            return ''; // Si no hay valor, la celda estará vacía.
           }
-        });
 
-        return input;
-      }
+          const numbers = String(params.value).split(',');
+          const colorMap: { [key: string]: string } = {
+            '1': '#0d6efd', // Azul
+            '2': '#198754', // Verde
+            '3': '#6f42c1', // Púrpura
+          };
+
+          const coloredSpans = numbers.map(num => {
+            const color = colorMap[num.trim()] || 'black'; // Color por defecto si no está en el mapa
+            return `<span style="color: ${color}; font-weight: bold; padding: 0 2px;">${num.trim()}</span>`;
+          }).join(',');
+
+          return coloredSpans;
+        }
       },
     ];
   }
@@ -164,21 +131,8 @@ export class DetailCellRendererPedimentosItemsComponent {
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 35,
-    animateRows: true
+    animateRows: true,
+    suppressCellFocus: true, // ✅ Sin foco en celdas (solo lectura)
+    suppressRowClickSelection: true // ✅ Sin selección de filas
   };
-
-saveItem() {
-
-}
-
-deleteItem()
-{
-
-}
-
-revertItem(){
-
-}
-
-
 }

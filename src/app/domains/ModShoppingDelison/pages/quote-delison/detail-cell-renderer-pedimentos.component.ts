@@ -5,12 +5,11 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { DetailCellRendererPedimentosItemsComponent } from './detail-cell-renderer-pedimentos-items.component';
-import { DetailCellRendererProveedorQuoteComponent } from './detail-cell-renderer-proveedor-quote.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorQuoteComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent],
   template: `
     <div class="detail-grid-container">
       <ag-grid-angular
@@ -21,7 +20,8 @@ import { DetailCellRendererProveedorQuoteComponent } from './detail-cell-rendere
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
-        style="height: 300px; width: 100%;">
+        [domLayout]="'autoHeight'"
+        style="width: 100%;">
       </ag-grid-angular>
     </div>
   `,
@@ -30,6 +30,7 @@ import { DetailCellRendererProveedorQuoteComponent } from './detail-cell-rendere
       padding: 8px;
       background-color: #f8f9fa;
       border-radius: 8px;
+      margin-bottom: 0;
     }
   `]
 })
@@ -50,23 +51,25 @@ export class DetailCellRendererPedimentosComponent {
 
   buildRowData() {
     const pedimentos = this.params.data.pedimentos || [];
-    const providers = this.params.data.providers || [];
     this.rowData = [];
 
     pedimentos.forEach((pedimento: any) => {
       const fechaPedimento = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
-      const proveedor1 = providers[0]?.name || '';
-      const proveedor2 = providers[1]?.name || '';
-      const proveedor3 = providers[2]?.name || '';
+
+      // ✅ Extraer los últimos 3 dígitos del folio
+      const folio = pedimento.folio || '';
+      const ultimosTresDigitos = folio.slice(-3); // Obtener los últimos 3 caracteres
+      const pedimentoFormateado = `Pedimento-${ultimosTresDigitos}`;
 
       this.rowData.push({
-        pedimento: pedimento.name,
+        pedimento: pedimentoFormateado,
+        folio: folio,
         articulos: pedimento.items,
+        idProvider: pedimento.idProvider || 0,
+        idProvider2: pedimento.idProvider2 || 0,
+        idProvider3: pedimento.idProvider3 || 0,
         pdf: 'PDF',
-        fechaPedimento: fechaPedimento,
-        proveedor1: proveedor1,
-        proveedor2: proveedor2,
-        proveedor3: proveedor3
+        fechaPedimento: fechaPedimento
       });
     });
   }
@@ -75,13 +78,24 @@ export class DetailCellRendererPedimentosComponent {
     return [
       {
         field: 'pedimento',
-        headerName: 'PEDIMENTO',
-        width: 150
+        headerName: 'PEDIMENTO #',
+        width: 140
+      },
+    
+    /*  {
+        field: 'folio',
+        headerName: 'FOLIO COT',
+        width: 120
+      },*/
+      {
+        field: 'fechaPedimento',
+        headerName: 'FECHA DEL PEDIMENTO',
+        width: 170
       },
       {
         field: 'articulos',
-        headerName: 'ARTICULO',
-        width: 200,
+        headerName: '# ARTS',
+        width: 100,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleArticulosCascade(node),
@@ -91,52 +105,22 @@ export class DetailCellRendererPedimentosComponent {
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
       {
-        field: 'pdf',
-        headerName: 'PDF',
-        width: 100,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => {
-            alert('PDF clicked for ' + node.data.pedimento);
-          },
-          icon: 'bi-file-earmark-pdf',
-          title: 'Ver PDF'
-        }
-      },
-      {
-        field: 'fechaPedimento',
-        headerName: 'FECHA PEDIMENTO',
-        width: 150
-      },
-      {
-        field: 'proveedor1',
+        field: 'idProvider',
         headerName: 'PROVEEDOR 1',
-        width: 150,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProveedorCascade(node, 0),
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+        width: 160,
+        valueFormatter: params => params.value > 0 ? `Prov ${params.value}` : 'Sin asignar'
       },
       {
-        field: 'proveedor2',
+        field: 'idProvider2',
         headerName: 'PROVEEDOR 2',
-        width: 150,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProveedorCascade(node, 1),
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+        width: 160,
+        valueFormatter: params => params.value > 0 ? `Prov ${params.value}` : 'Sin asignar'
       },
       {
-        field: 'proveedor3',
+        field: 'idProvider3',
         headerName: 'PROVEEDOR 3',
-        width: 150,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProveedorCascade(node, 2),
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+        width: 160,
+        valueFormatter: params => params.value > 0 ? `Prov ${params.value}` : 'Sin asignar'
       }
     ];
   }
@@ -146,8 +130,10 @@ export class DetailCellRendererPedimentosComponent {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 300,
-    detailCellRenderer: DetailCellRendererPedimentosItemsComponent
+    detailRowHeight: 350,
+    detailCellRenderer: DetailCellRendererPedimentosItemsComponent,
+    embedFullWidthRows: true,
+    suppressCellFocus: true
   };
 
   toggleArticulosCascade(node: any) {
@@ -163,29 +149,6 @@ export class DetailCellRendererPedimentosComponent {
         if (otherNode.id !== node.id && otherNode.expanded) {
           otherNode.setExpanded(false);
         }
-      });
-      node.setExpanded(true);
-    }
-  }
-
-  toggleProveedorCascade(node: any, providerIndex: number) {
-    this.gridApi.setGridOption('detailCellRenderer', DetailCellRendererProveedorQuoteComponent);
-    node.setSelected(true);
-
-    const isCurrentlyExpanded = node.expanded;
-
-    if (isCurrentlyExpanded) {
-      node.setExpanded(false);
-    } else {
-      this.gridApi.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id && otherNode.expanded) {
-          otherNode.setExpanded(false);
-        }
-      });
-      // Set context for the provider
-      this.gridApi.setGridOption('detailCellRendererParams', {
-        selectedProviderIndex: providerIndex,
-        providers: this.params.data.providers
       });
       node.setExpanded(true);
     }

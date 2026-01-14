@@ -36,9 +36,11 @@
     <!-- Botonera lateral -->
     <div class="col-auto"*ngIf="!invited">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary" (click)="openCreateModal(selectedItem)"
-          [disabled]="loading || !selectedItem" title="Agregar hijo al seleccionado">
+        <button type="button" class="btn btn-primary" (click)="addRow()" [disabled]="loading" title="Agregar nuevo">
           <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-success" (click)="saveChanges()" [disabled]="loading" title="Guardar cambios">
+          <i class="bi bi-floppy"></i>
         </button>
         <button type="button" class="btn btn-info" (click)="openEditModal(selectedItem)"
           [disabled]="!selectedItem || loading" title="Editar item">
@@ -74,7 +76,7 @@
           <ag-grid-angular *ngIf="!loading && treeData.length > 0" style="width: 100%; height: 100%;"
             class="ag-theme-quartz small-text-ag-grid" [rowData]="treeData" [columnDefs]="colMaster"
             [gridOptions]="gridOptions" [treeData]="true" [getDataPath]="getDataPath" [animateRows]="true"
-            [rowSelection]="'single'" [groupDefaultExpanded]="1" (gridReady)="onGridReady($event)"
+            [rowSelection]="'single'" [groupDefaultExpanded]="-1" (gridReady)="onGridReady($event)"
             (selectionChanged)="onSelectionChanged($event)">
           </ag-grid-angular>
         </div>
