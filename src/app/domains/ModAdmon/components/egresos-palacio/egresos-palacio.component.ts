@@ -2993,37 +2993,32 @@ export class EgresosPalacioComponent {
       children: Map<string, { codigo: string; nombre: string; total: number; count: number }>;
     }>();
 
-    // Cargar objetos nivel 1 y nivel 4 una sola vez (para todos los egresos con mostrartodo=true)
+    // Cargar objetos nivel 1 y nivel 4 SIEMPRE (necesarios para procesar hijos en consolidado)
     let objetosNivel1: any[] = [];
     let objetosNivel4: any[] = [];
-    const necesitaObjetosNivel = groups.some(group =>
-      group.expenses.some(expense => expense.mostrartodo === true)
-    );
 
-    if (necesitaObjetosNivel) {
-      try {
-        const dataNivel1: any = await lastValueFrom(
-          this.administrationService.getByNivelObjeto(this.idRoot, 1)
-        );
-        objetosNivel1 = (dataNivel1 || []).map((obj: any) => ({
-          id: obj.id,
-          codigo: obj.codigo,
-          nombre: obj.nombre,
-          codigoNombre: `${obj.codigo} - ${obj.nombre}`
-        }));
+    try {
+      const dataNivel1: any = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 1)
+      );
+      objetosNivel1 = (dataNivel1 || []).map((obj: any) => ({
+        id: obj.id,
+        codigo: obj.codigo,
+        nombre: obj.nombre,
+        codigoNombre: `${obj.codigo} - ${obj.nombre}`
+      }));
 
-        const dataNivel4: any = await lastValueFrom(
-          this.administrationService.getByNivelObjeto(this.idRoot, 4)
-        );
-        objetosNivel4 = (dataNivel4 || []).map((obj: any) => ({
-          id: obj.id,
-          codigo: obj.codigo,
-          nombre: obj.nombre,
-          codigoNombre: `${obj.codigo} - ${obj.nombre}`
-        }));
-      } catch (error) {
-        console.error('Error cargando objetos nivel 1 y 4:', error);
-      }
+      const dataNivel4: any = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 4)
+      );
+      objetosNivel4 = (dataNivel4 || []).map((obj: any) => ({
+        id: obj.id,
+        codigo: obj.codigo,
+        nombre: obj.nombre,
+        codigoNombre: `${obj.codigo} - ${obj.nombre}`
+      }));
+    } catch (error) {
+      console.error('Error cargando objetos nivel 1 y 4:', error);
     }
 
     // Obtener nombre de la cuenta bancaria seleccionada
