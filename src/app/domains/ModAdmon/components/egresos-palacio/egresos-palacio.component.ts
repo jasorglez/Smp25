@@ -727,6 +727,7 @@ export class EgresosPalacioComponent {
           return true;
         },
       },
+      
       {
         field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
           if (params.data.__isNew) {

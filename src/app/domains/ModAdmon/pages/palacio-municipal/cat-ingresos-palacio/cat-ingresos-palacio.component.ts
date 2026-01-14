@@ -107,6 +107,8 @@ export class CatIngresosPalacioComponent {
     suppressDragLeaveHidesColumns: true,
     rowGroupPanelShow: 'never',
     suppressRowClickSelection: true,
+    rowDragManaged: true,
+    rowDragEntireRow: true,
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -127,6 +129,7 @@ export class CatIngresosPalacioComponent {
     },
     onCellValueChanged: this.onCellValueChanged.bind(this),
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
+    onRowDragEnd: this.onRowDragEnd.bind(this),
   };
 
   get colMaster(): ColDef[] {
@@ -134,12 +137,20 @@ export class CatIngresosPalacioComponent {
       {
         field: 'description',
         headerName: 'Descripción',
-        editable: true,
+        editable: false, // ✅ Deshabilitar edición inline
         minWidth: 500,
         flex: 1,
         cellRenderer: 'agGroupCellRenderer',
         cellRendererParams: {
           suppressCount: true,
+        },
+        rowDrag: true, // ✅ Permitir arrastrar filas
+        onCellDoubleClicked: (event: any) => {
+          // ✅ Handler específico para doble clic en la columna
+          console.log('🖱️ Doble clic en columna description:', event.data);
+          if (event.data && !this.invited) {
+            this.openEditModal(event.data);
+          }
         },
       },
       {
@@ -188,21 +199,40 @@ export class CatIngresosPalacioComponent {
   }
 
   // Convertir árbol a formato plano con paths para AG Grid Tree Data
-  flattenTreeWithPath(nodes: any[], parentPath: string[] = []): any[] {
+  flattenTreeWithPath(nodes: any[], parentPath: string[] = [], level: number = 0): any[] {
     let result: any[] = [];
 
     nodes.forEach(node => {
       // Usar la descripción como path
       const currentPath = [...parentPath, node.description];
+
+      // ✅ Preservar TODOS los campos del nodo original
       const flatNode = {
-        ...node,
-        path: currentPath
+        id: node.id,
+        idCompany: node.idCompany,
+        description: node.description,
+        type: node.type,
+        parentId: node.parentId,
+        parent_id: node.parent_id,
+        active: node.active,
+        path: currentPath,
+        children: node.children, // Mantener referencia a hijos para validaciones
+        __isNew: node.__isNew,
+        __modified: node.__modified
       };
+
+      console.log(`📊 Nivel ${level} - Nodo aplanado:`, {
+        id: flatNode.id,
+        description: flatNode.description,
+        parentId: flatNode.parentId,
+        active: flatNode.active,
+        hasChildren: node.children && node.children.length > 0
+      });
 
       result.push(flatNode);
 
       if (node.children && node.children.length > 0) {
-        const childResults = this.flattenTreeWithPath(node.children, currentPath);
+        const childResults = this.flattenTreeWithPath(node.children, currentPath, level + 1);
         result = result.concat(childResults);
       }
     });
@@ -290,8 +320,16 @@ export class CatIngresosPalacioComponent {
   }
 
   onCellDoubleClicked(event: CellDoubleClickedEvent) {
+    console.log('🖱️ Doble clic detectado:', {
+      data: event.data,
+      colId: event.column?.getColId(),
+      rowLevel: event.node?.level
+    });
+
     if (event.data) {
       this.openEditModal(event.data);
+    } else {
+      console.warn('⚠️ No hay datos en el evento de doble clic');
     }
   }
 
@@ -357,11 +395,24 @@ export class CatIngresosPalacioComponent {
     this.modalParent = null;
     this.modalEditingItem = item;
 
+    // Normalizar el valor de active a booleano
+    const activeValue = typeof item.active === 'number'
+      ? item.active === 1
+      : Boolean(item.active);
+
+    console.log('📝 Datos a cargar en formulario:', {
+      description: item.description,
+      active: activeValue,
+      originalActive: item.active
+    });
+
     // Cargar datos del item al formulario
     this.modalForm.patchValue({
       description: item.description || '',
-      active: item.active
+      active: activeValue
     });
+
+    console.log('📋 Formulario después de patchValue:', this.modalForm.value);
 
     // Abrir modal
     const modalElement = document.getElementById('modalIngresosPalacio');
@@ -577,6 +628,150 @@ export class CatIngresosPalacioComponent {
         'error'
       );
     }
+  }
+
+  async onRowDragEnd(event: any): Promise<void> {
+    const draggedNode = event.node;
+    const overNode = event.overNode;
+
+    // Validar que tenemos nodos válidos
+    if (!draggedNode || !draggedNode.data || !overNode || !overNode.data) {
+      console.warn('🔴 Drag end: nodos inválidos');
+      return;
+    }
+
+    const draggedItem = draggedNode.data;
+    const targetItem = overNode.data;
+
+    console.log('🔵 Drag End Event:', {
+      draggedItem: `${draggedItem.description} (ID: ${draggedItem.id})`,
+      targetItem: `${targetItem.description} (ID: ${targetItem.id})`,
+      draggedParentId: draggedItem.parentId,
+      targetId: targetItem.id
+    });
+
+    // Si ya está en ese padre, no hacer nada
+    if (draggedItem.parentId === targetItem.id) {
+      console.log('⚠️ El item ya pertenece a este padre');
+      return;
+    }
+
+    // Validar que no se está arrastrando a sí mismo
+    if (draggedItem.id === targetItem.id) {
+      alerts.basicAlert(
+        'Operación no permitida',
+        'No puede arrastrar un elemento sobre sí mismo',
+        'warning'
+      );
+      return;
+    }
+
+    // Validar que no se está arrastrando a uno de sus propios hijos
+    const isDescendant = this.isDescendantOf(targetItem.id, draggedItem.id);
+    if (isDescendant) {
+      alerts.basicAlert(
+        'Operación no permitida',
+        'No puede arrastrar un elemento dentro de uno de sus propios hijos',
+        'warning'
+      );
+      return;
+    }
+
+    // Confirmar la operación
+    const result = await alerts.confirmAlert(
+      '¿Mover ingreso?',
+      `¿Desea mover "${draggedItem.description}" bajo "${targetItem.description}"?`,
+      'question',
+      'Sí, mover'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      // Actualizar el parentId del item arrastrado
+      const updateData = {
+        description: draggedItem.description,
+        type: draggedItem.type || 'INCOME',
+        parentId: targetItem.id, // Nuevo padre
+        active: draggedItem.active,
+        idCompany: this.idRoot
+      };
+
+      console.log('🔄 Actualizando item:', updateData);
+
+      await lastValueFrom(
+        this.catalogadmonService.updateCatalog(draggedItem.id, updateData)
+      );
+
+      alerts.basicAlert(
+        '¡Movido!',
+        `El ingreso "${draggedItem.description}" se ha movido exitosamente bajo "${targetItem.description}"`,
+        'success'
+      );
+
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Reordenar Catálogo Ingresos Palacio (Drag & Drop)`,
+        'Menu Administración - Palacio Municipal',
+        this.trackingService.getEmail()
+      );
+
+      // Recargar datos para reflejar el cambio
+      this.obtenerDatos();
+
+    } catch (error) {
+      console.error('❌ Error al mover item:', error);
+      alerts.basicAlert(
+        'Error',
+        'No se pudo mover el ingreso. Por favor intente nuevamente.',
+        'error'
+      );
+    }
+  }
+
+  // Método auxiliar para verificar si targetId es descendiente de itemId
+  private isDescendantOf(targetId: number, itemId: number): boolean {
+    const findDescendant = (data: any[], id: number): boolean => {
+      for (const item of data) {
+        if (item.id === id) {
+          return true;
+        }
+        if (item.children && item.children.length > 0) {
+          if (findDescendant(item.children, id)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    // Buscar el item arrastrado
+    const draggedItem = this.catalogData.find(item => item.id === itemId);
+    if (!draggedItem) return false;
+
+    // Construir árbol temporal para buscar descendientes
+    const tree = this.buildTreeFromFlat(this.catalogData);
+
+    // Buscar en el árbol si targetId es descendiente de itemId
+    const findItemInTree = (nodes: any[], id: number): any => {
+      for (const node of nodes) {
+        if (node.id === id) {
+          return node;
+        }
+        if (node.children && node.children.length > 0) {
+          const found = findItemInTree(node.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const itemNode = findItemInTree(tree, itemId);
+    if (!itemNode || !itemNode.children) return false;
+
+    return findDescendant(itemNode.children, targetId);
   }
 
   revert() {

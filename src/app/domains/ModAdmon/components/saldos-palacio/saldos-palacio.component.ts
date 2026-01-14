@@ -599,8 +599,15 @@ export class SaldosPalacioComponent {
       ]
     ];
 
-    // Agregar filas de datos
+    // Agregar filas de datos y calcular totales
+    let totalIngresos = 0;
+    let totalEgresos = 0;
+
     data.forEach(row => {
+      // Acumular totales
+      totalIngresos += row.deposito || 0;
+      totalEgresos += row.gasto || 0;
+
       tableBody.push([
         { text: row.numeroDocumento || '', style: 'tableCell', alignment: 'left' },
         { text: row.fecha || '', style: 'tableCell', alignment: 'center' },
@@ -627,6 +634,31 @@ export class SaldosPalacioComponent {
         }
       ]);
     });
+
+    // Agregar fila de totales
+    tableBody.push([
+      { text: '', style: 'tableCell', alignment: 'left' },
+      { text: '', style: 'tableCell', alignment: 'center' },
+      { text: '', style: 'tableCell', alignment: 'left' },
+      { text: 'TOTALES:', style: 'tableTotalLabel', alignment: 'right', bold: true },
+      {
+        text: this.formatCurrencyNumber(totalIngresos),
+        style: 'tableTotalAmount',
+        alignment: 'right',
+        color: '#198754',
+        bold: true,
+        fillColor: '#e6ffe6'
+      },
+      {
+        text: this.formatCurrencyNumber(totalEgresos),
+        style: 'tableTotalAmount',
+        alignment: 'right',
+        color: '#dc3545',
+        bold: true,
+        fillColor: '#ffe6e6'
+      },
+      { text: '', style: 'tableCell', alignment: 'right' }
+    ]);
 
     // Definición del documento
     const docDefinition: any = {
@@ -778,6 +810,15 @@ export class SaldosPalacioComponent {
         },
         tableCellAmount: {
           fontSize: 7
+        },
+        tableTotalLabel: {
+          fontSize: 8,
+          bold: true,
+          color: '#000000'
+        },
+        tableTotalAmount: {
+          fontSize: 8,
+          bold: true
         },
         firmaTitle: {
           fontSize: 8,
