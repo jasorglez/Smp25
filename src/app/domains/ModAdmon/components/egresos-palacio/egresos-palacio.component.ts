@@ -543,6 +543,17 @@ export class EgresosPalacioComponent {
   private formatDate(value: string | Date | null | undefined): string {
     if (!value) return '';
     try {
+      // Si es una cadena en formato YYYY-MM-DD, parsear manualmente para evitar problemas de zona horaria
+      if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = value.split('-').map(Number);
+        return [
+          day.toString().padStart(2, '0'),
+          month.toString().padStart(2, '0'),
+          year.toString()
+        ].join('/');
+      }
+
+      // Para otros formatos, usar Date
       const date = new Date(value);
       if (isNaN(date.getTime())) return '';
       return [
@@ -2866,15 +2877,26 @@ export class EgresosPalacioComponent {
       }
     };
 
-    // Generar y abrir el PDF
+    // Generar y descargar el PDF
     const pdf = pdfMake.createPdf(docDefinition);
-    pdf.open();
 
-    alerts.basicAlert(
-      'Reporte generado',
-      'El reporte de egresos se ha generado correctamente',
-      'success'
-    );
+    // Intentar abrir en nueva pestaña primero
+    try {
+      pdf.open();
+      alerts.basicAlert(
+        'Reporte generado',
+        'El reporte de egresos se ha generado correctamente',
+        'success'
+      );
+    } catch (error) {
+      // Si falla (bloqueador de popups), descargar automáticamente
+      pdf.download(`Reporte_Egreso_${new Date().getTime()}.pdf`);
+      alerts.basicAlert(
+        'Reporte descargado',
+        'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente. Si desea permitir ventanas emergentes, configure su navegador.',
+        'info'
+      );
+    }
   }
 
   /**
@@ -2963,7 +2985,13 @@ export class EgresosPalacioComponent {
     const content: any[] = [];
 
     // Objeto para almacenar totales por grupo - usar Map para acumular por código nivel 1
-    const groupTotalsMap = new Map<string, { codigo: string; nombre: string; total: number; count: number }>();
+    const groupTotalsMap = new Map<string, {
+      codigo: string;
+      nombre: string;
+      total: number;
+      count: number;
+      children: Map<string, { codigo: string; nombre: string; total: number; count: number }>;
+    }>();
 
     // Cargar objetos nivel 1 y nivel 4 una sola vez (para todos los egresos con mostrartodo=true)
     let objetosNivel1: any[] = [];
@@ -3035,26 +3063,67 @@ export class EgresosPalacioComponent {
                 codigo: nivel1Info.codigo,
                 nombre: nivel1Info.nombre,
                 total: 0,
-                count: 0
+                count: 0,
+                children: new Map()
               });
             }
             const entry = groupTotalsMap.get(codigoNivel1)!;
             entry.total += grupo.subtotal;
-            entry.count += 1; // Incrementar count por este egreso
+            entry.count += grupo.conceptos.length; // Count actual concepts in this nivel 1 category
+
+            // Agregar hijos (códigos específicos como 1231, 1232, etc.)
+            const subgrupos = this.agruparConceptosPorCodigoEspecifico(grupo.conceptos, objetosNivel4);
+            subgrupos.forEach((subgrupo, codigoEspecifico) => {
+              if (codigoEspecifico === 'sin-especificar') return; // Ignorar sin especificar
+
+              if (!entry.children.has(codigoEspecifico)) {
+                entry.children.set(codigoEspecifico, {
+                  codigo: codigoEspecifico,
+                  nombre: subgrupo.codigoNombre,
+                  total: 0,
+                  count: 0
+                });
+              }
+              const childEntry = entry.children.get(codigoEspecifico)!;
+              childEntry.total += subgrupo.subtotal;
+              childEntry.count += subgrupo.conceptos.length; // Contar conceptos reales
+            });
           });
         } else {
-          // Si no tiene mostrartodo, usar el nivel 1 del grupo (idExpend)
-          if (!groupTotalsMap.has(group.codigo)) {
-            groupTotalsMap.set(group.codigo, {
+          // Si no tiene mostrartodo, usar el nivel 1 del grupo (idExpend) y también sus hijos si existen
+          const codigoGrupo = group.codigo;
+          if (!groupTotalsMap.has(codigoGrupo)) {
+            groupTotalsMap.set(codigoGrupo, {
               codigo: group.codigo,
               nombre: group.nombre,
               total: 0,
-              count: 0
+              count: 0,
+              children: new Map()
             });
           }
-          const entry = groupTotalsMap.get(group.codigo)!;
+          const entry = groupTotalsMap.get(codigoGrupo)!;
           entry.total += total;
-          entry.count += 1;
+          entry.count += concepts.length; // Count actual concepts in this expense
+
+          // Si hay conceptos, también agrupar por código específico
+          if (concepts.length > 0 && objetosNivel4.length > 0) {
+            const subgrupos = this.agruparConceptosPorCodigoEspecifico(concepts, objetosNivel4);
+            subgrupos.forEach((subgrupo, codigoEspecifico) => {
+              if (codigoEspecifico === 'sin-especificar') return;
+
+              if (!entry.children.has(codigoEspecifico)) {
+                entry.children.set(codigoEspecifico, {
+                  codigo: codigoEspecifico,
+                  nombre: subgrupo.codigoNombre,
+                  total: 0,
+                  count: 0
+                });
+              }
+              const childEntry = entry.children.get(codigoEspecifico)!;
+              childEntry.total += subgrupo.subtotal;
+              childEntry.count += subgrupo.conceptos.length;
+            });
+          }
         }
 
         // Agregar contenido de este egreso (página individual)
@@ -3083,7 +3152,8 @@ export class EgresosPalacioComponent {
           codigo: objetoNivel1.codigo,
           nombre: objetoNivel1.nombre,
           total: 0,
-          count: 0
+          count: 0,
+          children: new Map()
         });
       }
     });
@@ -3140,13 +3210,25 @@ export class EgresosPalacioComponent {
 
     // Generar PDF y abrirlo en nueva pestaña
     const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-    pdfDocGenerator.open();
 
-    alerts.basicAlert(
-      'Reporte generado',
-      `Se generó el reporte consolidado con ${groups.reduce((acc, g) => acc + g.expenses.length, 0)} egresos agrupados en ${groups.length} objetos de gasto.`,
-      'success'
-    );
+    // Intentar abrir en nueva pestaña primero
+    try {
+      pdfDocGenerator.open();
+      alerts.basicAlert(
+        'Reporte generado',
+        `Se generó el reporte consolidado con ${groups.reduce((acc, g) => acc + g.expenses.length, 0)} egresos agrupados en ${groups.length} objetos de gasto.`,
+        'success'
+      );
+    } catch (error) {
+      // Si falla (bloqueador de popups), descargar automáticamente
+      const totalEgresos = groups.reduce((acc, g) => acc + g.expenses.length, 0);
+      pdfDocGenerator.download(`Reporte_Consolidado_${totalEgresos}_Egresos_${new Date().getTime()}.pdf`);
+      alerts.basicAlert(
+        'Reporte descargado',
+        'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente. Si desea permitir ventanas emergentes, configure su navegador.',
+        'info'
+      );
+    }
   }
 
   private buildReportPage(
@@ -3274,7 +3356,17 @@ export class EgresosPalacioComponent {
     ];
   }
 
-  private buildSummaryPage(groupTotals: Array<{ codigo: string; nombre: string; total: number; count: number }>, rootResponse: any, accountName: string): any[] {
+  private buildSummaryPage(
+    groupTotals: Array<{
+      codigo: string;
+      nombre: string;
+      total: number;
+      count: number;
+      children: Map<string, { codigo: string; nombre: string; total: number; count: number }>;
+    }>,
+    rootResponse: any,
+    accountName: string
+  ): any[] {
     // Calcular el gran total
     const grandTotal = groupTotals.reduce((acc, group) => acc + group.total, 0);
     const totalCount = groupTotals.reduce((acc, group) => acc + group.count, 0);
@@ -3327,12 +3419,7 @@ export class EgresosPalacioComponent {
               { text: 'Cantidad', style: 'tableHeader', alignment: 'center' },
               { text: 'Total', style: 'tableHeader', alignment: 'right' }
             ],
-            ...groupTotals.map(group => [
-              { text: group.codigo, style: 'tableCell', bold: true, fontSize: 9 },
-              { text: group.nombre, style: 'tableCell', fontSize: 9 },
-              { text: group.count.toString(), style: 'tableCell', alignment: 'center', fontSize: 9 },
-              { text: this.formatCurrency(group.total), style: 'tableCell', alignment: 'right', fontSize: 9 }
-            ]),
+            ...this.buildSummaryTableRows(groupTotals),
             // Fila de totales
             [
               { text: '', border: [false, true, false, false] },
@@ -3375,6 +3462,47 @@ export class EgresosPalacioComponent {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+  }
+
+  /**
+   * Construye las filas de la tabla de resumen con padres e hijos
+   */
+  private buildSummaryTableRows(
+    groupTotals: Array<{
+      codigo: string;
+      nombre: string;
+      total: number;
+      count: number;
+      children: Map<string, { codigo: string; nombre: string; total: number; count: number }>;
+    }>
+  ): any[] {
+    const rows: any[] = [];
+
+    groupTotals.forEach(group => {
+      // Fila del padre
+      rows.push([
+        { text: group.codigo, style: 'tableCell', bold: true, fontSize: 9 },
+        { text: group.nombre, style: 'tableCell', fontSize: 9, bold: true },
+        { text: group.count.toString(), style: 'tableCell', alignment: 'center', fontSize: 9 },
+        { text: this.formatCurrency(group.total), style: 'tableCell', alignment: 'right', fontSize: 9, bold: true }
+      ]);
+
+      // Filas de los hijos (si existen)
+      if (group.children && group.children.size > 0) {
+        const childrenArray = Array.from(group.children.values()).sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+        childrenArray.forEach(child => {
+          rows.push([
+            { text: `  ${child.codigo}`, style: 'tableCell', fontSize: 8, italics: true, color: '#666666' },
+            { text: child.nombre, style: 'tableCell', fontSize: 8, italics: true, color: '#666666' },
+            { text: child.count.toString(), style: 'tableCell', alignment: 'center', fontSize: 8, color: '#666666' },
+            { text: this.formatCurrency(child.total), style: 'tableCell', alignment: 'right', fontSize: 8, color: '#666666' }
+          ]);
+        });
+      }
+    });
+
+    return rows;
   }
 
   /**
@@ -3466,36 +3594,77 @@ export class EgresosPalacioComponent {
         });
       }
 
+      // Título del grupo padre (1000, 2000, etc.)
       elementos.push({
         text: grupo.nivel1Info.codigoNombre,
         style: 'groupTitle',
         margin: [0, 5, 0, 3]
       });
 
+      // Agrupar conceptos por código específico (hijos: 1231, 1232, etc.)
+      const subgrupos = this.agruparConceptosPorCodigoEspecifico(grupo.conceptos, objetosNivel4);
+      const subgruposOrdenados = Array.from(subgrupos.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+      // Construir filas de la tabla con conceptos y subtotales de hijos
+      const tableBody: any[] = [
+        [
+          { text: 'Fecha', style: 'tableHeader' },
+          { text: 'FOLIO FISCAL', style: 'tableHeader' },
+          { text: 'Descripción', style: 'tableHeader' },
+          { text: 'Total', style: 'tableHeader', alignment: 'right' }
+        ]
+      ];
+
+      // Agregar conceptos agrupados por código específico (hijos)
+      subgruposOrdenados.forEach(([codigoEspecifico, subgrupo]) => {
+        // Agregar conceptos del subgrupo
+        subgrupo.conceptos.forEach((concept: any) => {
+          tableBody.push([
+            { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+            { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
+            { text: concept.description || '', style: 'tableCell' },
+            { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
+          ]);
+        });
+
+        // Agregar subtotal del hijo (1231, 1232, etc.)
+        tableBody.push([
+          { text: '', border: [false, false, false, false] },
+          { text: '', border: [false, false, false, false] },
+          {
+            text: `Subtotal ${subgrupo.codigoNombre}:`,
+            style: 'subgroupLabel',
+            alignment: 'right',
+            border: [false, true, false, true],
+            fillColor: '#f0f0f0',
+            bold: true,
+            fontSize: 7
+          },
+          {
+            text: this.formatCurrency(subgrupo.subtotal),
+            style: 'subgroupValue',
+            alignment: 'right',
+            border: [false, true, false, true],
+            fillColor: '#f0f0f0',
+            bold: true,
+            fontSize: 7
+          }
+        ]);
+      });
+
+      // Agregar subtotal del padre (1000, 2000, etc.)
+      tableBody.push([
+        { text: '', border: [false, false, false, false] },
+        { text: '', border: [false, false, false, false] },
+        { text: 'SUBTOTAL:', style: 'subtotalLabel', alignment: 'right', border: [false, true, false, false] },
+        { text: this.formatCurrency(grupo.subtotal), style: 'subtotalValue', alignment: 'right', border: [false, true, false, false] }
+      ]);
+
       elementos.push({
         table: {
           headerRows: 1,
           widths: [50, 180, '*', 80],
-          body: [
-            [
-              { text: 'Fecha', style: 'tableHeader' },
-              { text: 'FOLIO FISCAL', style: 'tableHeader' },
-              { text: 'Descripción', style: 'tableHeader' },
-              { text: 'Total', style: 'tableHeader', alignment: 'right' }
-            ],
-            ...grupo.conceptos.map((concept: any) => [
-              { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
-              { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
-              { text: concept.description || '', style: 'tableCell' },
-              { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
-            ]),
-            [
-              { text: '', border: [false, false, false, false] },
-              { text: '', border: [false, false, false, false] },
-              { text: 'SUBTOTAL:', style: 'subtotalLabel', alignment: 'right', border: [false, true, false, false] },
-              { text: this.formatCurrency(grupo.subtotal), style: 'subtotalValue', alignment: 'right', border: [false, true, false, false] }
-            ]
-          ]
+          body: tableBody
         },
         layout: {
           hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
@@ -3527,6 +3696,55 @@ export class EgresosPalacioComponent {
     });
 
     return elementos;
+  }
+
+  /**
+   * Agrupa conceptos por código específico (hijos: 1231, 1232, etc.)
+   */
+  private agruparConceptosPorCodigoEspecifico(
+    concepts: any[],
+    objetosNivel4: any[]
+  ): Map<string, any> {
+    const subgrupos = new Map<string, any>();
+
+    concepts.forEach(concepto => {
+      const idCatIng = concepto.idCatIng;
+      const objetoNivel4 = objetosNivel4.find(obj => obj.id === idCatIng);
+
+      if (!objetoNivel4 || !objetoNivel4.codigo) {
+        // Sin código específico, agrupar como "Sin especificar"
+        const codigoKey = 'sin-especificar';
+        if (!subgrupos.has(codigoKey)) {
+          subgrupos.set(codigoKey, {
+            codigoNombre: 'Sin especificar',
+            conceptos: [],
+            subtotal: 0
+          });
+        }
+        const subgrupo = subgrupos.get(codigoKey);
+        subgrupo.conceptos.push(concepto);
+        subgrupo.subtotal += concepto.totalFinal || 0;
+        return;
+      }
+
+      const codigo = objetoNivel4.codigo;
+      const nombre = objetoNivel4.nombre || '';
+      const codigoNombre = `${codigo} - ${nombre}`;
+
+      if (!subgrupos.has(codigo)) {
+        subgrupos.set(codigo, {
+          codigoNombre: codigoNombre,
+          conceptos: [],
+          subtotal: 0
+        });
+      }
+
+      const subgrupo = subgrupos.get(codigo);
+      subgrupo.conceptos.push(concepto);
+      subgrupo.subtotal += concepto.totalFinal || 0;
+    });
+
+    return subgrupos;
   }
 
   /**

@@ -146,8 +146,6 @@ export class CatIngresosPalacioComponent {
         },
         rowDrag: true, // ✅ Permitir arrastrar filas
         onCellDoubleClicked: (event: any) => {
-          // ✅ Handler específico para doble clic en la columna
-          console.log('🖱️ Doble clic en columna description:', event.data);
           if (event.data && !this.invited) {
             this.openEditModal(event.data);
           }
@@ -221,14 +219,6 @@ export class CatIngresosPalacioComponent {
         __modified: node.__modified
       };
 
-      console.log(`📊 Nivel ${level} - Nodo aplanado:`, {
-        id: flatNode.id,
-        description: flatNode.description,
-        parentId: flatNode.parentId,
-        active: flatNode.active,
-        hasChildren: node.children && node.children.length > 0
-      });
-
       result.push(flatNode);
 
       if (node.children && node.children.length > 0) {
@@ -252,12 +242,10 @@ export class CatIngresosPalacioComponent {
     // Usar el endpoint getCatalogs con el tipo específico para ingresos de palacio
     this.catalogadmonService.getCatalogs(this.idRoot, 'INCOME').subscribe({
       next: (data: any) => {
-        console.log('📊 Datos recibidos del backend:', data);
         this.catalogData = data || [];
 
         // Construir el árbol desde los datos planos
         const tree = this.buildTreeFromFlat(this.catalogData);
-        console.log('🌲 Árbol construido:', tree);
 
         // Convertir el árbol a formato plano con paths
         this.treeData = this.flattenTreeWithPath(tree);
@@ -267,7 +255,6 @@ export class CatIngresosPalacioComponent {
           const bId = typeof b.id === 'string' ? parseInt(b.id, 10) : b.id;
           return aId - bId;
         });
-        console.log('📋 TreeData con paths:', this.treeData);
 
         this.loading = false;
 
@@ -302,11 +289,9 @@ export class CatIngresosPalacioComponent {
     if (selectedNodes.length > 0) {
       this.selectedItem = selectedNodes[0].data;
       this.selectedRowData = selectedNodes[0].data;
-      console.log('✅ Item seleccionado:', this.selectedItem);
     } else {
       this.selectedItem = null;
       this.selectedRowData = null;
-      console.log('❌ Sin selección');
     }
   }
 
@@ -315,21 +300,12 @@ export class CatIngresosPalacioComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
   }
 
   onCellDoubleClicked(event: CellDoubleClickedEvent) {
-    console.log('🖱️ Doble clic detectado:', {
-      data: event.data,
-      colId: event.column?.getColId(),
-      rowLevel: event.node?.level
-    });
-
     if (event.data) {
       this.openEditModal(event.data);
-    } else {
-      console.warn('⚠️ No hay datos en el evento de doble clic');
     }
   }
 
@@ -363,7 +339,6 @@ export class CatIngresosPalacioComponent {
   }
 
   openCreateModal(parent?: ICatalogTree): void {
-    console.log('➕ Abriendo modal crear, padre:', parent);
     this.modalMode = 'create';
     this.modalParent = parent || null;
     this.modalEditingItem = null;
@@ -379,13 +354,10 @@ export class CatIngresosPalacioComponent {
     if (modalElement) {
       const modal = new (window as any).bootstrap.Modal(modalElement);
       modal.show();
-    } else {
-      console.error('❌ Modal no encontrado: modalIngresosPalacio');
     }
   }
 
   openEditModal(item: ICatalogTree | null): void {
-    console.log('✏️ Abriendo modal editar, item:', item);
     if (!item) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para editar', 'warning');
       return;
@@ -400,27 +372,17 @@ export class CatIngresosPalacioComponent {
       ? item.active === 1
       : Boolean(item.active);
 
-    console.log('📝 Datos a cargar en formulario:', {
-      description: item.description,
-      active: activeValue,
-      originalActive: item.active
-    });
-
     // Cargar datos del item al formulario
     this.modalForm.patchValue({
       description: item.description || '',
       active: activeValue
     });
 
-    console.log('📋 Formulario después de patchValue:', this.modalForm.value);
-
     // Abrir modal
     const modalElement = document.getElementById('modalIngresosPalacio');
     if (modalElement) {
       const modal = new (window as any).bootstrap.Modal(modalElement);
       modal.show();
-    } else {
-      console.error('❌ Modal no encontrado: modalIngresosPalacio');
     }
   }
 
@@ -456,8 +418,6 @@ export class CatIngresosPalacioComponent {
       type: 'INCOME',
       parentId: parentId
     };
-
-    console.log('💾 Guardando item:', { mode: this.modalMode, formData });
 
     try {
       if (this.modalMode === 'create') {
@@ -636,23 +596,14 @@ export class CatIngresosPalacioComponent {
 
     // Validar que tenemos nodos válidos
     if (!draggedNode || !draggedNode.data || !overNode || !overNode.data) {
-      console.warn('🔴 Drag end: nodos inválidos');
       return;
     }
 
     const draggedItem = draggedNode.data;
     const targetItem = overNode.data;
 
-    console.log('🔵 Drag End Event:', {
-      draggedItem: `${draggedItem.description} (ID: ${draggedItem.id})`,
-      targetItem: `${targetItem.description} (ID: ${targetItem.id})`,
-      draggedParentId: draggedItem.parentId,
-      targetId: targetItem.id
-    });
-
     // Si ya está en ese padre, no hacer nada
     if (draggedItem.parentId === targetItem.id) {
-      console.log('⚠️ El item ya pertenece a este padre');
       return;
     }
 
@@ -698,8 +649,6 @@ export class CatIngresosPalacioComponent {
         active: draggedItem.active,
         idCompany: this.idRoot
       };
-
-      console.log('🔄 Actualizando item:', updateData);
 
       await lastValueFrom(
         this.catalogadmonService.updateCatalog(draggedItem.id, updateData)
