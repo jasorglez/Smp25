@@ -71,8 +71,14 @@ export class EgresosPalacioComponent {
   reportStartDate: string = '';
   invited: boolean = false;
   reportEndDate: string = '';
-  reportType: string = 'consolidado'; // Tipo de reporte: consolidado, agrupado, egresos
+  reportType: string = 'consolidado'; // Tipo de reporte: consolidado, agrupado, egresos, bitacora
   isGeneratingConsolidatedReport: boolean = false;
+
+  // Propiedades para el modal de copiar registro
+  showCopyModal: boolean = false;
+  copyDate: string = '';
+  copyDescription: string = '';
+  isCopyingRecord: boolean = false;
 
   // Propiedades para el modal de proveedor
   showProviderModal: boolean = false;
@@ -2233,6 +2239,186 @@ export class EgresosPalacioComponent {
     }
   }
 
+  // ==================== MÉTODOS PARA COPIAR REGISTRO ====================
+
+  openCopyModal() {
+    if (!this.selectedIncomes) {
+      alerts.basicAlert(
+        'Seleccionar registro',
+        'Por favor, seleccione un registro para copiar.',
+        'warning'
+      );
+      return;
+    }
+
+    // Establecer fecha por defecto: fecha actual
+    const now = new Date();
+    this.copyDate = this.formatDateForInput(now);
+
+    // Pre-llenar descripción con el valor original
+    this.copyDescription = this.selectedIncomes.description || '';
+
+    this.showCopyModal = true;
+    document.body.classList.add('modal-open');
+
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Abrir modal de copiar registro: ${this.selectedIncomes.numberDocument}`,
+      'Palacio Municipal - Egresos',
+      this.trackingService.getEmail()
+    );
+  }
+
+  closeCopyModal() {
+    this.showCopyModal = false;
+    this.copyDate = '';
+    this.copyDescription = '';
+    document.body.classList.remove('modal-open');
+  }
+
+  async copyRecord() {
+    if (!this.selectedIncomes || !this.copyDate || !this.copyDescription) {
+      alerts.basicAlert('Error', 'Complete todos los campos requeridos', 'error');
+      return;
+    }
+
+    this.isCopyingRecord = true;
+
+    try {
+      // 1. Obtener el registro maestro completo
+      const originalId = this.selectedIncomes.id;
+      const originalRecord = this.selectedIncomes;
+
+      // 2. Crear copia del maestro con nueva fecha
+      const newMasterData: any = {
+        idAccount: originalRecord.idAccount,
+        idBusinnes: originalRecord.idBusinnes || this.idRoot,
+        idBranch: originalRecord.idBranch || 0,
+        date: new Date(this.copyDate).toISOString(),
+        idTypeComp: originalRecord.idTypeComp,
+        totalComp: originalRecord.totalComp || 0,
+        idCustomer: originalRecord.idCustomer || 0,
+        idExpend: originalRecord.idExpend,
+        uuid: 'NA',
+        paymentMonth: this.getMonthName(new Date(this.copyDate)),
+        dateStamped: new Date().toISOString(),
+        description: this.copyDescription,
+        type: 'GASTO',
+        subtotal: originalRecord.subtotal || 0,
+        tax: originalRecord.tax || 0,
+        isr: originalRecord.isr || 0,
+        total: originalRecord.total || 0,
+        facturado: false, // Nueva copia sin comprobar
+        createdBy: this.currentUser || 'Usuario',
+        createdAt: new Date().toISOString(),
+        modifiedBy: this.currentUser || 'Usuario',
+        modifiedAt: new Date().toISOString(),
+        status: 'Pagada',
+        active: true,
+        countItems: originalRecord.countItems || 0,
+        countDocomps: 0,
+        mostrartodo: originalRecord.mostrartodo || false
+      };
+
+      // 3. Guardar el nuevo maestro
+      const newMasterResponse: any = await lastValueFrom(
+        this.incomesAndExpensesService.addIncomesAndExpenses(newMasterData)
+      );
+
+      const newMasterId = newMasterResponse.id;
+
+      if (!newMasterId) {
+        throw new Error('No se pudo obtener el ID del nuevo registro');
+      }
+
+      // 4. Obtener los conceptos (hijos) del registro original
+      const originalConcepts: any[] = await lastValueFrom(
+        this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(originalId)
+      );
+
+      // 5. Copiar cada concepto hijo
+      let conceptsCopied = 0;
+      for (const concept of originalConcepts) {
+        const newConceptData: any = {
+          idIncorExp: newMasterId,
+          typeExpense: concept.typeExpense || 'NA',
+          idExpense: concept.idExpense || 0,
+          idCatIng: concept.idCatIng || 0,
+          idCustomer: concept.idCustomer || 0,
+          description: concept.description || '',
+          quantity: concept.quantity || 1,
+          unit: concept.unit || '',
+          claveUnidad: concept.claveUnidad || '',
+          objetoImp: concept.objetoImp || '02',
+          claveProdServ: concept.claveProdServ || '',
+          descuento: concept.descuento || 0,
+          price: concept.price || 0,
+          subtotal: concept.subtotal || 0,
+          iva: concept.iva || false,
+          iva2: concept.iva2 || 0,
+          aplicaIsr: concept.aplicaIsr || false,
+          isr: concept.isr || 0,
+          isrManuallyEdited: concept.isrManuallyEdited || false,
+          total: concept.total || 0,
+          totalFinal: concept.totalFinal || 0,
+          comment: concept.comment || '',
+          dateExpend: new Date(this.copyDate).toISOString(), // Usar nueva fecha
+          numeroIdentificacion: '', // Limpiar número de factura
+          createdBy: this.currentUser || 'Usuario',
+          createdAt: new Date().toISOString(),
+          modifiedBy: this.currentUser || 'Usuario',
+          modifiedAt: new Date().toISOString(),
+          active: true
+        };
+
+        await lastValueFrom(
+          this.incomesAndExpensesService.addConceptFromIncomesAndExpenses(newConceptData)
+        );
+        conceptsCopied++;
+      }
+
+      // 6. Éxito
+      alerts.basicAlert(
+        'Registro copiado',
+        `Se copió el registro con ${conceptsCopied} conceptos. Nuevo número de documento asignado automáticamente.`,
+        'success'
+      );
+
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Copiar registro ${originalRecord.numberDocument} con ${conceptsCopied} conceptos`,
+        'Palacio Municipal - Egresos',
+        this.trackingService.getEmail()
+      );
+
+      // 7. Cerrar modal y refrescar
+      this.closeCopyModal();
+      await this.getExpenditure();
+
+      // 8. Seleccionar el nuevo registro
+      setTimeout(() => {
+        if (this.gridApi) {
+          this.gridApi.forEachNode((node) => {
+            if (node.data && node.data.id === newMasterId) {
+              node.setSelected(true);
+              this.gridApi.ensureNodeVisible(node, 'middle');
+            }
+          });
+        }
+      }, 500);
+
+    } catch (error) {
+      console.error('Error copiando registro:', error);
+      alerts.basicAlert(
+        'Error',
+        `Error al copiar el registro: ${error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    } finally {
+      this.isCopyingRecord = false;
+    }
+  }
+
   // ==================== MÉTODOS PARA REPORTE CONSOLIDADO ====================
 
   openConsolidatedReportModal() {
@@ -2325,6 +2511,9 @@ export class EgresosPalacioComponent {
           break;
         case 'egresos':
           await this.generateReporteEgresos(filteredExpenses);
+          break;
+        case 'bitacora':
+          await this.generateReporteBitacora(filteredExpenses);
           break;
         default:
           alerts.basicAlert('Error', 'Tipo de reporte no válido', 'error');
@@ -2433,6 +2622,419 @@ export class EgresosPalacioComponent {
     } catch (error) {
       console.error('Error generando reporte de egresos:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte de egresos', 'error');
+    }
+  }
+
+  // ==================== REPORTE BITÁCORA (PADRE-HIJO DETALLADO) ====================
+  private async generateReporteBitacora(filteredExpenses: any[]) {
+    try {
+      // Importar pdfMake dinámicamente
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Obtener información de la empresa y firmas
+      const rootResponse: any = await lastValueFrom(
+        this.rootService.getRootbyId(this.idRoot)
+      );
+
+      const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+      const logo2Base64 = rootResponse.picture2
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+        : logoBase64;
+      const watermarkBase64 = rootResponse.picture3
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+        : null;
+
+      const setupManagementInfo: any = await lastValueFrom(
+        this.administrationService.getSetupManagementInfo(this.idRoot)
+      );
+      const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+        ? setupManagementInfo[0]
+        : null;
+
+      // Obtener nombre de la cuenta bancaria seleccionada
+      const selectedAccount = this.bankAccounts.find(account => account.id === this.idAccount);
+      const accountName = selectedAccount
+        ? `${selectedAccount.nameAccount}-${selectedAccount.bankName}`.toUpperCase()
+        : 'INGRESOS PROPIOS';
+
+      // Cargar objetos de gasto nivel 4 para obtener descripción
+      const objetosNivel4: any[] = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 4)
+      ) as any[];
+
+      // Construir datos de la bitácora (padre-hijo)
+      const bitacoraData: any[] = [];
+      let totalGeneral = 0;
+
+      for (const expense of filteredExpenses) {
+        // Cargar conceptos de este egreso
+        const concepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        );
+
+        // Obtener objeto de gasto del maestro
+        const objetoGastoMaestro = this.expenses.find(obj => obj.id === expense.idExpend);
+        const objetoGastoTextoMaestro = objetoGastoMaestro
+          ? `${objetoGastoMaestro.codigo} ${objetoGastoMaestro.nombre}`
+          : 'Sin objeto de gasto';
+
+        // Si no hay conceptos, agregar solo el maestro
+        if (!concepts || concepts.length === 0) {
+          // Extraer código numérico para ordenamiento
+          const codigoNumerico = objetoGastoMaestro?.codigo
+            ? parseInt(objetoGastoMaestro.codigo.toString().replace(/\D/g, '')) || 0
+            : 0;
+
+          bitacoraData.push({
+            numberDocument: expense.numberDocument || 'Sin número',
+            fechaDetalle: this.formatDate(expense.date),
+            fechaRaw: new Date(expense.date), // Para ordenamiento
+            codigoOrden: codigoNumerico, // Para ordenamiento por código
+            objetoGasto: objetoGastoTextoMaestro,
+            concepto: expense.description || 'Sin descripción',
+            totalFinal: expense.total || 0
+          });
+          totalGeneral += expense.total || 0;
+        } else {
+          // Agregar cada concepto como fila
+          for (const concept of concepts) {
+            // Calcular totalFinal del concepto
+            const totalFinalConcepto = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+
+            // Obtener objeto de gasto del concepto (nivel 4)
+            const objetoNivel4 = objetosNivel4.find(obj => obj.id === concept.idCatIng);
+            const objetoGastoTexto = objetoNivel4
+              ? `${objetoNivel4.codigo} ${objetoNivel4.nombre}`
+              : objetoGastoTextoMaestro;
+
+            // Extraer código numérico para ordenamiento
+            const codigoNumerico = objetoNivel4?.codigo
+              ? parseInt(objetoNivel4.codigo.toString().replace(/\D/g, '')) || 0
+              : (objetoGastoMaestro?.codigo ? parseInt(objetoGastoMaestro.codigo.toString().replace(/\D/g, '')) || 0 : 0);
+
+            const fechaConcepto = concept.dateExpend || expense.date;
+
+            bitacoraData.push({
+              numberDocument: expense.numberDocument || 'Sin número',
+              fechaDetalle: this.formatDate(fechaConcepto),
+              fechaRaw: new Date(fechaConcepto), // Para ordenamiento
+              codigoOrden: codigoNumerico, // Para ordenamiento por código
+              objetoGasto: objetoGastoTexto,
+              concepto: concept.description || 'Sin descripción',
+              totalFinal: totalFinalConcepto
+            });
+            totalGeneral += totalFinalConcepto;
+          }
+        }
+      }
+
+      // Ordenar por fecha (ascendente) y luego por código de objeto de gasto (1000, 2000, 3000...)
+      bitacoraData.sort((a, b) => {
+        // Primero ordenar por fecha
+        const fechaComparison = a.fechaRaw.getTime() - b.fechaRaw.getTime();
+        if (fechaComparison !== 0) {
+          return fechaComparison;
+        }
+        // Si las fechas son iguales, ordenar por código de objeto de gasto
+        return a.codigoOrden - b.codigoOrden;
+      });
+
+      if (bitacoraData.length === 0) {
+        alerts.basicAlert(
+          'Sin datos',
+          'No se encontraron registros para generar la bitácora',
+          'warning'
+        );
+        return;
+      }
+
+      // Obtener mes y año del rango de fechas
+      const [startYearStr, startMonthStr] = this.reportStartDate.split('-');
+      const startYear = parseInt(startYearStr);
+      const startMonth = parseInt(startMonthStr);
+
+      const [endYearStr, endMonthStr] = this.reportEndDate.split('-');
+      const endYear = parseInt(endYearStr);
+      const endMonth = parseInt(endMonthStr);
+
+      const startDateObj = new Date(startYear, startMonth - 1, 1);
+      const endDateObj = new Date(endYear, endMonth - 1, 1);
+
+      // Determinar el texto del periodo
+      let periodText = '';
+      if (startYear === endYear && startMonth === endMonth) {
+        periodText = `MES DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear}`;
+      } else if (startYear === endYear) {
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} A ${this.getMonthName(endDateObj).toUpperCase()} ${startYear}`;
+      } else {
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear} A ${this.getMonthName(endDateObj).toUpperCase()} ${endYear}`;
+      }
+
+      // Construir tabla de bitácora
+      const tableBody: any[] = [
+        // Encabezado
+        [
+          { text: '#Doc/Fac', style: 'tableHeader', alignment: 'center' },
+          { text: 'Fecha', style: 'tableHeader', alignment: 'center' },
+          { text: 'Detalle Egresos', style: 'tableHeader', alignment: 'left' },
+          { text: 'Concepto', style: 'tableHeader', alignment: 'left' },
+          { text: 'Total Final', style: 'tableHeader', alignment: 'right' }
+        ]
+      ];
+
+      // Agregar filas de datos
+      bitacoraData.forEach(row => {
+        tableBody.push([
+          { text: row.numberDocument, style: 'tableCell', alignment: 'center', fontSize: 7 },
+          { text: row.fechaDetalle, style: 'tableCell', alignment: 'center', fontSize: 7 },
+          { text: row.objetoGasto, style: 'tableCell', alignment: 'left', fontSize: 7 },
+          { text: row.concepto, style: 'tableCell', alignment: 'left', fontSize: 7 },
+          { text: `$${this.formatCurrencyNumber(row.totalFinal)}`, style: 'tableCell', alignment: 'right', fontSize: 7 }
+        ]);
+      });
+
+      // Fila de total
+      tableBody.push([
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false], bold: true },
+        { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000' }
+      ]);
+
+      // Definición del documento
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape',
+        pageMargins: [40, 55, 40, 80],
+        footer: (currentPage: number, pageCount: number) => {
+          return {
+            text: `Página ${currentPage} / ${pageCount}`,
+            alignment: 'center',
+            fontSize: 8,
+            margin: [0, 10, 0, 0],
+            color: '#666666'
+          };
+        },
+        background: watermarkBase64 ? [
+          {
+            image: 'watermark',
+            width: 400,
+            opacity: 0.15,
+            absolutePosition: { x: 200, y: 180 }
+          }
+        ] : [],
+        content: [
+          // Header con logos y título
+          {
+            columns: [
+              {
+                image: 'logo',
+                width: 80,
+                alignment: 'left'
+              },
+              {
+                stack: [
+                  {
+                    text: rootResponse.name || 'H. JUNTA MUNICIPAL',
+                    style: 'companyName',
+                    alignment: 'center'
+                  },
+                  {
+                    text: rootResponse.address || 'DIRECCIÓN',
+                    style: 'companyInfo',
+                    alignment: 'center',
+                    fontSize: 8
+                  }
+                ],
+                width: '*'
+              },
+              {
+                image: 'logo2',
+                width: 80,
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 0, 0, 9]
+          },
+          // Título del reporte
+          {
+            text: `BITÁCORA DE EGRESOS - ${periodText}`,
+            style: 'reportTitle',
+            alignment: 'center',
+            margin: [0, 5, 0, 5]
+          },
+          {
+            text: `CUENTA: ${accountName}`,
+            style: 'reportSubtitle',
+            alignment: 'center',
+            margin: [0, 0, 0, 10]
+          },
+          // Tabla de bitácora
+          {
+            table: {
+              headerRows: 1,
+              widths: [70, 55, 180, '*', 80],
+              body: tableBody
+            },
+            layout: {
+              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#000000',
+              vLineColor: () => '#000000',
+              paddingTop: () => 2,
+              paddingBottom: () => 2,
+              paddingLeft: () => 4,
+              paddingRight: () => 4
+            },
+            margin: [0, 0, 0, 15]
+          },
+          // Información de resumen
+          {
+            columns: [
+              {
+                text: [
+                  { text: 'Total de Registros: ', bold: true },
+                  { text: `${bitacoraData.length}` }
+                ],
+                fontSize: 9
+              },
+              {
+                text: [
+                  { text: 'Periodo: ', bold: true },
+                  { text: `${this.formatDate(this.reportStartDate)} al ${this.formatDate(this.reportEndDate)}` }
+                ],
+                fontSize: 9,
+                alignment: 'center'
+              },
+              {
+                text: [
+                  { text: 'Monto Total: ', bold: true },
+                  { text: `$${this.formatCurrencyNumber(totalGeneral)}`, color: '#cc0000' }
+                ],
+                fontSize: 9,
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 5, 0, 20]
+          },
+          // Firmas
+          {
+            columns: [
+              {
+                stack: [
+                  { text: firmas?.administratorTitle || 'TESORERO', style: 'firmaTitle', alignment: 'center' },
+                  { text: '\n\n', margin: [0, 3, 0, 0] },
+                  { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                  { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+                ],
+                width: '33%'
+              },
+              {
+                stack: [
+                  { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'firmaTitle', alignment: 'center' },
+                  { text: '\n\n', margin: [0, 3, 0, 0] },
+                  { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                  { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+                ],
+                width: '34%'
+              },
+              {
+                stack: [
+                  { text: firmas?.directorTitle || 'PRESIDENTE', style: 'firmaTitle', alignment: 'center' },
+                  { text: '\n\n', margin: [0, 3, 0, 0] },
+                  { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                  { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+                ],
+                width: '33%'
+              }
+            ]
+          }
+        ],
+        images: watermarkBase64 ? {
+          logo: logoBase64,
+          logo2: logo2Base64,
+          watermark: watermarkBase64
+        } : {
+          logo: logoBase64,
+          logo2: logo2Base64
+        },
+        styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#000000'
+          },
+          companyInfo: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          reportTitle: {
+            fontSize: 11,
+            bold: true,
+            color: '#000000'
+          },
+          reportSubtitle: {
+            fontSize: 9,
+            bold: true,
+            color: '#333333'
+          },
+          tableHeader: {
+            fontSize: 8,
+            bold: true,
+            fillColor: '#e0e0e0',
+            color: '#000000'
+          },
+          tableCell: {
+            fontSize: 7,
+            color: '#000000'
+          },
+          totalLabel: {
+            fontSize: 9,
+            bold: true,
+            color: '#000000'
+          },
+          totalValue: {
+            fontSize: 9,
+            bold: true,
+            color: '#cc0000'
+          },
+          firmaTitle: {
+            fontSize: 7,
+            bold: true,
+            color: '#000000'
+          },
+          firmaNombre: {
+            fontSize: 7,
+            color: '#000000'
+          }
+        }
+      };
+
+      // Generar y abrir el PDF
+      const pdf = pdfMake.createPdf(docDefinition);
+
+      try {
+        pdf.open();
+        alerts.basicAlert(
+          'Bitácora generada',
+          `Se generó la bitácora con ${bitacoraData.length} registros`,
+          'success'
+        );
+      } catch (error) {
+        pdf.download(`Bitacora_Egresos_${new Date().getTime()}.pdf`);
+        alerts.basicAlert(
+          'Bitácora descargada',
+          'El navegador bloqueó la ventana emergente. La bitácora se descargó automáticamente.',
+          'info'
+        );
+      }
+
+    } catch (error) {
+      console.error('Error generando bitácora:', error);
+      alerts.basicAlert('Error', 'Error al generar la bitácora de egresos', 'error');
     }
   }
 
