@@ -415,8 +415,10 @@ export class CustomersComponent implements CanComponentDeactivate {s
         width: 150,
         //hide: this.type != 'CUSTOMERS',
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
+        cellEditorParams: (params) => {
+          return {
+            values: this.Typecop ? this.Typecop.map((item) => item.id) : [],
+          };
         },
         valueFormatter: (params) => {
           const foundItem = this.Typecop
@@ -1200,11 +1202,28 @@ export class CustomersComponent implements CanComponentDeactivate {s
   }
 
   getTypecop() {
-    this.catalogsService.getCatalogsVigente(this.idRoot, this.type).subscribe(
+    // El type del catálogo debe coincidir con lo registrado en la BD
+    // CUSTOMERS -> usa catálogo 'TIPO-CLIENTE' o similar
+    // PROVIDERS -> usa catálogo 'TIPO-PROVEEDOR' o similar
+    const catalogType = this.type === 'CUSTOMERS' ? 'TIPO-CLIENTE' : 'TIPO-PROVEEDOR';
+    console.log('🔍 Buscando catálogo:', catalogType, 'para idRoot:', this.idRoot);
+
+    this.catalogsService.getCatalogsFromAdmon(this.idRoot, catalogType).subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;
+        console.log('✅ Catálogo cargado:', data);
       },
-      (error) => console.error('Error fetching measures:', error)
+      (error) => {
+        console.error('❌ Error fetching catalog:', error);
+        // Si falla, intentar con el tipo original
+        this.catalogsService.getCatalogsVigente(this.idRoot, this.type).subscribe(
+          (data2: Icatalog[]) => {
+            this.Typecop = data2;
+            console.log('✅ Catálogo alternativo cargado:', data2);
+          },
+          (error2) => console.error('❌ Error en ambos intentos:', error2)
+        );
+      }
     );
   }
 
