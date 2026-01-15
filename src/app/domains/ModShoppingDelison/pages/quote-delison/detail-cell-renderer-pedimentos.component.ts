@@ -87,15 +87,11 @@ export class DetailCellRendererPedimentosComponent {
         headerName: 'FOLIO COT',
         width: 120
       },*/
-      {
-        field: 'fechaPedimento',
-        headerName: 'FECHA DEL PEDIMENTO',
-        width: 170
-      },
+    
       {
         field: 'articulos',
-        headerName: '# ARTS',
-        width: 100,
+        headerName: 'ARTICULOS',
+        width: 140,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleArticulosCascade(node),
@@ -104,12 +100,26 @@ export class DetailCellRendererPedimentosComponent {
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
+
+      {
+        field: '',
+        headerName: 'PDF',
+        width: 100
+      },
+
+        {
+        field: 'fechaPedimento',
+        headerName: 'FECHA PEDIMENTO',
+        width: 170
+      },
+
       {
         field: 'idProvider',
         headerName: 'PROVEEDOR 1',
         width: 160,
         valueFormatter: params => params.value > 0 ? `Prov ${params.value}` : 'Sin asignar'
       },
+
       {
         field: 'idProvider2',
         headerName: 'PROVEEDOR 2',
