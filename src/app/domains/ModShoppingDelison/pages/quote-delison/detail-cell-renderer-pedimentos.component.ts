@@ -5,11 +5,12 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { DetailCellRendererPedimentosItemsComponent } from './detail-cell-renderer-pedimentos-items.component';
+import { DetailCellRendererProveedorComponent } from './detail-cell-renderer-proveedor.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorComponent],
   template: `
     <div class="detail-grid-container">
       <ag-grid-angular
@@ -117,23 +118,49 @@ export class DetailCellRendererPedimentosComponent {
         field: 'idProvider',
         headerName: 'PROVEEDOR 1',
         width: 160,
-        valueFormatter: params => params.value > 0 ? `Prov ${params.value}` : 'Sin asignar'
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor A'),
+          icon: 'bi-person-badge',
+          title: 'Ver/Editar Proveedor A'
+        },
+        valueGetter: () => 'Proveedor A',
+        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
       },
 
       {
         field: 'idProvider2',
         headerName: 'PROVEEDOR 2',
         width: 160,
-        valueFormatter: params => params.value > 0 ? `Prov ${params.value}` : 'Sin asignar'
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor B'),
+          icon: 'bi-person-badge',
+          title: 'Ver/Editar Proveedor B'
+        },
+        valueGetter: () => 'Proveedor B',
+        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer' }
       },
       {
         field: 'idProvider3',
         headerName: 'PROVEEDOR 3',
         width: 160,
-        valueFormatter: params => params.value > 0 ? `Prov ${params.value}` : 'Sin asignar'
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor C'),
+          icon: 'bi-person-badge',
+          title: 'Ver/Editar Proveedor C'
+        },
+        valueGetter: () => 'Proveedor C',
+        cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
       }
     ];
   }
+
+  // Tipo de detalle activo: 'articulos' o 'proveedor'
+  private activeDetailType: string = 'articulos';
+  private activeProviderField: string = '';
+  private activeProviderLabel: string = '';
 
   public gridOptions: any = {
     headerHeight: 35,
@@ -141,16 +168,33 @@ export class DetailCellRendererPedimentosComponent {
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 350,
-    detailCellRenderer: DetailCellRendererPedimentosItemsComponent,
+    detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'proveedor') {
+        return {
+          component: DetailCellRendererProveedorComponent,
+          params: {
+            providerField: params.data.providerField,
+            providerLabel: params.data.providerLabel
+          }
+        };
+      }
+      // Por defecto, mostrar artículos
+      return { component: DetailCellRendererPedimentosItemsComponent };
+    },
     embedFullWidthRows: true,
-    suppressCellFocus: true
+    suppressCellFocus: true,
+    context: {
+      providerField: '',
+      providerLabel: ''
+    }
   };
 
   toggleArticulosCascade(node: any) {
-    this.gridApi.setGridOption('detailCellRenderer', DetailCellRendererPedimentosItemsComponent);
+    // Establecer el tipo de detalle como artículos
+    node.data.detailType = 'articulos';
     node.setSelected(true);
 
-    const isCurrentlyExpanded = node.expanded;
+    const isCurrentlyExpanded = node.expanded && this.activeDetailType === 'articulos';
 
     if (isCurrentlyExpanded) {
       node.setExpanded(false);
@@ -160,6 +204,44 @@ export class DetailCellRendererPedimentosComponent {
           otherNode.setExpanded(false);
         }
       });
+      this.activeDetailType = 'articulos';
+      node.setExpanded(true);
+    }
+  }
+
+  toggleProviderCascade(node: any, providerField: string, providerLabel: string) {
+    node.setSelected(true);
+
+    // Verificar si ya está expandido con el mismo proveedor
+    const isCurrentlyExpanded = node.expanded &&
+      node.data.detailType === 'proveedor' &&
+      node.data.providerField === providerField;
+
+    if (isCurrentlyExpanded) {
+      node.setExpanded(false);
+    } else {
+      // Cerrar otros nodos expandidos
+      this.gridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id && otherNode.expanded) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Establecer el tipo de detalle y los parámetros del proveedor
+      node.data.detailType = 'proveedor';
+      node.data.providerField = providerField;
+      node.data.providerLabel = providerLabel;
+
+      this.activeDetailType = 'proveedor';
+      this.activeProviderField = providerField;
+      this.activeProviderLabel = providerLabel;
+
+      // Actualizar el contexto del grid
+      this.gridOptions.context = {
+        providerField: providerField,
+        providerLabel: providerLabel
+      };
+
       node.setExpanded(true);
     }
   }
