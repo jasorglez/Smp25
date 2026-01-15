@@ -20,13 +20,15 @@ import { ElectronicInvoiceComponent } from './electronic-invoice/electronic-invo
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
-import { FacturacionService } from 'app/services/facturacion.service';import { AuthService } from 'app/services/auth.service';
+import { FacturacionService } from 'app/services/facturacion.service';
+import { AuthService } from 'app/services/auth.service';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 
 @Component({
   selector: 'app-income',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ElectronicInvoiceComponent],
+             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ElectronicInvoiceComponent, SelectWithTooltipEditorV2Component],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -386,9 +388,14 @@ export class IncomeComponent {
 
       {
         field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
-        cellEditor: 'searchableSelect',
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: {
-          options: this.customers,
+          options: this.customers.map(obj => ({
+            id: obj.id,
+            description: obj.description,
+            valueAddition: obj.id || '',
+            valueAddition2: obj.description || ''
+          }))
         },
         valueFormatter: (params) => {
           const foundItem = this.customers
@@ -421,17 +428,6 @@ export class IncomeComponent {
         editable: false,filter: true,
         width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-
-      {
-        field: 'paymentMonth', headerName: 'Mes', editable: true, width: 100,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: [
-            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-          ]
-        }
       },
 
       {
@@ -556,7 +552,6 @@ export class IncomeComponent {
       idCustomer     : 0,
       idExpend       : 0,
       uuid           : "NA",
-      paymentMonth   : '',
       dateStamped: null,
       description: "",
       type: "DEPOSITO",

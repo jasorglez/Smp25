@@ -173,7 +173,7 @@ export class QuoteDelisonComponent implements OnInit {
     }
   }
 
-  private loadQuotesFromAllBranches() {
+  private async loadQuotesFromAllBranches() {
     // 🔍 Usar el catálogo de branches que ya está cargado en this.branches
     if (!this.branches || this.branches.length === 0) {
       console.warn('⚠️ No hay sucursales disponibles en el catálogo');
@@ -187,91 +187,111 @@ export class QuoteDelisonComponent implements OnInit {
 
     console.log('✅ Usando catálogo de', this.branches.length, 'sucursales ya cargadas');
 
-    // 🔄 Hacer múltiples llamadas al endpoint, una por cada branch
-    const quotePromises = this.branches.map(branch => {
+    // 🔄 PASO 1: Obtener REQUISICIONES de cada branch (igual que loadQuotesFromSingleBranch)
+    const requisitionPromises = this.branches.map(branch => {
       return new Promise<any[]>((resolve) => {
-        this.ocAndReqsService.getOcAndReqs('branch', branch.id, 'COTIZ').subscribe({
+        this.ocAndReqsService.getOcAndReqs('branch', branch.id, 'REQUIS').subscribe({
           next: (data: any) => {
-            console.log(`✅ Branch ${branch.name} (${branch.id}): ${Array.isArray(data) ? data.length : 0} cotizaciones`);
-            resolve(Array.isArray(data) ? data : []);
+            const requisiciones = Array.isArray(data) ? data : [];
+            console.log(`✅ Branch ${branch.name} (${branch.id}): ${requisiciones.length} requisiciones`);
+            resolve(requisiciones);
           },
           error: (error) => {
-            console.error(`❌ Error al cargar cotizaciones del branch ${branch.name}:`, error);
-            resolve([]); // Retornar array vacío en caso de error
+            console.error(`❌ Error al cargar requisiciones del branch ${branch.name}:`, error);
+            resolve([]);
           }
         });
       });
     });
 
-    // 🔀 Esperar a que todas las promesas se resuelvan
-    Promise.all(quotePromises).then(async (allQuotes: any[][]) => {
-      // Combinar todos los resultados en un solo array
-      const combinedData = allQuotes.flat();
-      console.log(`✅ Total de cotizaciones combinadas: ${combinedData.length}`);
+    // 🔀 Esperar a que todas las requisiciones se carguen
+    const allRequisitions = await Promise.all(requisitionPromises);
+    const combinedRequisitions = allRequisitions.flat();
+    console.log(`✅ Total de requisiciones combinadas: ${combinedRequisitions.length}`);
 
-      // Mapear los datos al formato esperado por el grid
-      const quotesWithItems = await Promise.all(combinedData.map(async (quote: any) => {
-        const branch = this.branches.find(b => b.id === quote.idReference);
-        const branchName = branch?.name || branch?.description || quote.idReference?.toString() || '';
+    // 🔄 PASO 2: Para cada requisición, cargar sus cotizaciones (igual que loadQuotesFromSingleBranch)
+    const requisitionsWithQuotes = await Promise.all(combinedRequisitions.map(async (requisicion: any) => {
+      // ✅ Buscar el nombre de la sucursal usando idReference
+      const branch = this.branches.find(b => b.id === requisicion.idReference);
+      const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
-        // ✅ Cargar los items de la cotización
+      console.log(`📋 Requisición ${requisicion.id}: idReference=${requisicion.idReference} → Sucursal: ${branchName}`);
+
+      // ✅ PASO 2.1: Cargar COTIZACIONES de esta requisición
+      let cotizaciones: any[] = [];
+      try {
+        const cotizacionesData: any = await new Promise((resolve, reject) => {
+          this.ocAndReqsService.getOcAndReqs('requisition', requisicion.id, 'COTIZ').subscribe({
+            next: (data) => resolve(data),
+            error: (err) => reject(err)
+          });
+        });
+        cotizaciones = Array.isArray(cotizacionesData) ? cotizacionesData : [];
+        console.log(`📦 Requisición ${requisicion.id}: ${cotizaciones.length} cotizaciones cargadas`);
+      } catch (error) {
+        console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
+      }
+
+      // ✅ PASO 2.2: Para cada cotización, cargar sus items
+      const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
         let items: any[] = [];
         try {
           const itemsData: any = await new Promise((resolve, reject) => {
-            this.ocAndReqsService.getReqItems(quote.id).subscribe({
+            this.ocAndReqsService.getReqItems(cotizacion.id).subscribe({
               next: (data) => resolve(data),
               error: (err) => reject(err)
             });
           });
           items = Array.isArray(itemsData) ? itemsData : [];
-          console.log(`📦 Cotización ${quote.id}: ${items.length} items cargados`);
+          console.log(`   🔸 Cotización ${cotizacion.id} (Pedimento ${cotizacion.pedimento}): ${items.length} items`);
         } catch (error) {
-          console.error(`❌ Error al cargar items de cotización ${quote.id}:`, error);
+          console.error(`   ❌ Error al cargar items de cotización ${cotizacion.id}:`, error);
         }
 
         return {
-          id: quote.id,
-          branch: branchName,
-          requisition: quote.folio || '',
-          pedimentos: [{
-            id: quote.pedimento || 1,
-            name: `Pedimento ${quote.pedimento || 1}`,
-            items: items.map((item: any) => {
-              console.log(`📋 Item cargado - ID: ${item.id}, pedimentoNum: "${item.pedimentoNum}"`);
-              return {
-                article: item.description || item.nameArticle || '',
-                quantity: item.quantity || 0,
-                tipo: item.intorext || 'Externo',
-                proveedorInterno: item.provint || '',
-                priority: item.typePriority || 'Normal',
-                observaciones: item.comment || '',
-                pedimento: true,
-                numArticle: item.numArticle || '',
-                code: item.code || '',
-                pedimentoNumber: item.pedimentoNum || '' // ✅ Backend usa "pedimentoNum"
-              };
-            }),
-            createdAt: quote.dateCreate
-          }],
-          requiredDate: quote.dateCreate || new Date().toISOString(),
-          requestedBy: quote.solicit || '',
-          department: quote.departmentName || '',
-          providers: [],
-          idReference: quote.idReference,
-          pedimento: quote.pedimento || 1
+          id: cotizacion.id,
+          name: `Pedimento ${cotizacion.pedimento}`,
+          pedimento: cotizacion.pedimento,
+          folio: cotizacion.folio || '',
+          idProvider: cotizacion.idProvider || 0,
+          items: items.map((item: any) => ({
+            article: item.description || item.nameArticle || '',
+            quantity: item.quantity || 0,
+            tipo: item.intorext || 'Externo',
+            proveedorInterno: item.provint || '',
+            priority: item.typePriority || 'Normal',
+            observaciones: item.comment || '',
+            pedimento: item.pedimento || false,
+            numArticle: item.numArticle || '',
+            code: item.code || '',
+            pedimentoNumber: item.pedimentoNum || ''
+          })),
+          createdAt: cotizacion.dateCreate
         };
       }));
 
-      this.fullRowData = quotesWithItems;
-      this.rowData = [...this.fullRowData];
-      console.log('✅ Cotizaciones de todas las sucursales cargadas con items:', this.fullRowData.length);
+      // ✅ PASO 2.3: Retornar requisición con sus cotizaciones
+      return {
+        id: requisicion.id,
+        branch: branchName,
+        requisition: requisicion.folio || '',
+        pedimentos: pedimentosConItems,
+        requiredDate: requisicion.dateCreate || new Date().toISOString(),
+        requestedBy: requisicion.solicit || '',
+        department: requisicion.departmentName || '',
+        idReference: requisicion.idReference
+      };
+    }));
 
-      // Refrescar el grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.gridApi.refreshCells({ force: true });
-      }
-    });
+    this.fullRowData = requisitionsWithQuotes;
+    this.rowData = [...this.fullRowData];
+    console.log('✅ Requisiciones de todas las sucursales cargadas con cotizaciones:', this.fullRowData.length);
+
+    // Refrescar el grid
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.refreshCells({ force: true });
+    }
   }
 
   private async loadQuotesFromSingleBranch(branchId: number) {
@@ -389,15 +409,31 @@ export class QuoteDelisonComponent implements OnInit {
     const isCurrentlyExpanded = node.expanded;
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido, colapsarlo
+      // Si ya está expandido, colapsarlo y mostrar todas las filas
       node.setExpanded(false);
-    } else {
-      // Colapsar cualquier otra fila expandida
+
+      // Restaurar la altura de todas las filas
       this.gridApi.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id && otherNode.expanded) {
-          otherNode.setExpanded(false);
+        otherNode.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida y ocultar las demás filas
+      this.gridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          if (otherNode.expanded) {
+            otherNode.setExpanded(false);
+          }
+          // Ocultar las otras filas
+          otherNode.setRowHeight(0);
+        } else {
+          // Mantener la altura normal de la fila seleccionada
+          otherNode.setRowHeight(undefined);
         }
       });
+
+      // Aplicar los cambios de altura
+      this.gridApi.onRowHeightChanged();
 
       // Expandir el nodo
       node.setExpanded(true);

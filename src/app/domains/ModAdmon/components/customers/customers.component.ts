@@ -880,6 +880,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      idRoot: this.idRoot,
       idBranch: this.idBranch,
       nameContact: '',
       company: '',
