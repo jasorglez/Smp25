@@ -190,7 +190,7 @@ export class ConceptsincomeComponent {
             }
           },
 
-        {
+  /*      {
           field: 'claveUnidad',
           headerName: 'Clave Unidad',
           editable: true,
@@ -246,7 +246,7 @@ export class ConceptsincomeComponent {
             // For display, we might need to store the text separately or fetch it
             return params.value; // This will show the idProductosServicios
           }
-        },
+        },*/
 
         {
           field: 'price',

@@ -755,7 +755,7 @@ export class ReceiptsService {
                     },
                     { text: '', alignment: 'center' },
                   ],
-                ],
+                ] as any,
               },
               layout: 'noBorders',
               margin: [0, 0, 0, 10],
