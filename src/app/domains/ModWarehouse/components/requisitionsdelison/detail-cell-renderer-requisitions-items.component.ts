@@ -15,6 +15,7 @@ import { firstValueFrom } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
@@ -77,33 +78,86 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 
     <!-- Modal para Nuevo Artículo -->
     <div class="modal" tabindex="-1" [ngStyle]="{'display': isNewArticleModalVisible ? 'block' : 'none'}">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-lg">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Registrar Nuevo Artículo</h5>
-            <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-plus-circle me-2"></i>
+              Registrar Nuevo Material
+            </h5>
+            <button type="button" class="btn-close btn-close-white" (click)="closeNewArticleModal()"></button>
           </div>
           <div class="modal-body">
-            <div class="mb-3">
-              <label for="newArticleName" class="form-label">Nombre del Artículo</label>
-              <input type="text" class="form-control" id="newArticleName" [(ngModel)]="newArticle.name">
+            <!-- Descripción del Material -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <label for="newArticleDesc" class="form-label fw-bold">
+                  <i class="bi bi-file-text me-1"></i>
+                  Descripción/Nombre del Material <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control" id="newArticleDesc" [(ngModel)]="newArticle.description" placeholder="Ingrese el nombre del material">
+                <small class="form-text text-muted">El número de material se generará automáticamente</small>
+              </div>
             </div>
-            <div class="mb-3">
-              <label for="newArticleDesc" class="form-label">Descripción del Artículo</label>
-              <textarea class="form-control" id="newArticleDesc" rows="2" [(ngModel)]="newArticle.description"></textarea>
+
+            <div class="row">
+              <!-- Categoría -->
+              <div class="col-md-4 mb-3">
+                <label for="newArticleCategory" class="form-label fw-bold">
+                  <i class="bi bi-folder me-1"></i>
+                  Categoría <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" id="newArticleCategory" [(ngModel)]="newArticle.idCategory" (ngModelChange)="onCategoryChange()">
+                  <option [ngValue]="0" selected>Seleccione una categoría</option>
+                  <option *ngFor="let cat of categories" [ngValue]="cat.id">
+                    {{ cat.description }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Familia -->
+              <div class="col-md-4 mb-3">
+                <label for="newArticleFamily" class="form-label fw-bold">
+                  <i class="bi bi-diagram-3 me-1"></i>
+                  Familia <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" id="newArticleFamily" [(ngModel)]="newArticle.idFamilia" [disabled]="!newArticle.idCategory" (ngModelChange)="onFamilyChange()">
+                  <option [ngValue]="0" selected>Seleccione una familia</option>
+                  <option *ngFor="let fam of filteredFamilies" [ngValue]="fam.id">
+                    {{ fam.description }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Subfamilia -->
+              <div class="col-md-4 mb-3">
+                <label for="newArticleSubfamily" class="form-label fw-bold">
+                  <i class="bi bi-diagram-2 me-1"></i>
+                  Subfamilia <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" id="newArticleSubfamily" [(ngModel)]="newArticle.idSubfamilia" [disabled]="!newArticle.idFamilia">
+                  <option [ngValue]="0" selected>Seleccione una subfamilia</option>
+                  <option *ngFor="let sub of filteredSubfamilies" [ngValue]="sub.id">
+                    {{ sub.description }}
+                  </option>
+                </select>
+              </div>
             </div>
-            <div class="mb-3">
-              <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
-              <input type="text" class="form-control" id="newArticleLink" [(ngModel)]="newArticle.link">
-            </div>
-            <div class="mb-3">
-              <label for="newArticleUsage" class="form-label">¿Para qué se va a usar?</label>
-              <textarea class="form-control" id="newArticleUsage" rows="2" [(ngModel)]="newArticle.usage"></textarea>
+
+            <div class="alert alert-info mb-0">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Nota:</strong> Todos los campos son obligatorios. El número de material será generado automáticamente al guardar.
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
-            <button type="button" class="btn btn-primary" (click)="saveNewArticle()">Guardar</button>
+            <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">
+              <i class="bi bi-x-lg me-1"></i>
+              Cancelar
+            </button>
+            <button type="button" class="btn btn-primary" (click)="saveNewArticle()">
+              <i class="bi bi-floppy me-1"></i>
+              Guardar Material
+            </button>
           </div>
         </div>
       </div>
@@ -166,6 +220,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private typexPrefixesService = inject(TypexPrefixesService);
+  private catalogsService = inject(CatalogsService);
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -187,9 +242,23 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
   // Propiedades para el modal de nuevo artículo
   isNewArticleModalVisible = false;
-  newArticle = { name: '', description: '', link: '', usage: '' };
+  newArticle = {
+    description: '',
+    idCategory: 0,
+    idFamilia: 0,
+    idSubfamilia: 0
+  };
   private currentRowForNewArticle: any = null;
   private originalRecurrentValue: string | null = null;
+
+  // Catálogos para el modal
+  categories: any[] = [];
+  families: any[] = [];
+  subfamilies: any[] = [];
+
+  // Catálogos filtrados (cache para evitar recálculos en cada ciclo de change detection)
+  filteredFamilies: any[] = [];
+  filteredSubfamilies: any[] = [];
 
 
 
@@ -198,6 +267,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
   ngOnInit() {
     this.loadData();
+    this.loadCatalogs();
   }
 
   agInit(params: any): void {
@@ -336,6 +406,67 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         this.materials = [];
       }
     });
+  }
+
+  async loadCatalogs() {
+    // Obtener idRoot desde el signal service
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+    if (!this.idRoot) {
+      console.warn('⚠️ No hay idRoot disponible para cargar catálogos');
+      return;
+    }
+
+    try {
+      console.log('📦 Cargando catálogos para modal de nuevo artículo con idRoot:', this.idRoot);
+
+      // Cargar en paralelo: categorías, familias y subfamilias
+      [this.categories, this.families, this.subfamilies] = await Promise.all([
+        firstValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY')),
+        firstValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT')),
+        firstValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
+      ]);
+
+      console.log('✅ Catálogos cargados:', {
+        categories: this.categories.length,
+        families: this.families.length,
+        subfamilies: this.subfamilies.length
+      });
+
+    } catch (error) {
+      console.error('❌ Error al cargar catálogos:', error);
+      this.categories = [];
+      this.families = [];
+      this.subfamilies = [];
+    }
+  }
+
+  onCategoryChange() {
+    // Resetear familia y subfamilia cuando cambia la categoría
+    console.log('🔄 Categoría cambiada:', this.newArticle.idCategory);
+    this.newArticle.idFamilia = 0;
+    this.newArticle.idSubfamilia = 0;
+
+    // Pre-calcular familias filtradas (cache)
+    this.filteredFamilies = this.newArticle.idCategory
+      ? this.families.filter(f => f.parentId === this.newArticle.idCategory)
+      : [];
+    this.filteredSubfamilies = [];
+
+    console.log('✅ Familias disponibles:', this.filteredFamilies.length);
+  }
+
+  onFamilyChange() {
+    // Resetear subfamilia cuando cambia la familia
+    console.log('🔄 Familia cambiada:', this.newArticle.idFamilia);
+    this.newArticle.idSubfamilia = 0;
+
+    // Pre-calcular subfamilias filtradas (cache)
+    this.filteredSubfamilies = this.newArticle.idFamilia
+      ? this.subfamilies.filter(sf => sf.subParentId === this.newArticle.idFamilia)
+      : [];
+
+    console.log('✅ Subfamilias disponibles:', this.filteredSubfamilies.length);
   }
 
   async loadProviders(materialId: number, type: string): Promise<any[]> {
@@ -491,10 +622,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           if (params.data.recurrent === 'Nuevo') {
             this.currentRowForNewArticle = params.node;
             this.newArticle = {
-              name: params.data.nameArticle || '',
               description: '',
-              link: '',
-              usage: ''
+              idCategory: 0,
+              idFamilia: 0,
+              idSubfamilia: 0
             };
             this.isNewArticleModalVisible = true;
           }
@@ -949,6 +1080,17 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       return;
     }
 
+    // 2. Validar que todos los items seleccionados sean del mismo tipo (Interno o Externo)
+    const tipos = [...new Set(checkedItems.map(item => item.intorext || 'Externo'))];
+    if (tipos.length > 1) {
+      alerts.basicAlert(
+        'Tipos mixtos',
+        'No se pueden crear pedimentos con artículos de tipos mixtos (Interno y Externo). Por favor, seleccione solo artículos del mismo tipo.',
+        'warning'
+      );
+      return;
+    }
+
     try {
       console.log('🔵 ========== INICIANDO CREACIÓN DE COTIZACIÓN ==========');
 
@@ -1179,23 +1321,191 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     if (event.colDef.field === 'recurrent' && event.newValue === 'Nuevo') {
       this.currentRowForNewArticle = event.node;
       this.originalRecurrentValue = event.oldValue; // Guardar valor original por si cancela
-      this.newArticle = { name: '', description: '', link: '', usage: '' }; // Resetear el formulario
+      this.newArticle = { description: '', idCategory: 0, idFamilia: 0, idSubfamilia: 0 }; // Resetear el formulario
       this.isNewArticleModalVisible = true;
     }
   }
 
-  saveNewArticle() {
-    if (!this.newArticle.name) {
-      alerts.basicAlert('Validación', 'El nombre del artículo es obligatorio.', 'warning');
+  async saveNewArticle() {
+    // Validaciones
+    if (!this.newArticle.description || !this.newArticle.description.trim()) {
+      alerts.basicAlert('Validación', 'La descripción del artículo es obligatoria.', 'warning');
       return;
     }
-    // ✅ Solo rellenar el nombre del artículo en ambos campos
-    this.currentRowForNewArticle.data.article = this.newArticle.name;
-    this.currentRowForNewArticle.data.nameArticle = this.newArticle.name; // También guardar en nameArticle
-    this.currentRowForNewArticle.data.__modified = true;
-    this.hasUnsavedChanges = true;
-    this.gridApi.refreshCells({ rowNodes: [this.currentRowForNewArticle], columns: ['article'], force: true });
-    this.closeNewArticleModal();
+
+    if (!this.newArticle.idCategory || this.newArticle.idCategory === 0) {
+      alerts.basicAlert('Validación', 'Debe seleccionar una categoría.', 'warning');
+      return;
+    }
+
+    if (!this.newArticle.idFamilia || this.newArticle.idFamilia === 0) {
+      alerts.basicAlert('Validación', 'Debe seleccionar una familia.', 'warning');
+      return;
+    }
+
+    if (!this.newArticle.idSubfamilia || this.newArticle.idSubfamilia === 0) {
+      alerts.basicAlert('Validación', 'Debe seleccionar una subfamilia.', 'warning');
+      return;
+    }
+
+    try {
+      console.log('💾 Guardando nuevo material en la base de datos...');
+      console.log('📋 Datos del formulario:', this.newArticle);
+      console.log('🏢 idRoot:', this.idRoot);
+
+      // Preparar el payload siguiendo la estructura de materiales-maestro
+      // El backend generará automáticamente el número de material (insumo)
+      const materialPayload = {
+        idCompany: this.idRoot,
+        idBranch: null,
+        typeOcorReq: '',
+        idCustomer: null,
+        insumo: '', // El backend lo genera automáticamente
+        barCode: '',
+        barcode: '',
+        company: '',
+        articulo: this.newArticle.description.trim(),
+        idCategory: this.newArticle.idCategory,
+        idFamilia: this.newArticle.idFamilia,
+        idSubfamilia: this.newArticle.idSubfamilia,
+        idMedida: 0,
+        idUbication: 0,
+        description: this.newArticle.description.trim(),
+        folio: '',
+        price: 0,
+        quantity: 0,
+        date: new Date().toISOString(),
+        merma: 0,
+        fecha: new Date().toISOString(),
+        aplicaResg: false,
+        costoMN: 0,
+        costoDLL: 0,
+        ventaMN: 0,
+        ventaDLL: 0,
+        stockMin: 0,
+        stockMax: 0,
+        picture: '',
+        typeMaterial: 'CONSUMABLE',
+        folioOcorReq: '',
+        vigente: true,
+        active: true
+      };
+
+      console.log('📤 Payload del nuevo material (insumo será generado por el backend):', materialPayload);
+      console.log('🔧 Llamando a materialsService.addMaterial...');
+
+      // Guardar en la base de datos
+      const response: any = await firstValueFrom(
+        this.materialsService.addMaterial(materialPayload)
+      );
+
+      console.log('✅ Material guardado exitosamente. Respuesta del backend:', response);
+      console.log('⚠️ El backend retorna id:0 e insumo vacío, necesitamos recargar los materiales');
+
+      // El backend NO retorna el ID ni el número generado en la respuesta
+      // Necesitamos recargar los materiales y buscar el recién creado por descripción
+      console.log('🔄 Esperando 500ms antes de recargar materiales...');
+
+      // Esperar un poco para que el backend indexe el material
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log('🔄 Recargando lista de materiales...');
+
+      // Intentar hasta 3 veces con delays incrementales
+      let createdMaterial: any = null;
+      let allMaterials: any[] = [];
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        console.log(`🔄 Intento ${attempt}/3 de recargar materiales...`);
+
+        allMaterials = await firstValueFrom(
+          this.materialsService.getMaterialsxview(this.idRoot)
+        );
+
+        console.log(`📦 Materiales recargados en intento ${attempt}:`, allMaterials.length);
+
+        // Buscar el material recién creado por descripción, categoría, familia y subfamilia
+        createdMaterial = allMaterials.find((m: any) =>
+          m.description === this.newArticle.description.trim() &&
+          m.idCategory === this.newArticle.idCategory &&
+          m.idFamilia === this.newArticle.idFamilia &&
+          m.idSubfamilia === this.newArticle.idSubfamilia
+        );
+
+        if (createdMaterial) {
+          console.log(`✅ Material encontrado en intento ${attempt}!`);
+          break;
+        }
+
+        if (attempt < 3) {
+          console.log(`⏳ Material no encontrado, esperando ${attempt * 500}ms antes del siguiente intento...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 500));
+        }
+      }
+
+      if (!createdMaterial) {
+        throw new Error('No se pudo encontrar el material recién creado después de 3 intentos. El material fue guardado pero no aparece en la lista. Por favor, recargue la página manualmente.');
+      }
+
+      console.log('✅ Material encontrado:', createdMaterial);
+
+      const newMaterialId = createdMaterial.id;
+      const backendGeneratedNumber = createdMaterial.insumo || createdMaterial.code || '';
+
+      console.log('🔢 ID del material:', newMaterialId);
+      console.log('🔢 Número generado por el backend:', backendGeneratedNumber);
+
+      // Actualizar la fila actual con el ID del material creado y el número generado por el backend
+      this.currentRowForNewArticle.data.idSupplie = newMaterialId;
+      this.currentRowForNewArticle.data.materialId = newMaterialId;
+      this.currentRowForNewArticle.data.article = this.newArticle.description.trim();
+      this.currentRowForNewArticle.data.nameArticle = this.newArticle.description.trim();
+      this.currentRowForNewArticle.data.code = backendGeneratedNumber;
+      this.currentRowForNewArticle.data.numArticle = backendGeneratedNumber;
+      this.currentRowForNewArticle.data.description = this.newArticle.description.trim();
+      this.currentRowForNewArticle.data.__modified = true;
+      this.hasUnsavedChanges = true;
+
+      // Actualizar la lista local de materiales con todos los materiales recargados
+      this.materials = allMaterials.map(m => ({
+        id: m.id,
+        description: m.description,
+        code: m.insumo || m.code,
+        measure: m.measure || '',
+        active: m.active,
+        idCategory: m.idCategory,
+        idFamilia: m.idFamilia,
+        idSubfamilia: m.idSubfamilia
+      }));
+
+      this.gridApi.refreshCells({
+        rowNodes: [this.currentRowForNewArticle],
+        columns: ['article', 'numArticle'],
+        force: true
+      });
+
+      alerts.basicAlert('Éxito', `Material registrado exitosamente con número ${backendGeneratedNumber}.`, 'success');
+      this.closeNewArticleModal();
+
+    } catch (error: any) {
+      console.error('❌ Error al guardar el material:', error);
+      console.error('❌ Tipo de error:', typeof error);
+      console.error('❌ Error name:', error?.name);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error stack:', error?.stack);
+
+      if (error?.error) {
+        console.error('❌ Error.error:', error.error);
+      }
+
+      if (error?.status) {
+        console.error('❌ HTTP Status:', error.status);
+        console.error('❌ HTTP StatusText:', error.statusText);
+      }
+
+      const errorMsg = error?.error?.message || error?.message || 'Error desconocido al guardar el material';
+      alerts.basicAlert('Error', errorMsg, 'error');
+    }
   }
 
   closeNewArticleModal() {
