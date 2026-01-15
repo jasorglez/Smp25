@@ -1079,6 +1079,17 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       return;
     }
 
+    // 2. Validar que todos los items seleccionados sean del mismo tipo (Interno o Externo)
+    const tipos = [...new Set(checkedItems.map(item => item.intorext || 'Externo'))];
+    if (tipos.length > 1) {
+      alerts.basicAlert(
+        'Tipos mixtos',
+        'No se pueden crear pedimentos con artículos de tipos mixtos (Interno y Externo). Por favor, seleccione solo artículos del mismo tipo.',
+        'warning'
+      );
+      return;
+    }
+
     try {
       console.log('🔵 ========== INICIANDO CREACIÓN DE COTIZACIÓN ==========');
 
