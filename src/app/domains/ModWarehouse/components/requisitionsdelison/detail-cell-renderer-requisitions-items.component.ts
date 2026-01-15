@@ -702,7 +702,8 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           return true;
         }
       },
-      {
+    
+    /*  {
         field: 'idProvider',
         headerName: 'Proveedor',
         width: 250,
@@ -788,7 +789,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           }
           return { cursor: 'pointer' };
         }
-      },
+      }, */
 
       {
         field: 'typePriority',

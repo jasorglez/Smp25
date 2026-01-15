@@ -86,7 +86,9 @@ export class QuoteDelisonComponent implements OnInit {
     animateRows: true,
     singleClickEdit: true,
     masterDetail: true,
-    detailRowHeight: 400,
+    detailCellRendererParams: {
+      autoHeight: true
+    },
     detailCellRenderer: DetailCellRendererPedimentosComponent
   };
 
@@ -273,78 +275,96 @@ export class QuoteDelisonComponent implements OnInit {
   }
 
   private async loadQuotesFromSingleBranch(branchId: number) {
-    console.log('📋 Cargando cotizaciones desde el servidor...');
+    console.log('📋 Cargando REQUISICIONES desde el servidor...');
     console.log('   typeReference: branch');
     console.log('   idReference:', branchId);
-    console.log('   type: COTIZ');
+    console.log('   type: REQUIS');
 
-    // ✅ Llamar al endpoint real
-    this.ocAndReqsService.getOcAndReqs('branch', branchId, 'COTIZ').subscribe({
+    // ✅ PASO 1: Cargar REQUISICIONES de la sucursal
+    this.ocAndReqsService.getOcAndReqs('branch', branchId, 'REQUIS').subscribe({
       next: async (data: any) => {
-        console.log('✅ Datos recibidos del servidor:', data);
+        console.log('✅ Requisiciones recibidas del servidor:', data);
 
         // Mapear los datos del servidor al formato esperado por el grid
-        const quotesArray = Array.isArray(data) ? data : [];
+        const requisiciones = Array.isArray(data) ? data : [];
 
-        const quotesWithItems = await Promise.all(quotesArray.map(async (quote: any) => {
+        const requisitionsWithQuotes = await Promise.all(requisiciones.map(async (requisicion: any) => {
           // ✅ Buscar el nombre de la sucursal usando idReference
-          const branch = this.branches.find(b => b.id === quote.idReference);
-          const branchName = branch?.name || branch?.description || quote.idReference?.toString() || '';
+          const branch = this.branches.find(b => b.id === requisicion.idReference);
+          const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
-          console.log(`📋 Cotización ${quote.id}: idReference=${quote.idReference} → Sucursal: ${branchName}`);
+          console.log(`📋 Requisición ${requisicion.id}: idReference=${requisicion.idReference} → Sucursal: ${branchName}`);
 
-          // ✅ Cargar los items de la cotización
-          let items: any[] = [];
+          // ✅ PASO 2: Cargar COTIZACIONES de esta requisición
+          let cotizaciones: any[] = [];
           try {
-            const itemsData: any = await new Promise((resolve, reject) => {
-              this.ocAndReqsService.getReqItems(quote.id).subscribe({
+            const cotizacionesData: any = await new Promise((resolve, reject) => {
+              this.ocAndReqsService.getOcAndReqs('requisition', requisicion.id, 'COTIZ').subscribe({
                 next: (data) => resolve(data),
                 error: (err) => reject(err)
               });
             });
-            items = Array.isArray(itemsData) ? itemsData : [];
-            console.log(`📦 Cotización ${quote.id}: ${items.length} items cargados`);
+            cotizaciones = Array.isArray(cotizacionesData) ? cotizacionesData : [];
+            console.log(`📦 Requisición ${requisicion.id}: ${cotizaciones.length} cotizaciones cargadas`);
           } catch (error) {
-            console.error(`❌ Error al cargar items de cotización ${quote.id}:`, error);
+            console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
           }
 
+          // ✅ PASO 3: Para cada cotización, cargar sus items
+          const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
+            let items: any[] = [];
+            try {
+              const itemsData: any = await new Promise((resolve, reject) => {
+                this.ocAndReqsService.getReqItems(cotizacion.id).subscribe({
+                  next: (data) => resolve(data),
+                  error: (err) => reject(err)
+                });
+              });
+              items = Array.isArray(itemsData) ? itemsData : [];
+              console.log(`   🔸 Cotización ${cotizacion.id} (Pedimento ${cotizacion.pedimento}): ${items.length} items`);
+            } catch (error) {
+              console.error(`   ❌ Error al cargar items de cotización ${cotizacion.id}:`, error);
+            }
+
+            return {
+              id: cotizacion.id,
+              name: `Pedimento ${cotizacion.pedimento}`,
+              pedimento: cotizacion.pedimento,
+              folio: cotizacion.folio || '',
+              idProvider: cotizacion.idProvider || 0,
+              items: items.map((item: any) => ({
+                article: item.description || item.nameArticle || '',
+                quantity: item.quantity || 0,
+                tipo: item.intorext || 'Externo',
+                proveedorInterno: item.provint || '',
+                priority: item.typePriority || 'Normal',
+                observaciones: item.comment || '',
+                pedimento: item.pedimento || false,
+                numArticle: item.numArticle || '',
+                code: item.code || '',
+                pedimentoNumber: item.pedimentoNum || ''
+              })),
+              createdAt: cotizacion.dateCreate
+            };
+          }));
+
+          // ✅ PASO 4: Retornar requisición con sus cotizaciones
           return {
-            id: quote.id,
+            id: requisicion.id,
             branch: branchName,
-            requisition: quote.folio || '',
-            pedimentos: [{
-              id: quote.pedimento || 1,
-              name: `Pedimento ${quote.pedimento || 1}`,
-              items: items.map((item: any) => {
-                console.log(`📋 Item cargado - ID: ${item.id}, pedimentoNum: "${item.pedimentoNum}"`);
-                return {
-                  article: item.description || item.nameArticle || '',
-                  quantity: item.quantity || 0,
-                  tipo: item.intorext || 'Externo',
-                  proveedorInterno: item.provint || '',
-                  priority: item.typePriority || 'Normal',
-                  observaciones: item.comment || '',
-                  pedimento: true,
-                  numArticle: item.numArticle || '',
-                  code: item.code || '',
-                  pedimentoNumber: item.pedimentoNum || '' // ✅ Backend usa "pedimentoNum"
-                };
-              }),
-              createdAt: quote.dateCreate
-            }],
-            requiredDate: quote.dateCreate || new Date().toISOString(),
-            requestedBy: quote.solicit || '',
-            department: quote.departmentName || '',
-            providers: [],
-            idReference: quote.idReference,
-            pedimento: quote.pedimento || 1
+            requisition: requisicion.folio || '',
+            pedimentos: pedimentosConItems, // ✅ Array de cotizaciones (no un solo objeto)
+            requiredDate: requisicion.dateCreate || new Date().toISOString(),
+            requestedBy: requisicion.solicit || '',
+            department: requisicion.departmentName || '',
+            idReference: requisicion.idReference
           };
         }));
 
-        this.fullRowData = quotesWithItems;
+        this.fullRowData = requisitionsWithQuotes;
         this.rowData = [...this.fullRowData];
 
-        console.log('✅ Cotizaciones cargadas con items:', this.fullRowData.length);
+        console.log('✅ Requisiciones cargadas con sus cotizaciones:', this.fullRowData.length);
 
         // Refrescar el grid si ya existe
         if (this.gridApi) {
@@ -353,8 +373,8 @@ export class QuoteDelisonComponent implements OnInit {
         }
       },
       error: (error) => {
-        console.error('❌ Error al cargar cotizaciones:', error);
-        alerts.basicAlert('Error', 'No se pudieron cargar las cotizaciones', 'error');
+        console.error('❌ Error al cargar requisiciones:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar las requisiciones', 'error');
 
         // En caso de error, inicializar con array vacío
         this.fullRowData = [];

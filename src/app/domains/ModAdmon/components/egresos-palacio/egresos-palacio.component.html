@@ -83,6 +83,14 @@
           title="Exportar a Excel">
           <img src='./assets/img/excel.png' width="17" height="17">
         </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="openCopyModal()"
+          [disabled]="!idAccount || !selectedIncomes"
+          title="Copiar registro seleccionado con nueva fecha">
+          <i class="bi bi-copy"></i>
+        </button>
       </div>
     </div>
 
@@ -239,6 +247,19 @@
                   <small class="text-muted d-block">Listado completo de egresos</small>
                 </label>
               </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportBitacora"
+                  value="bitacora"
+                  [(ngModel)]="reportType">
+                <label class="form-check-label" for="reportBitacora">
+                  <i class="bi bi-journal-text me-1"></i>Bitácora
+                  <small class="text-muted d-block">Detalle de egresos con conceptos (padre-hijo)</small>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -306,3 +327,78 @@
 
 <!-- Backdrop del modal de reporte consolidado -->
 <div class="modal-backdrop fade" [class.show]="showConsolidatedReportModal" [style.display]="showConsolidatedReportModal ? 'block' : 'none'"></div>
+
+<!-- Modal para Copiar Registro -->
+<div class="modal fade" [class.show]="showCopyModal" [style.display]="showCopyModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-copy me-2"></i>Copiar Registro
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeCopyModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Se copiará el registro <strong>{{ selectedIncomes?.numberDocument }}</strong> con todos sus conceptos.
+        </p>
+        <form>
+          <div class="mb-3">
+            <label for="copyDate" class="form-label">Nueva Fecha <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="copyDate"
+              [(ngModel)]="copyDate"
+              name="copyDate"
+              required>
+          </div>
+          <div class="mb-3">
+            <label for="copyDescription" class="form-label">Descripción <span class="text-danger">*</span></label>
+            <input
+              type="text"
+              class="form-control"
+              id="copyDescription"
+              [(ngModel)]="copyDescription"
+              name="copyDescription"
+              placeholder="Ej: NOMINA SEGUNDA QUINCENA ENERO"
+              required>
+            <small class="text-muted">Modifique la descripción si es necesario</small>
+          </div>
+        </form>
+        <div class="alert alert-info" *ngIf="selectedIncomes">
+          <small>
+            <strong>Registro a copiar:</strong><br>
+            #Doc: {{ selectedIncomes?.numberDocument }}<br>
+            Fecha original: {{ selectedIncomes?.date | date:'dd/MM/yyyy' }}<br>
+            Total: {{ selectedIncomes?.total | currency:'MXN' }}
+          </small>
+        </div>
+        <div class="alert alert-warning" *ngIf="isCopyingRecord">
+          <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+              <span class="visually-hidden">Copiando...</span>
+            </div>
+            <span>Copiando registro... Por favor espere.</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeCopyModal()" [disabled]="isCopyingRecord">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="copyRecord()"
+          [disabled]="!copyDate || !copyDescription || isCopyingRecord">
+          <i class="bi bi-copy me-1"></i>Copiar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop del modal de copiar -->
+<div class="modal-backdrop fade" [class.show]="showCopyModal" [style.display]="showCopyModal ? 'block' : 'none'"></div>

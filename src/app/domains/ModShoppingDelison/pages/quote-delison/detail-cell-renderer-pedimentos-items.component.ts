@@ -9,26 +9,6 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   standalone: true,
   imports: [CommonModule, AgGridModule],
   template: `
-    <div class="d-flex justify-content-end gap-2 mb-2">
-      <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveItem()" title="Guardar cambios">
-        <i class="bi bi-floppy"></i>
-        <span
-          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-          *ngIf="masterNotSavedChanges">
-          <span class="visually-hidden">Hay cambios sin guardar</span>
-        </span>
-      </button>
-
-       <button type="button" class="btn btn-sm btn-warning" (click)="revertItem()" title="Deshacer cambios">
-         <i class="bi bi-arrow-clockwise"></i>
-       </button>
-
-       <button type="button" class="btn btn-sm btn-danger" (click)="deleteItem()" title="Eliminar requisición">
-         <i class="bi bi-trash"></i>
-       </button>
-
-    </div>
-
     <div class="detail-grid-container">
       <ag-grid-angular
         class="ag-theme-quartz small-text-ag-grid"
@@ -53,7 +33,6 @@ export class DetailCellRendererPedimentosItemsComponent {
   private context: any;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
-    masterNotSavedChanges: boolean = false;
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -87,28 +66,10 @@ export class DetailCellRendererPedimentosItemsComponent {
 
   get colDefs(): ColDef[] {
     return [
-       {
-        field: 'recurrent',
-        headerName: 'Recurrente',
-        width: 120,
-        editable: (params) => {
-          // Solo es editable si el valor NO es 'Nuevo'.
-          return params.data.recurrent !== 'Nuevo';
-        },
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Recurrente', 'Nuevo']
-        },
-        valueSetter: (params: any) => {
-          params.data.recurrent = params.newValue;
-          return true;
-        }
-      },
-
       {
         field: 'articulo',
         headerName: 'Articulo',
-        width: 120
+        width: 200
       },
       {
         field: 'numeroArticulo',
@@ -133,41 +94,17 @@ export class DetailCellRendererPedimentosItemsComponent {
       {
         field: 'tipoPrioridad',
         headerName: 'Tipo Prioridad',
-        width: 200
+        width: 150
       },
       {
         field: 'observacion',
         headerName: 'Observacion',
-        width: 150
-      },
-       {
-      field: 'pedimiento',
-      headerName: 'Pedimento',
-      width: 100,
-      editable: false,
-      cellRenderer: (params: any) => {
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = params.value === true;
-
-        input.addEventListener('change', () => {
-          params.data.pedimiento = input.checked;
-          params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
-          this.checkPedimentoSelection();
-          // Refresh master grid comments column
-          if (this.context && this.context.gridApi) {
-            this.context.gridApi.refreshCells({ force: true });
-          }
-        });
-
-        return input;
-      }
+        width: 200
       },
       {
         field: 'pedimentoNumber',
         headerName: 'Pedimento #',
         width: 140,
-        editable: false,
         cellRenderer: (params: any) => {
           if (!params.value) {
             return ''; // Si no hay valor, la celda estará vacía.
@@ -194,21 +131,8 @@ export class DetailCellRendererPedimentosItemsComponent {
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 35,
-    animateRows: true
+    animateRows: true,
+    suppressCellFocus: true, // ✅ Sin foco en celdas (solo lectura)
+    suppressRowClickSelection: true // ✅ Sin selección de filas
   };
-
-saveItem() {
-
-}
-
-deleteItem()
-{
-
-}
-
-revertItem(){
-
-}
-
-
 }
