@@ -95,6 +95,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   showImageModal = false;
   selectedImageUrl = '';
 
+  // Cache para evitar re-renderizado
+  private _colMaster: ColDef[] | null = null;
+  private _gridOptions: any = null;
+
   // Modal de agregar/editar material
   showMaterialModal = false;
   materialModalMode: 'add' | 'edit' = 'add';
@@ -278,83 +282,95 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererHistorico: DetailCellRendererHistoricoComponent
   };
 
-  public gridOptions: any = {
-    headerHeight: 35,
-    rowHeight: 35,
-    animateRows: true,
-    suppressClickEdit: false,
-    singleClickEdit: false,
-    stopEditingWhenCellsLoseFocus: false,
-    masterDetail: true,
-    detailRowHeight: 600, // Altura del detail row para subfamilias (ajustable)
-    isRowMaster: (dataItem: any) => {
-      return true; // Todas las filas son maestras
-    },
-    detailCellRendererSelector: (params: any) => {
-      if (params.data.detailType === 'proveedores') {
-        return { component: 'detailCellRendererProveedores' };
-      } else if (params.data.detailType === 'familia') {
-        return { component: 'detailCellRendererFamilia' };
-      } else if (params.data.detailType === 'sucursal') {
-        return { component: 'detailCellRendererSucursal' };
-      } else if (params.data.detailType === 'subfamilia') {
-        return { component: 'detailCellRendererSubfamilia' };
-      } else if (params.data.detailType === 'costos') {
-        return { component: 'detailCellRendererCostos' };
-      } else if (params.data.detailType === 'parametros') {
-        return { component: 'detailCellRendererParametros' };
-      } else if (params.data.detailType === 'historico') {
-        return { component: 'detailCellRendererHistorico' };
-      }
-      return undefined;
-    },
-    getRowClass: (params: any) => {
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      if (params.data.__isNew) {
-        return 'new-row-highlight';
-      }
-      if (params.data.__modified) {
-        return 'modified-row';
-      }
-      return '';
-    },
-    onRowSelected: (event: any) => {
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-    onCellValueChanged: (event: any) => {
-      console.log('Cell value changed:', event);
-
-      // Convertir vigente a true/false (nunca NULL)
-      if (event.colDef.field === 'vigente') {
-        event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
-        console.log('Vigente changed to:', event.data.vigente);
-      }
-
-      event.data.__modified = true;
-      this.hasUnsavedChanges = true;
-
-      // ✅ No hacer refreshCells para columnas de texto editables (insumo, articulo)
-      // porque cierra el editor mientras el usuario está escribiendo
-      const editableTextColumns = ['insumo', 'articulo', 'fecha'];
-      if (!editableTextColumns.includes(event.colDef.field)) {
-        // Envolver en setTimeout para evitar conflictos de renderizado
-        setTimeout(() => {
-          this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-        }, 0);
-      }
+  public get gridOptions(): any {
+    if (this._gridOptions) {
+      return this._gridOptions;
     }
-  };
+
+    this._gridOptions = {
+      headerHeight: 35,
+      rowHeight: 35,
+      animateRows: true,
+      suppressClickEdit: false,
+      singleClickEdit: false,
+      stopEditingWhenCellsLoseFocus: false,
+      masterDetail: true,
+      detailRowHeight: 600, // Altura del detail row para subfamilias (ajustable)
+      isRowMaster: (dataItem: any) => {
+        return true; // Todas las filas son maestras
+      },
+      detailCellRendererSelector: (params: any) => {
+        if (params.data.detailType === 'proveedores') {
+          return { component: 'detailCellRendererProveedores' };
+        } else if (params.data.detailType === 'familia') {
+          return { component: 'detailCellRendererFamilia' };
+        } else if (params.data.detailType === 'sucursal') {
+          return { component: 'detailCellRendererSucursal' };
+        } else if (params.data.detailType === 'subfamilia') {
+          return { component: 'detailCellRendererSubfamilia' };
+        } else if (params.data.detailType === 'costos') {
+          return { component: 'detailCellRendererCostos' };
+        } else if (params.data.detailType === 'parametros') {
+          return { component: 'detailCellRendererParametros' };
+        } else if (params.data.detailType === 'historico') {
+          return { component: 'detailCellRendererHistorico' };
+        }
+        return undefined;
+      },
+      getRowClass: (params: any) => {
+        if (params.node.isSelected()) {
+          return 'selected-row';
+        }
+        if (params.data.__isNew) {
+          return 'new-row-highlight';
+        }
+        if (params.data.__modified) {
+          return 'modified-row';
+        }
+        return '';
+      },
+      onRowSelected: (event: any) => {
+        if (event.node.isSelected()) {
+          this.gridApi.forEachNode((node) => {
+            if (node.id !== event.node.id) {
+              node.setSelected(false);
+            }
+          });
+        }
+      },
+      onCellValueChanged: (event: any) => {
+        console.log('Cell value changed:', event);
+
+        // Convertir vigente a true/false (nunca NULL)
+        if (event.colDef.field === 'vigente') {
+          event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
+          console.log('Vigente changed to:', event.data.vigente);
+        }
+
+        event.data.__modified = true;
+        this.hasUnsavedChanges = true;
+
+        // ✅ No hacer refreshCells para columnas de texto editables (insumo, articulo)
+        // porque cierra el editor mientras el usuario está escribiendo
+        const editableTextColumns = ['insumo', 'articulo', 'fecha'];
+        if (!editableTextColumns.includes(event.colDef.field)) {
+          // Envolver en setTimeout para evitar conflictos de renderizado
+          setTimeout(() => {
+            this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+          }, 0);
+        }
+      }
+    };
+
+    return this._gridOptions;
+  }
 
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -401,7 +417,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         width: 250,
         editable: true,
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: {
+        cellEditorParams: () => ({
           options: this.categories.map(c => ({
             id: c.id,
             description: c.description,
@@ -409,7 +425,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             valueAddition2: c.valueAddition2,
             valueAdditionBit: c.valueAdditionBit
           }))
-        },
+        }),
         valueFormatter: (params: any) => {
           const cat = this.categories.find(c => c.id === params.value);
           return cat ? cat.description : params.data.categoria || '';
@@ -631,6 +647,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
     ];
+
+    return this._colMaster;
   }
 
   // Función auxiliar para obtener el tipo de detalle desde el ID de la columna
