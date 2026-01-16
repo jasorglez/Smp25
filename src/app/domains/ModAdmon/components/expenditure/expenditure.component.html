@@ -73,8 +73,7 @@
     <!-- El componente AG Grid -->
     <div class="col">
       <ag-grid-angular
-        style="width: 100%"
-        [ngStyle]="selectedIncomes ? { height: '37vh' } : { height: '67vh' }"
+        style="width: 100%; height: 75vh"
         class="ag-theme-quartz small-text-ag-grid"
         [gridOptions]="gridOptions"
         [rowData]="incomes"
@@ -89,23 +88,6 @@
         [stopEditingWhenCellsLoseFocus]="true"
       >
       </ag-grid-angular>
-    </div>
-  </div>
-
-  <!-- Only show the tabs when an expenditure item is selected -->
-  <div *ngIf="selectedIncomes" class="concepts-section mt-3">
-    <ul class="nav nav-tabs">
-      <li class="nav-item">
-        <a class="nav-link active" data-bs-toggle="tab" href="#concepts">Conceptos</a>
-      </li>
-    </ul>
-
-    <div class="row">
-      <div class="tab-content">
-        <div id="concepts" class="tab-pane fade show active">
-          <app-conceptsexpenditure></app-conceptsexpenditure>
-        </div>
-      </div>
     </div>
   </div>
 </div>
