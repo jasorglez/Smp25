@@ -14,21 +14,25 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
-import { AdditionalInfoComponent } from "./additional-info/additional-info.component";
-import { ConceptsincomeComponent } from './conceptsincome/conceptsincome.component';
-import { ElectronicInvoiceComponent } from './electronic-invoice/electronic-invoice.component';
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { FacturacionService } from 'app/services/facturacion.service';
 import { AuthService } from 'app/services/auth.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { ButtonCellRendererIncomeComponent } from './button-cell-renderer-income.component';
+import { PdfButtonCellRendererIncomeComponent } from './pdf-button-cell-renderer-income.component';
+import { DetailCellRendererConceptsIncomeComponent } from './detail-cell-renderer-concepts-income.component';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 
 @Component({
   selector: 'app-income',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-             FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ElectronicInvoiceComponent, SelectWithTooltipEditorV2Component],
+             FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
+             PdfButtonCellRendererIncomeComponent, DetailCellRendererConceptsIncomeComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -43,7 +47,12 @@ export class IncomeComponent {
   private trackingService = inject(TrackingService);
   private BranchsService = inject(BranchsService);
   private facturacionService = inject(FacturacionService);
+  private catalogsService = inject(CatalogsService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
   authService = inject(AuthService);
+
+  private isGeneratingReport: boolean = false;
 
 
   ngOnInit() {
@@ -83,8 +92,6 @@ export class IncomeComponent {
     
   };
 
-  // NUEVA PROPIEDAD: Para controlar qué pestaña está visible,  'concepts' será la pestaña por defecto al inicio.
-  public activeTab: string = 'concepts';
 
   hasConsecutiveError: boolean = false;
 
@@ -138,11 +145,6 @@ export class IncomeComponent {
   }
 
 
-  // NUEVO MÉTODO: Para cambiar la pestaña activa al hacer clic.
-  public setActiveTab(tab: string): void {
-    this.activeTab = tab;
-  }
-  
   async getBillingManagementInfo() {
     this.administrationService.getBillingManagementInfo(this.root).subscribe(
       (data: any) => {
@@ -159,8 +161,13 @@ export class IncomeComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
+    headerHeight: 24,
+    rowHeight: 24,
+    animateRows: true,
+    masterDetail: true,
+    detailRowHeight: 600,
+    isRowMaster: (dataItem: any) => true,
+    detailCellRenderer: DetailCellRendererConceptsIncomeComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -186,8 +193,11 @@ export class IncomeComponent {
       return null;
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
+      // Seleccionar la fila al hacer clic en cualquier celda, excepto en las columnas de cascada
+      const colId = event.column.getColId();
+      if (colId !== 'pdfReport' && colId !== 'countItems') {
+        event.node.setSelected(true);
+      }
     },
     onRowSelected: (event) => {
       // Deseleccionar otras filas cuando se selecciona una nueva
@@ -210,19 +220,26 @@ export class IncomeComponent {
   };
 
   async getIncomes() {
-    
+
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Ingresos`, 'Menu Administracion Ingresos',
           this.trackingService.getEmail() );
-          
+
     this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
-        
+
         const filtered = incomes?.filter(income => {
           return income.type === "DEPOSITO" && income.idAccount === this.idAccount
         }) || [];
-        this.incomes = filtered;
-        
+
+        // Agregar propiedades para master-detail
+        this.incomes = filtered.map(income => ({
+          ...income,
+          countItems: income.countItems || 0,
+          detailType: null,
+          detailData: []
+        }));
+
       },
       error: (err) => {
         // Manejo de errores HTTP
@@ -331,6 +348,34 @@ export class IncomeComponent {
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
+      {
+        field: 'countItems',
+        headerName: 'Items',
+        width: 90,
+        cellRenderer: ButtonCellRendererIncomeComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleCascade(node),
+        },
+        valueGetter: params => params.data.countItems || 0,
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      {
+        field: 'pdfReport',
+        headerName: 'PDF',
+        width: 80,
+        cellRenderer: PdfButtonCellRendererIncomeComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            this.toggleReportDetail(node, 'report');
+          },
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Hacer clic para generar el recibo PDF'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
+      },
       {
         field: 'status',
         headerName: 'Estatus',
@@ -507,16 +552,11 @@ export class IncomeComponent {
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
-// MODIFICAMOS onSelectionChanged
-  onSelectionChanged(event: any) {
+onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
       this.signalsService.setIdIncomeAndExpense(this.selectedIncomes.id);
-      
-      // Cada vez que seleccionamos una nueva fila, volvemos a la pestaña por defecto.
-      this.setActiveTab('concepts'); 
-
     } else {
        this.selectedIncomes = null;
        this.signalsService.setIdIncomeAndExpense(null);
@@ -538,6 +578,30 @@ export class IncomeComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Configurar el detailCellRendererParams para pasar datos al detail renderer
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData);
+      },
+      context: {
+        idRoot: this.root,
+        componentParent: this,
+        gridApi: this.gridApi,
+        catalogsService: this.catalogsService,
+        administrationService: this.administrationService,
+        rootService: this.rootService,
+        base64EncodeService: this.base64EncodeService,
+        CONCEPTS: {
+          load: (incomeId: number, callback: (data: any[]) => void) => {
+            this.loadConceptsData(incomeId, callback);
+          },
+          updateCount: (incomeId: number, count: number) => {
+            this.updateIncomeCountItems(incomeId, count);
+          }
+        }
+      }
+    });
   }
 
   addRow() {
@@ -825,5 +889,152 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       }
     )
   }
- 
+
+  // ==================== METODOS PARA CASCADAS ====================
+
+  toggleCascade(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
+
+    if (isCurrentlyExpanded) {
+      // Si ya esta expandido con conceptos, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demas filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila esta expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'concepts') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'concepts'
+      node.data.detailType = 'concepts';
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con los conceptos
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  async toggleReportDetail(node: any, reportType: 'report' | 'contribution' = 'report') {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === reportType;
+
+    if (isCurrentlyExpanded) {
+      // Si ya esta expandido con el reporte, colapsarlo
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      api.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      api.onRowHeightChanged();
+      return;
+    }
+
+    // Verificar si ya se esta generando un reporte
+    if (this.isGeneratingReport) {
+      alerts.basicAlert(
+        'Procesando',
+        'Ya se esta generando un reporte. Por favor espere.',
+        'warning'
+      );
+      return;
+    }
+
+    // Marcar que se esta generando
+    this.isGeneratingReport = true;
+
+    try {
+      // Colapsar cualquier otra fila expandida
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.expanded && otherNode.id !== node.id) {
+          otherNode.setExpanded(false);
+        }
+      });
+
+      // Ocultar todas las demas filas
+      api.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Si la fila esta expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== reportType) {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle al tipo solicitado
+      node.data.detailType = reportType;
+
+      // Aplicar cambios de altura
+      api.onRowHeightChanged();
+
+      // Expandir con el reporte
+      await new Promise(resolve => setTimeout(resolve, 500));
+      node.setExpanded(true);
+
+    } finally {
+      // Restablecer el flag
+      setTimeout(() => {
+        this.isGeneratingReport = false;
+      }, 1000);
+    }
+  }
+
+  loadConceptsData(incomeId: number, callback: (data: any[]) => void) {
+    this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(incomeId).subscribe({
+      next: (data: any) => {
+        callback(data || []);
+      },
+      error: (err) => {
+        console.error('Error loading concepts:', err);
+        callback([]);
+      }
+    });
+  }
+
+  updateIncomeCountItems(incomeId: number, count: number) {
+    // Actualizar el conteo en la fila del grid
+    const rowNode = this.gridApi?.getRowNode(incomeId.toString());
+    if (rowNode) {
+      rowNode.setDataValue('countItems', count);
+    }
+  }
+
+  collapseCurrentRow(node: any) {
+    if (node) {
+      node.setExpanded(false);
+
+      // Restaurar alturas de todas las filas
+      this.gridApi.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+    }
+  }
+
 }

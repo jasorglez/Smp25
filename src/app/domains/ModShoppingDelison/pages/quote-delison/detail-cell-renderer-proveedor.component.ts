@@ -1,3 +1,4 @@
+
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -19,7 +20,7 @@ pdfMake.vfs = pdfFonts.vfs;
   template: `
     <div class="detail-grid-container">
       <!-- Header con controles -->
-      <div class="mb-2 d-flex justify-content-between align-items-end gap-3">
+      <div class="mb-2 d-flex justify-content-between align-items-end gap-3" style="padding: 10px;">
         <!-- PDF Cotización -->
         <div style="flex: 0 0 auto;">
           <label class="form-label small">PDF Cotización:</label>
@@ -82,13 +83,12 @@ pdfMake.vfs = pdfFonts.vfs;
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
-        style="height: 200px; width: 100%;">
+        style="width: 120%;">
       </ag-grid-angular>
     </div>
   `,
   styles: [`
     .detail-grid-container {
-      padding: 10px;
       background-color: #e3f2fd;
       border-radius: 8px;
     }
@@ -353,7 +353,7 @@ export class DetailCellRendererProveedorComponent {
       {
         field: 'active',
         headerName: 'Activo',
-        width: 80,
+        width: 100,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
         editable: true
@@ -361,55 +361,54 @@ export class DetailCellRendererProveedorComponent {
       {
         field: 'numArticulo',
         headerName: '# Art',
-        width: 70
+        width: 130
       },
       {
         field: 'articulo',
         headerName: 'Artículo',
-        width: 180,
-        flex: 1
+        width: 140,
       },
       {
         field: 'codigoExterno',
         headerName: 'Cód. Externo',
-        width: 110,
+        width: 120,
         editable: true
       },
       {
         field: 'costoUnitario',
         headerName: 'Costo Unit.',
-        width: 100,
+        width: 130,
         editable: true,
         valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00'
       },
       {
         field: 'compraMinima',
         headerName: 'Compra Mín.',
-        width: 100,
+        width: 120,
         editable: true
       },
       {
         field: 'tiempoEntrega',
         headerName: 'T. Entrega',
-        width: 100,
+        width: 120,
         editable: true
       },
       {
         field: 'cantidadConfirmada',
         headerName: 'Cant. Conf.',
-        width: 100,
+        width: 130,
         editable: true
       },
       {
         field: 'costoTotal',
         headerName: 'Costo Total',
-        width: 110,
+        width: 150,
         valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00'
       },
       {
         field: 'autorizado',
         headerName: 'Autoriz.',
-        width: 80,
+        width: 100,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
         editable: true
@@ -428,6 +427,7 @@ export class DetailCellRendererProveedorComponent {
     rowHeight: 28,
     animateRows: true,
     suppressCellFocus: false,
-    stopEditingWhenCellsLoseFocus: true
+    stopEditingWhenCellsLoseFocus: true,
+    domLayout: 'autoHeight'
   };
 }

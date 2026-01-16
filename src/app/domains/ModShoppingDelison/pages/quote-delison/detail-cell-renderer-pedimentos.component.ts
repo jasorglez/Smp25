@@ -22,13 +22,12 @@ import { DetailCellRendererProveedorComponent } from './detail-cell-renderer-pro
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
         [domLayout]="'autoHeight'"
-        style="width: 100%;">
+        style="width: 120%;">
       </ag-grid-angular>
     </div>
   `,
   styles: [`
     .detail-grid-container {
-      padding: 8px;
       background-color: #f8f9fa;
       border-radius: 8px;
       margin-bottom: 0;
@@ -80,7 +79,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'pedimento',
         headerName: 'PEDIMENTO #',
-        width: 140
+        width: 180
       },
     
     /*  {
@@ -92,7 +91,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'articulos',
         headerName: 'ARTICULOS',
-        width: 140,
+        width: 180,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleArticulosCascade(node),
@@ -105,19 +104,19 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: '',
         headerName: 'PDF',
-        width: 100
+        width: 120
       },
 
         {
         field: 'fechaPedimento',
         headerName: 'FECHA PEDIMENTO',
-        width: 170
+        width: 200
       },
 
       {
         field: 'idProvider',
         headerName: 'PROVEEDOR 1',
-        width: 160,
+        width: 200,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor A'),
@@ -131,7 +130,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'idProvider2',
         headerName: 'PROVEEDOR 2',
-        width: 160,
+        width: 200,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor B'),
@@ -144,7 +143,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'idProvider3',
         headerName: 'PROVEEDOR 3',
-        width: 160,
+        width: 200,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor C'),
@@ -167,7 +166,7 @@ export class DetailCellRendererPedimentosComponent {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 350,
+    detailRowHeight: 450,
     detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'proveedor') {
         return {
