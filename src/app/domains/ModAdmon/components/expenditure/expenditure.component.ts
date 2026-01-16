@@ -719,25 +719,10 @@ export class ExpenditureComponent {
       return;
     }
 
-    if (!this.prefixAndConsecutive?.[0]) {
-      alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
-        'error'
-      );
-      return;
-    }
-
     const newRows = this.incomes.filter((row) => row.__isNew);
     const modifiedRows = this.incomes.filter(
       (row) => row.__modified && !row.__isNew
     );
-
-    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach(row => {
-      currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-    });
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -752,25 +737,7 @@ export class ExpenditureComponent {
     });
 
     try {
-      if (newRows.length > 0) {
-        const updatedBillingInfo = {
-          ...this.prefixAndConsecutive[0],
-          consecutive: currentConsecutive
-        };
-
-        const updateConsecutiveObs = this.administrationService.updateBillingManagement(
-          this.idRoot,
-          updatedBillingInfo
-        ).pipe(
-          tap(response => {
-            this.prefixAndConsecutive = [updatedBillingInfo];
-          })
-        );
-
-        const responses = await lastValueFrom(
-          concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
-        );
-      } else {
+      if (addObservables.length > 0 || updateObservables.length > 0) {
         const responses = await lastValueFrom(
           concat(...addObservables, ...updateObservables).pipe(toArray())
         );

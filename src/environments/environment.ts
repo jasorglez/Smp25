@@ -65,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.11.38 (15 Enero 2026 23:53:00) - Add cascade behavior to Expenditure component',
+  version: '3.11.54 (16 Enero 2026 01:53:00) - Add cascade behavior to Expenditure component',
 
 };
 

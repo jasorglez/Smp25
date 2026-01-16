@@ -310,13 +310,14 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
         editable: true,
         width: 100
       },
-      {
+   /*   {
         field: 'unit',
         headerName: 'Unidad',
         type: 'text',
         editable: true,
         width: 100
-      },
+      },*/
+
       {
         field: 'price',
         headerName: 'Precio',
