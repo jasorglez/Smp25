@@ -22,6 +22,9 @@ import { TrackingService } from 'app/services/tracking.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { CustomersService } from 'app/services/customers.service';
+import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-expenditure2.component';
 import { PdfButtonCellRendererExpenditure2Component } from './pdf-button-cell-renderer-expenditure2.component';
 import { DetailCellRendererExpenditure2Component } from './detail-cell-renderer-expenditure2.component';
@@ -48,6 +51,9 @@ export class ExpenditureComponent {
   private branchesService = inject(BranchsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private employeesService = inject(EmployeesService);
+  private customersService = inject(CustomersService);
+  private cuentasContablesService = inject(CuentasContablesService);
   authService = inject(AuthService);
   public trackingService = inject(TrackingService);
 
@@ -76,9 +82,14 @@ export class ExpenditureComponent {
       await this.loadAuthorizers();
       await this.getCurrentUser();
       await this.obtenerBranchs();
+      await this.loadEmployees();
+      await this.loadProviders();
+      await this.loadCuentasContables();
 
       // Refrescar columnas después de cargar datos
       this.refreshColumnDefinitions();
+      // Actualizar contexto del detalle con los datos cargados
+      this.updateDetailContext();
       console.log('✅ Effect Root/Branch completado');
     });
 
@@ -133,6 +144,9 @@ export class ExpenditureComponent {
   branchs: any[] = [];
   incomes: any[] = [];
   expenses: any[] = [];
+  employees: any[] = [];
+  providers: any[] = [];
+  cuentasContables: any[] = [];
   users: any[] = [];
 
   id: number;
@@ -315,6 +329,64 @@ export class ExpenditureComponent {
     });
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Gastos`, 'Egresos ',
       this.trackingService.getEmail());
+  }
+
+  async loadEmployees() {
+    return new Promise<void>((resolve) => {
+      const idBranchNegative = -Math.abs(this.idRoot);
+      this.employeesService.getEmployees(idBranchNegative).subscribe(
+        (data: any) => {
+          this.employees = (data || []).map((e: any) => ({
+            id: e.id,
+            name: e.name || 'Sin nombre'
+          }));
+          console.log('✅ Empleados cargados:', this.employees.length);
+          resolve();
+        },
+        error => {
+          console.error('Error cargando empleados:', error);
+          this.employees = [];
+          resolve();
+        }
+      );
+    });
+  }
+
+  async loadProviders() {
+    return new Promise<void>((resolve) => {
+      this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe(
+        (data: any) => {
+          this.providers = (data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name || 'Sin nombre'
+          }));
+          console.log('✅ Proveedores cargados:', this.providers.length);
+          resolve();
+        },
+        error => {
+          console.error('Error cargando proveedores:', error);
+          this.providers = [];
+          resolve();
+        }
+      );
+    });
+  }
+
+  async loadCuentasContables() {
+    return new Promise<void>((resolve) => {
+      this.cuentasContablesService.getHojas(this.idRoot).subscribe(
+        (data: any) => {
+          this.cuentasContables = data || [];
+          console.log('✅ Cuentas contables cargadas:', this.cuentasContables.length);
+          resolve();
+        },
+        error => {
+          console.error('Error cargando cuentas contables:', error);
+          this.cuentasContables = [];
+          resolve();
+        }
+      );
+    });
   }
 
   private async loadAuthorizers() {
@@ -567,6 +639,48 @@ export class ExpenditureComponent {
     }
   }
 
+  // Método para actualizar el contexto del detalle después de cargar datos
+  private updateDetailContext() {
+    if (this.gridApi) {
+      console.log('🔄 Actualizando contexto del detalle. Empleados:', this.employees.length, 'Proveedores:', this.providers.length);
+      this.gridApi.setGridOption('detailCellRendererParams', {
+        getDetailRowData: (params: any) => {
+          params.successCallback(params.data.detailData);
+        },
+        context: {
+          idRoot: this.idRoot,
+          componentParent: this,
+          gridApi: this.gridApi,
+          catalogsService: this.catalogsService,
+          administrationService: this.administrationService,
+          catalogadmonService: this.cataalogAdmonService,
+          rootService: this.rootService,
+          base64EncodeService: this.base64EncodeService,
+          expenses: this.expenses,
+          employees: this.employees,
+          providers: this.providers,
+          cuentasContables: this.cuentasContables,
+          modalServiceTable: this.modalServiceTable,
+          CONCEPTS: {
+            load: (expenditureId: number, callback: (data: any[]) => void) => {
+              this.loadConceptsData(expenditureId, callback);
+            },
+            save: (expenditureId: number, data: any) => {
+              return this.saveConceptsById(expenditureId, data);
+            },
+            delete: (params: any, callback: () => void) => {
+              this.deleteConceptRow(params, callback);
+            },
+            updateCount: (expenditureId: number, count: number) => {
+              this.updateExpenditureCountItems(expenditureId, count);
+            }
+          }
+        }
+      });
+      console.log('✅ Contexto del detalle actualizado');
+    }
+  }
+
   onSelectedRow(event: any) {
     this.id = event.data.id;
     this.signalsService.setIdIncomeAndExpense(this.id);
@@ -632,6 +746,9 @@ export class ExpenditureComponent {
         rootService: this.rootService,
         base64EncodeService: this.base64EncodeService,
         expenses: this.expenses,
+        employees: this.employees,
+        providers: this.providers,
+        cuentasContables: this.cuentasContables,
         modalServiceTable: this.modalServiceTable,
         CONCEPTS: {
           load: (expenditureId: number, callback: (data: any[]) => void) => {
@@ -719,25 +836,10 @@ export class ExpenditureComponent {
       return;
     }
 
-    if (!this.prefixAndConsecutive?.[0]) {
-      alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
-        'error'
-      );
-      return;
-    }
-
     const newRows = this.incomes.filter((row) => row.__isNew);
     const modifiedRows = this.incomes.filter(
       (row) => row.__modified && !row.__isNew
     );
-
-    let currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach(row => {
-      currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-    });
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -752,25 +854,7 @@ export class ExpenditureComponent {
     });
 
     try {
-      if (newRows.length > 0) {
-        const updatedBillingInfo = {
-          ...this.prefixAndConsecutive[0],
-          consecutive: currentConsecutive
-        };
-
-        const updateConsecutiveObs = this.administrationService.updateBillingManagement(
-          this.idRoot,
-          updatedBillingInfo
-        ).pipe(
-          tap(response => {
-            this.prefixAndConsecutive = [updatedBillingInfo];
-          })
-        );
-
-        const responses = await lastValueFrom(
-          concat(...addObservables, ...updateObservables, updateConsecutiveObs).pipe(toArray())
-        );
-      } else {
+      if (addObservables.length > 0 || updateObservables.length > 0) {
         const responses = await lastValueFrom(
           concat(...addObservables, ...updateObservables).pipe(toArray())
         );

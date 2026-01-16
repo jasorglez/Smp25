@@ -116,6 +116,9 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   expenses: any[] = []; // Tipos de gasto (BILL catalog)
+  employees: any[] = []; // Lista de empleados
+  providers: any[] = []; // Lista de proveedores
+  cuentasContables: any[] = []; // Lista de cuentas contables
   ivaPercent: number = 16; // Porcentaje de IVA por defecto
   setupManagementInfo: any = null; // Información de firmas
 
@@ -147,6 +150,21 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
       this.expenses = this.context.expenses;
     }
 
+    // Cargar empleados del contexto
+    if (this.context?.employees) {
+      this.employees = this.context.employees;
+    }
+
+    // Cargar proveedores del contexto
+    if (this.context?.providers) {
+      this.providers = this.context.providers;
+    }
+
+    // Cargar cuentas contables del contexto
+    if (this.context?.cuentasContables) {
+      this.cuentasContables = this.context.cuentasContables;
+    }
+
     if (this.detailType === 'concepts') {
       this.loadConceptsData();
     } else if (this.detailType === 'report') {
@@ -160,11 +178,35 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
       console.log('🔵 DETALLE: Cargando conceptos para egreso ID:', expenditureId);
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
         console.log(`📊 DETALLE: Conceptos recibidos para ID ${expenditureId}:`, data.length);
-        this.rowData = data.map(concept => ({
-          ...concept,
-          __isNew: false,
-          __modified: false
-        }));
+        // Obtener datos del contexto
+        const employees = this.context?.employees || this.employees || [];
+        const providers = this.context?.providers || this.providers || [];
+        const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+
+        this.rowData = data.map(concept => {
+          const type = concept.typeExpense?.trim().toUpperCase();
+          let selectedEntity = null;
+
+          // Configurar selectedEntity basado en el tipo y idExpense
+          if (type === 'EMPLEADOS' && concept.idExpense) {
+            const employee = employees.find((e: any) => e.id === concept.idExpense);
+            selectedEntity = employee?.name || null;
+          } else if (type === 'PROVEEDORES' && concept.idExpense) {
+            const provider = providers.find((p: any) => p.id === concept.idExpense);
+            selectedEntity = provider?.name || null;
+          } else if (type === 'OTROS' && concept.idExpense) {
+            const cuenta = cuentasContables.find((c: any) => c.id === concept.idExpense);
+            selectedEntity = cuenta ? `${cuenta['codigo']} - ${cuenta['nombre']}` : null;
+          }
+
+          return {
+            ...concept,
+            typeExpense: type,
+            selectedEntity: selectedEntity,
+            __isNew: false,
+            __modified: false
+          };
+        });
         // Calculate total for each concept
         this.rowData.forEach(concept => {
           concept.total = (concept.quantity || 0) * (concept.price || 0);
@@ -279,29 +321,102 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
         }
       },
       {
-        field: 'description',
-        headerName: 'Descripción',
+        field: 'typeExpense',
+        headerName: 'Tipo Gasto',
         editable: true,
-        width: 300,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 250,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: any) => {
-          if (this.context?.componentParent?.modalServiceTable) {
-            this.context.componentParent.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
+        width: 130,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ['EMPLEADOS', 'PROVEEDORES', 'OTROS'] },
+        valueFormatter: (params) => {
+          const value = params.value;
+          if (value === 'EMPLEADOS') return 'Empleados';
+          if (value === 'PROVEEDORES') return 'Proveedores';
+          if (value === 'OTROS') return 'Otros';
+          return value || '';
         }
+      },
+      {
+        field: 'selectedEntity',
+        headerName: 'Empleado/Proveedor/Cuenta',
+        width: 220,
+        editable: (params) => !!params.data?.typeExpense,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => {
+          if (!params.data) return { values: [] };
+          const type = params.data.typeExpense;
+          // Leer siempre del contexto para obtener datos actualizados
+          const employees = this.context?.employees || this.employees || [];
+          const providers = this.context?.providers || this.providers || [];
+          const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+
+          if (type === 'EMPLEADOS') {
+            return { values: employees.map((e: any) => e.name) };
+          } else if (type === 'PROVEEDORES') {
+            return { values: providers.map((p: any) => p.name) };
+          } else if (type === 'OTROS') {
+            return { values: cuentasContables.map((c: any) => `${c['codigo']} - ${c['nombre']}`) };
+          }
+          return { values: [] };
+        },
+        valueSetter: (params) => {
+          if (!params.data) return false;
+          const type = params.data.typeExpense;
+          const employees = this.context?.employees || this.employees || [];
+          const providers = this.context?.providers || this.providers || [];
+          const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+
+          if (type === 'EMPLEADOS') {
+            const employee = employees.find((e: any) => e.name === params.newValue);
+            if (employee) {
+              params.data.idExpense = employee.id;
+              params.data.selectedEntity = params.newValue;
+              return true;
+            }
+          } else if (type === 'PROVEEDORES') {
+            const provider = providers.find((p: any) => p.name === params.newValue);
+            if (provider) {
+              params.data.idExpense = provider.id;
+              params.data.selectedEntity = params.newValue;
+              return true;
+            }
+          } else if (type === 'OTROS') {
+            const cuenta = cuentasContables.find((c: any) => `${c['codigo']} - ${c['nombre']}` === params.newValue);
+            if (cuenta) {
+              params.data.idExpense = cuenta.id;
+              params.data.selectedEntity = params.newValue;
+              return true;
+            }
+          }
+          return false;
+        },
+        valueFormatter: (params) => {
+          if (!params || !params.data) return '';
+          const type = params.data.typeExpense;
+          const idExpense = params.data.idExpense;
+          if (!type || !idExpense) return params.data.selectedEntity || '';
+
+          const employees = this.context?.employees || this.employees || [];
+          const providers = this.context?.providers || this.providers || [];
+          const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+
+          if (type === 'EMPLEADOS') {
+            const employee = employees.find((e: any) => e.id === idExpense);
+            return employee ? employee.name : '';
+          } else if (type === 'PROVEEDORES') {
+            const provider = providers.find((p: any) => p.id === idExpense);
+            return provider ? provider.name : '';
+          } else if (type === 'OTROS') {
+            const cuenta = cuentasContables.find((c: any) => c.id === idExpense);
+            return cuenta ? `${cuenta['codigo']} - ${cuenta['nombre']}` : '';
+          }
+          return '';
+        }
+      },
+      {
+        field: 'description',
+        headerName: 'Concepto Adicional',
+        editable: true,
+        width: 180
       },
       {
         field: 'quantity',
@@ -310,13 +425,7 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
         editable: true,
         width: 100
       },
-      {
-        field: 'unit',
-        headerName: 'Unidad',
-        type: 'text',
-        editable: true,
-        width: 100
-      },
+
       {
         field: 'price',
         headerName: 'Precio',
@@ -391,8 +500,9 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
     const newConcept = {
       id: tempId,
       idIncorExp: this.params.data.id,
-      typeExpense: 'NA',
-      idExpense: 0,
+      typeExpense: 'EMPLEADOS',
+      idExpense: null,
+      selectedEntity: null,
       dateExpend: this.params.data.date,
       description: '',
       quantity: 1,
@@ -423,9 +533,9 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
       this.gridApi.ensureIndexVisible(newRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
-        colKey: 'description'
+        colKey: 'typeExpense'
       });
-    }, 0);
+    }, 100);
   }
 
   async deleteSelectedConcept() {
@@ -576,6 +686,17 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+
+    // Si cambió el tipo de gasto, limpiar la entidad seleccionada
+    if (event.colDef.field === 'typeExpense') {
+      event.data.idExpense = null;
+      event.data.selectedEntity = null;
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        force: true,
+        columns: ['selectedEntity']
+      });
+    }
 
     if (['iva', 'quantity', 'price'].includes(event.colDef.field)) {
       const rowData = event.data;
