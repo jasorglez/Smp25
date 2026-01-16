@@ -65,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.10.26 (15 Enero 2026 14:52:00) - Fix Customer and Quote',
+  version: '3.10.27 (15 Enero 2026 19:40:00) - Add cascade behavior to Income component',
 
 };
 
