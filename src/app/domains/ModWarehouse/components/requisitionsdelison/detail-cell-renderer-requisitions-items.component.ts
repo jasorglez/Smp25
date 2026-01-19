@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -166,6 +166,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private typexPrefixesService = inject(TypexPrefixesService);
+
+  // Tooltip
+  private renderer: Renderer2;
+  private tooltipElement: HTMLElement | null = null;
+
+  constructor(rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+  }
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -414,6 +422,28 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           return params.data.recurrent !== 'Nuevo';
         },
         cellEditor: SelectWithTooltipEditorV2Component,
+        cellRenderer: (params: any) => {
+          const value = params.value || params.data?.nameArticle || '';
+          const container = document.createElement('div');
+          container.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center;';
+          container.textContent = value;
+
+          // Solo mostrar tooltip si es artículo "Nuevo" y tiene datos adicionales
+          if (params.data?.recurrent === 'Nuevo') {
+            container.style.cursor = 'pointer';
+
+            container.addEventListener('mouseenter', (e) => {
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              this.showNewArticleTooltip(params.data, rect);
+            });
+
+            container.addEventListener('mouseleave', () => {
+              this.hideNewArticleTooltip();
+            });
+          }
+
+          return container;
+        },
         cellEditorParams: (params: any) => {
           // ✅ Filtrar materiales que ya están siendo usados en otras filas
           const usedMaterialIds = this.rowData
@@ -1325,6 +1355,155 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     if (this.originalPdfUrl) {
       URL.revokeObjectURL(this.originalPdfUrl);
       this.originalPdfUrl = null;
+    }
+    // Clean up tooltip
+    this.hideNewArticleTooltip();
+  }
+
+  // ==================== TOOLTIP METHODS ====================
+
+  private showNewArticleTooltip(data: any, cellRect: DOMRect): void {
+    this.hideNewArticleTooltip();
+
+    const name = data.nameArticle || 'Sin nombre';
+    const description = data.descriptionNewArticle || 'Sin descripción';
+    const url = data.urlNewArticle || '';
+    const justification = data.justificationNewArticle || 'Sin justificación';
+
+    // Crear contenedor del tooltip
+    this.tooltipElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.tooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipElement, 'min-width', '300px');
+    this.renderer.setStyle(this.tooltipElement, 'max-width', '450px');
+
+    // Crear flecha del tooltip
+    const arrow = this.renderer.createElement('div');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #d97706');
+    this.renderer.appendChild(this.tooltipElement, arrow);
+
+    // Crear contenido del tooltip
+    const content = this.renderer.createElement('div');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)');
+
+    // Header
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-box-seam');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const headerTextNode = this.renderer.createText(`Artículo Nuevo: ${name}`);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+    this.renderer.appendChild(content, header);
+
+    // Body
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#ffffff');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    // Descripción
+    this.appendTooltipRow(body, 'bi-card-text', 'Descripción:', description);
+
+    // URL (solo si existe)
+    if (url) {
+      this.appendTooltipRow(body, 'bi-link-45deg', 'URL:', url);
+    }
+
+    // Justificación
+    this.appendTooltipRow(body, 'bi-question-circle', 'Justificación:', justification, true);
+
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.tooltipElement, content);
+
+    // Agregar al body
+    this.renderer.appendChild(document.body, this.tooltipElement);
+
+    // Posicionar tooltip a la derecha de la celda
+    const top = cellRect.top;
+    const left = cellRect.right + 8;
+    this.renderer.setStyle(this.tooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.tooltipElement, 'left', `${left}px`);
+
+    // Animación de entrada
+    this.renderer.setStyle(this.tooltipElement, 'opacity', '0');
+    setTimeout(() => {
+      if (this.tooltipElement) {
+        this.renderer.setStyle(this.tooltipElement, 'opacity', '1');
+        this.renderer.setStyle(this.tooltipElement, 'transition', 'opacity 0.3s ease');
+      }
+    }, 10);
+  }
+
+  private appendTooltipRow(container: HTMLElement, iconClass: string, label: string, value: string, isLast: boolean = false): void {
+    const row = this.renderer.createElement('div');
+    this.renderer.setStyle(row, 'display', 'flex');
+    this.renderer.setStyle(row, 'align-items', 'flex-start');
+    this.renderer.setStyle(row, 'gap', '8px');
+    if (!isLast) {
+      this.renderer.setStyle(row, 'margin-bottom', '10px');
+    }
+
+    const labelEl = this.renderer.createElement('span');
+    this.renderer.setStyle(labelEl, 'color', 'rgba(255, 255, 255, 0.9)');
+    this.renderer.setStyle(labelEl, 'font-weight', '600');
+    this.renderer.setStyle(labelEl, 'min-width', '100px');
+    this.renderer.setStyle(labelEl, 'display', 'flex');
+    this.renderer.setStyle(labelEl, 'align-items', 'center');
+    this.renderer.setStyle(labelEl, 'gap', '5px');
+    this.renderer.setStyle(labelEl, 'flex-shrink', '0');
+
+    const icon = this.renderer.createElement('i');
+    this.renderer.addClass(icon, 'bi');
+    this.renderer.addClass(icon, iconClass);
+    this.renderer.setStyle(icon, 'font-size', '12px');
+    this.renderer.appendChild(labelEl, icon);
+
+    const labelText = this.renderer.createText(label);
+    this.renderer.appendChild(labelEl, labelText);
+    this.renderer.appendChild(row, labelEl);
+
+    const valueEl = this.renderer.createElement('span');
+    this.renderer.setStyle(valueEl, 'color', '#ffffff');
+    this.renderer.setStyle(valueEl, 'word-break', 'break-word');
+    this.renderer.setStyle(valueEl, 'line-height', '1.4');
+    const valueText = this.renderer.createText(value);
+    this.renderer.appendChild(valueEl, valueText);
+    this.renderer.appendChild(row, valueEl);
+
+    this.renderer.appendChild(container, row);
+  }
+
+  private hideNewArticleTooltip(): void {
+    if (this.tooltipElement) {
+      this.renderer.removeChild(document.body, this.tooltipElement);
+      this.tooltipElement = null;
     }
   }
 
