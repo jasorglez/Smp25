@@ -256,11 +256,8 @@ export class IngresosPalacioComponent implements OnInit {
       return null;
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda, excepto en las columnas de reportes
-      const colId = event.column.getColId();
-      if (colId !== 'pdfReport' && colId !== 'contributionReport') {
-        event.node.setSelected(true);
-      }
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
     },
     onRowSelected: (event) => {
       // Deseleccionar otras filas cuando se selecciona una nueva
@@ -1213,6 +1210,11 @@ async saveChanges() {
             columns: ['countItems'],
             force: true
           });
+
+          // Actualizar también selectedIncomes si es el mismo registro
+          if (this.selectedIncomes && this.selectedIncomes.id === incomeId) {
+            this.selectedIncomes.countItems = count;
+          }
 
           // Guardar en el servidor
           const dataToSave = {

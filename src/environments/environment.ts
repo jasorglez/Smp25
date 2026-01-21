@@ -65,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.11.66 (20 Enero 2026 16:05:00) - Fix cursor position',
+  version: '3.11.69 (21 Enero 2026 14:30:00) - Fix Catálogo Gasto: combo normal + filtro idPadre',
 
 };
 

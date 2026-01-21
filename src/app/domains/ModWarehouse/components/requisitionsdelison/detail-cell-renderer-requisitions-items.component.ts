@@ -615,9 +615,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         headerName: 'Proveedor Interno',
         width: 170,
         editable: (params) => {
-          // Solo editable si hay un material seleccionado
+          // Solo editable si hay un material seleccionado Y el tipo es "Interno"
           const materialId = params.data.idSupplie || params.data.materialId || 0;
-          return materialId > 0;
+          const tipo = params.data.intorext || 'Externo';
+          return materialId > 0 && tipo === 'Interno';
         },
         cellDataType: false,
         cellEditor: SelectWithTooltipEditorV2Component,
@@ -691,12 +692,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         },
         cellStyle: (params: any) => {
           const materialId = params.data.idSupplie || params.data.materialId || 0;
-          if (materialId === 0) {
+          const tipo = params.data.intorext || 'Externo';
+          // Bloqueado si no hay material o si el tipo es "Externo"
+          if (materialId === 0 || tipo === 'Externo') {
             return { backgroundColor: '#f9f9f9', color: '#999', cursor: 'not-allowed' };
           }
           return { cursor: 'pointer' };
         }
-      }, 
+      },
 
       {
         field: 'typePriority',

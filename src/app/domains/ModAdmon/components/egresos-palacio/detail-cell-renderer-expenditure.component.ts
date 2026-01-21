@@ -723,6 +723,65 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         width: 90
       },
       {
+        field: 'idExpense',
+        headerName: 'Catálogo Gasto',
+        editable: true,
+        width: 200,
+        tooltipValueGetter: (params: any) => {
+          if (!params.data?.idExpense) return '';
+          const expensesCatalogLevel3 = this.context?.componentParent?.expensesCatalogLevel3 || [];
+          const found = expensesCatalogLevel3.find((obj: any) => obj.id === params.data.idExpense);
+          return found ? found.description : '';
+        },
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => {
+          // Obtener el catálogo nivel 3 desde el componentParent (no del contexto estático)
+          const expensesCatalogLevel3 = this.context?.componentParent?.expensesCatalogLevel3 || [];
+          // Obtener el idExpendxcategr del maestro (padre) - this.params.data es la fila del MAESTRO
+          const idExpendxcategr = this.params?.data?.idExpendxcategr || 0;
+          // Obtener si "Mostrar Todo" está activado
+          const mostrarTodo = this.params?.data?.mostrartodo || false;
+
+          console.log('🔍 DETALLE - Filtro Catálogo Gasto:');
+          console.log('   📌 idExpendxcategr del maestro:', idExpendxcategr);
+          console.log('   📌 mostrartodo:', mostrarTodo);
+          console.log('   📌 Total catálogo nivel 3:', expensesCatalogLevel3.length);
+
+          // Filtrar opciones: si mostrarTodo es true, mostrar todos; si no, filtrar por parentId
+          let filteredOptions = expensesCatalogLevel3;
+          if (!mostrarTodo && idExpendxcategr > 0) {
+            // Buscar items donde parentId coincida
+            filteredOptions = expensesCatalogLevel3.filter((obj: any) => obj.parentId === idExpendxcategr);
+            console.log('   📌 Filtrados por parentId=' + idExpendxcategr + ':', filteredOptions.length);
+
+            // Si no encontró nada, mostrar algunos parentIds disponibles para debug
+            if (filteredOptions.length === 0) {
+              const parentIds = [...new Set(expensesCatalogLevel3.map((obj: any) => obj.parentId))];
+              console.log('   ⚠️ parentIds disponibles en catálogo:', parentIds.slice(0, 10));
+            }
+          }
+
+          return {
+            values: filteredOptions.map((obj: any) => obj.description)
+          };
+        },
+        valueGetter: (params: any) => {
+          if (!params.data?.idExpense) return '';
+          const expensesCatalogLevel3 = this.context?.componentParent?.expensesCatalogLevel3 || [];
+          const found = expensesCatalogLevel3.find((obj: any) => obj.id === params.data.idExpense);
+          return found ? found.description : '';
+        },
+        valueSetter: (params: any) => {
+          const expensesCatalogLevel3 = this.context?.componentParent?.expensesCatalogLevel3 || [];
+          const found = expensesCatalogLevel3.find((obj: any) => obj.description === params.newValue);
+          if (found) {
+            params.data.idExpense = found.id;
+            return true;
+          }
+          return false;
+        }
+      },
+      {
         field: 'idCatIng',
         headerName: 'Detalle Egreso',
         editable: true,
@@ -777,7 +836,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         field: 'numeroIdentificacion',
         headerName: 'UUID CFDI',
         editable: true,
-        width: 150,
+        width: 280,
         type: 'text',
         cellEditor: 'agTextCellEditor',
         cellEditorParams: {
@@ -872,6 +931,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
+    tooltipShowDelay: 500,
+    tooltipHideDelay: 10000,
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
