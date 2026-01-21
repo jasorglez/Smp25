@@ -22,7 +22,7 @@ import { DetailCellRendererProveedorComponent } from './detail-cell-renderer-pro
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
         [domLayout]="'autoHeight'"
-        style="width: 120%;">
+        style="width: 150%;">
       </ag-grid-angular>
     </div>
   `,
@@ -79,19 +79,19 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'pedimento',
         headerName: 'PEDIMENTO #',
-        width: 180
+        width: 220
       },
-    
+
     /*  {
         field: 'folio',
         headerName: 'FOLIO COT',
         width: 120
       },*/
-    
+
       {
         field: 'articulos',
         headerName: 'ARTICULOS',
-        width: 180,
+        width: 200,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleArticulosCascade(node),
@@ -104,19 +104,28 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: '',
         headerName: 'PDF',
-        width: 120
+        width: 140
       },
 
-        {
-        field: 'fechaPedimento',
-        headerName: 'FECHA PEDIMENTO',
-        width: 200
+      {
+        field: 'creo',
+        headerName: 'QUIEN LO CREO',
+        width: 190
       },
+
+      {
+        field: 'fechaPedimento',
+        
+        headerName: 'FECHA PEDIMENTO',
+        width: 220
+      },
+
+    
 
       {
         field: 'idProvider',
         headerName: 'PROVEEDOR 1',
-        width: 200,
+        width: 240,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor A'),
@@ -130,7 +139,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'idProvider2',
         headerName: 'PROVEEDOR 2',
-        width: 200,
+        width: 240,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor B'),
@@ -143,7 +152,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'idProvider3',
         headerName: 'PROVEEDOR 3',
-        width: 200,
+        width: 240,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor C'),

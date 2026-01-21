@@ -603,7 +603,7 @@ export class EgresosPalacioComponent {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
-        field: 'countItems',
+        field: 'count',
         headerName: 'Items',
         width: 80,
         cellRenderer: ButtonCellRendererExpenditureComponent,
@@ -859,6 +859,7 @@ export class EgresosPalacioComponent {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
+        filter: true, 
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
@@ -882,6 +883,7 @@ export class EgresosPalacioComponent {
         field: 'total',
         headerName: 'Comprobado',
         editable: false,
+         filter: true,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
         cellRenderer: (params: any) => {

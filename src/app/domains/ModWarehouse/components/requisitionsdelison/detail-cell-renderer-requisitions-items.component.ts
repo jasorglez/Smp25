@@ -703,10 +703,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         }
       },
     
-    /*  {
+      {
         field: 'idProvider',
-        headerName: 'Proveedor',
-        width: 250,
+        headerName: 'Proveedor Interno',
+        width: 170,
         editable: (params) => {
           // Solo editable si hay un material seleccionado
           const materialId = params.data.idSupplie || params.data.materialId || 0;
@@ -789,7 +789,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           }
           return { cursor: 'pointer' };
         }
-      }, */
+      }, 
 
       {
         field: 'typePriority',

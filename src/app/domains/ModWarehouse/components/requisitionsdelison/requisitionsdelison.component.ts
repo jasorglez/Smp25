@@ -867,6 +867,12 @@ export class RequisitionsDelisonComponent implements OnInit {
         },
         editable: false
       },
+
+      {
+        field: 'column8',
+        headerName: 'Autorizar',
+        width: 150,
+         }
     ];
 
     return this._colMaster;
