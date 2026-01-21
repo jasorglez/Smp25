@@ -10,6 +10,22 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   imports: [CommonModule, AgGridModule],
   template: `
     <div class="detail-grid-container">
+      <!-- Barra de botones CRUD -->
+      <div class="d-flex justify-content-end gap-1 mb-2">
+        <button class="btn btn-primary btn-xs position-relative" (click)="save()" [disabled]="!hasUnsavedChanges">
+          <i class="bi bi-floppy"></i> Guardar
+          <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
+                *ngIf="hasUnsavedChanges">
+          </span>
+        </button>
+        <button class="btn btn-warning btn-xs" (click)="revert()">
+          <i class="bi bi-arrow-clockwise"></i> Deshacer
+        </button>
+        <button class="btn btn-danger btn-xs" (click)="delete()" [disabled]="!selectedRow">
+          <i class="bi bi-trash"></i> Eliminar
+        </button>
+      </div>
+
       <ag-grid-angular
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
@@ -26,12 +42,20 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
       background-color: #f8f9fa;
       border-radius: 8px;
     }
+    .btn-xs {
+      padding: 0.15rem 0.4rem;
+      font-size: 0.75rem;
+      line-height: 1.3;
+    }
   `]
 })
 export class DetailCellRendererPedimentosItemsComponent {
   private params!: ICellRendererParams;
   private context: any;
   rowData: any[] = [];
+  originalRowData: any[] = [];
+  hasUnsavedChanges: boolean = false;
+  selectedRow: any = null;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   agInit(params: ICellRendererParams): void {
@@ -46,17 +70,19 @@ export class DetailCellRendererPedimentosItemsComponent {
     this.rowData = articulos.map((item: any, index: number) => {
       console.log(`   Item ${index}: pedimentoNum = "${item.pedimentoNum}"`);
       return {
-        articulo: item.article,
+        recurrent: item.recurrent || '',
+        articulo: item.nameArticle || item.description || item.article,
         numeroArticulo: item.numArticle || (index + 1),
         cantidad: item.quantity,
-        tipo: item.tipo,
+        tipo: item.intorext || item.tipo,
         proveedorInterno: item.proveedorInterno,
-        tipoPrioridad: item.priority,
-        observacion: item.observaciones,
+        tipoPrioridad: item.typePriority || item.priority,
+        observacion: item.observation || item.observaciones || '',
         pedimento: this.params.data.pedimento,
-        pedimentoNumber: item.pedimentoNum || '' // ✅ Backend usa "pedimentoNum"
+        pedimentoNumber: item.pedimentoNum || ''
       };
     });
+    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
   }
 
   checkPedimentoSelection() {
@@ -64,8 +90,33 @@ export class DetailCellRendererPedimentosItemsComponent {
     // For now, it's a placeholder to match the requisitions component
   }
 
+  delete() {
+    if (this.selectedRow) {
+      this.rowData = this.rowData.filter(item => item !== this.selectedRow);
+      this.selectedRow = null;
+      this.hasUnsavedChanges = true;
+    }
+  }
+
+  save() {
+    console.log('💾 Guardando cambios...', this.rowData);
+    // TODO: Implementar lógica de guardado
+    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+    this.hasUnsavedChanges = false;
+  }
+
+  revert() {
+    this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
+    this.hasUnsavedChanges = false;
+  }
+
   get colDefs(): ColDef[] {
     return [
+      {
+        field: 'recurrent',
+        headerName: 'Recurrente',
+        width: 120
+      },
       {
         field: 'articulo',
         headerName: 'Articulo',
@@ -98,31 +149,22 @@ export class DetailCellRendererPedimentosItemsComponent {
       },
       {
         field: 'observacion',
-        headerName: 'Observacion',
+        headerName: 'Observation',
         width: 200
       },
       {
         field: 'pedimentoNumber',
         headerName: 'Pedimento #',
-        width: 140,
+        width: 120,
         cellRenderer: (params: any) => {
-          if (!params.value) {
-            return ''; // Si no hay valor, la celda estará vacía.
-          }
-
-          const numbers = String(params.value).split(',');
-          const colorMap: { [key: string]: string } = {
-            '1': '#0d6efd', // Azul
-            '2': '#198754', // Verde
-            '3': '#6f42c1', // Púrpura
-          };
-
-          const coloredSpans = numbers.map(num => {
-            const color = colorMap[num.trim()] || 'black'; // Color por defecto si no está en el mapa
-            return `<span style="color: ${color}; font-weight: bold; padding: 0 2px;">${num.trim()}</span>`;
-          }).join(',');
-
-          return coloredSpans;
+          const isChecked = params.value ? 'checked' : '';
+          return `<input type="checkbox" ${isChecked} style="cursor: pointer; width: 13px; height: 13px;" />`;
+        },
+        cellStyle: { textAlign: 'center' },
+        onCellClicked: (params: any) => {
+          params.data.pedimentoNumber = !params.data.pedimentoNumber;
+          params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimentoNumber'] });
+          this.hasUnsavedChanges = true;
         }
       },
     ];
@@ -132,7 +174,9 @@ export class DetailCellRendererPedimentosItemsComponent {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: true,
-    suppressCellFocus: true, // ✅ Sin foco en celdas (solo lectura)
-    suppressRowClickSelection: true // ✅ Sin selección de filas
+    rowSelection: 'single',
+    onRowClicked: (event: any) => {
+      this.selectedRow = event.data;
+    }
   };
 }

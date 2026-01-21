@@ -255,12 +255,13 @@ export class QuoteDelisonComponent implements OnInit {
           folio: cotizacion.folio || '',
           idProvider: cotizacion.idProvider || 0,
           items: items.map((item: any) => ({
+            recurrent: item.recurrent || '',
             article: item.description || item.nameArticle || '',
             quantity: item.quantity || 0,
             tipo: item.intorext || 'Externo',
             proveedorInterno: item.provint || '',
             priority: item.typePriority || 'Normal',
-            observaciones: item.comment || '',
+            observation: item.observation || '',
             pedimento: item.pedimento || false,
             numArticle: item.numArticle || '',
             code: item.code || '',
@@ -353,12 +354,13 @@ export class QuoteDelisonComponent implements OnInit {
               folio: cotizacion.folio || '',
               idProvider: cotizacion.idProvider || 0,
               items: items.map((item: any) => ({
+                recurrent: item.recurrent || '',
                 article: item.description || item.nameArticle || '',
                 quantity: item.quantity || 0,
                 tipo: item.intorext || 'Externo',
                 proveedorInterno: item.provint || '',
                 priority: item.typePriority || 'Normal',
-                observaciones: item.comment || '',
+                observation: item.observation || '',
                 pedimento: item.pedimento || false,
                 numArticle: item.numArticle || '',
                 code: item.code || '',
@@ -482,6 +484,13 @@ export class QuoteDelisonComponent implements OnInit {
        width: 150,
        editable: false
      },
+
+    {
+        field: 'column8',
+        headerName: 'Autorizar',
+        width: 190,
+    }
+
    ];
   }
 
