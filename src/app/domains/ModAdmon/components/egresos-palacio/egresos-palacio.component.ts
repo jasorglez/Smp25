@@ -80,6 +80,13 @@ export class EgresosPalacioComponent {
   copyDescription: string = '';
   isCopyingRecord: boolean = false;
 
+  // Propiedades para el modal de búsqueda por UUID
+  showSearchUuidModal: boolean = false;
+  searchUuid: string = '';
+  isSearchingUuid: boolean = false;
+  uuidFilterActive: boolean = false;
+  foundConceptsByUuid: any[] = []; // Conceptos encontrados para resaltar en el detalle
+
   // Propiedades para el modal de proveedor
   showProviderModal: boolean = false;
   newProvider: any = {
@@ -138,6 +145,7 @@ export class EgresosPalacioComponent {
       await this.getBankAccounts();
       await this.getBills();
       await this.getTypeComps();
+      await this.getExpensesCatalog(); // Cargar catálogo EXPENSE nivel 2 y 3
       await this.getExpenditure();
       //   await this.loadAuthorizers();
       await this.getCurrentUser();
@@ -201,6 +209,8 @@ export class EgresosPalacioComponent {
 
   bankAccounts: any[] = [];
   typeComps: any[] = [];
+  expensesCatalogLevel2: any[] = []; // Catálogo EXPENSE nivel 2 para el maestro
+  expensesCatalogLevel3: any[] = []; // Catálogo EXPENSE nivel 3 para el detalle
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -495,6 +505,51 @@ export class EgresosPalacioComponent {
     });
   }
 
+  async getExpensesCatalog() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Catálogo de Gastos`, 'Palacio Municipal - Egresos',
+      this.trackingService.getEmail());
+    return new Promise<void>((resolve) => {
+      // Cargar nivel 2 para el maestro
+      this.cataalogAdmonService.getCatalogsxNivel(this.idRoot, 'EXPENSE', 2).subscribe(
+        (data: any) => {
+          this.expensesCatalogLevel2 = data || [];
+          console.log('✅ Catálogo EXPENSE nivel 2 cargado:', this.expensesCatalogLevel2.length);
+
+          // Cargar nivel 3 para el detalle
+          this.cataalogAdmonService.getCatalogsxNivel(this.idRoot, 'EXPENSE', 3).subscribe(
+            (dataLevel3: any) => {
+              this.expensesCatalogLevel3 = dataLevel3 || [];
+              console.log('✅ Catálogo EXPENSE nivel 3 cargado:', this.expensesCatalogLevel3.length);
+              // Log para ver la estructura del catálogo
+              if (this.expensesCatalogLevel3.length > 0) {
+                console.log('📋 Estructura primer item nivel 3:', this.expensesCatalogLevel3[0]);
+                console.log('📋 Campos disponibles:', Object.keys(this.expensesCatalogLevel3[0]));
+                // Mostrar algunos items con sus parentId
+                const sample = this.expensesCatalogLevel3.slice(0, 5).map((item: any) => ({
+                  id: item.id,
+                  description: item.description,
+                  parentId: item.parentId
+                }));
+                console.log('📋 Muestra de items nivel 3 con parentId:', sample);
+              }
+              resolve();
+            },
+            error => {
+              console.error('❌ Error cargando Catálogo EXPENSE nivel 3:', error);
+              this.expensesCatalogLevel3 = [];
+              resolve();
+            }
+          );
+        },
+        error => {
+          console.error('❌ Error cargando Catálogo EXPENSE nivel 2:', error);
+          this.expensesCatalogLevel2 = [];
+          resolve();
+        }
+      );
+    });
+  }
+
   // Nuevo método para cargar usuarios autorizadores
   private async loadAuthorizers() {
     forkJoin({
@@ -769,6 +824,34 @@ export class EgresosPalacioComponent {
             ? this.typeComps.find((item) => item.id === params.value)
             : null;
           return foundItem ? foundItem.description : params.value;
+        },
+      },
+
+      {
+        field: 'idExpendxcategr', headerName: 'Catálogo Gasto',
+        editable: true,
+        width: 180,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.expensesCatalogLevel2.map(obj => obj.description)
+        },
+        valueGetter: (params: any) => {
+          // Mostrar descripción en la celda
+          const foundItem = this.expensesCatalogLevel2
+            ? this.expensesCatalogLevel2.find((item) => item.id === params.data?.idExpendxcategr)
+            : null;
+          return foundItem ? foundItem.description : '';
+        },
+        valueSetter: (params: any) => {
+          // Convertir descripción seleccionada a ID
+          const foundItem = this.expensesCatalogLevel2
+            ? this.expensesCatalogLevel2.find((item) => item.description === params.newValue)
+            : null;
+          if (foundItem) {
+            params.data.idExpendxcategr = foundItem.id;
+            return true;
+          }
+          return false;
         },
       },
 
@@ -1071,6 +1154,7 @@ export class EgresosPalacioComponent {
         base64EncodeService: this.base64EncodeService,
         objetosGasto: this.expenses,
         typeComps: this.typeComps,
+        expensesCatalogLevel3: this.expensesCatalogLevel3, // Catálogo EXPENSE nivel 3 para el detalle
         CONCEPTS: {
           load: (expenditureId: number, callback: (data: any[]) => void) => {
             this.loadConceptsData(expenditureId, callback);
@@ -1613,6 +1697,12 @@ export class EgresosPalacioComponent {
   // ==================== MÉTODOS PARA CASCADAS ====================
 
   toggleCascade(node: any) {
+    console.log('🔄 MAESTRO toggleCascade - Datos del nodo:', {
+      id: node.data.id,
+      idExpendxcategr: node.data.idExpendxcategr,
+      mostrartodo: node.data.mostrartodo,
+      expensesCatalogLevel3_count: this.expensesCatalogLevel3.length
+    });
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
 
@@ -1848,6 +1938,11 @@ export class EgresosPalacioComponent {
             columns: ['countItems'],
             force: true
           });
+
+          // Actualizar también selectedIncomes si es el mismo registro
+          if (this.selectedIncomes && this.selectedIncomes.id === expenditureId) {
+            this.selectedIncomes.countItems = count;
+          }
 
           // Guardar en el servidor
           const dataToSave = {
@@ -2419,6 +2514,140 @@ export class EgresosPalacioComponent {
     } finally {
       this.isCopyingRecord = false;
     }
+  }
+
+  // ==================== MÉTODOS PARA BÚSQUEDA POR UUID ====================
+
+  openSearchUuidModal() {
+    this.searchUuid = '';
+    this.showSearchUuidModal = true;
+    document.body.classList.add('modal-open');
+
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Abrir modal de búsqueda por UUID',
+      'Palacio Municipal - Egresos',
+      this.trackingService.getEmail()
+    );
+  }
+
+  closeSearchUuidModal() {
+    this.showSearchUuidModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async searchByUuid() {
+    if (!this.searchUuid || this.searchUuid.trim() === '') {
+      alerts.basicAlert('Error', 'Por favor ingrese un UUID para buscar', 'error');
+      return;
+    }
+
+    this.isSearchingUuid = true;
+
+    try {
+      // Llamar al endpoint de búsqueda
+      const concepts = await lastValueFrom(
+        this.incomesAndExpensesService.getConceptsUuid(this.searchUuid.trim())
+      );
+
+      if (!concepts || concepts.length === 0) {
+        alerts.basicAlert(
+          'Sin resultados',
+          `No se encontraron conceptos con UUID que contenga "${this.searchUuid}"`,
+          'info'
+        );
+        this.isSearchingUuid = false;
+        return;
+      }
+
+      // Obtener los IDs únicos de los egresos maestros (idIncorExp)
+      const uniqueMasterIds = [...new Set(concepts.map((c: any) => c.idIncorExp))];
+      console.log('🔍 IDs de egresos encontrados:', uniqueMasterIds);
+
+      // Guardar los conceptos encontrados para resaltarlos en el detalle
+      this.foundConceptsByUuid = concepts;
+
+      // Filtrar el grid del maestro para mostrar solo esos egresos
+      this.uuidFilterActive = true;
+
+      // Aplicar filtro externo para mostrar solo los egresos encontrados
+      this.externalFilterActive = true;
+      this.gridApi.forEachNode((node) => {
+        node.data.visible = uniqueMasterIds.includes(node.data.id);
+      });
+      this.gridApi.onFilterChanged();
+
+      // Cerrar modal
+      this.closeSearchUuidModal();
+
+      // Mensaje de éxito
+      const numEgresos = uniqueMasterIds.length;
+      const numConceptos = concepts.length;
+      alerts.basicAlert(
+        'Búsqueda completada',
+        `Se encontraron ${numConceptos} concepto(s) en ${numEgresos} egreso(s)`,
+        'success'
+      );
+
+      // Si solo hay un egreso, expandir automáticamente el detalle de conceptos
+      if (uniqueMasterIds.length === 1) {
+        setTimeout(() => {
+          this.gridApi.forEachNode((node) => {
+            if (node.data && node.data.id === uniqueMasterIds[0]) {
+              // Seleccionar la fila
+              node.setSelected(true);
+              this.gridApi.ensureNodeVisible(node, 'middle');
+
+              // Expandir el detalle de conceptos
+              node.data.detailType = 'concepts';
+              node.setExpanded(true);
+            }
+          });
+        }, 300);
+      }
+
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Búsqueda UUID: "${this.searchUuid}" - Encontrados: ${numConceptos} conceptos en ${numEgresos} egresos`,
+        'Palacio Municipal - Egresos',
+        this.trackingService.getEmail()
+      );
+
+    } catch (error) {
+      console.error('Error buscando por UUID:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al buscar por UUID. Intente nuevamente.',
+        'error'
+      );
+    } finally {
+      this.isSearchingUuid = false;
+    }
+  }
+
+  async clearUuidFilter() {
+    this.uuidFilterActive = false;
+    this.foundConceptsByUuid = [];
+    this.searchUuid = '';
+
+    // Desactivar filtro externo y mostrar todas las filas
+    this.externalFilterActive = false;
+    this.gridApi.forEachNode((node) => {
+      node.data.visible = true;
+      // Colapsar cualquier detalle expandido
+      if (node.expanded) {
+        node.setExpanded(false);
+        node.data.detailType = null;
+      }
+    });
+    this.gridApi.onFilterChanged();
+
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Limpiar filtro de búsqueda UUID',
+      'Palacio Municipal - Egresos',
+      this.trackingService.getEmail()
+    );
   }
 
   // ==================== MÉTODOS PARA REPORTE CONSOLIDADO ====================

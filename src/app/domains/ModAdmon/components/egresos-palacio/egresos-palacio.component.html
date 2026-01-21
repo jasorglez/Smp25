@@ -62,10 +62,19 @@
           type="button"
           class="btn btn-danger"
           (click)="deleteEntry()"
-          [disabled]="!idAccount || !selectedIncomes"
-
+          [disabled]="!idAccount || !selectedIncomes || (selectedIncomes?.countItems > 0)"
+          [title]="selectedIncomes?.countItems > 0 ? 'Primero elimine los ' + selectedIncomes?.countItems + ' concepto(s) del detalle' : 'Eliminar egreso'"
         >
           <i class="bi bi-trash"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          (click)="openSearchUuidModal()"
+          [disabled]="!idAccount"
+          title="Buscar por UUID CFDI"
+        >
+          <i class="bi bi-search"></i>
         </button>
         <button
           type="button"
@@ -90,6 +99,14 @@
           [disabled]="!idAccount || !selectedIncomes"
           title="Copiar registro seleccionado con nueva fecha">
           <i class="bi bi-copy"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-danger"
+          (click)="clearUuidFilter()"
+          *ngIf="uuidFilterActive"
+          title="Limpiar filtro UUID y mostrar todos los registros">
+          <i class="bi bi-x-lg"></i>
         </button>
       </div>
     </div>
@@ -402,3 +419,61 @@
 
 <!-- Backdrop del modal de copiar -->
 <div class="modal-backdrop fade" [class.show]="showCopyModal" [style.display]="showCopyModal ? 'block' : 'none'"></div>
+
+<!-- Modal para Buscar por UUID CFDI -->
+<div class="modal fade" [class.show]="showSearchUuidModal" [style.display]="showSearchUuidModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-search me-2"></i>Buscar por UUID CFDI
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeSearchUuidModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Ingrese el UUID completo o parcial para buscar en los conceptos.
+        </p>
+        <form (ngSubmit)="searchByUuid()">
+          <div class="mb-3">
+            <label for="searchUuid" class="form-label">UUID CFDI <span class="text-danger">*</span></label>
+            <input
+              type="text"
+              class="form-control"
+              id="searchUuid"
+              [(ngModel)]="searchUuid"
+              name="searchUuid"
+              placeholder="Ej: 86D588D2-211A-403C"
+              required
+              autofocus>
+            <small class="text-muted">Puede ingresar parte del UUID para búsqueda parcial</small>
+          </div>
+        </form>
+        <div class="alert alert-warning" *ngIf="isSearchingUuid">
+          <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+              <span class="visually-hidden">Buscando...</span>
+            </div>
+            <span>Buscando UUID... Por favor espere.</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeSearchUuidModal()" [disabled]="isSearchingUuid">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="searchByUuid()"
+          [disabled]="!searchUuid || searchUuid.trim() === '' || isSearchingUuid">
+          <i class="bi bi-search me-1"></i>Buscar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop del modal de búsqueda UUID -->
+<div class="modal-backdrop fade" [class.show]="showSearchUuidModal" [style.display]="showSearchUuidModal ? 'block' : 'none'"></div>
