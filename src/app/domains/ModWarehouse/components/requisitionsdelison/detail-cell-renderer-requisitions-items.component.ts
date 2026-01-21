@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -15,7 +15,6 @@ import { firstValueFrom } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
-import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-items',
@@ -76,88 +75,35 @@ import { CatalogsService } from 'app/services/catalogs.service';
       </div>
     </div>
 
-    <!-- Modal para Nuevo Artículo -->
+     <!-- Modal para Nuevo Artículo -->
     <div class="modal" tabindex="-1" [ngStyle]="{'display': isNewArticleModalVisible ? 'block' : 'none'}">
-      <div class="modal-dialog modal-lg">
+      <div class="modal-dialog">
         <div class="modal-content">
-          <div class="modal-header bg-success text-white">
-            <h5 class="modal-title">
-              <i class="bi bi-plus-circle me-2"></i>
-              Registrar Nuevo Material
-            </h5>
-            <button type="button" class="btn-close btn-close-white" (click)="closeNewArticleModal()"></button>
+          <div class="modal-header">
+            <h5 class="modal-title">Registrar Nuevo Artículo</h5>
+            <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
           </div>
           <div class="modal-body">
-            <!-- Descripción del Material -->
-            <div class="row mb-3">
-              <div class="col-12">
-                <label for="newArticleDesc" class="form-label fw-bold">
-                  <i class="bi bi-file-text me-1"></i>
-                  Descripción/Nombre del Material <span class="text-danger">*</span>
-                </label>
-                <input type="text" class="form-control" id="newArticleDesc" [(ngModel)]="newArticle.description" placeholder="Ingrese el nombre del material">
-                <small class="form-text text-muted">El número de material se generará automáticamente</small>
-              </div>
+            <div class="mb-3">
+              <label for="newArticleName" class="form-label">Nombre del Artículo</label>
+              <input type="text" class="form-control" id="newArticleName" [(ngModel)]="newArticle.description">
             </div>
-
-            <div class="row">
-              <!-- Categoría -->
-              <div class="col-md-4 mb-3">
-                <label for="newArticleCategory" class="form-label fw-bold">
-                  <i class="bi bi-folder me-1"></i>
-                  Categoría <span class="text-danger">*</span>
-                </label>
-                <select class="form-select" id="newArticleCategory" [(ngModel)]="newArticle.idCategory" (ngModelChange)="onCategoryChange()">
-                  <option [ngValue]="0" selected>Seleccione una categoría</option>
-                  <option *ngFor="let cat of categories" [ngValue]="cat.id">
-                    {{ cat.description }}
-                  </option>
-                </select>
-              </div>
-
-              <!-- Familia -->
-              <div class="col-md-4 mb-3">
-                <label for="newArticleFamily" class="form-label fw-bold">
-                  <i class="bi bi-diagram-3 me-1"></i>
-                  Familia <span class="text-danger">*</span>
-                </label>
-                <select class="form-select" id="newArticleFamily" [(ngModel)]="newArticle.idFamilia" [disabled]="!newArticle.idCategory" (ngModelChange)="onFamilyChange()">
-                  <option [ngValue]="0" selected>Seleccione una familia</option>
-                  <option *ngFor="let fam of filteredFamilies" [ngValue]="fam.id">
-                    {{ fam.description }}
-                  </option>
-                </select>
-              </div>
-
-              <!-- Subfamilia -->
-              <div class="col-md-4 mb-3">
-                <label for="newArticleSubfamily" class="form-label fw-bold">
-                  <i class="bi bi-diagram-2 me-1"></i>
-                  Subfamilia <span class="text-danger">*</span>
-                </label>
-                <select class="form-select" id="newArticleSubfamily" [(ngModel)]="newArticle.idSubfamilia" [disabled]="!newArticle.idFamilia">
-                  <option [ngValue]="0" selected>Seleccione una subfamilia</option>
-                  <option *ngFor="let sub of filteredSubfamilies" [ngValue]="sub.id">
-                    {{ sub.description }}
-                  </option>
-                </select>
-              </div>
+            <div class="mb-3">
+              <label for="newArticleDesc" class="form-label">Descripción del Artículo</label>
+              <textarea class="form-control" id="newArticleDesc" rows="2" [(ngModel)]="newArticle.descriptionNewArticle"></textarea>
             </div>
-
-            <div class="alert alert-info mb-0">
-              <i class="bi bi-info-circle me-2"></i>
-              <strong>Nota:</strong> Todos los campos son obligatorios. El número de material será generado automáticamente al guardar.
+            <div class="mb-3">
+              <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
+              <input type="text" class="form-control" id="newArticleLink" [(ngModel)]="newArticle.urlNewArticle">
+            </div>
+            <div class="mb-3">
+              <label for="newArticleUsage" class="form-label">¿Para qué se va a usar?</label>
+              <textarea class="form-control" id="newArticleUsage" rows="2" [(ngModel)]="newArticle.justificationNewArticle"></textarea>
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">
-              <i class="bi bi-x-lg me-1"></i>
-              Cancelar
-            </button>
-            <button type="button" class="btn btn-primary" (click)="saveNewArticle()">
-              <i class="bi bi-floppy me-1"></i>
-              Guardar Material
-            </button>
+            <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
+            <button type="button" class="btn btn-primary" (click)="saveNewArticle()">Guardar</button>
           </div>
         </div>
       </div>
@@ -220,7 +166,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private typexPrefixesService = inject(TypexPrefixesService);
-  private catalogsService = inject(CatalogsService);
+
+  // Tooltip
+  private renderer: Renderer2;
+  private tooltipElement: HTMLElement | null = null;
+
+  constructor(rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+  }
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -244,21 +197,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   isNewArticleModalVisible = false;
   newArticle = {
     description: '',
-    idCategory: 0,
-    idFamilia: 0,
-    idSubfamilia: 0
+    descriptionNewArticle: '',
+    urlNewArticle: '',
+    justificationNewArticle: ''
   };
   private currentRowForNewArticle: any = null;
   private originalRecurrentValue: string | null = null;
-
-  // Catálogos para el modal
-  categories: any[] = [];
-  families: any[] = [];
-  subfamilies: any[] = [];
-
-  // Catálogos filtrados (cache para evitar recálculos en cada ciclo de change detection)
-  filteredFamilies: any[] = [];
-  filteredSubfamilies: any[] = [];
 
 
 
@@ -267,7 +211,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
   ngOnInit() {
     this.loadData();
-    this.loadCatalogs();
   }
 
   agInit(params: any): void {
@@ -330,6 +273,9 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           typePriority: item.typePriority || 'Normal',
           pedimiento: item.pedimento || false, // ✅ Cargar desde backend, siempre debe ser false después de Multiguardar
           pedimentoNumber: item.pedimentoNum || '', // ✅ String con números separados por coma (ej: "1,3,4,6")
+          descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
+          urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
+          justificationNewArticle: item.justificationNewArticle || '', // Justificación del artículo nuevo
           __isNew: false,
           __modified: false,
           saved: true
@@ -408,67 +354,6 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     });
   }
 
-  async loadCatalogs() {
-    // Obtener idRoot desde el signal service
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
-    if (!this.idRoot) {
-      console.warn('⚠️ No hay idRoot disponible para cargar catálogos');
-      return;
-    }
-
-    try {
-      console.log('📦 Cargando catálogos para modal de nuevo artículo con idRoot:', this.idRoot);
-
-      // Cargar en paralelo: categorías, familias y subfamilias
-      [this.categories, this.families, this.subfamilies] = await Promise.all([
-        firstValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY')),
-        firstValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT')),
-        firstValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
-      ]);
-
-      console.log('✅ Catálogos cargados:', {
-        categories: this.categories.length,
-        families: this.families.length,
-        subfamilies: this.subfamilies.length
-      });
-
-    } catch (error) {
-      console.error('❌ Error al cargar catálogos:', error);
-      this.categories = [];
-      this.families = [];
-      this.subfamilies = [];
-    }
-  }
-
-  onCategoryChange() {
-    // Resetear familia y subfamilia cuando cambia la categoría
-    console.log('🔄 Categoría cambiada:', this.newArticle.idCategory);
-    this.newArticle.idFamilia = 0;
-    this.newArticle.idSubfamilia = 0;
-
-    // Pre-calcular familias filtradas (cache)
-    this.filteredFamilies = this.newArticle.idCategory
-      ? this.families.filter(f => f.parentId === this.newArticle.idCategory)
-      : [];
-    this.filteredSubfamilies = [];
-
-    console.log('✅ Familias disponibles:', this.filteredFamilies.length);
-  }
-
-  onFamilyChange() {
-    // Resetear subfamilia cuando cambia la familia
-    console.log('🔄 Familia cambiada:', this.newArticle.idFamilia);
-    this.newArticle.idSubfamilia = 0;
-
-    // Pre-calcular subfamilias filtradas (cache)
-    this.filteredSubfamilies = this.newArticle.idFamilia
-      ? this.subfamilies.filter(sf => sf.subParentId === this.newArticle.idFamilia)
-      : [];
-
-    console.log('✅ Subfamilias disponibles:', this.filteredSubfamilies.length);
-  }
-
   async loadProviders(materialId: number, type: string): Promise<any[]> {
     const cacheKey = `${materialId}_${type}`;
 
@@ -537,6 +422,28 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           return params.data.recurrent !== 'Nuevo';
         },
         cellEditor: SelectWithTooltipEditorV2Component,
+        cellRenderer: (params: any) => {
+          const value = params.value || params.data?.nameArticle || '';
+          const container = document.createElement('div');
+          container.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center;';
+          container.textContent = value;
+
+          // Solo mostrar tooltip si es artículo "Nuevo" y tiene datos adicionales
+          if (params.data?.recurrent === 'Nuevo') {
+            container.style.cursor = 'pointer';
+
+            container.addEventListener('mouseenter', (e) => {
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              this.showNewArticleTooltip(params.data, rect);
+            });
+
+            container.addEventListener('mouseleave', () => {
+              this.hideNewArticleTooltip();
+            });
+          }
+
+          return container;
+        },
         cellEditorParams: (params: any) => {
           // ✅ Filtrar materiales que ya están siendo usados en otras filas
           const usedMaterialIds = this.rowData
@@ -622,10 +529,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           if (params.data.recurrent === 'Nuevo') {
             this.currentRowForNewArticle = params.node;
             this.newArticle = {
-              description: '',
-              idCategory: 0,
-              idFamilia: 0,
-              idSubfamilia: 0
+              description: params.data.nameArticle || '',
+              descriptionNewArticle: params.data.descriptionNewArticle || '',
+              urlNewArticle: params.data.urlNewArticle || '',
+              justificationNewArticle: params.data.justificationNewArticle || ''
             };
             this.isNewArticleModalVisible = true;
           }
@@ -1000,7 +907,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         numArticle: item.numArticle || '',
         provint: item.provint || '',
         pedimento: item.pedimiento || false, // ✅ Estado del checkbox
-        pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma
+        pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma
+        descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
+        urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
+        justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
       };
 
       console.log('📤 POST - Enviando item nuevo al endpoint:', payload);
@@ -1036,7 +946,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         numArticle: item.numArticle || '',
         provint: item.provint || '',
         pedimento: item.pedimiento || false, // ✅ Estado del checkbox
-        pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma
+        pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma
+        descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
+        urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
+        justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
       };
 
       console.log('📤 PUT - Enviando item modificado al endpoint:', payload);
@@ -1198,7 +1111,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           recurrent: item.recurrent || 'Recurrente',
           numArticle: item.numArticle || '',
           provint: item.provint || '',
-          typePriority: item.typePriority || 'Normal'
+          typePriority: item.typePriority || 'Normal',
+          descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
+          urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
+          justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
         };
 
         console.log('📤 Detalle a crear:', detallePayload);
@@ -1264,7 +1180,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           provint: item.provint || '',
           typePriority: item.typePriority || 'Normal',
           pedimento: false, // ✅ SIEMPRE false después de Multiguardar para permitir múltiples cotizaciones
-          pedimentoNum: item.pedimentoNumber || '' // ✅ String con números separados por coma (ej: "1,3,4,6")
+          pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma (ej: "1,3,4,6")
+          descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
+          urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
+          justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
         };
 
         console.log(`📤 Actualizando item ${item.id} con pedimentoNum: ${item.pedimentoNumber} (pedimento: false)`);
@@ -1321,191 +1240,46 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     if (event.colDef.field === 'recurrent' && event.newValue === 'Nuevo') {
       this.currentRowForNewArticle = event.node;
       this.originalRecurrentValue = event.oldValue; // Guardar valor original por si cancela
-      this.newArticle = { description: '', idCategory: 0, idFamilia: 0, idSubfamilia: 0 }; // Resetear el formulario
+      this.newArticle = { description: '', descriptionNewArticle: '', urlNewArticle: '', justificationNewArticle: '' }; // Resetear el formulario
       this.isNewArticleModalVisible = true;
     }
   }
 
-  async saveNewArticle() {
-    // Validaciones
+  saveNewArticle() {
+    // Validación: solo el nombre del artículo es obligatorio
     if (!this.newArticle.description || !this.newArticle.description.trim()) {
-      alerts.basicAlert('Validación', 'La descripción del artículo es obligatoria.', 'warning');
+      alerts.basicAlert('Validación', 'El nombre del artículo es obligatorio.', 'warning');
       return;
     }
 
-    if (!this.newArticle.idCategory || this.newArticle.idCategory === 0) {
-      alerts.basicAlert('Validación', 'Debe seleccionar una categoría.', 'warning');
-      return;
-    }
+    console.log('💾 Guardando datos del nuevo artículo en la fila...');
+    console.log('📋 Datos del formulario:', this.newArticle);
 
-    if (!this.newArticle.idFamilia || this.newArticle.idFamilia === 0) {
-      alerts.basicAlert('Validación', 'Debe seleccionar una familia.', 'warning');
-      return;
-    }
+    // Guardar los datos del formulario en la fila actual
+    // idSupplie = 0 indica que es un artículo nuevo (no recurrente)
+    this.currentRowForNewArticle.data.idSupplie = 0;
+    this.currentRowForNewArticle.data.materialId = 0;
+    this.currentRowForNewArticle.data.article = this.newArticle.description.trim();
+    this.currentRowForNewArticle.data.nameArticle = this.newArticle.description.trim();
+    this.currentRowForNewArticle.data.descriptionNewArticle = this.newArticle.descriptionNewArticle.trim();
+    this.currentRowForNewArticle.data.urlNewArticle = this.newArticle.urlNewArticle.trim();
+    this.currentRowForNewArticle.data.justificationNewArticle = this.newArticle.justificationNewArticle.trim();
+    this.currentRowForNewArticle.data.code = '';
+    this.currentRowForNewArticle.data.numArticle = '';
+    this.currentRowForNewArticle.data.description = this.newArticle.description.trim();
+    this.currentRowForNewArticle.data.__modified = true;
+    this.hasUnsavedChanges = true;
+    this.isAddingNewItem = true;
 
-    if (!this.newArticle.idSubfamilia || this.newArticle.idSubfamilia === 0) {
-      alerts.basicAlert('Validación', 'Debe seleccionar una subfamilia.', 'warning');
-      return;
-    }
+    // Refrescar las celdas del grid
+    this.gridApi.refreshCells({
+      rowNodes: [this.currentRowForNewArticle],
+      columns: ['article', 'numArticle'],
+      force: true
+    });
 
-    try {
-      console.log('💾 Guardando nuevo material en la base de datos...');
-      console.log('📋 Datos del formulario:', this.newArticle);
-      console.log('🏢 idRoot:', this.idRoot);
-
-      // Preparar el payload siguiendo la estructura de materiales-maestro
-      // El backend generará automáticamente el número de material (insumo)
-      const materialPayload = {
-        idCompany: this.idRoot,
-        idBranch: null,
-        typeOcorReq: '',
-        idCustomer: null,
-        insumo: '', // El backend lo genera automáticamente
-        barCode: '',
-        barcode: '',
-        company: '',
-        articulo: this.newArticle.description.trim(),
-        idCategory: this.newArticle.idCategory,
-        idFamilia: this.newArticle.idFamilia,
-        idSubfamilia: this.newArticle.idSubfamilia,
-        idMedida: 0,
-        idUbication: 0,
-        description: this.newArticle.description.trim(),
-        folio: '',
-        price: 0,
-        quantity: 0,
-        date: new Date().toISOString(),
-        merma: 0,
-        fecha: new Date().toISOString(),
-        aplicaResg: false,
-        costoMN: 0,
-        costoDLL: 0,
-        ventaMN: 0,
-        ventaDLL: 0,
-        stockMin: 0,
-        stockMax: 0,
-        picture: '',
-        typeMaterial: 'CONSUMABLE',
-        folioOcorReq: '',
-        vigente: true,
-        active: true
-      };
-
-      console.log('📤 Payload del nuevo material (insumo será generado por el backend):', materialPayload);
-      console.log('🔧 Llamando a materialsService.addMaterial...');
-
-      // Guardar en la base de datos
-      const response: any = await firstValueFrom(
-        this.materialsService.addMaterial(materialPayload)
-      );
-
-      console.log('✅ Material guardado exitosamente. Respuesta del backend:', response);
-      console.log('⚠️ El backend retorna id:0 e insumo vacío, necesitamos recargar los materiales');
-
-      // El backend NO retorna el ID ni el número generado en la respuesta
-      // Necesitamos recargar los materiales y buscar el recién creado por descripción
-      console.log('🔄 Esperando 500ms antes de recargar materiales...');
-
-      // Esperar un poco para que el backend indexe el material
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.log('🔄 Recargando lista de materiales...');
-
-      // Intentar hasta 3 veces con delays incrementales
-      let createdMaterial: any = null;
-      let allMaterials: any[] = [];
-
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        console.log(`🔄 Intento ${attempt}/3 de recargar materiales...`);
-
-        allMaterials = await firstValueFrom(
-          this.materialsService.getMaterialsxview(this.idRoot)
-        );
-
-        console.log(`📦 Materiales recargados en intento ${attempt}:`, allMaterials.length);
-
-        // Buscar el material recién creado por descripción, categoría, familia y subfamilia
-        createdMaterial = allMaterials.find((m: any) =>
-          m.description === this.newArticle.description.trim() &&
-          m.idCategory === this.newArticle.idCategory &&
-          m.idFamilia === this.newArticle.idFamilia &&
-          m.idSubfamilia === this.newArticle.idSubfamilia
-        );
-
-        if (createdMaterial) {
-          console.log(`✅ Material encontrado en intento ${attempt}!`);
-          break;
-        }
-
-        if (attempt < 3) {
-          console.log(`⏳ Material no encontrado, esperando ${attempt * 500}ms antes del siguiente intento...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 500));
-        }
-      }
-
-      if (!createdMaterial) {
-        throw new Error('No se pudo encontrar el material recién creado después de 3 intentos. El material fue guardado pero no aparece en la lista. Por favor, recargue la página manualmente.');
-      }
-
-      console.log('✅ Material encontrado:', createdMaterial);
-
-      const newMaterialId = createdMaterial.id;
-      const backendGeneratedNumber = createdMaterial.insumo || createdMaterial.code || '';
-
-      console.log('🔢 ID del material:', newMaterialId);
-      console.log('🔢 Número generado por el backend:', backendGeneratedNumber);
-
-      // Actualizar la fila actual con el ID del material creado y el número generado por el backend
-      this.currentRowForNewArticle.data.idSupplie = newMaterialId;
-      this.currentRowForNewArticle.data.materialId = newMaterialId;
-      this.currentRowForNewArticle.data.article = this.newArticle.description.trim();
-      this.currentRowForNewArticle.data.nameArticle = this.newArticle.description.trim();
-      this.currentRowForNewArticle.data.code = backendGeneratedNumber;
-      this.currentRowForNewArticle.data.numArticle = backendGeneratedNumber;
-      this.currentRowForNewArticle.data.description = this.newArticle.description.trim();
-      this.currentRowForNewArticle.data.__modified = true;
-      this.hasUnsavedChanges = true;
-
-      // Actualizar la lista local de materiales con todos los materiales recargados
-      this.materials = allMaterials.map(m => ({
-        id: m.id,
-        description: m.description,
-        code: m.insumo || m.code,
-        measure: m.measure || '',
-        active: m.active,
-        idCategory: m.idCategory,
-        idFamilia: m.idFamilia,
-        idSubfamilia: m.idSubfamilia
-      }));
-
-      this.gridApi.refreshCells({
-        rowNodes: [this.currentRowForNewArticle],
-        columns: ['article', 'numArticle'],
-        force: true
-      });
-
-      alerts.basicAlert('Éxito', `Material registrado exitosamente con número ${backendGeneratedNumber}.`, 'success');
-      this.closeNewArticleModal();
-
-    } catch (error: any) {
-      console.error('❌ Error al guardar el material:', error);
-      console.error('❌ Tipo de error:', typeof error);
-      console.error('❌ Error name:', error?.name);
-      console.error('❌ Error message:', error?.message);
-      console.error('❌ Error stack:', error?.stack);
-
-      if (error?.error) {
-        console.error('❌ Error.error:', error.error);
-      }
-
-      if (error?.status) {
-        console.error('❌ HTTP Status:', error.status);
-        console.error('❌ HTTP StatusText:', error.statusText);
-      }
-
-      const errorMsg = error?.error?.message || error?.message || 'Error desconocido al guardar el material';
-      alerts.basicAlert('Error', errorMsg, 'error');
-    }
+    alerts.basicAlert('Éxito', 'Datos del artículo guardados. Presione "Guardar" para enviar al servidor.', 'success');
+    this.closeNewArticleModal();
   }
 
   closeNewArticleModal() {
@@ -1520,7 +1294,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     if (event.column.getColId() === 'recurrent' && event.data.recurrent === 'Nuevo') {
       this.currentRowForNewArticle = event.node;
       // Cargar los datos del artículo temporal guardados previamente en la fila.
-      this.newArticle = { ...(event.data.newArticleInfo || { name: '', description: '', link: '', usage: '' }) };
+      this.newArticle = {
+        description: event.data.nameArticle || '',
+        descriptionNewArticle: event.data.descriptionNewArticle || '',
+        urlNewArticle: event.data.urlNewArticle || '',
+        justificationNewArticle: event.data.justificationNewArticle || ''
+      };
       this.isNewArticleModalVisible = true;
       return;
     }
@@ -1576,6 +1355,155 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     if (this.originalPdfUrl) {
       URL.revokeObjectURL(this.originalPdfUrl);
       this.originalPdfUrl = null;
+    }
+    // Clean up tooltip
+    this.hideNewArticleTooltip();
+  }
+
+  // ==================== TOOLTIP METHODS ====================
+
+  private showNewArticleTooltip(data: any, cellRect: DOMRect): void {
+    this.hideNewArticleTooltip();
+
+    const name = data.nameArticle || 'Sin nombre';
+    const description = data.descriptionNewArticle || 'Sin descripción';
+    const url = data.urlNewArticle || '';
+    const justification = data.justificationNewArticle || 'Sin justificación';
+
+    // Crear contenedor del tooltip
+    this.tooltipElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.tooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipElement, 'min-width', '300px');
+    this.renderer.setStyle(this.tooltipElement, 'max-width', '450px');
+
+    // Crear flecha del tooltip
+    const arrow = this.renderer.createElement('div');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #d97706');
+    this.renderer.appendChild(this.tooltipElement, arrow);
+
+    // Crear contenido del tooltip
+    const content = this.renderer.createElement('div');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)');
+
+    // Header
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-box-seam');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const headerTextNode = this.renderer.createText(`Artículo Nuevo: ${name}`);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+    this.renderer.appendChild(content, header);
+
+    // Body
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#ffffff');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    // Descripción
+    this.appendTooltipRow(body, 'bi-card-text', 'Descripción:', description);
+
+    // URL (solo si existe)
+    if (url) {
+      this.appendTooltipRow(body, 'bi-link-45deg', 'URL:', url);
+    }
+
+    // Justificación
+    this.appendTooltipRow(body, 'bi-question-circle', 'Justificación:', justification, true);
+
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.tooltipElement, content);
+
+    // Agregar al body
+    this.renderer.appendChild(document.body, this.tooltipElement);
+
+    // Posicionar tooltip a la derecha de la celda
+    const top = cellRect.top;
+    const left = cellRect.right + 8;
+    this.renderer.setStyle(this.tooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.tooltipElement, 'left', `${left}px`);
+
+    // Animación de entrada
+    this.renderer.setStyle(this.tooltipElement, 'opacity', '0');
+    setTimeout(() => {
+      if (this.tooltipElement) {
+        this.renderer.setStyle(this.tooltipElement, 'opacity', '1');
+        this.renderer.setStyle(this.tooltipElement, 'transition', 'opacity 0.3s ease');
+      }
+    }, 10);
+  }
+
+  private appendTooltipRow(container: HTMLElement, iconClass: string, label: string, value: string, isLast: boolean = false): void {
+    const row = this.renderer.createElement('div');
+    this.renderer.setStyle(row, 'display', 'flex');
+    this.renderer.setStyle(row, 'align-items', 'flex-start');
+    this.renderer.setStyle(row, 'gap', '8px');
+    if (!isLast) {
+      this.renderer.setStyle(row, 'margin-bottom', '10px');
+    }
+
+    const labelEl = this.renderer.createElement('span');
+    this.renderer.setStyle(labelEl, 'color', 'rgba(255, 255, 255, 0.9)');
+    this.renderer.setStyle(labelEl, 'font-weight', '600');
+    this.renderer.setStyle(labelEl, 'min-width', '100px');
+    this.renderer.setStyle(labelEl, 'display', 'flex');
+    this.renderer.setStyle(labelEl, 'align-items', 'center');
+    this.renderer.setStyle(labelEl, 'gap', '5px');
+    this.renderer.setStyle(labelEl, 'flex-shrink', '0');
+
+    const icon = this.renderer.createElement('i');
+    this.renderer.addClass(icon, 'bi');
+    this.renderer.addClass(icon, iconClass);
+    this.renderer.setStyle(icon, 'font-size', '12px');
+    this.renderer.appendChild(labelEl, icon);
+
+    const labelText = this.renderer.createText(label);
+    this.renderer.appendChild(labelEl, labelText);
+    this.renderer.appendChild(row, labelEl);
+
+    const valueEl = this.renderer.createElement('span');
+    this.renderer.setStyle(valueEl, 'color', '#ffffff');
+    this.renderer.setStyle(valueEl, 'word-break', 'break-word');
+    this.renderer.setStyle(valueEl, 'line-height', '1.4');
+    const valueText = this.renderer.createText(value);
+    this.renderer.appendChild(valueEl, valueText);
+    this.renderer.appendChild(row, valueEl);
+
+    this.renderer.appendChild(container, row);
+  }
+
+  private hideNewArticleTooltip(): void {
+    if (this.tooltipElement) {
+      this.renderer.removeChild(document.body, this.tooltipElement);
+      this.tooltipElement = null;
     }
   }
 
