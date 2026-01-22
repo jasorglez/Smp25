@@ -344,7 +344,7 @@ export class EgresosPalacioComponent {
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
-      if (event.column && event.column.getColId() !== 'pdfReport') {
+      if (event.column && event.column.getColId() !== 'pdfReport' && event.column.getColId() !== 'catalogPdfReport') {
         event.node.setSelected(true);
       }
     },
@@ -668,6 +668,23 @@ export class EgresosPalacioComponent {
         valueGetter: params => params.data.countItems || 0,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      {
+        field: 'catalogPdfReport',
+        headerName: 'PDF',
+        width: 70,
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => {
+            console.log('🔵 PDF Catálogo Click detectado desde PdfButtonCellRenderer:', node.data.id);
+            this.toggleCatalogReportDetail(node);
+          },
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#007bff',
+          title: 'Hacer clic para generar el reporte PDF del Catálogo de Gasto'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#e3f2fd', textAlign: 'center' }
       },
       {
         field: 'pdfReport',
@@ -1738,6 +1755,7 @@ export class EgresosPalacioComponent {
     }
   }
 
+
   async toggleReportDetail(node: any) {
     console.log('🟢 toggleReportDetail llamado - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
 
@@ -1851,6 +1869,122 @@ export class EgresosPalacioComponent {
         'error'
       );
       console.error('Error generando reporte:', error);
+    }
+  }
+
+  async toggleCatalogReportDetail(node: any) {
+    console.log('🟢 toggleCatalogReportDetail llamado - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
+
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'catalogReport';
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido con el reporte de catálogo, colapsarlo y mostrar todas las filas
+      console.log('🟡 Colapsando reporte de catálogo expandido');
+      node.setExpanded(false);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
+      });
+      api.onFilterChanged();
+      return; // Salir temprano
+    }
+
+    // Verificar si ya se está generando un reporte
+    if (this.isGeneratingReport) {
+      console.log('🔴 Ya se está generando un reporte, ignorando clic');
+      alerts.basicAlert(
+        'Procesando',
+        'Ya se está generando un reporte. Por favor espere.',
+        'warning'
+      );
+      return;
+    }
+
+    // Marcar que se está generando
+    this.isGeneratingReport = true;
+    console.log('🟢 Iniciando generación de reporte de catálogo');
+
+    // Mostrar mensaje de progreso inicial
+    let progress = 0;
+    alerts.showLoadingWithProgress(
+      'Generando reporte...',
+      'Por favor espere mientras se procesa el documento',
+      progress
+    );
+
+    const progressInterval = setInterval(() => {
+      progress += 10;
+      if (progress <= 90) {
+        alerts.updateLoadingProgress(
+          'Generando reporte...',
+          'Por favor espere mientras se procesa el documento',
+          progress
+        );
+      }
+    }, 100);
+
+    try {
+      // Expandir con reporte de catálogo, ocultar las demás filas
+      this.externalFilterActive = true;
+      api.forEachNode((n: any) => {
+        n.data.visible = n.id === node.id ? true : false;
+      });
+      api.onFilterChanged();
+
+      // Si la fila está expandida con otro tipo de detalle, cerrarla
+      if (node.expanded && node.data.detailType !== 'catalogReport') {
+        node.setExpanded(false);
+      }
+
+      // Cambiar el tipo de detalle a 'catalogReport'
+      node.data.detailType = 'catalogReport';
+
+      // Agregar la descripción del catálogo de gasto formateada para el PDF
+      if (node.data.idExpendxcategr && this.expensesCatalogLevel2) {
+        const foundItem = this.expensesCatalogLevel2.find((item) => item.id === node.data.idExpendxcategr);
+        if (foundItem) {
+          node.data.catalogoGastoTexto = foundItem.description;
+        } else {
+          node.data.catalogoGastoTexto = 'Sin descripción';
+        }
+      } else {
+        node.data.catalogoGastoTexto = 'Sin catálogo de gasto';
+      }
+
+      // Expandir con el reporte
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      node.setExpanded(true);
+
+      // Completar progreso al 100%
+      clearInterval(progressInterval);
+      alerts.updateLoadingProgress(
+        'Reporte generado',
+        'El documento se ha procesado correctamente',
+        100
+      );
+
+      console.log('✅ Reporte de catálogo generado exitosamente');
+
+      // Cerrar mensaje de carga después de 800ms
+      setTimeout(() => {
+        alerts.closeLoading();
+        this.isGeneratingReport = false; // Liberar el lock
+        console.log('🔓 Lock liberado');
+      }, 800);
+
+    } catch (error) {
+      clearInterval(progressInterval);
+      alerts.closeLoading();
+      this.isGeneratingReport = false; // Liberar el lock en caso de error
+      console.log('🔴 Error generando reporte de catálogo, lock liberado');
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
+        'error'
+      );
+      console.error('Error generando reporte de catálogo:', error);
     }
   }
 
@@ -2745,6 +2879,9 @@ export class EgresosPalacioComponent {
           break;
         case 'bitacora':
           await this.generateReporteBitacora(filteredExpenses);
+          break;
+        case 'catalogoEgresos':
+          await this.generateReporteCatalogoEgresos(filteredExpenses);
           break;
         default:
           alerts.basicAlert('Error', 'Tipo de reporte no válido', 'error');
@@ -4640,6 +4777,679 @@ export class EgresosPalacioComponent {
 
   closeModal() {
     this.modalInstance?.hide();
+  }
+
+  // ==================== REPORTE POR CATÁLOGO DE EGRESOS (JERÁRQUICO NIVELES 1, 2, 3) ====================
+
+  /**
+   * Genera el reporte jerárquico por Catálogo de Egresos (EXPENSE)
+   * Estructura: Nivel 1 (TOTAL) → Nivel 2 (agrupador) → Nivel 3 (SUBTOTAL)
+   */
+  private async generateReporteCatalogoEgresos(filteredExpenses: any[]) {
+    try {
+      // Paso 1: Cargar todos los conceptos de los egresos filtrados
+      const allConcepts: any[] = [];
+      for (const expense of filteredExpenses) {
+        const concepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        );
+
+        // Calcular totalFinal para cada concepto
+        concepts.forEach(concept => {
+          concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+        });
+
+        allConcepts.push(...concepts);
+      }
+
+      if (allConcepts.length === 0) {
+        alerts.basicAlert(
+          'Sin datos',
+          'No se encontraron conceptos para los egresos seleccionados',
+          'warning'
+        );
+        return;
+      }
+
+      // Paso 2: Cargar catálogo EXPENSE completo (niveles 1, 2, 3)
+      const catalogData = await this.loadCatalogoExpenseCompleto();
+
+      // Paso 3: Construir árbol jerárquico del catálogo
+      const catalogTree = this.buildCatalogExpenseTree(catalogData);
+
+      // Paso 4: Procesar conceptos y calcular totales por jerarquía
+      const reportData = this.buildCatalogoEgresosReportData(catalogTree, allConcepts);
+
+      // Paso 5: Generar el PDF
+      await this.generateCatalogoEgresosPDF(reportData, allConcepts);
+
+    } catch (error) {
+      console.error('Error generando reporte por catálogo de egresos:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte por catálogo de egresos', 'error');
+    }
+  }
+
+  /**
+   * Carga el Catálogo de Gasto (EXPENSE) completo - niveles 1, 2, 3
+   * Los conceptos de egresos usan idExpense que apunta al nivel 3
+   */
+  private async loadCatalogoExpenseCompleto(): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      // Usar getCatalogs con tipo EXPENSE para cargar el Catálogo de Gasto
+      this.cataalogAdmonService.getCatalogs(this.idRoot, 'EXPENSE').subscribe({
+        next: (data: any) => {
+          const catalogData = data || [];
+          console.log('✅ Catálogo de Gasto (EXPENSE) cargado:', catalogData.length, 'items');
+
+          // Debug: mostrar estructura
+          if (catalogData.length > 0) {
+            console.log('📋 Primer item:', catalogData[0]);
+            console.log('📋 Campos disponibles:', Object.keys(catalogData[0]));
+
+            // Mostrar items por nivel (usando parentId para determinar jerarquía)
+            const nivel1 = catalogData.filter((item: any) => !item.parentId || item.parentId === 0);
+            const nivel2 = catalogData.filter((item: any) => {
+              const parent = catalogData.find((p: any) => p.id === item.parentId);
+              return parent && (!parent.parentId || parent.parentId === 0);
+            });
+            const nivel3 = catalogData.filter((item: any) => {
+              const parent = catalogData.find((p: any) => p.id === item.parentId);
+              if (!parent) return false;
+              const grandparent = catalogData.find((gp: any) => gp.id === parent.parentId);
+              return grandparent && (!grandparent.parentId || grandparent.parentId === 0);
+            });
+
+            console.log('📊 Nivel 1 (raíces):', nivel1.length, 'items');
+            console.log('📊 Nivel 2:', nivel2.length, 'items');
+            console.log('📊 Nivel 3:', nivel3.length, 'items');
+          }
+
+          resolve(catalogData);
+        },
+        error: (error) => {
+          console.error('❌ Error cargando Catálogo de Gasto:', error);
+          reject(error);
+        }
+      });
+    });
+  }
+
+  /**
+   * Construye el árbol jerárquico del Catálogo de Gasto (EXPENSE)
+   * Usa parentId para construir la jerarquía
+   */
+  private buildCatalogExpenseTree(catalogData: any[]): any[] {
+    const map = new Map<number, any>();
+    const roots: any[] = [];
+
+    console.log('🔧 Construyendo árbol con', catalogData.length, 'items');
+
+    // Crear mapa de todos los nodos
+    catalogData.forEach(item => {
+      map.set(item.id, {
+        ...item,
+        children: []
+      });
+    });
+
+    // Construir jerarquía usando parentId
+    catalogData.forEach(item => {
+      const node = map.get(item.id)!;
+
+      if (item.parentId && item.parentId !== 0 && map.has(item.parentId)) {
+        const parent = map.get(item.parentId)!;
+        parent.children.push(node);
+      } else {
+        // Items sin padre son raíces (nivel 1)
+        roots.push(node);
+      }
+    });
+
+    console.log('🌳 Árbol de Catálogo de Gasto construido. Raíces (nivel 1):', roots.length);
+
+    // Debug: mostrar estructura del árbol
+    if (roots.length > 0) {
+      roots.slice(0, 5).forEach((root, i) => {
+        console.log(`🌲 Nivel 1 [${i + 1}]: ${root.description} (id: ${root.id}, hijos: ${root.children?.length || 0})`);
+        if (root.children && root.children.length > 0) {
+          root.children.slice(0, 3).forEach((child: any) => {
+            console.log(`   └─ Nivel 2: ${child.description} (id: ${child.id}, hijos: ${child.children?.length || 0})`);
+            if (child.children && child.children.length > 0) {
+              child.children.slice(0, 2).forEach((grandchild: any) => {
+                console.log(`      └─ Nivel 3: ${grandchild.description} (id: ${grandchild.id})`);
+              });
+            }
+          });
+        }
+      });
+    }
+
+    return roots;
+  }
+
+  /**
+   * Procesa el árbol y los conceptos para generar los datos del reporte
+   * Estructura: Nivel 1 (TOTAL) → Nivel 2 (agrupador/título) → Nivel 3 (SUBTOTAL)
+   * ESTRATEGIA: Primero arma TODA la estructura del catálogo, luego calcula sumas
+   */
+  private buildCatalogoEgresosReportData(catalogTree: any[], conceptsData: any[]): any[] {
+    const reportRows: any[] = [];
+
+    console.log('🔍 Construyendo reporte. Catálogo items:', catalogTree.length, 'Conceptos:', conceptsData.length);
+
+    // Debug: mostrar TODOS los campos de un concepto para identificar el campo correcto
+    if (conceptsData.length > 0) {
+      console.log('📋 CAMPOS DISPONIBLES en concepto:', Object.keys(conceptsData[0]));
+      console.log('📋 Primer concepto COMPLETO:', conceptsData[0]);
+      console.log('📋 Muestra de conceptos (5):', conceptsData.slice(0, 5).map(c => ({
+        id: c.id,
+        idExpense: c.idExpense,
+        idCatIng: c.idCatIng,
+        description: c.description,
+        totalFinal: c.totalFinal
+      })));
+    }
+
+    // Recopilar todos los IDs del catálogo para comparar
+    const getAllCatalogIds = (nodes: any[]): number[] => {
+      let ids: number[] = [];
+      nodes.forEach(node => {
+        ids.push(node.id);
+        if (node.children && node.children.length > 0) {
+          ids = ids.concat(getAllCatalogIds(node.children));
+        }
+      });
+      return ids;
+    };
+    const catalogIds = getAllCatalogIds(catalogTree);
+    console.log('📚 IDs en el catálogo:', catalogIds.slice(0, 20), '... total:', catalogIds.length);
+
+    // PASO 1: Crear mapa de sumas por idExpense (conceptos apuntan a nivel 3 del Catálogo de Gasto)
+    const sumasPorCatalogo = new Map<number, number>();
+    const idsConceptos: number[] = [];
+    conceptsData.forEach(concept => {
+      const idExpense = concept.idExpense;
+      if (idExpense) {
+        idsConceptos.push(idExpense);
+        const currentSum = sumasPorCatalogo.get(idExpense) || 0;
+        sumasPorCatalogo.set(idExpense, currentSum + (concept.totalFinal || 0));
+      }
+    });
+
+    console.log('💰 IDs de conceptos (idExpense):', [...new Set(idsConceptos)]);
+    console.log('💰 Sumas por Catálogo de Gasto:', Array.from(sumasPorCatalogo.entries()));
+
+    // Verificar si hay coincidencias
+    const idsEnComun = [...new Set(idsConceptos)].filter(id => catalogIds.includes(id));
+    console.log('✅ IDs que COINCIDEN entre conceptos y catálogo:', idsEnComun);
+    console.log('❌ IDs de conceptos que NO están en catálogo:', [...new Set(idsConceptos)].filter(id => !catalogIds.includes(id)));
+
+    // PASO 2: Función para calcular total de un nodo (suma recursiva de todos los descendientes)
+    const calculateNodeTotal = (node: any): number => {
+      // Suma directa si el concepto apunta a este nodo
+      let total = sumasPorCatalogo.get(node.id) || 0;
+
+      // Sumar recursivamente los hijos
+      if (node.children && node.children.length > 0) {
+        node.children.forEach((child: any) => {
+          total += calculateNodeTotal(child);
+        });
+      }
+
+      return total;
+    };
+
+    // PASO 3: Función para procesar el árbol y generar TODAS las filas
+    // Procesa los 3 niveles del catálogo EXPENSE
+    const processLevel1 = (node: any) => {
+      const total = calculateNodeTotal(node);
+      const hasChildren = node.children && node.children.length > 0;
+
+      console.log(`📌 Nivel 1: ${node.description} (id: ${node.id}, total: ${total}, hijos: ${hasChildren ? node.children.length : 0})`);
+
+      // NIVEL 1: Siempre agregar (es la categoría principal)
+      reportRows.push({
+        type: 'level1',
+        id: node.id,
+        description: node.description,
+        subtotal: '',
+        total: total,
+        percent: ''
+      });
+
+      // Procesar hijos como Nivel 2
+      if (hasChildren) {
+        node.children.forEach((child: any) => processLevel2(child));
+      }
+    };
+
+    const processLevel2 = (node: any) => {
+      const total = calculateNodeTotal(node);
+      const hasChildren = node.children && node.children.length > 0;
+
+      console.log(`  📌 Nivel 2: ${node.description} (id: ${node.id}, total: ${total}, hijos: ${hasChildren ? node.children.length : 0})`);
+
+      // NIVEL 2: Agregar como agrupador (solo título, sin montos)
+      reportRows.push({
+        type: 'level2',
+        id: node.id,
+        description: node.description,
+        subtotal: '',
+        total: '',
+        percent: ''
+      });
+
+      // Procesar hijos como Nivel 3
+      if (hasChildren) {
+        node.children.forEach((child: any) => processLevel3(child));
+      }
+    };
+
+    const processLevel3 = (node: any) => {
+      const subtotal = calculateNodeTotal(node);
+
+      console.log(`    📌 Nivel 3: ${node.description} (id: ${node.id}, subtotal: ${subtotal})`);
+
+      // NIVEL 3: Agregar con SUBTOTAL (suma de conceptos que apuntan a este item)
+      reportRows.push({
+        type: 'level3',
+        id: node.id,
+        description: node.description,
+        subtotal: subtotal,
+        total: '',
+        percent: ''
+      });
+
+      // Si hay nivel 4+, tratarlos también como nivel 3
+      if (node.children && node.children.length > 0) {
+        node.children.forEach((child: any) => processLevel3(child));
+      }
+    };
+
+    // PASO 4: Procesar el árbol completo
+    if (catalogTree.length > 0) {
+      console.log('🌳 Procesando árbol de catálogo EXPENSE...');
+
+      // El catálogo puede tener una raíz contenedora o múltiples raíces
+      // Verificar la estructura
+      catalogTree.forEach((rootNode: any, index: number) => {
+        console.log(`🌲 Raíz ${index + 1}: "${rootNode.description}" (id: ${rootNode.id}, hijos: ${rootNode.children?.length || 0})`);
+
+        // Si la raíz es un contenedor (ej: "EGRESOS" o "EXPENSE"), procesar sus hijos como Nivel 1
+        // Si la raíz ya es una categoría, procesarla directamente como Nivel 1
+        if (rootNode.children && rootNode.children.length > 0) {
+          // Verificar si los hijos tienen más hijos (estructura de 3 niveles)
+          const firstChild = rootNode.children[0];
+          if (firstChild.children && firstChild.children.length > 0) {
+            // La raíz es un contenedor, sus hijos son Nivel 1
+            console.log('📂 Raíz es contenedor, procesando hijos como Nivel 1');
+            rootNode.children.forEach((child: any) => processLevel1(child));
+          } else {
+            // La raíz es Nivel 1
+            console.log('📂 Raíz es Nivel 1, procesando directamente');
+            processLevel1(rootNode);
+          }
+        } else {
+          // Raíz sin hijos, procesar como Nivel 1
+          processLevel1(rootNode);
+        }
+      });
+    }
+
+    console.log('📊 Total de filas generadas:', reportRows.length);
+    console.log('📊 Filas por tipo:', {
+      level1: reportRows.filter(r => r.type === 'level1').length,
+      level2: reportRows.filter(r => r.type === 'level2').length,
+      level3: reportRows.filter(r => r.type === 'level3').length
+    });
+
+    return reportRows;
+  }
+
+  /**
+   * Construye el cuerpo de la tabla para el PDF
+   */
+  private buildCatalogoEgresosTableBody(reportData: any[]): any[][] {
+    const body: any[][] = [];
+
+    // Encabezado
+    body.push([
+      { text: 'CONCEPTO', style: 'tableHeader', alignment: 'left' },
+      { text: 'SUBTOTAL', style: 'tableHeader', alignment: 'right' },
+      { text: 'TOTAL', style: 'tableHeader', alignment: 'right' },
+      { text: '%', style: 'tableHeader', alignment: 'center' }
+    ]);
+
+    // Calcular total general (suma de todas las categorías nivel 1)
+    const totalGeneral = reportData
+      .filter(row => row.type === 'level1')
+      .reduce((sum, row) => sum + row.total, 0);
+
+    // Agregar filas
+    reportData.forEach(row => {
+      if (row.type === 'level1') {
+        // Nivel 1: Categorías principales - Negritas con TOTAL
+        const porcentaje = totalGeneral > 0 ? ((row.total / totalGeneral) * 100).toFixed(1) : '0.0';
+        body.push([
+          { text: row.description, style: 'level1Row', bold: true },
+          { text: '', alignment: 'right' },
+          { text: `$${this.formatCurrencyNumber(row.total)}`, style: 'level1Total', alignment: 'right', bold: true },
+          { text: `${porcentaje}%`, alignment: 'center', fontSize: 8 }
+        ]);
+
+      } else if (row.type === 'level2') {
+        // Nivel 2: Agrupadores - Solo título (mayúsculas, italics)
+        body.push([
+          { text: row.description, style: 'level2Row', italics: true, margin: [10, 0, 0, 0] },
+          { text: '', alignment: 'right' },
+          { text: '', alignment: 'right' },
+          { text: '', alignment: 'center' }
+        ]);
+
+      } else if (row.type === 'level3') {
+        // Nivel 3: Items finales - Indentados con SUBTOTAL
+        body.push([
+          { text: row.description, style: 'level3Row', margin: [20, 0, 0, 0] },
+          { text: row.subtotal > 0 ? `$${this.formatCurrencyNumber(row.subtotal)}` : '', style: 'level3Subtotal', alignment: 'right' },
+          { text: '', alignment: 'right' },
+          { text: '', alignment: 'center' }
+        ]);
+      }
+    });
+
+    // Fila de total general
+    body.push([
+      { text: 'TOTAL DE EGRESOS DEL MES', style: 'totalGeneralLabel', bold: true, fillColor: '#f0ad4e', color: '#ffffff' },
+      { text: '', fillColor: '#f0ad4e' },
+      { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'totalGeneralValue', alignment: 'right', bold: true, fillColor: '#f0ad4e', color: '#ffffff' },
+      { text: '100%', fillColor: '#f0ad4e', color: '#ffffff', alignment: 'center', fontSize: 8 }
+    ]);
+
+    return body;
+  }
+
+  /**
+   * Genera el PDF del reporte por Catálogo de Egresos
+   */
+  private async generateCatalogoEgresosPDF(reportData: any[], conceptsData: any[]) {
+    // Importar pdfMake dinámicamente
+    const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+    const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+    (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+    // Obtener información de la empresa y firmas
+    const rootResponse: any = await lastValueFrom(
+      this.rootService.getRootbyId(this.idRoot)
+    );
+
+    const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    const logo2Base64 = rootResponse.picture2
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+      : logoBase64;
+    const watermarkBase64 = rootResponse.picture3
+      ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+      : null;
+
+    const setupManagementInfo: any = await lastValueFrom(
+      this.administrationService.getSetupManagementInfo(this.idRoot)
+    );
+    const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+      ? setupManagementInfo[0]
+      : null;
+
+    // Obtener nombre de la cuenta bancaria seleccionada
+    const selectedAccount = this.bankAccounts.find(account => account.id === this.idAccount);
+    const accountName = selectedAccount
+      ? `${selectedAccount.nameAccount}`.toUpperCase()
+      : 'CUENTA NO ESPECIFICADA';
+
+    // Obtener mes y año del rango de fechas
+    const [startYearStr, startMonthStr] = this.reportStartDate.split('-');
+    const startYear = parseInt(startYearStr);
+    const startMonth = parseInt(startMonthStr);
+
+    const [endYearStr, endMonthStr] = this.reportEndDate.split('-');
+    const endYear = parseInt(endYearStr);
+    const endMonth = parseInt(endMonthStr);
+
+    const startDateObj = new Date(startYear, startMonth - 1, 1);
+    const endDateObj = new Date(endYear, endMonth - 1, 1);
+
+    // Determinar el texto del periodo
+    let periodText = '';
+    if (startYear === endYear && startMonth === endMonth) {
+      periodText = `MES DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear}`;
+    } else if (startYear === endYear) {
+      periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} A ${this.getMonthName(endDateObj).toUpperCase()} ${startYear}`;
+    } else {
+      periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear} A ${this.getMonthName(endDateObj).toUpperCase()} ${endYear}`;
+    }
+
+    // Construir tabla
+    const tableBody = this.buildCatalogoEgresosTableBody(reportData);
+
+    // Definición del documento
+    const docDefinition: any = {
+      pageSize: 'LETTER',
+      pageOrientation: 'portrait',
+      pageMargins: [40, 120, 40, 80],
+      header: {
+        margin: [40, 20, 40, 10],
+        columns: [
+          {
+            image: 'logo',
+            width: 90,
+            alignment: 'left'
+          },
+          {
+            stack: [
+              { text: rootResponse.name || 'H. JUNTA MUNICIPAL', style: 'headerTitle', alignment: 'center' },
+              { text: '2024-2027', style: 'headerSubtitle', alignment: 'center' },
+              { text: rootResponse.address || 'DIRECCIÓN', style: 'headerAddress', alignment: 'center' }
+            ],
+            width: '*',
+            margin: [0, 5, 0, 0]
+          },
+          {
+            image: 'logo2',
+            width: 90,
+            alignment: 'right'
+          }
+        ]
+      },
+      footer: (currentPage: number, pageCount: number) => {
+        // Solo mostrar firmas en la última página
+        if (currentPage === pageCount) {
+          return {
+            margin: [40, 10, 40, 20],
+            stack: [
+              {
+                columns: [
+                  {
+                    stack: [
+                      { text: firmas?.administratorTitle || 'TESORERO', style: 'signatureLabel', alignment: 'center' },
+                      { text: '\n\n', fontSize: 8 },
+                      { text: '_______________________', alignment: 'center', fontSize: 9 },
+                      { text: firmas?.administratorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
+                    ],
+                    width: '33%'
+                  },
+                  {
+                    stack: [
+                      { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureLabel', alignment: 'center' },
+                      { text: '\n\n', fontSize: 8 },
+                      { text: '_______________________', alignment: 'center', fontSize: 9 },
+                      { text: firmas?.gerencyName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
+                    ],
+                    width: '34%'
+                  },
+                  {
+                    stack: [
+                      { text: firmas?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureLabel', alignment: 'center' },
+                      { text: '\n\n', fontSize: 8 },
+                      { text: '_______________________', alignment: 'center', fontSize: 9 },
+                      { text: firmas?.directorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
+                    ],
+                    width: '33%'
+                  }
+                ]
+              }
+            ]
+          };
+        }
+        // En otras páginas, solo número de página
+        return {
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'center',
+          fontSize: 8,
+          margin: [0, 10, 0, 0]
+        };
+      },
+      content: [
+        {
+          text: `INFORME DE EGRESOS CORRESPONDIENTES AL ${periodText} DE LOS ${accountName} DE LA H.JMN`,
+          style: 'title',
+          margin: [0, 0, 0, 5]
+        },
+        {
+          text: `Del ${this.formatDateForDisplay(this.reportStartDate)} al ${this.formatDateForDisplay(this.reportEndDate)}`,
+          style: 'dateRange',
+          margin: [0, 0, 0, 15]
+        },
+        {
+          table: {
+            headerRows: 1,
+            widths: [300, 90, 90, 40],
+            body: tableBody
+          },
+          layout: {
+            fillColor: (rowIndex: number) => {
+              if (rowIndex === 0) return '#f0ad4e';
+              return null;
+            },
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#000000',
+            vLineColor: () => '#000000'
+          }
+        }
+      ],
+      images: watermarkBase64 ? {
+        logo: logoBase64,
+        logo2: logo2Base64,
+        watermark: watermarkBase64
+      } : {
+        logo: logoBase64,
+        logo2: logo2Base64
+      },
+      background: watermarkBase64 ? {
+        image: 'watermark',
+        width: 300,
+        opacity: 0.15,
+        absolutePosition: { x: 150, y: 300 }
+      } : undefined,
+      styles: {
+        headerTitle: {
+          fontSize: 11,
+          bold: true,
+          color: '#000000'
+        },
+        headerSubtitle: {
+          fontSize: 10,
+          bold: true,
+          color: '#000000'
+        },
+        headerAddress: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        title: {
+          fontSize: 10,
+          bold: true,
+          alignment: 'center',
+          color: '#000000'
+        },
+        dateRange: {
+          fontSize: 9,
+          alignment: 'center',
+          color: '#000000'
+        },
+        tableHeader: {
+          fontSize: 9,
+          bold: true,
+          color: '#ffffff',
+          fillColor: '#f0ad4e'
+        },
+        level1Row: {
+          fontSize: 9,
+          bold: true,
+          color: '#000000'
+        },
+        level1Total: {
+          fontSize: 9,
+          bold: true,
+          color: '#000000'
+        },
+        level2Row: {
+          fontSize: 8,
+          bold: true,
+          color: '#000000',
+          italics: true
+        },
+        level3Row: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        level3Subtotal: {
+          fontSize: 8,
+          color: '#000000'
+        },
+        totalGeneralLabel: {
+          fontSize: 9,
+          bold: true,
+          color: '#ffffff'
+        },
+        totalGeneralValue: {
+          fontSize: 9,
+          bold: true,
+          color: '#ffffff'
+        },
+        signatureLabel: {
+          fontSize: 9,
+          bold: true,
+          color: '#000000'
+        },
+        signatureName: {
+          fontSize: 9,
+          color: '#000000'
+        }
+      },
+      defaultStyle: {
+        fontSize: 8
+      }
+    };
+
+    // Generar y abrir PDF
+    pdfMake.createPdf(docDefinition).open();
+
+    // Tracking log
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Generación de Reporte PDF por Catálogo de Egresos - Periodo: ${periodText}`,
+      'Palacio Municipal - Egresos',
+      this.trackingService.getEmail()
+    );
+  }
+
+  /**
+   * Formatea fecha para mostrar en el reporte (DD/MM/YYYY)
+   */
+  private formatDateForDisplay(dateString: string): string {
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateString;
   }
 
 }

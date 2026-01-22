@@ -65,8 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.11.69 (21 Enero 2026 14:30:00) - Fix Catálogo Gasto: combo normal + filtro idPadre',
-
+  version: '3.11.74 (22 Enero 2026 11:15) - Beta',
 };
 
 
