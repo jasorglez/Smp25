@@ -441,20 +441,17 @@ export class EgresosPalacioComponent {
           this.incomes = filtered.map(income => {
             const countItems = income.countItems || 0;
             const countDocomps = income.countDocomps || 0;
-            console.log(`   Egreso ID ${income.id}: countItems=${countItems}, countDocomps=${countDocomps}`);
             return {
               ...income,
-              date: income.date ? new Date(income.date) : null, // Convertir a Date
-              countItems: countItems, // Usar valor de la BD si existe
-              countDocomps: countDocomps, // Usar valor de la BD si existe
+              date: income.date ? new Date(income.date) : null,
+              countItems: countItems,
+              countDocomps: countDocomps,
               detailType: null,
               detailData: [],
               visible: true,
               objetoGastoCodigo: this.expenses.find(e => e.id === income.idExpend)?.codigo || ''
             };
           });
-
-          console.log('✅ Egresos cargados:', this.incomes.length);
           resolve();
         },
         error: (err) => {
@@ -474,7 +471,6 @@ export class EgresosPalacioComponent {
       this.administrationService.getByNivelObjeto(this.idRoot, 1).subscribe(
         (data: any) => {
           this.expenses = data;
-          console.log('✅ Objetos de Gasto cargados:', this.expenses.length);
           resolve();
         },
         error => {
@@ -493,7 +489,6 @@ export class EgresosPalacioComponent {
       this.cataalogAdmonService.getCatalogs(this.idRoot, 'TYPECOMP').subscribe(
         (data: any) => {
           this.typeComps = data;
-          console.log('✅ Tipos de Comprobante cargados:', this.typeComps.length);
           resolve();
         },
         error => {
@@ -513,36 +508,19 @@ export class EgresosPalacioComponent {
       this.cataalogAdmonService.getCatalogsxNivel(this.idRoot, 'EXPENSE', 2).subscribe(
         (data: any) => {
           this.expensesCatalogLevel2 = data || [];
-          console.log('✅ Catálogo EXPENSE nivel 2 cargado:', this.expensesCatalogLevel2.length);
-
           // Cargar nivel 3 para el detalle
           this.cataalogAdmonService.getCatalogsxNivel(this.idRoot, 'EXPENSE', 3).subscribe(
             (dataLevel3: any) => {
               this.expensesCatalogLevel3 = dataLevel3 || [];
-              console.log('✅ Catálogo EXPENSE nivel 3 cargado:', this.expensesCatalogLevel3.length);
-              // Log para ver la estructura del catálogo
-              if (this.expensesCatalogLevel3.length > 0) {
-                console.log('📋 Estructura primer item nivel 3:', this.expensesCatalogLevel3[0]);
-                console.log('📋 Campos disponibles:', Object.keys(this.expensesCatalogLevel3[0]));
-                // Mostrar algunos items con sus parentId
-                const sample = this.expensesCatalogLevel3.slice(0, 5).map((item: any) => ({
-                  id: item.id,
-                  description: item.description,
-                  parentId: item.parentId
-                }));
-                console.log('📋 Muestra de items nivel 3 con parentId:', sample);
-              }
               resolve();
             },
             error => {
-              console.error('❌ Error cargando Catálogo EXPENSE nivel 3:', error);
               this.expensesCatalogLevel3 = [];
               resolve();
             }
           );
         },
         error => {
-          console.error('❌ Error cargando Catálogo EXPENSE nivel 2:', error);
           this.expensesCatalogLevel2 = [];
           resolve();
         }
@@ -676,7 +654,6 @@ export class EgresosPalacioComponent {
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
-            console.log('🔵 PDF Catálogo Click detectado desde PdfButtonCellRenderer:', node.data.id);
             this.toggleCatalogReportDetail(node);
           },
           icon: 'bi-file-earmark-pdf',
@@ -693,7 +670,6 @@ export class EgresosPalacioComponent {
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
-            console.log('🔵 PDF Click detectado desde PdfButtonCellRenderer:', node.data.id);
             this.toggleReportDetail(node);
           },
           icon: 'bi-file-earmark-pdf',
@@ -1044,13 +1020,9 @@ export class EgresosPalacioComponent {
 
   // Método para refrescar las definiciones de columnas (invalidar cache)
   private refreshColumnDefinitions() {
-    console.log('🔄 Refrescando columnas. typeComps:', this.typeComps.length, 'expenses:', this.expenses.length);
-    this._colMaster = []; // Invalidar cache
+    this._colMaster = [];
     if (this.gridApi) {
-      this.gridApi.setGridOption('columnDefs', this.colMaster); // Forzar actualización
-      console.log('✅ Columnas actualizadas en el grid');
-    } else {
-      console.log('⚠️ Grid API no disponible aún');
+      this.gridApi.setGridOption('columnDefs', this.colMaster);
     }
   }
 
@@ -1633,8 +1605,6 @@ export class EgresosPalacioComponent {
       return;
     }
 
-    console.log('🔄 PADRE: Actualizando fila en grid. ID:', updatedData.id);
-
     const selectedNodes = this.gridApi.getSelectedNodes();
     const currentSelectedId = selectedNodes.length > 0 ? selectedNodes[0].data.id : null;
 
@@ -1643,13 +1613,6 @@ export class EgresosPalacioComponent {
     if (rowNode) {
       const currentData = rowNode.data;
 
-      console.log('🔄 PADRE: Valores ANTES de actualizar:', {
-        subtotal: currentData.subtotal,
-        tax: currentData.tax,
-        isr: currentData.isr,
-        total: currentData.total
-      });
-
       currentData.subtotal = updatedData.subtotal;
       currentData.tax = updatedData.tax;
       if (updatedData.isr !== undefined) {
@@ -1657,25 +1620,14 @@ export class EgresosPalacioComponent {
       }
       currentData.total = updatedData.total;
 
-      console.log('🔄 PADRE: Valores DESPUÉS de actualizar:', {
-        subtotal: currentData.subtotal,
-        tax: currentData.tax,
-        isr: currentData.isr,
-        total: currentData.total
-      });
-
-      // Aplicar la transacción para actualizar la fila
       this.gridApi.applyTransaction({ update: [currentData] });
 
-      // FORZAR el refresh de las celdas de totales después de un pequeño delay
-      // para asegurar que AG Grid procese la transacción primero
       setTimeout(() => {
         this.gridApi.refreshCells({
           rowNodes: [rowNode],
           columns: ['subtotal', 'tax', 'isr', 'total'],
           force: true
         });
-        console.log('✅ PADRE: Fila actualizada y celdas refrescadas');
       }, 100);
 
       if (currentSelectedId === updatedData.id) {
@@ -1714,12 +1666,6 @@ export class EgresosPalacioComponent {
   // ==================== MÉTODOS PARA CASCADAS ====================
 
   toggleCascade(node: any) {
-    console.log('🔄 MAESTRO toggleCascade - Datos del nodo:', {
-      id: node.data.id,
-      idExpendxcategr: node.data.idExpendxcategr,
-      mostrartodo: node.data.mostrartodo,
-      expensesCatalogLevel3_count: this.expensesCatalogLevel3.length
-    });
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
 
@@ -1757,14 +1703,10 @@ export class EgresosPalacioComponent {
 
 
   async toggleReportDetail(node: any) {
-    console.log('🟢 toggleReportDetail llamado - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
-
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con el reporte, colapsarlo y mostrar todas las filas
-      console.log('🟡 Colapsando reporte expandido');
       node.setExpanded(false);
       node.data.detailType = null;
       this.externalFilterActive = false;
@@ -1772,12 +1714,10 @@ export class EgresosPalacioComponent {
         n.data.visible = true;
       });
       api.onFilterChanged();
-      return; // Salir temprano
+      return;
     }
 
-    // Verificar si ya se está generando un reporte
     if (this.isGeneratingReport) {
-      console.log('🔴 Ya se está generando un reporte, ignorando clic');
       alerts.basicAlert(
         'Procesando',
         'Ya se está generando un reporte. Por favor espere.',
@@ -1786,9 +1726,7 @@ export class EgresosPalacioComponent {
       return;
     }
 
-    // Marcar que se está generando
     this.isGeneratingReport = true;
-    console.log('🟢 Iniciando generación de reporte');
 
     // Mostrar mensaje de progreso inicial
     let progress = 0;
@@ -1849,38 +1787,28 @@ export class EgresosPalacioComponent {
         100
       );
 
-      console.log('✅ Reporte generado exitosamente');
-
-      // Cerrar mensaje de carga después de 800ms
       setTimeout(() => {
         alerts.closeLoading();
-        this.isGeneratingReport = false; // Liberar el lock
-        console.log('🔓 Lock liberado');
+        this.isGeneratingReport = false;
       }, 800);
 
     } catch (error) {
       clearInterval(progressInterval);
       alerts.closeLoading();
-      this.isGeneratingReport = false; // Liberar el lock en caso de error
-      console.log('🔴 Error generando reporte, lock liberado');
+      this.isGeneratingReport = false;
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
         'error'
       );
-      console.error('Error generando reporte:', error);
     }
   }
 
   async toggleCatalogReportDetail(node: any) {
-    console.log('🟢 toggleCatalogReportDetail llamado - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
-
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'catalogReport';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con el reporte de catálogo, colapsarlo y mostrar todas las filas
-      console.log('🟡 Colapsando reporte de catálogo expandido');
       node.setExpanded(false);
       node.data.detailType = null;
       this.externalFilterActive = false;
@@ -1888,12 +1816,10 @@ export class EgresosPalacioComponent {
         n.data.visible = true;
       });
       api.onFilterChanged();
-      return; // Salir temprano
+      return;
     }
 
-    // Verificar si ya se está generando un reporte
     if (this.isGeneratingReport) {
-      console.log('🔴 Ya se está generando un reporte, ignorando clic');
       alerts.basicAlert(
         'Procesando',
         'Ya se está generando un reporte. Por favor espere.',
@@ -1902,9 +1828,7 @@ export class EgresosPalacioComponent {
       return;
     }
 
-    // Marcar que se está generando
     this.isGeneratingReport = true;
-    console.log('🟢 Iniciando generación de reporte de catálogo');
 
     // Mostrar mensaje de progreso inicial
     let progress = 0;
@@ -1965,26 +1889,20 @@ export class EgresosPalacioComponent {
         100
       );
 
-      console.log('✅ Reporte de catálogo generado exitosamente');
-
-      // Cerrar mensaje de carga después de 800ms
       setTimeout(() => {
         alerts.closeLoading();
-        this.isGeneratingReport = false; // Liberar el lock
-        console.log('🔓 Lock liberado');
+        this.isGeneratingReport = false;
       }, 800);
 
     } catch (error) {
       clearInterval(progressInterval);
       alerts.closeLoading();
-      this.isGeneratingReport = false; // Liberar el lock en caso de error
-      console.log('🔴 Error generando reporte de catálogo, lock liberado');
+      this.isGeneratingReport = false;
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
         'error'
       );
-      console.error('Error generando reporte de catálogo:', error);
     }
   }
 
@@ -2058,14 +1976,9 @@ export class EgresosPalacioComponent {
   }
 
   updateExpenditureCountItems(expenditureId: number, count: number) {
-    console.log(`🔄 PADRE: updateExpenditureCountItems llamado. ID: ${expenditureId}, Nuevo Count: ${count}`);
     if (this.gridApi) {
-      let found = false;
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === expenditureId) {
-          found = true;
-          const oldCount = node.data.countItems;
-          console.log(`   Registro encontrado. ID: ${expenditureId}, Count anterior: ${oldCount}, Count nuevo: ${count}`);
           node.data.countItems = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
@@ -2073,57 +1986,36 @@ export class EgresosPalacioComponent {
             force: true
           });
 
-          // Actualizar también selectedIncomes si es el mismo registro
           if (this.selectedIncomes && this.selectedIncomes.id === expenditureId) {
             this.selectedIncomes.countItems = count;
           }
 
-          // Guardar en el servidor
           const dataToSave = {
             countItems: count,
             countDocomps: node.data.countDocomps || 0,
             modifiedBy: this.currentUser
           };
-          console.log(`   💾 Guardando en servidor:`, dataToSave);
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
-            next: () => {
-              console.log(`   ✅ Contador actualizado en servidor para ID ${expenditureId}`);
-            },
-            error: (error) => {
-              console.error(`   ❌ Error actualizando contador de items para ID ${expenditureId}:`, error);
-            }
+            next: () => {},
+            error: () => {}
           });
         }
       });
-      if (!found) {
-        console.warn(`   ⚠️ No se encontró el registro con ID ${expenditureId} en el grid`);
-      }
-    } else {
-      console.warn('   ⚠️ gridApi no está disponible');
     }
   }
 
   loadConceptsData(expenditureId: number, successCallback: any) {
-    console.log('🟢 PADRE: Cargando conceptos desde servidor para ID:', expenditureId);
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId).subscribe({
       next: (data: any) => {
-        console.log(`✅ PADRE: Conceptos recibidos del servidor para ID ${expenditureId}:`, data?.length || 0);
-        if (data && data.length > 0) {
-          console.log('   Primer concepto:', data[0]);
-        }
         successCallback(data);
       },
-      error: (error) => {
-        console.error('❌ PADRE: Error loading concepts para ID', expenditureId, error);
+      error: () => {
         successCallback([]);
       }
     });
   }
 
   async saveConceptsById(expenditureId: number, data: any) {
-    console.log('💾 PADRE: saveConceptsById iniciado. ID:', expenditureId);
-    console.log('💾 PADRE: Data recibida:', data);
-
     const conceptsData = data.concepts || data;
     const subtotal = data.subtotal || 0;
     const tax = data.tax || 0;
@@ -2131,20 +2023,6 @@ export class EgresosPalacioComponent {
 
     const newConcepts = conceptsData.filter((row: any) => row.__isNew);
     const modifiedConcepts = conceptsData.filter((row: any) => row.__modified && !row.__isNew);
-
-    console.log('💾 PADRE: Conceptos NUEVOS:', newConcepts.length);
-    console.log('💾 PADRE: Conceptos MODIFICADOS:', modifiedConcepts.length);
-    console.log('💾 PADRE: Total conceptos:', conceptsData.length);
-
-    if (modifiedConcepts.length > 0) {
-      console.log('💾 PADRE: Conceptos modificados:', modifiedConcepts.map(c => ({
-        id: c.id,
-        price: c.price,
-        total: c.total,
-        __modified: c.__modified,
-        __isNew: c.__isNew
-      })));
-    }
 
     try {
       // Guardar conceptos nuevos
@@ -2186,9 +2064,6 @@ export class EgresosPalacioComponent {
         );
       }
 
-      console.log('💾 PADRE: Actualizando maestro después de guardar. ID:', expenditureId);
-      console.log('💾 PADRE: Totales a actualizar:', { subtotal, tax, isr: data.isr, total });
-
       // SIEMPRE actualizar el contador de conceptos (puede haber eliminaciones)
       this.updateExpenditureCountItems(expenditureId, conceptsData.length);
 
@@ -2200,8 +2075,6 @@ export class EgresosPalacioComponent {
         isr: data.isr,
         total: total
       });
-
-      console.log('✅ PADRE: Maestro actualizado con totales');
 
       // Refrescar la lista de egresos para mostrar totales actualizados
       // setTimeout(() => this.getExpenditure(), 500);
@@ -2268,14 +2141,9 @@ export class EgresosPalacioComponent {
   }
 
   updateExpenditureCountDocomps(expenditureId: number, count: number) {
-    console.log(`🔄 PADRE: updateExpenditureCountDocomps llamado. ID: ${expenditureId}, Nuevo Count: ${count}`);
     if (this.gridApi) {
-      let found = false;
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === expenditureId) {
-          found = true;
-          const oldCount = node.data.countDocomps;
-          console.log(`   Registro encontrado. ID: ${expenditureId}, CountDocomps anterior: ${oldCount}, Nuevo: ${count}`);
           node.data.countDocomps = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
@@ -2696,7 +2564,6 @@ export class EgresosPalacioComponent {
 
       // Obtener los IDs únicos de los egresos maestros (idIncorExp)
       const uniqueMasterIds = [...new Set(concepts.map((c: any) => c.idIncorExp))];
-      console.log('🔍 IDs de egresos encontrados:', uniqueMasterIds);
 
       // Guardar los conceptos encontrados para resaltarlos en el detalle
       this.foundConceptsByUuid = concepts;
@@ -2926,7 +2793,6 @@ export class EgresosPalacioComponent {
       'El reporte Agrupado está en desarrollo. Por favor use el reporte Consolidado.',
       'info'
     );
-    console.log('Datos filtrados para reporte agrupado:', filteredExpenses);
   }
 
   // ==================== REPORTE EGRESOS (LISTADO COMPLETO) ====================
@@ -4787,7 +4653,18 @@ export class EgresosPalacioComponent {
    */
   private async generateReporteCatalogoEgresos(filteredExpenses: any[]) {
     try {
-      // Paso 1: Cargar todos los conceptos de los egresos filtrados
+      // Paso 1: Obtener SALDO INICIAL e INGRESOS DEL MES
+      const saldoEIngresosResponse: any = await lastValueFrom(
+        this.administrationService.getSaldoEIngresosMes(
+          this.idAccount,
+          this.reportStartDate,
+          this.reportEndDate
+        )
+      );
+      const saldoInicial = saldoEIngresosResponse?.data?.saldoInicial || 0;
+      const ingresosMes = saldoEIngresosResponse?.data?.ingresosMes || 0;
+
+      // Paso 2: Cargar todos los conceptos de los egresos filtrados
       const allConcepts: any[] = [];
       for (const expense of filteredExpenses) {
         const concepts: any[] = await lastValueFrom(
@@ -4811,17 +4688,17 @@ export class EgresosPalacioComponent {
         return;
       }
 
-      // Paso 2: Cargar catálogo EXPENSE completo (niveles 1, 2, 3)
+      // Paso 3: Cargar catálogo EXPENSE completo (niveles 1, 2, 3)
       const catalogData = await this.loadCatalogoExpenseCompleto();
 
-      // Paso 3: Construir árbol jerárquico del catálogo
+      // Paso 4: Construir árbol jerárquico del catálogo
       const catalogTree = this.buildCatalogExpenseTree(catalogData);
 
-      // Paso 4: Procesar conceptos y calcular totales por jerarquía
+      // Paso 5: Procesar conceptos y calcular totales por jerarquía
       const reportData = this.buildCatalogoEgresosReportData(catalogTree, allConcepts);
 
-      // Paso 5: Generar el PDF
-      await this.generateCatalogoEgresosPDF(reportData, allConcepts);
+      // Paso 6: Generar el PDF con el resumen
+      await this.generateCatalogoEgresosPDF(reportData, allConcepts, saldoInicial, ingresosMes);
 
     } catch (error) {
       console.error('Error generando reporte por catálogo de egresos:', error);
@@ -4835,39 +4712,11 @@ export class EgresosPalacioComponent {
    */
   private async loadCatalogoExpenseCompleto(): Promise<any[]> {
     return new Promise((resolve, reject) => {
-      // Usar getCatalogs con tipo EXPENSE para cargar el Catálogo de Gasto
       this.cataalogAdmonService.getCatalogs(this.idRoot, 'EXPENSE').subscribe({
         next: (data: any) => {
-          const catalogData = data || [];
-          console.log('✅ Catálogo de Gasto (EXPENSE) cargado:', catalogData.length, 'items');
-
-          // Debug: mostrar estructura
-          if (catalogData.length > 0) {
-            console.log('📋 Primer item:', catalogData[0]);
-            console.log('📋 Campos disponibles:', Object.keys(catalogData[0]));
-
-            // Mostrar items por nivel (usando parentId para determinar jerarquía)
-            const nivel1 = catalogData.filter((item: any) => !item.parentId || item.parentId === 0);
-            const nivel2 = catalogData.filter((item: any) => {
-              const parent = catalogData.find((p: any) => p.id === item.parentId);
-              return parent && (!parent.parentId || parent.parentId === 0);
-            });
-            const nivel3 = catalogData.filter((item: any) => {
-              const parent = catalogData.find((p: any) => p.id === item.parentId);
-              if (!parent) return false;
-              const grandparent = catalogData.find((gp: any) => gp.id === parent.parentId);
-              return grandparent && (!grandparent.parentId || grandparent.parentId === 0);
-            });
-
-            console.log('📊 Nivel 1 (raíces):', nivel1.length, 'items');
-            console.log('📊 Nivel 2:', nivel2.length, 'items');
-            console.log('📊 Nivel 3:', nivel3.length, 'items');
-          }
-
-          resolve(catalogData);
+          resolve(data || []);
         },
         error: (error) => {
-          console.error('❌ Error cargando Catálogo de Gasto:', error);
           reject(error);
         }
       });
@@ -4882,47 +4731,21 @@ export class EgresosPalacioComponent {
     const map = new Map<number, any>();
     const roots: any[] = [];
 
-    console.log('🔧 Construyendo árbol con', catalogData.length, 'items');
-
     // Crear mapa de todos los nodos
     catalogData.forEach(item => {
-      map.set(item.id, {
-        ...item,
-        children: []
-      });
+      map.set(item.id, { ...item, children: [] });
     });
 
     // Construir jerarquía usando parentId
     catalogData.forEach(item => {
       const node = map.get(item.id)!;
-
       if (item.parentId && item.parentId !== 0 && map.has(item.parentId)) {
         const parent = map.get(item.parentId)!;
         parent.children.push(node);
       } else {
-        // Items sin padre son raíces (nivel 1)
         roots.push(node);
       }
     });
-
-    console.log('🌳 Árbol de Catálogo de Gasto construido. Raíces (nivel 1):', roots.length);
-
-    // Debug: mostrar estructura del árbol
-    if (roots.length > 0) {
-      roots.slice(0, 5).forEach((root, i) => {
-        console.log(`🌲 Nivel 1 [${i + 1}]: ${root.description} (id: ${root.id}, hijos: ${root.children?.length || 0})`);
-        if (root.children && root.children.length > 0) {
-          root.children.slice(0, 3).forEach((child: any) => {
-            console.log(`   └─ Nivel 2: ${child.description} (id: ${child.id}, hijos: ${child.children?.length || 0})`);
-            if (child.children && child.children.length > 0) {
-              child.children.slice(0, 2).forEach((grandchild: any) => {
-                console.log(`      └─ Nivel 3: ${grandchild.description} (id: ${grandchild.id})`);
-              });
-            }
-          });
-        }
-      });
-    }
 
     return roots;
   }
@@ -4930,84 +4753,36 @@ export class EgresosPalacioComponent {
   /**
    * Procesa el árbol y los conceptos para generar los datos del reporte
    * Estructura: Nivel 1 (TOTAL) → Nivel 2 (agrupador/título) → Nivel 3 (SUBTOTAL)
-   * ESTRATEGIA: Primero arma TODA la estructura del catálogo, luego calcula sumas
    */
   private buildCatalogoEgresosReportData(catalogTree: any[], conceptsData: any[]): any[] {
     const reportRows: any[] = [];
 
-    console.log('🔍 Construyendo reporte. Catálogo items:', catalogTree.length, 'Conceptos:', conceptsData.length);
-
-    // Debug: mostrar TODOS los campos de un concepto para identificar el campo correcto
-    if (conceptsData.length > 0) {
-      console.log('📋 CAMPOS DISPONIBLES en concepto:', Object.keys(conceptsData[0]));
-      console.log('📋 Primer concepto COMPLETO:', conceptsData[0]);
-      console.log('📋 Muestra de conceptos (5):', conceptsData.slice(0, 5).map(c => ({
-        id: c.id,
-        idExpense: c.idExpense,
-        idCatIng: c.idCatIng,
-        description: c.description,
-        totalFinal: c.totalFinal
-      })));
-    }
-
-    // Recopilar todos los IDs del catálogo para comparar
-    const getAllCatalogIds = (nodes: any[]): number[] => {
-      let ids: number[] = [];
-      nodes.forEach(node => {
-        ids.push(node.id);
-        if (node.children && node.children.length > 0) {
-          ids = ids.concat(getAllCatalogIds(node.children));
-        }
-      });
-      return ids;
-    };
-    const catalogIds = getAllCatalogIds(catalogTree);
-    console.log('📚 IDs en el catálogo:', catalogIds.slice(0, 20), '... total:', catalogIds.length);
-
-    // PASO 1: Crear mapa de sumas por idExpense (conceptos apuntan a nivel 3 del Catálogo de Gasto)
+    // Crear mapa de sumas por idExpense (conceptos apuntan al Catálogo de Gasto)
     const sumasPorCatalogo = new Map<number, number>();
-    const idsConceptos: number[] = [];
     conceptsData.forEach(concept => {
       const idExpense = concept.idExpense;
       if (idExpense) {
-        idsConceptos.push(idExpense);
         const currentSum = sumasPorCatalogo.get(idExpense) || 0;
         sumasPorCatalogo.set(idExpense, currentSum + (concept.totalFinal || 0));
       }
     });
 
-    console.log('💰 IDs de conceptos (idExpense):', [...new Set(idsConceptos)]);
-    console.log('💰 Sumas por Catálogo de Gasto:', Array.from(sumasPorCatalogo.entries()));
-
-    // Verificar si hay coincidencias
-    const idsEnComun = [...new Set(idsConceptos)].filter(id => catalogIds.includes(id));
-    console.log('✅ IDs que COINCIDEN entre conceptos y catálogo:', idsEnComun);
-    console.log('❌ IDs de conceptos que NO están en catálogo:', [...new Set(idsConceptos)].filter(id => !catalogIds.includes(id)));
-
-    // PASO 2: Función para calcular total de un nodo (suma recursiva de todos los descendientes)
+    // Función para calcular total de un nodo (suma recursiva de descendientes)
     const calculateNodeTotal = (node: any): number => {
-      // Suma directa si el concepto apunta a este nodo
       let total = sumasPorCatalogo.get(node.id) || 0;
-
-      // Sumar recursivamente los hijos
       if (node.children && node.children.length > 0) {
         node.children.forEach((child: any) => {
           total += calculateNodeTotal(child);
         });
       }
-
       return total;
     };
 
-    // PASO 3: Función para procesar el árbol y generar TODAS las filas
-    // Procesa los 3 niveles del catálogo EXPENSE
+    // Procesar Nivel 1 (categorías principales con TOTAL)
     const processLevel1 = (node: any) => {
       const total = calculateNodeTotal(node);
       const hasChildren = node.children && node.children.length > 0;
 
-      console.log(`📌 Nivel 1: ${node.description} (id: ${node.id}, total: ${total}, hijos: ${hasChildren ? node.children.length : 0})`);
-
-      // NIVEL 1: Siempre agregar (es la categoría principal)
       reportRows.push({
         type: 'level1',
         id: node.id,
@@ -5017,40 +4792,44 @@ export class EgresosPalacioComponent {
         percent: ''
       });
 
-      // Procesar hijos como Nivel 2
       if (hasChildren) {
         node.children.forEach((child: any) => processLevel2(child));
       }
     };
 
+    // Procesar Nivel 2 (agrupador o detalle según si tiene hijos)
     const processLevel2 = (node: any) => {
       const total = calculateNodeTotal(node);
       const hasChildren = node.children && node.children.length > 0;
 
-      console.log(`  📌 Nivel 2: ${node.description} (id: ${node.id}, total: ${total}, hijos: ${hasChildren ? node.children.length : 0})`);
-
-      // NIVEL 2: Agregar como agrupador (solo título, sin montos)
-      reportRows.push({
-        type: 'level2',
-        id: node.id,
-        description: node.description,
-        subtotal: '',
-        total: '',
-        percent: ''
-      });
-
-      // Procesar hijos como Nivel 3
       if (hasChildren) {
+        // Tiene hijos → AGRUPADOR (solo título)
+        reportRows.push({
+          type: 'level2',
+          id: node.id,
+          description: node.description,
+          subtotal: '',
+          total: '',
+          percent: ''
+        });
         node.children.forEach((child: any) => processLevel3(child));
+      } else {
+        // No tiene hijos → DETALLE (con SUBTOTAL)
+        reportRows.push({
+          type: 'level3',
+          id: node.id,
+          description: node.description,
+          subtotal: total,
+          total: '',
+          percent: ''
+        });
       }
     };
 
+    // Procesar Nivel 3 (detalles con SUBTOTAL)
     const processLevel3 = (node: any) => {
       const subtotal = calculateNodeTotal(node);
 
-      console.log(`    📌 Nivel 3: ${node.description} (id: ${node.id}, subtotal: ${subtotal})`);
-
-      // NIVEL 3: Agregar con SUBTOTAL (suma de conceptos que apuntan a este item)
       reportRows.push({
         type: 'level3',
         id: node.id,
@@ -5060,48 +4839,27 @@ export class EgresosPalacioComponent {
         percent: ''
       });
 
-      // Si hay nivel 4+, tratarlos también como nivel 3
       if (node.children && node.children.length > 0) {
         node.children.forEach((child: any) => processLevel3(child));
       }
     };
 
-    // PASO 4: Procesar el árbol completo
+    // Procesar el árbol completo
     if (catalogTree.length > 0) {
-      console.log('🌳 Procesando árbol de catálogo EXPENSE...');
-
-      // El catálogo puede tener una raíz contenedora o múltiples raíces
-      // Verificar la estructura
-      catalogTree.forEach((rootNode: any, index: number) => {
-        console.log(`🌲 Raíz ${index + 1}: "${rootNode.description}" (id: ${rootNode.id}, hijos: ${rootNode.children?.length || 0})`);
-
-        // Si la raíz es un contenedor (ej: "EGRESOS" o "EXPENSE"), procesar sus hijos como Nivel 1
-        // Si la raíz ya es una categoría, procesarla directamente como Nivel 1
+      catalogTree.forEach((rootNode: any) => {
         if (rootNode.children && rootNode.children.length > 0) {
-          // Verificar si los hijos tienen más hijos (estructura de 3 niveles)
           const firstChild = rootNode.children[0];
           if (firstChild.children && firstChild.children.length > 0) {
-            // La raíz es un contenedor, sus hijos son Nivel 1
-            console.log('📂 Raíz es contenedor, procesando hijos como Nivel 1');
+            // La raíz es contenedor, procesar hijos como Nivel 1
             rootNode.children.forEach((child: any) => processLevel1(child));
           } else {
-            // La raíz es Nivel 1
-            console.log('📂 Raíz es Nivel 1, procesando directamente');
             processLevel1(rootNode);
           }
         } else {
-          // Raíz sin hijos, procesar como Nivel 1
           processLevel1(rootNode);
         }
       });
     }
-
-    console.log('📊 Total de filas generadas:', reportRows.length);
-    console.log('📊 Filas por tipo:', {
-      level1: reportRows.filter(r => r.type === 'level1').length,
-      level2: reportRows.filter(r => r.type === 'level2').length,
-      level3: reportRows.filter(r => r.type === 'level3').length
-    });
 
     return reportRows;
   }
@@ -5169,18 +4927,14 @@ export class EgresosPalacioComponent {
   }
 
   /**
-   * Genera el PDF del reporte por Catálogo de Egresos
+   * Genera el PDF del reporte por Catálogo de Egresos con resumen
    */
-  private async generateCatalogoEgresosPDF(reportData: any[], conceptsData: any[]) {
-    // Importar pdfMake dinámicamente
+  private async generateCatalogoEgresosPDF(reportData: any[], conceptsData: any[], saldoInicial: number, ingresosMes: number) {
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
     (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
-    // Obtener información de la empresa y firmas
-    const rootResponse: any = await lastValueFrom(
-      this.rootService.getRootbyId(this.idRoot)
-    );
+    const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.idRoot));
 
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
     const logo2Base64 = rootResponse.picture2
@@ -5197,13 +4951,11 @@ export class EgresosPalacioComponent {
       ? setupManagementInfo[0]
       : null;
 
-    // Obtener nombre de la cuenta bancaria seleccionada
     const selectedAccount = this.bankAccounts.find(account => account.id === this.idAccount);
     const accountName = selectedAccount
       ? `${selectedAccount.nameAccount}`.toUpperCase()
       : 'CUENTA NO ESPECIFICADA';
 
-    // Obtener mes y año del rango de fechas
     const [startYearStr, startMonthStr] = this.reportStartDate.split('-');
     const startYear = parseInt(startYearStr);
     const startMonth = parseInt(startMonthStr);
@@ -5215,7 +4967,6 @@ export class EgresosPalacioComponent {
     const startDateObj = new Date(startYear, startMonth - 1, 1);
     const endDateObj = new Date(endYear, endMonth - 1, 1);
 
-    // Determinar el texto del periodo
     let periodText = '';
     if (startYear === endYear && startMonth === endMonth) {
       periodText = `MES DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear}`;
@@ -5225,22 +4976,21 @@ export class EgresosPalacioComponent {
       periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear} A ${this.getMonthName(endDateObj).toUpperCase()} ${endYear}`;
     }
 
-    // Construir tabla
+    // Calcular total general de egresos
+    const totalGeneral = reportData
+      .filter(row => row.type === 'level1')
+      .reduce((sum, row) => sum + row.total, 0);
+
     const tableBody = this.buildCatalogoEgresosTableBody(reportData);
 
-    // Definición del documento
     const docDefinition: any = {
       pageSize: 'LETTER',
       pageOrientation: 'portrait',
-      pageMargins: [40, 120, 40, 80],
+      pageMargins: [40, 120, 40, 40],
       header: {
         margin: [40, 20, 40, 10],
         columns: [
-          {
-            image: 'logo',
-            width: 90,
-            alignment: 'left'
-          },
+          { image: 'logo', width: 90, alignment: 'left' },
           {
             stack: [
               { text: rootResponse.name || 'H. JUNTA MUNICIPAL', style: 'headerTitle', alignment: 'center' },
@@ -5250,61 +5000,15 @@ export class EgresosPalacioComponent {
             width: '*',
             margin: [0, 5, 0, 0]
           },
-          {
-            image: 'logo2',
-            width: 90,
-            alignment: 'right'
-          }
+          { image: 'logo2', width: 90, alignment: 'right' }
         ]
       },
-      footer: (currentPage: number, pageCount: number) => {
-        // Solo mostrar firmas en la última página
-        if (currentPage === pageCount) {
-          return {
-            margin: [40, 10, 40, 20],
-            stack: [
-              {
-                columns: [
-                  {
-                    stack: [
-                      { text: firmas?.administratorTitle || 'TESORERO', style: 'signatureLabel', alignment: 'center' },
-                      { text: '\n\n', fontSize: 8 },
-                      { text: '_______________________', alignment: 'center', fontSize: 9 },
-                      { text: firmas?.administratorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
-                    ],
-                    width: '33%'
-                  },
-                  {
-                    stack: [
-                      { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureLabel', alignment: 'center' },
-                      { text: '\n\n', fontSize: 8 },
-                      { text: '_______________________', alignment: 'center', fontSize: 9 },
-                      { text: firmas?.gerencyName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
-                    ],
-                    width: '34%'
-                  },
-                  {
-                    stack: [
-                      { text: firmas?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureLabel', alignment: 'center' },
-                      { text: '\n\n', fontSize: 8 },
-                      { text: '_______________________', alignment: 'center', fontSize: 9 },
-                      { text: firmas?.directorName || 'Sin asignar', style: 'signatureName', alignment: 'center' }
-                    ],
-                    width: '33%'
-                  }
-                ]
-              }
-            ]
-          };
-        }
-        // En otras páginas, solo número de página
-        return {
-          text: `Página ${currentPage} de ${pageCount}`,
-          alignment: 'center',
-          fontSize: 8,
-          margin: [0, 10, 0, 0]
-        };
-      },
+      footer: (currentPage: number, pageCount: number) => ({
+        text: `Página ${currentPage} de ${pageCount}`,
+        alignment: 'center',
+        fontSize: 8,
+        margin: [0, 10, 0, 0]
+      }),
       content: [
         {
           text: `INFORME DE EGRESOS CORRESPONDIENTES AL ${periodText} DE LOS ${accountName} DE LA H.JMN`,
@@ -5323,15 +5027,87 @@ export class EgresosPalacioComponent {
             body: tableBody
           },
           layout: {
-            fillColor: (rowIndex: number) => {
-              if (rowIndex === 0) return '#f0ad4e';
-              return null;
-            },
+            fillColor: (rowIndex: number) => rowIndex === 0 ? '#f0ad4e' : null,
             hLineWidth: () => 0.5,
             vLineWidth: () => 0.5,
             hLineColor: () => '#000000',
             vLineColor: () => '#000000'
           }
+        },
+        // Tabla de resumen
+        {
+          table: {
+            widths: ['*', 100],
+            body: [
+              [
+                { text: 'RESUMEN DE INGRESOS Y EGRESOS DEL ' + periodText, style: 'resumenTitle', colSpan: 2, alignment: 'center' },
+                {}
+              ],
+              [
+                { text: 'SALDO INICIAL', style: 'resumenLabel', alignment: 'left' },
+                { text: `$${this.formatCurrencyNumber(saldoInicial)}`, style: 'resumenValue', alignment: 'right' }
+              ],
+              [
+                { text: '(MAS) + INGRESOS DEL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: `$${this.formatCurrencyNumber(ingresosMes)}`, style: 'resumenValue', alignment: 'right' }
+              ],
+              [
+                { text: '(IGUAL) = TOTAL DISPONIBLES EN EL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: `$${this.formatCurrencyNumber(saldoInicial + ingresosMes)}`, style: 'resumenValue', alignment: 'right' }
+              ],
+              [
+                { text: '(MENOS) - EGRESOS DEL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'resumenValueRed', alignment: 'right' }
+              ],
+              [
+                { text: '(IGUAL) = SALDO FINAL DEL MES', style: 'resumenLabel', alignment: 'left' },
+                { text: `$${this.formatCurrencyNumber(saldoInicial + ingresosMes - totalGeneral)}`, style: 'resumenValue', alignment: 'right' }
+              ]
+            ]
+          },
+          layout: {
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#000000',
+            vLineColor: () => '#000000',
+            paddingTop: () => 2,
+            paddingBottom: () => 2,
+            paddingLeft: () => 6,
+            paddingRight: () => 6
+          },
+          margin: [0, 15, 0, 18]
+        },
+        // Firmas
+        {
+          columns: [
+            {
+              stack: [
+                { text: firmas?.administratorTitle || 'TESORERO', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '33%'
+            },
+            {
+              stack: [
+                { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '34%'
+            },
+            {
+              stack: [
+                { text: firmas?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '33%'
+            }
+          ]
         }
       ],
       images: watermarkBase64 ? {
@@ -5349,87 +5125,29 @@ export class EgresosPalacioComponent {
         absolutePosition: { x: 150, y: 300 }
       } : undefined,
       styles: {
-        headerTitle: {
-          fontSize: 11,
-          bold: true,
-          color: '#000000'
-        },
-        headerSubtitle: {
-          fontSize: 10,
-          bold: true,
-          color: '#000000'
-        },
-        headerAddress: {
-          fontSize: 8,
-          color: '#000000'
-        },
-        title: {
-          fontSize: 10,
-          bold: true,
-          alignment: 'center',
-          color: '#000000'
-        },
-        dateRange: {
-          fontSize: 9,
-          alignment: 'center',
-          color: '#000000'
-        },
-        tableHeader: {
-          fontSize: 9,
-          bold: true,
-          color: '#ffffff',
-          fillColor: '#f0ad4e'
-        },
-        level1Row: {
-          fontSize: 9,
-          bold: true,
-          color: '#000000'
-        },
-        level1Total: {
-          fontSize: 9,
-          bold: true,
-          color: '#000000'
-        },
-        level2Row: {
-          fontSize: 8,
-          bold: true,
-          color: '#000000',
-          italics: true
-        },
-        level3Row: {
-          fontSize: 8,
-          color: '#000000'
-        },
-        level3Subtotal: {
-          fontSize: 8,
-          color: '#000000'
-        },
-        totalGeneralLabel: {
-          fontSize: 9,
-          bold: true,
-          color: '#ffffff'
-        },
-        totalGeneralValue: {
-          fontSize: 9,
-          bold: true,
-          color: '#ffffff'
-        },
-        signatureLabel: {
-          fontSize: 9,
-          bold: true,
-          color: '#000000'
-        },
-        signatureName: {
-          fontSize: 9,
-          color: '#000000'
-        }
+        headerTitle: { fontSize: 11, bold: true, color: '#000000' },
+        headerSubtitle: { fontSize: 10, bold: true, color: '#000000' },
+        headerAddress: { fontSize: 8, color: '#000000' },
+        title: { fontSize: 10, bold: true, alignment: 'center', color: '#000000' },
+        dateRange: { fontSize: 9, alignment: 'center', color: '#000000' },
+        tableHeader: { fontSize: 9, bold: true, color: '#ffffff', fillColor: '#f0ad4e' },
+        level1Row: { fontSize: 9, bold: true, color: '#000000' },
+        level1Total: { fontSize: 9, bold: true, color: '#000000' },
+        level2Row: { fontSize: 8, bold: true, color: '#000000', italics: true },
+        level3Row: { fontSize: 8, color: '#000000' },
+        level3Subtotal: { fontSize: 8, color: '#000000' },
+        totalGeneralLabel: { fontSize: 9, bold: true, color: '#ffffff' },
+        totalGeneralValue: { fontSize: 9, bold: true, color: '#ffffff' },
+        resumenTitle: { fontSize: 9, bold: true, fillColor: '#000000', color: '#ffffff' },
+        resumenLabel: { fontSize: 8 },
+        resumenValue: { fontSize: 8, bold: true },
+        resumenValueRed: { fontSize: 8, bold: true, color: '#dc3545' },
+        firmaTitle: { fontSize: 8, bold: true },
+        firmaNombre: { fontSize: 7 }
       },
-      defaultStyle: {
-        fontSize: 8
-      }
+      defaultStyle: { fontSize: 8 }
     };
 
-    // Generar y abrir PDF
     pdfMake.createPdf(docDefinition).open();
 
     // Tracking log
