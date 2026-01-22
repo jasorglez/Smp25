@@ -5148,7 +5148,18 @@ export class EgresosPalacioComponent {
       defaultStyle: { fontSize: 8 }
     };
 
-    pdfMake.createPdf(docDefinition).open();
+    const pdf = pdfMake.createPdf(docDefinition);
+
+    try {
+      pdf.open();
+    } catch (error) {
+      pdf.download(`Reporte_Catalogo_Egresos_${new Date().getTime()}.pdf`);
+      alerts.basicAlert(
+        'Reporte descargado',
+        'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
+        'info'
+      );
+    }
 
     // Tracking log
     this.trackingService.addLog(
