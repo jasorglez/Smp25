@@ -30,7 +30,8 @@
       "Bash(npm run:*)",
       "Bash(npm install:*)",
       "Bash(dir C:Developer /s /b)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(time:*)"
     ],
     "deny": [],
     "ask": []

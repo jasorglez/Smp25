@@ -2750,6 +2750,9 @@ export class EgresosPalacioComponent {
         case 'catalogoEgresos':
           await this.generateReporteCatalogoEgresos(filteredExpenses);
           break;
+        case 'bitacoraPorCortes':
+          await this.generateReporteBitacoraPorCortes(filteredExpenses);
+          break;
         default:
           alerts.basicAlert('Error', 'Tipo de reporte no válido', 'error');
           return;
@@ -3269,6 +3272,491 @@ export class EgresosPalacioComponent {
     } catch (error) {
       console.error('Error generando bitácora:', error);
       alerts.basicAlert('Error', 'Error al generar la bitácora de egresos', 'error');
+    }
+  }
+
+  // ==================== REPORTE BITÁCORA POR CORTES (SUMA AGRUPADA POR DETALLE EGRESO CON DETALLE) ====================
+  private async generateReporteBitacoraPorCortes(filteredExpenses: any[]) {
+    try {
+      // Importar pdfMake dinámicamente
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Obtener información de la empresa y firmas
+      const rootResponse: any = await lastValueFrom(
+        this.rootService.getRootbyId(this.idRoot)
+      );
+
+      const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+      const logo2Base64 = rootResponse.picture2
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+        : logoBase64;
+      const watermarkBase64 = rootResponse.picture3
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+        : null;
+
+      const setupManagementInfo: any = await lastValueFrom(
+        this.administrationService.getSetupManagementInfo(this.idRoot)
+      );
+      const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+        ? setupManagementInfo[0]
+        : null;
+
+      // Obtener nombre de la cuenta bancaria seleccionada
+      const selectedAccount = this.bankAccounts.find(account => account.id === this.idAccount);
+      const accountName = selectedAccount
+        ? `${selectedAccount.nameAccount}-${selectedAccount.bankName}`.toUpperCase()
+        : 'INGRESOS PROPIOS';
+
+      // Cargar objetos de gasto nivel 4 para obtener descripción
+      const objetosNivel4: any[] = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 4)
+      ) as any[];
+
+      // Estructura para agrupar por código de Detalle Egreso CON DETALLE
+      const agrupacionPorDetalle = new Map<string, {
+        codigo: string;
+        nombre: string;
+        total: number;
+        registros: Array<{
+          numberDocument: string;
+          fecha: string;
+          fechaRaw: Date;
+          concepto: string;
+          totalFinal: number;
+        }>;
+      }>();
+
+      let totalGeneral = 0;
+
+      // Procesar cada egreso y sus conceptos
+      for (const expense of filteredExpenses) {
+        // Cargar conceptos de este egreso
+        const concepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        );
+
+        // Obtener objeto de gasto del maestro
+        const objetoGastoMaestro = this.expenses.find(obj => obj.id === expense.idExpend);
+
+        // Si no hay conceptos, usar el dato del maestro
+        if (!concepts || concepts.length === 0) {
+          const codigoMaestro = objetoGastoMaestro?.codigo || 'SIN-CODIGO';
+          const nombreMaestro = objetoGastoMaestro?.nombre || 'Sin clasificar';
+          const totalExpense = expense.total || 0;
+
+          if (!agrupacionPorDetalle.has(codigoMaestro)) {
+            agrupacionPorDetalle.set(codigoMaestro, {
+              codigo: codigoMaestro,
+              nombre: nombreMaestro,
+              total: 0,
+              registros: []
+            });
+          }
+
+          const entry = agrupacionPorDetalle.get(codigoMaestro)!;
+          entry.total += totalExpense;
+          entry.registros.push({
+            numberDocument: expense.numberDocument || 'Sin número',
+            fecha: this.formatDate(expense.date),
+            fechaRaw: new Date(expense.date),
+            concepto: expense.description || 'Sin descripción',
+            totalFinal: totalExpense
+          });
+          totalGeneral += totalExpense;
+        } else {
+          // Procesar cada concepto
+          for (const concept of concepts) {
+            // Calcular totalFinal del concepto
+            const totalFinalConcepto = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+
+            // Obtener objeto de gasto del concepto (nivel 4)
+            const objetoNivel4 = objetosNivel4.find(obj => obj.id === concept.idCatIng);
+
+            // Usar el código del concepto si existe, sino el del maestro
+            const codigoDetalle = objetoNivel4?.codigo || objetoGastoMaestro?.codigo || 'SIN-CODIGO';
+            const nombreDetalle = objetoNivel4?.nombre || objetoGastoMaestro?.nombre || 'Sin clasificar';
+
+            if (!agrupacionPorDetalle.has(codigoDetalle)) {
+              agrupacionPorDetalle.set(codigoDetalle, {
+                codigo: codigoDetalle,
+                nombre: nombreDetalle,
+                total: 0,
+                registros: []
+              });
+            }
+
+            const entry = agrupacionPorDetalle.get(codigoDetalle)!;
+            entry.total += totalFinalConcepto;
+
+            const fechaConcepto = concept.dateExpend || expense.date;
+            entry.registros.push({
+              numberDocument: expense.numberDocument || 'Sin número',
+              fecha: this.formatDate(fechaConcepto),
+              fechaRaw: new Date(fechaConcepto),
+              concepto: concept.description || expense.description || 'Sin descripción',
+              totalFinal: totalFinalConcepto
+            });
+            totalGeneral += totalFinalConcepto;
+          }
+        }
+      }
+
+      // Convertir Map a array y ordenar por código
+      const datosAgrupados = Array.from(agrupacionPorDetalle.values())
+        .sort((a, b) => a.codigo.localeCompare(b.codigo));
+
+      // Ordenar registros dentro de cada grupo por fecha
+      datosAgrupados.forEach(grupo => {
+        grupo.registros.sort((a, b) => a.fechaRaw.getTime() - b.fechaRaw.getTime());
+      });
+
+      if (datosAgrupados.length === 0) {
+        alerts.basicAlert(
+          'Sin datos',
+          'No se encontraron registros para generar el reporte',
+          'warning'
+        );
+        return;
+      }
+
+      // Obtener mes y año del rango de fechas
+      const [startYearStr, startMonthStr] = this.reportStartDate.split('-');
+      const startYear = parseInt(startYearStr);
+      const startMonth = parseInt(startMonthStr);
+
+      const [endYearStr, endMonthStr] = this.reportEndDate.split('-');
+      const endYear = parseInt(endYearStr);
+      const endMonth = parseInt(endMonthStr);
+
+      const startDateObj = new Date(startYear, startMonth - 1, 1);
+      const endDateObj = new Date(endYear, endMonth - 1, 1);
+
+      // Determinar el texto del periodo
+      let periodText = '';
+      if (startYear === endYear && startMonth === endMonth) {
+        periodText = `MES DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear}`;
+      } else if (startYear === endYear) {
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} A ${this.getMonthName(endDateObj).toUpperCase()} ${startYear}`;
+      } else {
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear} A ${this.getMonthName(endDateObj).toUpperCase()} ${endYear}`;
+      }
+
+      // Construir tabla con detalle agrupado por código
+      const tableBody: any[] = [
+        // Encabezado
+        [
+          { text: '#Doc/Fac', style: 'tableHeader', alignment: 'center' },
+          { text: 'Fecha', style: 'tableHeader', alignment: 'center' },
+          { text: 'Concepto', style: 'tableHeader', alignment: 'left' },
+          { text: 'Total', style: 'tableHeader', alignment: 'right' }
+        ]
+      ];
+
+      // Agregar grupos con sus registros
+      datosAgrupados.forEach(grupo => {
+        // Fila de encabezado del grupo (código y nombre del objeto de gasto)
+        tableBody.push([
+          {
+            text: `${grupo.codigo} - ${grupo.nombre}`,
+            style: 'grupoHeader',
+            colSpan: 4,
+            alignment: 'left',
+            fillColor: '#d4edda',
+            bold: true,
+            fontSize: 8
+          },
+          {}, {}, {}
+        ]);
+
+        // Filas de detalle del grupo
+        grupo.registros.forEach(registro => {
+          tableBody.push([
+            { text: registro.numberDocument, style: 'tableCell', alignment: 'center', fontSize: 7 },
+            { text: registro.fecha, style: 'tableCell', alignment: 'center', fontSize: 7 },
+            { text: registro.concepto, style: 'tableCell', alignment: 'left', fontSize: 7 },
+            { text: `$${this.formatCurrencyNumber(registro.totalFinal)}`, style: 'tableCell', alignment: 'right', fontSize: 7 }
+          ]);
+        });
+
+        // Fila de subtotal del grupo
+        tableBody.push([
+          { text: '', border: [true, true, false, true] },
+          { text: '', border: [false, true, false, true] },
+          { text: `SUBTOTAL ${grupo.codigo}:`, style: 'subtotalLabel', alignment: 'right', border: [false, true, false, true], bold: true, fontSize: 8 },
+          { text: `$${this.formatCurrencyNumber(grupo.total)}`, style: 'subtotalValue', alignment: 'right', border: [false, true, true, true], bold: true, fontSize: 8, fillColor: '#fff3cd' }
+        ]);
+      });
+
+      // Fila de total general
+      tableBody.push([
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false], bold: true, fontSize: 10 },
+        { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000', fontSize: 10 }
+      ]);
+
+      // Contar total de registros
+      const totalRegistros = datosAgrupados.reduce((acc, g) => acc + g.registros.length, 0);
+
+      // Definición del documento
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape',
+        pageMargins: [40, 55, 40, 80],
+        footer: (currentPage: number, pageCount: number) => {
+          return {
+            text: `Página ${currentPage} / ${pageCount}`,
+            alignment: 'center',
+            fontSize: 8,
+            margin: [0, 10, 0, 0],
+            color: '#666666'
+          };
+        },
+        background: watermarkBase64 ? [
+          {
+            image: 'watermark',
+            width: 400,
+            opacity: 0.15,
+            absolutePosition: { x: 200, y: 180 }
+          }
+        ] : [],
+        content: [
+          // Header con logos y título
+          {
+            columns: [
+              {
+                image: 'logo',
+                width: 80,
+                alignment: 'left'
+              },
+              {
+                stack: [
+                  {
+                    text: rootResponse.name || 'H. JUNTA MUNICIPAL',
+                    style: 'companyName',
+                    alignment: 'center'
+                  },
+                  {
+                    text: rootResponse.address || 'DIRECCIÓN',
+                    style: 'companyInfo',
+                    alignment: 'center',
+                    fontSize: 8
+                  }
+                ],
+                width: '*'
+              },
+              {
+                image: 'logo2',
+                width: 80,
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 0, 0, 9]
+          },
+          // Título del reporte
+          {
+            text: `BITÁCORA POR CORTES - ${periodText}`,
+            style: 'reportTitle',
+            alignment: 'center',
+            margin: [0, 5, 0, 5]
+          },
+          {
+            text: `CUENTA: ${accountName}`,
+            style: 'reportSubtitle',
+            alignment: 'center',
+            margin: [0, 0, 0, 5]
+          },
+          {
+            text: 'Detalle agrupado por Código de Objeto de Gasto',
+            style: 'reportSubtitle2',
+            alignment: 'center',
+            margin: [0, 0, 0, 10]
+          },
+          // Tabla de detalle
+          {
+            table: {
+              headerRows: 1,
+              widths: [70, 55, '*', 90],
+              body: tableBody
+            },
+            layout: {
+              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#000000',
+              vLineColor: () => '#000000',
+              paddingTop: () => 2,
+              paddingBottom: () => 2,
+              paddingLeft: () => 4,
+              paddingRight: () => 4
+            },
+            margin: [0, 0, 0, 15]
+          },
+          // Información de resumen
+          {
+            columns: [
+              {
+                text: [
+                  { text: 'Total de Códigos: ', bold: true },
+                  { text: `${datosAgrupados.length}` }
+                ],
+                fontSize: 9
+              },
+              {
+                text: [
+                  { text: 'Total de Registros: ', bold: true },
+                  { text: `${totalRegistros}` }
+                ],
+                fontSize: 9,
+                alignment: 'center'
+              },
+              {
+                text: [
+                  { text: 'Monto Total: ', bold: true },
+                  { text: `$${this.formatCurrencyNumber(totalGeneral)}`, color: '#cc0000' }
+                ],
+                fontSize: 9,
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 5, 0, 20]
+          },
+          // Firmas
+          {
+            columns: [
+              {
+                stack: [
+                  { text: firmas?.administratorTitle || 'TESORERO', style: 'firmaTitle', alignment: 'center' },
+                  { text: '\n\n', margin: [0, 3, 0, 0] },
+                  { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                  { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+                ],
+                width: '33%'
+              },
+              {
+                stack: [
+                  { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'firmaTitle', alignment: 'center' },
+                  { text: '\n\n', margin: [0, 3, 0, 0] },
+                  { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                  { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+                ],
+                width: '34%'
+              },
+              {
+                stack: [
+                  { text: firmas?.directorTitle || 'PRESIDENTE', style: 'firmaTitle', alignment: 'center' },
+                  { text: '\n\n', margin: [0, 3, 0, 0] },
+                  { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                  { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+                ],
+                width: '33%'
+              }
+            ]
+          }
+        ],
+        images: watermarkBase64 ? {
+          logo: logoBase64,
+          logo2: logo2Base64,
+          watermark: watermarkBase64
+        } : {
+          logo: logoBase64,
+          logo2: logo2Base64
+        },
+        styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#000000'
+          },
+          companyInfo: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          reportTitle: {
+            fontSize: 11,
+            bold: true,
+            color: '#000000'
+          },
+          reportSubtitle: {
+            fontSize: 9,
+            bold: true,
+            color: '#333333'
+          },
+          reportSubtitle2: {
+            fontSize: 8,
+            italic: true,
+            color: '#666666'
+          },
+          tableHeader: {
+            fontSize: 8,
+            bold: true,
+            fillColor: '#e0e0e0',
+            color: '#000000'
+          },
+          grupoHeader: {
+            fontSize: 8,
+            bold: true,
+            color: '#000000'
+          },
+          tableCell: {
+            fontSize: 7,
+            color: '#000000'
+          },
+          subtotalLabel: {
+            fontSize: 8,
+            bold: true,
+            color: '#000000'
+          },
+          subtotalValue: {
+            fontSize: 8,
+            bold: true,
+            color: '#856404'
+          },
+          totalLabel: {
+            fontSize: 10,
+            bold: true,
+            color: '#000000'
+          },
+          totalValue: {
+            fontSize: 10,
+            bold: true,
+            color: '#cc0000'
+          },
+          firmaTitle: {
+            fontSize: 7,
+            bold: true,
+            color: '#000000'
+          },
+          firmaNombre: {
+            fontSize: 7,
+            color: '#000000'
+          }
+        }
+      };
+
+      // Generar y abrir el PDF
+      const pdf = pdfMake.createPdf(docDefinition);
+
+      try {
+        pdf.open();
+        alerts.basicAlert(
+          'Reporte generado',
+          `Se generó la Bitácora por Cortes con ${datosAgrupados.length} códigos y ${totalRegistros} registros`,
+          'success'
+        );
+      } catch (error) {
+        pdf.download(`Bitacora_Por_Cortes_${new Date().getTime()}.pdf`);
+        alerts.basicAlert(
+          'Reporte descargado',
+          'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
+          'info'
+        );
+      }
+
+    } catch (error) {
+      console.error('Error generando bitácora por cortes:', error);
+      alerts.basicAlert('Error', 'Error al generar la bitácora por cortes', 'error');
     }
   }
 

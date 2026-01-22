@@ -290,6 +290,19 @@
                   <small class="text-muted d-block">Reporte jerárquico con niveles 1, 2, 3 del catálogo EXPENSE</small>
                 </label>
               </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportBitacoraPorCortes"
+                  value="bitacoraPorCortes"
+                  [(ngModel)]="reportType">
+                <label class="form-check-label" for="reportBitacoraPorCortes">
+                  <i class="bi bi-bar-chart-steps me-1"></i>Bitácora por Cortes
+                  <small class="text-muted d-block">Suma agrupada por Detalle de Egresos (código objeto de gasto)</small>
+                </label>
+              </div>
             </div>
           </div>
 
