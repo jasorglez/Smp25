@@ -1199,6 +1199,21 @@ export const routes: Routes = [
                 },
                 canDeactivate: [UnsavedChangesGuard]
               },
+              {
+                path: 'cat-egresos-palacio',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/pages/palacio-municipal/cat-egresos-palacio/cat-egresos-palacio.component'
+                  ).then((c) => c.CatEgresosPalacioComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Catálogo Egresos - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                },
+                canDeactivate: [UnsavedChangesGuard]
+              },
 
               {
                 path: 'dashboard-palacio',

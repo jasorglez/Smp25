@@ -47,6 +47,9 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedConcept()">
             <i class="bi bi-trash"></i> Eliminar
           </button>
+          <button class="btn btn-info btn-sm me-2" (click)="printDocumentosReport()" [disabled]="isUploading || documentosData.length === 0">
+            <i class="bi bi-printer"></i> Imprimir
+          </button>
           <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
             <i class="bi bi-floppy"></i> Guardar
             <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -147,6 +150,9 @@ import { lastValueFrom } from 'rxjs';
           </button>
           <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedDocumento()">
             <i class="bi bi-trash"></i> Eliminar
+          </button>
+          <button class="btn btn-info btn-sm me-2" (click)="printDocumentosReport()" [disabled]="isUploading || documentosData.length === 0">
+            <i class="bi bi-printer"></i> Imprimir
           </button>
           <button class="btn btn-primary btn-sm position-relative" (click)="saveDocumentosChanges()" [disabled]="isUploading || !canSaveDocumentos">
             <i class="bi bi-floppy"></i> Guardar
@@ -2234,7 +2240,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['JPG', 'PDF', 'XML']
+          values: ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'PDF', 'XML']
         }
       },
       {
@@ -2459,6 +2465,236 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     this.hasUnsavedDocumentosChanges = true;
   }
 
+  async printDocumentosReport() {
+    if (this.documentosData.length === 0) {
+      alerts.basicAlert('Sin documentos', 'No hay documentos para imprimir.', 'warning');
+      return;
+    }
+
+    // Filtrar solo imágenes (todos los formatos de imagen soportados)
+    const imagenes = this.documentosData.filter(doc =>
+      ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'].includes(doc.tipoDocumento) ||
+      (doc.nombreArchivo && (doc.nombreArchivo.toLowerCase().includes('.jpg') || doc.nombreArchivo.toLowerCase().includes('.jpeg') || doc.nombreArchivo.toLowerCase().includes('.png') || doc.nombreArchivo.toLowerCase().includes('.gif') || doc.nombreArchivo.toLowerCase().includes('.webp')))
+    );
+
+    if (imagenes.length === 0) {
+      alerts.basicAlert('Sin imágenes', 'No hay imágenes válidas para generar el reporte fotográfico.', 'warning');
+      return;
+    }
+
+    alerts.showLoadingWithProgress('Generando reporte...', 'Procesando imágenes...', 0);
+
+    try {
+      // 1. Obtener datos institucionales (Logos, Firmas)
+      const rootService = this.context.rootService;
+      const base64Service = this.context.base64EncodeService;
+      const adminService = this.context.administrationService;
+      const idRoot = this.context.idRoot;
+
+      const rootResponse: any = await lastValueFrom(rootService.getRootbyId(idRoot));
+      const setupManagementInfo: any = await lastValueFrom(adminService.getSetupManagementInfo(idRoot));
+      const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0 ? setupManagementInfo[0] : null;
+
+      // 2. Convertir Logos a Base64
+      const logoBase64 = await base64Service.convertImageToBase64(rootResponse.picture);
+      const logo2Base64 = rootResponse.picture2 ? await base64Service.convertImageToBase64(rootResponse.picture2) : logoBase64;
+      const watermarkBase64 = rootResponse.picture3 ? await base64Service.convertImageToBase64(rootResponse.picture3) : null;
+
+      // 3. Procesar imágenes del reporte
+      const processedImages: { base64: string, descripcion: string }[] = [];
+      let progress = 10;
+      const step = 80 / imagenes.length;
+
+      for (const img of imagenes) {
+        try {
+          const base64 = await this.getBase64ImageFromUrl(img.nombreArchivo);
+          processedImages.push({
+            base64: base64,
+            descripcion: img.descripcion || ''
+          });
+        } catch (e) {
+          console.error('Error cargando imagen', img, e);
+        }
+        progress += step;
+        alerts.updateLoadingProgress('Generando reporte...', 'Procesando imágenes...', progress);
+      }
+
+      // 4. Construir grid de fotos - 3 o 4 fotos por hoja en formato horizontal
+      // Determinar si usar 3 o 4 columnas según cantidad de fotos
+      const totalPhotos = processedImages.length;
+      const useThreeColumns = totalPhotos <= 3 || totalPhotos % 3 === 0;
+      const photosPerRow = useThreeColumns ? 3 : 4;
+      const photoWidth = useThreeColumns ? 220 : 170;  // Ajustar ancho según columnas
+      const photoHeight = 180; // Alto de cada foto
+
+      // Crear filas de fotos
+      const photoRows: any[] = [];
+      for (let i = 0; i < processedImages.length; i += photosPerRow) {
+        const rowPhotos = processedImages.slice(i, i + photosPerRow);
+        const row: any[] = [];
+
+        for (const photo of rowPhotos) {
+          row.push({
+            stack: [
+              {
+                image: photo.base64,
+                width: photoWidth,
+                height: photoHeight,
+                fit: [photoWidth, photoHeight],
+                alignment: 'center'
+              },
+              {
+                text: photo.descripcion || '',
+                fontSize: 7,
+                alignment: 'center',
+                margin: [0, 3, 0, 0]
+              }
+            ],
+            alignment: 'center',
+            margin: [5, 5, 5, 10]
+          });
+        }
+
+        // Completar fila con celdas vacías si es necesario
+        while (row.length < photosPerRow) {
+          row.push({ text: '', width: photoWidth });
+        }
+
+        photoRows.push(row);
+      }
+
+      // Construir anchos de columnas dinámicamente
+      const columnWidths = Array(photosPerRow).fill(`${100 / photosPerRow}%`);
+
+      // 5. Definición del PDF en formato HORIZONTAL (landscape)
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape', // HORIZONTAL
+        pageMargins: [40, 90, 40, 60],
+        header: {
+          margin: [40, 20, 40, 0],
+          columns: [
+            { image: 'logo', width: 60, alignment: 'left' },
+            {
+              stack: [
+                { text: rootResponse.name || 'H. JUNTA MUNICIPAL', style: 'headerTitle', alignment: 'center' },
+                { text: 'REPORTE FOTOGRÁFICO', style: 'reportTitle', alignment: 'center', margin: [0, 5, 0, 0] },
+                { text: `Documento: ${this.expenditureData?.numberDocument || 'S/N'}`, style: 'headerAddress', alignment: 'center', margin: [0, 3, 0, 0] }
+              ],
+              width: '*'
+            },
+            { image: 'logo2', width: 60, alignment: 'right' }
+          ]
+        },
+        footer: (currentPage: number, pageCount: number) => {
+          return {
+            text: `Página ${currentPage} de ${pageCount}`,
+            fontSize: 8,
+            alignment: 'center',
+            margin: [0, 10, 0, 0]
+          };
+        },
+        background: watermarkBase64 ? [
+          {
+            image: 'watermark',
+            width: 400,
+            opacity: 0.10,
+            absolutePosition: { x: 200, y: 150 }
+          }
+        ] : [],
+        content: [
+          // Información del egreso
+          {
+            columns: [
+              { text: [{ text: 'FECHA: ', bold: true }, { text: this.formatDate(this.expenditureData?.date) }], fontSize: 9 },
+              { text: [{ text: 'DESCRIPCIÓN: ', bold: true }, { text: this.expenditureData?.description || '' }], fontSize: 9 }
+            ],
+            margin: [0, 0, 0, 15]
+          },
+          // Tabla con todas las fotos (3-4 por fila) - centrada verticalmente
+          {
+            table: {
+              widths: columnWidths,
+              body: photoRows
+            },
+            layout: 'noBorders',
+            margin: [0, 30, 0, 30]
+          },
+          // Sección de firmas al final
+          { text: 'FIRMAS DE AUTORIZACIÓN', style: 'sectionTitle', alignment: 'center', margin: [0, 20, 0, 15] },
+          {
+            table: {
+              widths: ['33%', '34%', '33%'],
+              body: [
+                [
+                  { text: firmas?.administratorTitle || 'TESORERO', style: 'signatureTitle', alignment: 'center' },
+                  { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureTitle', alignment: 'center' },
+                  { text: firmas?.directorTitle || 'PRESIDENTE', style: 'signatureTitle', alignment: 'center' }
+                ],
+                [
+                  { text: '________________________________', alignment: 'center', margin: [0, 25, 0, 0] },
+                  { text: '________________________________', alignment: 'center', margin: [0, 25, 0, 0] },
+                  { text: '________________________________', alignment: 'center', margin: [0, 25, 0, 0] }
+                ],
+                [
+                  { text: firmas?.administratorName || '', style: 'signatureName', alignment: 'center' },
+                  { text: firmas?.gerencyName || '', style: 'signatureName', alignment: 'center' },
+                  { text: firmas?.directorName || '', style: 'signatureName', alignment: 'center' }
+                ]
+              ]
+            },
+            layout: 'noBorders'
+          }
+        ],
+        images: {
+          logo: logoBase64,
+          logo2: logo2Base64,
+          ...(watermarkBase64 ? { watermark: watermarkBase64 } : {})
+        },
+        styles: {
+          headerTitle: { fontSize: 14, bold: true, color: '#000000' },
+          headerAddress: { fontSize: 9, color: '#333333' },
+          reportTitle: { fontSize: 12, bold: true, color: '#cc0000' },
+          sectionTitle: { fontSize: 14, bold: true, color: '#333333' },
+          signatureTitle: { fontSize: 9, bold: true },
+          signatureName: { fontSize: 9 },
+          signatureLabel: { fontSize: 8, color: '#666666' }
+        }
+      };
+
+      alerts.closeLoading();
+
+      // Manejar popup blocker
+      const pdf = pdfMake.createPdf(docDefinition);
+      try {
+        pdf.open();
+      } catch (error) {
+        pdf.download(`Reporte_Fotografico_${this.expenditureData?.numberDocument || 'SN'}_${new Date().getTime()}.pdf`);
+        alerts.basicAlert(
+          'Reporte descargado',
+          'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
+          'info'
+        );
+      }
+
+    } catch (error) {
+      console.error(error);
+      alerts.closeLoading();
+      alerts.basicAlert('Error', 'Error al generar el reporte.', 'error');
+    }
+  }
+
+  async getBase64ImageFromUrl(url: string): Promise<string> {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
   getFileNameFromUrl(url: string): string {
     if (!url) return 'Sin archivo';
     try {
@@ -2485,8 +2721,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
     // Determinar tipo de archivo según tipoDocumento
     const tipoDoc = params.data.tipoDocumento;
-    if (tipoDoc === 'JPG') {
+    if (tipoDoc === 'JPG' || tipoDoc === 'JPEG') {
       input.accept = 'image/jpeg,image/jpg';
+    } else if (tipoDoc === 'PNG') {
+      input.accept = 'image/png';
+    } else if (tipoDoc === 'GIF') {
+      input.accept = 'image/gif';
+    } else if (tipoDoc === 'WEBP') {
+      input.accept = 'image/webp';
     } else if (tipoDoc === 'PDF') {
       input.accept = 'application/pdf';
     } else if (tipoDoc === 'XML') {
@@ -2501,8 +2743,20 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
       try {
         // Validar tipo de archivo
-        if (tipoDoc === 'JPG' && !file.type.includes('image/jpeg')) {
-          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo JPG válido', 'error');
+        if ((tipoDoc === 'JPG' || tipoDoc === 'JPEG') && !file.type.includes('image/jpeg')) {
+          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo JPG/JPEG válido', 'error');
+          return;
+        }
+        if (tipoDoc === 'PNG' && file.type !== 'image/png') {
+          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo PNG válido', 'error');
+          return;
+        }
+        if (tipoDoc === 'GIF' && file.type !== 'image/gif') {
+          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo GIF válido', 'error');
+          return;
+        }
+        if (tipoDoc === 'WEBP' && file.type !== 'image/webp') {
+          alerts.basicAlert('Error de tipo', 'Por favor seleccione un archivo WEBP válido', 'error');
           return;
         }
         if (tipoDoc === 'PDF' && file.type !== 'application/pdf') {
