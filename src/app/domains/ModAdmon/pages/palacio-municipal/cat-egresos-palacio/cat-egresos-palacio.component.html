@@ -1,0 +1,153 @@
+<div class="container-fluid p-4">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="flex-grow-1">
+          <h4 class="mb-1">
+            <i class="bi bi-cash-stack text-danger me-2"></i>
+            Catálogo de Egresos - Palacio Municipal
+          </h4>
+          <p class="text-muted mb-0">Gestión de catálogo de egresos del palacio</p>
+
+          <!-- Breadcrumbs para item seleccionado -->
+          <nav *ngIf="selectedItem" aria-label="breadcrumb" class="mt-2">
+            <ol class="breadcrumb mb-0">
+              <li class="breadcrumb-item active">
+                <small>
+                  <i class="bi bi-arrow-right-short"></i>
+                  <strong>{{ selectedItem.description }}</strong>
+                </small>
+              </li>
+            </ol>
+          </nav>
+        </div>
+        <div  *ngIf="!invited">
+          <button class="btn btn-danger me-2" (click)="openCreateModal()" [disabled]="loading">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo Egreso
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vista de Árbol -->
+  <div class="row" >
+    <!-- Botonera lateral -->
+    <div class="col-auto"*ngIf="!invited">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary" (click)="addRow()" [disabled]="loading" title="Agregar nuevo">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-success" (click)="saveChanges()" [disabled]="loading" title="Guardar cambios">
+          <i class="bi bi-floppy"></i>
+        </button>
+        <button type="button" class="btn btn-info" (click)="openEditModal(selectedItem)"
+          [disabled]="!selectedItem || loading" title="Editar item">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button type="button" class="btn btn-warning" (click)="revert()" [disabled]="loading" title="Recargar datos">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteEntry()" [disabled]="!selectedItem || loading"
+          title="Eliminar item">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenido del árbol con AG Grid -->
+    <div class="col">
+      <div class="card shadow-sm" style="height: 75vh;">
+        <div class="card-body p-0 h-100">
+          <div *ngIf="loading" class="text-center p-5">
+            <div class="spinner-border text-danger" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando catálogo...</p>
+          </div>
+
+          <div *ngIf="!loading && treeData.length === 0" class="text-center p-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3 text-muted">No hay egresos registrados</p>
+          </div>
+
+          <!-- AG Grid Tree Data Mode -->
+          <ag-grid-angular *ngIf="!loading && treeData.length > 0" style="width: 100%; height: 100%;"
+            class="ag-theme-quartz small-text-ag-grid" [rowData]="treeData" [columnDefs]="colMaster"
+            [gridOptions]="gridOptions" [treeData]="true" [getDataPath]="getDataPath" [animateRows]="true"
+            [rowSelection]="'single'" [groupDefaultExpanded]="-1" (gridReady)="onGridReady($event)"
+            (selectionChanged)="onSelectionChanged($event)">
+          </ag-grid-angular>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Agregar/Editar Egreso -->
+<div class="modal fade" id="modalEgresosPalacio" tabindex="-1" aria-labelledby="modalEgresosPalacioLabel"
+  aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" [ngClass]="modalMode === 'create' ? 'bg-danger text-white' : 'bg-warning'">
+        <h5 class="modal-title" id="modalEgresosPalacioLabel">
+          <i class="bi" [ngClass]="modalMode === 'create' ? 'bi-plus-circle' : 'bi-pencil'"></i>
+          {{ modalMode === 'create' ? 'Nuevo Egreso' : 'Editar Egreso' }}
+        </h5>
+        <button type="button" class="btn-close" [class.btn-close-white]="modalMode === 'create'" data-bs-dismiss="modal"
+          aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="modalForm">
+          <!-- Información del padre -->
+          <div *ngIf="modalParent" class="alert alert-info mb-3">
+            <small>
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Padre:</strong> {{ modalParent.description }}
+            </small>
+          </div>
+
+          <div class="row">
+            <!-- Descripción -->
+            <div class="col-12 mb-3">
+              <label for="description" class="form-label">
+                Descripción <span class="text-danger">*</span>
+              </label>
+              <textarea class="form-control form-control-sm" id="description" formControlName="description" rows="4"
+                placeholder="Descripción del egreso..."
+                [class.is-invalid]="modalForm.get('description')?.invalid && modalForm.get('description')?.touched"></textarea>
+              <div class="invalid-feedback">
+                La descripción es requerida
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Estado -->
+            <div class="col-md-4 mb-3">
+              <label class="form-label d-block">Estado</label>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="active" formControlName="active" />
+                <label class="form-check-label" for="active">
+                  {{ modalForm.value.active ? 'Activo' : 'Inactivo' }}
+                </label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i> Cancelar
+        </button>
+        <button type="button" class="btn" [ngClass]="modalMode === 'create' ? 'btn-danger' : 'btn-primary'"
+          (click)="saveItem()" [disabled]="modalForm.invalid || saving">
+          <span *ngIf="saving" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i *ngIf="!saving" class="bi" [ngClass]="modalMode === 'create' ? 'bi-check-circle' : 'bi-floppy'"></i>
+          {{ saving ? 'Guardando...' : (modalMode === 'create' ? 'Crear' : 'Actualizar') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
