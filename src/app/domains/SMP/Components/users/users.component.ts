@@ -538,27 +538,44 @@ constructor() {
         headerName: 'Imagen de perfil',
         cellRenderer: (params) => {
           const imgSrc = params.value || './assets/img/profile.png';
-          return `<img src="${imgSrc}" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" />`;
+          return `<img src="${imgSrc}" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" title="Clic para cambiar imagen"/>`;
         },
         onCellClicked: (params) => {
-          if (params.data.__isNew || true) {
+          // Permitir cambiar imagen siempre
+          setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/*';
+            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+
             input.onchange = (event) => {
-              const file = (event.target as HTMLInputElement).files[0];
+              const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tamaño (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                  alerts.basicAlert('Archivo muy grande', 'La imagen no puede superar 5MB', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = () => {
                   params.data.picture = reader.result as string;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
+                  this.notSavedChanges = true;
+                };
+                reader.onerror = () => {
+                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
                 };
                 reader.readAsDataURL(file);
               }
+              document.body.removeChild(input);
             };
+
             input.click();
-          }
+          }, 0);
         },
         editable: false,
         flex: 1
@@ -569,30 +586,47 @@ constructor() {
         cellRenderer: (params) => {
           const imgSrc = params.value || '';
           if (imgSrc) {
-            return `<img src="${imgSrc}" style="width: 100px; height: 50px; object-fit: contain; cursor: pointer;" />`;
+            return `<img src="${imgSrc}" style="width: 100px; height: 50px; object-fit: contain; cursor: pointer;" title="Clic para cambiar firma"/>`;
           } else {
-            return `<div style="width: 100px; height: 50px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer;">Firma</div>`;
+            return `<div style="width: 100px; height: 50px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Clic para agregar firma">Firma</div>`;
           }
         },
         onCellClicked: (params) => {
-          if (params.data.__isNew || true) {
+          // Permitir cambiar firma siempre
+          setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/*';
+            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+
             input.onchange = (event) => {
-              const file = (event.target as HTMLInputElement).files[0];
+              const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tamaño (max 2MB para firma)
+                if (file.size > 2 * 1024 * 1024) {
+                  alerts.basicAlert('Archivo muy grande', 'La firma no puede superar 2MB', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = () => {
                   params.data.signature = reader.result as string;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
+                  this.notSavedChanges = true;
+                };
+                reader.onerror = () => {
+                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
                 };
                 reader.readAsDataURL(file);
               }
+              document.body.removeChild(input);
             };
+
             input.click();
-          }
+          }, 0);
         },
         editable: false,
         flex: 1
@@ -711,11 +745,16 @@ constructor() {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every(
+    // Validar solo los nuevos registros (requieren nombre, email y password)
+    const newRows = this.rowData.filter(row => row.__isNew);
+    const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
+
+    // Validar nuevos registros
+    const newRowsValid = newRows.every(
       (item) => item.displayName && item.email && item.password
     );
 
-    if (!isValid) {
+    if (!newRowsValid) {
       alerts.basicAlert(
         'Añadir entrada',
         'Debe introducir el nombre del usuario, su correo y su contraseña antes de guardar.',
@@ -724,8 +763,19 @@ constructor() {
       return;
     }
 
-    const newRows = this.rowData.filter(row => row.__isNew);
-    const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
+    // Validar registros modificados (solo nombre y email, password es opcional)
+    const modifiedRowsValid = modifiedRows.every(
+      (item) => item.displayName && item.email
+    );
+
+    if (!modifiedRowsValid) {
+      alerts.basicAlert(
+        'Modificar entrada',
+        'Debe introducir el nombre del usuario y su correo antes de guardar.',
+        'error'
+      );
+      return;
+    }
 
     console.log  ('Nuevas filas:', newRows);
 
