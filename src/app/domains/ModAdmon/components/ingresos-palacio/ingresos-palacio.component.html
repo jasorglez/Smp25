@@ -83,10 +83,9 @@
           type="button"
           class="btn btn-danger"
           (click)="deleteEntry()"
-          [disabled]="!idAccount || !selectedIncomes"
-
+          [disabled]="!idAccount || !selectedIncomes || (selectedIncomes?.countItems > 0)"
+          [title]="selectedIncomes?.countItems > 0 ? 'Primero elimine los ' + selectedIncomes?.countItems + ' concepto(s) del detalle' : 'Eliminar ingreso'"
         >
-        
           <i class="bi bi-trash"></i>
         </button>
          <button

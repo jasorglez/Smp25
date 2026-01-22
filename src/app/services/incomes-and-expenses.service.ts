@@ -58,6 +58,10 @@ export class IncomesAndExpensesService {
     return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/incorexp/' + idIncorexp, { headers: this.tracking.getHeaders() });
   }
 
+  getConceptsUuid(uuid: string): Observable<any> {
+    return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/search?uuid=' + uuid, { headers: this.tracking.getHeaders() });
+  }
+
   addConceptFromIncomesAndExpenses(data: any): Observable<any> {
     return this.http.post<any>(environment.urlAdministration + '/ConceptsxIncorExp/', data, { headers: this.tracking.getHeaders() });
   }
