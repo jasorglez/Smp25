@@ -35,7 +35,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
           <i class="bi bi-arrow-counterclockwise"></i> Deshacer
         </button>
         
-        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!isAddingNewItem && !hasPedimentoSelection">
+        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!hasRowSelected">
           <i class="bi bi-trash"></i> Eliminar
         </button>
         
@@ -69,6 +69,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         (cellClicked)="onCellClicked($event)"
+        (selectionChanged)="onSelectionChanged($event)"
         [components]="components"
         style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
         </ag-grid-angular>
@@ -181,6 +182,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   tempIdCounter: number = 0;
   isAddingNewItem: boolean = false;
   hasPedimentoSelection: boolean = false;
+  hasRowSelected: boolean = false;
   materials: any[] = [];
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
@@ -446,12 +448,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         },
         cellEditorParams: (params: any) => {
           // ✅ Filtrar materiales que ya están siendo usados en otras filas
+          // Considerar tanto materialId como idSupplie (pueden venir del servidor con idSupplie)
           const usedMaterialIds = this.rowData
             .filter(row =>
               row.id !== params.data.id && // Excluir la fila actual
-              row.materialId // Solo filas con material asignado
+              (row.materialId || row.idSupplie) && // Solo filas con material asignado
+              (row.materialId > 0 || row.idSupplie > 0) // Excluir artículos nuevos (idSupplie = 0)
             )
-            .map(row => row.materialId);
+            .map(row => row.materialId || row.idSupplie);
 
           const availableMaterials = this.materials.filter(
             m => !usedMaterialIds.includes(m.id)
@@ -569,6 +573,42 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         width: 100,
         editable: true,
         type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          precision: 3
+        },
+        suppressKeyboardEvent: (params: any) => {
+          const event = params.event as KeyboardEvent;
+          const key = event.key;
+
+          // Permitir teclas de control: Backspace, Delete, Tab, Enter, Escape, flechas
+          if (['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) {
+            return false; // No suprimir, permitir
+          }
+
+          // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+          if (event.ctrlKey || event.metaKey) {
+            return false;
+          }
+
+          // Permitir números (0-9)
+          if (/^[0-9]$/.test(key)) {
+            return false;
+          }
+
+          // Permitir punto decimal (solo uno)
+          if (key === '.') {
+            const currentValue = params.node.data.quantity?.toString() || '';
+            if (!currentValue.includes('.')) {
+              return false; // Permitir si no hay punto aún
+            }
+            return true; // Suprimir si ya hay punto
+          }
+
+          // Suprimir cualquier otra tecla
+          return true;
+        }
       },
       {
         field: 'intorext',
@@ -609,7 +649,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           return true;
         }
       },
-    
+
       {
         field: 'idProvider',
         headerName: 'Proveedor Interno',
@@ -847,7 +887,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     }, 0);
   }
 
-  deleteSelectedItem() {
+  async deleteSelectedItem() {
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -855,16 +895,48 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     }
 
     const selectedItem = selectedRows[0];
-    if (this.context && this.context.ITEMS && this.context.ITEMS.delete) {
-      this.context.ITEMS.delete({ data: selectedItem, api: this.gridApi }, () => {
-        this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.hasUnsavedChanges = true;
 
-        if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
-          this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
-        }
-      });
+    // Si es un item nuevo (no guardado en BD), solo eliminarlo del grid
+    if (selectedItem.__isNew) {
+      this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+
+      // Verificar si quedan cambios pendientes
+      const hasChanges = this.rowData.some(item => item.__isNew || item.__modified);
+      this.hasUnsavedChanges = hasChanges;
+      this.isAddingNewItem = hasChanges;
+
+      alerts.basicAlert('Eliminado', 'Item eliminado del listado', 'success');
+      return;
+    }
+
+    // Si es un item existente, confirmar y eliminar de la BD
+    const result = await alerts.confirmAlert(
+      '¿Eliminar item?',
+      `¿Está seguro de eliminar "${selectedItem.nameArticle || selectedItem.article || 'este item'}"?`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await firstValueFrom(this.ocAndReqsService.deleteReqItem(selectedItem.id));
+
+      // Eliminar del grid
+      this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+      this.originalRowData = this.originalRowData.filter(item => item.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+
+      // Actualizar contador si existe el contexto
+      if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
+        this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
+      }
+
+      alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+    } catch (error) {
+      console.error('❌ Error al eliminar item:', error);
+      alerts.basicAlert('Error', 'No se pudo eliminar el item', 'error');
     }
   }
 
@@ -1221,13 +1293,14 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   }
 
   discardChanges() {
-    if (!this.hasUnsavedChanges) {
+    if (!this.hasUnsavedChanges && !this.isAddingNewItem) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
       return;
     }
 
     this.loadData();
     this.hasUnsavedChanges = false;
+    this.isAddingNewItem = false; // Quitar el badge rojo del botón Guardar
     if (this.gridApi) {
       this.gridApi.redrawRows();
     }
@@ -1306,6 +1379,11 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       this.isNewArticleModalVisible = true;
       return;
     }
+  }
+
+  onSelectionChanged(_event: any): void {
+    const selectedRows = this.gridApi?.getSelectedRows() || [];
+    this.hasRowSelected = selectedRows.length > 0;
   }
 
 

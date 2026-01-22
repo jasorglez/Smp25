@@ -97,6 +97,33 @@ import { lastValueFrom } from 'rxjs';
       </div>
     </div>
 
+    <!-- Catalog PDF Report View -->
+    <div class="report-detail-container" *ngIf="detailType === 'catalogReport'">
+      <div class="report-header d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Catálogo de Gasto - Documento: {{ expenditureData?.numberDocument || 'Sin Número' }}</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
+          <i class="bi bi-x-lg"></i> Cerrar
+        </button>
+      </div>
+      <div class="report-content" style="height: 480px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+        <iframe
+          *ngIf="pdfUrl"
+          [src]="pdfUrl"
+          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
+        </iframe>
+        <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
+          <div class="text-center">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              El formato de PDF se configurará próximamente.
+              <br>
+              <small class="text-muted">Por favor, proporcione el formato con los logos de la empresa.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Documentos Comprobados View -->
     <div class="detail-grid-container" *ngIf="detailType === 'comprobacion'" >
       <div class="detail-actions mb-2">
@@ -295,7 +322,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       this.getBillingManagementInfo();
       await this.loadObjetosGastoHijos(); // Esperar a que cargue los objetos de gasto nivel 4
       this.loadConceptsData();
-    } else if (this.detailType === 'report') {
+    } else if (this.detailType === 'report' || this.detailType === 'catalogReport') {
       this.loadConceptsDataForReport();
     } else if (this.detailType === 'comprobacion') {
       await this.loadProviders(); // Esperar a que cargue proveedores para el combo box
@@ -1533,11 +1560,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     return {
       table: {
         headerRows: 1,
-        widths: [50, 180, '*', 80],
+        widths: [45, 90, 150, '*', 70],
         body: [
           // Encabezados
           [
             { text: 'Fecha', style: 'tableHeader' },
+            { text: 'Catálogo Gasto', style: 'tableHeader' },
             { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
             { text: 'Descripción', style: 'tableHeader' },
             { text: 'Total', style: 'tableHeader', alignment: 'right' }
@@ -1545,12 +1573,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           // Filas de conceptos
           ...this.rowData.map(concept => [
             { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+            { text: this.getCatalogoGastoNivel3Text(concept.idExpense), style: 'tableCell', fontSize: 6 },
             { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
             { text: concept.description || '', style: 'tableCell' },
             { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
           ]),
           // Fila de totales
           [
+            { text: '', border: [false, false, false, false] },
             { text: '', border: [false, false, false, false] },
             { text: '', border: [false, false, false, false] },
             { text: 'TOTAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
@@ -1619,11 +1649,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       elementos.push({
         table: {
           headerRows: 1,
-          widths: [50, 180, '*', 80],
+          widths: [45, 90, 150, '*', 70],
           body: [
             // Encabezados
             [
               { text: 'Fecha', style: 'tableHeader' },
+              { text: 'Catálogo Gasto', style: 'tableHeader' },
               { text: 'FOLIO FISCAL', style: 'tableHeader' },
               { text: 'Descripción', style: 'tableHeader' },
               { text: 'Total', style: 'tableHeader', alignment: 'right' }
@@ -1631,12 +1662,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             // Filas de conceptos del grupo
             ...grupo.conceptos.map((concept: any) => [
               { text: this.formatDate(concept.dateExpend), style: 'tableCell', fontSize: 6 },
+              { text: this.getCatalogoGastoNivel3Text(concept.idExpense), style: 'tableCell', fontSize: 6 },
               { text: concept.numeroIdentificacion || '', style: 'tableCell', fontSize: 6 },
               { text: concept.description || '', style: 'tableCell' },
               { text: this.formatCurrency(concept.totalFinal || 0), style: 'tableCell', alignment: 'right' }
             ]),
             // Fila de subtotal del grupo
             [
+              { text: '', border: [false, false, false, false] },
               { text: '', border: [false, false, false, false] },
               { text: '', border: [false, false, false, false] },
               { text: 'SUBTOTAL:', style: 'subtotalLabel', alignment: 'right', border: [false, true, false, false] },
@@ -1804,29 +1837,29 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             ],
             margin: [0, 0, 0, 15]
           },
-          // DETALLES DEL EGRESO (Maestro)
-          {
-            text: 'DETALLES DEL EGRESO',
-            style: 'sectionTitle',
-            margin: [0, 10, 0, 10]
-          },
-          {
-            table: {
-              widths: ['25%', '75%'],
-              body: [
-                [
-                  { text: 'FECHA PAGO:', style: 'masterLabel' },
-                  { text: this.formatDate(this.expenditureData?.date), style: 'masterValue' }
-                ],
-                [
-                  { text: 'OBJETO DE GASTO:', style: 'masterLabel' },
-                  {
-                    text: `${this.getObjetoGastoText()}        $ ${this.formatCurrency(this.expenditureData?.total || 0)}`,
-                    style: 'masterValue'
-                  }
-                ]
-              ]
-            },
+          // DETALLES DEL EGRESO (Maestro) - Cambiar título según el tipo de reporte
+         {
+           text: this.detailType === 'catalogReport' ? 'CATALOGO DE GASTO' : 'DETALLES DEL EGRESO',
+           style: 'sectionTitle',
+           margin: [0, 10, 0, 10]
+         },
+         {
+           table: {
+             widths: ['25%', '75%'],
+             body: [
+               [
+                 { text: 'FECHA PAGO:', style: 'masterLabel' },
+                 { text: this.formatDate(this.expenditureData?.date), style: 'masterValue' }
+               ],
+               [
+                 { text: this.detailType === 'catalogReport' ? 'RUBRO:' : 'OBJETO DE GASTO:', style: 'masterLabel' },
+                 {
+                   text: this.detailType === 'catalogReport' ? `${this.getCatalogoGastoText()}        $ ${this.formatCurrency(this.expenditureData?.total || 0)}` : `${this.getObjetoGastoText()}        $ ${this.formatCurrency(this.expenditureData?.total || 0)}`,
+                   style: 'masterValue'
+                 }
+               ]
+             ]
+           },
             layout: {
               hLineWidth: () => 0.5,
               vLineWidth: () => 0.5,
@@ -2083,6 +2116,27 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
     }
 
     return 'Sin descripción';
+  }
+
+  private getCatalogoGastoText(): string {
+    // Obtener el valor de la columna "Catálogo Gasto" (idExpendxcategr)
+    if (this.expenditureData?.idExpendxcategr && this.context?.componentParent?.expensesCatalogLevel2) {
+      const foundItem = this.context.componentParent.expensesCatalogLevel2.find(
+        (item: any) => item.id === this.expenditureData.idExpendxcategr
+      );
+      return foundItem ? foundItem.description : 'Sin catálogo de gasto';
+    }
+    return 'Sin catálogo de gasto';
+  }
+
+  /**
+   * Obtiene la descripción del catálogo de gasto nivel 3 por su ID (idExpense del detalle)
+   */
+  private getCatalogoGastoNivel3Text(idExpense: number): string {
+    if (!idExpense) return '';
+    const expensesCatalogLevel3 = this.context?.componentParent?.expensesCatalogLevel3 || [];
+    const foundItem = expensesCatalogLevel3.find((item: any) => item.id === idExpense);
+    return foundItem ? foundItem.description : '';
   }
 
   // ==================== MÉTODOS PARA DOCUMENTOS COMPROBADOS ====================
