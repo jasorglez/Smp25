@@ -846,6 +846,7 @@ export class EgresosPalacioComponent {
           }
           return false;
         },
+        
       },
 
       {
@@ -2816,9 +2817,12 @@ export class EgresosPalacioComponent {
       // Paso 2: Cargar todos los conceptos de los egresos filtrados
       const allConcepts: any[] = [];
       for (const expense of filteredExpenses) {
-        const concepts: any[] = await lastValueFrom(
-          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        const rawConcepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
         );
+
+        // ✅ FILTRAR: Solo incluir conceptos activos (active=1)
+        const concepts = rawConcepts.filter(c => Number(c.active) === 1);
 
         // ✅ IMPORTANTE: Calcular totalFinal para cada concepto
         concepts.forEach(concept => {
@@ -2907,9 +2911,12 @@ export class EgresosPalacioComponent {
 
       for (const expense of filteredExpenses) {
         // Cargar conceptos de este egreso
-        const concepts: any[] = await lastValueFrom(
-          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        const rawConcepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
         );
+
+        // ✅ FILTRAR: Solo incluir conceptos activos (active=1)
+        const concepts = rawConcepts.filter(c => Number(c.active) === 1);
 
         // Obtener objeto de gasto del maestro
         const objetoGastoMaestro = this.expenses.find(obj => obj.id === expense.idExpend);
@@ -2917,9 +2924,12 @@ export class EgresosPalacioComponent {
           ? `${objetoGastoMaestro.codigo} ${objetoGastoMaestro.nombre}`
           : 'Sin objeto de gasto';
 
-        // Si no hay conceptos, agregar solo el maestro
-        if (!concepts || concepts.length === 0) {
-          // Extraer código numérico para ordenamiento
+        // ✅ CASO 1: Si el egreso NO tiene conceptos en la BD, usar el dato del maestro
+        // ✅ CASO 2: Si el egreso TIENE conceptos pero TODOS están inactivos (active=0), NO mostrar nada
+        // ✅ CASO 3: Si el egreso TIENE conceptos activos, usar solo esos conceptos
+
+        if (rawConcepts.length === 0) {
+          // CASO 1: No hay conceptos en la BD, usar datos del maestro
           const codigoNumerico = objetoGastoMaestro?.codigo
             ? parseInt(objetoGastoMaestro.codigo.toString().replace(/\D/g, '')) || 0
             : 0;
@@ -2934,6 +2944,9 @@ export class EgresosPalacioComponent {
             totalFinal: expense.total || 0
           });
           totalGeneral += expense.total || 0;
+        } else if (concepts.length === 0) {
+          // CASO 2: Hay conceptos pero TODOS están inactivos (active=0), NO mostrar nada
+          continue;
         } else {
           // Agregar cada concepto como fila
           for (const concept of concepts) {
@@ -3332,16 +3345,23 @@ export class EgresosPalacioComponent {
 
       // Procesar cada egreso y sus conceptos
       for (const expense of filteredExpenses) {
-        // Cargar conceptos de este egreso
-        const concepts: any[] = await lastValueFrom(
-          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        // Cargar TODOS los conceptos (incluyendo active=0) usando el nuevo endpoint
+        const allConcepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
         );
+
+        // ✅ FILTRAR: Solo incluir conceptos activos (active=1)
+        const concepts = allConcepts.filter(c => Number(c.active) === 1);
 
         // Obtener objeto de gasto del maestro
         const objetoGastoMaestro = this.expenses.find(obj => obj.id === expense.idExpend);
 
-        // Si no hay conceptos, usar el dato del maestro
-        if (!concepts || concepts.length === 0) {
+        // ✅ CASO 1: Si el egreso NO tiene conceptos en la BD, usar el dato del maestro
+        // ✅ CASO 2: Si el egreso TIENE conceptos pero TODOS están inactivos (active=0), NO mostrar nada
+        // ✅ CASO 3: Si el egreso TIENE conceptos activos, usar solo esos conceptos
+
+        if (allConcepts.length === 0) {
+          // CASO 1: No hay conceptos en la BD, usar datos del maestro
           const codigoMaestro = objetoGastoMaestro?.codigo || 'SIN-CODIGO';
           const nombreMaestro = objetoGastoMaestro?.nombre || 'Sin clasificar';
           const totalExpense = expense.total || 0;
@@ -3365,6 +3385,9 @@ export class EgresosPalacioComponent {
             totalFinal: totalExpense
           });
           totalGeneral += totalExpense;
+        } else if (concepts.length === 0) {
+          // CASO 2: Hay conceptos pero TODOS están inactivos (active=0), NO mostrar nada
+          continue;
         } else {
           // Procesar cada concepto
           for (const concept of concepts) {
@@ -3447,6 +3470,7 @@ export class EgresosPalacioComponent {
       const tableBody: any[] = [
         // Encabezado
         [
+          { text: '#', style: 'tableHeader', alignment: 'center' },
           { text: '#Doc/Fac', style: 'tableHeader', alignment: 'center' },
           { text: 'Fecha', style: 'tableHeader', alignment: 'center' },
           { text: 'Concepto', style: 'tableHeader', alignment: 'left' },
@@ -3461,18 +3485,19 @@ export class EgresosPalacioComponent {
           {
             text: `${grupo.codigo} - ${grupo.nombre}`,
             style: 'grupoHeader',
-            colSpan: 4,
+            colSpan: 5,
             alignment: 'left',
             fillColor: '#d4edda',
             bold: true,
             fontSize: 8
           },
-          {}, {}, {}
+          {}, {}, {}, {}
         ]);
 
-        // Filas de detalle del grupo
-        grupo.registros.forEach(registro => {
+        // Filas de detalle del grupo con contador secuencial
+        grupo.registros.forEach((registro, index) => {
           tableBody.push([
+            { text: `${index + 1}`, style: 'tableCell', alignment: 'center', fontSize: 7 },
             { text: registro.numberDocument, style: 'tableCell', alignment: 'center', fontSize: 7 },
             { text: registro.fecha, style: 'tableCell', alignment: 'center', fontSize: 7 },
             { text: registro.concepto, style: 'tableCell', alignment: 'left', fontSize: 7 },
@@ -3484,6 +3509,7 @@ export class EgresosPalacioComponent {
         tableBody.push([
           { text: '', border: [true, true, false, true] },
           { text: '', border: [false, true, false, true] },
+          { text: '', border: [false, true, false, true] },
           { text: `SUBTOTAL ${grupo.codigo}:`, style: 'subtotalLabel', alignment: 'right', border: [false, true, false, true], bold: true, fontSize: 8 },
           { text: `$${this.formatCurrencyNumber(grupo.total)}`, style: 'subtotalValue', alignment: 'right', border: [false, true, true, true], bold: true, fontSize: 8, fillColor: '#fff3cd' }
         ]);
@@ -3491,6 +3517,7 @@ export class EgresosPalacioComponent {
 
       // Fila de total general
       tableBody.push([
+        { text: '', border: [false, true, false, false] },
         { text: '', border: [false, true, false, false] },
         { text: '', border: [false, true, false, false] },
         { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false], bold: true, fontSize: 10 },
@@ -3578,7 +3605,7 @@ export class EgresosPalacioComponent {
           {
             table: {
               headerRows: 1,
-              widths: [70, 55, '*', 90],
+              widths: [25, 70, 55, '*', 90],
               body: tableBody
             },
             layout: {
@@ -4356,9 +4383,12 @@ export class EgresosPalacioComponent {
         const expense = group.expenses[i];
 
         // Cargar conceptos de este egreso
-        const concepts: any[] = await lastValueFrom(
-          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        const rawConcepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
         );
+
+        // ✅ FILTRAR: Solo incluir conceptos activos (active=1)
+        const concepts = rawConcepts.filter(c => Number(c.active) === 1);
 
         // Calcular totalFinal para cada concepto
         concepts.forEach(concept => {
@@ -5155,9 +5185,12 @@ export class EgresosPalacioComponent {
       // Paso 2: Cargar todos los conceptos de los egresos filtrados
       const allConcepts: any[] = [];
       for (const expense of filteredExpenses) {
-        const concepts: any[] = await lastValueFrom(
-          this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id)
+        const rawConcepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
         );
+
+        // ✅ FILTRAR: Solo incluir conceptos activos (active=1)
+        const concepts = rawConcepts.filter(c => Number(c.active) === 1);
 
         // Calcular totalFinal para cada concepto
         concepts.forEach(concept => {

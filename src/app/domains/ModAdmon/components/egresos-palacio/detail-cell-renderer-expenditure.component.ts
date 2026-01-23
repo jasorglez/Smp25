@@ -1610,8 +1610,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
 
   /**
    * Genera las tablas agrupadas por objeto de gasto nivel 1
+   * Cada grupo se imprime en una página separada con header, tabla, nota y firmas
    */
-  private generarTablaAgrupada(): any[] {
+  private generarTablaAgrupada(rootResponse?: any): any[] {
     const elementos: any[] = [];
 
     // Agrupar conceptos
@@ -1624,34 +1625,97 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return a[0].localeCompare(b[0]);
     });
 
-    // Generar una tabla por cada grupo
+    // Generar una tabla por cada grupo (cada grupo en una página separada con header y firmas)
     gruposOrdenados.forEach(([codigoNivel1, grupo], index) => {
-      // Línea separadora (solo después del primer grupo)
+      // ========== SALTO DE PÁGINA (excepto el primero) ==========
       if (index > 0) {
-        elementos.push({
-          canvas: [
-            {
-              type: 'line',
-              x1: 0,
-              y1: 0,
-              x2: 515,
-              y2: 0,
-              lineWidth: 0.5,
-              lineColor: '#cccccc'
-            }
-          ],
-          margin: [0, 10, 0, 10]
-        });
+        elementos.push({ text: '', pageBreak: 'before' });
       }
 
-      // Título del grupo (Objeto Nivel 1)
+      // ========== HEADER CON LOGOS ==========
+      elementos.push({
+        columns: [
+          {
+            image: 'logo',
+            width: 80,
+            alignment: 'left'
+          },
+          {
+            stack: [
+              {
+                text: rootResponse?.name || 'Empresa',
+                style: 'companyName',
+                alignment: 'center'
+              },
+              {
+                text: rootResponse?.email || '',
+                style: 'companyInfo',
+                alignment: 'center'
+              },
+              {
+                text: rootResponse?.web || '',
+                style: 'companyInfo',
+                alignment: 'center'
+              }
+            ],
+            width: '*'
+          },
+          {
+            stack: [
+              {
+                image: 'logo2',
+                width: 80,
+                alignment: 'right',
+                margin: [0, 0, 0, 5]
+              },
+              {
+                text: 'RECIBO DE EGRESO',
+                style: 'documentTitle',
+                alignment: 'right'
+              },
+              {
+                text: `No. ${this.expenditureData?.numberDocument || 'Sin Número'}`,
+                style: 'documentNumber',
+                alignment: 'right',
+                margin: [0, 5, 0, 0]
+              },
+              {
+                text: `Fecha de Pago: ${this.formatDate(this.expenditureData?.date)}`,
+                style: 'documentDate',
+                alignment: 'right',
+                margin: [0, 3, 0, 0]
+              }
+            ],
+            width: 150
+          }
+        ],
+        margin: [0, 0, 0, 15]
+      });
+
+      // Línea separadora después del header
+      elementos.push({
+        canvas: [
+          {
+            type: 'line',
+            x1: 0,
+            y1: 0,
+            x2: 515,
+            y2: 0,
+            lineWidth: 1,
+            lineColor: '#333333'
+          }
+        ],
+        margin: [0, 0, 0, 10]
+      });
+
+      // ========== TÍTULO DEL GRUPO (Objeto Nivel 1) ==========
       elementos.push({
         text: grupo.nivel1Info.codigoNombre,
         style: 'groupTitle',
         margin: [0, 10, 0, 5]
       });
 
-      // Tabla de conceptos del grupo
+      // ========== TABLA DE CONCEPTOS DEL GRUPO ==========
       elementos.push({
         table: {
           headerRows: 1,
@@ -1695,33 +1759,65 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         },
         margin: [0, 0, 0, 5]
       });
-    });
 
-    // Línea separadora final
-    elementos.push({
-      canvas: [
-        {
-          type: 'line',
-          x1: 0,
-          y1: 0,
-          x2: 515,
-          y2: 0,
-          lineWidth: 2,
-          lineColor: '#333333'
-        }
-      ],
-      margin: [0, 15, 0, 5]
-    });
+      // ========== NOTA AL FINAL DE LA TABLA ==========
+      elementos.push({
+        text: 'NOTA: Se realizó Pago con diferentes Objetos de Gasto',
+        style: 'notaImportante',
+        alignment: 'left',
+        margin: [0, 10, 0, 15]
+      });
 
-    // Total general
-    elementos.push({
-      columns: [
-        { text: '', width: '*' },
-        { text: '', width: 170 },
-        { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', width: 100 },
-        { text: this.formatCurrency(this.total), style: 'totalValue', alignment: 'right', width: 80 }
-      ],
-      margin: [0, 5, 0, 20]
+      // ========== FIRMAS ==========
+      elementos.push({
+        table: {
+          widths: ['33%', '34%', '33%'],
+          body: [
+            [
+              { text: this.setupManagementInfo?.administratorTitle || 'TESORERO', style: 'signatureTitle', alignment: 'center' },
+              { text: this.setupManagementInfo?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'signatureTitle', alignment: 'center' },
+              { text: this.setupManagementInfo?.directorTitle || 'PRESIDENTE MUNICIPAL', style: 'signatureTitle', alignment: 'center' }
+            ],
+            [
+              { text: ' ', margin: [0, 25, 0, 0] },
+              { text: ' ', margin: [0, 25, 0, 0] },
+              { text: ' ', margin: [0, 25, 0, 0] }
+            ],
+            [
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 3]
+              },
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 3]
+              },
+              {
+                text: '________________________________',
+                alignment: 'center',
+                border: [false, true, false, false],
+                margin: [0, 0, 0, 3]
+              }
+            ],
+            [
+              { text: this.setupManagementInfo?.administratorName || '', style: 'signatureName', alignment: 'center' },
+              { text: this.setupManagementInfo?.gerencyName || '', style: 'signatureName', alignment: 'center' },
+              { text: this.setupManagementInfo?.directorName || '', style: 'signatureName', alignment: 'center' }
+            ],
+            [
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' },
+              { text: 'Firma', style: 'signatureLabel', alignment: 'center' }
+            ]
+          ]
+        },
+        layout: 'noBorders',
+        margin: [0, 10, 0, 0]
+      });
     });
 
     return elementos;
@@ -1769,8 +1865,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           }
         ] : [],
         content: [
-          // Header con logo y título
-          {
+          // Header con logo y título (solo si NO es Mostrar Todo, porque cada grupo ya tiene su propio header)
+          ...(this.expenditureData?.mostrartodo !== true ? [{
             columns: [
               {
                 image: 'logo',
@@ -1827,9 +1923,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
               }
             ],
             margin: [0, 0, 0, 20]
-          },
-          // Línea separadora
-          {
+          }] : []),
+          // Línea separadora (solo si NO es Mostrar Todo)
+          ...(this.expenditureData?.mostrartodo !== true ? [{
             canvas: [
               {
                 type: 'line',
@@ -1842,14 +1938,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
               }
             ],
             margin: [0, 0, 0, 15]
-          },
-          // DETALLES DEL EGRESO (Maestro) - Cambiar título según el tipo de reporte
-         {
+          }] : []),
+          // DETALLES DEL EGRESO (Maestro) - Solo si NO es Mostrar Todo
+          ...(this.expenditureData?.mostrartodo !== true ? [{
            text: this.detailType === 'catalogReport' ? 'CATALOGO DE GASTO' : 'DETALLES DEL EGRESO',
            style: 'sectionTitle',
            margin: [0, 10, 0, 10]
-         },
-         {
+         }] : []),
+         ...(this.expenditureData?.mostrartodo !== true ? [{
            table: {
              widths: ['25%', '75%'],
              body: [
@@ -1877,13 +1973,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
               paddingRight: () => 8
             },
             margin: [0, 0, 0, 15]
-          },
+          }] : []),
           // Tabla de Conceptos (Detalle) - Condicional según mostrartodo
           ...(this.expenditureData?.mostrartodo === true
-            ? this.generarTablaAgrupada()
+            ? this.generarTablaAgrupada(rootResponse)
             : [this.generarTablaSimple()]),
-          // Footer con Firmas
-          {
+          // Footer con Firmas (solo si NO es Mostrar Todo, porque ya están incluidas en cada grupo)
+          ...(this.expenditureData?.mostrartodo !== true ? [{
             table: {
               widths: ['33%', '34%', '33%'],
               body: [
@@ -1931,7 +2027,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             },
             layout: 'noBorders',
             margin: [0, 20, 0, 0]
-          }
+          }] : [])
         ],
         images: watermarkBase64 ? {
           logo: logoBase64,
@@ -2028,6 +2124,12 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             fontSize: 8,
             italics: true,
             color: '#666666'
+          },
+          notaImportante: {
+            fontSize: 9,
+            bold: true,
+            italics: true,
+            color: '#cc0000'
           }
         }
       };

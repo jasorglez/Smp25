@@ -58,6 +58,11 @@ export class IncomesAndExpensesService {
     return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/incorexp/' + idIncorexp, { headers: this.tracking.getHeaders() });
   }
 
+  // Obtener TODOS los conceptos (incluyendo active=0) para reportes
+  getAllConceptsFromIncomesAndExpenses(idIncorexp: number): Observable<any> {
+    return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/incorexp/' + idIncorexp + '/all', { headers: this.tracking.getHeaders() });
+  }
+
   getConceptsUuid(uuid: string): Observable<any> {
     return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/search?uuid=' + uuid, { headers: this.tracking.getHeaders() });
   }
