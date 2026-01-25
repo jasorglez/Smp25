@@ -345,7 +345,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         this.rowData = data.map(concept => ({
           ...concept,
           __isNew: false,
-          __modified: false
+          __modified: false,
+          ivaManuallyEdited: concept.ivaManuallyEdited || false // Preservar bandera de edición manual
         }));
         // Calculate totalFinal for each concept
         this.rowData.forEach(concept => {
@@ -909,9 +910,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         field: 'iva2',
         headerName: 'IVA',
         type: 'number',
-        editable: false,
+        editable: true, // Editable para ajustar redondeo manualmente
         width: 80,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        cellStyle: { backgroundColor: '#fff9c4' } // Amarillo claro para indicar que es editable
       },
       {
         field: 'total',
@@ -1036,6 +1038,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       total: 0,
       iva: false,
       iva2: 0,
+      ivaManuallyEdited: false, // Bandera para saber si el IVA fue editado manualmente
       aplicaIsr: false,
       isr: 0,
       isrManuallyEdited: false,
@@ -1187,8 +1190,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       // Recalcular total = quantity * price
       concept.total = Number(concept.quantity || 0) * Number(concept.price || 0);
 
-      // Recalcular IVA
-      concept.iva2 = concept.iva ? concept.total * (this.ivaPercent / 100) : 0;
+      // Recalcular IVA solo si NO fue editado manualmente
+      if (!concept.ivaManuallyEdited) {
+        concept.iva2 = concept.iva ? concept.total * (this.ivaPercent / 100) : 0;
+      }
 
       // Recalcular total final
       concept.totalFinal = concept.total + concept.iva2 - (concept.isr || 0);
@@ -1327,11 +1332,37 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       }
     }
 
+    // Detectar si el usuario editó el IVA manualmente
+    if (event.colDef.field === 'iva2') {
+      const rowData = event.data;
+      rowData.ivaManuallyEdited = true; // Marcar como editado manualmente
+      rowData.totalFinal = rowData.total + rowData.iva2 - (rowData.isr || 0);
+
+      if (this.gridApi) {
+        this.gridApi.applyTransaction({
+          update: [rowData]
+        });
+      }
+
+      // Recalcular totales globales
+      this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+      this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+      this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+      this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
+    }
+
     if (['iva', 'quantity', 'price', 'aplicaIsr', 'isr'].includes(event.colDef.field)) {
       const rowData = event.data;
 
       if (event.colDef.field === 'quantity' || event.colDef.field === 'price') {
         rowData.total = Number(rowData.quantity || 0) * Number(rowData.price || 0);
+        // Resetear la bandera de edición manual cuando cambia el precio o cantidad
+        rowData.ivaManuallyEdited = false;
+      }
+
+      if (event.colDef.field === 'iva') {
+        // Si cambia el checkbox de IVA, resetear la bandera de edición manual
+        rowData.ivaManuallyEdited = false;
       }
 
       if (event.colDef.field === 'aplicaIsr') {
@@ -1340,7 +1371,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       }
 
-      rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
+      // Solo recalcular IVA si NO fue editado manualmente
+      if (!rowData.ivaManuallyEdited) {
+        rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
+      }
 
       rowData.totalFinal = rowData.total + rowData.iva2 - (rowData.isr || 0);
 
@@ -1625,8 +1659,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return a[0].localeCompare(b[0]);
     });
 
+    // Total de grupos para la numeración de páginas
+    const totalGrupos = gruposOrdenados.length;
+
     // Generar una tabla por cada grupo (cada grupo en una página separada con header y firmas)
     gruposOrdenados.forEach(([codigoNivel1, grupo], index) => {
+      // Número de página actual (1-based)
+      const paginaActual = index + 1;
+
       // ========== SALTO DE PÁGINA (excepto el primero) ==========
       if (index > 0) {
         elementos.push({ text: '', pageBreak: 'before' });
@@ -1817,6 +1857,14 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         },
         layout: 'noBorders',
         margin: [0, 10, 0, 0]
+      });
+
+      // ========== NUMERACIÓN DE HOJA (FOOTER) ==========
+      elementos.push({
+        text: `Hoja ${paginaActual} de ${totalGrupos}`,
+        style: 'pageNumber',
+        alignment: 'center',
+        margin: [0, 15, 0, 0]
       });
     });
 
@@ -2130,6 +2178,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             bold: true,
             italics: true,
             color: '#cc0000'
+          },
+          pageNumber: {
+            fontSize: 10,
+            bold: true,
+            color: '#0066cc'
           }
         }
       };

@@ -2754,6 +2754,9 @@ export class EgresosPalacioComponent {
         case 'bitacoraPorCortes':
           await this.generateReporteBitacoraPorCortes(filteredExpenses);
           break;
+        case 'agrupadorPorHoja':
+          await this.generateReporteAgrupadorPorHoja(filteredExpenses);
+          break;
         default:
           alerts.basicAlert('Error', 'Tipo de reporte no válido', 'error');
           return;
@@ -3786,6 +3789,696 @@ export class EgresosPalacioComponent {
       alerts.basicAlert('Error', 'Error al generar la bitácora por cortes', 'error');
     }
   }
+
+  // ==================== REPORTE AGRUPADORES X HOJAS (UNA HOJA POR CADA CATEGORÍA NIVEL 1: 1000, 2000, 3000...) ====================
+  /**
+   * Genera un reporte con una hoja por cada categoría de nivel 1 (1000 SERVICIOS PERSONALES, 2000 MATERIALES, etc.)
+   * Agrupa los conceptos del detalle según el primer dígito del código del Objeto de Gasto
+   * Ejemplo: códigos 1000-1999 van a la hoja "1000 SERVICIOS PERSONALES"
+   */
+  private async generateReporteAgrupadorPorHoja(filteredExpenses: any[]) {
+    try {
+      // Importar pdfMake dinámicamente
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Obtener información de la empresa y firmas
+      const rootResponse: any = await lastValueFrom(
+        this.rootService.getRootbyId(this.idRoot)
+      );
+
+      const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+      const logo2Base64 = rootResponse.picture2
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
+        : logoBase64;
+      const watermarkBase64 = rootResponse.picture3
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
+        : null;
+
+      const setupManagementInfo: any = await lastValueFrom(
+        this.administrationService.getSetupManagementInfo(this.idRoot)
+      );
+      const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
+        ? setupManagementInfo[0]
+        : null;
+
+      // Obtener nombre de la cuenta bancaria seleccionada
+      const selectedAccount = this.bankAccounts.find(account => account.id === this.idAccount);
+      const accountName = selectedAccount
+        ? `${selectedAccount.nameAccount}-${selectedAccount.bankName}`.toUpperCase()
+        : 'INGRESOS PROPIOS';
+
+      // Cargar objetos de gasto nivel 1 (1000, 2000, 3000, etc.) para obtener nombres
+      const objetosNivel1: any[] = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 1)
+      ) as any[];
+
+      // Cargar objetos de gasto nivel 4 para obtener descripción de los conceptos
+      const objetosNivel4: any[] = await lastValueFrom(
+        this.administrationService.getByNivelObjeto(this.idRoot, 4)
+      ) as any[];
+
+      // Estructura para agrupar por categoría nivel 1 (1000, 2000, 3000, etc.)
+      const gruposPorCategoriaNivel1 = new Map<string, {
+        codigoNivel1: string;
+        nombreNivel1: string;
+        detalles: Array<{
+          numberDocument: string;
+          fecha: string;
+          codigoMaestro: string;
+          codigoDetalle: string;
+          nombreDetalle: string;
+          concepto: string;
+          totalFinal: number;
+        }>;
+        subtotal: number;
+      }>();
+
+      // Procesar cada egreso y sus conceptos
+      for (const expense of filteredExpenses) {
+        // Obtener código del Objeto de Gasto del Maestro
+        const objetoGastoMaestro = this.expenses.find(obj => obj.id === expense.idExpend);
+        const codigoMaestro = objetoGastoMaestro?.codigo || '';
+
+        // Cargar conceptos activos del egreso
+        const rawConcepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
+        );
+        const concepts = rawConcepts.filter(c => Number(c.active) === 1);
+
+        if (concepts.length === 0) {
+          // Si no hay conceptos en el detalle, usar el código del maestro para clasificar
+          const primerDigito = codigoMaestro.toString().charAt(0);
+          const codigoNivel1 = `${primerDigito}000`;
+
+          if (!gruposPorCategoriaNivel1.has(codigoNivel1)) {
+            const nivel1Info = objetosNivel1.find(obj => obj.codigo === codigoNivel1);
+            gruposPorCategoriaNivel1.set(codigoNivel1, {
+              codigoNivel1: codigoNivel1,
+              nombreNivel1: nivel1Info?.nombre || 'SIN CLASIFICAR',
+              detalles: [],
+              subtotal: 0
+            });
+          }
+
+          const grupo = gruposPorCategoriaNivel1.get(codigoNivel1)!;
+          grupo.detalles.push({
+            numberDocument: expense.numberDocument || 'Sin número',
+            fecha: this.formatDate(expense.date),
+            codigoMaestro: codigoMaestro,
+            codigoDetalle: codigoMaestro,
+            nombreDetalle: objetoGastoMaestro?.nombre || '',
+            concepto: expense.description || 'Sin descripción',
+            totalFinal: expense.total || 0
+          });
+          grupo.subtotal += expense.total || 0;
+        } else {
+          // Procesar cada concepto del detalle
+          for (const concept of concepts) {
+            const totalFinalConcepto = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
+
+            // Obtener código del concepto (nivel 4) - idCatIng
+            const objetoNivel4 = objetosNivel4.find(obj => obj.id === concept.idCatIng);
+            const codigoDetalle = objetoNivel4?.codigo || codigoMaestro;
+
+            // Determinar la categoría nivel 1 basándose en el código del detalle
+            const primerDigito = codigoDetalle.toString().charAt(0);
+            const codigoNivel1 = `${primerDigito}000`;
+
+            if (!gruposPorCategoriaNivel1.has(codigoNivel1)) {
+              const nivel1Info = objetosNivel1.find(obj => obj.codigo === codigoNivel1);
+              gruposPorCategoriaNivel1.set(codigoNivel1, {
+                codigoNivel1: codigoNivel1,
+                nombreNivel1: nivel1Info?.nombre || 'SIN CLASIFICAR',
+                detalles: [],
+                subtotal: 0
+              });
+            }
+
+            const grupo = gruposPorCategoriaNivel1.get(codigoNivel1)!;
+            grupo.detalles.push({
+              numberDocument: expense.numberDocument || 'Sin número',
+              fecha: this.formatDate(concept.dateExpend || expense.date),
+              codigoMaestro: codigoMaestro,
+              codigoDetalle: codigoDetalle,
+              nombreDetalle: objetoNivel4?.nombre || objetoGastoMaestro?.nombre || '',
+              concepto: concept.description || expense.description || 'Sin descripción',
+              totalFinal: totalFinalConcepto
+            });
+            grupo.subtotal += totalFinalConcepto;
+          }
+        }
+      }
+
+      // Ordenar grupos por código nivel 1
+      const gruposOrdenados = Array.from(gruposPorCategoriaNivel1.values())
+        .filter(g => g.detalles.length > 0)
+        .sort((a, b) => a.codigoNivel1.localeCompare(b.codigoNivel1));
+
+      if (gruposOrdenados.length === 0) {
+        alerts.basicAlert(
+          'Sin datos',
+          'No se encontraron egresos para generar el reporte',
+          'warning'
+        );
+        return;
+      }
+
+      // ==================== CÁLCULO DE PAGINACIÓN POR GRUPO ====================
+      // Estimar filas por página en landscape (aproximadamente 25 filas por página)
+      const ROWS_PER_PAGE = 25;
+
+      // Calcular páginas por grupo y crear mapeo de página global → info local
+      const pageToGroupMapping: Array<{
+        groupIndex: number;
+        groupName: string;
+        codigoNivel1: string;
+        localPage: number;
+        totalPagesInGroup: number;
+      }> = [];
+
+      let currentGlobalPage = 1;
+
+      gruposOrdenados.forEach((grupo, groupIndex) => {
+        const totalRowsInGroup = grupo.detalles.length;
+        const pagesForThisGroup = Math.max(1, Math.ceil(totalRowsInGroup / ROWS_PER_PAGE));
+
+        for (let localPage = 1; localPage <= pagesForThisGroup; localPage++) {
+          pageToGroupMapping[currentGlobalPage] = {
+            groupIndex: groupIndex,
+            groupName: grupo.nombreNivel1,
+            codigoNivel1: grupo.codigoNivel1,
+            localPage: localPage,
+            totalPagesInGroup: pagesForThisGroup
+          };
+          currentGlobalPage++;
+        }
+      });
+
+      // La página de resumen final (última página)
+      const summaryPageNumber = currentGlobalPage;
+      pageToGroupMapping[summaryPageNumber] = {
+        groupIndex: -1, // Indica página de resumen
+        groupName: 'RESUMEN GENERAL',
+        codigoNivel1: '',
+        localPage: 1,
+        totalPagesInGroup: 1
+      };
+
+      // Obtener mes y año del rango de fechas
+      const [startYearStr, startMonthStr] = this.reportStartDate.split('-');
+      const startYear = parseInt(startYearStr);
+      const startMonth = parseInt(startMonthStr);
+
+      const [endYearStr, endMonthStr] = this.reportEndDate.split('-');
+      const endYear = parseInt(endYearStr);
+      const endMonth = parseInt(endMonthStr);
+
+      const startDateObj = new Date(startYear, startMonth - 1, 1);
+      const endDateObj = new Date(endYear, endMonth - 1, 1);
+
+      // Determinar el texto del periodo
+      let periodText = '';
+      if (startYear === endYear && startMonth === endMonth) {
+        periodText = `MES DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear}`;
+      } else if (startYear === endYear) {
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} A ${this.getMonthName(endDateObj).toUpperCase()} ${startYear}`;
+      } else {
+        periodText = `PERIODO DE ${this.getMonthName(startDateObj).toUpperCase()} ${startYear} A ${this.getMonthName(endDateObj).toUpperCase()} ${endYear}`;
+      }
+
+      // Construir contenido del PDF (una hoja por cada categoría nivel 1)
+      const content: any[] = [];
+      let totalGeneral = 0;
+      let totalRegistrosGeneral = 0;
+
+      for (let groupIndex = 0; groupIndex < gruposOrdenados.length; groupIndex++) {
+        const grupo = gruposOrdenados[groupIndex];
+
+        totalGeneral += grupo.subtotal;
+        totalRegistrosGeneral += grupo.detalles.length;
+
+        // Ordenar detalles por código de detalle y luego por fecha
+        grupo.detalles.sort((a, b) => {
+          const codigoComp = a.codigoDetalle.localeCompare(b.codigoDetalle);
+          if (codigoComp !== 0) return codigoComp;
+          const fechaA = new Date(a.fecha.split('/').reverse().join('-')).getTime();
+          const fechaB = new Date(b.fecha.split('/').reverse().join('-')).getTime();
+          return fechaA - fechaB;
+        });
+
+        // Construir tabla para este grupo/categoría
+        const tableBody: any[] = [
+          // Encabezado
+          [
+            { text: '#', style: 'tableHeader', alignment: 'center' },
+            { text: '#Doc/Fac', style: 'tableHeader', alignment: 'center' },
+            { text: 'Fecha', style: 'tableHeader', alignment: 'center' },
+            { text: 'Cód. Maestro', style: 'tableHeader', alignment: 'center' },
+            { text: 'Cód. Detalle', style: 'tableHeader', alignment: 'center' },
+            { text: 'Concepto', style: 'tableHeader', alignment: 'left' },
+            { text: 'Total', style: 'tableHeader', alignment: 'right' }
+          ]
+        ];
+
+        // Agregar filas de detalle
+        grupo.detalles.forEach((detalle, index) => {
+          tableBody.push([
+            { text: `${index + 1}`, style: 'tableCell', alignment: 'center', fontSize: 7 },
+            { text: detalle.numberDocument, style: 'tableCell', alignment: 'center', fontSize: 7 },
+            { text: detalle.fecha, style: 'tableCell', alignment: 'center', fontSize: 7 },
+            { text: detalle.codigoMaestro, style: 'tableCell', alignment: 'center', fontSize: 7 },
+            { text: detalle.codigoDetalle, style: 'tableCell', alignment: 'center', fontSize: 7, bold: true },
+            { text: detalle.concepto, style: 'tableCell', alignment: 'left', fontSize: 7 },
+            { text: `$${this.formatCurrencyNumber(detalle.totalFinal)}`, style: 'tableCell', alignment: 'right', fontSize: 7 }
+          ]);
+        });
+
+        // Fila de subtotal del grupo
+        tableBody.push([
+          { text: '', border: [true, true, false, true] },
+          { text: '', border: [false, true, false, true] },
+          { text: '', border: [false, true, false, true] },
+          { text: '', border: [false, true, false, true] },
+          { text: '', border: [false, true, false, true] },
+          { text: `SUBTOTAL ${grupo.codigoNivel1}:`, style: 'subtotalLabel', alignment: 'right', border: [false, true, false, true], bold: true, fontSize: 9 },
+          { text: `$${this.formatCurrencyNumber(grupo.subtotal)}`, style: 'subtotalValue', alignment: 'right', border: [false, true, true, true], bold: true, fontSize: 9, fillColor: '#d4edda' }
+        ]);
+
+        // Agregar contenido de esta hoja/categoría
+        content.push(
+          // Header con logos y título
+          {
+            columns: [
+              {
+                image: 'logo',
+                width: 70,
+                alignment: 'left'
+              },
+              {
+                stack: [
+                  {
+                    text: rootResponse.name || 'H. JUNTA MUNICIPAL',
+                    style: 'companyName',
+                    alignment: 'center'
+                  },
+                  {
+                    text: rootResponse.address || 'DIRECCIÓN',
+                    style: 'companyInfo',
+                    alignment: 'center',
+                    fontSize: 8
+                  }
+                ],
+                width: '*'
+              },
+              {
+                image: 'logo2',
+                width: 70,
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 0, 0, 8]
+          },
+          // Título del reporte
+          {
+            text: `REPORTE DE EGRESOS - ${periodText}`,
+            style: 'reportTitle',
+            alignment: 'center',
+            margin: [0, 5, 0, 3]
+          },
+          {
+            text: `CUENTA: ${accountName}`,
+            style: 'reportSubtitle',
+            alignment: 'center',
+            margin: [0, 0, 0, 3]
+          },
+          // Título de la categoría nivel 1 (agrupador)
+          {
+            text: `${grupo.codigoNivel1} - ${grupo.nombreNivel1}`,
+            style: 'grupoTitle',
+            alignment: 'center',
+            margin: [0, 0, 0, 8],
+            fillColor: '#cce5ff',
+            bold: true,
+            fontSize: 12
+          },
+          {
+            text: `(Incluye códigos del ${grupo.codigoNivel1.charAt(0)}000 al ${grupo.codigoNivel1.charAt(0)}999)`,
+            style: 'reportSubtitle',
+            alignment: 'center',
+            margin: [0, 0, 0, 8],
+            fontSize: 8,
+            italics: true
+          },
+          // Tabla de este grupo
+          {
+            table: {
+              headerRows: 1,
+              widths: [20, 55, 45, 45, 50, '*', 70],
+              body: tableBody
+            },
+            layout: {
+              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+              vLineWidth: () => 0.5,
+              hLineColor: () => '#000000',
+              vLineColor: () => '#000000',
+              paddingTop: () => 2,
+              paddingBottom: () => 2,
+              paddingLeft: () => 4,
+              paddingRight: () => 4
+            },
+            margin: [0, 0, 0, 10]
+          },
+          // Información del grupo
+          {
+            columns: [
+              {
+                text: [
+                  { text: 'Total de Registros: ', bold: true },
+                  { text: `${grupo.detalles.length}` }
+                ],
+                fontSize: 9
+              },
+              {
+                text: [
+                  { text: 'Subtotal: ', bold: true },
+                  { text: `$${this.formatCurrencyNumber(grupo.subtotal)}`, color: '#28a745' }
+                ],
+                fontSize: 9,
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 5, 0, 15]
+          }
+        );
+
+        // Agregar salto de página si no es el último grupo
+        if (groupIndex < gruposOrdenados.length - 1) {
+          content.push({ text: '', pageBreak: 'after' });
+        }
+      }
+
+      // Página de resumen final
+      content.push({ text: '', pageBreak: 'after' });
+      content.push(
+        // Header de resumen
+        {
+          columns: [
+            { image: 'logo', width: 70, alignment: 'left' },
+            {
+              stack: [
+                { text: rootResponse.name || 'H. JUNTA MUNICIPAL', style: 'companyName', alignment: 'center' },
+                { text: rootResponse.address || '', style: 'companyInfo', alignment: 'center', fontSize: 8 }
+              ],
+              width: '*'
+            },
+            { image: 'logo2', width: 70, alignment: 'right' }
+          ],
+          margin: [0, 0, 0, 10]
+        },
+        {
+          text: `RESUMEN GENERAL - ${periodText}`,
+          style: 'reportTitle',
+          alignment: 'center',
+          margin: [0, 10, 0, 5]
+        },
+        {
+          text: `CUENTA: ${accountName}`,
+          style: 'reportSubtitle',
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
+        // Tabla de resumen
+        {
+          table: {
+            headerRows: 1,
+            widths: [80, '*', 80, 100],
+            body: [
+              [
+                { text: 'Código', style: 'tableHeader', alignment: 'center' },
+                { text: 'Categoría', style: 'tableHeader', alignment: 'left' },
+                { text: 'Registros', style: 'tableHeader', alignment: 'center' },
+                { text: 'Total', style: 'tableHeader', alignment: 'right' }
+              ],
+              ...gruposOrdenados.map(grupo => [
+                { text: grupo.codigoNivel1, style: 'tableCell', alignment: 'center', fontSize: 9, bold: true },
+                { text: grupo.nombreNivel1, style: 'tableCell', alignment: 'left', fontSize: 9 },
+                { text: grupo.detalles.length.toString(), style: 'tableCell', alignment: 'center', fontSize: 9 },
+                { text: `$${this.formatCurrencyNumber(grupo.subtotal)}`, style: 'tableCell', alignment: 'right', fontSize: 9 }
+              ]),
+              // Fila de total general
+              [
+                { text: '', border: [false, true, false, false] },
+                { text: 'TOTAL GENERAL:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false], bold: true, fontSize: 10 },
+                { text: totalRegistrosGeneral.toString(), style: 'totalLabel', alignment: 'center', border: [false, true, false, false], bold: true, fontSize: 10 },
+                { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000', fontSize: 10 }
+              ]
+            ]
+          },
+          layout: {
+            hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#000000',
+            vLineColor: () => '#000000',
+            paddingTop: () => 4,
+            paddingBottom: () => 4,
+            paddingLeft: () => 6,
+            paddingRight: () => 6
+          },
+          margin: [0, 0, 0, 20]
+        },
+        // Información general
+        {
+          columns: [
+            {
+              text: [
+                { text: 'Total de Categorías: ', bold: true },
+                { text: `${gruposOrdenados.length}` }
+              ],
+              fontSize: 9
+            },
+            {
+              text: [
+                { text: 'Total de Registros: ', bold: true },
+                { text: `${totalRegistrosGeneral}` }
+              ],
+              fontSize: 9,
+              alignment: 'center'
+            },
+            {
+              text: [
+                { text: 'Monto Total: ', bold: true },
+                { text: `$${this.formatCurrencyNumber(totalGeneral)}`, color: '#cc0000' }
+              ],
+              fontSize: 9,
+              alignment: 'right'
+            }
+          ],
+          margin: [0, 5, 0, 25]
+        },
+        // Firmas
+        {
+          columns: [
+            {
+              stack: [
+                { text: firmas?.administratorTitle || 'TESORERO', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.administratorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '33%'
+            },
+            {
+              stack: [
+                { text: firmas?.gerencyTitle || 'SINDICO DE HACIENDA', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.gerencyName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '34%'
+            },
+            {
+              stack: [
+                { text: firmas?.directorTitle || 'PRESIDENTE', style: 'firmaTitle', alignment: 'center' },
+                { text: '\n\n', margin: [0, 3, 0, 0] },
+                { text: '_______________________________', alignment: 'center', fontSize: 5 },
+                { text: firmas?.directorName || '', style: 'firmaNombre', alignment: 'center', margin: [0, 1, 0, 0] }
+              ],
+              width: '33%'
+            }
+          ]
+        }
+      );
+
+      // Definición del documento
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape',
+        pageMargins: [40, 55, 40, 60],
+        footer: (currentPage: number, pageCount: number) => {
+          // Usar el mapeo para mostrar paginación por grupo
+          const pageInfo = pageToGroupMapping[currentPage];
+
+          if (pageInfo && pageInfo.groupIndex >= 0) {
+            // Página de un grupo específico
+            return {
+              columns: [
+                {
+                  text: `${pageInfo.codigoNivel1} - ${pageInfo.groupName}`,
+                  alignment: 'left',
+                  fontSize: 7,
+                  color: '#0d6efd',
+                  bold: true,
+                  margin: [40, 10, 0, 0]
+                },
+                {
+                  text: `Hoja ${pageInfo.localPage} de ${pageInfo.totalPagesInGroup}`,
+                  alignment: 'center',
+                  fontSize: 8,
+                  color: '#000000',
+                  bold: true,
+                  margin: [0, 10, 0, 0]
+                },
+                {
+                  text: `(Global: ${currentPage} / ${pageCount})`,
+                  alignment: 'right',
+                  fontSize: 7,
+                  color: '#999999',
+                  margin: [0, 10, 40, 0]
+                }
+              ]
+            };
+          } else if (pageInfo && pageInfo.groupIndex === -1) {
+            // Página de resumen
+            return {
+              text: `RESUMEN GENERAL - Página ${currentPage} de ${pageCount}`,
+              alignment: 'center',
+              fontSize: 8,
+              margin: [0, 10, 0, 0],
+              color: '#cc0000',
+              bold: true
+            };
+          } else {
+            // Fallback por si hay páginas extra
+            return {
+              text: `Página ${currentPage} / ${pageCount}`,
+              alignment: 'center',
+              fontSize: 8,
+              margin: [0, 10, 0, 0],
+              color: '#666666'
+            };
+          }
+        },
+        background: watermarkBase64 ? [
+          {
+            image: 'watermark',
+            width: 400,
+            opacity: 0.15,
+            absolutePosition: { x: 200, y: 180 }
+          }
+        ] : [],
+        content: content,
+        images: watermarkBase64 ? {
+          logo: logoBase64,
+          logo2: logo2Base64,
+          watermark: watermarkBase64
+        } : {
+          logo: logoBase64,
+          logo2: logo2Base64
+        },
+        styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#000000'
+          },
+          companyInfo: {
+            fontSize: 8,
+            color: '#000000'
+          },
+          reportTitle: {
+            fontSize: 11,
+            bold: true,
+            color: '#000000'
+          },
+          reportSubtitle: {
+            fontSize: 9,
+            bold: true,
+            color: '#333333'
+          },
+          grupoTitle: {
+            fontSize: 12,
+            bold: true,
+            color: '#0d6efd'
+          },
+          tableHeader: {
+            fontSize: 8,
+            bold: true,
+            fillColor: '#e0e0e0',
+            color: '#000000'
+          },
+          tableCell: {
+            fontSize: 7,
+            color: '#000000'
+          },
+          subtotalLabel: {
+            fontSize: 9,
+            bold: true,
+            color: '#000000'
+          },
+          subtotalValue: {
+            fontSize: 9,
+            bold: true,
+            color: '#28a745'
+          },
+          totalLabel: {
+            fontSize: 10,
+            bold: true,
+            color: '#000000'
+          },
+          totalValue: {
+            fontSize: 10,
+            bold: true,
+            color: '#cc0000'
+          },
+          firmaTitle: {
+            fontSize: 7,
+            bold: true,
+            color: '#000000'
+          },
+          firmaNombre: {
+            fontSize: 7,
+            color: '#000000'
+          }
+        }
+      };
+
+      // Generar y abrir el PDF
+      const pdf = pdfMake.createPdf(docDefinition);
+
+      try {
+        pdf.open();
+        alerts.basicAlert(
+          'Reporte generado',
+          `Se generó el reporte con ${gruposOrdenados.length} hojas (categorías: ${gruposOrdenados.map(g => g.codigoNivel1).join(', ')}) y ${totalRegistrosGeneral} registros`,
+          'success'
+        );
+      } catch (error) {
+        pdf.download(`Reporte_Agrupadores_x_Hojas_${new Date().getTime()}.pdf`);
+        alerts.basicAlert(
+          'Reporte descargado',
+          'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
+          'info'
+        );
+      }
+
+    } catch (error) {
+      console.error('Error generando reporte Agrupadores X Hojas:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte Agrupadores X Hojas', 'error');
+    }
+  }
+
 
   /**
    * Agrupa los conceptos por categoría nivel 1 (1000, 2000, 3000)
