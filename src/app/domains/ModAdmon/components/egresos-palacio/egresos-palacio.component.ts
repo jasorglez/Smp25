@@ -792,7 +792,18 @@ export class EgresosPalacioComponent {
           return true;
         },
       },
-      
+
+      {
+        field: 'metodoPago',
+        headerName: 'Método Pago',
+        editable: true,
+        width: 110,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['TRANSFEREN', 'CHEQUE', 'EFECTIVO']
+        }
+      },
+
       {
         field: 'idTypeComp', headerName: 'Tipo Comprobante', editable: (params) => {
           if (params.data.__isNew) {
