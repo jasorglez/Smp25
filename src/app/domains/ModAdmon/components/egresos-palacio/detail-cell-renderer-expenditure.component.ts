@@ -271,6 +271,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   providers: any[] = []; // Proveedores para el combo box
   loadedTypeComps: any[] = []; // Tipos de comprobante cargados (para evitar recargarlos)
 
+  // Información de grupos para paginación dinámica (Hoja X de Y por grupo)
+  gruposParaPaginacion: Array<{
+    codigoNivel1: string;
+    nombreGrupo: string;
+    numConceptos: number;
+  }> = [];
+
   // Totals
   subtotal: number = 0;
   iva2: number = 0;
@@ -1645,6 +1652,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   /**
    * Genera las tablas agrupadas por objeto de gasto nivel 1
    * Cada grupo se imprime en una página separada con header, tabla, nota y firmas
+   * NOTA: La paginación "Hoja X de Y" ahora se maneja en el footer dinámico del documento
    */
   private generarTablaAgrupada(rootResponse?: any): any[] {
     const elementos: any[] = [];
@@ -1658,6 +1666,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       if (b[0] === 'sin-clasificar') return -1;
       return a[0].localeCompare(b[0]);
     });
+
+    // Guardar información de grupos para el footer dinámico
+    this.gruposParaPaginacion = gruposOrdenados.map(([codigoNivel1, grupo]) => ({
+      codigoNivel1,
+      nombreGrupo: grupo.nivel1Info.codigoNombre,
+      numConceptos: grupo.conceptos.length
+    }));
 
     // Total de grupos para la numeración de páginas
     const totalGrupos = gruposOrdenados.length;
@@ -1859,13 +1874,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         margin: [0, 10, 0, 0]
       });
 
-      // ========== NUMERACIÓN DE HOJA (FOOTER) ==========
-      elementos.push({
-        text: `Hoja ${paginaActual} de ${totalGrupos}`,
-        style: 'pageNumber',
-        alignment: 'center',
-        margin: [0, 15, 0, 0]
-      });
+      // NOTA: La numeración "Hoja X de Y" se maneja en el footer dinámico del documento
+      // para que aparezca en CADA página física del grupo, no solo al final
     });
 
     return elementos;
@@ -1900,10 +1910,74 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         ? await this.context.base64EncodeService.convertImageToBase64(rootResponse.picture3)
         : null;
 
+      // ==================== PRE-GENERAR CONTENIDO AGRUPADO SI ES MOSTRAR TODO ====================
+      // Necesitamos generar el contenido ANTES para calcular la paginación por grupo
+      let contenidoAgrupado: any[] = [];
+      let pageToGroupMapping: Array<{
+        groupIndex: number;
+        groupName: string;
+        localPage: number;
+        totalPagesInGroup: number;
+      }> = [];
+
+      if (this.expenditureData?.mostrartodo === true) {
+        // Generar el contenido agrupado primero (esto llena this.gruposParaPaginacion)
+        contenidoAgrupado = this.generarTablaAgrupada(rootResponse);
+
+        // Ahora calcular el mapeo de páginas con la información de grupos
+        if (this.gruposParaPaginacion.length > 0) {
+          // Estimar filas por página (aproximadamente 15 filas por página en formato LETTER portrait)
+          const ROWS_PER_PAGE = 15;
+
+          let currentGlobalPage = 1;
+
+          this.gruposParaPaginacion.forEach((grupo, groupIndex) => {
+            // Calcular páginas para este grupo basándose en el número de conceptos
+            const pagesForThisGroup = Math.max(1, Math.ceil(grupo.numConceptos / ROWS_PER_PAGE));
+
+            for (let localPage = 1; localPage <= pagesForThisGroup; localPage++) {
+              pageToGroupMapping[currentGlobalPage] = {
+                groupIndex: groupIndex,
+                groupName: grupo.nombreGrupo,
+                localPage: localPage,
+                totalPagesInGroup: pagesForThisGroup
+              };
+              currentGlobalPage++;
+            }
+          });
+        }
+      }
+
       // Crear la estructura del documento PDF
       const docDefinition: any = {
         pageSize: 'LETTER',
-        pageMargins: [40, 60, 40, 60],
+        pageMargins: [40, 60, 40, 80], // Aumentar margen inferior para el footer
+        // Footer dinámico para "Mostrar Todo" - muestra "Hoja X de Y" por cada grupo
+        footer: this.expenditureData?.mostrartodo === true ? (currentPage: number, pageCount: number) => {
+          const pageInfo = pageToGroupMapping[currentPage];
+
+          if (pageInfo) {
+            // Mostrar paginación local del grupo
+            return {
+              text: `Hoja ${pageInfo.localPage} de ${pageInfo.totalPagesInGroup}`,
+              alignment: 'center',
+              fontSize: 10,
+              bold: true,
+              color: '#0066cc',
+              margin: [0, 15, 0, 0]
+            };
+          } else {
+            // Fallback para páginas no mapeadas (usar paginación global)
+            return {
+              text: `Hoja ${currentPage} de ${pageCount}`,
+              alignment: 'center',
+              fontSize: 10,
+              bold: true,
+              color: '#0066cc',
+              margin: [0, 15, 0, 0]
+            };
+          }
+        } : undefined,
         background: watermarkBase64 ? [
           {
             image: 'watermark',
@@ -2023,8 +2097,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             margin: [0, 0, 0, 15]
           }] : []),
           // Tabla de Conceptos (Detalle) - Condicional según mostrartodo
+          // Si mostrartodo=true, usar el contenido pre-generado para que el mapeo de páginas funcione
           ...(this.expenditureData?.mostrartodo === true
-            ? this.generarTablaAgrupada(rootResponse)
+            ? contenidoAgrupado
             : [this.generarTablaSimple()]),
           // Footer con Firmas (solo si NO es Mostrar Todo, porque ya están incluidas en cada grupo)
           ...(this.expenditureData?.mostrartodo !== true ? [{
