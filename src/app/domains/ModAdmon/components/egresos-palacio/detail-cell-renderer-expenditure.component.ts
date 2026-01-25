@@ -271,6 +271,13 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   providers: any[] = []; // Proveedores para el combo box
   loadedTypeComps: any[] = []; // Tipos de comprobante cargados (para evitar recargarlos)
 
+  // Información de grupos para paginación dinámica (Hoja X de Y por grupo)
+  gruposParaPaginacion: Array<{
+    codigoNivel1: string;
+    nombreGrupo: string;
+    numConceptos: number;
+  }> = [];
+
   // Totals
   subtotal: number = 0;
   iva2: number = 0;
@@ -345,7 +352,8 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         this.rowData = data.map(concept => ({
           ...concept,
           __isNew: false,
-          __modified: false
+          __modified: false,
+          ivaManuallyEdited: concept.ivaManuallyEdited || false // Preservar bandera de edición manual
         }));
         // Calculate totalFinal for each concept
         this.rowData.forEach(concept => {
@@ -909,9 +917,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         field: 'iva2',
         headerName: 'IVA',
         type: 'number',
-        editable: false,
+        editable: true, // Editable para ajustar redondeo manualmente
         width: 80,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        cellStyle: { backgroundColor: '#fff9c4' } // Amarillo claro para indicar que es editable
       },
       {
         field: 'total',
@@ -1036,6 +1045,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       total: 0,
       iva: false,
       iva2: 0,
+      ivaManuallyEdited: false, // Bandera para saber si el IVA fue editado manualmente
       aplicaIsr: false,
       isr: 0,
       isrManuallyEdited: false,
@@ -1187,8 +1197,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       // Recalcular total = quantity * price
       concept.total = Number(concept.quantity || 0) * Number(concept.price || 0);
 
-      // Recalcular IVA
-      concept.iva2 = concept.iva ? concept.total * (this.ivaPercent / 100) : 0;
+      // Recalcular IVA solo si NO fue editado manualmente
+      if (!concept.ivaManuallyEdited) {
+        concept.iva2 = concept.iva ? concept.total * (this.ivaPercent / 100) : 0;
+      }
 
       // Recalcular total final
       concept.totalFinal = concept.total + concept.iva2 - (concept.isr || 0);
@@ -1327,11 +1339,37 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       }
     }
 
+    // Detectar si el usuario editó el IVA manualmente
+    if (event.colDef.field === 'iva2') {
+      const rowData = event.data;
+      rowData.ivaManuallyEdited = true; // Marcar como editado manualmente
+      rowData.totalFinal = rowData.total + rowData.iva2 - (rowData.isr || 0);
+
+      if (this.gridApi) {
+        this.gridApi.applyTransaction({
+          update: [rowData]
+        });
+      }
+
+      // Recalcular totales globales
+      this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
+      this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
+      this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
+      this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
+    }
+
     if (['iva', 'quantity', 'price', 'aplicaIsr', 'isr'].includes(event.colDef.field)) {
       const rowData = event.data;
 
       if (event.colDef.field === 'quantity' || event.colDef.field === 'price') {
         rowData.total = Number(rowData.quantity || 0) * Number(rowData.price || 0);
+        // Resetear la bandera de edición manual cuando cambia el precio o cantidad
+        rowData.ivaManuallyEdited = false;
+      }
+
+      if (event.colDef.field === 'iva') {
+        // Si cambia el checkbox de IVA, resetear la bandera de edición manual
+        rowData.ivaManuallyEdited = false;
       }
 
       if (event.colDef.field === 'aplicaIsr') {
@@ -1340,7 +1378,10 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         }
       }
 
-      rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
+      // Solo recalcular IVA si NO fue editado manualmente
+      if (!rowData.ivaManuallyEdited) {
+        rowData.iva2 = rowData.iva ? rowData.total * (this.ivaPercent / 100) : 0;
+      }
 
       rowData.totalFinal = rowData.total + rowData.iva2 - (rowData.isr || 0);
 
@@ -1611,6 +1652,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   /**
    * Genera las tablas agrupadas por objeto de gasto nivel 1
    * Cada grupo se imprime en una página separada con header, tabla, nota y firmas
+   * NOTA: La paginación "Hoja X de Y" ahora se maneja en el footer dinámico del documento
    */
   private generarTablaAgrupada(rootResponse?: any): any[] {
     const elementos: any[] = [];
@@ -1625,8 +1667,21 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
       return a[0].localeCompare(b[0]);
     });
 
+    // Guardar información de grupos para el footer dinámico
+    this.gruposParaPaginacion = gruposOrdenados.map(([codigoNivel1, grupo]) => ({
+      codigoNivel1,
+      nombreGrupo: grupo.nivel1Info.codigoNombre,
+      numConceptos: grupo.conceptos.length
+    }));
+
+    // Total de grupos para la numeración de páginas
+    const totalGrupos = gruposOrdenados.length;
+
     // Generar una tabla por cada grupo (cada grupo en una página separada con header y firmas)
     gruposOrdenados.forEach(([codigoNivel1, grupo], index) => {
+      // Número de página actual (1-based)
+      const paginaActual = index + 1;
+
       // ========== SALTO DE PÁGINA (excepto el primero) ==========
       if (index > 0) {
         elementos.push({ text: '', pageBreak: 'before' });
@@ -1818,6 +1873,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         layout: 'noBorders',
         margin: [0, 10, 0, 0]
       });
+
+      // NOTA: La numeración "Hoja X de Y" se maneja en el footer dinámico del documento
+      // para que aparezca en CADA página física del grupo, no solo al final
     });
 
     return elementos;
@@ -1852,10 +1910,74 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         ? await this.context.base64EncodeService.convertImageToBase64(rootResponse.picture3)
         : null;
 
+      // ==================== PRE-GENERAR CONTENIDO AGRUPADO SI ES MOSTRAR TODO ====================
+      // Necesitamos generar el contenido ANTES para calcular la paginación por grupo
+      let contenidoAgrupado: any[] = [];
+      let pageToGroupMapping: Array<{
+        groupIndex: number;
+        groupName: string;
+        localPage: number;
+        totalPagesInGroup: number;
+      }> = [];
+
+      if (this.expenditureData?.mostrartodo === true) {
+        // Generar el contenido agrupado primero (esto llena this.gruposParaPaginacion)
+        contenidoAgrupado = this.generarTablaAgrupada(rootResponse);
+
+        // Ahora calcular el mapeo de páginas con la información de grupos
+        if (this.gruposParaPaginacion.length > 0) {
+          // Estimar filas por página (aproximadamente 15 filas por página en formato LETTER portrait)
+          const ROWS_PER_PAGE = 15;
+
+          let currentGlobalPage = 1;
+
+          this.gruposParaPaginacion.forEach((grupo, groupIndex) => {
+            // Calcular páginas para este grupo basándose en el número de conceptos
+            const pagesForThisGroup = Math.max(1, Math.ceil(grupo.numConceptos / ROWS_PER_PAGE));
+
+            for (let localPage = 1; localPage <= pagesForThisGroup; localPage++) {
+              pageToGroupMapping[currentGlobalPage] = {
+                groupIndex: groupIndex,
+                groupName: grupo.nombreGrupo,
+                localPage: localPage,
+                totalPagesInGroup: pagesForThisGroup
+              };
+              currentGlobalPage++;
+            }
+          });
+        }
+      }
+
       // Crear la estructura del documento PDF
       const docDefinition: any = {
         pageSize: 'LETTER',
-        pageMargins: [40, 60, 40, 60],
+        pageMargins: [40, 60, 40, 80], // Aumentar margen inferior para el footer
+        // Footer dinámico para "Mostrar Todo" - muestra "Hoja X de Y" por cada grupo
+        footer: this.expenditureData?.mostrartodo === true ? (currentPage: number, pageCount: number) => {
+          const pageInfo = pageToGroupMapping[currentPage];
+
+          if (pageInfo) {
+            // Mostrar paginación local del grupo
+            return {
+              text: `Hoja ${pageInfo.localPage} de ${pageInfo.totalPagesInGroup}`,
+              alignment: 'center',
+              fontSize: 10,
+              bold: true,
+              color: '#0066cc',
+              margin: [0, 15, 0, 0]
+            };
+          } else {
+            // Fallback para páginas no mapeadas (usar paginación global)
+            return {
+              text: `Hoja ${currentPage} de ${pageCount}`,
+              alignment: 'center',
+              fontSize: 10,
+              bold: true,
+              color: '#0066cc',
+              margin: [0, 15, 0, 0]
+            };
+          }
+        } : undefined,
         background: watermarkBase64 ? [
           {
             image: 'watermark',
@@ -1975,8 +2097,9 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             margin: [0, 0, 0, 15]
           }] : []),
           // Tabla de Conceptos (Detalle) - Condicional según mostrartodo
+          // Si mostrartodo=true, usar el contenido pre-generado para que el mapeo de páginas funcione
           ...(this.expenditureData?.mostrartodo === true
-            ? this.generarTablaAgrupada(rootResponse)
+            ? contenidoAgrupado
             : [this.generarTablaSimple()]),
           // Footer con Firmas (solo si NO es Mostrar Todo, porque ya están incluidas en cada grupo)
           ...(this.expenditureData?.mostrartodo !== true ? [{
@@ -2130,6 +2253,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
             bold: true,
             italics: true,
             color: '#cc0000'
+          },
+          pageNumber: {
+            fontSize: 10,
+            bold: true,
+            color: '#0066cc'
           }
         }
       };
