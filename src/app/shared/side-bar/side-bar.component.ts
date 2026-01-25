@@ -71,7 +71,6 @@ export class SideBarComponent {
       
       // Actualizar el ComboBox visual solo si es diferente al valor actual
       if (selectedProjectFromSignal && selectedProjectFromSignal.toString() !== this.selectedProjectId) {
-        console.log(`🔄 Sidebar ComboBox actualizado: ${this.selectedProjectId} → ${selectedProjectFromSignal}`);
         this.selectedProjectId = selectedProjectFromSignal.toString();
         
         // Forzar actualización del DOM del select
@@ -141,7 +140,6 @@ export class SideBarComponent {
     this.rootService.get2Root(this.signalsService.idUser()).subscribe({
       next: (data) => {
         const root = Object.values(data);
-        console.log('El lista de las Empresas-Root', root)
         if (root && root.length > 0) {
           this.rootData = root;
           // Seleccionar automáticamente el primer elemento
@@ -165,9 +163,6 @@ export class SideBarComponent {
             }
           });
         } else {
-          console.log(
-            `No se encontró ningún usuario con idUser ${this.signalsService.idUser()}`
-          );
           this.selectedRoot = null;
         }
       },
@@ -189,7 +184,6 @@ export class SideBarComponent {
       await this.branchService.getBranches2fields(idRoot).subscribe(
         (data) => {
           data.sort((a, b) => a.name.localeCompare(b.name));
-          console.log('get2fields ordenado', data);
 
           // Crear el array de branches
           this.branchData = data.map((branch: any) => ({
@@ -203,7 +197,6 @@ export class SideBarComponent {
 
           if (this.branchData.length > 0) {
             this.selectedBranchId = this.branchData[0].id;
-            console.log(this.selectedBranchId);
 
             // Agregamos estas líneas para simular la selección automática
             this.signalsService.setBranchSelectedBySidebar(
@@ -225,10 +218,6 @@ export class SideBarComponent {
                 selectElement.dispatchEvent(new Event('change'));
               }
             }, 500);
-          } else {
-            console.log(
-              `No se encontró ningún branch con idBranch ${this.selectedBranchId}`
-            );
           }
         },
         (error) => {
@@ -244,7 +233,6 @@ export class SideBarComponent {
         )
         .subscribe(
           (data) => {
-            console.log(data);
             // Crear el array de branches
             this.branchData = data.project.map((branch: any) => ({
               id: branch.id,
@@ -253,7 +241,6 @@ export class SideBarComponent {
 
             if (this.branchData.length > 0) {
               this.selectedBranchId = this.branchData[0].id;
-              console.log(this.selectedBranchId);
 
               // Agregamos estas líneas para simular la selección automática
               this.signalsService.setBranchSelectedBySidebar(
@@ -275,10 +262,6 @@ export class SideBarComponent {
                   selectElement.dispatchEvent(new Event('change'));
                 }
               }, 500);
-            } else {
-              console.log(
-                `No se encontró ningún branch con idRoot ${this.selectedBranchId}`
-              );
             }
           },
           (error) => {
@@ -324,7 +307,6 @@ export class SideBarComponent {
           (branch) => branch.id === Number(this.selectedBranchId)
         ).name
       );
-      console.log(this.selectedBranchId);
       await this.getpermissionxContracts();
       // Borro la signal de project para resetear el dato
     }
@@ -339,7 +321,6 @@ export class SideBarComponent {
       )
       .subscribe(async (data) => {
         const contract = Object.values(data);
-        console.log('contract', contract);
         if (contract && contract.length > 0) {
           this.contractData = contract;
           // this.getpermissionxProjects(parseInt(this.selectedContractId));
@@ -350,10 +331,6 @@ export class SideBarComponent {
             // Llama a getpermissionxProjects automáticamente si lo necesitas
             await this.getpermissionxProjects(Number(this.selectedContractId));
           }
-        } else {
-          console.log(
-            `No se encontró ningún Contract con idRoot ${this.selectedContractId}`
-          );
         }
       });
   } 
@@ -381,7 +358,6 @@ export class SideBarComponent {
       .subscribe({
         next: (data) => {
           this.projectData = Object.values(data);
-          console.log('project', this.signalsService.idUser(), idContract, this.projectData);
           if (this.projectData.length > 0) {
             if (this.projectData.length === 1) {
               this.selectedProjectId = this.projectData[0].idProject;
