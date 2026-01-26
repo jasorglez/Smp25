@@ -87,11 +87,13 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
           <div class="modal-body">
             <div class="mb-3">
               <label for="newArticleName" class="form-label">Nombre del Artículo</label>
-              <input type="text" class="form-control" id="newArticleName" [(ngModel)]="newArticle.description">
+              <input type="text" class="form-control" id="newArticleName" [(ngModel)]="newArticle.description"
+                (input)="newArticle.description = $any($event.target).value.toUpperCase()" style="text-transform: uppercase;">
             </div>
             <div class="mb-3">
               <label for="newArticleDesc" class="form-label">Descripción del Artículo</label>
-              <textarea class="form-control" id="newArticleDesc" rows="2" [(ngModel)]="newArticle.descriptionNewArticle"></textarea>
+              <textarea class="form-control" id="newArticleDesc" rows="2" [(ngModel)]="newArticle.descriptionNewArticle"
+                (input)="newArticle.descriptionNewArticle = $any($event.target).value.toUpperCase()" style="text-transform: uppercase;"></textarea>
             </div>
             <div class="mb-3">
               <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
@@ -99,7 +101,8 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
             </div>
             <div class="mb-3">
               <label for="newArticleUsage" class="form-label">¿Para qué se va a usar?</label>
-              <textarea class="form-control" id="newArticleUsage" rows="2" [(ngModel)]="newArticle.justificationNewArticle"></textarea>
+              <textarea class="form-control" id="newArticleUsage" rows="2" [(ngModel)]="newArticle.justificationNewArticle"
+                (input)="newArticle.justificationNewArticle = $any($event.target).value.toUpperCase()" style="text-transform: uppercase;"></textarea>
             </div>
           </div>
           <div class="modal-footer">

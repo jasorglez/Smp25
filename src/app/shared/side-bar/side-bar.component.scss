@@ -127,23 +127,43 @@
   width: 70px;
 }
 
+/* Expansión temporal - mantener mismo ancho que sidebar normal */
+.collapsed.temp-expanded.sidebar {
+  width: 225px;
+}
+
 /* Ocultar selects cuando está colapsado */
-.collapsed .form-select {
+.collapsed:not(.temp-expanded) .form-select {
   display: none;
 }
 
+/* Mostrar selects cuando está temporalmente expandido */
+.temp-expanded .form-select {
+  display: block !important;
+}
+
 /* Ocultar etiquetas de selects cuando está colapsado */
-.collapsed .overflow-auto > span > span {
+.collapsed:not(.temp-expanded) .overflow-auto > span > span {
   display: none !important;
+}
+
+/* Mostrar etiquetas cuando está temporalmente expandido */
+.temp-expanded .overflow-auto > span > span {
+  display: inline !important;
 }
 
 /* Ocultar completamente los textos cuando está colapsado */
-.collapsed .nav-link span {
+.collapsed:not(.temp-expanded) .nav-link span {
   display: none !important;
 }
 
+/* Mostrar textos cuando está temporalmente expandido */
+.temp-expanded .nav-link span {
+  display: inline !important;
+}
+
 /* Centrar contenido cuando está colapsado */
-.collapsed .nav-link {
+.collapsed:not(.temp-expanded) .nav-link {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -152,9 +172,24 @@
   text-align: center;
 }
 
-.collapsed .nav-link mat-icon {
+.collapsed:not(.temp-expanded) .nav-link mat-icon {
   margin-right: 0;
   margin-bottom: 2px;
+}
+
+/* Restaurar diseño normal cuando está temporalmente expandido */
+.temp-expanded .nav-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.temp-expanded .nav-link mat-icon {
+  margin-right: 6px;
+  margin-bottom: 0;
 }
 
 /* Estilo del botón de colapsar */
@@ -197,6 +232,11 @@
 }
 
 /* Ocultar texto del botón de colapsar cuando está colapsado */
-.collapsed .btn-collapse span {
+.collapsed:not(.temp-expanded) .btn-collapse span {
   display: none !important;
+}
+
+/* Mostrar texto del botón cuando está temporalmente expandido */
+.temp-expanded .btn-collapse span {
+  display: inline !important;
 }

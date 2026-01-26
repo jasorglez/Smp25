@@ -348,8 +348,7 @@ export class TrackingService {
     // Obtener la fecha actual
     const datetime = new Date();
 
-    if (!user) user = this.getEmail();
-   // console.log('Email en el addLog:', this.getEmail());
+if (!user) user = this.getEmail();
 
     const data = {
       company,
@@ -360,7 +359,7 @@ export class TrackingService {
       idn: 0,
     };
 
-    //console.log('TRACKING DATA en el ADDLOG:', data);
+    
 
     try {
       const response: any = await this.http
@@ -397,7 +396,7 @@ export class TrackingService {
 
   getTrackingRecordsByUser(user: string) {
     const url = `${environment.urlFirebase}tracking.json`;
-    //console.log('URL de Tracking:', url);
+    
 
     return this.http.get(url).pipe(
       map((response: any) => {        
@@ -441,7 +440,7 @@ export class TrackingService {
 
   getLast500TrackingRecords() {
     const url = `${environment.urlFirebase}tracking.json?orderBy="idn"&limitToLast=500`;
-    console.log('URL de Tracking (Optimizada):', url);
+    
 
     return this.http.get(url).pipe(
       map((response: any) => {
