@@ -288,6 +288,16 @@ export class QuoteComponent implements CanComponentDeactivate {
     this.onRequisitionChanged(params);
   }
 },
+{
+  field: 'pedimento',
+  headerName: 'Pedimento #',
+  editable: false,
+  width: 120,
+  filter: true,
+  valueFormatter: (params) => {
+    return params.value ? `#${params.value}` : '';
+  }
+},
 
 {
   field: 'proveedor1',

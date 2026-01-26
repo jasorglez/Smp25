@@ -20,7 +20,7 @@ pdfMake.vfs = pdfFonts.vfs;
   template: `
     <div class="detail-grid-container">
       <!-- Header con controles -->
-      <div class="mb-2 d-flex justify-content-between align-items-end gap-3" style="padding: 10px;">
+      <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: end; gap: 3; padding: 10px; flex-shrink: 0;">
         <!-- PDF Cotización -->
         <div style="flex: 0 0 auto;">
           <label class="form-label small">PDF Cotización:</label>
@@ -74,23 +74,32 @@ pdfMake.vfs = pdfFonts.vfs;
         </div>
       </div>
 
-      <!-- Grid de artículos -->
-      <ag-grid-angular
-        class="ag-theme-quartz small-text-ag-grid"
-        [rowData]="rowData"
-        [columnDefs]="colDefs"
-        [gridOptions]="gridOptions"
-        [localeText]="AG_GRID_LOCALE_ES"
-        (gridReady)="onGridReady($event)"
-        (cellValueChanged)="onCellValueChanged($event)"
-        style="width: 120%;">
-      </ag-grid-angular>
+      <!-- Grid con tamaño completo -->
+      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          [rowData]="rowData"
+          [columnDefs]="colDefs"
+          [gridOptions]="gridOptions"
+          [localeText]="AG_GRID_LOCALE_ES"
+          (gridReady)="onGridReady($event)"
+          (cellValueChanged)="onCellValueChanged($event)"
+          style="width: 120%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+        </ag-grid-angular>
+      </div>
     </div>
   `,
   styles: [`
     .detail-grid-container {
+      padding: 5px;
       background-color: #e3f2fd;
       border-radius: 8px;
+      height: 100%;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
     }
     .form-label {
       margin-bottom: 2px;
