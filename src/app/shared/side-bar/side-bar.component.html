@@ -1,6 +1,9 @@
 <aside
   class="d-flex flex-column border-end vh-100 sidebar sidebarback"
-  [ngClass]="{ collapsed: isSidebarCollapsed }"
+  [ngClass]="{ 
+    collapsed: isSidebarCollapsed && !isTemporarilyExpanded,
+    'temp-expanded': isTemporarilyExpanded 
+  }"
 >
   <div class="d-flex flex-column align-items-center p-2 border-bottom">
     <!-- Logo -->
@@ -14,13 +17,16 @@
   </div>
 
   <div class="flex-grow-1 overflow-auto p-2">
-    <!-- Select Root -->
+<!-- Select Root -->
     <select
       id="root"
       (change)="onRootsSelected($event)"
+      (focus)="expandTemporarily()"
+      (blur)="collapseAfterInteraction()"
       class="form-select mb-2"
       [value]="selectedRoot || ''"
-      title="{{ 'select' | translate }} {{ 'company' | translate }}"
+      [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('company' | translate)) : ''"
+      matTooltipPosition="right"
     >
       >
       <option selected value="" disabled>{{ "company" | translate }}</option>
@@ -29,13 +35,16 @@
       </option>
     </select>
 
-    <!-- Select Branchs -->
+<!-- Select Branchs -->
     <select
       id="branchs"
       (change)="onBranchSelected($event)"
+      (focus)="expandTemporarily()"
+      (blur)="collapseAfterInteraction()"
       class="form-select mb-2"
       [value]="selectedBranchId || ''"
-      title="{{ 'select' | translate }} {{ 'branchs' | translate }}"
+      [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('branchs' | translate)) : ''"
+      matTooltipPosition="right"
     >
       <option selected disabled value="">{{ "branchs" | translate }}</option>
       <option *ngFor="let item of branchData" [value]="item.id">
@@ -44,12 +53,15 @@
     </select>
     <span *ngIf="authService.hasDetailedPermission('principal', 'projects')">
       <span>Select Contracts</span>
-      <select
+<select
         id="contract"
         (change)="onContractsSelected($event)"
+        (focus)="expandTemporarily()"
+        (blur)="collapseAfterInteraction()"
         class="form-select mb-2"
         [value]="selectedContractId || ''"
-        title="{{ 'select' | translate }} {{ 'contract' | translate }}"
+        [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('contract' | translate)) : ''"
+        matTooltipPosition="right"
       >
         <option selected disabled value="">
           {{ "contract" | translate }}
@@ -60,12 +72,15 @@
       </select>
 
       <span>Select Projects</span>
-      <select
+<select
         id="project"
         (change)="onProjectSelected($event)"
+        (focus)="expandTemporarily()"
+        (blur)="collapseAfterInteraction()"
         class="form-select mb-2"
         [value]="selectedProjectId || ''"
-        title="{{ 'select' | translate }} {{ 'projects' | translate }}"
+        [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('projects' | translate)) : ''"
+        matTooltipPosition="right"
       >
         >
         <option selected disabled value="">
@@ -79,12 +94,13 @@
 
     <ul class="nav flex-column">
       <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/dashboardgrales']"
           routerLinkActive="active-link"
           (click)="Dashboard()"
-          [title]="'Dashboard' | translate"
+          [matTooltip]="isSidebarCollapsed ? ('Dashboard' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>dashboard</mat-icon> <span>{{ "Dashboard" | translate }}</span>
         </a>
@@ -94,11 +110,13 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('indicators')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/indicgrals']"
           routerLinkActive="active-link"
           (click)="Indicadores()"
+          [matTooltip]="isSidebarCollapsed ? ('indicators' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>bar_chart</mat-icon> <span>{{ "indicators" | translate }}</span>
         </a>
@@ -108,11 +126,13 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('administration')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procmodadmon']"
           routerLinkActive="active-link"
           (click)="Admonproc()"
+          [matTooltip]="isSidebarCollapsed ? ('admins' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>menu_book</mat-icon> <span>{{ "admins" | translate }}</span>
         </a>
@@ -122,11 +142,13 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('shopping')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/proceswar']"
           routerLinkActive="active-link"
           (click)="warehouseproc()"
+          [matTooltip]="isSidebarCollapsed ? ('buy' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>warehouse</mat-icon> <span>{{ "buy" | translate }}</span>
         </a>
@@ -135,11 +157,13 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('shoppingDelison')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/shoppingDelison']"
           routerLinkActive="active-link"
           (click)="warehouseproc()"
+          [matTooltip]="isSidebarCollapsed ? ('buy' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>warehouse</mat-icon> <span>{{ "buy" | translate }}</span>
         </a>
@@ -148,11 +172,13 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('shoppingTD')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/shoppingTD']"
           routerLinkActive="active-link"
           (click)="warehouseproc()"
+          [matTooltip]="isSidebarCollapsed ? ('buy' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>warehouse</mat-icon> <span>{{ "buy" | translate }}</span>
         </a>
@@ -162,11 +188,13 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('warehouses')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/almacenes']"
           routerLinkActive="active-link"
           (click)="almacenesproc()"
+          [matTooltip]="isSidebarCollapsed ? 'Almacenes' : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>inventory_2</mat-icon> <span>Almacenes</span>
         </a>
@@ -175,11 +203,13 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('warehousesTD')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/warehousesTD']"
           routerLinkActive="active-link"
           (click)="almacenesproc()"
+          [matTooltip]="isSidebarCollapsed ? 'Almacenes' : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>inventory_2</mat-icon> <span>Almacenes</span>
         </a>
@@ -189,66 +219,78 @@
         class="nav-item"
         *ngIf="authService.hasMasterPermission('maintenance')"
       >
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procmodmaintenance']"
           routerLinkActive="active-link"
           (click)="maintenanceproc()"
+          [matTooltip]="isSidebarCollapsed ? ('maintenance' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>engineering</mat-icon> <span>{{ "maintenance" | translate }}</span>
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('hr')">
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procreshuman']"
           routerLinkActive="active-link"
           (click)="resourcesmenproc()"
+          [matTooltip]="isSidebarCollapsed ? ('resourcesmen' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>diversity_3</mat-icon> <span>{{ "resourcesmen" | translate }}</span>
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('sales')">
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procsales']"
           routerLinkActive="active-link"
           (click)="salesproc()"
+          [matTooltip]="isSidebarCollapsed ? ('sale' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>point_of_sale</mat-icon> <span>{{ "sale" | translate }}</span>
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')">
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/smp']"
           routerLinkActive="active-link"
           (click)="SmpSetup()"
+          [matTooltip]="isSidebarCollapsed ? ('setup' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>settings</mat-icon> <span>{{ "setup" | translate }}</span>
         </a>
       </li>
 
       <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')">
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/projects']"
           routerLinkActive="active-link"
           (click)="SmpSetup()"
+          [matTooltip]="isSidebarCollapsed ? ('projects' | translate) : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>grading</mat-icon> <span>{{ "projects" | translate }}</span>
         </a>
       </li>
 
       <li class="nav-item">
-        <a
+<a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/login']"
           routerLinkActive="active-link"
           (click)="authService.logout()"
+          [matTooltip]="isSidebarCollapsed ? 'Salir' : ''"
+          matTooltipPosition="right"
         >
           <mat-icon>logout</mat-icon> <span>Salir</span>
         </a>
@@ -258,10 +300,11 @@
 
   <!-- Botón de colapsar en la parte inferior -->
   <div class="p-2 border-top">
-    <button
+<button
       class="btn btn-collapse w-100"
       (click)="toggleSidebar()"
-      [title]="isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'"
+      [matTooltip]="isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'"
+      matTooltipPosition="right"
     >
       <mat-icon>{{ isSidebarCollapsed ? "chevron_right" : "chevron_left" }}</mat-icon>
       <span *ngIf="!isSidebarCollapsed" class="ms-2">Contraer</span>

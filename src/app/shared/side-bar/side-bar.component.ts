@@ -23,6 +23,7 @@ import { environment } from '@env/environment';
 })
 export class SideBarComponent {
   isSidebarCollapsed = false;
+  isTemporarilyExpanded = false;
 
   selectedRoot: string = '';
 
@@ -91,8 +92,7 @@ export class SideBarComponent {
       this.isSidebarCollapsed = savedCollapsedState === 'true';
     }
 
-    this.userRoot = this.signalsService.getUserRoot()();
-    //console.log('User Root:', this.userRoot);
+this.userRoot = this.signalsService.getUserRoot()();
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
@@ -104,7 +104,7 @@ export class SideBarComponent {
             this.getpermissionxRoots();
           }
         },
-        error: (error) => {
+error: (error) => {
           console.error('Error al obtener los datos del usuario:', error);
         },
       });
@@ -166,7 +166,7 @@ export class SideBarComponent {
           this.selectedRoot = null;
         }
       },
-      error: (error) => {
+error: (error) => {
         console.error('Error al obtener roots:', error);
         this.selectedRoot = null;
       },
@@ -551,10 +551,27 @@ export class SideBarComponent {
     return EMPTY;
   }
 
-  toggleSidebar() {
+toggleSidebar() {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    this.isTemporarilyExpanded = false;
     // Guardar preferencia en localStorage
     localStorage.setItem('sidebarCollapsed', this.isSidebarCollapsed.toString());
     // El main-page component detectará el cambio y aplicará la clase
+  }
+
+  // Método para expandir temporalmente la barra
+  expandTemporarily() {
+    if (this.isSidebarCollapsed) {
+      this.isTemporarilyExpanded = true;
+    }
+  }
+
+  // Método para colapsar después de la expansión temporal
+  collapseAfterInteraction() {
+    if (this.isSidebarCollapsed && this.isTemporarilyExpanded) {
+      setTimeout(() => {
+        this.isTemporarilyExpanded = false;
+      }, 200); // Pequeño delay para permitir la interacción
+    }
   }
 }
