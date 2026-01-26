@@ -103,9 +103,8 @@ export class UsersService {
           };
         }
 
-        // Limpiar datos sensibles
+// Limpiar datos sensibles
         const safeUser = sanitizeUserData(response.data);
-        console.log('User Findemail (sanitized):', safeUser);
 
         // Actualizar signals con datos seguros
         this.signalsService.setDisplayName(safeUser.displayName);

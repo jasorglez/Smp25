@@ -5,6 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouterModule, Routes } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 export const sharedRoutes: Routes = [
   { 
@@ -22,19 +23,21 @@ export const sharedRoutes: Routes = [
 ];
 
 @NgModule({
-  imports: [
+imports: [
     CommonModule,
     TranslateModule,
     RouterModule,
     MatListModule,
-    MatIconModule,      
+    MatIconModule,
+    MatTooltipModule,      
   ],
-  exports: [
+exports: [
     CommonModule,
     TranslateModule,
     RouterModule,
     MatListModule,
-    MatIconModule
+    MatIconModule,
+    MatTooltipModule
   ]
 })
 export class SharedModule {

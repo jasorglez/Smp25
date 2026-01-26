@@ -30,12 +30,9 @@ export class ProcmodadmonComponent {
     // --- REACCIÓN A CAMBIOS FUTUROS ---
     // El effect ahora solo se usa para su propósito: reaccionar a cambios y
     // actualizar propiedades locales, sin escribir en otras señales.
-    effect(() => {
+effect(() => {
       this.idUser = this.signalsService.getIdUSer()();
-      console.log('El ID de usuario ha cambiado a:', this.idUser); // Opcional, para debugging
       this.signalsService.getDisplayName()()  ;
-      console.log('El nombre de usuario ha cambiado a:', this.signalsService.getDisplayName()());
-          
     });
   }
 
