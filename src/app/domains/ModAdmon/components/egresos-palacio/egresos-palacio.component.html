@@ -299,8 +299,21 @@
                   value="bitacoraPorCortes"
                   [(ngModel)]="reportType">
                 <label class="form-check-label" for="reportBitacoraPorCortes">
-                  <i class="bi bi-bar-chart-steps me-1"></i>Bitácora por Cortes
+                  <i class="bi bi-scissors me-1"></i>Bitácora por Cortes
                   <small class="text-muted d-block">Suma agrupada por Detalle de Egresos (código objeto de gasto)</small>
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="reportType"
+                  id="reportAgrupadorHoja"
+                  value="agrupadorPorHoja"
+                  [(ngModel)]="reportType">
+                <label class="form-check-label" for="reportAgrupadorHoja">
+                  <i class="bi bi-files me-1"></i>Agrupadores X Hojas
+                  <small class="text-muted d-block">Reporte con una hoja por cada Objeto de Gasto (Maestro)</small>
                 </label>
               </div>
             </div>
