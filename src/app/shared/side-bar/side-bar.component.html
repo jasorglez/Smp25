@@ -7,13 +7,13 @@
 >
   <div class="d-flex flex-column align-items-center p-2 border-bottom">
     <!-- Logo -->
-    <img
-      *ngIf="!isSidebarCollapsed"
+<img
+      *ngIf="!isSidebarCollapsed || isTemporarilyExpanded"
       [src]="trackingService.getpictureComp()"
       alt="BI Company"
       class="img-fluid sidebar-logo"
     />
-    <span *ngIf="isSidebarCollapsed" class="fw-bold fs-6">BI</span>
+    <span *ngIf="isSidebarCollapsed && !isTemporarilyExpanded" class="fw-bold fs-6">BI</span>
   </div>
 
   <div class="flex-grow-1 overflow-auto p-2">
@@ -23,6 +23,7 @@
       (change)="onRootsSelected($event)"
       (focus)="expandTemporarily()"
       (blur)="collapseAfterInteraction()"
+      (click)="expandTemporarily()"
       class="form-select mb-2"
       [value]="selectedRoot || ''"
       [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('company' | translate)) : ''"
@@ -41,6 +42,7 @@
       (change)="onBranchSelected($event)"
       (focus)="expandTemporarily()"
       (blur)="collapseAfterInteraction()"
+      (click)="expandTemporarily()"
       class="form-select mb-2"
       [value]="selectedBranchId || ''"
       [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('branchs' | translate)) : ''"
@@ -58,6 +60,7 @@
         (change)="onContractsSelected($event)"
         (focus)="expandTemporarily()"
         (blur)="collapseAfterInteraction()"
+        (click)="expandTemporarily()"
         class="form-select mb-2"
         [value]="selectedContractId || ''"
         [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('contract' | translate)) : ''"
@@ -77,6 +80,7 @@
         (change)="onProjectSelected($event)"
         (focus)="expandTemporarily()"
         (blur)="collapseAfterInteraction()"
+        (click)="expandTemporarily()"
         class="form-select mb-2"
         [value]="selectedProjectId || ''"
         [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('projects' | translate)) : ''"
