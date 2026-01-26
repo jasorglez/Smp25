@@ -86,8 +86,9 @@ export class QuoteDelisonComponent implements OnInit {
     animateRows: true,
     singleClickEdit: true,
     masterDetail: true,
+    detailRowHeight: 700,
     detailCellRendererParams: {
-      autoHeight: true
+      autoHeight: false
     },
     detailCellRenderer: DetailCellRendererPedimentosComponent
   };

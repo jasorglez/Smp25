@@ -1166,10 +1166,18 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
       console.log('🆔 ID de cotización creada:', idCotizacion);
 
-      // 6. Crear los detalles de la cotización (items seleccionados)
-      console.log('📦 Creando detalles de la cotización...');
+      // 6. Crear snapshot de TODOS los artículos de la requisición, marcando cuáles fueron solicitados
+      console.log('📦 Creando snapshot completo de la cotización...');
+      console.log(`   Total de items en requisición: ${this.rowData.length}`);
+      console.log(`   Items seleccionados para este pedimento: ${checkedItems.length}`);
 
-      for (const item of checkedItems) {
+      // Crear Set de IDs seleccionados para búsqueda rápida
+      const selectedIds = new Set(checkedItems.map(item => item.id));
+
+      for (const item of this.rowData) {
+        // Verificar si este item fue seleccionado para este pedimento
+        const fueSeleccionado = selectedIds.has(item.id);
+
         const detallePayload = {
           idMovement: idCotizacion, // ✅ ID de la cotización recién creada
           idSupplie: item.idSupplie || item.materialId || 0,
@@ -1190,19 +1198,20 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           numArticle: item.numArticle || '',
           provint: item.provint || '',
           typePriority: item.typePriority || 'Normal',
+          pedimento: fueSeleccionado, // ✅ true = solicitado, false = solo snapshot
           descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
           urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
           justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
         };
 
-        console.log('📤 Detalle a crear:', detallePayload);
+        console.log(`📤 ${fueSeleccionado ? '✓ SOLICITADO' : '○ Snapshot'}: ${item.nameArticle || item.article}`);
 
         await firstValueFrom(
           this.ocAndReqsService.addReqItem(detallePayload)
         );
       }
 
-      console.log('✅ Todos los detalles fueron creados');
+      console.log('✅ Snapshot completo creado con marcas de selección');
 
       // 7. Actualizar el consecutivo del prefijo
       const updatedPrefixData = {

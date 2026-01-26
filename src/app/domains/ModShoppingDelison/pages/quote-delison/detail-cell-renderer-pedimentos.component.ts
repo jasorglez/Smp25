@@ -13,24 +13,33 @@ import { DetailCellRendererProveedorComponent } from './detail-cell-renderer-pro
   imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorComponent],
   template: `
     <div class="detail-grid-container">
-      <ag-grid-angular
-        #agGrid
-        class="ag-theme-quartz small-text-ag-grid"
-        [rowData]="rowData"
-        [columnDefs]="colDefs"
-        [gridOptions]="gridOptions"
-        [localeText]="AG_GRID_LOCALE_ES"
-        (gridReady)="onGridReady($event)"
-        [domLayout]="'autoHeight'"
-        style="width: 150%;">
-      </ag-grid-angular>
+      <!-- Grid con tamaño completo -->
+      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+        <ag-grid-angular
+          #agGrid
+          class="ag-theme-quartz small-text-ag-grid"
+          [rowData]="rowData"
+          [columnDefs]="colDefs"
+          [gridOptions]="gridOptions"
+          [localeText]="AG_GRID_LOCALE_ES"
+          (gridReady)="onGridReady($event)"
+          style="width: 150%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+        </ag-grid-angular>
+      </div>
     </div>
   `,
   styles: [`
     .detail-grid-container {
+      padding: 5px;
       background-color: #f8f9fa;
       border-radius: 8px;
       margin-bottom: 0;
+      height: 100%;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
     }
   `]
 })
@@ -39,6 +48,7 @@ export class DetailCellRendererPedimentosComponent {
   private gridApi!: GridApi;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  private expandedRowId: string | null = null;
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -56,21 +66,28 @@ export class DetailCellRendererPedimentosComponent {
     pedimentos.forEach((pedimento: any) => {
       const fechaPedimento = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
 
-      // ✅ Extraer los últimos 3 dígitos del folio
-      const folio = pedimento.folio || '';
-      const ultimosTresDigitos = folio.slice(-3); // Obtener los últimos 3 caracteres
-      const pedimentoFormateado = `Pedimento-${ultimosTresDigitos}`;
+      // ✅ Usar el número de pedimento secuencial (1, 2, 3, etc.) en lugar del folio
+      const numeroPedimento = pedimento.pedimento || 0;
+      const pedimentoFormateado = `Pedimento-${numeroPedimento}`;
 
       this.rowData.push({
         pedimento: pedimentoFormateado,
-        folio: folio,
+        folio: pedimento.folio || '',
         articulos: pedimento.items,
         idProvider: pedimento.idProvider || 0,
         idProvider2: pedimento.idProvider2 || 0,
         idProvider3: pedimento.idProvider3 || 0,
         pdf: 'PDF',
-        fechaPedimento: fechaPedimento
+        fechaPedimento: fechaPedimento,
+        createdAt: pedimento.createdAt // ✅ Guardar fecha completa para ordenar
       });
+    });
+
+    // ✅ Ordenar del más reciente al más antiguo (DESC)
+    this.rowData.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA; // DESC: más reciente primero
     });
   }
 
@@ -96,7 +113,12 @@ export class DetailCellRendererPedimentosComponent {
         cellRendererParams: {
           onClick: (node: any) => this.toggleArticulosCascade(node),
         },
-        valueGetter: params => params.data.articulos ? params.data.articulos.length : 0,
+        valueGetter: params => {
+          const articulos = params.data.articulos || [];
+          const solicitados = articulos.filter((item: any) => item.pedimento === true).length;
+          const total = articulos.length;
+          return `${solicitados}/${total}`;
+        },
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
@@ -175,7 +197,7 @@ export class DetailCellRendererPedimentosComponent {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 450,
+    detailRowHeight: 550,
     detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'proveedor') {
         return {
@@ -191,6 +213,12 @@ export class DetailCellRendererPedimentosComponent {
     },
     embedFullWidthRows: true,
     suppressCellFocus: true,
+    getRowClass: (params: any) => {
+      if (params.data.isExpanded) {
+        return 'expanded-row';
+      }
+      return '';
+    },
     context: {
       providerField: '',
       providerLabel: ''
@@ -202,18 +230,51 @@ export class DetailCellRendererPedimentosComponent {
     node.data.detailType = 'articulos';
     node.setSelected(true);
 
-    const isCurrentlyExpanded = node.expanded && this.activeDetailType === 'articulos';
+    const isCurrentlyExpanded = node.expanded && this.activeDetailType === 'articulos' && this.expandedRowId === node.id;
 
     if (isCurrentlyExpanded) {
+      // Si ya está expandido, colapsarlo y restaurar todas las filas
       node.setExpanded(false);
-    } else {
+      this.expandedRowId = null;
+      node.data.isExpanded = false;
+
+      // Restaurar alturas de todas las filas
       this.gridApi.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id && otherNode.expanded) {
-          otherNode.setExpanded(false);
+        otherNode.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      if (this.expandedRowId) {
+        this.gridApi.forEachNode((otherNode: any) => {
+          if (otherNode.id === this.expandedRowId) {
+            otherNode.setExpanded(false);
+            otherNode.data.isExpanded = false;
+          }
+        });
+      }
+
+      // Ocultar todas las demás filas (altura 0)
+      this.gridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
         }
       });
+
+      // Guardar el ID de la fila expandida
+      this.expandedRowId = node.id;
+      node.data.isExpanded = true;
       this.activeDetailType = 'articulos';
-      node.setExpanded(true);
+
+      // Aplicar los cambios de altura
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+
+      // Expandir con el detalle correspondiente
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
     }
   }
 
@@ -223,15 +284,36 @@ export class DetailCellRendererPedimentosComponent {
     // Verificar si ya está expandido con el mismo proveedor
     const isCurrentlyExpanded = node.expanded &&
       node.data.detailType === 'proveedor' &&
-      node.data.providerField === providerField;
+      node.data.providerField === providerField &&
+      this.expandedRowId === node.id;
 
     if (isCurrentlyExpanded) {
+      // Si ya está expandido, colapsarlo y restaurar todas las filas
       node.setExpanded(false);
-    } else {
-      // Cerrar otros nodos expandidos
+      this.expandedRowId = null;
+      node.data.isExpanded = false;
+
+      // Restaurar alturas de todas las filas
       this.gridApi.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id && otherNode.expanded) {
-          otherNode.setExpanded(false);
+        otherNode.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      if (this.expandedRowId) {
+        this.gridApi.forEachNode((otherNode: any) => {
+          if (otherNode.id === this.expandedRowId) {
+            otherNode.setExpanded(false);
+            otherNode.data.isExpanded = false;
+          }
+        });
+      }
+
+      // Ocultar todas las demás filas (altura 0)
+      this.gridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
         }
       });
 
@@ -240,6 +322,9 @@ export class DetailCellRendererPedimentosComponent {
       node.data.providerField = providerField;
       node.data.providerLabel = providerLabel;
 
+      // Guardar el ID de la fila expandida
+      this.expandedRowId = node.id;
+      node.data.isExpanded = true;
       this.activeDetailType = 'proveedor';
       this.activeProviderField = providerField;
       this.activeProviderLabel = providerLabel;
@@ -250,7 +335,14 @@ export class DetailCellRendererPedimentosComponent {
         providerLabel: providerLabel
       };
 
-      node.setExpanded(true);
+      // Aplicar los cambios de altura
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+
+      // Expandir con el detalle correspondiente
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
     }
   }
 }
