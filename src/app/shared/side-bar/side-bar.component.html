@@ -5,15 +5,13 @@
     'temp-expanded': isTemporarilyExpanded 
   }"
 >
-  <div class="d-flex flex-column align-items-center p-2 border-bottom">
+  <div class="d-flex flex-column align-items-center p-2 border-bottom" *ngIf="!isSidebarCollapsed || isTemporarilyExpanded">
     <!-- Logo -->
-<img
-      *ngIf="!isSidebarCollapsed || isTemporarilyExpanded"
+    <img
       [src]="trackingService.getpictureComp()"
       alt="BI Company"
       class="img-fluid sidebar-logo"
     />
-    <span *ngIf="isSidebarCollapsed && !isTemporarilyExpanded" class="fw-bold fs-6">BI</span>
   </div>
 
   <div class="flex-grow-1 overflow-auto p-2">
@@ -304,7 +302,15 @@
 
   <!-- Botón de colapsar en la parte inferior -->
   <div class="p-2 border-top">
-<button
+    <!-- Logo pequeño cuando está colapsado -->
+    <div *ngIf="isSidebarCollapsed && !isTemporarilyExpanded" class="collapsed-logo-container mb-2">
+      <img
+        [src]="trackingService.getpictureComp()"
+        alt="BI Company"
+        class="collapsed-logo"
+      />
+    </div>
+    <button
       class="btn btn-collapse w-100"
       (click)="toggleSidebar()"
       [matTooltip]="isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'"
