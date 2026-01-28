@@ -915,6 +915,30 @@ async saveChanges() {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+
+    // Verificar si el registro tiene conceptos/detalles asociados
+    const countItems = selectedData.countItems || 0;
+    if (countItems > 0) {
+      alerts.basicAlert(
+        'No se puede eliminar',
+        `Este registro contiene ${countItems} concepto(s) asociado(s). Debe eliminar primero los conceptos antes de poder eliminar el registro principal.`,
+        'error'
+      );
+      return;
+    }
+
+    // Confirmar antes de eliminar
+    const confirmResult = await alerts.confirmAlert(
+      '¿Está seguro?',
+      `¿Desea eliminar el registro "${selectedData.description || selectedData.numberDocument || 'seleccionado'}"? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!confirmResult.isConfirmed) {
+      return;
+    }
+
     selectedData.active = 0;
     this.incomesAndExpensesService.deleteIncomesAndExpenses(id).pipe(
       catchError((error) => {
@@ -935,12 +959,6 @@ async saveChanges() {
             'success'
           );
           this.getIncomes();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro Ingresos - Palacio Municipal', 'Menu Administración - Palacio Municipal - Ingresos',  this.trackingService.getEmail());
           this.notSavedChanges = false;
           this.selectedIncomes = null;
