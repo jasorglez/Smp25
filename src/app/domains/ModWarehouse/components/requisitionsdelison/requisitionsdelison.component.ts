@@ -17,6 +17,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
+import { catchError, EMPTY } from 'rxjs';
 
 interface Catalog {
   id: number;
@@ -1245,8 +1246,90 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Implement edit
   }
 
-  deleteRequisition(): void {
-    // Implement delete
+  async deleteRequisition(): Promise<void> {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert(
+        'Eliminar requisición',
+        'Por favor, seleccione una requisición para eliminar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedData = selectedNodes[0].data;
+    const id = selectedData.id;
+
+    // Verificar si tiene artículos asociados
+    if (selectedData.articlesCount > 0) {
+      alerts.basicAlert(
+        'Eliminar requisición',
+        'No se puede eliminar, tiene artículos asociados. Elimine primero los artículos.',
+        'error'
+      );
+      return;
+    }
+
+    // Mostrar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar requisición?',
+      `¿Está seguro que desea eliminar la requisición "${selectedData.requisitionNumber || 'Sin número'}"? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    // Si es una fila nueva (temporal), solo eliminar localmente
+    if (id && id.toString().startsWith('temp_')) {
+      this.rowData = this.rowData.filter(row => row.id !== id);
+      this.fullRowData = this.fullRowData.filter(row => row.id !== id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+
+      // Verificar si aún hay cambios sin guardar
+      this.hasUnsavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+
+      // Recalcular consecutivos locales
+      this.recalculateLocalConsecutives();
+
+      alerts.basicAlert(
+        'Eliminar requisición',
+        'Requisición eliminada satisfactoriamente.',
+        'success'
+      );
+      return;
+    }
+
+    // Eliminar del servidor
+    this.ocAndReqsService
+      .deleteOcAndReq(id)
+      .pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar requisición',
+            'Error al eliminar la requisición.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      )
+      .subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar requisición',
+          'Requisición eliminada satisfactoriamente.',
+          'success'
+        );
+
+        // Eliminar de los arrays locales
+        this.rowData = this.rowData.filter(row => row.id !== id);
+        this.fullRowData = this.fullRowData.filter(row => row.id !== id);
+        this.gridApi.setGridOption('rowData', this.rowData);
+
+        this.hasUnsavedChanges = false;
+      });
   }
 
   /**

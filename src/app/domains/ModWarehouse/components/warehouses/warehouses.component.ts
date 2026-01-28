@@ -168,9 +168,9 @@ export class WarehousesComponent implements CanComponentDeactivate {
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.estados,
-        },
+        }),
       },
       { field: 'city', headerName: 'Ciudad', editable: true, width: 100 },
       {
@@ -222,9 +222,23 @@ export class WarehousesComponent implements CanComponentDeactivate {
         console.log('📍 Estados recibidos desde API:', data);
         this.estados = data.datos.map((estado) => estado.nom_agee);
         console.log('📍 Array de estados procesado:', this.estados);
+        // Invalidar cache de columnas para que tome los nuevos estados
+        this._colMaster = [];
       },
       error: (error) => {
-        console.error('Error fetching states', error);
+        console.error('Error fetching states from INEGI API, using fallback:', error);
+        // Fallback con estados de México predefinidos
+        this.estados = [
+          'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+          'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila de Zaragoza',
+          'Colima', 'Durango', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco',
+          'México', 'Michoacán de Ocampo', 'Morelos', 'Nayarit', 'Nuevo León',
+          'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí',
+          'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala',
+          'Veracruz de Ignacio de la Llave', 'Yucatán', 'Zacatecas'
+        ];
+        // Invalidar cache de columnas para que tome los nuevos estados
+        this._colMaster = [];
       },
     });
   }

@@ -65,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.93 (27 Enero 2026 22:15) - Delete button and PDF report for Requisitions',
+  version: '3.93 (27 Enero 2026 22:54) - Octagono',
 };
 
 
