@@ -65,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.88 (26 Enero 2026 16:58) -	Teneso Ts - Angular v16.2.9',
+  version: '3.93 (27 Enero 2026 22:15) - Delete button and PDF report for Requisitions',
 };
 
 

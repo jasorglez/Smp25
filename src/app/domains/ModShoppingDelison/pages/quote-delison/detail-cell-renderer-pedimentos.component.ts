@@ -4,13 +4,15 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
+import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
 import { DetailCellRendererPedimentosItemsComponent } from './detail-cell-renderer-pedimentos-items.component';
 import { DetailCellRendererProveedorComponent } from './detail-cell-renderer-proveedor.component';
+import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorComponent, DetailCellRendererPedimentoReportComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -78,8 +80,10 @@ export class DetailCellRendererPedimentosComponent {
         idProvider2: pedimento.idProvider2 || 0,
         idProvider3: pedimento.idProvider3 || 0,
         pdf: 'PDF',
+        creo: pedimento.createdBy || 'N/A',
+        createdBy: pedimento.createdBy || 'N/A',
         fechaPedimento: fechaPedimento,
-        createdAt: pedimento.createdAt // ✅ Guardar fecha completa para ordenar
+        createdAt: pedimento.createdAt // Guardar fecha completa para ordenar
       });
     });
 
@@ -124,30 +128,36 @@ export class DetailCellRendererPedimentosComponent {
       },
 
       {
-        field: '',
+        field: 'pdf',
         headerName: 'PDF',
-        width: 140
+        width: 80,
+        cellRenderer: PdfButtonCellRendererPedimentosComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleReportCascade(node),
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Generar reporte PDF del Pedimento'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
 
       {
         field: 'creo',
-        headerName: 'QUIEN LO CREO',
-        width: 190
+        headerName: 'QUIEN LO CREÓ',
+        width: 180
       },
 
       {
         field: 'fechaPedimento',
-        
         headerName: 'FECHA PEDIMENTO',
-        width: 220
+        width: 160
       },
-
-    
 
       {
         field: 'idProvider',
         headerName: 'PROVEEDOR 1',
-        width: 240,
+        width: 210,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor A'),
@@ -161,7 +171,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'idProvider2',
         headerName: 'PROVEEDOR 2',
-        width: 240,
+        width: 210,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor B'),
@@ -171,10 +181,11 @@ export class DetailCellRendererPedimentosComponent {
         valueGetter: () => 'Proveedor B',
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer' }
       },
+
       {
         field: 'idProvider3',
         headerName: 'PROVEEDOR 3',
-        width: 240,
+        width: 210,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor C'),
@@ -183,7 +194,14 @@ export class DetailCellRendererPedimentosComponent {
         },
         valueGetter: () => 'Proveedor C',
         cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
+      },
+
+      {
+        field: 'createdBy',
+        headerName: 'CREÓ',
+        width: 100
       }
+
     ];
   }
 
@@ -208,6 +226,15 @@ export class DetailCellRendererPedimentosComponent {
           }
         };
       }
+      if (params.data.detailType === 'report') {
+        return {
+          component: DetailCellRendererPedimentoReportComponent,
+          params: {
+            reportProviderField: params.data.reportProviderField,
+            reportProviderLabel: params.data.reportProviderLabel
+          }
+        };
+      }
       // Por defecto, mostrar artículos
       return { component: DetailCellRendererPedimentosItemsComponent };
     },
@@ -220,6 +247,7 @@ export class DetailCellRendererPedimentosComponent {
       return '';
     },
     context: {
+      componentParent: this,
       providerField: '',
       providerLabel: ''
     }
@@ -329,8 +357,9 @@ export class DetailCellRendererPedimentosComponent {
       this.activeProviderField = providerField;
       this.activeProviderLabel = providerLabel;
 
-      // Actualizar el contexto del grid
+      // Actualizar el contexto del grid (manteniendo componentParent)
       this.gridOptions.context = {
+        componentParent: this,
         providerField: providerField,
         providerLabel: providerLabel
       };
@@ -343,6 +372,82 @@ export class DetailCellRendererPedimentosComponent {
       setTimeout(() => {
         node.setExpanded(true);
       }, 0);
+    }
+  }
+
+  toggleReportCascade(node: any) {
+    node.setSelected(true);
+
+    // Verificar si ya está expandido con reporte
+    const isCurrentlyExpanded = node.expanded &&
+      node.data.detailType === 'report' &&
+      this.expandedRowId === node.id;
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido, colapsarlo y restaurar todas las filas
+      node.setExpanded(false);
+      this.expandedRowId = null;
+      node.data.isExpanded = false;
+
+      // Restaurar alturas de todas las filas
+      this.gridApi.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      if (this.expandedRowId) {
+        this.gridApi.forEachNode((otherNode: any) => {
+          if (otherNode.id === this.expandedRowId) {
+            otherNode.setExpanded(false);
+            otherNode.data.isExpanded = false;
+          }
+        });
+      }
+
+      // Ocultar todas las demás filas (altura 0)
+      this.gridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Establecer el tipo de detalle como reporte
+      // Por defecto usamos idProvider (Proveedor A), pero se puede modificar
+      node.data.detailType = 'report';
+      node.data.reportProviderField = 'idProvider';
+      node.data.reportProviderLabel = 'Proveedor A';
+
+      // Guardar el ID de la fila expandida
+      this.expandedRowId = node.id;
+      node.data.isExpanded = true;
+      this.activeDetailType = 'report';
+
+      // Aplicar los cambios de altura
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+
+      // Expandir con el detalle del reporte
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  collapseReportDetail() {
+    if (this.expandedRowId && this.gridApi) {
+      this.gridApi.forEachNode((node: any) => {
+        if (node.id === this.expandedRowId) {
+          node.setExpanded(false);
+          node.data.isExpanded = false;
+          node.data.detailType = null;
+        }
+        node.setRowHeight(undefined);
+      });
+      this.expandedRowId = null;
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
     }
   }
 }
