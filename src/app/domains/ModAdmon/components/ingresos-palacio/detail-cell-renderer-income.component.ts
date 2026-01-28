@@ -304,7 +304,10 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     }
 
     // Llamar al endpoint para obtener los catálogos hijos (nivel 3)
-    this.context.catalogadmonService.getCatalogsxParent(idCustomer).subscribe({
+    console.log('=== getCatalogsxParent ===');
+    console.log('idParent (idCustomer):', idCustomer);
+    console.log('idRoot:', this.context.idRoot);
+    this.context.catalogadmonService.getCatalogsxSubParent(this.context.idRoot, idCustomer).subscribe({
       next: (data: any[]) => {
         this.catalogosHijos = data || [];
         console.log('Catálogos hijos cargados:', this.catalogosHijos);
@@ -529,9 +532,13 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       {
         field: 'iva',
         headerName: '¿Aplica IVA?',
-        type: 'boolean',
         editable: true,
-        width: 80
+        width: 80,
+        cellEditor: 'agCheckboxCellEditor',
+        cellRenderer: (params) => {
+          const checked = params.value ? 'checked' : '';
+          return `<input type="checkbox" ${checked} disabled style="pointer-events: none;" />`;
+        }
       },
       {
         field: 'iva2',

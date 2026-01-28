@@ -21,7 +21,22 @@ pdfMake.vfs = pdfFonts.vfs;
     <div class="detail-grid-container">
       <!-- Header con controles -->
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: end; gap: 3; padding: 10px; flex-shrink: 0;">
-        <!-- PDF Cotización -->
+            
+        <!-- Seleccionar Proveedor -->
+        <div style="flex: 1; min-width: 200px;">
+          <label class="form-label small">Seleccionar Proveedor:</label>
+          <ng-select
+            [items]="providers"
+            bindValue="id"
+            bindLabel="description"
+            [(ngModel)]="selectedProviderId"
+            [clearable]="true"
+            placeholder="Seleccione proveedor"
+            (ngModelChange)="onProviderChange()">
+          </ng-select>
+        </div>
+
+       <!-- PDF Cotización -->
         <div style="flex: 0 0 auto;">
           <label class="form-label small">PDF Cotización:</label>
           <div class="input-group input-group-sm">
@@ -41,19 +56,6 @@ pdfMake.vfs = pdfFonts.vfs;
           <input type="date" class="form-control form-control-sm" [(ngModel)]="fechaProveedor" style="width: 140px;">
         </div>
 
-        <!-- Seleccionar Proveedor -->
-        <div style="flex: 1; min-width: 200px;">
-          <label class="form-label small">Seleccionar Proveedor:</label>
-          <ng-select
-            [items]="providers"
-            bindValue="id"
-            bindLabel="description"
-            [(ngModel)]="selectedProviderId"
-            [clearable]="true"
-            placeholder="Seleccione proveedor"
-            (ngModelChange)="onProviderChange()">
-          </ng-select>
-        </div>
 
         <!-- Botones CRUD -->
         <div class="d-flex gap-1" style="flex: 0 0 auto;">
@@ -383,6 +385,21 @@ export class DetailCellRendererProveedorComponent {
         width: 120,
         editable: true
       },
+
+      {
+        field: 'compraMinima',
+        headerName: 'Compra Mín.',
+        width: 130,
+        editable: true
+      },
+
+      {
+        field: 'tiempoEntrega',
+        headerName: 'T. Entrega',
+        width: 120,
+        editable: true
+      },
+
       {
         field: 'costoUnitario',
         headerName: 'Costo Unit.',
@@ -390,18 +407,8 @@ export class DetailCellRendererProveedorComponent {
         editable: true,
         valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00'
       },
-      {
-        field: 'compraMinima',
-        headerName: 'Compra Mín.',
-        width: 120,
-        editable: true
-      },
-      {
-        field: 'tiempoEntrega',
-        headerName: 'T. Entrega',
-        width: 120,
-        editable: true
-      },
+
+   
       {
         field: 'cantidadConfirmada',
         headerName: 'Cant. Conf.',
