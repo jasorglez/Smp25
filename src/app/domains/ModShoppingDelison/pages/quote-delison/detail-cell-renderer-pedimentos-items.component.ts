@@ -90,7 +90,7 @@ export class DetailCellRendererPedimentosItemsComponent {
         tipo: item.intorext || item.tipo,
         proveedorInterno: item.proveedorInterno,
         tipoPrioridad: item.typePriority || item.priority,
-        observacion: item.observation || item.observaciones || '',
+        comment: item.comment || item.observation || item.observaciones || '',
         pedimento: item.pedimento || false, // ✅ Booleano: true = solicitado, false = solo snapshot
         pedimentoNumber: item.pedimentoNum || '',
         numeroPedimento: this.params.data.pedimento // ✅ Número de pedimento (1, 2, 3...)
@@ -171,7 +171,7 @@ export class DetailCellRendererPedimentosItemsComponent {
         width: 150
       },
       {
-        field: 'observacion',
+        field: 'comment',
         headerName: 'Observation',
         width: 200
       },
