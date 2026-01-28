@@ -219,7 +219,9 @@ export class WarehousesComponent implements CanComponentDeactivate {
   obtenerStates() {
     this.inegiService.getEstados().subscribe({
       next: (data: { datos: States[] }) => {
+        console.log('📍 Estados recibidos desde API:', data);
         this.estados = data.datos.map((estado) => estado.nom_agee);
+        console.log('📍 Array de estados procesado:', this.estados);
       },
       error: (error) => {
         console.error('Error fetching states', error);

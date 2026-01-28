@@ -240,16 +240,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
 
     this.requisitionId = this.params.data.id;
 
-    console.log('🔍 ==================== DEBUG ITEMS COMPONENT ====================');
-    console.log('📦 ID de requisición que se está abriendo:', this.requisitionId);
-    console.log('📋 Datos completos de la fila:', this.params.data);
-    console.log('🔢 Tipo de dato del ID:', typeof this.requisitionId);
-    console.log('================================================================');
+
 
     // ✅ Llamar al servicio real
     this.ocAndReqsService.getReqItems(this.requisitionId).subscribe({
       next: (data: any) => {
-        console.log('✅ Items recibidos del servidor:', data);
+
 
         // Mapear los datos del servidor al formato del grid
         this.rowData = Array.isArray(data) ? data.map((item: any) => ({
@@ -293,7 +289,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
           this.gridApi.redrawRows();
         }
 
-        console.log('✅ Items cargados:', this.rowData.length);
+
 
         // Pre-cargar proveedores para todos los items que tienen material
         this.rowData.forEach(item => {
@@ -324,12 +320,12 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     if (!this.idRoot) {
-      console.warn('⚠️ No hay idRoot disponible para cargar materiales');
+
       this.materials = [];
       return;
     }
 
-    console.log('📦 Cargando materiales desde endpoint con idRoot:', this.idRoot);
+
 
     // Cargar materiales desde el endpoint real
     this.materialsService.getMaterialsxview(this.idRoot).subscribe({
@@ -349,7 +345,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
             idSubfamilia: material.idSubfamilia
           }));
 
-        console.log(`✅ Materiales cargados: ${this.materials.length} items`);
+
       },
       error: (error) => {
         console.error('❌ Error al cargar materiales:', error);
@@ -375,10 +371,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       // Guardar en caché
       this.providersCache.set(cacheKey, providers);
 
-      console.log(`✅ Proveedores cargados para material ${materialId} tipo ${type}:`, providers.length);
+
       return providers;
     } catch (error) {
-      console.error('❌ Error al cargar proveedores:', error);
+
       return [];
     }
   }

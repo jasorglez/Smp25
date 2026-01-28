@@ -31,7 +31,11 @@
       "Bash(npm install:*)",
       "Bash(dir C:Developer /s /b)",
       "Bash(findstr:*)",
-      "Bash(time:*)"
+      "Bash(time:*)",
+      "Bash(tasklist:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx ng serve --port 4200)"
     ],
     "deny": [],
     "ask": []

@@ -26,12 +26,15 @@ import { SetupService } from 'app/services/setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
+import { DeleteButtonCellRendererComponent } from './delete-button-cell-renderer.component';
+import { PdfButtonCellRendererRequisitionsComponent } from './pdf-button-cell-renderer-requisitions.component';
 import { DetailCellRendererRequisitionItemsComponent } from './detail-cell-renderer-requisition-items.component';
+import { DetailCellRendererRequisitionReportComponent } from './detail-cell-renderer-requisition-report.component';
 
 interface Catalog {
   id: number;
   description: string;
-}``
+}
 
 interface Provider {
   id: number;
@@ -41,7 +44,7 @@ interface Provider {
 @Component({
   selector: 'app-requisitions',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DetailCellRendererRequisitionItemsComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DetailCellRendererRequisitionItemsComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
   templateUrl: './requisitions.component.html',
   styleUrl: './requisitions.component.scss',
 })
@@ -69,6 +72,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   private tempIdCounter: number = 0;
   idRequisition: number = null;
   private lastProcessedRequisition: number = null;
+  private expandedRowId: string | null = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
@@ -186,7 +190,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     masterDetail: true,
     detailRowHeight: 400,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererRequisitionItemsComponent,
+    detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'report') {
+        return {
+          component: DetailCellRendererRequisitionReportComponent,
+          params: {}
+        };
+      }
+      // Por defecto, mostrar items
+      return { component: DetailCellRendererRequisitionItemsComponent };
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -250,6 +263,21 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
+        field: 'delete',
+        headerName: '',
+        width: 45,
+        cellRenderer: DeleteButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.onDeleteButtonClick(node),
+          icon: 'bi-trash',
+          iconColor: '#dc3545',
+          title: 'Eliminar requisición',
+          disabledTitle: 'No se puede eliminar, tiene items asociados'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#fff3e0' }
+      },
+      {
         field: 'countrow',
         headerName: 'Items',
         width: 60,
@@ -260,6 +288,20 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         valueGetter: params => params.data?.countrow || 0,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+      },
+      {
+        field: 'pdf',
+        headerName: 'PDF',
+        width: 50,
+        cellRenderer: PdfButtonCellRendererRequisitionsComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleReportCascade(node),
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Generar reporte PDF de la Requisición'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
         field: 'folio',
@@ -677,6 +719,12 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     }
   }
 
+  onDeleteButtonClick(node: any) {
+    node.setSelected(true);
+    this.masterSelectedRowData = node.data;
+    this.deleteMasterEntry();
+  }
+
   deleteMasterEntry() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
@@ -958,6 +1006,78 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.onCellClickedCascade(event);
   }
 
+  toggleReportCascade(node: any) {
+    node.setSelected(true);
+
+    // Verificar si ya está expandido con reporte
+    const isCurrentlyExpanded = node.expanded &&
+      node.data.detailType === 'report' &&
+      this.expandedRowId === node.id;
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido, colapsarlo y restaurar todas las filas
+      node.setExpanded(false);
+      this.expandedRowId = null;
+      node.data.isExpanded = false;
+
+      // Restaurar alturas de todas las filas
+      this.masterGridApi.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      this.masterGridApi.onRowHeightChanged();
+      this.masterGridApi.redrawRows();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      if (this.expandedRowId) {
+        this.masterGridApi.forEachNode((otherNode: any) => {
+          if (otherNode.id === this.expandedRowId) {
+            otherNode.setExpanded(false);
+            otherNode.data.isExpanded = false;
+          }
+        });
+      }
+
+      // Ocultar todas las demás filas (altura 0)
+      this.masterGridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Establecer el tipo de detalle como reporte
+      node.data.detailType = 'report';
+
+      // Guardar el ID de la fila expandida
+      this.expandedRowId = node.id;
+      node.data.isExpanded = true;
+
+      // Aplicar los cambios de altura
+      this.masterGridApi.onRowHeightChanged();
+      this.masterGridApi.redrawRows();
+
+      // Expandir con el detalle del reporte
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  collapseReportDetail() {
+    if (this.expandedRowId && this.masterGridApi) {
+      this.masterGridApi.forEachNode((node: any) => {
+        if (node.id === this.expandedRowId) {
+          node.setExpanded(false);
+          node.data.isExpanded = false;
+          node.data.detailType = null;
+        }
+        node.setRowHeight(undefined);
+      });
+      this.expandedRowId = null;
+      this.masterGridApi.onRowHeightChanged();
+      this.masterGridApi.redrawRows();
+    }
+  }
+
   onCellClickedCascade(event: any): void {
     event.node.setSelected(true);
 
@@ -968,12 +1088,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       const node = event.node;
       const api = event.api;
 
-      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'items';
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'items' && this.expandedRowId === node.id;
 
       if (isCurrentlyExpanded) {
         // Si ya está expandido, colapsarlo y mostrar todas las filas
         node.setExpanded(false);
         event.data.detailType = null;
+        this.expandedRowId = null;
 
         api.forEachNode((otherNode: any) => {
           otherNode.setRowHeight(undefined);
@@ -981,12 +1102,18 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         api.onRowHeightChanged();
       } else {
         // Colapsar cualquier otra fila expandida y resetear alturas
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.id !== node.id) {
-            if (otherNode.expanded) {
+        if (this.expandedRowId) {
+          api.forEachNode((otherNode: any) => {
+            if (otherNode.id === this.expandedRowId) {
               otherNode.setExpanded(false);
               otherNode.data.detailType = null;
+              otherNode.data.isExpanded = false;
             }
+          });
+        }
+
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
             otherNode.setRowHeight(0);
           } else {
             otherNode.setRowHeight(undefined);
@@ -995,6 +1122,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
         // Cambiar el tipo de detalle ANTES de expandir
         event.data.detailType = 'items';
+
+        // Guardar el ID de la fila expandida
+        this.expandedRowId = node.id;
+        event.data.isExpanded = true;
 
         // Aplicar los cambios de altura
         api.onRowHeightChanged();

@@ -57,19 +57,19 @@ export class RequisitionsDelisonComponent implements OnInit {
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-      console.log('🔄 Cambio detectado en idBranch:', newIdBranch);
+
 
       // Si cambió el idBranch y es válido, recargar requisiciones
       if (newIdBranch !== undefined && newIdBranch !== null && newIdBranch !== this.idBranch) {
         this.idBranch = newIdBranch;
-        console.log('✅ Nueva sucursal seleccionada:', this.idBranch);
+
 
         // ✅ Esperar a que se carguen las sucursales antes de cargar requisiciones
         if (this.branchesLoaded) {
-          console.log('✅ Sucursales ya cargadas, cargando requisiciones inmediatamente');
+
           this.loadRequisitions();
         } else {
-          console.log('⏳ Esperando a que se carguen las sucursales...');
+
           // Guardar el idBranch para cargarlo después
         }
       } else if (!newIdBranch && newIdBranch !== 0 && this.isInitialized) {
@@ -82,7 +82,7 @@ export class RequisitionsDelisonComponent implements OnInit {
           this.gridApi.setGridOption('rowData', []);
         }
 
-        console.warn('⚠️ No hay sucursal seleccionada');
+
         alerts.basicAlert(
           'Sucursal requerida',
           'Por favor, seleccione una sucursal en el sidebar para ver las requisiciones',
@@ -131,22 +131,19 @@ export class RequisitionsDelisonComponent implements OnInit {
       this.currentUserName = this.signalsService.getDisplayName()() || 'Usuario';
       this.idUser = this.signalsService.getIdUSer()(); // ✅ Obtener ID del usuario
 
-      console.log('🏢 idRoot:', this.idRoot);
-      console.log('👤 Usuario actual:', this.currentUserName);
-      console.log('🆔 idUser:', this.idUser);
-      console.log('ℹ️ El idBranch se obtendrá desde el effect() cuando esté disponible');
+
 
       // ✅ Solo cargar si idRoot es válido
       if (this.idRoot) {
         this.loadBranches();
         this.obtenerDepartamentos();
       } else {
-        console.warn('⚠️ idRoot no está disponible todavía, reintentando...');
+
         // Reintentar después de un delay adicional
         setTimeout(() => {
           this.idRoot = this.signalsService.getRootSelectedBySidebar()();
           if (this.idRoot) {
-            console.log('✅ idRoot obtenido en reintento:', this.idRoot);
+
             this.loadBranches();
             this.obtenerDepartamentos();
           }
@@ -155,7 +152,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       // ✅ Marcar como inicializado
       this.isInitialized = true;
-      console.log('✅ Componente marcado como inicializado');
+
     }, 200);
   }
 
@@ -164,7 +161,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       next: (data: any[]) => {
         this.branches = data;
         this.branchesLoaded = true;
-        console.log('🏪 Sucursales cargadas:', this.branches.length);
+
 
         // ✅ Obtener el idBranch actual del signal (puede ser negativo para "Todas las sucursales")
         const currentIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -172,14 +169,14 @@ export class RequisitionsDelisonComponent implements OnInit {
         // ✅ Si hay un idBranch seleccionado (incluso si es negativo), cargar las requisiciones ahora
         if (currentIdBranch !== null && currentIdBranch !== undefined) {
           this.idBranch = currentIdBranch;
-          console.log('✅ idBranch inicial detectado:', this.idBranch, '- cargando requisiciones ahora');
+
           this.loadRequisitions();
         } else {
-          console.log('⏳ No hay idBranch inicial, esperando cambios del sidebar...');
+
         }
       },
       error: (error) => {
-        console.error('❌ Error al cargar sucursales:', error);
+
         this.branches = [];
         this.branchesLoaded = true; // Marcar como cargado aunque haya error
       }
@@ -190,7 +187,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.departamentos = data;
-        console.log(this.departamentos);
+
       },
       (error) => console.error('Error fetching departments:', error)
     );
@@ -200,7 +197,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   loadRequisitions() {
     // ✅ Validar que idBranch sea válido antes de hacer la petición
     if (this.idBranch === null || this.idBranch === undefined) {
-      console.warn('⚠️ No se puede cargar requisiciones: idBranch no está definido');
+
       this.fullRowData = [];
       this.rowData = [];
       return;
@@ -210,10 +207,10 @@ export class RequisitionsDelisonComponent implements OnInit {
     const isAllBranches = this.idBranch < 0;
 
     if (isAllBranches) {
-      console.log('🌐 Cargando requisiciones de TODAS las sucursales...');
+
       this.loadRequisitionsFromAllBranches();
     } else {
-      console.log('📋 Cargando requisiciones de una sucursal específica:', this.idBranch);
+
       this.loadRequisitionsFromSingleBranch(this.idBranch);
     }
   }
@@ -221,7 +218,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private loadRequisitionsFromAllBranches() {
     // 🔍 Usar el catálogo de branches que ya está cargado en this.branches
     if (!this.branches || this.branches.length === 0) {
-      console.warn('⚠️ No hay sucursales disponibles en el catálogo');
+
       this.fullRowData = [];
       this.rowData = [];
       if (this.gridApi) {
@@ -230,18 +227,18 @@ export class RequisitionsDelisonComponent implements OnInit {
       return;
     }
 
-    console.log('✅ Usando catálogo de', this.branches.length, 'sucursales ya cargadas');
+
 
     // 🔄 Hacer múltiples llamadas al endpoint, una por cada branch
     const requisitionPromises = this.branches.map(branch => {
       return new Promise<any[]>((resolve) => {
         this.ocAndReqsService.getOcAndReqs('branch', branch.id, 'REQUIS').subscribe({
           next: (data: any) => {
-            console.log(`✅ Branch ${branch.name} (${branch.id}): ${Array.isArray(data) ? data.length : 0} requisiciones`);
+
             resolve(Array.isArray(data) ? data : []);
           },
           error: (error) => {
-            console.error(`❌ Error al cargar requisiciones del branch ${branch.name}:`, error);
+
             resolve([]); // Retornar array vacío en caso de error
           }
         });
@@ -252,7 +249,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     Promise.all(requisitionPromises).then((allRequisitions: any[][]) => {
       // Combinar todos los resultados en un solo array
       const combinedData = allRequisitions.flat();
-      console.log(`✅ Total de requisiciones combinadas: ${combinedData.length}`);
+
 
       // Mapear los datos al formato esperado por el grid
       this.fullRowData = combinedData.map((req: any) => {
@@ -293,7 +290,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       });
 
       this.rowData = [...this.fullRowData];
-      console.log('✅ Requisiciones de todas las sucursales cargadas:', this.fullRowData.length);
+
 
       // ✅ Pre-cargar roles para todas las sucursales únicas en los datos
       this.preloadRolesForRequisitions();
@@ -307,15 +304,12 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   private loadRequisitionsFromSingleBranch(branchId: number) {
-    console.log('📋 Cargando requisiciones desde el servidor...');
-    console.log('   typeReference: branch');
-    console.log('   idReference:', branchId);
-    console.log('   type: REQUIS');
+
 
     // ✅ Llamar al endpoint real
     this.ocAndReqsService.getOcAndReqs('branch', branchId, 'REQUIS').subscribe({
       next: (data: any) => {
-        console.log('✅ Datos recibidos del servidor:', data);
+
 
         // Mapear los datos del servidor al formato esperado por el grid
         this.fullRowData = Array.isArray(data) ? data.map((req: any) => {
@@ -327,7 +321,7 @@ export class RequisitionsDelisonComponent implements OnInit {
           // cuando se visualice o edite la celda (no se puede obtener aquí de forma sincrónica)
           const departmentName = '';
 
-          console.log(`📋 Requisición ${req.id}: idReference=${req.idReference} → Sucursal: ${branchName}, idDepartament: ${req.idDepartament}, countrow: ${req.countrow}`);
+
 
           return {
             id: req.id,
@@ -362,7 +356,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         this.rowData = [...this.fullRowData];
 
-        console.log('✅ Requisiciones cargadas:', this.fullRowData.length);
+
 
         // ✅ Pre-cargar roles para todas las sucursales únicas en los datos
         this.preloadRolesForRequisitions();
@@ -375,7 +369,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         }
       },
       error: (error) => {
-        console.error('❌ Error al cargar requisiciones:', error);
+
         alerts.basicAlert('Error', 'No se pudieron cargar las requisiciones', 'error');
 
         // En caso de error, inicializar con array vacío
@@ -412,7 +406,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       // 🔵 Excluir la columna PDF para evitar conflictos con el botón
       const clickedColumn = event.column?.getColId();
       if (clickedColumn === 'pdfReport') {
-        console.log('🔵 Clic en columna PDF detectado, evitando selección de fila');
+
         return; // No seleccionar la fila si se hace clic en PDF
       }
     },
@@ -426,16 +420,11 @@ export class RequisitionsDelisonComponent implements OnInit {
       }
     },
     onCellValueChanged: (event: any) => {
-      console.log('📝 onCellValueChanged disparado:', {
-        field: event.colDef.field,
-        newValue: event.newValue,
-        oldValue: event.oldValue,
-        data: event.data
-      });
+
 
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
-      console.log('✅ Fila marcada como modificada, hasUnsavedChanges:', this.hasUnsavedChanges);
+
 
       setTimeout(() => {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
@@ -487,19 +476,14 @@ export class RequisitionsDelisonComponent implements OnInit {
           return {}; // Sin estilo = editable
         },
         valueSetter: (params: any) => {
-          console.log('🔧 valueSetter idReference - newValue:', params.newValue, 'oldValue:', params.oldValue);
-          console.log('🔧 Tipo de newValue:', typeof params.newValue);
-          console.log('🔧 Datos actuales antes del cambio:', {
-            idReference: params.data.idReference,
-            branch: params.data.branch
-          });
+
 
           // AG Grid agSelectCellEditor retorna el ID directamente como string
           const branchId = Number(params.newValue);
 
           // ✅ Validar que el ID no sea negativo (evitar -9 de "Todas las sucursales")
           if (branchId <= 0 || isNaN(branchId)) {
-            console.error('❌ ID de sucursal inválido:', branchId);
+
             return false;
           }
 
@@ -509,11 +493,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             params.data.idReference = branchId;
             params.data.branch = branch.name || branch.description;
 
-            console.log('✅ Sucursal asignada:', {
-              branchName: params.data.branch,
-              idReference: params.data.idReference,
-              isNew: params.data.__isNew
-            });
+
 
             // 🔄 Obtener el prefijo y consecutivo de la nueva sucursal y actualizar el número de requisición
             this.typexPrefixesService.getPrefix('branch', branchId).subscribe({
@@ -531,23 +511,17 @@ export class RequisitionsDelisonComponent implements OnInit {
                   }
 
                   nextConsecutive = localConsecutive;
-                  console.log(`🔢 Usando consecutivo local para sucursal ${branchId}: ${nextConsecutive}`);
+
                 } else {
                   // Fila editada, usar consecutivo del servidor
                   nextConsecutive = (prefixData.consecutive || 0) + 1;
-                  console.log(`📊 Usando consecutivo del servidor para sucursal ${branchId}: ${nextConsecutive}`);
+
                 }
 
                 const newRequisitionNumber = `${prefixData.prefix || ''}${nextConsecutive}`;
                 params.data.requisitionNumber = newRequisitionNumber;
 
-                console.log('✅ Número de requisición actualizado:', {
-                  oldNumber: params.data.requisitionNumber,
-                  newNumber: newRequisitionNumber,
-                  prefix: prefixData.prefix,
-                  consecutive: nextConsecutive,
-                  isNew: params.data.__isNew
-                });
+
 
                 // Guardar el prefixData para usarlo al guardar
                 this.currentPrefixData = prefixData;
@@ -558,12 +532,12 @@ export class RequisitionsDelisonComponent implements OnInit {
                 }
               },
               error: (err) => {
-                console.error('❌ Error al obtener prefijo de la nueva sucursal:', err);
+
 
                 // ✅ Verificar si es una fila nueva o una fila editada
                 if (params.data.__isNew) {
                   // 🗑️ Fila nueva: Eliminar la fila del grid
-                  console.log('❌ Fila nueva sin prefijo configurado. Eliminando fila...');
+
 
                   alerts.basicAlert(
                     'Error',
@@ -581,7 +555,7 @@ export class RequisitionsDelisonComponent implements OnInit {
                   }
                 } else {
                   // 🔄 Fila editada: Restaurar al branch original
-                  console.log('❌ Fila editada sin prefijo configurado. Restaurando branch original...');
+
 
                   alerts.basicAlert(
                     'Advertencia',
@@ -597,10 +571,7 @@ export class RequisitionsDelisonComponent implements OnInit {
                     params.data.idReference = originalBranchId;
                     params.data.branch = originalBranch.name || originalBranch.description;
 
-                    console.log('✅ Sucursal restaurada a:', {
-                      branchName: params.data.branch,
-                      idReference: params.data.idReference
-                    });
+
 
                     // Forzar actualización del grid
                     if (this.gridApi) {
@@ -614,14 +585,14 @@ export class RequisitionsDelisonComponent implements OnInit {
             // Marcar como modificado si no es nuevo
             if (!params.data.__isNew) {
               params.data.__modified = true;
-              console.log('🔴 Marcado como __modified');
+
             }
             this.hasUnsavedChanges = true;
-            console.log('💾 hasUnsavedChanges = true');
+
             return true;
           }
 
-          console.error('❌ No se encontró la sucursal con ID:', branchId);
+
           return false;
         },
         cellEditorPopup: true
@@ -679,14 +650,14 @@ export class RequisitionsDelisonComponent implements OnInit {
           const branchId = params.data?.idReference;
 
           if (!branchId || !this.idUser) {
-            console.warn('⚠️ No se puede obtener roles: branchId o idUser no disponible');
+
             return { values: [] };
           }
 
           // ✅ Si ya tenemos los roles en cache, usarlos
           if (this.rolesByBranchCache.has(branchId)) {
             const roles = this.rolesByBranchCache.get(branchId) || [];
-            console.log(`✅ Usando roles en cache para sucursal ${branchId}:`, roles);
+
 
             // Crear mapas bidireccionales
             const descriptionToId: any = {};
@@ -708,7 +679,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             };
           }
 
-          console.warn('⚠️ Roles no encontrados en cache para sucursal', branchId);
+
           return { values: [] };
         },
         valueFormatter: (params) => {
@@ -726,7 +697,7 @@ export class RequisitionsDelisonComponent implements OnInit {
           return params.data?.departmentName || params.value?.toString() || '';
         },
         valueSetter: (params: any) => {
-          console.log('🔧 valueSetter departmentId - newValue:', params.newValue, 'oldValue:', params.oldValue);
+
 
           if (!params.newValue) {
             params.data.departmentId = null;
@@ -744,11 +715,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             params.data.departmentId = departmentId;
             params.data.departmentName = departmentName;
 
-            console.log('✅ Departamento asignado:', {
-              description: departmentName,
-              departmentId: departmentId,
-              isNew: params.data.__isNew
-            });
+
           } else {
             // Fallback: buscar en cache
             const branchId = params.data.idReference;
@@ -759,10 +726,10 @@ export class RequisitionsDelisonComponent implements OnInit {
               if (role) {
                 params.data.departmentId = role.id;
                 params.data.departmentName = role.description;
-                console.log('✅ Departamento asignado desde cache fallback:', role);
+  
               }
             } else {
-              console.warn('⚠️ No se pudo mapear description a ID:', params.newValue);
+
               return false;
             }
           }
@@ -770,10 +737,10 @@ export class RequisitionsDelisonComponent implements OnInit {
           // Marcar como modificado
           if (!params.data.__isNew) {
             params.data.__modified = true;
-            console.log('🔴 Marcado como __modified');
+
           }
           this.hasUnsavedChanges = true;
-          console.log('💾 hasUnsavedChanges = true');
+
 
           return true;
         },
@@ -890,7 +857,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       const branchId = event.data?.idReference;
 
       if (branchId && this.idUser && !this.rolesByBranchCache.has(branchId)) {
-        console.log(`🔄 Pre-cargando roles para sucursal ${branchId}...`);
+
 
         this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
           next: (roles: any[]) => {
@@ -901,10 +868,10 @@ export class RequisitionsDelisonComponent implements OnInit {
             }));
 
             this.rolesByBranchCache.set(branchId, mappedRoles);
-            console.log(`✅ Roles pre-cargados para sucursal ${branchId}:`, mappedRoles);
+
           },
           error: (err) => {
-            console.error('❌ Error al pre-cargar roles:', err);
+
           }
         });
       }
@@ -974,7 +941,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   async togglePdfDetail(node: any) {
     // 🔒 Prevenir múltiples clics simultáneos
     if (this.isGeneratingReport) {
-      console.log('⚠️ Ya se está generando un reporte, ignorando clic...');
+
       return;
     }
 
@@ -993,18 +960,18 @@ export class RequisitionsDelisonComponent implements OnInit {
     } else {
       // 🔒 Activar lock
       this.isGeneratingReport = true;
-      console.log('🔒 Lock activado - isGeneratingReport = true');
+
 
       try {
         // 📊 Mostrar barra de progreso
         alerts.showLoadingWithProgress('Generando reporte', 'Por favor espere...', 0);
-        console.log('📊 Progreso: 0%');
+
 
         // Simular progreso de generación (incrementos de 10%)
         for (let progress = 10; progress <= 90; progress += 10) {
           await new Promise(resolve => setTimeout(resolve, 100));
           alerts.updateLoadingProgress('Generando reporte', 'Por favor espere...', progress);
-          console.log(`📊 Progreso: ${progress}%`);
+
         }
 
         // Colapsar cualquier otra fila expandida
@@ -1034,7 +1001,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // 📊 Progreso final
         alerts.updateLoadingProgress('Generando reporte', 'Completado', 100);
-        console.log('📊 Progreso: 100%');
+
 
         // Expandir con el PDF
         setTimeout(() => {
@@ -1044,16 +1011,16 @@ export class RequisitionsDelisonComponent implements OnInit {
         // Cerrar alerta después de un delay
         setTimeout(() => {
           alerts.closeLoading();
-          console.log('✅ Reporte generado exitosamente');
+
         }, 800);
 
       } catch (error) {
-        console.error('❌ Error al generar el reporte:', error);
+
         alerts.basicAlert('Error', 'No se pudo generar el reporte', 'error');
       } finally {
         // 🔓 Liberar lock
         this.isGeneratingReport = false;
-        console.log('🔓 Lock liberado - isGeneratingReport = false');
+
       }
     }
   }
@@ -1178,13 +1145,13 @@ export class RequisitionsDelisonComponent implements OnInit {
     } else {
       // Si está en "Todas las sucursales" o no hay selección, usar la primera disponible
       selectedBranchId = this.branches[0].id;
-      console.log('⚠️ Modo "Todas las sucursales" activo, usando primera sucursal disponible:', selectedBranchId);
+
     }
 
     // Obtener el prefijo y consecutivo de la sucursal
     this.typexPrefixesService.getPrefix('branch', selectedBranchId).subscribe({
       next: (prefixData: any) => {
-        console.log('✅ Prefijo obtenido:', prefixData);
+
         this.currentPrefixData = prefixData;
 
         // ✅ Usar consecutivo local si ya existe, sino inicializarlo desde el servidor
@@ -1202,7 +1169,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // Generar el número de requisición: prefix + consecutivo local
         const requisitionNumber = `${prefixData.prefix || ''}${localConsecutive}`;
-        console.log(`🔢 Consecutivo local para sucursal ${selectedBranchId}: ${localConsecutive}`);
+
 
         // Buscar el nombre de la sucursal
         const branch = this.branches.find(b => b.id === selectedBranchId);
@@ -1244,7 +1211,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.hasUnsavedChanges = true;
         this.gridApi.setGridOption('rowData', this.rowData);
 
-        console.log('✅ Nueva requisición agregada:', requisitionNumber, 'para sucursal:', branchName, '(ID:', selectedBranchId, ')');
+
 
         setTimeout(() => {
           const firstRowIndex = 0;
@@ -1264,7 +1231,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         }, 0);
       },
       error: (err) => {
-        console.error('❌ Error al obtener prefijo:', err);
+
         alerts.basicAlert(
           'Error',
           'No se encontró configuración de prefijo para esta sucursal. Por favor, configúrelo primero en la sección de configuración.',
@@ -1288,7 +1255,7 @@ export class RequisitionsDelisonComponent implements OnInit {
    */
   private preloadRolesForRequisitions(): void {
     if (!this.idUser) {
-      console.warn('⚠️ No se puede pre-cargar roles: idUser no disponible');
+
       return;
     }
 
@@ -1315,7 +1282,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             }));
 
             this.rolesByBranchCache.set(branchId, mappedRoles);
-            console.log(`✅ Roles pre-cargados para sucursal ${branchId}:`, mappedRoles.length, 'roles');
+
 
             // Refrescar el grid para que muestre los nombres
             if (this.gridApi) {
@@ -1323,7 +1290,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             }
           },
           error: (err) => {
-            console.error(`❌ Error al pre-cargar roles para sucursal ${branchId}:`, err);
+
           }
         });
       }
@@ -1357,7 +1324,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         next: (prefixData: any) => {
           const nextConsecutive = (prefixData.consecutive || 0) + rows.length;
           this.localConsecutivesByBranch.set(branchId, nextConsecutive);
-          console.log(`🔄 Consecutivo local recalculado para sucursal ${branchId}: ${nextConsecutive} (${rows.length} filas nuevas)`);
+
         }
       });
     });
@@ -1372,7 +1339,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       return;
     }
 
-    console.log('💾 Guardando requisiciones:', itemsToSave.length);
+
 
     const newItems = itemsToSave.filter(row => row.__isNew);
     const modifiedItems = itemsToSave.filter(row => row.__modified && !row.__isNew);
@@ -1382,7 +1349,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     try {
       // 1. Guardar nuevas requisiciones
       if (newItems.length > 0) {
-        console.log('➕ Creando nuevas requisiciones:', newItems.length);
+
 
         for (const item of newItems) {
           const newReqData = {
@@ -1418,19 +1385,16 @@ export class RequisitionsDelisonComponent implements OnInit {
             active: item.active !== false
           };
 
-          console.log('📤 ========== NUEVA REQUISICIÓN - DATA A ENVIAR ==========');
-          console.log(JSON.stringify(newReqData, null, 2));
-          console.table(newReqData);
-          console.log('========================================================');
+
 
           await new Promise<void>((resolve, reject) => {
             this.ocAndReqsService.addOcAndReq(newReqData).subscribe({
               next: (response) => {
-                console.log('✅ Requisición creada:', response);
+
                 resolve();
               },
               error: (err) => {
-                console.error('❌ Error al crear requisición:', err);
+
                 hasErrors = true;
                 reject(err);
               }
@@ -1452,7 +1416,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // Actualizar el consecutivo de cada sucursal
         for (const [branchId, items] of itemsByBranch.entries()) {
-          console.log(`🔄 Actualizando consecutivo para sucursal ${branchId} (${items.length} requisiciones)`);
+
 
           // Obtener el prefijo actual de esta sucursal
           await new Promise<void>((resolve, reject) => {
@@ -1468,22 +1432,22 @@ export class RequisitionsDelisonComponent implements OnInit {
                   active: true
                 };
 
-                console.log('📤 Actualizando consecutivo:', updatedPrefixData);
+
 
                 this.typexPrefixesService.updatePrefix('branch', branchId, updatedPrefixData).subscribe({
                   next: () => {
-                    console.log(`✅ Consecutivo actualizado para sucursal ${branchId}: ${newConsecutive}`);
+
                     resolve();
                   },
                   error: (err) => {
-                    console.error(`❌ Error al actualizar consecutivo de sucursal ${branchId}:`, err);
+
                     hasErrors = true;
                     reject(err);
                   }
                 });
               },
               error: (err) => {
-                console.error(`❌ Error al obtener prefijo de sucursal ${branchId}:`, err);
+
                 hasErrors = true;
                 reject(err);
               }
@@ -1494,12 +1458,12 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       // 2. Actualizar requisiciones modificadas
       if (modifiedItems.length > 0) {
-        console.log('✏️ Actualizando requisiciones modificadas:', modifiedItems.length);
+
 
         for (const item of modifiedItems) {
           // Validar que tenga un ID válido (no temporal)
           if (!item.id || String(item.id).startsWith('temp_')) {
-            console.warn('⚠️ Saltando item con ID temporal:', item.id);
+
             continue;
           }
 
@@ -1536,19 +1500,16 @@ export class RequisitionsDelisonComponent implements OnInit {
             active: item.active !== false
           };
 
-          console.log(`📤 ========== UPDATE REQUISICIÓN ${item.id} - DATA A ENVIAR ==========`);
-          console.log(JSON.stringify(updateReqData, null, 2));
-          console.table(updateReqData);
-          console.log('========================================================');
+
 
           await new Promise<void>((resolve, reject) => {
             this.ocAndReqsService.updateOcAndReq(item.id, updateReqData).subscribe({
               next: (response) => {
-                console.log(`✅ Requisición ${item.id} actualizada:`, response);
+
                 resolve();
               },
               error: (err) => {
-                console.error(`❌ Error al actualizar requisición ${item.id}:`, err);
+
                 hasErrors = true;
                 reject(err);
               }
@@ -1563,7 +1524,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // ✅ Limpiar el contador local de consecutivos
         this.localConsecutivesByBranch.clear();
-        console.log('🧹 Contador local de consecutivos limpiado');
+
 
         alerts.basicAlert('Guardado', `Se guardaron ${itemsToSave.length} requisiciones correctamente`, 'success');
 
@@ -1574,7 +1535,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       }
 
     } catch (error) {
-      console.error('❌ Error general al guardar:', error);
+
       alerts.basicAlert('Error', 'Error al guardar los cambios. Revise la consola para más detalles.', 'error');
     }
   }

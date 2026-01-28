@@ -255,6 +255,9 @@ export class QuoteDelisonComponent implements OnInit {
           pedimento: cotizacion.pedimento,
           folio: cotizacion.folio || '',
           idProvider: cotizacion.idProvider || 0,
+          idProvider2: cotizacion.idProvider2 || 0,
+          idProvider3: cotizacion.idProvider3 || 0,
+          createdBy: cotizacion.createdBy || cotizacion.solicit || '',
           items: items.map((item: any) => ({
             recurrent: item.recurrent || '',
             article: item.description || item.nameArticle || '',
@@ -354,6 +357,9 @@ export class QuoteDelisonComponent implements OnInit {
               pedimento: cotizacion.pedimento,
               folio: cotizacion.folio || '',
               idProvider: cotizacion.idProvider || 0,
+              idProvider2: cotizacion.idProvider2 || 0,
+              idProvider3: cotizacion.idProvider3 || 0,
+              createdBy: cotizacion.createdBy || cotizacion.solicit || '',
               items: items.map((item: any) => ({
                 recurrent: item.recurrent || '',
                 article: item.description || item.nameArticle || '',
@@ -371,7 +377,7 @@ export class QuoteDelisonComponent implements OnInit {
             };
           }));
 
-          // ✅ PASO 4: Retornar requisición con sus cotizaciones
+          // PASO 4: Retornar requisición con sus cotizaciones
           return {
             id: requisicion.id,
             branch: branchName,
