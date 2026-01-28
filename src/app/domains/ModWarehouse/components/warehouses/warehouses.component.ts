@@ -211,7 +211,6 @@ export class WarehousesComponent implements CanComponentDeactivate {
         if (error.status === 404) {
           this.rowData = [];
         }
-        console.error('Error fetching warehouses', error);
       },
     });
   }
@@ -219,14 +218,10 @@ export class WarehousesComponent implements CanComponentDeactivate {
   obtenerStates() {
     this.inegiService.getEstados().subscribe({
       next: (data: { datos: States[] }) => {
-        console.log('📍 Estados recibidos desde API:', data);
         this.estados = data.datos.map((estado) => estado.nom_agee);
-        console.log('📍 Array de estados procesado:', this.estados);
-        // Invalidar cache de columnas para que tome los nuevos estados
         this._colMaster = [];
       },
-      error: (error) => {
-        console.error('Error fetching states from INEGI API, using fallback:', error);
+      error: () => {
         // Fallback con estados de México predefinidos
         this.estados = [
           'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
@@ -237,19 +232,16 @@ export class WarehousesComponent implements CanComponentDeactivate {
           'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala',
           'Veracruz de Ignacio de la Llave', 'Yucatán', 'Zacatecas'
         ];
-        // Invalidar cache de columnas para que tome los nuevos estados
         this._colMaster = [];
       },
     });
   }
 
   onSelectedRow(event: any) {
-    console.log(event);
     this.id = event.data.id;
   }
 
   onSelectionChanged(event: any) {
-    console.log(event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -259,8 +251,6 @@ export class WarehousesComponent implements CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
-
     if (event.colDef.field === 'principal' && event.newValue === true) {
       // Ensure only one warehouse is principal
       this.rowData.forEach(row => {
@@ -326,13 +316,11 @@ export class WarehousesComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Data to POST for new warehouse:', cleanedData);
       return this.warehouseService.addWarehouse(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Data to PUT for modified warehouse:', row.id, cleanedData);
       return this.warehouseService.updateWarehouse(row.id, cleanedData);
     });
 
@@ -349,8 +337,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
-    } catch (error) {
-      console.error('Error saving warehouses:', error);
+    } catch (error: any) {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert(
         'Error',
@@ -377,13 +364,12 @@ export class WarehousesComponent implements CanComponentDeactivate {
     this.warehouseService
       .deleteWarehouse(id)
       .pipe(
-        catchError((error) => {
+        catchError(() => {
           alerts.basicAlert(
             'Eliminar Almacen',
             'Error al eliminar Almacen.',
             'error'
           );
-          console.error(error);
           return EMPTY;
         })
       )

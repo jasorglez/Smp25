@@ -339,10 +339,11 @@ export class IngresosPalacioComponent implements OnInit {
 
 
   async getIngresosCatalog() {
-    // Obtener catálogo de ingresos nivel 2
+    // Obtener catálogo de ingresos nivel 2 usando getCatalogsxParent
     return new Promise<void>((resolve) => {
       this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2).subscribe(
         (data: any) => {
+          console.log('📦 Resultado de getCatalogsxParent(2, this.root):', data);
           this.ingresosCatalog = data || [];
           this.refreshColumnDefinitions(); // Refrescar columnas después de cargar datos
           resolve();
@@ -1562,7 +1563,8 @@ async saveChanges() {
             if (income.type !== "DEPOSITO") return false;
 
             // Filtro 2: Debe ser de la cuenta bancaria seleccionada
-            if (income.idAccount !== this._idAccount) return false;
+            // Usar comparación numérica para evitar problemas de tipo
+            if (Number(income.idAccount) !== Number(this._idAccount)) return false;
 
             // Filtro 3: Debe estar en el rango de fechas
             // Convertir fechas a formato YYYY-MM-DD para comparación consistente sin problemas de zona horaria
@@ -1598,9 +1600,33 @@ async saveChanges() {
 
   private async loadFullIngresosCatalog(): Promise<any[]> {
     return new Promise((resolve, reject) => {
-      this.catalogadmonService.getCatalogs(this.root, 'INCOME').subscribe({
-        next: (data: any) => {
-          const catalogData = data || [];
+      // Cargar TODOS los niveles del catálogo usando forkJoin para obtener niveles 1, 2, 3 y 4
+      forkJoin({
+        allCatalogs: this.catalogadmonService.getCatalogs(this.root, 'INCOME'),
+        nivel1: this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 1),
+        nivel2: this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2),
+        nivel3: this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 3),
+        nivel4: this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 4)
+      }).subscribe({
+        next: (result) => {
+          // Combinar todos los catálogos eliminando duplicados por ID
+          const allItems = [
+            ...(result.allCatalogs || []),
+            ...(result.nivel1 || []),
+            ...(result.nivel2 || []),
+            ...(result.nivel3 || []),
+            ...(result.nivel4 || [])
+          ];
+
+          // Eliminar duplicados usando Map
+          const uniqueMap = new Map<number, any>();
+          allItems.forEach(item => {
+            if (item && item.id) {
+              uniqueMap.set(Number(item.id), item);
+            }
+          });
+
+          const catalogData = Array.from(uniqueMap.values());
           resolve(catalogData);
         },
         error: (error) => {
@@ -1872,15 +1898,16 @@ async saveChanges() {
 
     // Crear mapa de todos los nodos
     catalogData.forEach(item => {
-      map.set(item.id, { ...item, children: [] });
+      map.set(Number(item.id), { ...item, children: [] });
     });
 
     // Construir jerarquía COMPLETA (todos los niveles)
     catalogData.forEach(item => {
-      const node = map.get(item.id)!;
+      const node = map.get(Number(item.id))!;
+      const parentId = Number(item.parentId);
 
-      if (item.parentId && item.parentId !== 0 && map.has(item.parentId)) {
-        const parent = map.get(item.parentId)!;
+      if (parentId && parentId !== 0 && map.has(parentId)) {
+        const parent = map.get(parentId)!;
         parent.children.push(node);
       } else {
         roots.push(node);
@@ -1895,19 +1922,19 @@ async saveChanges() {
 
     // Función recursiva para calcular el total de un nodo y sus descendientes
     const calculateNodeTotal = (node: any): number => {
-      // PRIMERO: Buscar conceptos directamente asociados con este nodo (por idCatIng)
-      const directTotal = conceptsData
-        .filter(concept => concept.idCatIng === node.id)
-        .reduce((sum, concept) => sum + (concept.total || 0), 0);
+      const nodeId = Number(node.id);
 
-      // SEGUNDO: Sumar los totales de los hijos (si existen)
+      // Buscar conceptos directamente asociados con este nodo (por idCatIng)
+      const matchingConcepts = conceptsData.filter(concept => Number(concept.idCatIng) === nodeId);
+      const directTotal = matchingConcepts.reduce((sum, concept) => sum + (Number(concept.total) || 0), 0);
+
+      // Sumar los totales de los hijos (si existen)
       let childrenTotal = 0;
       if (node.children && node.children.length > 0) {
         childrenTotal = node.children.reduce((sum: number, child: any) =>
           sum + calculateNodeTotal(child), 0);
       }
 
-      // Retornar la suma de conceptos directos + totales de hijos
       return directTotal + childrenTotal;
     };
 
@@ -1970,14 +1997,21 @@ async saveChanges() {
       }
     };
 
-    // Procesar el árbol completo
+    // Procesar el árbol completo - manejar múltiples raíces si existen
     if (catalogTree.length > 0) {
-      const root = catalogTree[0]; // "A.- INGRESOS PROPIOS"
+      // Si hay una sola raíz principal (ej: "A.- INGRESOS PROPIOS"), procesar sus hijos como nivel 1
+      if (catalogTree.length === 1) {
+        const root = catalogTree[0];
 
-      // Procesar todos los hijos de la raíz (nivel 1)
-      if (root.children && root.children.length > 0) {
-        root.children.forEach((child: any) => {
-          processNode(child, 1, reportRows);
+        if (root.children && root.children.length > 0) {
+          root.children.forEach((child: any) => {
+            processNode(child, 1, reportRows);
+          });
+        }
+      } else {
+        // Si hay múltiples raíces, cada una es nivel 1
+        catalogTree.forEach((rootItem: any) => {
+          processNode(rootItem, 1, reportRows);
         });
       }
     }
