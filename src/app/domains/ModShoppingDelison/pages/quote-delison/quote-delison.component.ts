@@ -259,6 +259,9 @@ export class QuoteDelisonComponent implements OnInit {
           idProvider3: cotizacion.idProvider3 || 0,
           createdBy: cotizacion.createdBy || cotizacion.solicit || '',
           items: items.map((item: any) => ({
+            id: item.id,
+            idSupplie: item.idSupplie || 0,
+            nameArticle: item.nameArticle || '',
             recurrent: item.recurrent || '',
             article: item.description || item.nameArticle || '',
             quantity: item.quantity || 0,
@@ -269,7 +272,19 @@ export class QuoteDelisonComponent implements OnInit {
             pedimento: item.pedimento || false,
             numArticle: item.numArticle || '',
             code: item.code || '',
-            pedimentoNumber: item.pedimentoNum || ''
+            pedimentoNumber: item.pedimentoNum || '',
+            idMovement: item.idMovement || 0,
+            measure: item.measure || '',
+            price: item.price || 0,
+            total: item.total || 0,
+            type: item.type || 'COTIZ',
+            idProvider: item.idProvider || 0,
+            dateuse: item.dateuse || '',
+            active: item.active !== undefined ? item.active : true,
+            typePriority: item.typePriority || 'Normal',
+            descriptionNewArticle: item.descriptionNewArticle || '',
+            urlNewArticle: item.urlNewArticle || '',
+            justificationNewArticle: item.justificationNewArticle || ''
           })),
           createdAt: cotizacion.dateCreate
         };
@@ -361,6 +376,9 @@ export class QuoteDelisonComponent implements OnInit {
               idProvider3: cotizacion.idProvider3 || 0,
               createdBy: cotizacion.createdBy || cotizacion.solicit || '',
               items: items.map((item: any) => ({
+                id: item.id,
+                idSupplie: item.idSupplie || 0,
+                nameArticle: item.nameArticle || '',
                 recurrent: item.recurrent || '',
                 article: item.description || item.nameArticle || '',
                 quantity: item.quantity || 0,
@@ -371,7 +389,19 @@ export class QuoteDelisonComponent implements OnInit {
                 pedimento: item.pedimento || false,
                 numArticle: item.numArticle || '',
                 code: item.code || '',
-                pedimentoNumber: item.pedimentoNum || ''
+                pedimentoNumber: item.pedimentoNum || '',
+                idMovement: item.idMovement || 0,
+                measure: item.measure || '',
+                price: item.price || 0,
+                total: item.total || 0,
+                type: item.type || 'COTIZ',
+                idProvider: item.idProvider || 0,
+                dateuse: item.dateuse || '',
+                active: item.active !== undefined ? item.active : true,
+                typePriority: item.typePriority || 'Normal',
+                descriptionNewArticle: item.descriptionNewArticle || '',
+                urlNewArticle: item.urlNewArticle || '',
+                justificationNewArticle: item.justificationNewArticle || ''
               })),
               createdAt: cotizacion.dateCreate
             };
