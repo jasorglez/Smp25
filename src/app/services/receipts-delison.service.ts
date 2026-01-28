@@ -272,9 +272,21 @@ export class ReceiptsDelisonService {
       },
     };
 
+    // Logo principal (picture)
     const logoBase64 = await this.base64EncodeService.convertImageToBase64(
       this.rootResponse.picture
     );
+
+    // Logo 2 (picture2) - si no existe, usar el principal
+    const logo2Base64 = this.rootResponse.picture2
+      ? await this.base64EncodeService.convertImageToBase64(this.rootResponse.picture2)
+      : logoBase64;
+
+    // Marca de agua (picture3)
+    const watermarkBase64 = this.rootResponse.picture3
+      ? await this.base64EncodeService.convertImageToBase64(this.rootResponse.picture3)
+      : null;
+
     var signature: any;
     var signatureSolicitant: any;
     if (this.isInOut == false) {
@@ -291,11 +303,20 @@ export class ReceiptsDelisonService {
 
     return {
       pageSize: 'LETTER',
-      pageMargins: [40, 40, 40, 40],
+      pageMargins: [40, 60, 40, 80],
       defaultStyle: {
         fontSize: 9,
         lineHeight: 1.2,
       },
+      // Marca de agua con logo (picture3) - estándar egresos-palacio
+      background: watermarkBase64 ? [
+        {
+          image: 'watermark',
+          width: 400,
+          opacity: 0.15,
+          absolutePosition: { x: 106, y: 250 }
+        }
+      ] : [],
       styles: {
         header: {
           fontSize: 14,
@@ -322,87 +343,138 @@ export class ReceiptsDelisonService {
           alignment: 'center',
           margin: [0, 10, 0, 0],
         },
+        companyName: {
+          fontSize: 14,
+          bold: true,
+          color: '#333333',
+        },
+        companyInfo: {
+          fontSize: 9,
+          color: '#666666',
+        },
+        documentTitle: {
+          fontSize: 11,
+          bold: true,
+          color: '#0d6efd',
+        },
+        documentNumber: {
+          fontSize: 12,
+          bold: true,
+          color: '#333333',
+        },
+        documentDate: {
+          fontSize: 9,
+          color: '#666666',
+        },
       },
       footer: (currentPage, pageCount) => ({
-        text: `Página ${currentPage} de ${pageCount}`,
-        style: 'footer',
+        columns: [
+          { text: `Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#666', margin: [40, 0, 0, 0] },
+          { text: `Página ${currentPage} de ${pageCount}`, fontSize: 8, color: '#666', alignment: 'right', margin: [0, 0, 40, 0] }
+        ],
+        margin: [0, 20, 0, 0]
       }),
       content: [
-        {
-          image: 'logo',
-          width: 80,
-        },
-        {
-          text: this.headerTitle,
-          style: 'header',
-        },
+        // Header con logos - estándar egresos-palacio
         {
           columns: [
             {
-              width: '*',
-
-              text: [
-                { text: 'Obra o proyecto:\n' },
-                { text: `${this.projectDescription}`, bold: true },
-                { text: `\n\n` },
-              ],
-              alignment: 'left',
-              margin: [0, 0, 0, 10],
+              image: 'logo',
+              width: 80,
+              alignment: 'left'
             },
             {
-              width: 'auto',
-              table: {
-                widths: ['*', '*'],
-                body: [
-                  [
-                    { text: 'Fecha:', alignment: 'right' },
-                    {
-                      text: this.formatTime(this.detailedReq.dateCreate),
-                      alignment: 'left',
-                    },
-                  ],
-                  [
-                    {
-                      text: this.detailedReq.type == 'OC' ? 'Req. No.' : '',
-                      alignment: 'right',
-                    },
-                    {
-                      text:
-                        this.detailedReq.type == 'OC'
-                          ? this.requisitionName
-                          : '',
-                      alignment: 'left',
-                    },
-                  ],
-                  [
-                    {
-                      text:
-                        this.detailedReq.type == 'OC'
-                          ? 'OC. No.:'
-                          : 'Requis. No.:',
-                      alignment: 'right',
-                    },
-                    {
-                      text:
-                        this.detailedReq.folio != null
-                          ? this.detailedReq.folio
-                          : 'N/D',
-                      alignment: 'left',
-                    },
-                  ],
-                ],
-              },
-              layout: {
-                hLineWidth: (i, node) => 0,
-                vLineWidth: (i, node) => 0,
-                hLineColor: (i, node) => '#aaa',
-                vLineColor: (i, node) => '#aaa',
-                paddingTop: (i, node) => 0,
-                paddingBottom: (i, node) => 0,
-              },
-              margin: [0, 0, 0, 10],
+              stack: [
+                {
+                  text: this.rootResponse.name || 'Empresa',
+                  style: 'companyName',
+                  alignment: 'center'
+                },
+                {
+                  text: this.rootResponse.email || '',
+                  style: 'companyInfo',
+                  alignment: 'center'
+                },
+                {
+                  text: this.rootResponse.web || '',
+                  style: 'companyInfo',
+                  alignment: 'center'
+                }
+              ],
+              width: '*'
             },
+            {
+              stack: [
+                {
+                  image: 'logo2',
+                  width: 80,
+                  alignment: 'right',
+                  margin: [0, 0, 0, 5]
+                },
+                {
+                  text: this.headerTitle,
+                  style: 'documentTitle',
+                  alignment: 'right'
+                },
+                {
+                  text: `No. ${this.detailedReq.folio || 'N/D'}`,
+                  style: 'documentNumber',
+                  alignment: 'right',
+                  margin: [0, 5, 0, 0]
+                },
+                {
+                  text: `Fecha: ${this.formatTime(this.detailedReq.dateCreate)}`,
+                  style: 'documentDate',
+                  alignment: 'right',
+                  margin: [0, 3, 0, 0]
+                }
+              ],
+              width: 150
+            }
           ],
+          margin: [0, 0, 0, 20]
+        },
+        // Línea separadora
+        {
+          canvas: [
+            {
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 515,
+              y2: 0,
+              lineWidth: 1,
+              lineColor: '#333333'
+            }
+          ],
+          margin: [0, 0, 0, 15]
+        },
+        // Información del proyecto y requisición referenciada (para OC)
+        {
+          table: {
+            widths: ['25%', '75%'],
+            body: [
+              [
+                { text: 'OBRA/PROYECTO:', bold: true, fontSize: 9, fillColor: '#f8f9fa' },
+                { text: this.projectDescription || 'N/A', fontSize: 9 }
+              ],
+              ...(this.detailedReq.type == 'OC' ? [[
+                { text: 'REQ. REFERENCIA:', bold: true, fontSize: 9, fillColor: '#f8f9fa' },
+                { text: this.requisitionName || 'N/A', fontSize: 9 }
+              ]] : [])
+            ]
+          },
+          layout: {
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#cccccc',
+            vLineColor: () => '#cccccc',
+            paddingTop: () => 5,
+            paddingBottom: () => 5,
+            paddingLeft: () => 8,
+            paddingRight: () => 8
+          },
+          margin: [0, 0, 0, 15]
         },
 
         this.detailedReq.type == 'OC'
@@ -823,19 +895,16 @@ export class ReceiptsDelisonService {
             } as any,
       ],
       images: this.isInOut
-        ? {
-            logo: logoBase64,
-          }
+        ? watermarkBase64
+          ? { logo: logoBase64, logo2: logo2Base64, watermark: watermarkBase64 }
+          : { logo: logoBase64, logo2: logo2Base64 }
         : this.detailedReq.type == 'OC'
-        ? {
-            signatureSolicitant: signatureSolicitant,
-            logo: logoBase64,
-            signature: signature,
-          }
-        : {
-            logo: logoBase64,
-            signature: signature,
-          },
+        ? watermarkBase64
+          ? { signatureSolicitant: signatureSolicitant, logo: logoBase64, logo2: logo2Base64, signature: signature, watermark: watermarkBase64 }
+          : { signatureSolicitant: signatureSolicitant, logo: logoBase64, logo2: logo2Base64, signature: signature }
+        : watermarkBase64
+          ? { logo: logoBase64, logo2: logo2Base64, signature: signature, watermark: watermarkBase64 }
+          : { logo: logoBase64, logo2: logo2Base64, signature: signature },
     };
   }
 

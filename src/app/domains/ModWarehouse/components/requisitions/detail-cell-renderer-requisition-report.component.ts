@@ -165,8 +165,32 @@ export class DetailCellRendererRequisitionReportComponent {
     }
   }
 
+  private formatDate(value: string | Date | null | undefined): string {
+    if (!value) return '';
+    try {
+      if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+        const [datePart] = value.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        return [
+          day.toString().padStart(2, '0'),
+          month.toString().padStart(2, '0'),
+          year.toString()
+        ].join('/');
+      }
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return '';
+      return [
+        date.getDate().toString().padStart(2, '0'),
+        (date.getMonth() + 1).toString().padStart(2, '0'),
+        date.getFullYear()
+      ].join('/');
+    } catch (error) {
+      return '';
+    }
+  }
+
   private buildDocDefinition(companyData: any, logoBase64: string, logo2Base64: string, watermarkBase64: string | null, departmentName: string, articulos: any[]): any {
-    const fechaRequisicion = this.requisitionData.dateCreate ? this.requisitionData.dateCreate.split('T')[0] : '';
+    const fechaRequisicion = this.requisitionData.dateCreate ? this.formatDate(this.requisitionData.dateCreate) : '';
     const requisicionNumero = this.requisitionData.folio || 'N/A';
     const solicitante = this.requisitionData.solicit || 'N/A';
     const prioridad = this.requisitionData.priority || 'Normal';
@@ -174,11 +198,11 @@ export class DetailCellRendererRequisitionReportComponent {
 
     return {
       pageSize: 'LETTER',
-      pageMargins: [40, 100, 40, 60],
+      pageMargins: [40, 60, 40, 80],
       defaultStyle: {
         fontSize: 9
       },
-      // Marca de agua con logo (picture3)
+      // Marca de agua con logo (picture3) - estándar igual que egresos-palacio
       background: watermarkBase64 ? [
         {
           image: 'watermark',
@@ -188,7 +212,7 @@ export class DetailCellRendererRequisitionReportComponent {
         }
       ] : [],
       content: [
-        // Header con logos
+        // Header con logos - estándar egresos-palacio
         {
           columns: [
             {
@@ -199,73 +223,110 @@ export class DetailCellRendererRequisitionReportComponent {
             {
               stack: [
                 {
-                  text: companyData?.name || 'EMPRESA',
-                  fontSize: 14,
-                  bold: true,
-                  alignment: 'center',
-                  margin: [0, 10, 0, 5]
+                  text: companyData?.name || 'Empresa',
+                  style: 'companyName',
+                  alignment: 'center'
                 },
                 {
-                  text: 'REQUISICION DE MATERIALES',
-                  fontSize: 12,
-                  bold: true,
-                  alignment: 'center',
-                  color: '#0d6efd'
+                  text: companyData?.email || '',
+                  style: 'companyInfo',
+                  alignment: 'center'
+                },
+                {
+                  text: companyData?.web || '',
+                  style: 'companyInfo',
+                  alignment: 'center'
                 }
               ],
               width: '*'
             },
             {
-              image: 'logo2',
-              width: 80,
-              alignment: 'right'
+              stack: [
+                {
+                  image: 'logo2',
+                  width: 80,
+                  alignment: 'right',
+                  margin: [0, 0, 0, 5]
+                },
+                {
+                  text: 'REQUISICIÓN DE MATERIALES',
+                  style: 'documentTitle',
+                  alignment: 'right'
+                },
+                {
+                  text: `No. ${requisicionNumero}`,
+                  style: 'documentNumber',
+                  alignment: 'right',
+                  margin: [0, 5, 0, 0]
+                },
+                {
+                  text: `Fecha: ${fechaRequisicion}`,
+                  style: 'documentDate',
+                  alignment: 'right',
+                  margin: [0, 3, 0, 0]
+                }
+              ],
+              width: 150
             }
           ],
           margin: [0, 0, 0, 20]
         },
-
-        // Número de requisición destacado
+        // Línea separadora
         {
-          text: requisicionNumero,
-          fontSize: 16,
-          bold: true,
-          alignment: 'center',
-          color: '#0d6efd',
+          canvas: [
+            {
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 515,
+              y2: 0,
+              lineWidth: 1,
+              lineColor: '#333333'
+            }
+          ],
           margin: [0, 0, 0, 15]
         },
+        // Título de sección
+        {
+          text: 'DETALLES DE LA REQUISICIÓN',
+          style: 'sectionTitle',
+          margin: [0, 10, 0, 10]
+        },
 
-        // MAESTRO: Datos principales
+        // MAESTRO: Datos principales - estándar egresos-palacio
         {
           table: {
-            widths: ['25%', '25%', '25%', '25%'],
+            widths: ['25%', '75%'],
             body: [
               [
-                { text: 'REQUISICION #:', bold: true, fillColor: '#e3f2fd' },
-                { text: requisicionNumero, bold: true, color: '#0d6efd' },
-                { text: 'FECHA:', bold: true, fillColor: '#e3f2fd' },
-                { text: fechaRequisicion }
+                { text: 'SOLICITANTE:', style: 'masterLabel' },
+                { text: solicitante, style: 'masterValue' }
               ],
               [
-                { text: 'SOLICITANTE:', bold: true, fillColor: '#e3f2fd' },
-                { text: solicitante },
-                { text: 'DEPARTAMENTO:', bold: true, fillColor: '#e3f2fd' },
-                { text: departmentName }
+                { text: 'DEPARTAMENTO:', style: 'masterLabel' },
+                { text: departmentName, style: 'masterValue' }
               ],
               [
-                { text: 'PRIORIDAD:', bold: true, fillColor: '#e3f2fd' },
-                { text: prioridad },
-                { text: 'TIEMPO ENTREGA:', bold: true, fillColor: '#e3f2fd' },
-                { text: tiempoEntrega }
+                { text: 'PRIORIDAD:', style: 'masterLabel' },
+                { text: prioridad, style: 'masterValue' }
+              ],
+              [
+                { text: 'TIEMPO ENTREGA:', style: 'masterLabel' },
+                { text: tiempoEntrega, style: 'masterValue' }
               ]
             ]
           },
           layout: {
             hLineWidth: () => 0.5,
             vLineWidth: () => 0.5,
-            hLineColor: () => '#dee2e6',
-            vLineColor: () => '#dee2e6'
+            hLineColor: () => '#cccccc',
+            vLineColor: () => '#cccccc',
+            paddingTop: () => 5,
+            paddingBottom: () => 5,
+            paddingLeft: () => 8,
+            paddingRight: () => 8
           },
-          margin: [0, 10, 0, 25]
+          margin: [0, 0, 0, 15]
         },
 
         // DETALLE: Artículos
@@ -358,6 +419,42 @@ export class DetailCellRendererRequisitionReportComponent {
         }
       ],
       styles: {
+        companyName: {
+          fontSize: 14,
+          bold: true,
+          color: '#333333'
+        },
+        companyInfo: {
+          fontSize: 9,
+          color: '#666666'
+        },
+        documentTitle: {
+          fontSize: 11,
+          bold: true,
+          color: '#0d6efd'
+        },
+        documentNumber: {
+          fontSize: 12,
+          bold: true,
+          color: '#333333'
+        },
+        documentDate: {
+          fontSize: 9,
+          color: '#666666'
+        },
+        sectionTitle: {
+          fontSize: 11,
+          bold: true,
+          color: '#333333'
+        },
+        masterLabel: {
+          bold: true,
+          fontSize: 9,
+          fillColor: '#f8f9fa'
+        },
+        masterValue: {
+          fontSize: 9
+        },
         tableHeader: {
           bold: true,
           fontSize: 9,

@@ -738,7 +738,36 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
-    selectedData.active = 0;
+
+    // Verificar si tiene items asociados
+    if (selectedData.countrow > 0) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'No se puede eliminar, tiene items asociados. Elimine primero los items.',
+        'error'
+      );
+      return;
+    }
+
+    // Si es una fila nueva (temporal), solo eliminar localmente
+    if (id && id.toString().startsWith('temp_')) {
+      this.masterRowData = this.masterRowData.filter(row => row.id !== id);
+      this.newlyAddedMasterRows = this.newlyAddedMasterRows.filter(tempId => tempId !== id);
+      this.masterGridApi.setGridOption('rowData', this.masterRowData);
+      this.masterSelectedRowData = null;
+
+      // Verificar si aún hay cambios sin guardar
+      this.masterNotSavedChanges = this.masterRowData.some(row => row.__isNew || row.__modified);
+
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'Entrada eliminada satisfactoriamente.',
+        'success'
+      );
+      return;
+    }
+
+    // Eliminar del servidor
     this.requisitionsService
       .deleteOcAndReq(id)
       .pipe(
@@ -759,12 +788,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           'success'
         );
         this.obtenerDatos();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.masterNotSavedChanges = false;
         this.masterSelectedRowData = null;
       });
