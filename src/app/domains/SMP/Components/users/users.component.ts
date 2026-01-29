@@ -281,6 +281,9 @@ constructor() {
     this.gridApi.setColumnsVisible(['idRol'], showSecurity);
   }
 
+  // Orden de columnas editables para navegación con Enter
+  private editableColumnOrder = ['displayName', 'email', 'password', 'idDepartament'];
+
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 30,
@@ -291,6 +294,7 @@ constructor() {
     },
     detailCellRenderer: 'detailPermissionsRenderer',
     detailRowHeight: 1000,
+    stopEditingWhenCellsLoseFocus: true,
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -313,6 +317,25 @@ constructor() {
       }
     },
   };
+
+  // Mover a la siguiente celda editable con Enter
+  onCellEditingStopped(event: any) {
+    // Solo procesar si se detuvo la edición (no por escape)
+    if (event.valueChanged || event.oldValue === event.newValue) {
+      const currentColId = event.column.getColId();
+      const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+
+      if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+        const nextColId = this.editableColumnOrder[currentIndex + 1];
+        setTimeout(() => {
+          this.gridApi.startEditingCell({
+            rowIndex: event.rowIndex,
+            colKey: nextColId
+          });
+        }, 50);
+      }
+    }
+  }
 
   private _columnDefs: ColDef[] = [];
 
@@ -461,7 +484,7 @@ constructor() {
         cellRenderer: (params: any) => {
           return `<span>••••••••</span>`;
         },
-        
+
         //editable: this.authorizedPass,
         editable: (params) => {
           if (params.data.__isNew) {
@@ -470,54 +493,31 @@ constructor() {
           return true
         },
       },
-      /*{
+      {
         field: 'idDepartament',
-        headerName: 'Security',
+        headerName: 'Departamento',
         editable: true,
         suppressMovable: true,
-        filter: false,
+        filter: true,
         flex: 1,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
           return {
             values: this.departamentos ? this.departamentos.map((item) => item.id) : []
           };
         },
-        // Tooltip personalizado que muestra todos los roles con colores
-        tooltipValueGetter: (params: any) => {
-          if (!this.departamentos || this.departamentos.length === 0) {
-            return 'No hay roles disponibles';
-          }
-          
-          let tooltip = 'Roles Disponibles:\n\n';
-          this.departamentos.forEach((role, index) => {
-            const colorEmoji = this.getRoleColorEmoji(role.id);
-            tooltip += `${colorEmoji} ${role.description}\n`;
-          });
-          
-          const currentRole = this.departamentos.find((item) => item.id === params.value);
-          if (currentRole) {
-            const currentEmoji = this.getRoleColorEmoji(currentRole.id);
-            tooltip += `\nRol actual: ${currentEmoji} ${currentRole.description}`;
-          } else {
-            tooltip += '\nRol actual: Sin asignar';
-          }
-          
-          return tooltip;
-        },
-        // Asignacion de permisos por usuario es en roles
         valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
-
           const foundDepto = this.departamentos
             ? this.departamentos.find((item) => item.id === params.value)
             : null;
-
           return foundDepto ? foundDepto.description : params.value;
         },
-      },*/
+        valueSetter: (params) => {
+          params.data.idDepartament = params.newValue;
+          return true;
+        }
+      },
       {
         field: 'idRol',
         headerName: 'Security',
@@ -545,13 +545,19 @@ constructor() {
           setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.accept = 'image/jpeg,image/png';
             input.style.display = 'none';
             document.body.appendChild(input);
 
             input.onchange = (event) => {
               const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tipo de archivo
+                if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+                  alerts.basicAlert('Tipo no permitido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
                 // Validar tamaño (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
                   alerts.basicAlert('Archivo muy grande', 'La imagen no puede superar 5MB', 'error');
@@ -559,17 +565,25 @@ constructor() {
                   return;
                 }
 
-                const reader = new FileReader();
-                reader.onload = () => {
-                  params.data.picture = reader.result as string;
-                  params.data.__modified = true;
-                  this.gridApi.refreshCells({ rowNodes: [params.node] });
-                  this.notSavedChanges = true;
-                };
-                reader.onerror = () => {
-                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
-                };
-                reader.readAsDataURL(file);
+                // Subir a Firebase Storage usando el servicio
+                this.imageHandlerService.uploadFileToFirebase(file, 'users/pictures')
+                  .then(url => {
+                    // Actualizar el rowData directamente
+                    const rowIndex = this.rowData.findIndex(row => row.id === params.data.id);
+                    if (rowIndex !== -1) {
+                      this.rowData[rowIndex].picture = url;
+                      this.rowData[rowIndex].__modified = true;
+                    }
+                    params.data.picture = url;
+                    params.data.__modified = true;
+                    this.gridApi.refreshCells({ rowNodes: [params.node] });
+                    this.notSavedChanges = true;
+                    alerts.basicAlert('Imagen subida', 'La imagen se ha subido correctamente', 'success');
+                  })
+                  .catch(error => {
+                    console.error('Error uploading picture:', error);
+                    alerts.basicAlert('Error', 'No se pudo subir la imagen', 'error');
+                  });
               }
               document.body.removeChild(input);
             };
@@ -596,13 +610,19 @@ constructor() {
           setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.accept = 'image/jpeg,image/png';
             input.style.display = 'none';
             document.body.appendChild(input);
 
             input.onchange = (event) => {
               const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tipo de archivo
+                if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+                  alerts.basicAlert('Tipo no permitido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
                 // Validar tamaño (max 2MB para firma)
                 if (file.size > 2 * 1024 * 1024) {
                   alerts.basicAlert('Archivo muy grande', 'La firma no puede superar 2MB', 'error');
@@ -610,17 +630,25 @@ constructor() {
                   return;
                 }
 
-                const reader = new FileReader();
-                reader.onload = () => {
-                  params.data.signature = reader.result as string;
-                  params.data.__modified = true;
-                  this.gridApi.refreshCells({ rowNodes: [params.node] });
-                  this.notSavedChanges = true;
-                };
-                reader.onerror = () => {
-                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
-                };
-                reader.readAsDataURL(file);
+                // Subir a Firebase Storage usando el servicio
+                this.imageHandlerService.uploadFileToFirebase(file, 'users/signatures')
+                  .then(url => {
+                    // Actualizar el rowData directamente
+                    const rowIndex = this.rowData.findIndex(row => row.id === params.data.id);
+                    if (rowIndex !== -1) {
+                      this.rowData[rowIndex].signature = url;
+                      this.rowData[rowIndex].__modified = true;
+                    }
+                    params.data.signature = url;
+                    params.data.__modified = true;
+                    this.gridApi.refreshCells({ rowNodes: [params.node] });
+                    this.notSavedChanges = true;
+                    alerts.basicAlert('Firma subida', 'La firma se ha subido correctamente', 'success');
+                  })
+                  .catch(error => {
+                    console.error('Error uploading signature:', error);
+                    alerts.basicAlert('Error', 'No se pudo subir la firma', 'error');
+                  });
               }
               document.body.removeChild(input);
             };
@@ -709,22 +737,30 @@ constructor() {
     const newItem = {
       id: tempId,
       active: 1,
-      displayName: '',
-      country: '',
-      email: '',
-      password: '',
-      idRol: 0,
       age: 0,
+      idDepartament: 0,
       id_company: this.idRoot,
-      idDepartament: 1,
-      invited: false,
-      phone: '',
       id_position: 0,
-      picture: './assets/img/profile.png',
+      country: '',
+      usersmall: '',
+      displayName: '',
+      email: '',
+      method: '',
+      idRol: 0,
+      password: '',
+      phone: '',
+      idTelegram: '',
+      picture: '',
       signature: '',
-      usersmall: 'SINUSER',
-      allowWhatsapp: true,
+      applyBranch: '',
+      applyPlatform: '',
+      applyProject: '',
+      branch: '',
+      platform: '',
+      project: '',
+      allowWhatsapp: false,
       isRoot: false,
+      invited: false,
       __isNew: true
     };
 
@@ -734,9 +770,9 @@ constructor() {
     this.notSavedChanges = true;
     setTimeout(() => {
       const firstRowIndex = 0;
-  
+
       this.gridApi.ensureIndexVisible(firstRowIndex);
-  
+
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
         colKey: 'displayName'
@@ -749,82 +785,131 @@ constructor() {
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    // Validar nuevos registros
-    const newRowsValid = newRows.every(
-      (item) => item.displayName && item.email && item.password
-    );
-
-    if (!newRowsValid) {
+    // Si no hay cambios, no hacer nada
+    if (newRows.length === 0 && modifiedRows.length === 0) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe introducir el nombre del usuario, su correo y su contraseña antes de guardar.',
-        'error'
+        'Sin cambios',
+        'No hay cambios pendientes para guardar.',
+        'info'
       );
       return;
+    }
+
+    // Validar nuevos registros
+    if (newRows.length > 0) {
+      const newRowsValid = newRows.every(
+        (item) => item.displayName && item.email && item.password
+      );
+
+      if (!newRowsValid) {
+        alerts.basicAlert(
+          'Añadir entrada',
+          'Debe introducir el nombre del usuario, su correo y su contraseña antes de guardar.',
+          'error'
+        );
+        return;
+      }
     }
 
     // Validar registros modificados (solo nombre y email, password es opcional)
-    const modifiedRowsValid = modifiedRows.every(
-      (item) => item.displayName && item.email
-    );
-
-    if (!modifiedRowsValid) {
-      alerts.basicAlert(
-        'Modificar entrada',
-        'Debe introducir el nombre del usuario y su correo antes de guardar.',
-        'error'
+    if (modifiedRows.length > 0) {
+      const modifiedRowsValid = modifiedRows.every(
+        (item) => item.displayName && item.email
       );
-      return;
+
+      if (!modifiedRowsValid) {
+        alerts.basicAlert(
+          'Modificar entrada',
+          'Debe introducir el nombre del usuario y su correo antes de guardar.',
+          'error'
+        );
+        return;
+      }
     }
 
-    console.log  ('Nuevas filas:', newRows);
+    console.log('Nuevas filas:', newRows);
+    console.log('Filas modificadas:', modifiedRows);
 
     try {
-      // Primero creamos/actualizamos los usuarios
-      const addUserRequests = newRows.map(row => {
-        const cleanedData = this.cleanDataForServer(row);
-        console.log('this Add CleanedData', cleanedData);
-        this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
-        
-        return this.usersService.addUser(cleanedData).pipe(
-          tap(response => {
-            console.log('Respuesta directa del addUser:', {
-              posiblesIds: {
-                id: response.data?.id
-              }
-            });
-          })
-        );
-      });
+      let userResponses: any[] = [];
 
-      const updateUserRequests = modifiedRows.map(row => {
-        const cleanedData = this.cleanDataForServer(row);
-        console.log('Update CleanedData', cleanedData);
-        this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
-        return this.usersService.updateUser(row.id, cleanedData);
-      });
+      // Procesar nuevos usuarios
+      if (newRows.length > 0) {
+        for (const row of newRows) {
+          const cleanedData = this.cleanDataForServer(row);
+          console.log('Datos a enviar para nuevo usuario:', cleanedData);
 
-      // Ejecutamos primero las operaciones de usuario
-      console.log('Ejecutando solicitudes de usuario...');
-      const userResponses = await lastValueFrom(
-        concat(...addUserRequests, ...updateUserRequests).pipe(toArray())
-      );
+          try {
+            const response = await lastValueFrom(this.usersService.addUser(cleanedData));
+            console.log('Respuesta del servidor para nuevo usuario:', response);
 
-      console.log('Respuestas de usuario:', userResponses);
+            // Verificar si el servidor devolvió un error
+            if (response.code === 500 || response.code === 400 || !response.data) {
+              const errorMsg = response.message || 'Error desconocido al agregar usuario';
+              console.error('Error del servidor:', errorMsg);
+              alerts.basicAlert(
+                'Error del servidor',
+                errorMsg,
+                'error'
+              );
+              return; // Detener el proceso
+            }
+
+            userResponses.push(response);
+
+            this.trackingService.addLog(
+              this.trackingService.getnameComp(),
+              'Add Registro en Usuarios',
+              'Menu Administracion Usuarios',
+              this.trackingService.getEmail()
+            );
+          } catch (addError: any) {
+            console.error('Error al agregar usuario:', addError);
+            const errorMsg = addError?.error?.message || addError?.message || 'Error al agregar usuario';
+            alerts.basicAlert('Error', errorMsg, 'error');
+            return;
+          }
+        }
+      }
+
+      // Procesar usuarios modificados
+      if (modifiedRows.length > 0) {
+        for (const row of modifiedRows) {
+          const cleanedData = this.cleanDataForServer(row);
+          console.log('Datos a enviar para actualizar usuario:', cleanedData);
+
+          try {
+            const response = await lastValueFrom(this.usersService.updateUser(row.id, cleanedData));
+            console.log('Respuesta del servidor para actualizar usuario:', response);
+
+            this.trackingService.addLog(
+              this.trackingService.getnameComp(),
+              'Update Registro en Usuarios',
+              'Menu Administracion Usuarios',
+              this.trackingService.getEmail()
+            );
+          } catch (updateError) {
+            console.error('Error al actualizar usuario:', updateError);
+            throw updateError;
+          }
+        }
+      }
 
       // Para los nuevos usuarios, guardamos sus permisos
-      const newUserResponses = userResponses.slice(0, newRows.length);
-      console.log('Nuevos usuarios creados:', newUserResponses);
+      console.log('Respuestas de nuevos usuarios:', userResponses);
 
-      // Creamos los permisos para los nuevos usuarios
-      const permissionRequests = newUserResponses.map((response, index) => {
-        const userId = response.data?.id;
+      for (const response of userResponses) {
+        // Buscar el ID en diferentes posibles ubicaciones de la respuesta
+        const userId = response?.data?.id || response?.id || response?.data;
 
-        if (!userId) {
+        console.log('Procesando permisos para userId:', userId, 'Response completo:', response);
+
+        if (!userId || typeof userId !== 'number') {
           console.warn('No se pudo obtener el ID del usuario para:', response);
-          return null;
+          continue;
         }
 
+        // Crear permiso de root
         const formattedRoot = {
           idUser: userId,
           idPermission: this.signalsService.getRootSelectedBySidebar()(),
@@ -833,40 +918,44 @@ constructor() {
           active: 1
         };
 
-        // Array para almacenar las peticiones
-        const requests = [this.usersxrootService.addUserxPermission(formattedRoot)];
+        console.log('Guardando permiso root:', formattedRoot);
+
+        try {
+          await lastValueFrom(this.usersxrootService.addUserxPermission(formattedRoot));
+          console.log('Permiso root guardado correctamente');
+        } catch (permError) {
+          console.error('Error al guardar permiso root:', permError);
+        }
 
         // Añadir permiso de branch desde datos de empleado si existe
-        const branchPermissionFromEmployee = this.procesoData(userId);
-        if (branchPermissionFromEmployee && branchPermissionFromEmployee !== EMPTY) {
-          requests.push(branchPermissionFromEmployee);
-        } else { // Si no, añadir desde el sidebar si el ID es positivo
-        const branchId = this.signalsService.getBranchSelectedBySidebar()();
-        if (branchId > 0) {
-          const formattedBranch = {
-            idUser: userId,
-            idPermission: branchId,
-            type: "branch",
-            description: "SIN DESCRIPCION",
-            active: 1
-          };
-          console.log('Datos de permiso branch a guardar:', formattedBranch);
-          requests.push(this.usersxrootService.addUserxPermission(formattedBranch));
-        }
-      }
-        console.log('Datos de permiso root a guardar:', formattedRoot);
-        return requests;
-      }).filter(req => req !== null);
+        if (this.dataEmpleado && this.dataEmpleado.idBranch) {
+          try {
+            await lastValueFrom(this.procesoData(userId));
+            console.log('Permisos de empleado guardados correctamente');
+          } catch (empError) {
+            console.error('Error al guardar permisos de empleado:', empError);
+          }
+        } else {
+          // Si no, añadir desde el sidebar si el ID es positivo
+          const branchId = this.signalsService.getBranchSelectedBySidebar()();
+          if (branchId > 0) {
+            const formattedBranch = {
+              idUser: userId,
+              idPermission: branchId,
+              type: "branch",
+              description: "SIN DESCRIPCION",
+              active: 1
+            };
+            console.log('Guardando permiso branch:', formattedBranch);
 
-      // Ejecutamos las solicitudes de permisos
-      if (permissionRequests.length > 0) {
-        console.log('Ejecutando solicitudes de permisos, cantidad:', permissionRequests.length * 2);
-        const permissionResponses = await lastValueFrom(
-          concat(...permissionRequests.flat()).pipe(toArray())
-        );
-        console.log('Respuestas de permisos:', permissionResponses);
-      } else {
-        console.warn('No se crearon solicitudes de permisos');
+            try {
+              await lastValueFrom(this.usersxrootService.addUserxPermission(formattedBranch));
+              console.log('Permiso branch guardado correctamente');
+            } catch (branchError) {
+              console.error('Error al guardar permiso branch:', branchError);
+            }
+          }
+        }
       }
 
       alerts.basicAlert(
@@ -877,6 +966,7 @@ constructor() {
 
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
+      this.dataEmpleado = null; // Limpiar datos de empleado
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
       console.error('Error al guardar:', error);
@@ -910,6 +1000,63 @@ constructor() {
         'error'
       );
       return;
+    }
+
+    // Validar si el usuario tiene permisos asignados antes de eliminar
+    try {
+      const assignedItems: string[] = [];
+
+      // Verificar empresas asignadas (root)
+      const rootPermissions = await lastValueFrom(
+        this.usersxrootService.getUsersxPermissionsGeneral('root', id).pipe(
+          catchError(() => EMPTY)
+        )
+      );
+      if (rootPermissions && Array.isArray(rootPermissions) && rootPermissions.length > 0) {
+        assignedItems.push(`${rootPermissions.length} Empresa(s)`);
+      }
+
+      // Verificar sucursales asignadas (branch)
+      const branchPermissions = await lastValueFrom(
+        this.usersxrootService.getUsersxPermissionsGeneral('branch', id).pipe(
+          catchError(() => EMPTY)
+        )
+      );
+      if (branchPermissions && Array.isArray(branchPermissions) && branchPermissions.length > 0) {
+        assignedItems.push(`${branchPermissions.length} Sucursal(es)`);
+      }
+
+      // Verificar contratos asignados (contract)
+      const contractPermissions = await lastValueFrom(
+        this.usersxrootService.getUsersxPermissionsGeneral('contract', id).pipe(
+          catchError(() => EMPTY)
+        )
+      );
+      if (contractPermissions && Array.isArray(contractPermissions) && contractPermissions.length > 0) {
+        assignedItems.push(`${contractPermissions.length} Contrato(s)`);
+      }
+
+      // Verificar proyectos asignados (project)
+      const projectPermissions = await lastValueFrom(
+        this.usersxrootService.getUsersxPermissionsGeneral('project', id).pipe(
+          catchError(() => EMPTY)
+        )
+      );
+      if (projectPermissions && Array.isArray(projectPermissions) && projectPermissions.length > 0) {
+        assignedItems.push(`${projectPermissions.length} Proyecto(s)`);
+      }
+
+      // Si tiene asignaciones, no permitir eliminar
+      if (assignedItems.length > 0) {
+        alerts.basicAlert(
+          'No se puede eliminar',
+          `El usuario tiene asignado: ${assignedItems.join(', ')}. Debe eliminar estas asignaciones primero.`,
+          'error'
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando permisos:', error);
     }
 
     // Mostrar mensaje de confirmación

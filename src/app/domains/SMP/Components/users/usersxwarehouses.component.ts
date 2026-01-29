@@ -204,7 +204,7 @@ public gridOptions: any = {
       },
       {
         field: 'idPermission',
-        headerName: 'Almacénq',
+        headerName: 'Almacén',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.warehouses).sort((a, b) => this.warehouses[a].localeCompare(this.warehouses[b])),

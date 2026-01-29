@@ -14,7 +14,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 pdfMake.vfs = pdfFonts.vfs;
 
 @Component({
-  selector: 'app-detail-cell-renderer-proveedor',
+  selector: 'app-detalle-proveedor-items',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule],
   template: `
@@ -91,25 +91,9 @@ pdfMake.vfs = pdfFonts.vfs;
       </div>
     </div>
   `,
-  styles: [`
-    .detail-grid-container {
-      padding: 5px;
-      background-color: #e3f2fd;
-      border-radius: 8px;
-      height: 100%;
-      max-height: 100%;
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-      overflow: hidden;
-    }
-    .form-label {
-      margin-bottom: 2px;
-      font-weight: 500;
-    }
-  `]
+styleUrl: './detalle-proveedor-items.component.css'
 })
-export class DetailCellRendererProveedorComponent {
+export class DetalleProveedorItemsComponent {
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
 

@@ -126,4 +126,27 @@ export class alerts{
 		});
 	}
 
+	/*=============================================
+	Función para mostrar toast notification
+	=============================================*/
+
+	static toastAlert(text: string, icon: SweetAlertIcon, timer: number = 3000) {
+		const Toast = Swal.mixin({
+			toast: true,
+			position: 'top-end',
+			showConfirmButton: false,
+			timer: timer,
+			timerProgressBar: true,
+			didOpen: (toast) => {
+				toast.onmouseenter = Swal.stopTimer;
+				toast.onmouseleave = Swal.resumeTimer;
+			}
+		});
+
+		return Toast.fire({
+			icon: icon,
+			title: text
+		});
+	}
+
 }

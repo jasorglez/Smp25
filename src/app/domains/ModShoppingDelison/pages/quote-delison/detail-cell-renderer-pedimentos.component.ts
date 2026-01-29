@@ -5,14 +5,14 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
-import { DetailCellRendererPedimentosItemsComponent } from './detail-cell-renderer-pedimentos-items.component';
-import { DetailCellRendererProveedorComponent } from './detail-cell-renderer-proveedor.component';
+import { DetallesPedimentosItemsComponent } from './detalles-pedimentos-items.component';
+import { DetalleProveedorItemsComponent } from './detalle-proveedor-items.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorComponent, DetailCellRendererPedimentoReportComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetallesPedimentosItemsComponent, DetalleProveedorItemsComponent, DetailCellRendererPedimentoReportComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -222,7 +222,7 @@ export class DetailCellRendererPedimentosComponent {
     detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'proveedor') {
         return {
-          component: DetailCellRendererProveedorComponent,
+          component: DetalleProveedorItemsComponent,
           params: {
             providerField: params.data.providerField,
             providerLabel: params.data.providerLabel
@@ -239,7 +239,7 @@ export class DetailCellRendererPedimentosComponent {
         };
       }
       // Por defecto, mostrar artículos
-      return { component: DetailCellRendererPedimentosItemsComponent };
+      return { component: DetallesPedimentosItemsComponent };
     },
     embedFullWidthRows: true,
     suppressCellFocus: true,

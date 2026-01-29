@@ -32,6 +32,7 @@
                     rowSelection="single"
                     (selectionChanged)="onSelectionChanged($event)"
                     (cellValueChanged)="onCellValueChanged($event)"
+                    (cellEditingStopped)="onCellEditingStopped($event)"
                     (rowSelected)="onSelectedRow($event)"
                     (gridReady)="onGridReady($event)"
                     [components]="components"

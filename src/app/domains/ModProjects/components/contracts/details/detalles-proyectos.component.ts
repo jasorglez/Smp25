@@ -239,7 +239,7 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     },
     {
       field: 'idOilfield',
-      headerName: 'Campo Petrolero',
+      headerName: 'Lugar Trabajo',
       editable: true,
       minWidth: 130,
       cellEditor: 'agSelectCellEditor',
@@ -596,12 +596,12 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
       const projectCount = this.projectRowData.filter(p => !String(p.id).startsWith('temp_')).length;
 
       // Update the counter in the parent grid row (visual)
-      this.params.data.project = projectCount.toString();
+      this.params.data.project = projectCount;
 
       // Persist the count to the database
       const contractData = {
         ...this.params.data,
-        project: projectCount.toString()
+        project: projectCount
       };
       // Clean internal flags
       delete contractData.__isNew;
