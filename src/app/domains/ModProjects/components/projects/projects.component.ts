@@ -210,9 +210,10 @@ export class ProjectsComponent {
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         }},
+    { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
     { field: 'number', headerName: 'Proyecto', flex: 1 },
     { field: 'name', headerName: 'Nombre', width: 100, filter: true, flex: 2 },
-    { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
+    
     { field: 'year', headerName: 'Año', flex: 1 },
     { field: 'description', headerName: 'Descripcion', flex: 4 },
     {

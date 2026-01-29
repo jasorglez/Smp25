@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
+import { FollowprojectsService } from 'app/services/followprojects.service';
 import { lastValueFrom, concat, toArray } from 'rxjs';
 
 @Component({
@@ -70,6 +71,7 @@ import { lastValueFrom, concat, toArray } from 'rxjs';
 export class DetailCellRendererProyectosComponent implements ICellRendererAngularComp {
   private projectsService = inject(ProjectsService);
   private oilfieldService = inject(OilfieldService);
+  private followprojectsService = inject(FollowprojectsService);
   authService = inject(AuthService);
 
   params: any;
@@ -107,6 +109,21 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
 
   projectColumnDefs: ColDef[] = [
     {
+      field: 'idConsecutivo',
+      headerName: 'Id Obra',
+      editable: true,
+      minWidth: 80,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0 },
+      valueSetter: (params: any) => {
+        params.data.idConsecutivo = params.newValue || 0;
+        params.data.__modified = true;
+        this.hasProjectChanges = true;
+        return true;
+      }
+    },
+    
+    {
       field: 'number',
       headerName: 'Proyecto',
       editable: true,
@@ -131,20 +148,7 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         return true;
       }
     },
-    {
-      field: 'idConsecutivo',
-      headerName: 'Id Obra',
-      editable: true,
-      minWidth: 80,
-      cellEditor: 'agNumberCellEditor',
-      cellEditorParams: { min: 0 },
-      valueSetter: (params: any) => {
-        params.data.idConsecutivo = params.newValue || 0;
-        params.data.__modified = true;
-        this.hasProjectChanges = true;
-        return true;
-      }
-    },
+    
     {
       field: 'year',
       headerName: 'Anio',
@@ -577,11 +581,24 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
       // Wait for data to update
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Count active projects
-      const projectCount = this.projectRowData.filter(p => !p.__isNew || p.active === 1).length;
+      // Count active projects (exclude temp rows that haven't been saved)
+      const projectCount = this.projectRowData.filter(p => !String(p.id).startsWith('temp_')).length;
 
-      // Update the counter in the parent grid row
+      // Update the counter in the parent grid row (visual)
       this.params.data.project = projectCount.toString();
+
+      // Persist the count to the database
+      const contractData = {
+        ...this.params.data,
+        project: projectCount.toString()
+      };
+      // Clean internal flags
+      delete contractData.__isNew;
+      delete contractData.__modified;
+      delete contractData.detailType;
+
+      await lastValueFrom(this.followprojectsService.updateContract(this.contractId, contractData));
+      console.log('Project count persisted to DB:', projectCount);
 
       // Refresh the parent grid cell
       if (this.params.api) {
