@@ -37,15 +37,18 @@ case "$BRANCH" in
     main|master)
         SOURCE="$ENV_DIR/environment.production.ts"
         ENV_NAME="PRODUCCIÓN"
+        ENV_VALUE="production"
         ;;
     develop|development)
         SOURCE="$ENV_DIR/environment.development.ts"
         ENV_NAME="DESARROLLO"
+        ENV_VALUE="development"
         ;;
     *)
         # Para otras ramas (features, hotfixes, etc), usar development por defecto
         SOURCE="$ENV_DIR/environment.development.ts"
         ENV_NAME="DESARROLLO (rama: $BRANCH)"
+        ENV_VALUE="development"
         ;;
 esac
 
@@ -58,6 +61,10 @@ else
     echo "⚠️  Archivo no encontrado: $SOURCE"
     echo "   El environment.ts no fue modificado"
 fi
+
+# Actualizar .env para docker-compose
+echo "ENVIRONMENT=$ENV_VALUE" > .env
+echo "✅ Archivo .env actualizado: ENVIRONMENT=$ENV_VALUE"
 `;
 
 // Lista de hooks a instalar
@@ -145,10 +152,12 @@ function main() {
     // Determinar qué archivo copiar
     let sourceFile = 'environment.development.ts';
     let envName = 'DESARROLLO';
+    let envValue = 'development';
 
     if (branch === 'main' || branch === 'master') {
       sourceFile = 'environment.production.ts';
       envName = 'PRODUCCIÓN';
+      envValue = 'production';
     }
 
     const sourcePath = path.join(ENV_DIR, sourceFile);
@@ -160,6 +169,11 @@ function main() {
     } else {
       log(`⚠️  No se pudo copiar ${sourceFile} - archivo no existe`, 'yellow');
     }
+
+    // Crear/actualizar .env para docker-compose
+    const envFilePath = path.join(ROOT_DIR, '.env');
+    fs.writeFileSync(envFilePath, `ENVIRONMENT=${envValue}\n`);
+    log(`✅ Archivo .env creado: ENVIRONMENT=${envValue}`, 'green');
   } catch (err) {
     log('⚠️  No se pudo determinar la rama actual', 'yellow');
   }

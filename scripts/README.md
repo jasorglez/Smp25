@@ -41,6 +41,58 @@ El hook se instala automáticamente via `postinstall`.
 npm run setup-hooks
 ```
 
+### Desarrollo Local
+
+#### Primera vez (nuevo desarrollador)
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/jasorglez/Smp25.git
+cd Smp25
+
+# 2. Cambiar a la rama de desarrollo
+git checkout develop
+
+# 3. Instalar dependencias (esto también instala los hooks automáticamente)
+npm install
+
+# 4. Verificar que el environment está configurado
+cat src/environments/environment.ts | head -3
+# Debería mostrar: "// Environment de DESARROLLO"
+
+# 5. Iniciar el servidor de desarrollo
+npm start
+```
+
+#### Desarrollador existente (actualizar hooks)
+
+Si ya tienes el proyecto y necesitas instalar/actualizar los hooks:
+
+```bash
+npm run setup-hooks
+```
+
+Esto hará:
+- Instalar hooks `post-checkout` y `post-merge`
+- Configurar `environment.ts` según tu rama actual
+- Crear archivo `.env` para docker-compose
+
+#### Cambiar entre ambientes manualmente
+
+Si necesitas probar con un ambiente diferente sin cambiar de rama:
+
+```bash
+# Usar ambiente de producción temporalmente
+cp src/environments/environment.production.ts src/environments/environment.ts
+
+# Volver al ambiente de desarrollo
+cp src/environments/environment.development.ts src/environments/environment.ts
+
+# O simplemente cambiar de rama (el hook lo hace automático)
+git checkout main      # → producción
+git checkout develop   # → desarrollo
+```
+
 ### Verificación
 
 Después de instalar, verifica que el hook funcione:
@@ -71,35 +123,40 @@ El script requiere estar en un repositorio Git. En Docker o CI/CD, el environmen
 
 ### Docker / Docker Compose
 
-#### Flujo recomendado para deploy
+#### Funcionamiento Automático
+
+Los hooks de Git generan automáticamente un archivo `.env` con el ENVIRONMENT correcto:
+
+| Rama | Archivo .env generado |
+|------|----------------------|
+| `main` / `master` | `ENVIRONMENT=production` |
+| `develop` / otras | `ENVIRONMENT=development` |
+
+Docker-compose lee este `.env` automáticamente.
+
+#### Flujo de deploy (100% automático)
 
 **Servidor de Producción (rama main):**
 ```bash
-git pull origin main
-docker-compose up --build -d
+git pull origin main           # Hook actualiza .env → ENVIRONMENT=production
+docker-compose up --build -d   # Usa production automáticamente
 ```
-El hook `post-merge` actualizará el environment automáticamente antes del build.
 
 **Servidor de Staging (rama develop):**
 ```bash
-git pull origin develop
-docker-compose up --build -d
+git pull origin develop        # Hook actualiza .env → ENVIRONMENT=development
+docker-compose up --build -d   # Usa development automáticamente
 ```
 
-#### Respaldo: Build Arg (si no hay Git)
+#### Respaldo: Build manual (si no hay Git)
 
-Si haces build sin repositorio Git, usa el ARG:
+Si haces build sin repositorio Git:
 ```bash
 # Producción
 docker build --build-arg ENVIRONMENT=production -t app:prod .
 
 # Desarrollo
 docker build --build-arg ENVIRONMENT=development -t app:dev .
-```
-
-O con docker-compose:
-```bash
-ENVIRONMENT=development docker-compose up --build
 ```
 
 ### CI/CD
