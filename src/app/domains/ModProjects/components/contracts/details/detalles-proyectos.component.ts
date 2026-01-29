@@ -109,6 +109,17 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
 
   projectColumnDefs: ColDef[] = [
     {
+      headerName: '#',
+      valueGetter: 'node.rowIndex + 1',
+      width: 50,
+      maxWidth: 60,
+      sortable: false,
+      filter: false,
+      editable: false,
+      suppressMovable: true,
+      cellStyle: { textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f5f5f5' }
+    },
+    {
       field: 'idConsecutivo',
       headerName: 'Id Obra',
       editable: true,
