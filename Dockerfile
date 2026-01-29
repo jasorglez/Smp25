@@ -1,7 +1,12 @@
 # ============================================
 # Stage 1: Build Angular App
 # ============================================
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
+
+# ARG para seleccionar environment: production | development
+# Default: production (para main/master)
+# Usar: docker build --build-arg ENVIRONMENT=development .
+ARG ENVIRONMENT=production
 
 WORKDIR /app
 
@@ -9,13 +14,18 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (usar npm ci para builds reproducibles)
-RUN npm ci --legacy-peer-deps
+# --ignore-scripts evita postinstall (no hay Git en Docker)
+RUN npm ci --legacy-peer-deps --ignore-scripts
 
 # Copy source code
 COPY . .
 
+# Configurar environment según ARG (detectado por docker-compose o build arg)
+RUN cp src/environments/environment.${ENVIRONMENT}.ts src/environments/environment.ts && \
+  echo "✅ Environment configurado: ${ENVIRONMENT}"
+
 # Build Angular app for production
-RUN npm run build --configuration=production
+RUN npm run build --configuration=${ENVIRONMENT}
 
 # ============================================
 # Stage 2: Serve with Nginx
