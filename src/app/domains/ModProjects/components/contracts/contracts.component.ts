@@ -1,6 +1,4 @@
 import { Component, effect, inject, TemplateRef, ViewChild } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { Icontract } from '../../../../interface/icontract';
 
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -8,44 +6,21 @@ import { FollowprojectsService } from '../../../../services/followprojects.servi
 import { TrackingService } from '../../../../services/tracking.service';
 
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { CompanysService } from 'app/services/companys.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ContractDetailsComponent } from './contract-details/contract-details.component';
+import { BranchsService } from 'app/services/branchs.service';
+import { AuthService } from 'app/services/auth.service';
 import { ProvidersService } from 'app/services/providers.service';
-
-// Esta funcion valida que dateStar sea siempre menor a dateEnd
-export function dateRangeValidator(): ValidatorFn {
-  return (control: AbstractControl): ValidationErrors | null => {
-    const dateStar = control.get('dateStar')?.value;
-    const dateEnd = control.get('dateEnd')?.value;
-
-    if (dateStar && dateEnd && dateStar > dateEnd) {
-      return { dateRangeInvalid: true };
-    }
-
-    return null;
-  };
-}
-
-// Workaorund que corrige la opción por default
-export function noDefaultValueValidator(): ValidatorFn {
-  return (control: AbstractControl): ValidationErrors | null => {
-    const value = control.value;
-    if (value === 'Seleccione una especialidad' || value === 'Seleccione un contratista' || value === 'Seleccione un estado') {
-      return { noDefaultValue: true };
-    }
-    return null;
-  };
-}
+import { DetailCellRendererProyectosComponent } from './details/detalles-proyectos.component';
+import { ProjectsService } from 'app/services/projects.service';
 
 @Component({
   selector: 'app-contracts',
   standalone: true,
-  imports: [DomainsModule, ContractDetailsComponent],
+  imports: [DomainsModule, ContractDetailsComponent, DetailCellRendererProyectosComponent],
   templateUrl: './contracts.component.html',
   styleUrl: './contracts.component.scss'
 })
@@ -54,26 +29,17 @@ export class ContractsComponent {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.obtenerBranchs();
+      this.getProviders();
       this.getContracts();
     });
-    this.initForm();
   }
 
-  @ViewChild('content') content!: TemplateRef<any>;
   @ViewChild(ContractDetailsComponent) contractDetails!: ContractDetailsComponent;
 
-  addContract: FormGroup;
-
-  formData: any;
-  providers: any;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   selectedRowData: Icontract | null = null;
 
-  isEditing = false;
-  isSave = false;
-  isCancel = false;
-  isDelete = false;
-  isPrint = false;
   private isOpen: boolean = false;
   showDetailsTab: boolean = false;
   idContract: number | null = null;
@@ -81,60 +47,103 @@ export class ContractsComponent {
   idBranch: number;
   idRoot: number;
 
-  screenSizeSM = false;
   notSavedChanges: boolean = false;
-
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
   private doubleClicked = false;
 
-  // Declare the missing properties
   gridHeight: string = '80vh';
 
-  // Inject of new way for Angular 18
+  // Inject services
   private trackingService = inject(TrackingService);
   private followprojectsService = inject(FollowprojectsService);
-  private modalService = inject(NgbModal);
-  private companysService = inject(CompanysService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
+  private branchsService = inject(BranchsService);
+  private projectsService = inject(ProjectsService);
+  authService = inject(AuthService);
 
+  // Components for master-detail
+  components = {
+    detailCellRendererProyectos: DetailCellRendererProyectosComponent
+  };
 
   public contract: Icontract[] = [];
+  branchs: any[] = [];
+  providers: any[] = [];
   private gridApi!: GridApi<Icontract>;
+
+  // Opciones para combos
+  especialidades: string[] = [
+    'CIVIL', 'ELECTRICA', 'MECANICA', 'INSTRUMENTACION', 'PROCESO', 'TUBERIA', 'ESTRUCTURAL', 'OTROS'
+  ];
+
+  estadosContrato: string[] = [
+    'ACTIVO', 'EN PROCESO', 'FINALIZADO', 'CANCELADO', 'SUSPENDIDO'
+  ];
 
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     rowBuffer: 20,
+    masterDetail: true,
+    isRowMaster: (dataItem) => true,
+    detailCellRenderer: 'detailCellRendererProyectos',
+    detailRowHeight: 600,
     getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
       }
       return '';
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
-      // Activar la pestaña de detalles con delay para evitar conflicto con doble click
-      setTimeout(async () => {
-        if (!this.doubleClicked) {
-          this.selectedRowData = event.data;
-          this.idContract = event.data.id;
-          this.signalsService.setIdContract(event.data.id);
-          this.notSavedChanges = true;
-          try {
-            await this.activateDetailsTab();
-          } catch (error) {
-            console.error('Error activando la pestaña de detalles:', error);
+      this.selectedRowData = event.data;
+    },
+    onCellClicked: (event) => {
+      const colId = event.column.getColId();
+      const node = event.node;
+      const api = event.api;
+
+      // Handle "Detalle" column click - opens contract details tab
+      if (colId === 'detalle') {
+        this.selectedRowData = event.data;
+        this.idContract = event.data.id;
+        this.signalsService.setIdContract(event.data.id);
+        this.activateDetailsTab();
+        return;
+      }
+
+      // Handle "Proyectos" column click - expands master-detail for projects
+      if (colId === 'project') {
+        // Toggle expansion
+        const isCurrentlyExpanded = node.expanded;
+
+        // Collapse all other rows
+        api.forEachNode(otherNode => {
+          if (otherNode.expanded && otherNode !== node) {
+            otherNode.setExpanded(false);
           }
+        });
+
+        if (isCurrentlyExpanded) {
+          // If already expanded, collapse and clear filter
+          node.setExpanded(false);
+          api.setFilterModel(null);
+          api.onFilterChanged();
+        } else {
+          // Apply filter to show only this contract and expand
+          const filterModel = {
+            id: { filterType: 'number', type: 'equals', filter: event.data.id }
+          };
+          api.setFilterModel(filterModel);
+          api.onFilterChanged();
+          event.data.detailType = 'proyectos';
+          node.setExpanded(true);
         }
-        this.doubleClicked = false;
-      }, 300);
+      }
     },
     onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
           if (node.id !== event.node.id) {
@@ -145,39 +154,31 @@ export class ContractsComponent {
     },
     onCellKeyDown: (params) => {
       if (params.event.key === 'Enter') {
-        // Obtener todas las columnas editables
         const editableColumns = this.colMaster.filter((col) => col.editable);
         const currentColIndex = editableColumns.findIndex(
           (col) => col.field === params.column.getColDef().field
         );
-  
+
         if (currentColIndex < editableColumns.length - 1) {
-          // Añadir delay de 50ms antes de mover el foco
           requestAnimationFrame(() => {
-            // Mover a la siguiente columna editable
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: editableColumns[currentColIndex + 1].field,
             });
-          }); // Retraso para permitir que termine la edición actual
+          });
         }
-        params.event.preventDefault(); // Prevenir comportamiento por defecto
+        params.event.preventDefault();
       }
     },
-    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-  };
-
-  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-    // Verificar que event.data esté disponible antes de acceder a sus propiedades
-    if (!event.data) {
-      console.warn('No hay datos en la fila seleccionada');
-      return;
+    onFirstDataRendered: (params) => {
+      // Autoajustar columnas al contenido
+      const allColumnIds: string[] = [];
+      params.api.getColumns()?.forEach((column: any) => {
+        allColumnIds.push(column.getId());
+      });
+      params.api.autoSizeColumns(allColumnIds, false);
     }
-
-    this.doubleClicked = true;
-    this.selectedRowData = event.data;
-    this.editRow();
-  }
+  };
 
   async activateDetailsTab() {
     if (!this.isOpen) {
@@ -191,11 +192,11 @@ export class ContractsComponent {
   }
 
   async adjustGridSize() {
-    this.gridHeight = '20vh'; // Adjust as needed
+    this.gridHeight = '20vh';
   }
 
   resetGridSize() {
-    this.gridHeight = '80vh'; // Reset to default height
+    this.gridHeight = '80vh';
     this.idContract = null;
     this.showDetailsTab = false;
     if (this.gridApi) {
@@ -211,120 +212,329 @@ export class ContractsComponent {
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
-
   colMaster: ColDef[] = [
     {
-      field: 'numberContract', headerName: 'Contrato', filter: true, width: 30,
-      editable: (params) => {
-        if (params.data.__isNew) {
-          return true;
-        }
-        return true;
+      headerName: '#',
+      valueGetter: 'node.rowIndex + 1',
+      minWidth: 50,
+      maxWidth: 60,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      editable: false,
+      cellStyle: { textAlign: 'center', fontWeight: 'bold' }
+    },
+    {
+      field: 'id',
+      headerName: 'ID',
+      hide: true,
+      filter: 'agNumberColumnFilter',
+      filterParams: {
+        filterOptions: ['equals']
       }
     },
     {
-      field: 'description', headerName: 'Descripcion', width: 285,
-      editable: (params) => {
-        if (params.data.__isNew) {
-          return true;
-        }
-        return true;
+      field: 'numberContract',
+      headerName: 'Contrato',
+      filter: true,
+      minWidth: 100,
+      editable: true
+    },
+    {
+      field: 'detalle',
+      headerName: 'Detalle',
+      minWidth: 80,
+      maxWidth: 80,
+      editable: false,
+      sortable: false,
+      filter: false,
+      cellStyle: { backgroundColor: '#cfe2ff', cursor: 'pointer', textAlign: 'center' },
+      cellRenderer: (params) => {
+        return `<span style="display:flex; align-items:center; justify-content:center; gap:4px;">
+          <i class="bi bi-list-ul" style="color:#0d6efd; font-size:14px;"></i>
+        </span>`;
       }
     },
     {
-      field: 'descripSmall', headerName: 'Corta', width: 100,
-      editable: (params) => {
-        if (params.data.__isNew) {
-          return true;
-        }
-        return true;
+      field: 'project',
+      headerName: 'Proyectos',
+      filter: true,
+      minWidth: 100,
+      editable: false,
+      cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer', textDecoration: 'underline' },
+      cellRenderer: (params) => {
+        const count = params.value || '0';
+        return `<span style="display:flex; align-items:center; gap:6px;">
+          <i class="bi bi-folder" style="color:#1976d2;"></i>
+          <span>${count}</span>
+        </span>`;
       }
     },
     {
-      field: 'resident', headerName: 'Residente', width: 100, filter: true,
-      editable: (params) => {
-        if (params.data.__isNew) {
-          return true;
-        }
-        return true;
+      field: 'idBranch',
+      headerName: 'Sucursal',
+      editable: true,
+      filter: true,
+      minWidth: 100,
+      cellEditor: 'agSelectCellEditor',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
+      cellEditorParams: (params) => {
+        return {
+          values: this.branchs
+            ? this.branchs
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((item) => item.id)
+            : [],
+        };
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        const foundBranch = this.branchs?.find((item) => item.id === params.value);
+        return foundBranch ? foundBranch.name : params.value;
+      },
+      valueGetter: (params) => {
+        if (!params.data || !params.data.idBranch) return '';
+        const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+        return branch ? branch.name : '';
+      },
+    },
+    {
+      field: 'description',
+      headerName: 'Descripcion',
+      minWidth: 100,
+      editable: true
+    },
+    {
+      field: 'descripSmall',
+      headerName: 'Desc. Corta',
+      minWidth: 100,
+      editable: true
+    },
+    {
+      field: 'speciality',
+      headerName: 'Especialidad',
+      minWidth: 100,
+      filter: true,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['CIVIL', 'ELECTRICA', 'MECANICA', 'INSTRUMENTACION', 'PROCESO', 'TUBERIA', 'ESTRUCTURAL', 'OTROS']
       }
     },
-    { field: 'name', headerName: 'Compañía', width: 100, filter: true },
     {
-      field: 'supervisor', headerName: 'Supervisor', width: 100, filter: true,
-      editable: (params) => {
-        if (params.data.__isNew) {
+      field: 'idProvider',
+      headerName: 'Contratista',
+      minWidth: 100,
+      filter: true,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: (params) => {
+        return {
+          values: this.providers
+            ? this.providers.map((p) => p.id)
+            : [],
+        };
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        const foundProvider = this.providers?.find((p) => p.id === params.value);
+        return foundProvider ? foundProvider.name : params.value;
+      },
+      valueGetter: (params) => {
+        if (!params.data || !params.data.idProvider) return '';
+        const provider = this.providers?.find(p => p.id === params.data.idProvider);
+        return provider ? provider.name : '';
+      },
+    },
+    {
+      field: 'resident',
+      headerName: 'Residente',
+      minWidth: 100,
+      filter: true,
+      editable: true
+    },
+    {
+      field: 'supervisor',
+      headerName: 'Supervisor',
+      minWidth: 100,
+      filter: true,
+      editable: true
+    },
+    {
+      field: 'dateStar',
+      headerName: 'Fecha Inicio',
+      minWidth: 100,
+      editable: true,
+      cellEditor: 'agDateCellEditor',
+      valueGetter: (params) => {
+        if (!params.data?.dateStar) return null;
+        return params.data.dateStar instanceof Date
+          ? params.data.dateStar
+          : new Date(params.data.dateStar);
+      },
+      valueSetter: (params) => {
+        if (!params.newValue) {
+          params.data.dateStar = null;
           return true;
         }
+        const date = params.newValue instanceof Date
+          ? params.newValue
+          : new Date(params.newValue);
+        if (isNaN(date.getTime())) {
+          return false;
+        }
+        params.data.dateStar = date.toISOString().split('T')[0];
+        if (params.data.dateEnd) {
+          params.data.term = this.getTermInDays(params.data.dateStar, params.data.dateEnd);
+        }
         return true;
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        const date = params.value instanceof Date ? params.value : new Date(params.value);
+        if (isNaN(date.getTime())) return '';
+        return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
       }
     },
     {
-      field: 'amountMx', headerName: 'Monto MX', width: 100,
-      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true,
-      editable: (params) => {
-        if (params.data.__isNew) {
+      field: 'dateEnd',
+      headerName: 'Fecha Fin',
+      minWidth: 100,
+      editable: true,
+      cellEditor: 'agDateCellEditor',
+      valueGetter: (params) => {
+        if (!params.data?.dateEnd) return null;
+        return params.data.dateEnd instanceof Date
+          ? params.data.dateEnd
+          : new Date(params.data.dateEnd);
+      },
+      valueSetter: (params) => {
+        if (!params.newValue) {
+          params.data.dateEnd = null;
           return true;
         }
+        const date = params.newValue instanceof Date
+          ? params.newValue
+          : new Date(params.newValue);
+        if (isNaN(date.getTime())) {
+          return false;
+        }
+        params.data.dateEnd = date.toISOString().split('T')[0];
+        if (params.data.dateStar) {
+          params.data.term = this.getTermInDays(params.data.dateStar, params.data.dateEnd);
+        }
         return true;
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        const date = params.value instanceof Date ? params.value : new Date(params.value);
+        if (isNaN(date.getTime())) return '';
+        return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
       }
     },
     {
-      field: 'amountDll', headerName: 'Monto DLL2', width: 100,
-      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value), filter: true,
-      editable: (params) => {
-        if (params.data.__isNew) {
-          return true;
-        }
-        return true;
+      field: 'term',
+      headerName: 'Plazo (días)',
+      minWidth: 100,
+      editable: false,
+      valueFormatter: (params) => params.value ? `${params.value} días` : ''
+    },
+    {
+      field: 'stateContract',
+      headerName: 'Estado',
+      minWidth: 100,
+      filter: true,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['ACTIVO', 'EN PROCESO', 'FINALIZADO', 'CANCELADO', 'SUSPENDIDO']
       }
+    },
+    {
+      field: 'amountMx',
+      headerName: 'Monto MX',
+      minWidth: 100,
+      filter: true,
+      editable: true,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: {
+        min: 0,
+        precision: 2,
+      },
+      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value)
+    },
+    {
+      field: 'amountDll',
+      headerName: 'Monto USD',
+      minWidth: 100,
+      filter: true,
+      editable: true,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: {
+        min: 0,
+        precision: 2,
+      },
+      valueFormatter: (params) => this.trackingService.formatearMoneda(params.value)
     }
   ];
 
   ngOnInit(): void {
-    //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     this.getContracts();
   }
 
-  initForm() {
-    this.addContract = new FormGroup({
-      id: new FormControl(),
-      idBranch: new FormControl(this.idBranch),
-      numberContract: new FormControl('', Validators.required),
-      description: new FormControl('', Validators.required),
-      descripSmall: new FormControl('', Validators.required),
-      resident: new FormControl(''),
-      supervisor: new FormControl(''),
-      amountMx: new FormControl(0),
-      amountDll: new FormControl(0),
-      speciality: new FormControl('Seleccione una especialidad'),
-      idProvider: new FormControl('Seleccione un contratista'),
-      dateStar: new FormControl('', Validators.required),
-      dateEnd: new FormControl('', Validators.required),
-      stateContract: new FormControl('Seleccione un estado'),
-      term: new FormControl(),
-      idBussines: new FormControl(1),
-      consecutive: new FormControl(0),
-      active: new FormControl(1)
-    }, { validators: dateRangeValidator() });
+  obtenerBranchs() {
+    this.branchsService.getBrancheswoa(this.idRoot).subscribe(
+      (data: any) => {
+        this.branchs = data;
+      },
+      (error) => console.error('Error fetching branches:', error)
+    );
+  }
+
+  getProviders() {
+    this.providersService.getProviders(this.idRoot).subscribe({
+      next: (resp: any) => {
+        this.providers = resp || [];
+      },
+      error: (error) => {
+        console.error('Error fetching providers', error);
+        this.providers = [];
+      }
+    });
   }
 
   getContracts() {
-    this.followprojectsService.getContract(this.idBranch).subscribe(
-      (resp: any) => {
-        this.contract = this.mapContract(resp);
-      },
-      (error) => {
-        this.contract = [];
-        console.error('Error fetching contracts', error);
-      }
-    );
+    if (this.idBranch < 0 || this.idBranch == null) {
+      this.followprojectsService.getContractsByRoot(this.idRoot).subscribe(
+        (resp: any) => {
+          this.contract = this.mapContract(resp);
+        },
+        (error) => {
+          this.contract = [];
+          console.error('Error fetching all contracts', error);
+        }
+      );
+    } else {
+      this.followprojectsService.getContract(this.idBranch).subscribe(
+        (resp: any) => {
+          this.contract = this.mapContract(resp);
+        },
+        (error) => {
+          this.contract = [];
+          console.error('Error fetching contracts', error);
+        }
+      );
+    }
   }
 
   mapContract(data: any[]): Icontract[] {
     return data.map(w => ({
       id: w.idContrato,
       numberContract: w.numberContract,
+      project: w.project,
       description: w.description,
       descripSmall: w.descripSmall,
       amountMx: w.amountMx,
@@ -339,7 +549,8 @@ export class ContractsComponent {
       stateContract: w.stateContract,
       term: w.term,
       idBranch: w.idBranch,
-      consecutive: w.consecutive
+      consecutive: w.consecutive,
+      active: w.active
     } as Icontract));
   }
 
@@ -356,6 +567,20 @@ export class ContractsComponent {
     this.gridApi = params.api;
   }
 
+  autoSizeAllColumns() {
+    if (!this.gridApi) return;
+    const allColumnIds: string[] = [];
+    this.gridApi.getColumns()?.forEach((column: any) => {
+      allColumnIds.push(column.getId());
+    });
+    this.gridApi.autoSizeColumns(allColumnIds, false);
+  }
+
+  onCellValueChanged(event: any) {
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+  }
+
   statusBar = {
     statusPanels: [
       {
@@ -370,101 +595,148 @@ export class ContractsComponent {
     filter: true,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1
+    enableRowGroup: true
   };
 
   addRow() {
-    if (this.idBranch < 0) {
-      alerts.basicAlert(
-        'Crear contrato',
-        'Debe seleccionar una sucursal para crear un contrato.',
-        'warning'
-      );
-      return;
-    }
-    this.isEditing = false;
-    this.initForm();
-    this.openModal();
-  }
+    const tempId = `temp_${this.tempIdCounter++}`;
+    const today = new Date();
+    const nextMonth = new Date(today);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-  editRow(): void {
-    if (!this.selectedRowData) {
-      alerts.basicAlert(
-        'Editar contrato',
-        'Por favor, seleccione un contrato para editar.',
-        'warning'
-      );
-      return;
-    }
-
-    this.isEditing = true;
-    this.populateForm(this.selectedRowData);
-    this.openModal();
-  }
-
-  populateForm(data: Icontract) {
-    this.addContract.patchValue({
-      id: data.id,
-      numberContract: data.numberContract,
-      description: data.description,
-      descripSmall: data.descripSmall,
-      resident: data.resident,
-      supervisor: data.supervisor,
-      amountMx: data.amountMx,
-      amountDll: data.amountDll,
-      speciality: data.speciality,
-      idProvider: data.idProvider,
-      dateStar: this.formatDateForInput(data.dateStar),
-      dateEnd: this.formatDateForInput(data.dateEnd),
-      stateContract: data.stateContract,
-      term: data.term,
-      idBranch: data.idBranch,
-      consecutive: data.consecutive
-    });
-  }
-
-  formatDateForInput(dateString: string | null): string {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
-  }
-
-  openModal() {
-    // Abrir el modal independientemente de si hay proveedores
-    const modalOptions: NgbModalOptions = {
-      size: 'xl',
-      centered: true
+    const newItem: any = {
+      id: tempId,
+      idBranch: this.idBranch > 0 ? this.idBranch : null,
+      numberContract: '',
+      project: '',
+      description: '',
+      descripSmall: '',
+      resident: '',
+      supervisor: '',
+      amountMx: 0,
+      amountDll: 0,
+      speciality: 'CIVIL',
+      idProvider: null,
+      dateStar: today.toISOString().split('T')[0],
+      dateEnd: nextMonth.toISOString().split('T')[0],
+      stateContract: 'ACTIVO',
+      term: 30,
+      consecutive: 0,
+      active: 1,
+      __isNew: true,
     };
-    
-    // Intentar cargar proveedores
-    this.providersService.getProviders(this.idRoot).subscribe({
-      next: (resp) => {
-        this.providers = resp;
-      },
-      error: (error) => {
-        console.error('Error fetching providers', error);
-        this.providers = []; // Lista vacía si no hay proveedores
-        // Opcional: mostrar alerta informativa
-        alerts.basicAlert(
-          'Proveedores',
-          'No se pudieron cargar los proveedores. Podrá continuar pero deberá seleccionar un contratista manualmente.',
-          'warning'
-        );
-      }
-    });
-    
-    // Abrir el modal siempre
-    this.modalService.open(this.content, modalOptions);
+
+    this.contract = [newItem, ...this.contract];
+    this.newlyAddedRows.push(tempId);
+    this.notSavedChanges = true;
+
+    // Encontrar el índice de la nueva fila y abrir en modo edición
+    setTimeout(() => {
+      const newRowIndex = 0;
+      this.gridApi.setFocusedCell(newRowIndex, 'numberContract');
+      this.gridApi.startEditingCell({
+        rowIndex: newRowIndex,
+        colKey: 'numberContract',
+      });
+    }, 50);
   }
 
-  deleteContract() {
+  async saveChanges() {
+    const isValid = this.contract.every((item) =>
+      item.numberContract && item.description
+    );
+
+    if (!isValid) {
+      alerts.basicAlert(
+        'Validación',
+        'Debe llenar los campos obligatorios (Contrato y Descripción) antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const newRows = this.contract.filter((row) => row.__isNew);
+    const modifiedRows = this.contract.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const addObservables = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log('Guardando nuevo contrato:', cleanedData);
+      return this.followprojectsService.addContract(cleanedData);
+    });
+
+    const updateObservables = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      console.log('Actualizando contrato:', cleanedData);
+      return this.followprojectsService.updateContract(row.id, cleanedData);
+    });
+
+    try {
+      await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
+
+      alerts.basicAlert(
+        'Datos actualizados',
+        'Se han guardado los contratos correctamente.',
+        'success'
+      );
+
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      await this.getContracts();
+
+    } catch (error) {
+      console.error('Error guardando contratos:', error);
+      alerts.basicAlert(
+        'Error',
+        'Ocurrió un error al guardar los contratos.',
+        'error'
+      );
+    }
+  }
+
+  private cleanDataForServer(data: any): any {
+    const cleanedData = { ...data };
+    delete cleanedData.__isNew;
+    delete cleanedData.__modified;
+    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
+      delete cleanedData.id;
+    }
+    return cleanedData;
+  }
+
+  async deleteContract() {
     if (!this.selectedRowData) {
       alerts.basicAlert(
         'Eliminar contrato',
         'Por favor, seleccione un contrato para eliminar.',
         'warning'
       );
+      return;
+    }
+
+    // Check if the contract has associated projects
+    const projectCount = parseInt(this.selectedRowData.project) || 0;
+    if (projectCount > 0) {
+      alerts.basicAlert(
+        'No se puede eliminar',
+        `Este contrato tiene ${projectCount} proyecto(s) asociado(s). Debe eliminar primero los proyectos antes de poder eliminar el contrato.`,
+        'error'
+      );
+      return;
+    }
+
+    // Confirmar antes de eliminar
+    const confirmResult = await alerts.confirmAlert(
+      '¿Esta seguro?',
+      `¿Desea eliminar el contrato "${this.selectedRowData.numberContract || this.selectedRowData.description || 'seleccionado'}"? Esta accion no se puede deshacer.`,
+      'warning',
+      'Si, eliminar'
+    );
+
+    if (!confirmResult.isConfirmed) {
       return;
     }
 
@@ -489,141 +761,25 @@ export class ContractsComponent {
     });
   }
 
-  onSubmit() {
-    if (this.addContract.valid) {
-      this.calculateTerm();
-      this.formData = this.prepareFormData();
-
-      if (this.isEditing && this.selectedRowData) {
-        console.log('🔄 UPDATING CONTRACT');
-        console.log('📋 Contract ID:', this.selectedRowData.id);
-        console.log('📦 Data being sent to UPDATE endpoint:', this.formData);
-        console.log('🔗 Full object structure:', JSON.stringify(this.formData, null, 2));
-        this.followprojectsService.updateContract(this.selectedRowData.id, this.formData).pipe(
-          catchError((error) => {
-            alerts.basicAlert(
-              'Actualizar contrato',
-              'Hubo un error al intentar actualizar la información.',
-              'error'
-            );
-            console.error('Error updating contract:', error);
-            return EMPTY;
-          })
-        ).subscribe(() => {
-          alerts.basicAlert(
-            'Actualizar contrato',
-            'Contrato actualizado exitosamente.',
-            'success'
-          );
-          this.getContracts();
-          this.modalService.dismissAll();
-          this.resetForm();
-        });
-      } else {
-        console.log('➕ ADDING NEW CONTRACT');
-        console.log('📦 Data being sent to ADD endpoint:', this.formData);
-        console.log('🔗 Full object structure:', JSON.stringify(this.formData, null, 2));
-        this.followprojectsService.addContract(this.formData).pipe(
-          catchError((error) => {
-            alerts.basicAlert(
-              'Añadir contrato',
-              'Hubo un error al intentar guardar la información.',
-              'error'
-            );
-            console.error('Error adding contract:', error);
-            return EMPTY;
-          })
-        ).subscribe(() => {
-          alerts.basicAlert(
-            'Añadir contrato',
-            'Contrato añadido exitosamente.',
-            'success'
-          );
-          this.getContracts();
-          this.modalService.dismissAll();
-          this.resetForm();
-        });
-      }
-    } else {
-      alerts.basicAlert(
-        this.isEditing ? 'Actualizar contrato' : 'Añadir contrato',
-        'Debe completar todos los campos correctamente.',
-        'error'
-      );
-    }
-  }
-
-  prepareFormData(): any {
-    const formValue = this.addContract.value;
-    console.log('🛠️ PREPARING FORM DATA');
-    console.log('📝 Raw form values:', formValue);
-    
-    const preparedData = {
-      ...formValue,
-      dateStar: this.formatDateForBackend(formValue.dateStar),
-      dateEnd: this.formatDateForBackend(formValue.dateEnd),
-      stateContract: formValue.stateContract
-    };
-    
-    console.log('✅ Prepared data for API:', preparedData);
-    return preparedData;
-  }
-
-
-  formatDateForBackend(dateString: string): string {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
-  }
-
-  calculateTerm() {
-    const dateStar = this.addContract.get('dateStar')?.value;
-    const dateEnd = this.addContract.get('dateEnd')?.value;
-    if (dateStar && dateEnd) {
-      this.addContract.get('term')?.setValue(this.getTermInDays(dateStar, dateEnd));
-    }
-  }
-
   getTermInDays(dateStar: string, dateEnd: string): number {
     const start = new Date(dateStar);
     const end = new Date(dateEnd);
     return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  resetForm() {
-    this.initForm();
-    this.isEditing = false;
-    this.selectedRowData = null;
-  }
-
   revertChanges() {
-    // Recargar los contratos desde el servidor
     this.getContracts();
-
-    // Limpiar la selección actual
     this.selectedRowData = null;
+    this.notSavedChanges = false;
+    this.newlyAddedRows = [];
 
-    // Limpiar filtros del grid si existe
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     }
 
-    // Cerrar la pestaña de detalles si está abierta
     if (this.showDetailsTab) {
       this.resetGridSize();
-    }
-
-    alerts.basicAlert(
-      'Cambios Revertidos',
-      'Los datos han sido recargados desde el servidor',
-      'success'
-    );
-  }
-
-  saveChanges() {
-    if (this.contractDetails) {
-      this.contractDetails.saveMasterChanges();
     }
   }
 
