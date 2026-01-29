@@ -14,10 +14,13 @@ const ROOT_DIR = path.join(__dirname, '..');
 const HOOKS_DIR = path.join(ROOT_DIR, '.git', 'hooks');
 const ENV_DIR = path.join(ROOT_DIR, 'src', 'environments');
 
-// Contenido del hook post-checkout
-const POST_CHECKOUT_HOOK = `#!/bin/bash
-# Git hook post-checkout: Cambia automáticamente el environment según la rama
+// Contenido del hook (usado para post-checkout y post-merge)
+// post-checkout: Se ejecuta con git checkout / git switch
+// post-merge: Se ejecuta con git pull
+const HOOK_CONTENT = `#!/bin/bash
+# Git hook: Cambia automáticamente el environment según la rama
 # Generado por: npm run setup-hooks
+# Funciona con: git checkout, git switch, git pull
 
 # Obtener la rama actual
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -57,6 +60,9 @@ else
 fi
 `;
 
+// Lista de hooks a instalar
+const HOOKS_TO_INSTALL = ['post-checkout', 'post-merge'];
+
 // Colores para la consola
 const colors = {
   reset: '\x1b[0m',
@@ -75,9 +81,10 @@ function main() {
 
   // 1. Verificar que estamos en un repositorio Git
   if (!fs.existsSync(path.join(ROOT_DIR, '.git'))) {
-    log('❌ Error: No se encontró el directorio .git', 'red');
-    log('   Asegúrate de estar en la raíz del proyecto.', 'yellow');
-    process.exit(1);
+    log('ℹ️  No se encontró directorio .git', 'yellow');
+    log('   Esto es normal en Docker o CI/CD.', 'yellow');
+    log('   El environment se configura via ARG en Dockerfile.\n', 'yellow');
+    process.exit(0); // Salir sin error
   }
 
   // 2. Crear directorio de hooks si no existe
@@ -86,22 +93,24 @@ function main() {
     log('📁 Directorio de hooks creado', 'green');
   }
 
-  // 3. Crear el hook post-checkout
-  const hookPath = path.join(HOOKS_DIR, 'post-checkout');
+  // 3. Crear los hooks (post-checkout y post-merge)
+  HOOKS_TO_INSTALL.forEach(hookName => {
+    const hookPath = path.join(HOOKS_DIR, hookName);
 
-  // Escribir con saltos de línea Unix (LF) para compatibilidad
-  fs.writeFileSync(hookPath, POST_CHECKOUT_HOOK.replace(/\r\n/g, '\n'), { mode: 0o755 });
-  log('✅ Hook post-checkout instalado', 'green');
+    // Escribir con saltos de línea Unix (LF) para compatibilidad
+    fs.writeFileSync(hookPath, HOOK_CONTENT.replace(/\r\n/g, '\n'), { mode: 0o755 });
+    log(`✅ Hook ${hookName} instalado`, 'green');
 
-  // 4. En sistemas Unix, asegurar permisos de ejecución
-  if (os.platform() !== 'win32') {
-    try {
-      fs.chmodSync(hookPath, 0o755);
-      log('✅ Permisos de ejecución configurados', 'green');
-    } catch (err) {
-      log('⚠️  No se pudieron configurar permisos (puede requerir sudo)', 'yellow');
+    // En sistemas Unix, asegurar permisos de ejecución
+    if (os.platform() !== 'win32') {
+      try {
+        fs.chmodSync(hookPath, 0o755);
+      } catch (err) {
+        log(`⚠️  No se pudieron configurar permisos para ${hookName}`, 'yellow');
+      }
     }
-  }
+  });
+  log('✅ Permisos de ejecución configurados', 'green');
 
   // 5. Verificar archivos de environment
   const envFiles = ['environment.production.ts', 'environment.development.ts'];
@@ -156,7 +165,10 @@ function main() {
   }
 
   log('\n🎉 Configuración completada!\n', 'green');
-  log('El environment se cambiará automáticamente al cambiar de rama.', 'cyan');
+  log('El environment se cambiará automáticamente con:', 'cyan');
+  log('  - git checkout / git switch (post-checkout hook)', 'reset');
+  log('  - git pull (post-merge hook)\n', 'reset');
+  log('Mapeo de ramas:', 'cyan');
   log('  - main/master  → environment.production.ts (PRODUCCIÓN)', 'reset');
   log('  - develop/*    → environment.development.ts (DESARROLLO)\n', 'reset');
 }

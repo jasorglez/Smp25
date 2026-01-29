@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Lee ENVIRONMENT del .env o shell, default: production
+        ENVIRONMENT: ${ENVIRONMENT:-production}
     image: smp25-frontend:latest
     container_name: Smp25-Frontend
     restart: unless-stopped
