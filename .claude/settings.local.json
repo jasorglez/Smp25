@@ -35,7 +35,8 @@
       "Bash(tasklist:*)",
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
-      "Bash(npx ng serve --port 4200)"
+      "Bash(npx ng serve --port 4200)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

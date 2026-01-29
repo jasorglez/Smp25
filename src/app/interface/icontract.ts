@@ -1,6 +1,7 @@
 export interface Icontract {
   id: number;
   numberContract: string;
+  project       : string | null;
   description   : string;
   descripSmall  : string;
   idContrato     : number;
@@ -18,4 +19,6 @@ export interface Icontract {
   active        : number;
   stateContract : string | null;
   consecutive   : number;
+  __isNew?      : boolean;
+  __modified?   : boolean;
 }

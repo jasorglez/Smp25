@@ -18,6 +18,10 @@ export class FollowprojectsService {
     return this.http.get<Icontract>(`${environment.urlSmp}/Contract?idBranch=${contract}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getContractsByRoot(idRoot: number): Observable<Icontract[]> {
+    return this.http.get<Icontract[]>(`${environment.urlSmp}/Contract/byRoot/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getContractById(id: number): Observable<any> {
     return this.http.get<Icontract>(`${environment.urlSmp}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
   }

@@ -1031,9 +1031,13 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
       return firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), payload));
     });
 
+    // Capturar datos antes de limpiar flags
+    const newItemsData = newItems.map(item => ({ ...item }));
+    const modifiedItemsData = modifiedItems.map(item => ({ ...item }));
+
     // Ejecutar todas las promesas
     Promise.all([...newItemsPromises, ...modifiedItemsPromises])
-      .then(() => {
+      .then(async () => {
         // Marcar todos los items como guardados
         this.rowData.forEach(item => {
           if (item.__isNew || item.__modified) {
@@ -1048,6 +1052,10 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         this.gridApi.redrawRows();
 
         const totalSaved = newItems.length + modifiedItems.length;
+
+        // Propagar cambios a todos los pedimentos existentes
+        await this.propagateChangesToPedimentos(newItemsData, modifiedItemsData);
+
         alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} artículo(s) exitosamente.`, 'success');
 
         // Recargar datos desde el servidor
@@ -1394,6 +1402,146 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
     this.hasRowSelected = selectedRows.length > 0;
   }
 
+
+  // ==================== PROPAGACIÓN A PEDIMENTOS ====================
+
+  /**
+   * Propaga cambios (nuevos productos y observaciones modificadas) a todos los pedimentos
+   * existentes de esta requisición.
+   */
+  private async propagateChangesToPedimentos(newItems: any[], modifiedItems: any[]) {
+    if (newItems.length === 0 && modifiedItems.length === 0) return;
+
+    try {
+      // 1. Obtener todas las cotizaciones (pedimentos) de esta requisición
+      const cotizaciones: any = await firstValueFrom(
+        this.ocAndReqsService.getOcAndReqs('requisition', this.requisitionId, 'COTIZ')
+      );
+
+      if (!Array.isArray(cotizaciones) || cotizaciones.length === 0) {
+        console.log('📋 No hay pedimentos existentes para propagar cambios');
+        return;
+      }
+
+      console.log(`🔄 Propagando cambios a ${cotizaciones.length} pedimento(s)...`);
+      console.log(`   Nuevos items: ${newItems.length}, Modificados: ${modifiedItems.length}`);
+
+      // 2. Para cada cotización, propagar cambios
+      for (const cotizacion of cotizaciones) {
+        const cotizacionId = cotizacion.id;
+
+        // Obtener items existentes de esta cotización
+        const cotizItemsRaw: any = await firstValueFrom(
+          this.ocAndReqsService.getReqItems(cotizacionId)
+        );
+        const cotizItems = Array.isArray(cotizItemsRaw) ? cotizItemsRaw : [];
+
+        // 3. Agregar nuevos items (como contexto, pedimento: false)
+        for (const newItem of newItems) {
+          const idSupplie = newItem.idSupplie || newItem.materialId || 0;
+          const nameArticle = newItem.nameArticle || newItem.article || '';
+
+          // Verificar si ya existe en la cotización para evitar duplicados
+          const alreadyExists = cotizItems.some((ci: any) => {
+            if (idSupplie > 0) return ci.idSupplie === idSupplie;
+            return ci.nameArticle === nameArticle && ci.idSupplie === 0;
+          });
+
+          if (alreadyExists) {
+            console.log(`   ⏭️ Item "${nameArticle}" ya existe en cotización ${cotizacionId}, omitiendo`);
+            continue;
+          }
+
+          const payload = {
+            idMovement: cotizacionId,
+            idSupplie: idSupplie,
+            description: newItem.description || newItem.article || '',
+            nameArticle: nameArticle,
+            code: newItem.code || '',
+            intorext: newItem.intorext || 'Externo',
+            measure: newItem.measure || '',
+            quantity: newItem.quantity || 0,
+            price: newItem.price || 0,
+            total: newItem.total || 0,
+            type: 'COTIZ',
+            idProvider: newItem.idProvider || 0,
+            comment: newItem.comment || '',
+            dateuse: newItem.dateuse || new Date().toISOString(),
+            active: true,
+            recurrent: newItem.recurrent || 'Recurrente',
+            numArticle: newItem.numArticle || '',
+            provint: newItem.provint || '',
+            typePriority: newItem.typePriority || 'Normal',
+            pedimento: false, // Nuevo item = contexto en pedimentos existentes
+            descriptionNewArticle: newItem.descriptionNewArticle || '',
+            urlNewArticle: newItem.urlNewArticle || '',
+            justificationNewArticle: newItem.justificationNewArticle || ''
+          };
+
+          await firstValueFrom(this.ocAndReqsService.addReqItem(payload));
+          console.log(`   ✅ Nuevo item "${nameArticle}" agregado a cotización ${cotizacionId}`);
+        }
+
+        // 4. Actualizar observaciones de items modificados
+        for (const modItem of modifiedItems) {
+          const idSupplie = modItem.idSupplie || modItem.materialId || 0;
+          const nameArticle = modItem.nameArticle || modItem.article || '';
+
+          // Buscar el item correspondiente en la cotización
+          const matchingItem = cotizItems.find((ci: any) => {
+            if (idSupplie > 0) return ci.idSupplie === idSupplie;
+            return ci.nameArticle === nameArticle && ci.idSupplie === 0;
+          });
+
+          if (!matchingItem) {
+            console.log(`   ⚠️ No se encontró item "${nameArticle}" en cotización ${cotizacionId}`);
+            continue;
+          }
+
+          // Solo actualizar si el comentario cambió
+          if (matchingItem.comment === (modItem.comment || '')) continue;
+
+          const updatePayload = {
+            id: matchingItem.id,
+            idMovement: cotizacionId,
+            idSupplie: matchingItem.idSupplie,
+            description: matchingItem.description,
+            nameArticle: matchingItem.nameArticle,
+            code: matchingItem.code || '',
+            intorext: matchingItem.intorext || 'Externo',
+            measure: matchingItem.measure || '',
+            quantity: matchingItem.quantity || 0,
+            price: matchingItem.price || 0,
+            total: matchingItem.total || 0,
+            type: matchingItem.type || 'COTIZ',
+            idProvider: matchingItem.idProvider || 0,
+            comment: modItem.comment || '', // Observación actualizada
+            dateuse: matchingItem.dateuse || new Date().toISOString(),
+            active: matchingItem.active !== undefined ? matchingItem.active : true,
+            recurrent: matchingItem.recurrent || 'Recurrente',
+            numArticle: matchingItem.numArticle || '',
+            provint: matchingItem.provint || '',
+            typePriority: matchingItem.typePriority || 'Normal',
+            pedimento: matchingItem.pedimento || false,
+            descriptionNewArticle: matchingItem.descriptionNewArticle || '',
+            urlNewArticle: matchingItem.urlNewArticle || '',
+            justificationNewArticle: matchingItem.justificationNewArticle || ''
+          };
+
+          await firstValueFrom(
+            this.ocAndReqsService.updateReqItem(matchingItem.id.toString(), updatePayload)
+          );
+          console.log(`   ✅ Observaciones de "${nameArticle}" actualizadas en cotización ${cotizacionId}`);
+        }
+      }
+
+      console.log('✅ Propagación a pedimentos completada');
+
+    } catch (error) {
+      console.error('❌ Error al propagar cambios a pedimentos:', error);
+      // No lanzar error para no bloquear el guardado principal
+    }
+  }
 
   // ==================== PDF METHODS ====================
 
