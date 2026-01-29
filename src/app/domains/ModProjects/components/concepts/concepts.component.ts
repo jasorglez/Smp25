@@ -99,7 +99,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
       },
       {
         field: 'description',
-        headerName: 'Descripción',
+        headerName: 'Descripcion',
         editable: false,
         filter: true,
         flex: 2,
@@ -138,7 +138,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
       },
       {
         field: 'internalTeamValue',
-        headerName: 'Costo de Cuadrilla Interna',
+        headerName: 'Cuadrilla Int.',
         editable: (params) => {
           return params.data.internalTeamValue !== null && params.data.internalTeamValue !== undefined;
         },
@@ -169,7 +169,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
       },
       {
         field: 'externalTeamValue',
-        headerName: 'Costo de Cuadrilla Externa',
+        headerName: 'Cuadrilla Ext.',
         editable: (params) => {
           return params.data.externalTeamValue !== null && params.data.externalTeamValue !== undefined;
         },
@@ -201,9 +201,16 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
     ];
   }
 
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    minWidth: 100
+  };
+
   public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 25,
+    headerHeight: 25,
+    rowHeight: 20,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -222,10 +229,26 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
         });
       }
     },
+    onFirstDataRendered: (params: any) => {
+      const allColumnIds: string[] = [];
+      params.api.getColumns()?.forEach((column: any) => {
+        allColumnIds.push(column.getId());
+      });
+      params.api.autoSizeColumns(allColumnIds, false);
+    }
   };
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
+  }
+
+  autoSizeAllColumns(): void {
+    if (!this.gridApi) return;
+    const allColumnIds: string[] = [];
+    this.gridApi.getColumns()?.forEach((column: any) => {
+      allColumnIds.push(column.getId());
+    });
+    this.gridApi.autoSizeColumns(allColumnIds, false);
   }
 
   onCellValueChanged(event: any): void {
