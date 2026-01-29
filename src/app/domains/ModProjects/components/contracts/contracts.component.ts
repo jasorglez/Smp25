@@ -89,7 +89,7 @@ export class ContractsComponent {
     masterDetail: true,
     isRowMaster: (dataItem) => true,
     detailCellRenderer: 'detailCellRendererProyectos',
-    detailRowHeight: 350,
+    detailRowHeight: 600,
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -213,6 +213,17 @@ export class ContractsComponent {
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
   colMaster: ColDef[] = [
+    {
+      headerName: '#',
+      valueGetter: 'node.rowIndex + 1',
+      minWidth: 50,
+      maxWidth: 60,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      editable: false,
+      cellStyle: { textAlign: 'center', fontWeight: 'bold' }
+    },
     {
       field: 'id',
       headerName: 'ID',
