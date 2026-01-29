@@ -127,11 +127,8 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
       };
     });
 
-    // Filtrar: solo mostrar items de tipo Interno (ocultar Externo)
-    const filteredItems = mappedItems.filter((item: any) => item.tipo !== 'Externo');
-
     // Ordenar: items solicitados (pedimento: true) primero
-    this.rowData = filteredItems.sort((a: any, b: any) => {
+    this.rowData = mappedItems.sort((a: any, b: any) => {
       if (a.pedimento === b.pedimento) return 0;
       return a.pedimento ? -1 : 1;
     });
