@@ -14,7 +14,7 @@ import { ContractDetailsComponent } from './contract-details/contract-details.co
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { ProvidersService } from 'app/services/providers.service';
-import { DetailCellRendererProyectosComponent } from './details/detail-cell-renderer-proyectos.component';
+import { DetailCellRendererProyectosComponent } from './details/detalles-proyectos.component';
 import { ProjectsService } from 'app/services/projects.service';
 
 @Component({
