@@ -259,6 +259,18 @@
         </a>
       </li>
 
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')">
+       <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/projects']"
+          routerLinkActive="active-link"
+          (click)="SmpSetup()"
+          [matTooltip]="isSidebarCollapsed ? ('projects' | translate) : ''"
+          matTooltipPosition="right"    >
+          <mat-icon>grading</mat-icon> <span>{{ "projects" | translate }}</span>
+       </a>
+      </li>
+
       <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')">
 <a
           class="nav-link d-flex align-items-center"
@@ -271,20 +283,7 @@
           <mat-icon>settings</mat-icon> <span>{{ "setup" | translate }}</span>
         </a>
       </li>
-
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')">
-<a
-          class="nav-link d-flex align-items-center"
-          [routerLink]="['/projects']"
-          routerLinkActive="active-link"
-          (click)="SmpSetup()"
-          [matTooltip]="isSidebarCollapsed ? ('projects' | translate) : ''"
-          matTooltipPosition="right"
-        >
-          <mat-icon>grading</mat-icon> <span>{{ "projects" | translate }}</span>
-        </a>
-      </li>
-
+      
       <li class="nav-item">
 <a
           class="nav-link d-flex align-items-center"
