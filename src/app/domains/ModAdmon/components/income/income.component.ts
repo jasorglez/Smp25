@@ -428,6 +428,18 @@ export class IncomeComponent {
           return foundProject ? foundProject.name : params.value;
         }
       },
+      {
+        field: 'paymentMonth',
+        headerName: 'Mes',
+        editable: true,
+        width: 110,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        }
+      },
+      { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
       { field: 'numberDocument', headerName: '# Factura', editable: false, filter: true, width: 130 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
@@ -546,10 +558,14 @@ export class IncomeComponent {
 
       {
         field: 'uuid',
-        headerName: 'UUID',
-        editable: false,
-        width: 150,
+        headerName: 'Num Factura/UUID',
+        editable: true,
+        width: 180,
         filter: true,
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 36
+        },
         valueFormatter: (params) => {
           if (!params.value || params.value === 'NA') return 'Sin Timbrar';
           return params.value.substring(0, 15) + '...';
@@ -650,6 +666,8 @@ onSelectionChanged(event: any) {
       idBusinnes     : this.root,
       idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
       idProject      : null,          // Proyecto
+      paymentMonth   : '',            // Mes de pago
+      oc             : '',            // Orden de Compra
       date           : new Date().toISOString(),
       idCustomer     : 0,
       idExpend       : 0,

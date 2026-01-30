@@ -318,7 +318,7 @@ export class ConceptsexpenditureComponent {
   
       // ✅ CORRECCIÓN: UN SOLO COMBO que cambia dinámicamente
       {
-            headerName: 'Empleado/Proveedor/Cuenta',
+            headerName: 'Empleado/Proveedor/Cuenta3',
             field: 'selectedEntity',
             width: 250,
             editable: params => params.data.typeExpense,
