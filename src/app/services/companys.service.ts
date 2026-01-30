@@ -4,7 +4,7 @@ import {
   HttpErrorResponse,
   HttpHeaders,
 } from '@angular/common/http';
-import { environment } from '@env/environment';
+import { environment } from '../../environments/environment';
 import { Icompany } from '../interface/icompany';
 
 import { TrackingService } from './tracking.service';

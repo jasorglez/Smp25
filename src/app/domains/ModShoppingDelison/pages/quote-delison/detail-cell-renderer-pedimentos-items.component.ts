@@ -8,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
-  selector: 'app-detalles-pedimentos-items',
+  selector: 'app-detail-cell-renderer-pedimentos-items',
   standalone: true,
   imports: [CommonModule, AgGridModule],
   template: `
@@ -45,9 +45,26 @@ import { alerts } from 'app/helpers/alerts';
       </div>
     </div>
   `,
-styleUrl: './detalles-pedimentos-items.component.css'
+  styles: [`
+    .detail-grid-container {
+      padding: 5px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      height: 100%;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .btn-xs {
+      padding: 0.15rem 0.4rem;
+      font-size: 0.75rem;
+      line-height: 1.3;
+    }
+  `]
 })
-export class DetallesPedimentosItemsComponent implements ICellRendererAngularComp {
+export class DetailCellRendererPedimentosItemsComponent implements ICellRendererAngularComp {
   private params!: ICellRendererParams;
   private context: any;
   private gridApi!: GridApi;
@@ -86,6 +103,7 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
 
   buildRowData() {
     const articulos = this.params.data.articulos || [];
+    console.log('📋 buildRowData - articulos recibidos:', articulos);
 
     // Mapear todos los items
     const mappedItems = articulos.map((item: any, index: number) => {
@@ -109,8 +127,11 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
       };
     });
 
+    // Filtrar: solo mostrar items de tipo Interno (ocultar Externo)
+    const filteredItems = mappedItems.filter((item: any) => item.tipo !== 'Externo');
+
     // Ordenar: items solicitados (pedimento: true) primero
-    this.rowData = mappedItems.sort((a: any, b: any) => {
+    this.rowData = filteredItems.sort((a: any, b: any) => {
       if (a.pedimento === b.pedimento) return 0;
       return a.pedimento ? -1 : 1;
     });

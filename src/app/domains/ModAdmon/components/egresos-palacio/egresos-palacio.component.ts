@@ -137,7 +137,7 @@ export class EgresosPalacioComponent {
 
   constructor() {
     effect(async () => {
-      
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.invited = this.signalsService.getInvited()();
       if (!this.idRoot) return;

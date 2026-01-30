@@ -44,11 +44,8 @@ export class RequisitionsMainComponent {
     private modalServiceTable = inject(ModalService);
     private receiptsService = inject(ReceiptsService);
 
-  idRoot: number;
-
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
       if (this.idProject == null) {
         this.rowData = [];
@@ -223,13 +220,13 @@ public gridOptions: any = {
   };
 
   obtenerDatos() {
-    this.requisitionsService.getOcAndReqs("PROJECT", this.idProject, "REQUIS").subscribe((data: any) => {
+    this.requisitionsService.getOcAndReqs(this.idProject, "REQUIS").subscribe((data: any) => {
       this.rowData = data;
     });
   }
 
   obtenerDepartamentos() {
-    this.departmentsService.getDepartments(this.idRoot).subscribe(
+    this.departmentsService.getDepartments().subscribe(
       (data: Provider[]) => {
         this.departamentos = data;
       },
@@ -247,7 +244,7 @@ public gridOptions: any = {
   }
 
   obtenerMonedas() {
-    this.currencyService.getCurrencies(this.idRoot).subscribe(
+    this.currencyService.getCurrencies().subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
       },

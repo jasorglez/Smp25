@@ -95,7 +95,7 @@ export class OrdenesComponent {
   }
 
   obtenerDatos() {
-    this.otService.getOtListByProject(this.idProject, false).subscribe({
+    this.otService.getOtListByProject(this.idProject).subscribe({
       next: (data: any) => {
         console.log('Datos obtenidos del servicio OT:', data);
         this.rowData = data;

@@ -12,7 +12,7 @@ import {
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
 import { BehaviorSubject, catchError, firstValueFrom, map, Observable, throwError } from 'rxjs';
-import { environment } from '@env/environment';
+import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
 import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
