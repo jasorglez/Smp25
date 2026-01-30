@@ -96,8 +96,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1,
+    enableRowGroup: true,
+    minWidth: 80,
+    autoHeight: false,
   };
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -160,6 +161,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     headerHeight: 25,
     rowHeight: 20,
     rowBuffer: 20,
+    autoSizeStrategy: {
+      type: 'fitCellContents',
+      skipHeader: false,
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -205,20 +210,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
-
-      // Obtener todas las columnas
+      // Autoajustar todas las columnas al contenido
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
         allColumnIds.push(column.getId());
       });
-
-      console.log('Columns to autosize:', allColumnIds);
-
-      // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, true);
-
-      console.log('Autosize completed');
+      params.api.autoSizeColumns(allColumnIds, false);
     }
   };
   
@@ -662,8 +659,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           defaultToNothingSelected: true,
           //excelMode: 'mac',
         },
-        filter: true, // Opcional: Ocultar el botón de filtro si no es para el usuario
-        flex: 0,
+        filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           // Ensure catalogPosiciones data is available when creating editor
@@ -1722,8 +1718,13 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
 
-          // Dar tiempo al grid para actualizar los datos
+          // Dar tiempo al grid para actualizar los datos y autoajustar columnas
           setTimeout(() => {
+            const allColumnIds: string[] = [];
+            this.gridApi.getColumns()?.forEach((column: any) => {
+              allColumnIds.push(column.getId());
+            });
+            this.gridApi.autoSizeColumns(allColumnIds, false);
             resolve(true);
           }, 100);
         },

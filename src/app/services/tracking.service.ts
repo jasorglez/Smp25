@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { environment } from '../../environments/environment';
+import { environment } from '@env/environment';
 import { BehaviorSubject, map } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
