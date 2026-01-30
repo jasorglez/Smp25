@@ -8,17 +8,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --legacy-peer-deps --ignore-scripts
+# Install dependencies (build reproducible)
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
-<<<<<<< HEAD
-# Build Angular app (Angular maneja environments)
-=======
 # Build Angular app for production
->>>>>>> d95d4462c8c05940382bd197cbe0d02752f36f25
 RUN npm run build --configuration=production
 
 # ============================================
