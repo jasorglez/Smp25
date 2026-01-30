@@ -40,5 +40,5 @@ export const environment = {
   deleteFiles: 'http://localhost/sistemas-angular/marketplace/src/assets/img/delete.php?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.03-dev (29 Enero 2026 08:27) - Metamorphosis',
+  version: '4.09-dev (29 Enero 2026 09:47) - Metamorphosis',
 };
