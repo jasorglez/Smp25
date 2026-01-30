@@ -2,7 +2,6 @@
 # Stage 1: Build Angular App
 # ============================================
 FROM node:22-alpine AS build
-
 # ARG para seleccionar environment: production | development
 # Default: production (para main/master)
 # Usar: docker build --build-arg ENVIRONMENT=development .
