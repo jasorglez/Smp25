@@ -104,6 +104,64 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         allColumnIds.push(column.getId());
       });
       params.api.autoSizeColumns(allColumnIds, false);
+    },
+    // Enter key navigation - move to next cell like Tab
+    tabToNextCell: (params) => {
+      const previousCell = params.previousCellPosition;
+      const nextCell = params.nextCellPosition;
+
+      // If backwards (Shift+Tab), use default behavior
+      if (params.backwards) {
+        return nextCell;
+      }
+
+      // Return the next cell position
+      return nextCell;
+    },
+    onCellKeyDown: (event) => {
+      const keyboardEvent = event.event as KeyboardEvent;
+      if (keyboardEvent.key === 'Enter' && !keyboardEvent.shiftKey) {
+        // Stop the default Enter behavior
+        keyboardEvent.preventDefault();
+
+        const api = event.api;
+        const currentColumn = event.column;
+        const currentRowIndex = event.rowIndex;
+
+        // Get all visible columns
+        const allColumns = api.getColumns();
+        const editableColumns = allColumns.filter(col => {
+          const colDef = col.getColDef();
+          return colDef.editable === true;
+        });
+
+        // Find current column index in editable columns
+        const currentColIndex = editableColumns.findIndex(col => col.getColId() === currentColumn.getColId());
+
+        // Move to next editable column
+        if (currentColIndex < editableColumns.length - 1) {
+          // Move to next column in same row
+          setTimeout(() => {
+            api.startEditingCell({
+              rowIndex: currentRowIndex,
+              colKey: editableColumns[currentColIndex + 1].getColId()
+            });
+          }, 50);
+        } else {
+          // Last column - move to first editable column of next row
+          const nextRowIndex = currentRowIndex + 1;
+          const rowCount = api.getDisplayedRowCount();
+
+          if (nextRowIndex < rowCount && editableColumns.length > 0) {
+            setTimeout(() => {
+              api.startEditingCell({
+                rowIndex: nextRowIndex,
+                colKey: editableColumns[0].getColId()
+              });
+            }, 50);
+          }
+        }
+      }
     }
   };
 

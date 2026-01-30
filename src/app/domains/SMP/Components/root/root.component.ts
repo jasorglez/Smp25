@@ -132,7 +132,7 @@ public gridOptions: any = {
       },
       {
         field: 'name',
-        headerName: 'Nombre',
+        headerName: 'Nombre2',
         editable: true,
         flex: 2,
         cellEditor: 'autocompleteEditor',

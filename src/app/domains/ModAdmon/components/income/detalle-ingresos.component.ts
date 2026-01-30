@@ -20,7 +20,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
-  selector: 'app-detail-cell-renderer-concepts-income',
+  selector: 'app-detalle-ingresos',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   template: `
@@ -105,7 +105,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
     }
   `]
 })
-export class DetailCellRendererConceptsIncomeComponent implements OnInit, OnDestroy {
+export class DetalleIngresosComponent implements OnInit, OnDestroy {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -441,7 +441,7 @@ export class DetailCellRendererConceptsIncomeComponent implements OnInit, OnDest
         await lastValueFrom(this.incomesAndExpensesService.updateConceptFromIncomesAndExpenses(row.id, cleanedData));
       }
 
-      // Update main income document with new totals
+      // Update main income document with new totals and countItems
       const mainDocResponse: any[] = await lastValueFrom(
         this.incomesAndExpensesService.getIncomeAndExpenseById(incomeId)
       );
@@ -450,7 +450,8 @@ export class DetailCellRendererConceptsIncomeComponent implements OnInit, OnDest
         ...mainDoc,
         subtotal: this.subtotal,
         tax: this.iva2,
-        total: this.total
+        total: this.total,
+        countItems: this.rowData.length
       };
       await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDoc));
 
@@ -489,7 +490,30 @@ export class DetailCellRendererConceptsIncomeComponent implements OnInit, OnDest
     }
 
     this.incomesAndExpensesService.deleteConceptFromIncomesAndExpenses(id).subscribe({
-      next: () => {
+      next: async () => {
+        // Update countItems in master record
+        const incomeId = this.params.data.id;
+        const newCount = this.rowData.length - 1; // -1 because we just deleted one
+
+        try {
+          const mainDocResponse: any[] = await lastValueFrom(
+            this.incomesAndExpensesService.getIncomeAndExpenseById(incomeId)
+          );
+          const mainDoc = mainDocResponse[0];
+          const updatedDoc = {
+            ...mainDoc,
+            countItems: newCount
+          };
+          await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDoc));
+
+          // Update parent grid
+          if (this.context?.CONCEPTS?.updateCount) {
+            this.context.CONCEPTS.updateCount(incomeId, newCount);
+          }
+        } catch (error) {
+          console.error('Error updating countItems after delete:', error);
+        }
+
         alerts.basicAlert('Exito', 'Concepto eliminado.', 'success');
         this.loadConceptsData();
       },

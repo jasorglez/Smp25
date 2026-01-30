@@ -284,9 +284,9 @@ export class ContractsComponent {
         return {
           values: this.branchs
             ? this.branchs
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((item) => item.id)
+              .slice()
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((item) => item.id)
             : [],
         };
       },
@@ -507,27 +507,15 @@ export class ContractsComponent {
   }
 
   getContracts() {
-    if (this.idBranch < 0 || this.idBranch == null) {
-      this.followprojectsService.getContractsByRoot(this.idRoot).subscribe(
-        (resp: any) => {
-          this.contract = this.mapContract(resp);
-        },
-        (error) => {
-          this.contract = [];
-          console.error('Error fetching all contracts', error);
-        }
-      );
-    } else {
-      this.followprojectsService.getContract(this.idBranch).subscribe(
-        (resp: any) => {
-          this.contract = this.mapContract(resp);
-        },
-        (error) => {
-          this.contract = [];
-          console.error('Error fetching contracts', error);
-        }
-      );
-    }
+    this.followprojectsService.getContract(this.idBranch).subscribe(
+      (resp: any) => {
+        this.contract = this.mapContract(resp);
+      },
+      (error) => {
+        this.contract = [];
+        console.error('Error fetching contracts', error);
+      }
+    );
   }
 
   mapContract(data: any[]): Icontract[] {
