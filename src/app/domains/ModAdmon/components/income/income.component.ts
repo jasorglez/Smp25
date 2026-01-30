@@ -22,17 +22,18 @@ import { AuthService } from 'app/services/auth.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ButtonCellRendererIncomeComponent } from './button-cell-renderer-income.component';
 import { PdfButtonCellRendererIncomeComponent } from './pdf-button-cell-renderer-income.component';
-import { DetailCellRendererConceptsIncomeComponent } from './detail-cell-renderer-concepts-income.component';
+import { DetalleIngresosComponent } from './detalle-ingresos.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { ProjectsService } from 'app/services/projects.service';
 
 @Component({
   selector: 'app-income',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
              FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
-             PdfButtonCellRendererIncomeComponent, DetailCellRendererConceptsIncomeComponent],
+             PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -43,13 +44,14 @@ export class IncomeComponent {
   private customersService = inject(CustomersService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
-  private signalsService = inject(SignalsService);
-  private trackingService = inject(TrackingService);
+  public signalsService = inject(SignalsService);
+  public trackingService = inject(TrackingService);
   private BranchsService = inject(BranchsService);
   private facturacionService = inject(FacturacionService);
   private catalogsService = inject(CatalogsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private projectsService = inject(ProjectsService);
   authService = inject(AuthService);
 
   private isGeneratingReport: boolean = false;
@@ -80,6 +82,7 @@ export class IncomeComponent {
       await this.loadAuthorizers();
       await this.getCurrentUser();
       await this.loadSATCatalogs();  // Cargar catálogos SAT
+      await this.loadProjects();     // Cargar proyectos
 
     }, { allowSignalWrites: true });
     effect(() => {
@@ -113,6 +116,9 @@ export class IncomeComponent {
   // Catálogos SAT para facturación electrónica
   formasPago: any[] = [];
   metodosPago: any[] = [];
+
+  // Proyectos
+  projects: any[] = [];
 
   private _idAccount: number; // Variable de respaldo para el setter
 
@@ -167,7 +173,7 @@ export class IncomeComponent {
     masterDetail: true,
     detailRowHeight: 600,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererConceptsIncomeComponent,
+    detailCellRenderer: DetalleIngresosComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -345,6 +351,22 @@ export class IncomeComponent {
     });
   }
 
+  // Cargar proyectos de la compañía
+  async loadProjects() {
+    this.projectsService.getProjectListByCompany(this.root).subscribe({
+      next: (data: any) => {
+        this.projects = (data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name || p.number || 'Sin nombre'
+        }));
+      },
+      error: (err) => {
+        console.error('Error cargando proyectos:', err);
+        this.projects = [];
+      }
+    });
+  }
+
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
@@ -391,6 +413,21 @@ export class IncomeComponent {
           ]
         }
       },
+      {
+        field: 'idProject',
+        headerName: 'Proyecto',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.projects.map(p => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const foundProject = this.projects.find(p => p.id === params.value);
+          return foundProject ? foundProject.name : params.value;
+        }
+      },
       { field: 'numberDocument', headerName: '# Factura', editable: false, filter: true, width: 130 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
@@ -422,26 +459,26 @@ export class IncomeComponent {
       },
 
       {
-        field: 'dateStamped', headerName: 'Entrega', editable: true, cellDataType: 'date', width: 130,
+        field: 'dateStamped', headerName: 'Fecha Factura', editable: true, cellDataType: 'date', width: 130,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
-        field: 'date', headerName: 'Pago', editable: true, cellDataType: 'date', width: 100,
+        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 130,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
         field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: {
+        cellEditorParams: () => ({
           options: this.customers.map(obj => ({
             id: obj.id,
             description: obj.description,
             valueAddition: obj.id || '',
             valueAddition2: obj.description || ''
           }))
-        },
+        }),
         valueFormatter: (params) => {
           const foundItem = this.customers
             ? this.customers.find((item) => item.id === params.value)
@@ -481,9 +518,9 @@ export class IncomeComponent {
         editable: true,
         width: 250,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.formasPago.map(fp => fp.formaPagoValue)
-        },
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
           const found = this.formasPago.find(fp => fp.formaPagoValue === params.value);
@@ -497,9 +534,9 @@ export class IncomeComponent {
         editable: true,
         width: 280,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.metodosPago.map(mp => mp.metodoPagoValue)
-        },
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
           const found = this.metodosPago.find(mp => mp.metodoPagoValue === params.value);
@@ -532,9 +569,9 @@ export class IncomeComponent {
         editable: true,
         width: 105,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.users.map(user => user.id)
-        },
+        }),
         valueFormatter: (params) => {
           const foundUser = this.users
             ? this.users.find((user) => user.id === params.value)
@@ -612,6 +649,7 @@ onSelectionChanged(event: any) {
       numberDocument : "",
       idBusinnes     : this.root,
       idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
+      idProject      : null,          // Proyecto
       date           : new Date().toISOString(),
       idCustomer     : 0,
       idExpend       : 0,

@@ -47,7 +47,7 @@ export class ExpenditureComponent {
   private catalogsService = inject(CatalogsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private usersService = inject(UsersService);
-  private signalsService = inject(SignalsService);
+  public signalsService = inject(SignalsService);
   private branchesService = inject(BranchsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
