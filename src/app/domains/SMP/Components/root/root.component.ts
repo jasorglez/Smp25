@@ -228,7 +228,7 @@ public gridOptions: any = {
       },
       {
         field: 'name',
-        headerName: 'Nombre',
+        headerName: 'Nombre2',
         editable: true,
         minWidth: 180,
         width: 200,
