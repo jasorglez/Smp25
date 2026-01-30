@@ -127,7 +127,13 @@ error: (error) => {
     if (this.selectedRoot) {
       // Limpiar selects de contracts y projects cuando cambia root
       this.clearContractsAndProjects();
-      
+
+      // Obtener el nameSmall de la empresa seleccionada
+      const selectedCompany = this.rootData.find(r => r.id === parseInt(this.selectedRoot));
+      if (selectedCompany) {
+        this.signalsService.setCompanyNameSmall(selectedCompany.nameSmall || selectedCompany.name);
+      }
+
       this.trackingService.setCompany(target.value);
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
       //    this.getpermissionxContracts(parseInt(this.selectedRoot));
@@ -148,6 +154,7 @@ error: (error) => {
             Number(this.selectedRoot)
           );
           this.signalsService.setIsAdvanced(this.rootData[0].advanced);
+          this.signalsService.setCompanyNameSmall(this.rootData[0].nameSmall || this.rootData[0].name);
           this.trackingService.setCompany(this.selectedRoot);
           this.getHeadersCompanys(this.selectedRoot);
           // Llamar a getpermissionxContracts con el primer elemento

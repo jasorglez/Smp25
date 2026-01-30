@@ -328,6 +328,7 @@ getMasterUpdateTrigger() {
   /* Signal para la sidebar */
 
   private companyName = signal<string>(null);
+  private companyNameSmall = signal<string>(null);
   private selectedContract = signal<number>(null);
   idUser = signal<number>(0);
   private displayName = signal<string>(null);
@@ -340,6 +341,14 @@ getMasterUpdateTrigger() {
 
   getCompanyName() {
     return this.companyName;
+  }
+
+  setCompanyNameSmall(name: string) {
+    this.companyNameSmall.set(name);
+  }
+
+  getCompanyNameSmall() {
+    return this.companyNameSmall;
   }
 
   setidUser(id: number) {
