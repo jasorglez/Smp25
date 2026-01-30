@@ -25,16 +25,17 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { CustomersService } from 'app/services/customers.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-expenditure2.component';
 import { PdfButtonCellRendererExpenditure2Component } from './pdf-button-cell-renderer-expenditure2.component';
-import { DetailCellRendererExpenditure2Component } from './detail-cell-renderer-expenditure2.component';
+import { DetallesExpenditureComponent } from './detalles-expenditure.component';
 
 @Component({
   selector: 'app-expenditure',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditure2Component, PdfButtonCellRendererExpenditure2Component,
-    DetailCellRendererExpenditure2Component],
+    DetallesExpenditureComponent],
   templateUrl: './expenditure.component.html',
   styleUrl: './expenditure.component.scss'
 })
@@ -54,6 +55,7 @@ export class ExpenditureComponent {
   private employeesService = inject(EmployeesService);
   private customersService = inject(CustomersService);
   private cuentasContablesService = inject(CuentasContablesService);
+  private projectsService = inject(ProjectsService);
   authService = inject(AuthService);
   public trackingService = inject(TrackingService);
 
@@ -85,6 +87,9 @@ export class ExpenditureComponent {
       await this.loadEmployees();
       await this.loadProviders();
       await this.loadCuentasContables();
+      await this.loadCuentasContablesNivel2();
+      await this.loadCuentasContablesNivel3();
+      await this.loadProjects();
 
       // Refrescar columnas después de cargar datos
       this.refreshColumnDefinitions();
@@ -147,6 +152,9 @@ export class ExpenditureComponent {
   employees: any[] = [];
   providers: any[] = [];
   cuentasContables: any[] = [];
+  cuentasContablesNivel2: any[] = [];
+  cuentasContablesNivel3: any[] = [];
+  projects: any[] = [];
   users: any[] = [];
 
   id: number;
@@ -220,7 +228,7 @@ export class ExpenditureComponent {
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 600,
-    detailCellRenderer: DetailCellRendererExpenditure2Component,
+    detailCellRenderer: DetallesExpenditureComponent,
     isExternalFilterPresent: () => {
       return this.externalFilterActive;
     },
@@ -389,6 +397,60 @@ export class ExpenditureComponent {
     });
   }
 
+  async loadCuentasContablesNivel2() {
+    return new Promise<void>((resolve) => {
+      this.cuentasContablesService.getByNivel(this.idRoot, 2).subscribe(
+        (data: any) => {
+          this.cuentasContablesNivel2 = data || [];
+          console.log('✅ Cuentas contables Nivel 2 cargadas:', this.cuentasContablesNivel2.length);
+          resolve();
+        },
+        error => {
+          console.error('Error cargando cuentas contables nivel 2:', error);
+          this.cuentasContablesNivel2 = [];
+          resolve();
+        }
+      );
+    });
+  }
+
+  async loadCuentasContablesNivel3() {
+    return new Promise<void>((resolve) => {
+      this.cuentasContablesService.getByNivel(this.idRoot, 3).subscribe(
+        (data: any) => {
+          this.cuentasContablesNivel3 = data || [];
+          console.log('✅ Cuentas contables Nivel 3 cargadas:', this.cuentasContablesNivel3.length);
+          resolve();
+        },
+        error => {
+          console.error('Error cargando cuentas contables nivel 3:', error);
+          this.cuentasContablesNivel3 = [];
+          resolve();
+        }
+      );
+    });
+  }
+
+  async loadProjects() {
+    return new Promise<void>((resolve) => {
+      this.projectsService.getProjectListByCompany(this.idRoot).subscribe(
+        (data: any) => {
+          this.projects = (data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name || p.projectName || 'Sin nombre'
+          }));
+          console.log('✅ Proyectos cargados:', this.projects.length);
+          resolve();
+        },
+        error => {
+          console.error('Error cargando proyectos:', error);
+          this.projects = [];
+          resolve();
+        }
+      );
+    });
+  }
+
   private async loadAuthorizers() {
     forkJoin({
       permissions: this.usersxpermissionsService.getDataUsersxPermissions('root'),
@@ -541,18 +603,19 @@ export class ExpenditureComponent {
         valueFormatter: (params) => this.formatDate(params.value)
       },
       {
-        field: 'idExpend', headerName: 'Tipo Gasto', editable: true, width: 180,
-        cellEditor: 'searchableSelect',
-        cellEditorParams: {
-          options: this.expenses,
-          valueField: 'id',
-          displayField: 'description'
+        field: 'idExpend', headerName: 'Tipo Gasto', editable: true, width: 220,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => {
+          return {
+            values: this.cuentasContablesNivel2
+              ? this.cuentasContablesNivel2.map((c) => c.id)
+              : []
+          };
         },
         valueFormatter: (params) => {
-          const foundItem = this.expenses
-            ? this.expenses.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
+          if (!params.value) return '';
+          const cuenta = this.cuentasContablesNivel2?.find((c) => c.id === params.value);
+          return cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : params.value;
         },
       },
       {
@@ -581,6 +644,58 @@ export class ExpenditureComponent {
             return params.value;
           }
           return params.value;
+        }
+      },
+      {
+        field: 'paymentMonth',
+        headerName: 'Mes',
+        editable: true,
+        width: 110,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        }
+      },
+      {
+        field: 'idProject',
+        headerName: 'Proyecto',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => {
+          return {
+            values: this.projects
+              ? this.projects.map((p) => p.id)
+              : []
+          };
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const project = this.projects?.find((p) => p.id === params.value);
+          return project ? project.name : params.value;
+        }
+      },
+      {
+        field: 'uuid',
+        headerName: 'Num Factura/UUID',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 36
+        },
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
+          return params.value.length > 15 ? params.value.substring(0, 15) + '...' : params.value;
+        },
+        cellStyle: (params) => {
+          if (params.value && params.value !== 'NA') {
+            return { backgroundColor: '#d4edda', color: '#155724' };
+          }
+          return { backgroundColor: '#fff3cd', color: '#856404' };
         }
       },
       {
@@ -660,6 +775,7 @@ export class ExpenditureComponent {
           employees: this.employees,
           providers: this.providers,
           cuentasContables: this.cuentasContables,
+          cuentasContablesNivel3: this.cuentasContablesNivel3,
           modalServiceTable: this.modalServiceTable,
           CONCEPTS: {
             load: (expenditureId: number, callback: (data: any[]) => void) => {
@@ -668,8 +784,8 @@ export class ExpenditureComponent {
             save: (expenditureId: number, data: any) => {
               return this.saveConceptsById(expenditureId, data);
             },
-            delete: (params: any, callback: () => void) => {
-              this.deleteConceptRow(params, callback);
+            delete: (params: any, callback: () => void, newCount?: number) => {
+              this.deleteConceptRow(params, callback, newCount);
             },
             updateCount: (expenditureId: number, count: number) => {
               this.updateExpenditureCountItems(expenditureId, count);
@@ -749,6 +865,7 @@ export class ExpenditureComponent {
         employees: this.employees,
         providers: this.providers,
         cuentasContables: this.cuentasContables,
+        cuentasContablesNivel3: this.cuentasContablesNivel3,
         modalServiceTable: this.modalServiceTable,
         CONCEPTS: {
           load: (expenditureId: number, callback: (data: any[]) => void) => {
@@ -757,8 +874,8 @@ export class ExpenditureComponent {
           save: (expenditureId: number, data: any) => {
             return this.saveConceptsById(expenditureId, data);
           },
-          delete: (params: any, callback: () => void) => {
-            this.deleteConceptRow(params, callback);
+          delete: (params: any, callback: () => void, newCount?: number) => {
+            this.deleteConceptRow(params, callback, newCount);
           },
           updateCount: (expenditureId: number, count: number) => {
             this.updateExpenditureCountItems(expenditureId, count);
@@ -792,6 +909,7 @@ export class ExpenditureComponent {
       idExpend: 0,
       uuid: "NA",
       paymentMonth: '',
+      idProject: null,
       dateStamped: null,
       description: "POR COMPROBAR",
       type: "GASTO",
@@ -1205,7 +1323,8 @@ export class ExpenditureComponent {
         ...mainDocument,
         subtotal: subtotal,
         tax: tax,
-        total: total
+        total: total,
+        countItems: conceptsData.length
       };
 
       await lastValueFrom(
@@ -1243,8 +1362,9 @@ export class ExpenditureComponent {
     }
   }
 
-  async deleteConceptRow(params: any, successCallback: () => void) {
+  async deleteConceptRow(params: any, successCallback: () => void, newCount?: number) {
     const conceptId = params.data.id;
+    const expenditureId = params.data.idIncorExp;
 
     if (params.data.__isNew) {
       if (params.api) {
@@ -1254,6 +1374,25 @@ export class ExpenditureComponent {
     } else {
       try {
         await lastValueFrom(this.incomesAndExpensesService.deleteConceptFromIncomesAndExpenses(conceptId));
+
+        // Actualizar countItems en la base de datos
+        if (expenditureId && typeof newCount === 'number') {
+          const mainDocResponse: any[] = await lastValueFrom(
+            this.incomesAndExpensesService.getIncomeAndExpenseById(expenditureId)
+          );
+          if (mainDocResponse && mainDocResponse[0]) {
+            const mainDoc = mainDocResponse[0];
+            const updatedDoc = {
+              ...mainDoc,
+              countItems: newCount
+            };
+            await lastValueFrom(
+              this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDoc)
+            );
+            console.log(`✅ countItems actualizado en BD: ${newCount}`);
+          }
+        }
+
         alerts.basicAlert('Concepto eliminado', 'El concepto se eliminó correctamente.', 'success');
         if (params.api) {
           params.api.applyTransaction({ remove: [params.data] });
