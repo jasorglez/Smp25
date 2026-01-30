@@ -8,7 +8,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+<<<<<<< HEAD
 # Install dependencies (build reproducible)
+=======
+# Install dependencies (usar npm ci para builds reproducibles)
+>>>>>>> 4bda0213b12f0e9b0f2e170ed2e3e90a2b179603
 RUN npm ci --legacy-peer-deps
 
 # Copy source code
