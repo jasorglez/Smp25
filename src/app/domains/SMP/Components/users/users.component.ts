@@ -64,6 +64,11 @@ export class UsersComponent {
   isAdvanced: boolean = false;
   invited: boolean = false;
 
+  // Modal nuevo departamento
+  showDepartmentModal: boolean = false;
+  newDepartmentDescription: string = '';
+  private pendingDepartmentRowNode: any = null;
+
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';
@@ -495,27 +500,25 @@ constructor() {
       },
       {
         field: 'idDepartament',
-        headerName: 'Departamento',
+        headerName: 'Roles',
         editable: true,
         suppressMovable: true,
         filter: true,
         flex: 1,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
+          const departamentosIds = this.departamentos ? this.departamentos.map((item) => item.id) : [];
           return {
-            values: this.departamentos ? this.departamentos.map((item) => item.id) : []
+            values: [...departamentosIds, -999]
           };
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
+          if (params.value === -999) return '+ Registro nuevo';
           const foundDepto = this.departamentos
             ? this.departamentos.find((item) => item.id === params.value)
             : null;
           return foundDepto ? foundDepto.description : params.value;
-        },
-        valueSetter: (params) => {
-          params.data.idDepartament = params.newValue;
-          return true;
         }
       },
       {
@@ -700,21 +703,32 @@ constructor() {
     if (!event.node.isSelected()) {
       event.node.setSelected(true);
     }
-    
+
+    // Detectar si se seleccionó "Registro nuevo" en departamento
+    if (event.colDef.field === 'idDepartament' && event.newValue === -999) {
+      // Revertir el valor al anterior
+      event.data.idDepartament = event.oldValue;
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['idDepartament'], force: true });
+      // Guardar referencia al nodo y abrir modal
+      this.pendingDepartmentRowNode = event.node;
+      this.openDepartmentModal();
+      return;
+    }
+
     this.notSavedChanges = true;
 
     if (!event.data.__isNew) {
       event.data.__modified = true;
     }
-  
+
     // Solo actuar si se cambió el nombre
     if (event.colDef.field === 'displayName') {
       const selectedName = event.newValue?.toUpperCase();
-  
+
       const empleadoInfo = this.empleadoCatalgos?.find(
         (item) => item.name.toUpperCase() === selectedName
       );
-  
+
       if (empleadoInfo) {
         // Rellenar datos relacionados
         event.data.idEmployee = empleadoInfo.id;
@@ -1109,6 +1123,80 @@ constructor() {
     this.obtenerDatos();
     this.notSavedChanges = false;
     this.trackingService.addLog(this.trackingService.getnameComp(),'Revertir Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
+  }
+
+  // ==================== MODAL NUEVO DEPARTAMENTO ====================
+
+  openDepartmentModal() {
+    this.showDepartmentModal = true;
+    this.newDepartmentDescription = '';
+    setTimeout(() => {
+      const input = document.getElementById('roleDescription') as HTMLInputElement;
+      if (input) input.focus();
+    }, 100);
+  }
+
+  closeDepartmentModal() {
+    this.showDepartmentModal = false;
+    this.newDepartmentDescription = '';
+    this.pendingDepartmentRowNode = null;
+  }
+
+  async saveNewDepartment() {
+    if (!this.newDepartmentDescription?.trim()) {
+      alerts.basicAlert('Campo requerido', 'Debe ingresar una descripcion para el rol.', 'warning');
+      return;
+    }
+
+    const newRole = {
+      idCompany: this.idRoot,
+      description: this.newDepartmentDescription.trim().toUpperCase(),
+      comment: 'NA',
+      active: true
+    };
+
+    try {
+      const response: any = await lastValueFrom(this.rolesService.addRoles(newRole));
+      console.log('Rol guardado:', response);
+
+      // Recargar roles
+      await this.getRolesAsync();
+
+      // Asignar el nuevo rol a la fila pendiente
+      const newId = response?.id || response?.data?.id;
+      if (this.pendingDepartmentRowNode && newId) {
+        this.pendingDepartmentRowNode.data.idDepartament = newId;
+        this.pendingDepartmentRowNode.data.__modified = true;
+        this.gridApi.refreshCells({ rowNodes: [this.pendingDepartmentRowNode], columns: ['idDepartament'], force: true });
+        this.notSavedChanges = true;
+      }
+
+      alerts.basicAlert('Rol agregado', `El rol "${this.newDepartmentDescription}" se ha creado correctamente.`, 'success');
+      this.closeDepartmentModal();
+
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregar Rol desde Usuario', 'Menu Administracion Usuarios', this.trackingService.getEmail());
+
+    } catch (error) {
+      console.error('Error al guardar rol:', error);
+      alerts.basicAlert('Error', 'No se pudo guardar el rol.', 'error');
+    }
+  }
+
+  private getRolesAsync(): Promise<void> {
+    return new Promise((resolve) => {
+      this.rolesService.getRoles(this.idRoot).subscribe(
+        (data: any) => {
+          this.departamentos = data.data;
+          console.log('Roles actualizados:', this.departamentos);
+          resolve();
+        },
+        (error) => {
+          if (error.status == 404) this.departamentos = [];
+          console.error('Error fetching data:', error);
+          resolve();
+        }
+      );
+    });
   }
 
   togglePermissions() {

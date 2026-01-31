@@ -9,6 +9,7 @@ import { ProvidersService } from 'app/services/providers.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { SignalsService } from 'app/services/signals.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 
 @Component({
   selector: 'app-providers',
@@ -21,6 +22,7 @@ export class ProvidersComponent {
   private providersService = inject(ProvidersService);
   private imageHandlerService = inject(ImageHandlerService);
   private signalsService = inject(SignalsService);
+  private incomesAndExpensesService = inject(IncomesAndExpensesService);
 
 
   ngOnInit() {
@@ -361,7 +363,44 @@ export class ProvidersComponent {
     }
 
     const selectedData = selectedNodes[0].data;
+    const providerName = selectedData.name || selectedData.nameShort || 'este proveedor';
+
+    // Preguntar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar proveedor?',
+      `¿Está seguro que desea eliminar a "${providerName}"?`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     const id = selectedData.id;
+
+    // Verificar si el proveedor está siendo usado en egresos
+    try {
+      const incomesAndExpenses = await lastValueFrom(
+        this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot)
+      );
+
+      const isBeingUsed = incomesAndExpenses?.some(
+        (record: any) => record.idCustomer === id && record.active !== false
+      );
+
+      if (isBeingUsed) {
+        alerts.basicAlert(
+          'No se puede eliminar',
+          'Este proveedor está siendo utilizado en registros de egresos. Debe eliminar o modificar esos registros primero.',
+          'error'
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando uso del proveedor:', error);
+    }
+
     selectedData.active = 0;
     this.providersService.deleteProvider(id).pipe(
       catchError((error) => {
@@ -382,12 +421,6 @@ export class ProvidersComponent {
             'success'
           );
           this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedRowData = null;
         }

@@ -42,6 +42,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { FacturacionService } from 'app/services/facturacion.service';
 import { AdministrationService } from 'app/services/administration.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 
 @Component({
   selector: 'app-customers',
@@ -70,6 +71,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
    private trackingService = inject(TrackingService);
    private facturacionService = inject(FacturacionService);
    private administrationService = inject(AdministrationService);
+   private incomesAndExpensesService = inject(IncomesAndExpensesService);
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -1042,6 +1044,19 @@ export class CustomersComponent implements CanComponentDeactivate {s
     }
 
     const selectedData = selectedNodes[0].data;
+    const customerName = selectedData.nameContact || selectedData.company || 'este cliente';
+
+    // Preguntar confirmación antes de eliminar
+    const result = await alerts.confirmAlert(
+      '¿Eliminar cliente?',
+      `¿Está seguro que desea eliminar a "${customerName}"?`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
 
     // Validar que el préstamo sea 0 o no exista
     if (selectedData.total && selectedData.total !== 0) {
@@ -1054,6 +1069,29 @@ export class CustomersComponent implements CanComponentDeactivate {s
     }
 
     const id = selectedData.id;
+
+    // Verificar si el cliente está siendo usado en ingresos o egresos
+    try {
+      const incomesAndExpenses = await lastValueFrom(
+        this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot)
+      );
+
+      const isBeingUsed = incomesAndExpenses?.some(
+        (record: any) => record.idCustomer === id && record.active !== false
+      );
+
+      if (isBeingUsed) {
+        alerts.basicAlert(
+          'No se puede eliminar',
+          'Este cliente está siendo utilizado en registros de ingresos/egresos. Debe eliminar o modificar esos registros primero.',
+          'error'
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando uso del cliente:', error);
+    }
+
     selectedData.active = 0;
     this.customerService
       .deleteCustomer(id)
