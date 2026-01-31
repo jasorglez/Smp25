@@ -67,6 +67,7 @@ export class RootComponent {
       error: (error) => {
         console.error('Error obteniendo estados:', error);
         // Estados de México por defecto si falla el API
+        //los Estados de México por defecto si falla el API
         this.estados = {
           'Aguascalientes': 'Aguascalientes',
           'Baja California': 'Baja California',
