@@ -36,7 +36,9 @@
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
       "Bash(npx ng serve --port 4200)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
