@@ -7,56 +7,13 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
-  selector: 'app-detail-cell-renderer-requisition-items',
+  selector: 'app-detalles-requisiciones',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  template: `
-    <div class="detail-grid-container">
-      <div class="detail-actions d-flex justify-content-end mb-1">
-        <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" style="font-size: 0.75rem; line-height: 1.5;">
-          <i class="bi bi-plus" style="font-size: 0.75rem;"></i> Agregar
-        </button>
-        <button class="btn btn-warning btn-xs me-1 py-0 px-2" (click)="discardChanges()" style="font-size: 0.75rem; line-height: 1.5;">
-          <i class="bi bi-arrow-counterclockwise" style="font-size: 0.75rem;"></i> Deshacer
-        </button>
-        <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" style="font-size: 0.75rem; line-height: 1.5;">
-          <i class="bi bi-trash" style="font-size: 0.75rem;"></i> Eliminar
-        </button>
-        <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" style="font-size: 0.75rem; line-height: 1.5;">
-          <i class="bi bi-floppy" style="font-size: 0.75rem;"></i> Guardar
-          <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-            *ngIf="hasUnsavedChanges" style="width: 8px; height: 8px;">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
-        </button>
-      </div>
-      <ag-grid-angular
-        #agGrid
-        class="ag-theme-quartz small-text-ag-grid"
-        [rowData]="rowData"
-        [columnDefs]="colDefs"
-        [gridOptions]="gridOptions"
-        [localeText]="AG_GRID_LOCALE_ES"
-        (gridReady)="onGridReady($event)"
-        (cellValueChanged)="onCellValueChanged($event)"
-        style="height: 300px; width: 100%;">
-      </ag-grid-angular>
-    </div>
-  `,
-  styles: [`
-    .detail-grid-container {
-      padding: 8px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-    }
-    .btn-xs {
-      padding: 1px 5px;
-      font-size: 0.75rem;
-      line-height: 1.5;
-    }
-  `]
+  templateUrl: './detalles-requisiciones.component.html',
+  styleUrl: './detalles-requisiciones.component.scss'
 })
-export class DetailCellRendererRequisitionItemsComponent implements OnInit {
+export class DetallesRequisicionesComponent implements OnInit {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -140,6 +97,13 @@ export class DetailCellRendererRequisitionItemsComponent implements OnInit {
           return foundItem ? foundItem.description : params.value;
         },
         valueSetter: (params: any) => {
+          // Validar si el material ya existe
+          const existingItem = this.findExistingMaterial(params.newValue);
+          if (existingItem && existingItem.id !== params.data.id) {
+            // Material duplicado encontrado
+            this.showDuplicateMaterialAlert(existingItem, params);
+            return false; // No cambiar el valor hasta confirmación
+          }
           params.data.idSupplie = params.newValue;
           return true;
         }
@@ -192,10 +156,13 @@ export class DetailCellRendererRequisitionItemsComponent implements OnInit {
   }
 
   public gridOptions: any = {
-    headerHeight: 35,
-    rowHeight: 35,
+    headerHeight: 30,
+    rowHeight: 28,
     animateRows: true,
     rowSelection: 'single',
+    domLayout: 'autoHeight', // Esto hace que el grid se expanda automáticamente
+    suppressDragLeaveHidesColumns: true,
+    suppressHorizontalScroll: true,
     onCellValueChanged: (event: any) => {
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
@@ -223,10 +190,8 @@ export class DetailCellRendererRequisitionItemsComponent implements OnInit {
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
-    // Update count in master grid
-    if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
-      this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
-    }
+        // NO actualizar contador - usar valor pedimento del servidor
+        // El campo pedimento ya contiene el contador correcto desde la BD
 
     setTimeout(() => {
       const lastRowIndex = this.rowData.length - 1;
@@ -252,15 +217,12 @@ export class DetailCellRendererRequisitionItemsComponent implements OnInit {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.hasUnsavedChanges = true;
 
-        // Update count in master grid
-        if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
-          this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
-        }
+
       });
     }
   }
 
-  saveChanges() {
+  async saveChanges() {
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -275,8 +237,15 @@ export class DetailCellRendererRequisitionItemsComponent implements OnInit {
 
     if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
       const requisitionId = this.params.data.id;
-      this.context.ITEMS.save(requisitionId, this.rowData);
+      
+      // Guardar y esperar a que termine
+      await this.context.ITEMS.save(requisitionId, this.rowData);
       this.hasUnsavedChanges = false;
+      
+      // Recargar los datos del servidor para tener los IDs actualizados
+      setTimeout(() => {
+        this.loadData();
+      }, 500); // Pequeño delay para asegurar que el servidor procesó
     }
   }
 
@@ -297,5 +266,86 @@ export class DetailCellRendererRequisitionItemsComponent implements OnInit {
 
   refreshByParent() {
     this.loadData();
+  }
+
+  private findExistingMaterial(materialId: number): any {
+    return this.rowData.find(item => 
+      item.idSupplie === materialId && 
+      item.id !== this.params.data?.id
+    );
+  }
+
+  private showDuplicateMaterialAlert(existingItem: any, params: any): void {
+    const existingProduct = this.productos.find(p => p.id === existingItem.idSupplie);
+    const productName = existingProduct ? existingProduct.description : 'Material desconocido';
+    
+    alerts.confirmAlert(
+      'Material Duplicado',
+      `El material "${productName}" ya existe con cantidad ${existingItem.quantity}.\n\n¿Desea sumar las cantidades?`,
+      'warning',
+      'Sí, sumar cantidades'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        // Usuario confirma - solicitar cantidad a sumar
+        this.promptForQuantity(existingItem, params);
+      } else {
+        // Usuario cancela - mantener selección pero no sumar
+        params.data.idSupplie = params.newValue;
+        if (this.gridApi) {
+          this.gridApi.refreshCells({ 
+            rowNodes: [this.gridApi.getRowNode(params.data.id)], 
+            columns: ['idSupplie'],
+            force: true 
+          });
+        }
+      }
+    });
+  }
+
+  private promptForQuantity(existingItem: any, params: any): void {
+    alerts.inputAlert(
+      'Sumar Cantidades',
+      `Material actual: ${existingItem.quantity}\nCantidad a agregar:`,
+      'text',
+      '',
+      {
+        confirmButtonText: 'Sumar',
+        required: true
+      }
+    ).then((result) => {
+      if (result.isConfirmed && result.value) {
+        const newQuantity = parseFloat(result.value);
+        if (!isNaN(newQuantity) && newQuantity > 0) {
+          // Sumar cantidades
+          existingItem.quantity += newQuantity;
+          existingItem.__modified = true;
+          this.hasUnsavedChanges = true;
+          
+          // Eliminar la fila actual
+          const updatedRowData = this.rowData.filter(item => item.id !== params.data.id);
+          this.rowData = updatedRowData;
+          
+          // Actualizar grid
+          this.gridApi.setGridOption('rowData', this.rowData);
+          
+          // Actualizar contador en master
+          if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
+            this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
+          }
+          
+          alerts.basicAlert(
+            'Cantidades Sumadas',
+            `Se sumaron ${newQuantity} unidades al material existente. Total: ${existingItem.quantity}`,
+            'success'
+          );
+        } else {
+          alerts.basicAlert(
+            'Error',
+            'La cantidad debe ser un número mayor a cero.',
+            'error'
+          );
+        }
+      }
+    });
   }
 }

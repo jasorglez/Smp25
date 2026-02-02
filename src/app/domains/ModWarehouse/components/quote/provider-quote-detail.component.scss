@@ -1,0 +1,36 @@
+.provider-quote-container {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-header {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.quote-grid-container {
+  flex: 1;
+  border: 1px solid #dee2e6;
+  border-radius: 0 0 8px 8px;
+  background-color: white;
+  overflow: hidden;
+}
+
+// Estilos específicos para cada proveedor
+:host-context(.provider-1) .provider-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+:host-context(.provider-2) .provider-header {
+  background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+}
+
+:host-context(.provider-3) .provider-header {
+  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+}

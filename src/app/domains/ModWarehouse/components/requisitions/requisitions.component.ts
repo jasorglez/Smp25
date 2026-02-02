@@ -28,7 +28,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { DeleteButtonCellRendererComponent } from './delete-button-cell-renderer.component';
 import { PdfButtonCellRendererRequisitionsComponent } from './pdf-button-cell-renderer-requisitions.component';
-import { DetailCellRendererRequisitionItemsComponent } from './detail-cell-renderer-requisition-items.component';
+import { DetallesRequisicionesComponent } from './detalles-requisiciones.component';
 import { DetailCellRendererRequisitionReportComponent } from './detail-cell-renderer-requisition-report.component';
 
 interface Catalog {
@@ -44,7 +44,7 @@ interface Provider {
 @Component({
   selector: 'app-requisitions',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DetailCellRendererRequisitionItemsComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
   templateUrl: './requisitions.component.html',
   styleUrl: './requisitions.component.scss',
 })
@@ -198,7 +198,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         };
       }
       // Por defecto, mostrar items
-      return { component: DetailCellRendererRequisitionItemsComponent };
+      return { component: DetallesRequisicionesComponent };
     },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -302,6 +302,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         },
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
+      },
+      {
+        field: 'branchName',
+        headerName: 'Sucursal',
+        editable: false,
+        filter: true,
+        width: 180,
+        valueFormatter: (params) => {
+          return params.value || this.signalsService.getBranchNameSelectedBySidebar()();
+        }
       },
       {
         field: 'folio',

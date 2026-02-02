@@ -29,7 +29,7 @@ pdfMake.vfs = pdfFonts.vfs;
           <i class="bi bi-x-lg"></i> Cerrar
         </button>
       </div>
-      <div class="report-content" style="height: 450px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content" style="height: 580px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <div *ngIf="isLoading" class="d-flex justify-content-center align-items-center h-100">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Cargando...</span>
@@ -242,12 +242,6 @@ export class DetailCellRendererRequisitionReportComponent {
             },
             {
               stack: [
-                {
-                  image: 'logo2',
-                  width: 80,
-                  alignment: 'right',
-                  margin: [0, 0, 0, 5]
-                },
                 {
                   text: 'REQUISICIÓN DE MATERIALES',
                   style: 'documentTitle',

@@ -26,6 +26,7 @@ import { SetupService } from 'app/services/setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
+import { ProviderQuoteDetailComponent } from './provider-quote-detail.component';
 
 interface Catalog {
   id: number;
@@ -40,7 +41,7 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent],
   templateUrl: './quote.component.html',
   styles: ``
 })
@@ -100,6 +101,9 @@ export class QuoteComponent implements CanComponentDeactivate {
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
+  
+  // Caché para columnas del maestro (evita parpadeo)
+  private _colMaster: ColDef[] = [];
 
   constructor() {
     effect(() => {
@@ -221,7 +225,13 @@ export class QuoteComponent implements CanComponentDeactivate {
   };
 
   get colMaster(): ColDef[] {
-    return [
+    // Si ya tenemos columnas cacheadas, devolverlas para evitar re-renderizado
+    if (this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+    
+    // Construir y cachear las columnas solo la primera vez
+    this._colMaster = [
       {
         field: 'folio',
         headerName: 'Número Doc',
@@ -305,15 +315,17 @@ export class QuoteComponent implements CanComponentDeactivate {
   width: 120,
   cellRenderer: (params: any) => {
     const count = params.data.proveedor1Count || 0;
-    return `<div class="provider-cell" style="text-align: center; cursor: pointer; padding: 5px;">
-              <button class="btn btn-sm btn-outline-primary">${count} items</button>
+    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
+              <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); return true;">${count} items</button>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Provider 1 button clicked, expanding row');
+    console.log('Provider 1 button clicked, opening quote grid');
     params.data.providerNumber = 1;
-    params.node.setExpanded(!params.node.expanded);
+    
+    // Abrir la cotización para Proveedor 1
+    this.openProviderQuote(params.data, 1);
   }
 },
 {
@@ -322,15 +334,17 @@ export class QuoteComponent implements CanComponentDeactivate {
   width: 120,
   cellRenderer: (params: any) => {
     const count = params.data.proveedor2Count || 0;
-    return `<div class="provider-cell" style="text-align: center; cursor: pointer; padding: 5px;">
-              <button class="btn btn-sm btn-outline-success">${count} items</button>
+    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
+              <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); return true;">${count} items</button>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Provider 2 button clicked, expanding row');
+    console.log('Provider 2 button clicked, opening quote grid');
     params.data.providerNumber = 2;
-    params.node.setExpanded(!params.node.expanded);
+    
+    // Abrir la cotización para Proveedor 2
+    this.openProviderQuote(params.data, 2);
   }
 },
 {
@@ -339,15 +353,17 @@ export class QuoteComponent implements CanComponentDeactivate {
   width: 120,
   cellRenderer: (params: any) => {
     const count = params.data.proveedor3Count || 0;
-    return `<div class="provider-cell" style="text-align: center; cursor: pointer; padding: 5px;">
-              <button class="btn btn-sm btn-outline-warning">${count} items</button>
+    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
+              <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); return true;">${count} items</button>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Provider 3 button clicked, expanding row');
+    console.log('Provider 3 button clicked, opening quote grid');
     params.data.providerNumber = 3;
-    params.node.setExpanded(!params.node.expanded);
+    
+    // Abrir la cotización para Proveedor 3
+    this.openProviderQuote(params.data, 3);
   }
 },
 
@@ -380,9 +396,11 @@ export class QuoteComponent implements CanComponentDeactivate {
      return params.value;
    }
    return params.value;
- },
-},
-    ];
+  },
+  },
+     ];
+    
+    return this._colMaster;
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -930,6 +948,56 @@ export class QuoteComponent implements CanComponentDeactivate {
     this.receiptsService.generateOC(idQuote, action);
   }
 
+  // Método para invalidar la caché de columnas (útil cuando cambian catálogos)
+  refreshColumnCache(): void {
+    this._colMaster = [];
+    
+    // Forzar actualización del grid si ya está inicializado
+    if (this.masterGridApi) {
+      this.masterGridApi.setGridOption('columnDefs', this.colMaster);
+    }
+  }
+
+  // Método para abrir cotización de proveedor específico
+  openProviderQuote(quoteData: any, providerNumber: number): void {
+    console.log('Provider quote - Data:', { quoteData, providerNumber });
+    
+    // Configurar el detail renderer para proveedor
+    if (this.masterGridApi) {
+      this.masterGridApi.setGridOption('detailCellRenderer', ProviderQuoteDetailComponent);
+      
+      this.masterGridApi.setGridOption('detailCellRendererParams', {
+        getDetailRowData: (params: any) => {
+          params.successCallback([{
+            quoteData: quoteData,
+            providerNumber: providerNumber,
+            requisitionItems: this.requisitionItems || []
+          }]);
+        },
+        context: {
+          idRoot: this.idRoot,
+          productos: this.productos,
+          proveedores: this.proveedores,
+          componentParent: this,
+          gridApi: this.masterGridApi,
+          providerQuoteData: {
+            quoteData: quoteData,
+            providerNumber: providerNumber,
+            idQuote: quoteData.id,
+            idReq: quoteData.idReq
+          }
+        }
+      });
+
+      // Expandir la fila seleccionada
+      this.masterGridApi.forEachNode((node: any) => {
+        if (node.data && node.data.id === quoteData.id) {
+          node.setExpanded(true);
+        }
+      });
+    }
+  }
+
 
   // ==================== UTILITY METHODS ====================
 
@@ -986,14 +1054,14 @@ export class QuoteComponent implements CanComponentDeactivate {
             );
           }
           reject(err); // Rechazamos la promesa en caso de error
-        },
+        }
       });
     });
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================
 
-  async canDeactivate(): Promise<boolean> {
+  canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.masterNotSavedChanges);
   }
 }
