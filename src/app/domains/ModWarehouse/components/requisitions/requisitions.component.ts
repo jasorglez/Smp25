@@ -188,7 +188,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     rowHeight: 20,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 400,
+    detailRowHeight: 1400,
     isRowMaster: (dataItem: any) => true,
     detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'report') {
@@ -262,32 +262,18 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     return [
+      
       {
-        field: 'delete',
-        headerName: '',
-        width: 45,
-        cellRenderer: DeleteButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.onDeleteButtonClick(node),
-          icon: 'bi-trash',
-          iconColor: '#dc3545',
-          title: 'Eliminar requisición',
-          disabledTitle: 'No se puede eliminar, tiene items asociados'
-        },
-        editable: false,
-        cellStyle: { backgroundColor: '#fff3e0' }
-      },
-      {
-        field: 'countrow',
+        field: 'pedimento',
         headerName: 'Items',
         width: 60,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
         },
-        valueGetter: params => params.data?.countrow || 0,
+        valueGetter: params => params.data?.pedimento || 0,
         editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+        cellStyle: { backgroundColor: '#e8f9fa', cursor: 'pointer' }
       },
       {
         field: 'pdf',
@@ -499,7 +485,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         (data: any) => {
           this.masterRowData = data.map((item: any) => ({
             ...item,
-            countrow: item.countrow || 0,
             detailType: null,
             detailData: []
           }));
@@ -857,9 +842,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
             delete: (params: any, callback: () => void) => {
               this.deleteDetailRow(params, callback);
             },
-            updateCount: (requisitionId: number, count: number) => {
-              this.updateRequisitionItemsCount(requisitionId, count);
-            }
+
           }
         }
       });
@@ -1203,8 +1186,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           'success'
         );
 
-        // Actualizar el contador de items localmente
-        this.updateRequisitionItemsCount(requisitionId, data.length);
+        // El contador se actualiza automáticamente desde el backend
 
         // Limpiar los flags
         data.forEach(row => {
@@ -1230,9 +1212,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     if (params.data.__isNew) {
       params.api.applyTransaction({ remove: [params.data] });
       this.detailsNotSavedChanges = true;
-      // Update count in master grid
-      const currentCount = params.api.getDisplayedRowCount();
-      this.updateRequisitionItemsCount(requisitionId, currentCount - 1);
+      // El contador se actualiza desde el backend al guardar
       successCallback();
     } else {
       try {
@@ -1247,22 +1227,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           'error'
         );
       }
-    }
-  }
-
-  updateRequisitionItemsCount(requisitionId: number, count: number) {
-    if (this.masterGridApi) {
-      this.masterGridApi.forEachNode((node) => {
-        if (node.data && node.data.id === requisitionId) {
-          node.data.countrow = count;
-          this.masterGridApi.refreshCells({
-            rowNodes: [node],
-            columns: ['countrow'],
-            force: true
-          });
-          console.log(`✅ Actualizado "Items" para requisición ${requisitionId}: ${count}`);
-        }
-      });
     }
   }
 

@@ -54,10 +54,7 @@ export class DetallesRequisicionesComponent implements OnInit {
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-        // Update the count in master grid
-        if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
-          this.context.ITEMS.updateCount(requisitionId, this.rowData.length);
-        }
+        // El campo pedimento se maneja desde el backend, no se actualiza desde aquí
       });
     }
   }
@@ -160,7 +157,7 @@ export class DetallesRequisicionesComponent implements OnInit {
     rowHeight: 28,
     animateRows: true,
     rowSelection: 'single',
-    domLayout: 'autoHeight', // Esto hace que el grid se expanda automáticamente
+    domLayout: 'normal', // Cambiar a normal para permitir expansión manual
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: true,
     onCellValueChanged: (event: any) => {
@@ -190,8 +187,7 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
-        // NO actualizar contador - usar valor pedimento del servidor
-        // El campo pedimento ya contiene el contador correcto desde la BD
+        // El contador se gestiona desde el backend al guardar los cambios
 
     setTimeout(() => {
       const lastRowIndex = this.rowData.length - 1;
@@ -242,7 +238,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       await this.context.ITEMS.save(requisitionId, this.rowData);
       this.hasUnsavedChanges = false;
       
-      // Recargar los datos del servidor para tener los IDs actualizados
+      // Recargar los datos del servidor para tener los IDs actualizados y el contador actualizado
       setTimeout(() => {
         this.loadData();
       }, 500); // Pequeño delay para asegurar que el servidor procesó
@@ -328,10 +324,7 @@ export class DetallesRequisicionesComponent implements OnInit {
           // Actualizar grid
           this.gridApi.setGridOption('rowData', this.rowData);
           
-          // Actualizar contador en master
-          if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
-            this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
-          }
+          // El contador se actualiza desde el backend
           
           alerts.basicAlert(
             'Cantidades Sumadas',

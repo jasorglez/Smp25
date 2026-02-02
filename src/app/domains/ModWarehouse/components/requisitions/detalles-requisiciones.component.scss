@@ -1,7 +1,8 @@
 .detail-grid-container {
-  padding: 8px;
+  padding: 16px;
   background-color: #f8f9fa;
   border-radius: 8px;
+  margin-bottom: 24px;
 }
 
 .btn-xs {
@@ -15,7 +16,8 @@
 }
 
 .detail-grid {
-  height: 300px;
+  min-height: 1200px;
+  height: 1200px;
   width: 100%;
 }
 
