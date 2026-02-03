@@ -25,18 +25,18 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  urlSecurity: 'https://bi2.com.mx/api', // 5003
+  urlSecurity: 'https://ms-pruebas-api.bi2.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
-  urlSmp: 'https://bi2.com.mx/smp/api', // 5004
+  urlSmp: 'https://ms-pruebas-api.bi2.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
 
-  urlBpi: 'https://bi2.com.mx/bpi/api', // 5005
+  urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://bi2.com.mx/warehouse/api', // 5007
+  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  urlAdministration: 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
   root: 'root@bi2.mx',
