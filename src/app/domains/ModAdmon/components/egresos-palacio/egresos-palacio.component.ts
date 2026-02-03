@@ -137,10 +137,9 @@ export class EgresosPalacioComponent {
 
   constructor() {
     effect(async () => {
-      
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      
+
       if (!this.idRoot) return;
 
       await this.getBankAccounts();
@@ -203,7 +202,7 @@ export class EgresosPalacioComponent {
   newlyAddedRows: string[] = [];
   selectedIncomes: any = null;
   currentUser: string;
-  
+
   idRoot: any;
   idBranch: number;
   triggerValue: number = 0;
@@ -858,7 +857,7 @@ export class EgresosPalacioComponent {
           }
           return false;
         },
-        
+
       },
 
       {
@@ -948,7 +947,7 @@ export class EgresosPalacioComponent {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        filter: true, 
+        filter: true,
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
@@ -972,7 +971,7 @@ export class EgresosPalacioComponent {
         field: 'total',
         headerName: 'Comprobado',
         editable: false,
-         filter: true,
+        filter: true,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
         cellRenderer: (params: any) => {
@@ -2009,8 +2008,8 @@ export class EgresosPalacioComponent {
             modifiedBy: this.currentUser
           };
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
-            next: () => {},
-            error: () => {}
+            next: () => { },
+            error: () => { }
           });
         }
       });

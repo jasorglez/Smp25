@@ -11,11 +11,6 @@ import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
-import { WarehousesService } from 'app/services/warehouses.service';
-import { CustomersService } from 'app/services/customers.service';
-import { CatalogsService } from 'app/services/catalogs.service';
-import { AdministrationService } from 'app/services/administration.service';
-import { InegiService } from 'app/services/inegi.service';
 
 @Component({
   selector: 'app-root',
@@ -25,21 +20,16 @@ import { InegiService } from 'app/services/inegi.service';
 })
 export class RootComponent {
 
-  
+
   private rootService = inject(RootService);
   private imageHandlerService = inject(ImageHandlerService);
   private branchesService = inject(BranchsService);
-  private warehousesService = inject(WarehousesService);
-  private customersService = inject(CustomersService);
-  private catalogsService = inject(CatalogsService);
-  private administrationService = inject(AdministrationService);
-  private inegiService = inject(InegiService);
+
   private signalsService = inject(SignalsService);
 
   notSavedChanges: boolean = false;
   rowData: any[] = [];
   contracts: { [key: string]: string } = {};
-  estados: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
   id: string;
@@ -114,11 +104,11 @@ export class RootComponent {
     }
   }
   constructor() {
-      effect(() => {
-        this.idUser = this.signalsService.getIdUSer()();
-        this.obtenerDatos();
-      });
-    }
+    effect(() => {
+      this.idUser = this.signalsService.getIdUSer()();
+      this.obtenerDatos();
+    });
+  }
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -135,7 +125,7 @@ export class RootComponent {
       .getRoot()
       .subscribe((data: any) => {
         this.rowData = data;
-     //   console.log(data)
+        //   console.log(data)
       });
   }
 
@@ -143,63 +133,38 @@ export class RootComponent {
     autocompleteEditor: AutocompleteEditorComponent
   }
 
-  public defaultColDef : ColDef = {
-    sortable           : true,
-    resizable          : true,
-    flex               : 1
+  public defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    flex: 1
   };
 
-  // Orden de columnas editables para navegación con Enter
-  private editableColumnOrder = [
-    'name', 'nameSmall', 'rfc', 'personType', 'email', 'phone',
-    'address', 'city', 'state', 'cp', 'country', 'web', 'formatRep', 'advanced'
-  ];
-
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 60,
-  stopEditingWhenCellsLoseFocus: true,
-  getRowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
-    }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  }
-};
-
-  // Mover a la siguiente celda editable con Enter
-  onCellEditingStopped(event: any) {
-    if (event.valueChanged || event.oldValue === event.newValue) {
-      const currentColId = event.column.getColId();
-      const currentIndex = this.editableColumnOrder.indexOf(currentColId);
-
-      if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
-        const nextColId = this.editableColumnOrder[currentIndex + 1];
-        setTimeout(() => {
-          this.gridApi.startEditingCell({
-            rowIndex: event.rowIndex,
-            colKey: nextColId
-          });
-        }, 50);
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 60,
+    getRowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
       }
     }
-  }
+  };
 
   private _columnDefs: ColDef[] = [];
 
@@ -218,8 +183,8 @@ public gridOptions: any = {
           return '';
         },
         editable: false,
-        width: 50,
-        maxWidth: 50,
+        flex: 0.5,
+        maxWidth: 70,
         pinned: 'left',
         cellStyle: {
           fontWeight: 'bold',
@@ -231,8 +196,7 @@ public gridOptions: any = {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
-        minWidth: 180,
-        width: 200,
+        flex: 2,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
           filterList: this.rowData.map(e => e.name),
@@ -260,10 +224,9 @@ public gridOptions: any = {
       },
       {
         field: 'nameSmall',
-        headerName: 'Corto',
+        headerName: 'Nombre Corto',
         editable: true,
-        minWidth: 90,
-        width: 110,
+        flex: 1,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: {
           filterList: this.rowData.map(e => e.nameSmall),
@@ -299,30 +262,16 @@ public gridOptions: any = {
         }
       },
       {
-        field: 'rfc',
-        headerName: 'RFC',
+        field: 'formatRep',
+        headerName: 'Formato de reporte',
         editable: true,
-        minWidth: 120,
-        width: 130
-      },
-      {
-        field: 'personType',
-        headerName: 'Tipo',
-        editable: true,
-        minWidth: 80,
-        width: 90,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['MORAL', 'FISICA']
-        }
+        flex: 1
       },
       {
         field: 'email',
         headerName: 'Email',
         cellEditor: 'agTextCellEditor',
         editable: (params) => params.data.__isNew,
-        minWidth: 150,
-        width: 180,
         cellEditorParams: {
           useFormatter: true,
         },
@@ -330,6 +279,7 @@ public gridOptions: any = {
         valueSetter: (params) => {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (emailRegex.test(params.newValue)) {
+            // Verificar si el email ya existe
             const duplicateExists = this.rowData.some((row, index) =>
               index !== params.node.rowIndex && row.email === params.newValue
             );
@@ -357,113 +307,105 @@ public gridOptions: any = {
         filter: true
       },
       {
+        field: 'web',
+        headerName: 'Web',
+        editable: true,
+        flex: 1
+      },
+      {
+        field: 'personType',
+        headerName: 'Tipo de persona',
+        editable: true,
+        flex: 1,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MORAL', 'FISICA']
+        }
+      },
+      {
         field: 'phone',
         headerName: 'Teléfono',
         editable: true,
-        minWidth: 100,
-        width: 110
+        flex: 1
       },
       {
         field: 'address',
         headerName: 'Dirección',
         editable: true,
-        minWidth: 150,
-        width: 180
+        flex: 2
       },
       {
         field: 'city',
         headerName: 'Ciudad',
         editable: true,
-        minWidth: 100,
-        width: 110
+        flex: 1
       },
       {
         field: 'state',
         headerName: 'Estado',
         editable: true,
-        minWidth: 140,
-        width: 160,
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: Object.keys(this.estados).sort(),
-          searchDebounceDelay: 500,
-          allowTyping: true,
-          filterList: true,
-          highlightMatch: true
-        },
-        valueFormatter: (params) => this.estados[params.value] || params.value || ''
-      },
-      {
-        field: 'cp',
-        headerName: 'CP',
-        editable: true,
-        minWidth: 60,
-        width: 70
+        flex: 1
       },
       {
         field: 'country',
         headerName: 'País',
         editable: true,
-        minWidth: 80,
-        width: 90
+        flex: 1
       },
       {
-        field: 'web',
-        headerName: 'Web',
+        field: 'rfc',
+        headerName: 'RFC',
         editable: true,
-        minWidth: 120,
-        width: 140
+        flex: 1
       },
       {
-        field: 'formatRep',
-        headerName: 'Formato Rep.',
+        field: 'cp',
+        headerName: 'Código Postal',
         editable: true,
-        minWidth: 100,
-        width: 110
+        flex: 1
       },
       {
         field: 'advanced',
-        headerName: 'Avanzado',
+        headerName: 'Permisos avanzados',
         editable: true,
         cellEditor: 'agSelectCellEditor',
-        minWidth: 80,
-        width: 90
+        flex: 1
       },
       {
         field: 'picture',
-        headerName: 'Logo',
+        headerName: 'Foto Root',
+        cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: {
           clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
           field: 'picture'
         },
         editable: false,
-        minWidth: 100,
-        width: 100
+        width: 120
       },
       {
         field: 'picture2',
         headerName: 'Header',
+        cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: {
           clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
           field: 'picture2'
         },
         editable: false,
-        minWidth: 100,
-        width: 100
+        width: 120
       },
       {
         field: 'picture3',
         headerName: 'Footer',
+        cellEditor: 'agTextCellEditor',
         cellRenderer: this.imageHandlerService.imageCellRenderer.bind(this.imageHandlerService),
         cellRendererParams: {
           clicked: this.imageHandlerService.onImageCellClicked.bind(this.imageHandlerService),
           field: 'picture3'
         },
         editable: false,
-        minWidth: 100,
-        width: 100
+        width: 120
       },
     ];
 
@@ -498,14 +440,13 @@ public gridOptions: any = {
     const newItem = {
       id: tempId,
       name: '',
-      web : '',
-      email: 'info@x.com',
+      web: '',
+      email: '',
       nameSmall: '',
       picture: '',
       picture2: '',
       picture3: '',
-      phone: 'sintel',
-      address: 'sin direccion',
+      phone: '',
       consortium: 'NO',
       formatRep: '',
       city: '',
@@ -521,16 +462,6 @@ public gridOptions: any = {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
-
-    // Auto-focus en la primera columna editable
-    setTimeout(() => {
-      const firstRowIndex = 0;
-      this.gridApi.ensureIndexVisible(firstRowIndex);
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'name'
-      });
-    }, 50);
   }
 
   async saveChanges() {
@@ -549,212 +480,49 @@ public gridOptions: any = {
       (row) => row.__modified && !row.__isNew
     );
 
+    const addObservables: Promise<any>[] = newRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return lastValueFrom(this.rootService.addRoot(cleanedData));
+    });
+
+    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
+      const cleanedData = this.cleanDataForServer(row);
+      return lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
+    });
+
+    // Using concat to combine observables and lastValueFrom for async/await
     try {
-      // Procesar nuevas empresas
-      for (const row of newRows) {
-        const cleanedData = this.cleanDataForServer(row);
-        console.log('Creando empresa:', cleanedData);
+      const responses = await lastValueFrom(
+        concat(...addObservables, ...updateObservables).pipe(toArray())
+      );
 
-        // 1. Crear Root (Empresa)
-        const rootResponse: any = await lastValueFrom(this.rootService.addRoot(cleanedData));
-        const rootId = rootResponse?.id || rootResponse?.data?.id;
+      for (const response of responses) {
+        // Verificar si es una nueva creación comparando con los IDs temporales
+        const correspondingNewRow = newRows.find(
+          (row) => !row.id || row.id.toString().startsWith('temp_')
+        );
 
-        if (!rootId) {
-          console.error('No se pudo obtener el ID de la empresa:', rootResponse);
-          alerts.basicAlert('Error', 'No se pudo crear la empresa', 'error');
-          continue;
-        }
-        alerts.toastAlert('Empresa creada correctamente', 'success');
+        if (response.id && correspondingNewRow) {
+          //console.log(response)
 
-        // Asignar permiso de root al usuario
-        try {
-          await lastValueFrom(
-            this.branchesService.assignPermissionAfterCreation(this.idUser, rootId, 'root')
-          );
-          console.log('Permiso root asignado');
-        } catch (permError) {
-          console.error('Error asignando permiso root:', permError);
-        }
-
-        // 2. Crear Branch (Sucursal Principal)
-        let branchId = null;
-        try {
-          const branchData = {
-            idCompany: rootId,
-            idEstado: 0,
-            name: 'SUCURSAL PRINCIPAL',
-            description: 'Sucursal principal creada automáticamente',
-            address: row.address || '',
-            orden: 1,
-            vigente: true,
-            active: true
-          };
-          const branchResponse: any = await lastValueFrom(this.branchesService.addBranch(branchData));
-          branchId = branchResponse?.id || branchResponse?.data?.id;
-
-          if (branchId) {
-            alerts.toastAlert('Sucursal creada correctamente', 'success');
-            // Asignar permiso de branch al usuario
+          try {
             await lastValueFrom(
-              this.branchesService.assignPermissionAfterCreation(this.idUser, branchId, 'branch')
+              this.branchesService.assignPermissionAfterCreation(
+                this.idUser, //id user
+                response.id,
+                'root'
+              )
+            );
+          } catch (permError) {
+            console.error('Error asignando permiso:', permError);
+            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+            alerts.basicAlert(
+              'Advertencia',
+              'Se creó la sucursal pero hubo un problema asignando los permisos.',
+              'warning'
             );
           }
-        } catch (branchError) {
-          console.error('Error creando sucursal:', branchError);
-          alerts.toastAlert('Error al crear sucursal', 'error');
         }
-
-        // 3. Crear AccountBanks (Cuenta Bancaria)
-        try {
-          const accountBankData = {
-            idBussines: rootId,
-            numberAccount: '',
-            nameAccount: 'CUENTA PRINCIPAL',
-            signAccount: '',
-            interbancaria: '',
-            folioCheque: '',
-            folioSinCheque: '',
-            idBanco: 0,
-            maskin: '',
-            consecin: 0,
-            maskex: '',
-            consecex: 0,
-            eAplicaFiscal: 'NO',
-            active: true
-          };
-          await lastValueFrom(this.administrationService.addAccountBanks(accountBankData));
-          alerts.toastAlert('Cuenta bancaria creada correctamente', 'success');
-        } catch (bankError) {
-          console.error('Error creando cuenta bancaria:', bankError);
-          alerts.toastAlert('Error al crear cuenta bancaria', 'error');
-        }
-
-        // 4. Crear Warehouse (Almacén) - Solo si tenemos branchId
-        if (branchId) {
-          try {
-            const warehouseData = {
-              idBranch: branchId,
-              place: '',
-              name: 'ALMACEN PRINCIPAL',
-              address: row.address || '',
-              state: row.state || '',
-              city: row.city || '',
-              codePostal: row.cp || '',
-              phone: row.phone || '',
-              leader: '',
-              principal: true,
-              active: true
-            };
-            await lastValueFrom(this.warehousesService.addWarehouse(warehouseData));
-            alerts.toastAlert('Almacén creado correctamente', 'success');
-          } catch (warehouseError) {
-            console.error('Error creando almacén:', warehouseError);
-            alerts.toastAlert('Error al crear almacén', 'error');
-          }
-
-          // 5. Crear Customer (Cliente por defecto)
-          try {
-            const customerData = {
-              idRoot: rootId,
-              idBranch: branchId,
-              idTypecop: 0,
-              nameContact: '',
-              company: 'CLIENTE MOSTRADOR',
-              rfc: 'XAXX010101000',
-              city: row.city || '',
-              position: '',
-              address: '',
-              addressFiscal: '',
-              cp: '',
-              state: row.state || '',
-              neighborhood: '',
-              total: 0,
-              radio: 0,
-              phone: '',
-              mobile: '',
-              email: '',
-              vigente: true,
-              numCliente: 1,
-              latitud: '',
-              longitud: '',
-              typeCustomer: 'CLIENTE',
-              typework: '',
-              typeIntOrExt: '',
-              type: 'CUSTOMER',
-              fieldContact: 0,
-              fieldBank: 0,
-              fieldCuenta: 0,
-              active: true
-            };
-            await lastValueFrom(this.customersService.addCustomer(customerData));
-            alerts.toastAlert('Cliente mostrador creado correctamente', 'success');
-          } catch (customerError) {
-            console.error('Error creando cliente:', customerError);
-            alerts.toastAlert('Error al crear cliente', 'error');
-          }
-        }
-
-        // 6. Crear Catalog (Unidad de medida - PIEZA)
-        try {
-          const catalogData = {
-            idCompany: rootId,
-            description: 'PIEZA',
-            valueAddition: 'PZA',
-            valueAddition2: '',
-            valueAdditionBit: true,
-            valueAdditionBit2: false,
-            valueAdditionBit3: false,
-            parentId: 0,
-            subParentId: 0,
-            price: 0,
-            type: 'MEASURE',
-            vigente: true,
-            active: 1
-          };
-          await lastValueFrom(this.catalogsService.addCatalog(catalogData));
-          alerts.toastAlert('Unidad de medida creada correctamente', 'success');
-        } catch (catalogError) {
-          console.error('Error creando catálogo:', catalogError);
-          alerts.toastAlert('Error al crear unidad de medida', 'error');
-        }
-
-        // 7. Crear Setup (Configuración Fiscal/Billing Management)
-        try {
-          const setupData = {
-            idRoot: rootId,
-            emisorRfc: row.rfc || '',
-            emisorNombre: row.name || '',
-            emisorCp: row.cp || '',
-            fiscalYear: new Date().getFullYear(),
-            fiscalRegime: 0,
-            prefix: '',
-            consecutive: 1,
-            prefixexp: '',
-            consecutivexp: 1,
-            iIva: 16,
-            iIeps: 0,
-            iI3: 0,
-            rIva: 0,
-            rIeps: 0,
-            efirmaPass: '',
-            dateStart: new Date().toISOString(),
-            dateEnd: new Date().toISOString(),
-            cerFileContent: '',
-            keyFileContent: '',
-            active: true
-          };
-          await lastValueFrom(this.administrationService.addBillingManagementInfo(setupData));
-          alerts.toastAlert('Configuración fiscal creada correctamente', 'success');
-        } catch (setupError) {
-          console.error('Error creando configuración fiscal:', setupError);
-          alerts.toastAlert('Error al crear configuración fiscal', 'error');
-        }
-      }
-
-      // Procesar empresas modificadas
-      for (const row of modifiedRows) {
-        const cleanedData = this.cleanDataForServer(row);
-        await lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
       }
 
       alerts.basicAlert(
@@ -762,12 +530,38 @@ public gridOptions: any = {
         'Se han actualizado los datos correctamente.',
         'success'
       );
+      for (const response of responses) {
+        // Verificar si es una nueva creación comparando con los IDs temporales
+        const correspondingNewRow = newRows.find(row =>
+          !row.id || row.id.toString().startsWith('temp_')
+        );
 
+        if (response.id && correspondingNewRow) {
+
+          try {
+            await lastValueFrom(
+              this.branchesService.assignPermissionAfterCreation(
+                this.idUser, //id user 
+                response.id,
+                'company'
+              )
+            );
+          } catch (permError) {
+            console.error('Error asignando permiso:', permError);
+            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+            alerts.basicAlert(
+              'Advertencia',
+              'Se creó la sucursal pero hubo un problema asignando los permisos.',
+              'warning'
+            );
+          }
+        }
+      }
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
-      console.error('Error al guardar:', error);
+      console.error(error);
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',

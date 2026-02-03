@@ -6,9 +6,7 @@
     "start": "ng serve",
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration nt",
-    "test": "ng test",
-    "setup-hooks": "node scripts/setup-hooks.js",
-    "postinstall": "node scripts/setup-hooks.js"
+    "test": "ng test"
   },
   "private": true,
   "dependencies": {

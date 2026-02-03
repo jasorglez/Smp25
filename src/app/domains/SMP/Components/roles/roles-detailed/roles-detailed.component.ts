@@ -39,17 +39,13 @@ export class RolesDetailedComponent implements OnInit {
   private trackingService = inject(TrackingService);
 
   ngOnInit() {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.idRole = this.signalsService.getIdRole()();
-    this.idPosicion = this.signalsService.getIdPosicion()();
     this.obtenerDatos(this.idRole);
   }
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idRole = this.signalsService.getIdRole()();
-      this.idPosicion = this.signalsService.getIdPosicion()();
       this.obtenerDatos(this.idRole);
     });
 
@@ -84,8 +80,6 @@ export class RolesDetailedComponent implements OnInit {
 
   id: string;
   idRole: number;
-  idRoot: number;
-  idPosicion: number;
   selectedTab: string = 'customers-payments';
   idEmployee: number;
   fechaInicio: any;
@@ -180,7 +174,7 @@ export class RolesDetailedComponent implements OnInit {
   }
 
   obtenerDatos(idRole: number) {
-    this.rolesService.getPermissionsByRoles(this.idRoot, idRole, this.idPosicion)
+    this.rolesService.getPermissionsByRoles(idRole)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;
@@ -277,7 +271,7 @@ export class RolesDetailedComponent implements OnInit {
       try {
         // Intentar obtener el permiso individual
         await lastValueFrom(
-          this.rolesService.getIndividualDetailedPermissionxRol(row.idRole, this.idPosicion, row.idDetailedPermission)
+          this.rolesService.getIndividualDetailedPermissionxRol(row.idRole, row.idDetailedPermission)
         );
         // Si llegamos aquí, el permiso existe, así que lo agregamos a updateObservables
         const timeResponse = await lastValueFrom(this.timeService.getTime());

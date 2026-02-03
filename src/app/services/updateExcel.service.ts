@@ -2,7 +2,7 @@ import { effect, inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as XLSX from 'xlsx';
 import { SignalsService } from './signals.service';
-import { environment } from '@env/environment';
+import { environment } from '../../environments/environment';
 import { EmployeesService } from './employees.service';
 import { TrackingService } from './tracking.service';
 import { alerts } from '../helpers/alerts';

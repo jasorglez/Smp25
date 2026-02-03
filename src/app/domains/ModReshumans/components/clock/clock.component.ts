@@ -13,7 +13,7 @@ import  DbComponent from '../checkout/db/db.component';
 @Component({
   selector: 'app-clock',
   standalone: true,
-  imports: [CommonModule, FormsModule, DbComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './clock.component.html',
   styleUrl: './clock.component.scss'
 })
