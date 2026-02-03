@@ -1611,11 +1611,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
         body: [
           // Encabezados
           [
-            { text: 'Fecha', style: 'tableHeader' },
-            { text: 'Catálogo Gasto', style: 'tableHeader' },
-            { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader' },
-            { text: 'Descripción', style: 'tableHeader' },
-            { text: 'Total', style: 'tableHeader', alignment: 'right' }
+            { text: 'Fecha', style: 'tableHeader', alignment: 'center' },
+            { text: 'Catálogo Gasto (Clasificador Antiguo)', style: 'tableHeader', alignment: 'center' },
+            { text: 'NUMERO DE RECIBO O FOLIO FISCAL (FACTURA)', style: 'tableHeader', alignment: 'center' },
+            { text: 'Descripción', style: 'tableHeader', alignment: 'center' },
+            { text: 'Total', style: 'tableHeader', alignment: 'center' }
           ],
           // Filas de conceptos
           ...this.rowData.map(concept => [
@@ -1778,11 +1778,11 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
           body: [
             // Encabezados
             [
-              { text: 'Fecha', style: 'tableHeader' },
-              { text: 'Catálogo Gasto', style: 'tableHeader' },
-              { text: 'FOLIO FISCAL', style: 'tableHeader' },
-              { text: 'Descripción', style: 'tableHeader' },
-              { text: 'Total', style: 'tableHeader', alignment: 'right' }
+              { text: 'Fecha', style: 'tableHeader', alignment: 'center' },
+              { text: 'Catálogo Gasto (Clasificador Antiguo)', style: 'tableHeader', alignment: 'center' },
+              { text: 'NUMERO DE RECIBO O FOLIO FISCAL(FACTURA)', style: 'tableHeader', alignment: 'center' },
+              { text: 'Descripción', style: 'tableHeader', alignment: 'center' },
+              { text: 'Total', style: 'tableHeader', alignment: 'center' }
             ],
             // Filas de conceptos del grupo
             ...grupo.conceptos.map((concept: any) => [
@@ -2078,7 +2078,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
                [
                  { text: this.detailType === 'catalogReport' ? 'RUBRO:' : 'OBJETO DE GASTO:', style: 'masterLabel' },
                  {
-                   text: this.detailType === 'catalogReport' ? `${this.getCatalogoGastoText()}        $ ${this.formatCurrency(this.expenditureData?.total || 0)}` : `${this.getObjetoGastoText()}        $ ${this.formatCurrency(this.expenditureData?.total || 0)}`,
+                   text: this.detailType === 'catalogReport' ? `${this.getCatalogoGastoText()}        ${this.formatCurrency(this.expenditureData?.total || 0)}` : `${this.getObjetoGastoText()}        ${this.formatCurrency(this.expenditureData?.total || 0)}`,
                    style: 'masterValue'
                  }
                ]
@@ -2314,7 +2314,7 @@ export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy
   }
 
   private formatCurrency(amount: number): string {
-    return amount.toLocaleString('es-MX', {
+    return '$ ' + amount.toLocaleString('es-MX', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
