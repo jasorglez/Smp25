@@ -20,12 +20,12 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 })
 export class RootComponent {
 
-  
+
   private rootService = inject(RootService);
   private imageHandlerService = inject(ImageHandlerService);
   private branchesService = inject(BranchsService);
 
-    private signalsService = inject(SignalsService);
+  private signalsService = inject(SignalsService);
 
   notSavedChanges: boolean = false;
   rowData: any[] = [];
@@ -40,13 +40,75 @@ export class RootComponent {
   ngOnInit() {
     this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
+    this.obtenerEstados();
+  }
+
+  obtenerEstados() {
+    this.inegiService.getEstados().subscribe({
+      next: (response: any) => {
+        if (response?.datos) {
+          this.estados = response.datos.reduce((acc: any, estado: any) => {
+            acc[estado.nom_agee] = estado.nom_agee;
+            return acc;
+          }, {});
+        }
+        this.refreshColumnDefs();
+      },
+      error: (error) => {
+        console.error('Error obteniendo estados:', error);
+        // Estados de México por defecto si falla el API
+        //los Estados de México por defecto si falla el API
+        this.estados = {
+          'Aguascalientes': 'Aguascalientes',
+          'Baja California': 'Baja California',
+          'Baja California Sur': 'Baja California Sur',
+          'Campeche': 'Campeche',
+          'Chiapas': 'Chiapas',
+          'Chihuahua': 'Chihuahua',
+          'Ciudad de México': 'Ciudad de México',
+          'Coahuila': 'Coahuila',
+          'Colima': 'Colima',
+          'Durango': 'Durango',
+          'Estado de México': 'Estado de México',
+          'Guanajuato': 'Guanajuato',
+          'Guerrero': 'Guerrero',
+          'Hidalgo': 'Hidalgo',
+          'Jalisco': 'Jalisco',
+          'Michoacán': 'Michoacán',
+          'Morelos': 'Morelos',
+          'Nayarit': 'Nayarit',
+          'Nuevo León': 'Nuevo León',
+          'Oaxaca': 'Oaxaca',
+          'Puebla': 'Puebla',
+          'Querétaro': 'Querétaro',
+          'Quintana Roo': 'Quintana Roo',
+          'San Luis Potosí': 'San Luis Potosí',
+          'Sinaloa': 'Sinaloa',
+          'Sonora': 'Sonora',
+          'Tabasco': 'Tabasco',
+          'Tamaulipas': 'Tamaulipas',
+          'Tlaxcala': 'Tlaxcala',
+          'Veracruz': 'Veracruz',
+          'Yucatán': 'Yucatán',
+          'Zacatecas': 'Zacatecas'
+        };
+        this.refreshColumnDefs();
+      }
+    });
+  }
+
+  refreshColumnDefs() {
+    this._columnDefs = [];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.columnDefs);
+    }
   }
   constructor() {
-      effect(() => {
-        this.idUser = this.signalsService.getIdUSer()();
-        this.obtenerDatos();
-      });
-    }
+    effect(() => {
+      this.idUser = this.signalsService.getIdUSer()();
+      this.obtenerDatos();
+    });
+  }
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -63,7 +125,7 @@ export class RootComponent {
       .getRoot()
       .subscribe((data: any) => {
         this.rowData = data;
-     //   console.log(data)
+        //   console.log(data)
       });
   }
 
@@ -71,38 +133,38 @@ export class RootComponent {
     autocompleteEditor: AutocompleteEditorComponent
   }
 
-  public defaultColDef : ColDef = {
-    sortable           : true,
-    resizable          : true,
-    flex               : 1
+  public defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    flex: 1
   };
 
-// Column Definitions: Defines the columns to be displayed.
-public gridOptions: any = {
-  headerHeight: 30,
-  rowHeight: 60,
-  getRowClass: (params) => {
-    // Verificar si la fila está seleccionada
-    if (params.node.isSelected()) {
-      return 'selected-row';
+  // Column Definitions: Defines the columns to be displayed.
+  public gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 60,
+    getRowClass: (params) => {
+      // Verificar si la fila está seleccionada
+      if (params.node.isSelected()) {
+        return 'selected-row';
+      }
+      return '';
+    },
+    onRowClicked: (event) => {
+      // Seleccionar la fila al hacer clic en cualquier celda
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event) => {
+      // Deseleccionar otras filas cuando se selecciona una nueva
+      if (event.node.isSelected()) {
+        this.gridApi.forEachNode((node) => {
+          if (node.id !== event.node.id) {
+            node.setSelected(false);
+          }
+        });
+      }
     }
-    return '';
-  },
-  onRowClicked: (event) => {
-    // Seleccionar la fila al hacer clic en cualquier celda
-    event.node.setSelected(true);
-  },
-  onRowSelected: (event) => {
-    // Deseleccionar otras filas cuando se selecciona una nueva
-    if (event.node.isSelected()) {
-      this.gridApi.forEachNode((node) => {
-        if (node.id !== event.node.id) {
-          node.setSelected(false);
-        }
-      });
-    }
-  }
-};
+  };
 
   private _columnDefs: ColDef[] = [];
 
@@ -132,7 +194,7 @@ public gridOptions: any = {
       },
       {
         field: 'name',
-        headerName: 'Nombre2',
+        headerName: 'Nombre',
         editable: true,
         flex: 2,
         cellEditor: 'autocompleteEditor',
@@ -378,7 +440,7 @@ public gridOptions: any = {
     const newItem = {
       id: tempId,
       name: '',
-      web : '',
+      web: '',
       email: '',
       nameSmall: '',
       picture: '',
@@ -425,7 +487,7 @@ public gridOptions: any = {
 
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom( this.rootService.updateRoot(row.id, cleanedData));
+      return lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -433,7 +495,7 @@ public gridOptions: any = {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-      
+
       for (const response of responses) {
         // Verificar si es una nueva creación comparando con los IDs temporales
         const correspondingNewRow = newRows.find(
@@ -462,7 +524,7 @@ public gridOptions: any = {
           }
         }
       }
-      
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -470,30 +532,30 @@ public gridOptions: any = {
       );
       for (const response of responses) {
         // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(row => 
+        const correspondingNewRow = newRows.find(row =>
           !row.id || row.id.toString().startsWith('temp_')
         );
-        
-       if ( response.id && correspondingNewRow) {
-      
-                try {
-                  await lastValueFrom(
-                    this.branchesService.assignPermissionAfterCreation(
-                      this.idUser, //id user 
-                      response.id, 
-                      'company'
-                    )
-                  );
-                } catch (permError) {
-                  console.error('Error asignando permiso:', permError);
-                  // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-                  alerts.basicAlert(
-                    'Advertencia',
-                    'Se creó la sucursal pero hubo un problema asignando los permisos.',
-                    'warning'
-                  );
-                }
-              }
+
+        if (response.id && correspondingNewRow) {
+
+          try {
+            await lastValueFrom(
+              this.branchesService.assignPermissionAfterCreation(
+                this.idUser, //id user 
+                response.id,
+                'company'
+              )
+            );
+          } catch (permError) {
+            console.error('Error asignando permiso:', permError);
+            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
+            alerts.basicAlert(
+              'Advertencia',
+              'Se creó la sucursal pero hubo un problema asignando los permisos.',
+              'warning'
+            );
+          }
+        }
       }
       this.notSavedChanges = false;
       this.newlyAddedRows = [];

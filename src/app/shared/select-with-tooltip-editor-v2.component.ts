@@ -35,6 +35,19 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
         (value) => {
           // Callback cuando se selecciona una opción
           console.log('SelectWithTooltipEditorV2: Value selected:', value);
+
+          // Verificar si hay un callback personalizado para valores especiales
+          if (params.onSpecialValue && params.specialValues?.includes(value)) {
+            console.log('SelectWithTooltipEditorV2: Special value detected:', value);
+            this.shouldCloseOnDestroy = false;
+            if (this.params.stopEditing) {
+              this.params.stopEditing(true); // Cancelar sin guardar
+            }
+            // Llamar callback personalizado
+            params.onSpecialValue(value, this.params);
+            return;
+          }
+
           this.selectedValue = value;
           this.shouldCloseOnDestroy = false;
 

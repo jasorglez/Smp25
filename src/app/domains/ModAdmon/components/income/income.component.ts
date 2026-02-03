@@ -83,6 +83,8 @@ export class IncomeComponent {
       await this.getCurrentUser();
       await this.loadSATCatalogs();  // Cargar catálogos SAT
       await this.loadProjects();     // Cargar proyectos
+      await this.loadBranches();     // Cargar sucursales para modal de cliente
+      await this.loadCustomerTypes(); // Cargar tipos de cliente
 
     }, { allowSignalWrites: true });
     effect(() => {
@@ -99,9 +101,21 @@ export class IncomeComponent {
   hasConsecutiveError: boolean = false;
 
   showform : string = '';
-  branches: number[] = [];
+  branches: any[] = [];
   incomes: any[] = [];
   customers: any[] = [];
+
+  // Modal de nuevo cliente
+  showCustomerModal: boolean = false;
+  customerTypes: any[] = [];
+  newCustomer: any = {
+    idBranch: null,
+    nameContact: '',
+    company: '',
+    idTypecop: null
+  };
+  private isRevertingCustomer: boolean = false; // Flag para evitar recursión
+  private currentEditingNode: any = null; // Nodo de la fila que se está editando
   users: any[] = [];
   id: number;
   notSavedChanges: boolean = false;
@@ -260,17 +274,19 @@ export class IncomeComponent {
     // Obtener todos los clientes de la compañía
     this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe(
       (data: any) => {
-        // Mapear para formato consistente
-        this.customers = data.map((item: any) => ({
-          id: item.id,
-          description: item.nameContact || item.company || item.name,
-          name: item.nameContact || item.company || item.name,
-          rfc: item.rfc,
-          cp: item.cp,
-          fiscalRegime: item.fiscalRegime,
-          usoCfdi: item.usoCfdi,
-          email: item.email
-        }));
+        // Mapear para formato consistente y ordenar por id descendente (más recientes primero)
+        this.customers = data
+          .map((item: any) => ({
+            id: item.id,
+            description: item.nameContact || item.company || item.name,
+            name: item.nameContact || item.company || item.name,
+            rfc: item.rfc,
+            cp: item.cp,
+            fiscalRegime: item.fiscalRegime,
+            usoCfdi: item.usoCfdi,
+            email: item.email
+          }))
+          .sort((a: any, b: any) => b.id - a.id); // Ordenar por id descendente
       },
       error => {
         console.error(error);
@@ -367,6 +383,50 @@ export class IncomeComponent {
     });
   }
 
+  // Cargar sucursales para el modal de nuevo cliente
+  async loadBranches() {
+    this.BranchsService.getBranches(this.root).subscribe({
+      next: (data: any) => {
+        this.branches = (data || []).map((b: any) => ({
+          id: b.id,
+          name: b.name || b.description || 'Sin nombre'
+        }));
+      },
+      error: (err) => {
+        console.error('Error cargando sucursales:', err);
+        this.branches = [];
+      }
+    });
+  }
+
+  // Cargar tipos de cliente para el modal
+  async loadCustomerTypes() {
+    this.catalogsService.getCatalogsFromAdmon(this.root, 'TIPO-CLIENTE').subscribe({
+      next: (data: any) => {
+        this.customerTypes = (data || []).map((t: any) => ({
+          id: t.id,
+          description: t.description || t.name || 'Sin descripción'
+        }));
+        console.log('Tipos de cliente cargados:', this.customerTypes);
+      },
+      error: (err) => {
+        console.error('Error cargando tipos de cliente:', err);
+        // Intentar catálogo alternativo
+        this.catalogsService.getCatalogsVigente(this.root, 'CUSTOMERS').subscribe({
+          next: (data2: any) => {
+            this.customerTypes = (data2 || []).map((t: any) => ({
+              id: t.id,
+              description: t.description || t.name || 'Sin descripción'
+            }));
+          },
+          error: () => {
+            this.customerTypes = [];
+          }
+        });
+      }
+    });
+  }
+
   // Column Definitions: Defines the columns to be displayed.
   get colMaster(): ColDef[] {
     return [
@@ -440,7 +500,7 @@ export class IncomeComponent {
         }
       },
       { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
-      { field: 'numberDocument', headerName: '# Factura', editable: false, filter: true, width: 130 },
+      { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 130 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -484,14 +544,35 @@ export class IncomeComponent {
         field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
-          options: this.customers.map(obj => ({
-            id: obj.id,
-            description: obj.description,
-            valueAddition: obj.id || '',
-            valueAddition2: obj.description || ''
-          }))
+          options: [
+            ...this.customers.map(obj => ({
+              id: obj.id,
+              description: obj.description,
+              valueAddition: obj.id || '',
+              valueAddition2: obj.description || ''
+            })),
+            // Opción especial para agregar nuevo cliente
+            {
+              id: 'NEW_CUSTOMER',
+              description: '➕ Nuevo Registro',
+              valueAddition: 'Agregar nuevo cliente',
+              valueAddition2: 'Clic para crear'
+            }
+          ],
+          // Valores especiales que disparan callback
+          specialValues: ['NEW_CUSTOMER'],
+          // Callback cuando se selecciona un valor especial
+          onSpecialValue: (value: string, params: any) => {
+            console.log('onSpecialValue called:', value);
+            if (value === 'NEW_CUSTOMER') {
+              // Guardar referencia al nodo actual para asignar el cliente después
+              this.currentEditingNode = params.node;
+              this.openCustomerModal();
+            }
+          }
         }),
         valueFormatter: (params) => {
+          if (params.value === 'NEW_CUSTOMER') return '';
           const foundItem = this.customers
             ? this.customers.find((item) => item.id === params.value)
             : null;
@@ -618,6 +699,27 @@ onSelectionChanged(event: any) {
 
 
   onCellValueChanged(event: any) {
+    console.log('onCellValueChanged:', event.column.getColId(), 'newValue:', event.newValue);
+
+    // Evitar recursión cuando estamos revirtiendo el valor
+    if (this.isRevertingCustomer) {
+      this.isRevertingCustomer = false;
+      return;
+    }
+
+    // Detectar si se seleccionó "Nuevo Registro" en el campo Cliente
+    if (event.column.getColId() === 'idCustomer' && event.newValue === 'NEW_CUSTOMER') {
+      console.log('NEW_CUSTOMER seleccionado, abriendo modal...');
+      // Marcar que estamos revirtiendo para evitar recursión
+      this.isRevertingCustomer = true;
+      // Revertir al valor anterior
+      event.node.setDataValue('idCustomer', event.oldValue);
+      // Abrir modal de nuevo cliente
+      setTimeout(() => {
+        this.openCustomerModal();
+      }, 100);
+      return;
+    }
 
     // Actualizar campos de modificación solo para filas existentes
     if (!event.data.__isNew) {
@@ -1091,6 +1193,105 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       });
       this.gridApi.onRowHeightChanged();
     }
+  }
+
+  // ==================== METODOS PARA MODAL DE CLIENTE ====================
+
+  openCustomerModal() {
+    this.newCustomer = {
+      idBranch: null,
+      nameContact: '',
+      company: '',
+      idTypecop: null
+    };
+    this.showCustomerModal = true;
+  }
+
+  closeCustomerModal() {
+    this.showCustomerModal = false;
+    this.newCustomer = {
+      idBranch: null,
+      nameContact: '',
+      company: '',
+      idTypecop: null
+    };
+  }
+
+  saveNewCustomer() {
+    if (!this.newCustomer.idBranch || !this.newCustomer.nameContact || !this.newCustomer.idTypecop) {
+      alerts.basicAlert(
+        'Nuevo Cliente',
+        'Por favor complete todos los campos requeridos.',
+        'error'
+      );
+      return;
+    }
+
+    const customerData = {
+      idRoot: this.root,
+      idBranch: this.newCustomer.idBranch,
+      idTypecop: this.newCustomer.idTypecop,
+      nameContact: this.newCustomer.nameContact,
+      company: this.newCustomer.company || this.newCustomer.nameContact,
+      type: 'CUSTOMERS',
+      active: true,
+      vigente: true,
+      email: '',
+      phone: '',
+      mobile: '',
+      address: '',
+      city: '',
+      state: '',
+      cp: '',
+      rfc: ''
+    };
+
+    console.log('Guardando nuevo cliente:', customerData);
+
+    this.customersService.addCustomer(customerData).subscribe({
+      next: (response: any) => {
+        console.log('Cliente guardado:', response);
+        const newCustomerId = response.id;
+
+        alerts.basicAlert(
+          'Nuevo Cliente',
+          'Cliente guardado correctamente.',
+          'success'
+        );
+        this.closeCustomerModal();
+
+        // Recargar la lista de clientes
+        this.getCustomers();
+
+        // Asignar automáticamente el nuevo cliente a la fila que se estaba editando
+        if (this.currentEditingNode && newCustomerId) {
+          const nodeToUpdate = this.currentEditingNode;
+          setTimeout(() => {
+            nodeToUpdate.setDataValue('idCustomer', newCustomerId);
+            nodeToUpdate.data.__modified = true;
+            this.notSavedChanges = true;
+
+            // Refrescar la celda para mostrar el nombre
+            if (this.gridApi) {
+              this.gridApi.refreshCells({
+                rowNodes: [nodeToUpdate],
+                columns: ['idCustomer'],
+                force: true
+              });
+            }
+            this.currentEditingNode = null;
+          }, 300);
+        }
+      },
+      error: (err) => {
+        console.error('Error guardando cliente:', err);
+        alerts.basicAlert(
+          'Error',
+          `Error al guardar el cliente: ${err?.error?.message || err?.message || 'Error desconocido'}`,
+          'error'
+        );
+      }
+    });
   }
 
 }

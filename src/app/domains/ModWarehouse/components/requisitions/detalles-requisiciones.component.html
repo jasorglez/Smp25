@@ -1,0 +1,30 @@
+<div class="detail-grid-container">
+  <div class="detail-actions d-flex justify-content-end mb-1">
+    <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()">
+      <i class="bi bi-plus"></i> Agregar
+    </button>
+    <button class="btn btn-warning btn-xs me-1 py-0 px-2" (click)="discardChanges()">
+      <i class="bi bi-arrow-counterclockwise"></i> Deshacer
+    </button>
+    <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()">
+      <i class="bi bi-trash"></i> Eliminar
+    </button>
+    <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()">
+      <i class="bi bi-floppy"></i> Guardar
+      <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle unsaved-indicator"
+        *ngIf="hasUnsavedChanges">
+        <span class="visually-hidden">Hay cambios sin guardar</span>
+      </span>
+    </button>
+  </div>
+  <ag-grid-angular
+    #agGrid
+    class="ag-theme-quartz small-text-ag-grid detail-grid"
+    [rowData]="rowData"
+    [columnDefs]="colDefs"
+    [gridOptions]="gridOptions"
+    [localeText]="AG_GRID_LOCALE_ES"
+    (gridReady)="onGridReady($event)"
+    (cellValueChanged)="onCellValueChanged($event)">
+  </ag-grid-angular>
+</div>

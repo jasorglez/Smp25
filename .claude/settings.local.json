@@ -36,7 +36,19 @@
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
       "Bash(npx ng serve --port 4200)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(echo:*)",
+      "Bash(npm search:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(cat:*)",
+      "Bash(npx:*)",
+      "Bash(MSSQL_SERVER=\"66.179.240.10\" MSSQL_PORT=\"56969\" MSSQL_USER=\"Microservicio\" MSSQL_PASSWORD=\"2wD!UCabvUvt\" MSSQL_DATABASE=\"administration\" MSSQL_ENCRYPT=\"true\" MSSQL_TRUST_SERVER_CERTIFICATE=\"true\" npx -y mssql-mcp-node --help)",
+      "Bash(npm view:*)",
+      "Bash(npm pack:*)",
+      "Bash(MSSQL_HOST=\"66.179.240.10\" MSSQL_PORT=\"56969\" MSSQL_USER=\"Microservicio\" MSSQL_PASSWORD=\"2wD!UCabvUvt\" MSSQL_DATABASE=\"administration\" MSSQL_ENCRYPT=\"true\" MSSQL_TRUST_SERVER_CERTIFICATE=\"true\" timeout 10 npx -y @knight0zh/mssql-mcp-server)"
     ],
     "deny": [],
     "ask": []

@@ -16,7 +16,7 @@ import { lastValueFrom } from 'rxjs';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
-  selector: 'app-detail-cell-renderer-expenditure2',
+  selector: 'app-detalles-expenditure',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
@@ -89,22 +89,9 @@ import { lastValueFrom } from 'rxjs';
       </div>
     </div>
   `,
-  styles: [`
-    .detail-grid-container {
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-    }
-    .totals-display {
-      font-size: 0.95rem;
-    }
-    .report-detail-container {
-      padding: 15px;
-      background-color: #ffffff;
-    }
-  `]
+  styleUrl: './detalles-expenditure.component.scss'
 })
-export class DetailCellRendererExpenditure2Component implements OnInit, OnDestroy {
+export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -119,6 +106,7 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
   employees: any[] = []; // Lista de empleados
   providers: any[] = []; // Lista de proveedores
   cuentasContables: any[] = []; // Lista de cuentas contables
+  cuentasContablesNivel3: any[] = []; // Lista de cuentas contables nivel 3
   ivaPercent: number = 16; // Porcentaje de IVA por defecto
   setupManagementInfo: any = null; // Información de firmas
 
@@ -163,6 +151,11 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
     // Cargar cuentas contables del contexto
     if (this.context?.cuentasContables) {
       this.cuentasContables = this.context.cuentasContables;
+    }
+
+    // Cargar cuentas contables nivel 3 del contexto
+    if (this.context?.cuentasContablesNivel3) {
+      this.cuentasContablesNivel3 = this.context.cuentasContablesNivel3;
     }
 
     if (this.detailType === 'concepts') {
@@ -337,7 +330,7 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
       },
       {
         field: 'selectedEntity',
-        headerName: 'Empleado/Proveedor/Cuenta',
+        headerName: 'Empleado/Proveedor/Cuenta3',
         width: 220,
         editable: (params) => !!params.data?.typeExpense,
         cellEditor: 'agSelectCellEditor',
@@ -417,6 +410,30 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
         headerName: 'Concepto Adicional',
         editable: true,
         width: 180
+      },
+      {
+        field: 'idContribuyente',
+        headerName: 'Detalle hijo',
+        editable: true,
+        width: 200,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => {
+          // Filtrar cuentas nivel 3 por el padre (idExpend del maestro)
+          const idPadre = this.expenditureData?.idExpend;
+          const cuentasNivel3 = this.context?.cuentasContablesNivel3 || this.cuentasContablesNivel3 || [];
+          const filtradas = idPadre
+            ? cuentasNivel3.filter((c: any) => c.idPadre === idPadre)
+            : cuentasNivel3;
+          return {
+            values: filtradas.map((c: any) => c.id)
+          };
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const cuentasNivel3 = this.context?.cuentasContablesNivel3 || this.cuentasContablesNivel3 || [];
+          const cuenta = cuentasNivel3.find((c: any) => c.id === params.value);
+          return cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : params.value;
+        }
       },
       {
         field: 'quantity',
@@ -502,6 +519,7 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
       idIncorExp: this.params.data.id,
       typeExpense: 'EMPLEADOS',
       idExpense: null,
+      idContribuyente: null,
       selectedEntity: null,
       dateExpend: this.params.data.date,
       description: '',
@@ -570,7 +588,8 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
     }
 
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.delete) {
-      this.context.CONCEPTS.delete({ data: selectedConcept }, () => {
+      const newCount = this.rowData.length - 1;
+      this.context.CONCEPTS.delete({ data: selectedConcept, api: this.gridApi }, () => {
         this.rowData = this.rowData.filter(concept => concept.id !== selectedConcept.id);
         this.gridApi.applyTransaction({ remove: [selectedConcept] });
         this.hasUnsavedChanges = true;
@@ -578,7 +597,7 @@ export class DetailCellRendererExpenditure2Component implements OnInit, OnDestro
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
           this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
         }
-      });
+      }, newCount);
     }
   }
 
