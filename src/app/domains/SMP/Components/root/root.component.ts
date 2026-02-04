@@ -17,7 +17,8 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: './root.component.html'
+  templateUrl: './root.component.html',
+  styleUrls: ['./root.component.css']
 })
 export class RootComponent {
 
@@ -143,11 +144,15 @@ export class RootComponent {
   };
 
 
-  // Orden de columnas editables para navegación con Enter
+  // Orden de columnas editables para navegación con Enter (debe coincidir con el orden visual)
   private editableColumnOrder = [
-    'orden', 'name', 'nameSmall', 'rfc', 'personType', 'email', 'phone',
-    'address', 'city', 'state', 'cp', 'country', 'web', 'formatRep', 'advanced'
+    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
+    'address', 'city', 'state', 'country', 'rfc', 'cp', 'advanced'
   ];
+
+  // Flag para controlar si la validación falló y en qué celda
+  private validationFailed: boolean = false;
+  private failedCellInfo: { rowIndex: number; colKey: string } | null = null;
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
@@ -180,20 +185,34 @@ public gridOptions: any = {
 
   // Mover a la siguiente celda editable con Enter
   onCellEditingStopped(event: any) {
-    if (event.valueChanged || event.oldValue === event.newValue) {
-      const currentColId = event.column.getColId();
-      const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+    const currentColId = event.column.getColId();
+    const currentIndex = this.editableColumnOrder.indexOf(currentColId);
 
-      if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
-        const nextColId = this.editableColumnOrder[currentIndex + 1];
-        setTimeout(() => {
-          this.gridApi.startEditingCell({
-            rowIndex: event.rowIndex,
-            colKey: nextColId
-          });
-        }, 50);
+    // Si la validación falló, quedarse en la misma celda
+    if (this.validationFailed && this.failedCellInfo) {
+      const cellInfo = this.failedCellInfo;
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: cellInfo.rowIndex,
+          colKey: cellInfo.colKey
+        });
+      }, 100);
+      return;
+    }
 
-      }        
+    // Resetear flags
+    this.validationFailed = false;
+    this.failedCellInfo = null;
+
+    // Avanzar a la siguiente columna
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      const nextColId = this.editableColumnOrder[currentIndex + 1];
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: nextColId
+        });
+      }, 100);
     }
   }
   
@@ -322,6 +341,14 @@ public gridOptions: any = {
         },
         valueFormatter: (params) => params.value,
         valueSetter: (params) => {
+          // Si está vacío, permitir salir (es opcional)
+          if (!params.newValue || params.newValue.trim() === '') {
+            this.validationFailed = false;
+            this.failedCellInfo = null;
+            params.data[params.colDef.field] = '';
+            return true;
+          }
+
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (emailRegex.test(params.newValue)) {
             // Verificar si el email ya existe
@@ -335,9 +362,13 @@ public gridOptions: any = {
                 'Ya existe un usuario con ese correo electrónico.',
                 'error'
               );
+              this.validationFailed = true;
+              this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'email' };
               return false;
             }
 
+            this.validationFailed = false;
+            this.failedCellInfo = null;
             params.data[params.colDef.field] = params.newValue;
             return true;
           } else {
@@ -346,6 +377,8 @@ public gridOptions: any = {
               'Correo electrónico no válido.',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'email' };
             return false;
           }
         },
@@ -494,9 +527,16 @@ public gridOptions: any = {
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Calcular el siguiente número de orden (máximo + 1)
+    const maxOrden = this.rowData.reduce((max, row) => {
+      const orden = Number(row.orden) || 0;
+      return orden > max ? orden : max;
+    }, 0);
+
     const newItem = {
       id: tempId,
-      orden: 0,
+      orden: maxOrden + 1,
       name: '',
       web: '',
       email: '',
@@ -520,6 +560,17 @@ public gridOptions: any = {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Posicionarse automáticamente en la primera columna editable
+    setTimeout(() => {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: this.editableColumnOrder[0]
+        });
+      }, 100);
+    }, 50);
   }
 
   async saveChanges() {
