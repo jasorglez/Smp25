@@ -21,7 +21,7 @@ import { lastValueFrom } from 'rxjs';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
-  selector: 'app-detail-cell-renderer-expenditure',
+  selector: 'app-detalles-egresospalacios',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
@@ -245,7 +245,7 @@ import { lastValueFrom } from 'rxjs';
     }
   `]
 })
-export class DetailCellRendererExpenditureComponent implements OnInit, OnDestroy {
+export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;

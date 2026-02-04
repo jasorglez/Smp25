@@ -151,7 +151,7 @@ export class RootComponent {
 
   // Orden de columnas editables para navegación con Enter
   private editableColumnOrder = [
-    'name', 'nameSmall', 'rfc', 'personType', 'email', 'phone',
+    'orden', 'name', 'nameSmall', 'rfc', 'personType', 'email', 'phone',
     'address', 'city', 'state', 'cp', 'country', 'web', 'formatRep', 'advanced'
   ];
 
@@ -226,6 +226,20 @@ public gridOptions: any = {
           textAlign: 'center',
           backgroundColor: '#f8f9fa'
         }
+      },
+      {
+        field: 'orden',
+        headerName: 'Orden',
+        editable: true,
+        minWidth: 70,
+        width: 80,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          precision: 0
+        },
+        valueParser: (params) => Number(params.newValue),
+        cellStyle: { textAlign: 'center' }
       },
       {
         field: 'name',
@@ -497,6 +511,7 @@ public gridOptions: any = {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      orden: 0,
       name: '',
       web : '',
       email: 'info@x.com',
