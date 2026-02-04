@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ContractsService } from 'app/services/contracts.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
+import { InegiService } from 'app/services/inegi.service';
 import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
@@ -16,12 +17,14 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
   selector: 'app-root',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
-  templateUrl: './root.component.html'
+  templateUrl: './root.component.html',
+  styleUrls: ['./root.component.css']
 })
 export class RootComponent {
 
 
   private rootService = inject(RootService);
+  private inegiService = inject(InegiService);
   private imageHandlerService = inject(ImageHandlerService);
   private branchesService = inject(BranchsService);
 
@@ -29,6 +32,7 @@ export class RootComponent {
 
   notSavedChanges: boolean = false;
   rowData: any[] = [];
+  estados: { [key: string]: string } = {};
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
   selectedRowData: any = null;
@@ -136,36 +140,82 @@ export class RootComponent {
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
-    flex: 1
+    minWidth: 100
   };
 
-  // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 60,
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
+
+  // Orden de columnas editables para navegación con Enter (debe coincidir con el orden visual)
+  private editableColumnOrder = [
+    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
+    'address', 'city', 'state', 'country', 'rfc', 'cp', 'advanced'
+  ];
+
+  // Flag para controlar si la validación falló y en qué celda
+  private validationFailed: boolean = false;
+  private failedCellInfo: { rowIndex: number; colKey: string } | null = null;
+
+// Column Definitions: Defines the columns to be displayed.
+public gridOptions: any = {
+  headerHeight: 30,
+  rowHeight: 60,
+  stopEditingWhenCellsLoseFocus: true,
+  enableBrowserTooltips: true,
+  getRowClass: (params) => {
+    // Verificar si la fila está seleccionada
+    if (params.node.isSelected()) {
+      return 'selected-row';
     }
-  };
+    return '';
+  },
+  onRowClicked: (event) => {
+    // Seleccionar la fila al hacer clic en cualquier celda
+    event.node.setSelected(true);
+  },
+  onRowSelected: (event) => {
+    // Deseleccionar otras filas cuando se selecciona una nueva
+    if (event.node.isSelected()) {
+      this.gridApi.forEachNode((node) => {
+        if (node.id !== event.node.id) {
+          node.setSelected(false);
+        }
+      });
+    }
+  }
+};
 
+  // Mover a la siguiente celda editable con Enter
+  onCellEditingStopped(event: any) {
+    const currentColId = event.column.getColId();
+    const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+
+    // Si la validación falló, quedarse en la misma celda
+    if (this.validationFailed && this.failedCellInfo) {
+      const cellInfo = this.failedCellInfo;
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: cellInfo.rowIndex,
+          colKey: cellInfo.colKey
+        });
+      }, 100);
+      return;
+    }
+
+    // Resetear flags
+    this.validationFailed = false;
+    this.failedCellInfo = null;
+
+    // Avanzar a la siguiente columna
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      const nextColId = this.editableColumnOrder[currentIndex + 1];
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: nextColId
+        });
+      }, 100);
+    }
+  }
+  
   private _columnDefs: ColDef[] = [];
 
   get columnDefs(): ColDef[] {
@@ -191,6 +241,20 @@ export class RootComponent {
           textAlign: 'center',
           backgroundColor: '#f8f9fa'
         }
+      },
+      {
+        field: 'orden',
+        headerName: 'Orden',
+        editable: true,
+        minWidth: 70,
+        width: 80,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          precision: 0
+        },
+        valueParser: (params) => Number(params.newValue),
+        cellStyle: { textAlign: 'center' }
       },
       {
         field: 'name',
@@ -277,6 +341,14 @@ export class RootComponent {
         },
         valueFormatter: (params) => params.value,
         valueSetter: (params) => {
+          // Si está vacío, permitir salir (es opcional)
+          if (!params.newValue || params.newValue.trim() === '') {
+            this.validationFailed = false;
+            this.failedCellInfo = null;
+            params.data[params.colDef.field] = '';
+            return true;
+          }
+
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (emailRegex.test(params.newValue)) {
             // Verificar si el email ya existe
@@ -290,9 +362,13 @@ export class RootComponent {
                 'Ya existe un usuario con ese correo electrónico.',
                 'error'
               );
+              this.validationFailed = true;
+              this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'email' };
               return false;
             }
 
+            this.validationFailed = false;
+            this.failedCellInfo = null;
             params.data[params.colDef.field] = params.newValue;
             return true;
           } else {
@@ -301,10 +377,14 @@ export class RootComponent {
               'Correo electrónico no válido.',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'email' };
             return false;
           }
         },
-        filter: true
+        filter: true,
+        flex: 1.5,
+        minWidth: 180
       },
       {
         field: 'web',
@@ -344,7 +424,13 @@ export class RootComponent {
         field: 'state',
         headerName: 'Estado',
         editable: true,
-        flex: 1
+        flex: 1,
+        minWidth: 150,
+        tooltipField: 'state',
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: Object.keys(this.estados)
+        }
       },
       {
         field: 'country',
@@ -433,12 +519,24 @@ export class RootComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    // Autoajustar columnas al ancho del grid
+    setTimeout(() => {
+      params.api.sizeColumnsToFit();
+    }, 100);
   }
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Calcular el siguiente número de orden (máximo + 1)
+    const maxOrden = this.rowData.reduce((max, row) => {
+      const orden = Number(row.orden) || 0;
+      return orden > max ? orden : max;
+    }, 0);
+
     const newItem = {
       id: tempId,
+      orden: maxOrden + 1,
       name: '',
       web: '',
       email: '',
@@ -462,6 +560,17 @@ export class RootComponent {
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+
+    // Posicionarse automáticamente en la primera columna editable
+    setTimeout(() => {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: 0,
+          colKey: this.editableColumnOrder[0]
+        });
+      }, 100);
+    }, 50);
   }
 
   async saveChanges() {

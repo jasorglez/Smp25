@@ -48,9 +48,34 @@
       "Bash(MSSQL_SERVER=\"66.179.240.10\" MSSQL_PORT=\"56969\" MSSQL_USER=\"Microservicio\" MSSQL_PASSWORD=\"2wD!UCabvUvt\" MSSQL_DATABASE=\"administration\" MSSQL_ENCRYPT=\"true\" MSSQL_TRUST_SERVER_CERTIFICATE=\"true\" npx -y mssql-mcp-node --help)",
       "Bash(npm view:*)",
       "Bash(npm pack:*)",
-      "Bash(MSSQL_HOST=\"66.179.240.10\" MSSQL_PORT=\"56969\" MSSQL_USER=\"Microservicio\" MSSQL_PASSWORD=\"2wD!UCabvUvt\" MSSQL_DATABASE=\"administration\" MSSQL_ENCRYPT=\"true\" MSSQL_TRUST_SERVER_CERTIFICATE=\"true\" timeout 10 npx -y @knight0zh/mssql-mcp-server)"
+      "Bash(MSSQL_HOST=\"66.179.240.10\" MSSQL_PORT=\"56969\" MSSQL_USER=\"Microservicio\" MSSQL_PASSWORD=\"2wD!UCabvUvt\" MSSQL_DATABASE=\"administration\" MSSQL_ENCRYPT=\"true\" MSSQL_TRUST_SERVER_CERTIFICATE=\"true\" timeout 10 npx -y @knight0zh/mssql-mcp-server)",
+      "Bash(git mv:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(MSSQL_HOST=\"66.179.240.10\" MSSQL_PORT=\"56969\" MSSQL_USER=\"Microservicio\" MSSQL_PASSWORD=\"2wD!UCabvUvt\" MSSQL_DATABASE=\"administration\" MSSQL_ENCRYPT=\"true\" MSSQL_TRUST_SERVER_CERTIFICATE=\"true\" timeout 15 npx -y @knight0zh/mssql-mcp-server)",
+      "Bash(npm info:*)",
+      "WebFetch(domain:www.mintmcp.com)",
+      "Bash(SQLSERVER_HOST=\"66.179.240.10\" SQLSERVER_PORT=\"56969\" SQLSERVER_USER=\"Microservicio\" SQLSERVER_PASSWORD=\"2wD!UCabvUvt\" SQLSERVER_DATABASE=\"administration\" SQLSERVER_ENCRYPT=\"true\" SQLSERVER_TRUST_CERT=\"true\" timeout 10 npx -y @bilims/mcp-sqlserver)",
+      "Bash($env:MSSQL_HOST=\"66.179.240.10\")",
+      "Bash($env:MSSQL_PORT=\"56969\")",
+      "Bash($env:MSSQL_USER=\"Microservicio\")",
+      "Bash($env:MSSQL_PASSWORD=\"2wD!UCabvUvt\")",
+      "Bash($env:MSSQL_DATABASE=\"administration\")",
+      "Bash($env:MSSQL_ENCRYPT=\"true\")",
+      "Bash($env:MSSQL_TRUST_SERVER_CERTIFICATE=\"true\")",
+      "mcp__mssql-administration__execute_sql",
+      "mcp__mssql-administration__list_databases"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "mssql-administration",
+    "mssql-nominas",
+    "mssql-production",
+    "mssql-security",
+    "mssql-smp",
+    "mssql-tracking",
+    "mssql-warehouses"
+  ]
 }

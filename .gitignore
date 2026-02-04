@@ -1,6 +1,9 @@
 # Windows special files
 nul
 
+# MCP Server credentials
+.mcp.json
+
 # Copilot
 .vs/Smp25/CopilotIndices/
 *.vsidx

@@ -25,7 +25,7 @@ import { environment } from '@env/environment';
 import { AuthService } from 'app/services/auth.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ButtonCellRendererExpenditureComponent } from './button-cell-renderer-expenditure.component';
-import { DetailCellRendererExpenditureComponent } from './detail-cell-renderer-expenditure.component';
+import { DetallesEgresospalaciosComponent } from './detalles-egresospalacios.component';
 import { PdfButtonCellRendererComponent } from './pdf-button-cell-renderer.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
@@ -40,7 +40,7 @@ declare var bootstrap: any;
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent,
+    FormsModule, ButtonCellRendererExpenditureComponent, DetallesEgresospalaciosComponent,
     PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
@@ -267,7 +267,7 @@ export class EgresosPalacioComponent {
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 840,
-    detailCellRenderer: DetailCellRendererExpenditureComponent,
+    detailCellRenderer: DetallesEgresospalaciosComponent,
     suppressMenuHide: false,
     popupParent: document.body,
     isExternalFilterPresent: () => {
