@@ -295,10 +295,11 @@ export class ContractsComponent {
         const foundBranch = this.branchs?.find((item) => item.id === params.value);
         return foundBranch ? foundBranch.name : params.value;
       },
-      valueSetter: (params) => {
-        params.data.idBranch = params.newValue;
-        return true;
-      }
+      valueGetter: (params) => {
+        if (!params.data || !params.data.idBranch) return '';
+        const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+        return branch ? branch.name : '';
+      },
     },
     {
       field: 'description',
@@ -342,10 +343,11 @@ export class ContractsComponent {
         const foundProvider = this.providers?.find((p) => p.id === params.value);
         return foundProvider ? foundProvider.name : params.value;
       },
-      valueSetter: (params) => {
-        params.data.idProvider = params.newValue;
-        return true;
-      }
+      valueGetter: (params) => {
+        if (!params.data || !params.data.idProvider) return '';
+        const provider = this.providers?.find(p => p.id === params.data.idProvider);
+        return provider ? provider.name : '';
+      },
     },
     {
       field: 'resident',
@@ -592,13 +594,11 @@ export class ContractsComponent {
 
     const newItem: any = {
       id: tempId,
-      idContrato: 0,
       idBranch: this.idBranch > 0 ? this.idBranch : null,
       numberContract: '',
-      project: 0,
+      project: '',
       description: '',
       descripSmall: '',
-      name: '',
       resident: '',
       supervisor: '',
       amountMx: 0,
@@ -689,10 +689,8 @@ export class ContractsComponent {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    delete cleanedData.detailType;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
-      delete cleanedData.idContrato;
     }
     return cleanedData;
   }

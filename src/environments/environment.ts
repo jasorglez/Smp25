@@ -1,3 +1,6 @@
+// This file can be replaced during build by using the `fileReplacements` array.
+// `ng build --prod` replaces `environment.ts` with `environment.prod.ts`.
+// The list of file replacements can be found in `angular.json`.
 
 export const environment = {
   firebase: {
@@ -62,9 +65,11 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.51 (4 Febrero 2026 09:22) - Metamorphosis',
+  version: '4.51 (4 Febrero 2026 11:27) - Metamorphosis',
 
 
 };
+
+
 
 

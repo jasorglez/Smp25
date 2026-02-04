@@ -1,38 +1,47 @@
 #!/bin/bash
-
 # ============================================
 # Deploy Script for biapp.com.mx
 # ============================================
-
 set -e  # Exit on error
 
 echo "🚀 Starting deployment process..."
 
+# Navegar al directorio del proyecto
+cd /bi/repos/Smp25
+
 # Variables
-IMAGE_NAME="biapp-angular"
-VERSION=$(grep -oP "version: '\K[^']*" src/environments/environment.ts | head -1 | cut -d' ' -f1)
-CONTAINER_NAME="biapp-angular"
-PORT=8080
+VERSION=$(grep -oP "version: '\K[^']*" src/environments/environment.ts | head -1 | cut -d' ' -f1 || echo "unknown")
 
 echo "📦 Building version: $VERSION"
 
-# Build Docker image
-docker build -t $IMAGE_NAME:$VERSION -t $IMAGE_NAME:latest .
+# Pull latest code
+echo "📥 Pulling latest code..."
+git pull origin main
 
-echo "🛑 Stopping existing container..."
-docker stop $CONTAINER_NAME || true
-docker rm $CONTAINER_NAME || true
+# Stop existing containers
+echo "🛑 Stopping containers..."
+docker compose down
 
-echo "🔄 Starting new container..."
-docker run -d \
-  --name $CONTAINER_NAME \
-  --restart unless-stopped \
-  -p $PORT:80 \
-  $IMAGE_NAME:latest
+# Build new image
+echo "🔨 Building new image..."
+docker compose build --no-cache
 
+# Start containers
+echo "🚀 Starting containers..."
+docker compose up -d
+
+# Wait for container to be healthy
+echo "⏳ Waiting for container to be ready..."
+sleep 5
+
+# Clean old images
 echo "🧹 Cleaning old images..."
 docker image prune -f
 
 echo "✅ Deployment complete!"
-echo "🌐 Application running at http://localhost:$PORT"
-echo "📊 Check logs: docker logs -f $CONTAINER_NAME"
+echo "🌐 Application running at http://localhost:8080"
+echo "📊 Container status:"
+docker compose ps
+echo ""
+echo "📋 Recent logs:"
+docker compose logs --tail=20
