@@ -18,6 +18,7 @@ import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY } from 'rxjs';
+import { AuthService } from 'app/services/auth.service';
 
 interface Catalog {
   id: number;
@@ -48,6 +49,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private typexPrefixesService = inject(TypexPrefixesService);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private rolesService = inject(RolesService);
+  public   authService = inject(AuthService);
 
   private gridApi!: GridApi;
   private isGeneratingReport: boolean = false;
