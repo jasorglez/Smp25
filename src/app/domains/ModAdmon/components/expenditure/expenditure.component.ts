@@ -296,7 +296,7 @@ export class ExpenditureComponent {
 
           // Agregar propiedades para master-detail
           this.incomes = filtered.map(income => {
-            const countItems = income.countItems || 0;
+            const countItems = income.countitems || 0;
             return {
               ...income,
               countItems: countItems,
