@@ -407,7 +407,6 @@ export class IncomeComponent {
           id: t.id,
           description: t.description || t.name || 'Sin descripción'
         }));
-        console.log('Tipos de cliente cargados:', this.customerTypes);
       },
       error: (err) => {
         console.error('Error cargando tipos de cliente:', err);
@@ -471,6 +470,21 @@ export class IncomeComponent {
             'Cancelada',
             'Pagada'
           ]
+        }
+      },
+      {
+        field: 'idBranch',
+        headerName: 'Sucursal',
+        editable: true,
+        width: 140,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.branches.map(b => b.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const foundBranch = this.branches.find(b => b.id === params.value);
+          return foundBranch ? foundBranch.name : params.value;
         }
       },
       {
@@ -563,7 +577,6 @@ export class IncomeComponent {
           specialValues: ['NEW_CUSTOMER'],
           // Callback cuando se selecciona un valor especial
           onSpecialValue: (value: string, params: any) => {
-            console.log('onSpecialValue called:', value);
             if (value === 'NEW_CUSTOMER') {
               // Guardar referencia al nodo actual para asignar el cliente después
               this.currentEditingNode = params.node;
@@ -682,7 +695,6 @@ export class IncomeComponent {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
-      console.log('Setting idIncomeAndExpense to:', this.id); // Debug log
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
@@ -699,8 +711,6 @@ onSelectionChanged(event: any) {
 
 
   onCellValueChanged(event: any) {
-    console.log('onCellValueChanged:', event.column.getColId(), 'newValue:', event.newValue);
-
     // Evitar recursión cuando estamos revirtiendo el valor
     if (this.isRevertingCustomer) {
       this.isRevertingCustomer = false;
@@ -709,7 +719,6 @@ onSelectionChanged(event: any) {
 
     // Detectar si se seleccionó "Nuevo Registro" en el campo Cliente
     if (event.column.getColId() === 'idCustomer' && event.newValue === 'NEW_CUSTOMER') {
-      console.log('NEW_CUSTOMER seleccionado, abriendo modal...');
       // Marcar que estamos revirtiendo para evitar recursión
       this.isRevertingCustomer = true;
       // Revertir al valor anterior
@@ -901,7 +910,6 @@ async saveChanges() {
   private async saveIncomeRecords(newRows: any[], modifiedRows: any[]): Promise<void> {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Guardando nueva fila:', cleanedData);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Save Registro en Ingresos', 
@@ -913,7 +921,6 @@ async saveChanges() {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Actualizando fila existente:', cleanedData);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Update Registro en Ingresos', 
@@ -935,8 +942,6 @@ async saveChanges() {
 
 // Método separado para actualizar el billing management (SOLO consecutivo)
 private async updateBillingManagement(currentConsecutive: number): Promise<void> {
-  console.log('Actualizando consecutivo a:', currentConsecutive);
-  
   // CORRECCIÓN: Envolver el consecutive en un objeto "request"
   const payload = {
     request: {
@@ -950,7 +955,6 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       payload
     ).pipe(
       tap((updatedBilling: any) => {
-        console.log('Consecutivo actualizado exitosamente:', updatedBilling);
         // Actualizar el array local con la respuesta completa del servidor
         this.prefixAndConsecutive = [updatedBilling];
       }),
@@ -1020,10 +1024,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   revert() {
     this.getIncomes();
     this.notSavedChanges = false;
-    console.log('Reverted unsaved changes', this.trackingService.getnameComp());
-    console.log('Reverted Email:  ', this.trackingService.getEmail());
-
-    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());    
+    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
@@ -1246,11 +1247,8 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       rfc: ''
     };
 
-    console.log('Guardando nuevo cliente:', customerData);
-
     this.customersService.addCustomer(customerData).subscribe({
       next: (response: any) => {
-        console.log('Cliente guardado:', response);
         const newCustomerId = response.id;
 
         alerts.basicAlert(
