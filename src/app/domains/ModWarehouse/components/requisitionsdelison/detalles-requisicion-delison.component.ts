@@ -12,6 +12,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { firstValueFrom } from 'rxjs';
+import { AuthService } from 'app/services/auth.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
@@ -47,7 +48,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
           </span>
         </button>
 
-           <button class="btn btn-info btn-sm position-relative" (click)="saveMultiGuardar()">
+           <button class="btn btn-info btn-sm position-relative" (click)="saveMultiGuardar()" *ngIf="authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Mul')">
           <i class="bi bi-files"></i> MultiGuardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="hasPedimentoSelection">
@@ -170,7 +171,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private typexPrefixesService = inject(TypexPrefixesService);
-
+  authService = inject(AuthService);
   // Tooltip
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
@@ -754,6 +755,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         field: 'comment',
         headerName: 'Observaciones',
         width: 160,
+        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Obs'),
         editable: true,
         // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
         onCellClicked: (params: any) => {
