@@ -5,7 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/inandout-st/button-cell-renderer.component';
-import { DetailCellRendererRequisitionsItemsComponent } from './detail-cell-renderer-requisitions-items.component';
+import { DetallesRequisicionDelisonComponent } from './detalles-requisicion-delison.component';
 import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { SelectDepartmentEditorComponent } from './select-department-editor.component';
 import { PdfButtonCellRendererComponent } from '../../../ModAdmon/components/egresos-palacio/pdf-button-cell-renderer.component';
@@ -27,7 +27,7 @@ interface Catalog {
 @Component({
   selector: 'app-requisitionsdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetallesRequisicionDelisonComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, PdfButtonCellRendererComponent],
   templateUrl: './requisitionsdelison.component.html',
   styleUrl: './requisitionsdelison.component.scss',
   styles: [`
@@ -387,7 +387,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     masterDetail: true,
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererRequisitionsItemsComponent,
+    detailCellRenderer: DetallesRequisicionDelisonComponent,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
         return 'selected-row';

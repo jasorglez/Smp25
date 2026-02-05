@@ -17,7 +17,7 @@ import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 
 @Component({
-  selector: 'app-detail-cell-renderer-requisitions-items',
+  selector: 'app-detalles-requisicion-delison',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent],
   template: `
@@ -158,7 +158,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
     }
   `]
 })
-export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnDestroy {
+export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   private params!: any;
   private gridApi!: GridApi;
