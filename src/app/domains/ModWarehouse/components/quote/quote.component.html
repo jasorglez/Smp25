@@ -48,3 +48,37 @@
     </div>
   </div>
 </div>
+
+<!-- Modal de selección de proveedor -->
+<div class="modal fade show" *ngIf="showProviderModal" style="display: block;" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-shop me-2"></i>Seleccionar Proveedor {{ selectedProviderSlot }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="cancelProviderSelection()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Proveedor:</label>
+          <select class="form-select" [(ngModel)]="selectedProviderId">
+            <option [ngValue]="null" disabled>-- Seleccione un proveedor --</option>
+            <option *ngFor="let prov of proveedores" [ngValue]="prov.id">{{ prov.name }}</option>
+          </select>
+        </div>
+        <div class="alert alert-info small" *ngIf="masterSelectedRowData?.idReq">
+          <i class="bi bi-info-circle me-1"></i>
+          Se copiarán los items de la requisición al crear la cotización para este proveedor.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cancelProviderSelection()">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="confirmProviderSelection()" [disabled]="!selectedProviderId">
+          <i class="bi bi-check-lg me-1"></i>Crear Cotización
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showProviderModal"></div>

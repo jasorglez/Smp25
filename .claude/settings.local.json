@@ -71,7 +71,14 @@
       "mcp__mssql-smp__execute_sql",
       "mcp__mssql-tracking__execute_sql",
       "mcp__mssql-security__execute_sql",
-      "mcp__mssql-warehouses__execute_sql"
+      "mcp__mssql-warehouses__execute_sql",
+      "WebFetch(domain:api.telegram.org)",
+      "Bash(ssh:*)",
+      "Bash(where:*)",
+      "Bash(gh auth status:*)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet script:*)",
+      "mcp__mssql-warehouses__get_table_schema"
     ],
     "deny": [],
     "ask": []

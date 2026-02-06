@@ -623,7 +623,7 @@ export class ExpenditureComponent {
         cellClass: 'description-cell',
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
-          maxLength: 500,
+          maxLength: 600,
           cols: 60,
           rows: 4,
           style: 'word-wrap: break-word; white-space: normal; resize: vertical;',

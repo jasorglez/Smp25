@@ -52,5 +52,8 @@ export class OcAndReqsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Material/providers-by-material?idMaterial=${id}&typeIntOrExt=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCotizByReq(idReq: number, typeReference: string, idReference: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Ocandreq?typeReference=${typeReference}&idReference=${idReference}&type=COTIZ`, { headers: this.trackingService.getHeaders() });
+  }
 
 }

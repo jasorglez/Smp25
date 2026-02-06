@@ -70,10 +70,12 @@ export class ProviderQuoteDetailComponent implements OnInit {
   productos: any[] = [];
   proveedores: any[] = [];
   idRoot: number = 0;
+  cotizId: number = null;
+  idProvider: number = null;
+  providerName: string = '';
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
-  
-  // Grid options como propiedad para evitar errores de parser
+
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 35,
@@ -103,46 +105,93 @@ export class ProviderQuoteDetailComponent implements OnInit {
     this.context = params.context;
     this.quoteData = this.context?.providerQuoteData?.quoteData;
     this.providerNumber = this.context?.providerQuoteData?.providerNumber || 1;
+    this.cotizId = this.context?.providerQuoteData?.cotizId || null;
+    this.idProvider = this.context?.providerQuoteData?.idProvider || null;
     this.productos = this.context?.productos || [];
     this.proveedores = this.context?.proveedores || [];
     this.idRoot = this.context?.idRoot || 0;
-    
+
+    // Get provider name
+    if (this.idProvider) {
+      const provider = this.proveedores.find((p: any) => p.id === this.idProvider);
+      this.providerName = provider ? provider.name : `Proveedor ${this.idProvider}`;
+    }
+
     console.log('Provider Quote Detail - Data:', {
       quoteData: this.quoteData,
       providerNumber: this.providerNumber,
-      productos: this.productos,
+      cotizId: this.cotizId,
+      idProvider: this.idProvider,
       idRoot: this.idRoot
     });
-    
+
     this.loadProviderQuoteData();
   }
 
   async loadProviderQuoteData() {
+    // If we have a cotizId, load items from the COTIZ record
+    if (this.cotizId) {
+      try {
+        const items: any[] = await lastValueFrom(
+          this.ocAndReqsService.getReqItems(this.cotizId)
+        );
+
+        console.log('COTIZ items loaded:', items);
+
+        this.rowData = items.map((item: any) => {
+          const producto = this.productos.find((p: any) => p.id === (item.idSupplie || item.id_supplie));
+          return {
+            id: item.id,
+            idMovement: item.idMovement || item.id_movement,
+            idSupplie: item.idSupplie || item.id_supplie,
+            idProvider: item.idProvider || item.id_provider,
+            productName: producto ? producto.description : `Producto ${item.idSupplie || item.id_supplie}`,
+            productCode: producto ? producto.code : (item.idSupplie || item.id_supplie),
+            quantity: item.quantity || 0,
+            price: item.price || 0,
+            total: (item.quantity || 0) * (item.price || 0),
+            comment: item.comment || '',
+            dateuse: item.dateuse,
+            providerNumber: this.providerNumber,
+            __isNew: false,
+            __modified: false
+          };
+        });
+
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+      } catch (error) {
+        console.error('Error loading COTIZ items:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar los items de la cotización', 'error');
+      }
+      return;
+    }
+
+    // Fallback: load from REQUIS if no cotizId (shouldn't happen with new flow)
     if (!this.quoteData || !this.quoteData.idReq) {
       console.log('No hay requisición seleccionada');
       return;
     }
 
     try {
-      // Obtener items de la requisición
       const requisitionItems: any = await lastValueFrom(
         this.ocAndReqsService.getReqItems(this.quoteData.idReq)
       );
-      
-      console.log('Requisition items loaded:', requisitionItems);
 
-      // Mapear a datos de cotización para el proveedor
+      console.log('Requisition items loaded (fallback):', requisitionItems);
+
       this.rowData = requisitionItems.map((item: any, index: number) => {
-        const producto = this.productos.find((p: any) => p.id === item.idSupplie);
+        const producto = this.productos.find((p: any) => p.id === (item.idSupplie || item.id_supplie));
         return {
           id: `provider_${this.providerNumber}_item_${index}`,
-          idQuoteItem: null, // Se llenará al guardar
+          idQuoteItem: null,
           idRequisitionItem: item.id,
-          idSupplie: item.idSupplie,
-          productName: producto ? producto.description : `Producto ${item.idSupplie}`,
-          productCode: producto ? producto.code : item.idSupplie,
+          idSupplie: item.idSupplie || item.id_supplie,
+          productName: producto ? producto.description : `Producto ${item.idSupplie || item.id_supplie}`,
+          productCode: producto ? producto.code : (item.idSupplie || item.id_supplie),
           quantity: item.quantity || 0,
-          price: 0, // El proveedor debe llenar esto
+          price: 0,
           total: 0,
           comment: item.comment || '',
           dateuse: item.dateuse,
@@ -152,12 +201,10 @@ export class ProviderQuoteDetailComponent implements OnInit {
         };
       });
 
-      console.log('RowData mapped:', this.rowData);
-      
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
       }
-      
+
     } catch (error) {
       console.error('Error loading provider quote data:', error);
       alerts.basicAlert('Error', 'No se pudieron cargar los datos de la requisición', 'error');
@@ -174,14 +221,13 @@ export class ProviderQuoteDetailComponent implements OnInit {
       {
         headerName: 'PROVEEDOR',
         valueGetter: () => {
-          const providerNames = ['', 'PROVEEDOR 1', 'PROVEEDOR 2', 'PROVEEDOR 3'];
-          return providerNames[this.providerNumber] || 'PROVEEDOR';
+          return this.providerName || `PROVEEDOR ${this.providerNumber}`;
         },
-        width: 120,
+        width: 150,
         pinned: 'left',
-        cellStyle: { 
-          backgroundColor: this.getProviderColor(), 
-          color: 'white', 
+        cellStyle: {
+          backgroundColor: this.getProviderColor(),
+          color: 'white',
           fontWeight: 'bold',
           textAlign: 'center'
         }
@@ -220,6 +266,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
         valueSetter: (params: any) => {
           params.data.price = parseFloat(params.newValue) || 0;
           this.calculateTotal(params.data);
+          params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
         }
@@ -233,8 +280,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
         valueFormatter: (params) => {
           return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
         },
-        cellStyle: { 
-          backgroundColor: '#e8f5e9', 
+        cellStyle: {
+          backgroundColor: '#e8f5e9',
           fontWeight: 'bold',
           textAlign: 'center'
         }
@@ -252,6 +299,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
         },
         valueSetter: (params: any) => {
           params.data.comment = params.newValue;
+          params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
         }
@@ -268,22 +316,65 @@ export class ProviderQuoteDetailComponent implements OnInit {
     item.total = item.quantity * item.price;
   }
 
-  // Botones CRUD
-  saveChanges() {
+  // Save changes to DB
+  async saveChanges() {
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
-    // Validar que todos tengan precio
-    const invalidItems = this.rowData.filter(item => item.price <= 0);
-    if (invalidItems.length > 0) {
-      alerts.basicAlert('Validación', 'Todos los items deben tener un precio mayor a cero', 'warning');
+    if (!this.cotizId) {
+      alerts.basicAlert('Error', 'No hay cotización asociada para guardar.', 'error');
       return;
     }
 
-    alerts.basicAlert('Éxito', 'Cotización de proveedor guardada correctamente', 'success');
-    this.hasUnsavedChanges = false;
+    try {
+      const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
+      const newItems = this.rowData.filter(item => item.__isNew);
+
+      // Update existing items
+      for (const item of modifiedItems) {
+        const updateData: any = {
+          idMovement: this.cotizId,
+          idSupplie: item.idSupplie,
+          idProvider: this.idProvider,
+          quantity: item.quantity,
+          price: item.price,
+          type: 'COTIZ',
+          comment: item.comment || '',
+          active: true
+        };
+        await lastValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), updateData));
+      }
+
+      // Add new items
+      for (const item of newItems) {
+        const provider = this.proveedores.find((p: any) => p.id === this.idProvider);
+        const addData: any = {
+          idMovement: this.cotizId,
+          idSupplie: item.idSupplie,
+          idProvider: this.idProvider,
+          nameProvider: provider ? provider.name : '',
+          quantity: item.quantity,
+          price: item.price,
+          type: 'COTIZ',
+          comment: item.comment || '',
+          dateuse: item.dateuse,
+          active: true
+        };
+        await lastValueFrom(this.ocAndReqsService.addReqItem(addData));
+      }
+
+      alerts.basicAlert('Éxito', 'Cotización de proveedor guardada correctamente', 'success');
+      this.hasUnsavedChanges = false;
+
+      // Reload data from DB
+      await this.loadProviderQuoteData();
+
+    } catch (error) {
+      console.error('Error saving COTIZ items:', error);
+      alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
+    }
   }
 
   deleteSelectedItem() {
@@ -294,18 +385,27 @@ export class ProviderQuoteDetailComponent implements OnInit {
     }
 
     const selectedItem = selectedNodes[0].data;
-    
+
     alerts.confirmAlert(
       'Confirmar eliminación',
       `¿Está seguro de eliminar este item de la cotización del proveedor?`,
       'warning',
       'Sí, eliminar'
-    ).then((result) => {
+    ).then(async (result) => {
       if (result.isConfirmed) {
+        // If it has a real DB id, delete from server
+        if (selectedItem.id && typeof selectedItem.id === 'number') {
+          try {
+            await lastValueFrom(this.ocAndReqsService.deleteReqItem(selectedItem.id));
+          } catch (error) {
+            console.error('Error deleting item from DB:', error);
+          }
+        }
+
         this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
         this.gridApi.setGridOption('rowData', this.rowData);
         this.hasUnsavedChanges = true;
-        
+
         alerts.basicAlert('Item eliminado', 'El item se eliminó correctamente', 'success');
       }
     });
@@ -323,7 +423,6 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
   generatePDF() {
     alerts.basicAlert('PDF', 'Generando PDF de la cotización del proveedor...', 'info');
-    // Aquí iría la lógica para generar el PDF específico del proveedor
-    console.log('Generando PDF para proveedor', this.providerNumber, 'de la cotización', this.quoteData?.id);
+    console.log('Generando PDF para proveedor', this.providerNumber, 'COTIZ ID:', this.cotizId);
   }
 }

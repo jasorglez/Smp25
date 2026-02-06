@@ -10,7 +10,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { SignalsService } from 'app/services/signals.service';
-import { ProviderModalService } from '../egresos-palacio/services/provider-modal.service';
+// import { ProviderModalService } from '../egresos-palacio/services/provider-modal.service'; // Ya no needed
 import { CustomersService } from 'app/services/customers.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -169,7 +169,8 @@ import { lastValueFrom } from 'rxjs';
     </div>
 
     <!-- Backdrop del modal -->
-    <div class="modal-backdrop fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'"></div>
+    <div class="modal-backdrop fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'" 
+         (click)="closeProviderModal()"></div>
   `,
   styleUrl: './detalles-expenditure.component.scss'
 })
@@ -180,7 +181,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private context: any;
   private sanitizer = inject(DomSanitizer);
   private signalsService = inject(SignalsService);
-  private providerModalService = inject(ProviderModalService);
+  // private providerModalService = inject(ProviderModalService); // Ya no needed
   private customersService = inject(CustomersService);
 
   rowData: any[] = [];
@@ -242,14 +243,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    // Suscribirse al servicio de modal de proveedor
-    this.providerModalService.modalRequest$.subscribe((data) => {
-      this.openProviderModal(data.idRoot);
-    });
-
-    // Suscribirse a la confirmación de guardado del modal de proveedor
-    this.providerModalService.saveConfirmed$.subscribe((providerData) => {
-      this.onProviderCreated(providerData);
+    console.log('📊 Datos disponibles en el componente:', {
+      employeesCount: this.employees?.length || 0,
+      providersCount: this.providers?.length || 0,
+      cuentasContablesCount: this.cuentasContables?.length || 0
     });
   }
 
@@ -463,6 +460,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         cellEditorParams: (params: any) => {
           if (!params.data) return { options: [] };
           const type = params.data.typeExpense;
+          
           // Leer siempre del contexto para obtener datos actualizados
           const employees = this.context?.employees || this.employees || [];
           const providers = this.context?.providers || this.providers || [];
@@ -508,14 +506,13 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           
           // Si seleccionó "Agregar Proveedor"
           if (params.newValue === -999) {
+            console.log('🟢 Usuario seleccionó "Agregar Proveedor..."');
+            this.openProviderModal(this.context?.idRoot || 0);
             params.data.idExpense = params.oldValue || null;
-            // Abrir el modal para agregar proveedor
-            this.providerModalService.openModal({
-              idRoot: this.context?.idRoot || 0
-            });
             return false;
           }
           
+          // Obtener listas actualizadas
           const employees = this.context?.employees || this.employees || [];
           const providers = this.context?.providers || this.providers || [];
           const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
@@ -595,6 +592,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             return params.value;
           }
           const value = params.value || '';
+          console.log('🔍 Rendering description cell:', value, 'typeExpense:', params.data?.typeExpense, 'idExpense:', params.data?.idExpense);
           return `<div class="description-content" style="word-wrap: break-word; white-space: normal; line-height: 1.2; padding: 2px; overflow: visible; max-height: none;">${value}</div>`;
         }
       },
@@ -892,6 +890,12 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     if (event.colDef.field === 'typeExpense') {
       event.data.idExpense = null;
       event.data.selectedEntity = null;
+      
+      // Forzar refresh completo de la columna para que se actualicen las opciones del editor
+      this._colDefs = [];
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+      
+      // Luego forzar refresh de la celda específica
       this.gridApi.refreshCells({
         rowNodes: [event.node],
         force: true,
@@ -942,13 +946,29 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // ==================== MÉTODOS PARA EL MODAL DE PROVEEDOR ====================
 
   openProviderModal(idRoot: number) {
+    console.log('🟢 Abriendo modal de proveedor con idRoot:', idRoot);
+    
+    // Resetear el formulario del proveedor
     this.newProvider = {
       ...this.newProvider,
       idRoot: idRoot,
-      idBranch: this.context?.componentParent?.idBranch || 0
+      idBranch: this.context?.componentParent?.idBranch || 0,
+      company: '',
+      nameContact: '',
+      phone: '',
+      email: '',
+      rfc: '',
+      address: ''
     };
-    this.showProviderModal = true;
-    document.body.classList.add('modal-open');
+    
+    console.log('📋 Formulario de proveedor reseteado:', this.newProvider);
+    
+    // Mostrar el modal con un pequeño delay para asegurar que se renderice
+    setTimeout(() => {
+      this.showProviderModal = true;
+      document.body.classList.add('modal-open');
+      console.log('✅ Modal visible:', this.showProviderModal);
+    }, 50);
   }
 
   closeProviderModal() {
@@ -967,6 +987,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     }
 
     try {
+      console.log('💾 Guardando nuevo proveedor:', this.newProvider);
       const result: any = await lastValueFrom(
         this.customersService.addCustomer(this.newProvider)
       );
@@ -977,27 +998,30 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         'success'
       );
 
-      this.providerModalService.confirmSave({
-        id: result.id,
-        name: this.newProvider.company
-      });
+      console.log('✅ Proveedor creado con ID:', result.id);
 
       // Actualizar la lista de proveedores en el contexto
+      const newProvider = {
+        id: result.id,
+        name: this.newProvider.company
+      };
+
       if (this.context?.providers) {
-        this.context.providers.push({
-          id: result.id,
-          name: this.newProvider.company
-        });
+        this.context.providers.push(newProvider);
       } else {
-        this.providers.push({
-          id: result.id,
-          name: this.newProvider.company
-        });
+        this.providers.push(newProvider);
       }
+
+      // También actualizar la lista local
+      this.providers.push(newProvider);
 
       this.closeProviderModal();
 
+      // Actualizar el grid para que aparezca el nuevo proveedor
+      this.onProviderCreated(newProvider);
+
     } catch (error) {
+      console.error('❌ Error al crear proveedor:', error);
       alerts.basicAlert(
         'Error',
         `Error al crear el proveedor. ${error?.error?.message || error?.message || 'Error desconocido'}`,
@@ -1007,34 +1031,48 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   }
 
   onProviderCreated(providerData: { id: number; name: string }) {
-    // Actualizar la lista de proveedores en el contexto
-    if (this.context?.providers) {
-      this.context.providers.push({
-        id: providerData.id,
-        name: providerData.name
-      });
-    } else {
-      this.providers.push({
-        id: providerData.id,
-        name: providerData.name
-      });
-    }
+    console.log('🔄 Actualizando lista de proveedores con:', providerData);
 
     // Refrescar las columnas para que aparezca el nuevo proveedor en el combo
     this._colDefs = [];
     if (this.gridApi) {
+      console.log('🔧 Refrescando columnDefs del grid...');
       this.gridApi.setGridOption('columnDefs', this.colDefs);
     }
 
-    // Si hay una fila seleccionada, establecer el nuevo proveedor
-    const selectedNodes = this.gridApi?.getSelectedNodes();
-    if (selectedNodes && selectedNodes.length > 0) {
-      const selectedNode = selectedNodes[0];
-      if (selectedNode.data.typeExpense === 'PROVEEDORES') {
-        selectedNode.setDataValue('idExpense', providerData.id);
-        selectedNode.setDataValue('selectedEntity', providerData.name);
+    // Esperar un poco y luego actualizar la celda si está seleccionada
+    setTimeout(() => {
+      const selectedNodes = this.gridApi?.getSelectedNodes();
+      if (selectedNodes && selectedNodes.length > 0) {
+        const selectedNode = selectedNodes[0];
+        console.log('🎯 Nodo seleccionado:', selectedNode.data);
+        
+        if (selectedNode.data.typeExpense === 'PROVEEDORES') {
+          console.log('✏️ Actualizando celda con nuevo proveedor:', providerData);
+          
+          // Actualizar los valores directamente en el nodo
+          selectedNode.data.idExpense = providerData.id;
+          selectedNode.data.selectedEntity = providerData.name;
+          selectedNode.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          
+          // Refrescar la celda específica
+          this.gridApi.refreshCells({
+            rowNodes: [selectedNode],
+            columns: ['selectedEntity'],
+            force: true
+          });
+
+          // También forzar un refresh de toda la fila para asegurar que se actualice
+          this.gridApi.refreshCells({
+            rowNodes: [selectedNode],
+            force: true
+          });
+
+          console.log('✅ Celda actualizada exitosamente');
+        }
       }
-    }
+    }, 100);
   }
 
   // ==================== PDF GENERATION ====================
