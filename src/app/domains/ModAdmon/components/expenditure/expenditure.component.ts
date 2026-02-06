@@ -646,7 +646,33 @@ export class ExpenditureComponent {
           return params.value;
         }
       },
+     
       {
+        field: 'subtotal',
+        headerName: 'Subtotal',
+        type: 'number',
+        editable: false,
+        width: 110,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'tax',
+        headerName: 'Impuestos',
+        type: 'number',
+        editable: false,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'total',
+        headerName: 'Total',
+        type: 'number',
+        editable: false,
+        width: 110,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+
+       {
         field: 'paymentMonth',
         headerName: 'Mes',
         editable: true,
@@ -698,30 +724,7 @@ export class ExpenditureComponent {
           return { backgroundColor: '#fff3cd', color: '#856404' };
         }
       },
-      {
-        field: 'subtotal',
-        headerName: 'Subtotal',
-        type: 'number',
-        editable: false,
-        width: 110,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'tax',
-        headerName: 'Impuestos',
-        type: 'number',
-        editable: false,
-        width: 100,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'total',
-        headerName: 'Total',
-        type: 'number',
-        editable: false,
-        width: 110,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
+
       {
         field: 'status',
         headerName: 'Estatus',

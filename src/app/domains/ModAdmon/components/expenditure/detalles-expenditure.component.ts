@@ -330,7 +330,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       },
       {
         field: 'selectedEntity',
-        headerName: 'Empleado/Proveedor/Cuenta3',
+        headerName: 'Empleado/Proveedor/Cuenta',
         width: 220,
         editable: (params) => !!params.data?.typeExpense,
         cellEditor: 'agSelectCellEditor',
@@ -413,7 +413,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       },
       {
         field: 'idContribuyente',
-        headerName: 'Detalle hijo',
+        headerName: 'Detalle Cuenta Contable',
         editable: true,
         width: 200,
         cellEditor: 'agSelectCellEditor',
@@ -677,14 +677,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         console.log('✅ Guardado exitoso.');
         this.hasUnsavedChanges = false;
 
-        // Close detail and refresh master grid
-        if (this.context?.componentParent) {
-          this.context.componentParent.collapseCurrentRow(expenditureId);
-          setTimeout(() => {
-            if (this.context.componentParent.gridApi) {
-              this.context.componentParent.gridApi.refreshCells({ force: true });
-            }
-          }, 200);
+        // Refresh master grid (detail stays open for user to close manually)
+        if (this.context?.componentParent?.gridApi) {
+          this.context.componentParent.gridApi.refreshCells({ force: true });
         }
       } catch (error) {
         console.error('❌ Error al guardar:', error);
