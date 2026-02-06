@@ -65,7 +65,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.58 (5 Febrero 2026 12:19) - Metamorphosis',
+  version: '4.66 (5 Febrero 2026) - Hermes',
 
 
 };

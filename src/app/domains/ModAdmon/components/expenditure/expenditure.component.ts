@@ -296,7 +296,7 @@ export class ExpenditureComponent {
 
           // Agregar propiedades para master-detail
           this.incomes = filtered.map(income => {
-            const countItems = income.countitems || 0;
+            const countItems = income.countItems || income.countitems || 0;
             return {
               ...income,
               countItems: countItems,
@@ -526,7 +526,7 @@ export class ExpenditureComponent {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
-        field: 'countItems',
+        field: 'countitems',
         headerName: 'Items',
         width: 80,
         cellRenderer: ButtonCellRendererExpenditure2Component,
@@ -917,6 +917,7 @@ export class ExpenditureComponent {
       tax: 0,
       total: 0,
       countItems: 0,
+      countitems: 0,
       createdBy: this.currentUser || 'Usuario temporal',
       createdAt: new Date().toISOString(),
       modifiedBy: null,
@@ -1063,6 +1064,11 @@ export class ExpenditureComponent {
     delete cleanedData.detailType;
     delete cleanedData.detailData;
     delete cleanedData.visible;
+    // Sincronizar countItems (frontend) → countitems (backend)
+    if ('countItems' in cleanedData) {
+      cleanedData.countitems = cleanedData.countItems;
+      delete cleanedData.countItems;
+    }
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
@@ -1252,6 +1258,7 @@ export class ExpenditureComponent {
           const oldCount = node.data.countItems;
           console.log(`   Registro encontrado. ID: ${expenditureId}, Count anterior: ${oldCount}, Count nuevo: ${count}`);
           node.data.countItems = count;
+          node.data.countitems = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
             columns: ['countItems'],
@@ -1324,7 +1331,7 @@ export class ExpenditureComponent {
         subtotal: subtotal,
         tax: tax,
         total: total,
-        countItems: conceptsData.length
+        countitems: conceptsData.length
       };
 
       await lastValueFrom(
@@ -1384,7 +1391,7 @@ export class ExpenditureComponent {
             const mainDoc = mainDocResponse[0];
             const updatedDoc = {
               ...mainDoc,
-              countItems: newCount
+              countitems: newCount
             };
             await lastValueFrom(
               this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDoc)
