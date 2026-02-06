@@ -14,7 +14,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
-import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
 import { DepartmentsService } from 'app/services/departments.service';
 import { CurrencyService } from 'app/services/currency.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -47,8 +47,8 @@ interface Provider {
 })
 export class QuoteComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
-  private quotesService = inject(OcAndReqsService);
-  private providersService = inject(ProvidersService);
+private quotesService = inject(OcAndReqsService);
+  private customersService = inject(CustomersService);
   private catalogsService = inject(CatalogsService);
   private departmentsService = inject(DepartmentsService);
   private currencyService = inject(CurrencyService);
@@ -67,7 +67,7 @@ export class QuoteComponent implements CanComponentDeactivate {
   idReference: number = null;
   private tempIdCounter: number = 0;
   idQuote: number | string = null;
-  private lastProcessedQuote: number = null;
+private lastProcessedQuote: number = null;
   private masterGridApi: GridApi;
   idRoot: number = null;
   projectOrBranch: boolean = null; // True = Project, False = Branch
@@ -106,6 +106,7 @@ export class QuoteComponent implements CanComponentDeactivate {
 
   // Items from the selected requisition for the cascades
   requisitionItems: any[] = [];
+  private pendingCotizLoad: boolean = false;
 
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -206,7 +207,7 @@ export class QuoteComponent implements CanComponentDeactivate {
   }
 
   // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
+public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 35,
     masterDetail: true,
@@ -244,13 +245,13 @@ export class QuoteComponent implements CanComponentDeactivate {
     
     // Construir y cachear las columnas solo la primera vez
     this._colMaster = [
-      {
-        field: 'folio',
-        headerName: 'Número Doc',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
+{
+  field: 'folio',
+  headerName: 'Número Doc',
+  editable: true,
+  filter: true,
+  width: 150,
+},
       {
         field: 'dateCreate',
         headerName: 'Fecha Cotizacion',
@@ -318,17 +319,19 @@ export class QuoteComponent implements CanComponentDeactivate {
   headerName: 'Proveedor 1',
   width: 150,
   cellRenderer: (params: any) => {
-    const slot = this.cotizSlots[0];
-    const name = slot?.providerName || '';
+    // Get provider info from the row data itself, not global slots
+    const providerName = params.data.proveedor1Name || '';
     const count = params.data.proveedor1Count || 0;
-    const label = name ? `${name} (${count})` : `${count} items`;
-    const btnClass = name ? 'btn-primary' : 'btn-outline-primary';
-    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
-              <button class="btn btn-sm ${btnClass}" onclick="event.stopPropagation(); return true;">${label}</button>
+    const hasProvider = params.data.proveedor1Id > 0;
+    const label = providerName ? `${providerName} (${count})` : `${count} items`;
+    const btnClass = hasProvider ? 'btn-primary' : 'btn-outline-primary';
+    return `<div class="provider-cell" style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
+    console.log('Clicked Proveedor 1:', params.data);
     this.openProviderQuote(params.data, 1);
   }
 },
@@ -337,17 +340,19 @@ export class QuoteComponent implements CanComponentDeactivate {
   headerName: 'Proveedor 2',
   width: 150,
   cellRenderer: (params: any) => {
-    const slot = this.cotizSlots[1];
-    const name = slot?.providerName || '';
+    // Get provider info from the row data itself, not global slots
+    const providerName = params.data.proveedor2Name || '';
     const count = params.data.proveedor2Count || 0;
-    const label = name ? `${name} (${count})` : `${count} items`;
-    const btnClass = name ? 'btn-success' : 'btn-outline-success';
-    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
-              <button class="btn btn-sm ${btnClass}" onclick="event.stopPropagation(); return true;">${label}</button>
+    const hasProvider = params.data.proveedor2Id > 0;
+    const label = providerName ? `${providerName} (${count})` : `${count} items`;
+    const btnClass = hasProvider ? 'btn-success' : 'btn-outline-success';
+    return `<div class="provider-cell" style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
+    console.log('Clicked Proveedor 2:', params.data);
     this.openProviderQuote(params.data, 2);
   }
 },
@@ -356,17 +361,19 @@ export class QuoteComponent implements CanComponentDeactivate {
   headerName: 'Proveedor 3',
   width: 150,
   cellRenderer: (params: any) => {
-    const slot = this.cotizSlots[2];
-    const name = slot?.providerName || '';
+    // Get provider info from the row data itself, not global slots
+    const providerName = params.data.proveedor3Name || '';
     const count = params.data.proveedor3Count || 0;
-    const label = name ? `${name} (${count})` : `${count} items`;
-    const btnClass = name ? 'btn-warning' : 'btn-outline-warning';
-    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
-              <button class="btn btn-sm ${btnClass}" onclick="event.stopPropagation(); return true;">${label}</button>
+    const hasProvider = params.data.proveedor3Id > 0;
+    const label = providerName ? `${providerName} (${count})` : `${count} items`;
+    const btnClass = hasProvider ? 'btn-warning' : 'btn-outline-warning';
+    return `<div class="provider-cell" style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
+    console.log('Clicked Proveedor 3:', params.data);
     this.openProviderQuote(params.data, 3);
   }
 },
@@ -469,16 +476,27 @@ export class QuoteComponent implements CanComponentDeactivate {
         (data: any) => {
           this.masterRowData = data;
           console.log(this.typeReference, this.idReference, this.masterRowData);
+          // Load provider COTIZ info once proveedores are available
+          this.pendingCotizLoad = true;
+          if (this.proveedores.length > 0) {
+            this.loadAllCotizInfo();
+            this.pendingCotizLoad = false;
+          }
         },
         (error) => console.error('Error fetching data:', error)
       );
   }
 
-  obtenerProveedores() {
-    this.providersService.getProviders(this.idRoot).subscribe(
+obtenerProveedores() {
+    this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe(
       (data: any) => {
         this.proveedores = data;
-        console.log(this.proveedores);
+        console.log('Proveedores cargados:', this.proveedores.length);
+        // If master data was already loaded, now load COTIZ info
+        if (this.pendingCotizLoad && this.masterRowData.length > 0) {
+          this.loadAllCotizInfo();
+          this.pendingCotizLoad = false;
+        }
       },
       (error) => console.error('Error fetching providers:', error)
     );
@@ -798,7 +816,7 @@ export class QuoteComponent implements CanComponentDeactivate {
       idProveedor: 0,
       idDepartament: 0,
       delivery: 'A',
-      deliveryTime: '',
+      deliveryTime: 'NA',
       dateSupply: '',
       idPayment: 0,
       idCurrency: 0,
@@ -952,7 +970,7 @@ export class QuoteComponent implements CanComponentDeactivate {
     this.masterNotSavedChanges = false;
   }
 
-  createQuote(idQuote: number, action: string) {
+createQuote(idQuote: number, action: string) {
     this.receiptsService.generateOC(idQuote, action);
   }
 
@@ -966,7 +984,7 @@ export class QuoteComponent implements CanComponentDeactivate {
     }
   }
 
-  // Método para abrir cotización de proveedor específico
+// Método para abrir cotización de proveedor específico
   openProviderQuote(quoteData: any, providerNumber: number): void {
     console.log('Provider quote - Data:', { quoteData, providerNumber });
 
@@ -982,31 +1000,48 @@ export class QuoteComponent implements CanComponentDeactivate {
       return;
     }
 
-    const slotIndex = providerNumber - 1;
-    const slot = this.cotizSlots[slotIndex];
+    // Get provider data from row data (not global slots)
+    const providerId = quoteData[`proveedor${providerNumber}Id`] || 0;
+    const providerName = quoteData[`proveedor${providerNumber}Name`] || '';
+    const cotizId = quoteData[`proveedor${providerNumber}CotizId`] || null;
 
-    // Si ya hay proveedor asignado, abrir directamente
-    if (slot.cotizId && slot.idProvider) {
-      this.openProviderDetail(quoteData, providerNumber, slot.cotizId, slot.idProvider);
+    console.log('Provider data from row:', { 
+      providerId, 
+      providerName, 
+      cotizId, 
+      providerCount: quoteData[`proveedor${providerNumber}Count`],
+      'All provider fields': {
+        [`proveedor${providerNumber}Id`]: quoteData[`proveedor${providerNumber}Id`],
+        [`proveedor${providerNumber}Name`]: quoteData[`proveedor${providerNumber}Name`],
+        [`proveedor${providerNumber}CotizId`]: quoteData[`proveedor${providerNumber}CotizId`],
+        [`proveedor${providerNumber}Count`]: quoteData[`proveedor${providerNumber}Count`]
+      }
+    });
+
+    // SI YA HAY COTIZACIÓN CREADA (cotizId y providerId), abrir directamente el detail
+    if (cotizId && providerId > 0) {
+      console.log('Opening provider detail for EXISTING COTIZ with', quoteData[`proveedor${providerNumber}Count`] || 0, 'items');
+      this.openProviderDetail(quoteData, providerNumber, cotizId, providerId);
       return;
     }
 
-    // Si no hay proveedor, abrir modal de selección
+    // Si no hay cotización creada, abrir modal de selección para crearla
+    console.log('No existing COTIZ found, opening provider selection modal to create new one');
     this.selectedProviderSlot = providerNumber;
     this.selectedProviderId = null;
     this.showProviderModal = true;
   }
 
-  // Confirmar selección de proveedor desde el modal
+// Confirmar selección de proveedor desde el modal
   async confirmProviderSelection(): Promise<void> {
     if (!this.selectedProviderId) {
       alerts.basicAlert('Selección requerida', 'Debe seleccionar un proveedor.', 'warning');
       return;
     }
 
-    // Verificar que no esté ya en otro slot
+// Verificar que no esté ya en otro slot (solo para nuevas cotizaciones)
     const alreadyUsed = this.cotizSlots.find(s => s.idProvider === this.selectedProviderId);
-    if (alreadyUsed) {
+    if (alreadyUsed && alreadyUsed.cotizId) {
       alerts.basicAlert('Proveedor duplicado', 'Este proveedor ya está asignado en otro slot.', 'warning');
       return;
     }
@@ -1078,7 +1113,10 @@ export class QuoteComponent implements CanComponentDeactivate {
       // Update slot
       this.cotizSlots[slotIndex] = { cotizId, idProvider, providerName };
 
-      // Update counts
+      // Update row data with provider info
+      quoteData[`proveedor${providerNumber}Id`] = idProvider;
+      quoteData[`proveedor${providerNumber}Name`] = providerName;
+      quoteData[`proveedor${providerNumber}CotizId`] = cotizId;
       quoteData[`proveedor${providerNumber}Count`] = reqItems.length;
 
       // Refresh grid
@@ -1148,42 +1186,109 @@ export class QuoteComponent implements CanComponentDeactivate {
     }
   }
 
-  // Load existing COTIZs for a given REQUIS ID
-  loadExistingCotiz(idReq: number): void {
-    this.resetCotizSlots();
+// Load existing COTIZs for a given REQUIS ID
+   loadExistingCotiz(idReq: number): void {
+     this.resetCotizSlots();
 
-    this.quotesService.getCotizByReq(idReq, this.typeReference, this.idReference).subscribe({
-      next: (cotizList: any[]) => {
-        // Filter only those with matching idReq
-        const matching = cotizList.filter((c: any) => c.idReq === idReq && c.active !== false);
-        console.log('Existing COTIZs for idReq', idReq, ':', matching);
+     this.quotesService.getCotizByReq(idReq, this.typeReference, this.idReference).subscribe({
+       next: (cotizList: any[]) => {
+         // Filter only those with matching idReq
+         const matching = cotizList.filter((c: any) => c.idReq === idReq && c.active !== false);
+         console.log('Existing COTIZs for idReq', idReq, ':', matching);
 
-        // Assign to slots (up to 3)
-        matching.slice(0, 3).forEach((cotiz: any, index: number) => {
-          const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
-          this.cotizSlots[index] = {
-            cotizId: cotiz.id,
-            idProvider: cotiz.idProvider,
-            providerName: provider ? provider.name : `Proveedor ${cotiz.idProvider}`
-          };
+         // Clear provider data on master row first
+         if (this.masterSelectedRowData) {
+           this.masterSelectedRowData.proveedor1Id = 0;
+           this.masterSelectedRowData.proveedor1Name = '';
+           this.masterSelectedRowData.proveedor1CotizId = null;
+           this.masterSelectedRowData.proveedor2Id = 0;
+           this.masterSelectedRowData.proveedor2Name = '';
+           this.masterSelectedRowData.proveedor2CotizId = null;
+           this.masterSelectedRowData.proveedor3Id = 0;
+           this.masterSelectedRowData.proveedor3Name = '';
+           this.masterSelectedRowData.proveedor3CotizId = null;
+         }
 
-          // Update count on master row
-          if (this.masterSelectedRowData) {
-            this.masterSelectedRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
-          }
-        });
+         // Assign to slots (up to 3)
+         matching.slice(0, 3).forEach((cotiz: any, index: number) => {
+           const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
+           this.cotizSlots[index] = {
+             cotizId: cotiz.id,
+             idProvider: cotiz.idProvider,
+             providerName: provider ? provider.name : `Proveedor ${cotiz.idProvider}`
+           };
 
-        // Refresh provider columns
+// Update provider data on master row AND grid data
+            if (this.masterSelectedRowData) {
+              this.masterSelectedRowData[`proveedor${index + 1}Id`] = cotiz.idProvider;
+              this.masterSelectedRowData[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+              this.masterSelectedRowData[`proveedor${index + 1}CotizId`] = cotiz.id;
+              this.masterSelectedRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
+              
+              // Also update the grid row data to persist changes
+              const gridRowData = this.masterRowData.find(row => row.id === this.masterSelectedRowData.id);
+              if (gridRowData) {
+                gridRowData[`proveedor${index + 1}Id`] = cotiz.idProvider;
+                gridRowData[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+                gridRowData[`proveedor${index + 1}CotizId`] = cotiz.id;
+                gridRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
+                console.log(`✅ Updated grid row data for provider ${index + 1}:`, {
+                  id: cotiz.idProvider,
+                  name: provider ? provider.name : `Proveedor ${cotiz.idProvider}`,
+                  cotizId: cotiz.id,
+                  count: cotiz.countrow || 0
+                });
+              }
+            }
+         });
+
+// Refresh provider columns with proper data update
         if (this.masterGridApi) {
+          // First update the data with applyTransaction
+          this.masterGridApi.applyTransaction({ 
+            update: [this.masterSelectedRowData] 
+          });
+          // Then refresh the cells
           this.masterGridApi.refreshCells({
             columns: ['proveedor1', 'proveedor2', 'proveedor3'],
             force: true
           });
         }
-      },
-      error: (error) => {
-        console.error('Error loading existing COTIZs:', error);
-      }
+       },
+       error: (error) => {
+         console.error('Error loading existing COTIZs:', error);
+       }
+     });
+   }
+
+  // Load COTIZ info for ALL master rows on initial load
+  loadAllCotizInfo(): void {
+    const rowsWithReq = this.masterRowData.filter(row => row.idReq);
+    if (rowsWithReq.length === 0) return;
+
+    rowsWithReq.forEach(row => {
+      this.quotesService.getCotizByReq(row.idReq, this.typeReference, this.idReference).subscribe({
+        next: (cotizList: any[]) => {
+          const matching = cotizList.filter((c: any) => c.idReq === row.idReq && c.active !== false);
+          matching.slice(0, 3).forEach((cotiz: any, index: number) => {
+            const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
+            row[`proveedor${index + 1}Id`] = cotiz.idProvider;
+            row[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+            row[`proveedor${index + 1}CotizId`] = cotiz.id;
+            row[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
+          });
+          // Refresh those cells in the grid
+          if (this.masterGridApi) {
+            this.masterGridApi.applyTransaction({ update: [row] });
+            this.masterGridApi.refreshCells({
+              columns: ['proveedor1', 'proveedor2', 'proveedor3'],
+              rowNodes: [this.masterGridApi.getRowNode(row.id)],
+              force: true
+            });
+          }
+        },
+        error: (err) => console.error('Error loading COTIZ for row', row.id, err)
+      });
     });
   }
 
@@ -1221,7 +1326,7 @@ export class QuoteComponent implements CanComponentDeactivate {
     this.resetCotizSlots();
   }
 
-  private cleanDataForServer(data: any): any {
+private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
@@ -1232,6 +1337,16 @@ export class QuoteComponent implements CanComponentDeactivate {
     delete cleanedData.proveedor2Count;
     delete cleanedData.proveedor3Count;
     delete cleanedData.providerNumber;
+    // Delete provider UI fields
+    delete cleanedData.proveedor1Id;
+    delete cleanedData.proveedor1Name;
+    delete cleanedData.proveedor1CotizId;
+    delete cleanedData.proveedor2Id;
+    delete cleanedData.proveedor2Name;
+    delete cleanedData.proveedor2CotizId;
+    delete cleanedData.proveedor3Id;
+    delete cleanedData.proveedor3Name;
+    delete cleanedData.proveedor3CotizId;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

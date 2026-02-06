@@ -1,11 +1,26 @@
 <div class="provider-quote-container">
-  <!-- Header del proveedor -->
+<!-- Header del proveedor -->
   <div class="provider-header d-flex justify-content-between align-items-center mb-3 p-3 rounded">
-    <h5 class="mb-0">
-      <i class="bi bi-shop me-2"></i>
-      COTIZACIÓN - {{ providerName || 'PROVEEDOR ' + providerNumber }}
-      <small class="ms-2" *ngIf="cotizId">(COTIZ #{{ cotizId }})</small>
-    </h5>
+    <div class="d-flex align-items-center gap-3">
+      <h5 class="mb-0">
+        <i class="bi bi-shop me-2"></i>
+        COTIZACIÓN - {{ providerName || 'PROVEEDOR ' + providerNumber }}
+        <small class="ms-2" *ngIf="cotizId">(COTIZ #{{ cotizId }})</small>
+      </h5>
+      <!-- Combo box para cambiar proveedor -->
+      <div class="d-flex align-items-center gap-2">
+        <label class="text-white small mb-0">Cambiar Proveedor:</label>
+        <select class="form-select form-select-sm" style="width: 200px;" 
+                [disabled]="!proveedores || proveedores.length === 0">
+          <option [ngValue]="null" selected>{{ providerName || 'Seleccione proveedor' }}</option>
+          <option *ngFor="let prov of proveedores" 
+                  [ngValue]="prov.id"
+                  [selected]="prov.id === idProvider">
+            {{ prov.name }}
+          </option>
+        </select>
+      </div>
+    </div>
     <div class="d-flex gap-2">
       <button class="btn btn-sm btn-outline-danger" (click)="generatePDF()">
         <i class="bi bi-file-earmark-pdf"></i> PDF
