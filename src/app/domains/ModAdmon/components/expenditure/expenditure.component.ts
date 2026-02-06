@@ -224,7 +224,7 @@ export class ExpenditureComponent {
   // Grid Options con Master-Detail
   public gridOptions: any = {
     headerHeight: 24,
-    rowHeight: 24,
+    rowHeight: 35, // Aumentado para accommodate descripciones largas
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 600,
@@ -296,7 +296,7 @@ export class ExpenditureComponent {
 
           // Agregar propiedades para master-detail
           this.incomes = filtered.map(income => {
-            const countItems = income.countitems || 0;
+            const countItems = income.countItems || income.countitems || 0;
             return {
               ...income,
               countItems: countItems,
@@ -526,7 +526,7 @@ export class ExpenditureComponent {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
-        field: 'countItems',
+        field: 'countitems',
         headerName: 'Items',
         width: 80,
         cellRenderer: ButtonCellRendererExpenditure2Component,
@@ -620,11 +620,13 @@ export class ExpenditureComponent {
       },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 200, filter: true,
+        cellClass: 'description-cell',
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
+          maxLength: 500,
+          cols: 60,
+          rows: 4,
+          style: 'word-wrap: break-word; white-space: normal; resize: vertical;',
           onKeyDown: (event: KeyboardEvent) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.stopPropagation();
@@ -643,10 +645,37 @@ export class ExpenditureComponent {
           if (params.node.group) {
             return params.value;
           }
-          return params.value;
+          const value = params.value || '';
+          return `<div class="description-content" style="word-wrap: break-word; white-space: normal; line-height: 1.2; padding: 2px; overflow: visible; max-height: none;">${value}</div>`;
         }
       },
+     
       {
+        field: 'subtotal',
+        headerName: 'Subtotal',
+        type: 'number',
+        editable: false,
+        width: 110,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'tax',
+        headerName: 'Impuestos',
+        type: 'number',
+        editable: false,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'total',
+        headerName: 'Total',
+        type: 'number',
+        editable: false,
+        width: 110,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+
+       {
         field: 'paymentMonth',
         headerName: 'Mes',
         editable: true,
@@ -698,30 +727,7 @@ export class ExpenditureComponent {
           return { backgroundColor: '#fff3cd', color: '#856404' };
         }
       },
-      {
-        field: 'subtotal',
-        headerName: 'Subtotal',
-        type: 'number',
-        editable: false,
-        width: 110,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'tax',
-        headerName: 'Impuestos',
-        type: 'number',
-        editable: false,
-        width: 100,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'total',
-        headerName: 'Total',
-        type: 'number',
-        editable: false,
-        width: 110,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
+
       {
         field: 'status',
         headerName: 'Estatus',
@@ -917,6 +923,7 @@ export class ExpenditureComponent {
       tax: 0,
       total: 0,
       countItems: 0,
+      countitems: 0,
       createdBy: this.currentUser || 'Usuario temporal',
       createdAt: new Date().toISOString(),
       modifiedBy: null,
@@ -1063,6 +1070,11 @@ export class ExpenditureComponent {
     delete cleanedData.detailType;
     delete cleanedData.detailData;
     delete cleanedData.visible;
+    // Sincronizar countItems (frontend) → countitems (backend)
+    if ('countItems' in cleanedData) {
+      cleanedData.countitems = cleanedData.countItems;
+      delete cleanedData.countItems;
+    }
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
@@ -1252,6 +1264,7 @@ export class ExpenditureComponent {
           const oldCount = node.data.countItems;
           console.log(`   Registro encontrado. ID: ${expenditureId}, Count anterior: ${oldCount}, Count nuevo: ${count}`);
           node.data.countItems = count;
+          node.data.countitems = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
             columns: ['countItems'],
@@ -1324,7 +1337,8 @@ export class ExpenditureComponent {
         subtotal: subtotal,
         tax: tax,
         total: total,
-        countItems: conceptsData.length
+        countitems: conceptsData.length,
+        idBranch: mainDocument.idBranch // Preservar la sucursal existente
       };
 
       await lastValueFrom(
@@ -1384,7 +1398,7 @@ export class ExpenditureComponent {
             const mainDoc = mainDocResponse[0];
             const updatedDoc = {
               ...mainDoc,
-              countItems: newCount
+              countitems: newCount
             };
             await lastValueFrom(
               this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDoc)
