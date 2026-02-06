@@ -224,7 +224,7 @@ export class ExpenditureComponent {
   // Grid Options con Master-Detail
   public gridOptions: any = {
     headerHeight: 24,
-    rowHeight: 24,
+    rowHeight: 35, // Aumentado para accommodate descripciones largas
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 600,
@@ -620,11 +620,13 @@ export class ExpenditureComponent {
       },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 200, filter: true,
+        cellClass: 'description-cell',
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
+          maxLength: 500,
+          cols: 60,
+          rows: 4,
+          style: 'word-wrap: break-word; white-space: normal; resize: vertical;',
           onKeyDown: (event: KeyboardEvent) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.stopPropagation();
@@ -643,7 +645,8 @@ export class ExpenditureComponent {
           if (params.node.group) {
             return params.value;
           }
-          return params.value;
+          const value = params.value || '';
+          return `<div class="description-content" style="word-wrap: break-word; white-space: normal; line-height: 1.2; padding: 2px; overflow: visible; max-height: none;">${value}</div>`;
         }
       },
      
@@ -1334,7 +1337,8 @@ export class ExpenditureComponent {
         subtotal: subtotal,
         tax: tax,
         total: total,
-        countitems: conceptsData.length
+        countitems: conceptsData.length,
+        idBranch: mainDocument.idBranch // Preservar la sucursal existente
       };
 
       await lastValueFrom(
