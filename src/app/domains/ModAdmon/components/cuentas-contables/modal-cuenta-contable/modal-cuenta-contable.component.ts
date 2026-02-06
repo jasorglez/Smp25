@@ -35,7 +35,7 @@ export class ModalCuentaContableComponent implements OnInit {
     nombre: '',
     descripcion: '',
     nivel: 1,
-    idPadre: undefined,
+    idPadre: null,
     esHoja: false,
     activo: true,
     idCompany: 0
@@ -188,10 +188,21 @@ export class ModalCuentaContableComponent implements OnInit {
       this.trackingService.getEmail()
     );
 
+    // Mapear al formato que espera el backend (active en vez de activo, idPadre null explícito)
+    const payload: any = {
+      ...this.formData,
+      active: this.formData.activo,
+      idPadre: this.formData.idPadre ?? null
+    };
+    delete payload.activo;
+    if (this.isEdit) {
+      payload.id = this.formData.id;
+    }
+    console.log('Payload al backend:', JSON.stringify(payload));
+
     if (this.isEdit && this.formData.id) {
       // Actualizar
-      console.log('Datos a actualizar en backend:', this.formData);
-      this.cuentasService.update(this.formData.id, this.formData).subscribe({
+      this.cuentasService.update(this.formData.id, payload).subscribe({
         next: () => {
           alerts.basicAlert('Actualizado', 'La cuenta ha sido actualizada correctamente', 'success');
           this.activeModal.close(true);
@@ -226,8 +237,7 @@ export class ModalCuentaContableComponent implements OnInit {
       });
     } else {
       // Crear
-      console.log('Datos a enviar al backend:', this.formData);
-      this.cuentasService.create(this.formData).subscribe({
+      this.cuentasService.create(payload).subscribe({
         next: () => {
           alerts.basicAlert('Creado', 'La cuenta ha sido creada correctamente', 'success');
           this.activeModal.close(true);

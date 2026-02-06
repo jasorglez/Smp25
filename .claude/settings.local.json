@@ -65,7 +65,13 @@
       "mcp__mssql-administration__execute_sql",
       "mcp__mssql-administration__list_databases",
       "mcp__mssql-production__execute_sql",
-      "mcp__mssql-nominas__execute_sql"
+      "mcp__mssql-nominas__execute_sql",
+      "mcp__mssql-tracking__get_table_schema",
+      "mcp__mssql-administration__get_table_schema",
+      "mcp__mssql-smp__execute_sql",
+      "mcp__mssql-tracking__execute_sql",
+      "mcp__mssql-security__execute_sql",
+      "mcp__mssql-warehouses__execute_sql"
     ],
     "deny": [],
     "ask": []

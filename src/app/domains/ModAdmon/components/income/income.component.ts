@@ -487,33 +487,7 @@ export class IncomeComponent {
           return foundBranch ? foundBranch.name : params.value;
         }
       },
-      {
-        field: 'idProject',
-        headerName: 'Proyecto',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.projects.map(p => p.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const foundProject = this.projects.find(p => p.id === params.value);
-          return foundProject ? foundProject.name : params.value;
-        }
-      },
-      {
-        field: 'paymentMonth',
-        headerName: 'Mes',
-        editable: true,
-        width: 110,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-        }
-      },
-      { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
+
       { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 130 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
@@ -555,6 +529,31 @@ export class IncomeComponent {
       },
 
       {
+        field: 'subtotal',
+        headerName: 'Subtotal',
+        type: 'number',
+        editable: false,
+        width: 120,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'tax',
+        headerName: 'Impuestos',
+        type: 'number',
+        editable: false,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'total',
+        headerName: 'Total',
+        type: 'number',
+        editable: false,filter: true,
+        width: 120,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+
+       {
         field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
@@ -594,29 +593,34 @@ export class IncomeComponent {
       },
 
       {
-        field: 'subtotal',
-        headerName: 'Subtotal',
-        type: 'number',
-        editable: false,
-        width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        field: 'idProject',
+        headerName: 'Proyecto',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.projects.map(p => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const foundProject = this.projects.find(p => p.id === params.value);
+          return foundProject ? foundProject.name : params.value;
+        }
       },
-      {
-        field: 'tax',
-        headerName: 'Impuestos',
-        type: 'number',
-        editable: false,
-        width: 100,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+
+           {
+        field: 'paymentMonth',
+        headerName: 'Mes',
+        editable: true,
+        width: 110,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        }
       },
-      {
-        field: 'total',
-        headerName: 'Total',
-        type: 'number',
-        editable: false,filter: true,
-        width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
+
+      { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
 
       {
         field: 'formaPago',

@@ -12,3 +12,46 @@
   padding: 15px;
   background-color: #ffffff;
 }
+
+// Estilos para descripciones largas con word-wrap
+.ag-theme-quartz {
+  .ag-cell {
+    &.ag-cell-focus {
+      .description-cell {
+        min-height: 30px;
+        display: flex;
+        align-items: center;
+      }
+    }
+  }
+  
+  .description-cell {
+    word-wrap: break-word !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    padding: 4px 2px !important;
+    overflow: visible !important;
+    max-height: none !important;
+    min-height: 25px;
+    
+    div {
+      word-wrap: break-word !important;
+      white-space: normal !important;
+      line-height: 1.2 !important;
+      padding: 2px !important;
+      overflow: visible !important;
+      max-height: none !important;
+    }
+  }
+}
+
+.description-content {
+  word-wrap: break-word !important;
+  white-space: normal !important;
+  line-height: 1.2 !important;
+  padding: 2px !important;
+  overflow: visible !important;
+  max-height: none !important;
+  min-height: 20px;
+  display: block;
+}
