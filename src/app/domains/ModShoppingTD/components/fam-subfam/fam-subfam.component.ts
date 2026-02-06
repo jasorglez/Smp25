@@ -16,24 +16,24 @@ import { TrackingService } from 'app/services/tracking.service';
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
   template: `
-    <div class="detail-container p-2">
+    <div class="detail-container p-2 small">
       <!-- Botonera de subfamilias -->
-      <div class="d-flex mb-2 align-items-center">
-        <span class="badge bg-info">Subfamilias de: {{ parentFamily?.description }}</span>
-        <div class="d-flex gap-2 ms-auto">
-          <button class="btn btn-sm btn-success" (click)="addSubfamily()" title="Agregar Subfamilia">
+      <div class="d-flex mb-1 align-items-center">
+        <span class="badge bg-info" style="font-size: 11px;">Subfamilias de: {{ parentFamily?.description }}</span>
+        <div class="d-flex gap-1 ms-auto">
+          <button class="btn btn-sm btn-success py-0 px-1" style="font-size: 11px;" (click)="addSubfamily()" title="Agregar Subfamilia">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
-          <button class="btn btn-sm btn-primary position-relative" (click)="saveSubfamilies()" [disabled]="!hasChanges" title="Guardar">
+          <button class="btn btn-sm btn-primary py-0 px-1 position-relative" style="font-size: 11px;" (click)="saveSubfamilies()" [disabled]="!hasChanges" title="Guardar">
             <i class="bi bi-floppy"></i> Guardar
             <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
               *ngIf="hasChanges">
             </span>
           </button>
-          <button class="btn btn-sm btn-warning" (click)="revertSubfamilies()" title="Deshacer">
+          <button class="btn btn-sm btn-warning py-0 px-1" style="font-size: 11px;" (click)="revertSubfamilies()" title="Deshacer">
             <i class="bi bi-arrow-clockwise"></i> Deshacer
           </button>
-          <button class="btn btn-sm btn-danger" (click)="deleteSubfamily()" [disabled]="!selectedSubfamily" title="Eliminar">
+          <button class="btn btn-sm btn-danger py-0 px-1" style="font-size: 11px;" (click)="deleteSubfamily()" [disabled]="!selectedSubfamily" title="Eliminar">
             <i class="bi bi-trash"></i> Eliminar
           </button>
         </div>
@@ -41,8 +41,8 @@ import { TrackingService } from 'app/services/tracking.service';
 
       <!-- Grid de subfamilias -->
       <ag-grid-angular
-        class="ag-theme-quartz"
-        style="height: 200px; width: 100%;"
+        class="ag-theme-quartz small-text-ag-grid"
+        style="height: 200px; width: 100%; font-size: 12px;"
         [rowData]="subfamiliesData"
         [columnDefs]="subfamilyColDefs"
         [defaultColDef]="defaultColDef"
@@ -58,6 +58,16 @@ import { TrackingService } from 'app/services/tracking.service';
     .detail-container {
       background-color: #f8f9fa;
       border-left: 4px solid #17a2b8;
+      font-size: 12px;
+    }
+    :host ::ng-deep .small-text-ag-grid {
+      font-size: 11px;
+    }
+    :host ::ng-deep .small-text-ag-grid .ag-header-cell-label {
+      font-size: 11px;
+    }
+    :host ::ng-deep .small-text-ag-grid .ag-cell {
+      font-size: 11px;
     }
   `]
 })
