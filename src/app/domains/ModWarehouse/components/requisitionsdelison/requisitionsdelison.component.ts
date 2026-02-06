@@ -760,6 +760,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'articlesCount',
         headerName: 'Articulos que solicita',
         width: 100,
+        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Art'),
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),

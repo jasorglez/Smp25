@@ -1,11 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { AgGridAngular } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ClientSideRowModelModule, MasterDetailModule } from 'ag-grid-enterprise';
-import { Observable } from 'rxjs';
+import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { Observable, firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { MenuService } from 'app/services/menu.service';
 import { CommonModule } from '@angular/common';
 import { SignalsService } from 'app/services/signals.service';
+import { DetailedPermissionsComponent } from './detailedpermissions.component';
+import { MasterPermissionsService } from 'app/services/masterPermissions.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-permission',
@@ -13,6 +16,7 @@ import { SignalsService } from 'app/services/signals.service';
   imports: [
     CommonModule,
     AgGridAngular,
+    DetailedPermissionsComponent
   ],
   templateUrl: './permission.component.html',
   styles: `
@@ -29,51 +33,64 @@ import { SignalsService } from 'app/services/signals.service';
 })
 
 export class PermissionComponent implements OnInit {
-  // Registra el módulo necesario para el renderizado de Maestro/Detalle
-  public modules = [ClientSideRowModelModule, MasterDetailModule];
+
   public rowData$!: Observable<any[]>;
   public gridApi!: GridApi;
   gridHeight: string = '70vh';
+  masterNotSavedChanges: boolean = false;
 
   public colDefs: ColDef[] = [
-    { field: 'permissionName', headerName: 'Nombre del Permiso', cellRenderer: 'agGroupCellRenderer', flex: 2 },
-    { field: 'identifier', headerName: 'Identificador', flex: 2 },
-    { field: 'comment', headerName: 'Comentario', flex: 3 },
+    {
+        field: 'id',
+        headerName: 'Id',
+        editable: false,
+        width: 50,
+        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+        filterParams: {
+          filterOptions: ['equals'], // Opciones de filtro
+        },
+      },
+    { field: 'permissionName', headerName: 'Nombre del Permiso', flex: 2 , editable: true},
+    { field: 'identifier', headerName: 'Identificador', flex: 2 ,  editable: true},
+    { field: 'comment', headerName: 'Comentario', flex: 3 ,  editable: true},
+    { 
+      field: 'detail', 
+      headerName: 'Detalles', 
+      flex: 3,
+      cellRenderer: (params: ICellRendererParams) => {
+        return '<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Detalles</span>';
+      }
+    },
     {
       field: 'active',
       headerName: 'Activo',
       flex: 1,
-      cellRenderer: (params: ICellRendererParams) => params.value ? 'Sí' : 'No'
     },
   ];
+
+  
 
 
   public defaultColDef: ColDef = {
     sortable: true,
     filter: true,
     resizable: true,
+    floatingFilter: true,
   };
 
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
     masterDetail: true,
-    isRowMaster: (dataItem) => {
-      return dataItem.detailData && dataItem.detailData.length > 0;
-    },
+    detailCellRenderer: DetailedPermissionsComponent,
+    detailRowHeight: 400,
     detailCellRendererParams: {
-      detailGridOptions: {
-        columnDefs: [
-          { field: 'permissionName', headerName: 'Nombre del Permiso', flex: 1 },
-          { field: 'identifier', headerName: 'Identificador', flex: 1 }
-        ],
-        rowHeight: 18,
-        headerHeight: 20,
-        cssClass: 'small-text-ag-grid'
-      },
       getDetailRowData: (params) => {
         params.successCallback(params.data.detailData);
-      }
+      },
+    },
+    isRowMaster: (dataItem) => {
+      return true;
     },
     getRowClass: (params) => {
       if (params.node.isSelected()) {
@@ -90,6 +107,30 @@ export class PermissionComponent implements OnInit {
         });
       }
     },
+    onCellClicked: (event: any) => {
+      if (event.column.getColId() === 'detail') {
+        const isExpanding = !event.node.expanded;
+        event.node.setExpanded(isExpanding);
+
+        if (this.gridApi) {
+          if (isExpanding) {
+            const selectedId = event.data.id;
+            const filterModel = {
+              id: {
+                type: 'equals',
+                filter: selectedId,
+              },
+            };
+            this.gridApi.setFilterModel(filterModel);
+          } else {
+            this.gridApi.setFilterModel(null);
+          }
+          this.gridApi.onFilterChanged();
+        } else {
+          alert('gridApi no disponible');
+        }
+      }
+    },
     onFirstDataRendered: (params) => {
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
@@ -97,41 +138,33 @@ export class PermissionComponent implements OnInit {
       });
       params.api.autoSizeColumns(allColumnIds, false);
     },
+    onCellValueChanged: (event: any) => {
+      event.data.__modified = true;
+      this.masterNotSavedChanges = true;
+    },
   };
 
 
-  constructor(private menuService: MenuService, private signalsService: SignalsService) {}
+  constructor(private menuService: MenuService, private signalsService: SignalsService, private masterPermissionsService: MasterPermissionsService) {}
 
   ngOnInit(): void {
-    this.rowData$ = this.menuService.getDetails(0).pipe(
+    this.refreshData();
+  }
+
+  refreshData() {
+    this.rowData$ = this.masterPermissionsService.getMasterPermissions().pipe(
       map((data: any[]) => {
-        const masters: { [key: number]: any } = {};
-        data.forEach(item => {
-          if (item.masterPermission) {
-            const masterId = item.masterPermission.id;
-            if (!masters[masterId]) {
-              masters[masterId] = {
-                id: item.masterPermission.id,
-                permissionName: item.masterPermission.permissionName,
-                identifier: item.masterPermission.identifier,
-                active: item.masterPermission.active,
-                comment: item.masterPermission.comment,
-                detailData: []
-              };
-            }
-            // Only add if item is valid
-            if (item.id) {
-              masters[masterId].detailData.push({
-                id: item.id,
-                permissionName: item.permissionName,
-                identifier: item.identifier,
-                active: item.active,
-                comment: item.comment
-              });
-            }
-          }
+        console.log(data);
+        return data.map((item) => {
+          return {
+            id: item.id,
+            permissionName: item.permissionName,
+            identifier: item.identifier,
+            active: item.active,
+            comment: item.comment,
+            detailData: item.detailedPermissions || [],
+          };
         });
-        return Object.values(masters);
       })
     );
   }
@@ -142,54 +175,117 @@ export class PermissionComponent implements OnInit {
 
   onAdd() {
     const newPermission = {
-      id: `temp_${Date.now()}`,
       permissionName: '',
       identifier: '',
       active: true,
       comment: '',
-      detailData: []
+      detailData: [],
+      __isNew: true
     };
-    // Since rowData$ is Observable, we need to handle it differently
-    // For demo, assume we can modify the data
-    // But since it's processed, perhaps reload
-    this.menuService.getDetails(0).pipe(
-      map((data: any[]) => {
-        const masters: { [key: number]: any } = {};
-        data.forEach(item => {
-          if (item.masterPermission) {
-            const masterId = item.masterPermission.id;
-            if (!masters[masterId]) {
-              masters[masterId] = {
-                id: item.masterPermission.id,
-                permissionName: item.masterPermission.permissionName,
-                identifier: item.masterPermission.identifier,
-                active: item.masterPermission.active,
-                comment: item.masterPermission.comment,
-                detailData: []
-              };
-            }
-            if (item.id) {
-              masters[masterId].detailData.push({
-                id: item.id,
-                permissionName: item.permissionName,
-                identifier: item.identifier,
-                active: item.active,
-                comment: item.comment
-              });
-            }
-          }
-        });
-        // Add new master
-        masters[newPermission.id] = newPermission;
-        return Object.values(masters);
-      })
-    ).subscribe(newData => {
-      // Update the grid
-      this.gridApi.setGridOption('rowData', newData);
-    });
+    this.gridApi.applyTransaction({ add: [newPermission], addIndex: 0 });
+    this.masterNotSavedChanges = true;
+    setTimeout(() => {
+      this.gridApi.startEditingCell({
+        rowIndex: 0,
+        colKey: 'permissionName'
+      });
+    }, 100);
   }
 
-  onEdit() { console.log('Edit selected permission'); }
-  onDelete() { console.log('Delete selected permission'); }
+  onEdit() { 
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.gridApi.startEditingCell({
+        rowIndex: selectedNodes[0].rowIndex!,
+        colKey: 'permissionName'
+      });
+    }
+  }
+
+  async onDelete() { 
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    if (selectedNodes.length === 0) return;
+
+    const selectedData = selectedNodes[0].data;
+    
+    const confirm = await alerts.confirmAlert(
+      'Eliminar', 
+      `¿Está seguro de eliminar el permiso ${selectedData.permissionName || 'seleccionado'}?`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (confirm.isConfirmed) {
+      if (selectedData.__isNew) {
+        this.gridApi.applyTransaction({ remove: [selectedData] });
+        return;
+      }
+
+      try {
+        await firstValueFrom(this.masterPermissionsService.deleteMasterPermissions(selectedData.id));
+        alerts.basicAlert('Éxito', 'Permiso eliminado', 'success');
+        this.refreshData();
+      } catch (error) {
+        console.error(error);
+        alerts.basicAlert('Error', 'No se pudo eliminar', 'error');
+      }
+    }
+  }
+
+  async saveMaster() {
+    const newRows: any[] = [];
+    const modifiedRows: any[] = [];
+
+    this.gridApi.forEachNode((node) => {
+      if (node.data.__isNew) {
+        newRows.push(node.data);
+      } else if (node.data.__modified) {
+        modifiedRows.push(node.data);
+      }
+    });
+
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      return;
+    }
+
+    try {
+      const promises = [];
+      
+      // Create
+      for (const row of newRows) {
+        const payload = {
+          permissionName: row.permissionName,
+          comment: row.comment,
+          identifier: row.identifier,
+          active: row.active,
+          detailedPermissions: row.detailData || []
+        };
+        console.log(payload);  
+        promises.push(firstValueFrom(this.masterPermissionsService.addMasterPermissions(payload)));
+      }
+
+      // Update
+      for (const row of modifiedRows) {
+        const payload = {
+          id: row.id,
+          permissionName: row.permissionName,
+          comment: row.comment,
+          identifier: row.identifier,
+          active: row.active,
+          detailedPermissions: row.detailData || []
+        };
+        promises.push(firstValueFrom(this.masterPermissionsService.updateMasterPermissions(row.id, payload)));
+      }
+
+      await Promise.all(promises);
+      
+      alerts.basicAlert('Éxito', 'Cambios guardados correctamente', 'success');
+      this.masterNotSavedChanges = false;
+      this.refreshData();
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert('Error', 'Error al guardar cambios', 'error');
+    }
+  }
 
 }

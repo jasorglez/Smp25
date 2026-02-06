@@ -28,19 +28,19 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
         <strong>Artículos de la Requisición</strong>
         <div class="d-flex gap-2">
         
-       <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
+       <button class="btn btn-primary btn-sm me-2" (click)="addItem()" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create')">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
         
-        <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
+        <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()"  >
           <i class="bi bi-arrow-counterclockwise"></i> Deshacer
         </button>
         
-        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!hasRowSelected">
+        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!hasRowSelected" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'delete')">
           <i class="bi bi-trash"></i> Eliminar
         </button>
         
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="isAddingNewItem">
