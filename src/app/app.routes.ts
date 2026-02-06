@@ -1887,6 +1887,11 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
           },
 
+          {
+            path: 'fam-subfam',
+            loadComponent: () => import('./domains/ModShoppingTD/components/fam-subfam/fam-subfam.component').then((c) => c.FamSubfamComponent),
+          },
+
         ]
       },
       {

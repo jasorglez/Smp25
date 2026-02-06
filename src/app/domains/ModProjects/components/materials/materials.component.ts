@@ -28,6 +28,8 @@ import { TrackingService } from 'app/services/tracking.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { CommonModule } from '@angular/common';
+import { FamilyModalService } from './services/family-modal.service';
+import { SubfamilyModalService } from './services/subfamily-modal.service';
 
 @Component({
   selector: 'custom-group-renderer',
@@ -132,7 +134,18 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
   private catalogsService = inject(CatalogsService);
+  private familyModalService = inject(FamilyModalService);
+  private subfamilyModalService = inject(SubfamilyModalService);
   private isOpen: boolean = false;
+
+  // Variables para modal de familia
+  showFamilyModal: boolean = false;
+  newFamily: any = {};
+
+  // Variables para modal de subfamilia
+  showSubfamilyModal: boolean = false;
+  newSubfamily: any = {};
+  selectedParentFamilyDescription: string = '';
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
 
@@ -205,6 +218,26 @@ export class MaterialsComponent implements CanComponentDeactivate {
         this.obtenerFamilias();
         this.obtenerSubfamilias();
       }
+    });
+
+    // Suscribirse a solicitudes de apertura del modal de familia
+    this.familyModalService.modalRequest$.subscribe((data) => {
+      this.openFamilyModal(data.idCompany);
+    });
+
+    // Suscribirse a confirmación de guardado de familia
+    this.familyModalService.saveConfirmed$.subscribe((familyData) => {
+      this.onFamilyCreated(familyData);
+    });
+
+    // Suscribirse a solicitudes de apertura del modal de subfamilia
+    this.subfamilyModalService.modalRequest$.subscribe((data) => {
+      this.openSubfamilyModal(data.idCompany, data.parentId, data.parentDescription);
+    });
+
+    // Suscribirse a confirmación de guardado de subfamilia
+    this.subfamilyModalService.saveConfirmed$.subscribe((subfamilyData) => {
+      this.onSubfamilyCreated(subfamilyData);
     });
   }
   obtenerDatos(){
@@ -442,16 +475,33 @@ export class MaterialsComponent implements CanComponentDeactivate {
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => {
           return {
-            options: this.familiasCatalog.map(f => ({
-              id: f.id,
-              description: f.description,
-              valueAddition: f.valueAddition || '',
-              valueAddition2: f.valueAddition2 || ''
-            }))
+            options: [
+              ...this.familiasCatalog.map(f => ({
+                id: f.id,
+                description: f.description,
+                valueAddition: f.valueAddition || '',
+                valueAddition2: f.valueAddition2 || ''
+              })),
+              {
+                id: -999,
+                description: '➕ Agregar nueva familia...',
+                valueAddition: '-999',
+                valueAddition2: '➕ Agregar nueva familia...'
+              }
+            ]
           };
+        },
+        onCellValueChanged: (event: any) => {
+          if (event.newValue === -999) {
+            // Usuario seleccionó "Agregar nueva familia"
+            event.data.idFamilia = event.oldValue || null;
+            this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+            this.familyModalService.openModal({ idCompany: this.idcompany });
+          }
         },
         cellRenderer: (params: any) => {
           const value = params.value;
+          if (value === -999) return '';
           const familia = this.familiasCatalog.find(f => f.id === value);
           const displayText = familia ? familia.description : (value || '');
 
@@ -493,13 +543,42 @@ export class MaterialsComponent implements CanComponentDeactivate {
                 valueAddition2: s.valueAddition2 || ''
               }));
 
-            return { options: subfamiliasFiltradas };
+            return {
+              options: [
+                ...subfamiliasFiltradas,
+                {
+                  id: -999,
+                  description: '➕ Agregar nueva subfamilia...',
+                  valueAddition: '-999',
+                  valueAddition2: '➕ Agregar nueva subfamilia...'
+                }
+              ]
+            };
           }
 
           return { options: [] };
         },
+        onCellValueChanged: (event: any) => {
+          if (event.newValue === -999) {
+            // Usuario seleccionó "Agregar nueva subfamilia"
+            const idFamilia = event.data.idFamilia;
+            if (!idFamilia) {
+              alerts.basicAlert('Error', 'Primero debe seleccionar una familia.', 'warning');
+              return;
+            }
+            const familia = this.familiasCatalog.find(f => f.id === idFamilia);
+            event.data.idSubfamilia = event.oldValue || null;
+            this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+            this.subfamilyModalService.openModal({
+              idCompany: this.idcompany,
+              parentId: idFamilia,
+              parentDescription: familia?.description || ''
+            });
+          }
+        },
         cellRenderer: (params: any) => {
           const value = params.value;
+          if (value === -999) return '';
           const subfamilia = this.subfamiliasCatalog.find(s => s.id === value);
           const displayText = subfamilia ? subfamilia.description : (value || '');
 
@@ -1021,5 +1100,181 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   async canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.notSavedChanges);
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE FAMILIA ====================
+
+  openFamilyModal(idCompany: number) {
+    this.newFamily = {
+      idCompany: idCompany,
+      description: '',
+      valueAddition: 'NA',
+      valueAdditionBit2: false,
+      valueAdditionBit3: false,
+      vigente: false,
+      type: 'FAMILY',
+      active: 1
+    };
+    this.showFamilyModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeFamilyModal() {
+    this.showFamilyModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewFamily() {
+    if (!this.newFamily.description) {
+      alerts.basicAlert(
+        'Error',
+        'La descripción de la familia es obligatoria.',
+        'error'
+      );
+      return;
+    }
+
+    try {
+      const result: any = await lastValueFrom(
+        this.catalogsService.addCatalog(this.newFamily)
+      );
+
+      alerts.basicAlert(
+        'Familia creada',
+        'La familia se ha creado correctamente.',
+        'success'
+      );
+
+      // Notificar a través del servicio
+      this.familyModalService.confirmSave({
+        id: result.id,
+        description: this.newFamily.description
+      });
+
+      this.closeFamilyModal();
+
+    } catch (error: any) {
+      alerts.basicAlert(
+        'Error',
+        `Error al crear la familia. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
+  }
+
+  onFamilyCreated(familyData: { id: number; description: string }) {
+    // Recargar la lista de familias
+    this.obtenerFamilias();
+
+    // Esperar a que se carguen las familias y luego auto-seleccionar la nueva
+    setTimeout(() => {
+      // Buscar la fila actualmente seleccionada
+      const selectedNodes = this.gridApi?.getSelectedNodes();
+      if (selectedNodes && selectedNodes.length > 0) {
+        const selectedRow = selectedNodes[0];
+        selectedRow.setDataValue('idFamilia', familyData.id);
+        selectedRow.setDataValue('familiaDescription', familyData.description);
+        this.notSavedChanges = true;
+      }
+
+      // Refrescar la columna para mostrar el nuevo valor
+      if (this.gridApi) {
+        this.gridApi.refreshCells({
+          columns: ['idFamilia'],
+          force: true
+        });
+      }
+    }, 500);
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE SUBFAMILIA ====================
+
+  openSubfamilyModal(idCompany: number, parentId: number, parentDescription: string) {
+    this.selectedParentFamilyDescription = parentDescription;
+    this.newSubfamily = {
+      idCompany: idCompany,
+      description: '',
+      valueAddition: 'NA',
+      valueAdditionBit2: false,
+      valueAdditionBit3: false,
+      vigente: false,
+      type: 'SUBFAMILY',
+      parentId: parentId,
+      active: 1
+    };
+    this.showSubfamilyModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeSubfamilyModal() {
+    this.showSubfamilyModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewSubfamily() {
+    if (!this.newSubfamily.description) {
+      alerts.basicAlert(
+        'Error',
+        'La descripción de la subfamilia es obligatoria.',
+        'error'
+      );
+      return;
+    }
+
+    try {
+      const result: any = await lastValueFrom(
+        this.catalogsService.addCatalog(this.newSubfamily)
+      );
+
+      alerts.basicAlert(
+        'Subfamilia creada',
+        'La subfamilia se ha creado correctamente.',
+        'success'
+      );
+
+      // Notificar a través del servicio
+      this.subfamilyModalService.confirmSave({
+        id: result.id,
+        description: this.newSubfamily.description,
+        parentId: this.newSubfamily.parentId
+      });
+
+      this.closeSubfamilyModal();
+
+    } catch (error: any) {
+      alerts.basicAlert(
+        'Error',
+        `Error al crear la subfamilia. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
+  }
+
+  onSubfamilyCreated(subfamilyData: { id: number; description: string; parentId: number }) {
+    // Recargar la lista de subfamilias
+    this.obtenerSubfamilias();
+
+    // Esperar a que se carguen las subfamilias y luego auto-seleccionar la nueva
+    setTimeout(() => {
+      // Buscar la fila actualmente seleccionada
+      const selectedNodes = this.gridApi?.getSelectedNodes();
+      if (selectedNodes && selectedNodes.length > 0) {
+        const selectedRow = selectedNodes[0];
+        // Solo asignar si la familia de la fila coincide con el parentId
+        if (selectedRow.data.idFamilia === subfamilyData.parentId) {
+          selectedRow.setDataValue('idSubfamilia', subfamilyData.id);
+          selectedRow.setDataValue('subfamiliaDescription', subfamilyData.description);
+          this.notSavedChanges = true;
+        }
+      }
+
+      // Refrescar la columna para mostrar el nuevo valor
+      if (this.gridApi) {
+        this.gridApi.refreshCells({
+          columns: ['idSubfamilia'],
+          force: true
+        });
+      }
+    }, 500);
   }
 }
