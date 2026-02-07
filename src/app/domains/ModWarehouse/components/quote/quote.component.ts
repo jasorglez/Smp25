@@ -43,7 +43,7 @@ interface Provider {
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent],
   templateUrl: './quote.component.html',
-  styles: ``
+  styleUrl: './quote.component.scss'
 })
 export class QuoteComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
@@ -90,6 +90,12 @@ private lastProcessedQuote: number = null;
   selectedProviderSlot: number = 0; // 1, 2, or 3
   selectedProviderId: number = null;
 
+<<<<<<< HEAD
+=======
+  // Track expanded provider detail
+  expandedRowId: any = null;
+  expandedProviderNumber: number | null = null;
+>>>>>>> ea50633dee190ce669eecad028e214c96b87790d
 
   // Catálogos Master
   proveedores: any[] = [];
@@ -220,6 +226,10 @@ public gridOptions: any = {
       if (params.node.isSelected()) {
         return 'selected-row';
       }
+      // Verificar si está bloqueada (convertida a OC)
+      if (params.data?.locked === true) {
+        return 'locked-row';
+      }
       return '';
     },
     onRowClicked: (event) => {
@@ -249,14 +259,14 @@ public gridOptions: any = {
 {
   field: 'folio',
   headerName: 'Número Doc',
-  editable: true,
+  editable: (params) => !params.data?.locked,
   filter: true,
   width: 150,
 },
       {
         field: 'dateCreate',
         headerName: 'Fecha Cotizacion',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -270,7 +280,7 @@ public gridOptions: any = {
       {
         field: 'idDepartament',
         headerName: 'Departamento Solicita',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 190,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
@@ -284,13 +294,13 @@ public gridOptions: any = {
       {
         field: 'solicit',
         headerName: 'Solicitante',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 190,
       },
 {
   field: 'idReq',
   headerName: 'Requisición',
-  editable: true,
+  editable: (params) => !params.data?.locked,
   width: 180,
   cellEditor: 'agSelectCellEditor',
   cellEditorParams: () => ({
@@ -895,9 +905,24 @@ obtenerProveedores() {
 
     // Using concat to combine observables and lastValueFrom for async/await
     try {
-      const responses = await lastValueFrom(
+      await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+
+      // Lock requisitions that are assigned to saved QUOTEs
+      // Get all rows that have a requisition associated
+      const allRowsWithReq = [...newRows, ...modifiedRows].filter(row => row.idReq);
+
+      for (const row of allRowsWithReq) {
+        try {
+          // Use the new PATCH endpoint to lock the requisition
+          await lastValueFrom(this.quotesService.lockRequisition(row.idReq, true));
+          console.log('Requisition locked:', row.idReq);
+        } catch (err) {
+          console.error('Error locking requisition:', row.idReq, err);
+        }
+      }
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -1002,15 +1027,22 @@ createQuote(idQuote: number, action: string) {
       return;
     }
 
+    // Check if clicking same provider on same row - toggle close
+    if (this.expandedRowId === quoteData.id && this.expandedProviderNumber === providerNumber) {
+      console.log('Same provider clicked, collapsing detail');
+      this.collapseProviderDetail(quoteData);
+      return;
+    }
+
     // Get provider data from row data (not global slots)
     const providerId = quoteData[`proveedor${providerNumber}Id`] || 0;
     const providerName = quoteData[`proveedor${providerNumber}Name`] || '';
     const cotizId = quoteData[`proveedor${providerNumber}CotizId`] || null;
 
-    console.log('Provider data from row:', { 
-      providerId, 
-      providerName, 
-      cotizId, 
+    console.log('Provider data from row:', {
+      providerId,
+      providerName,
+      cotizId,
       providerCount: quoteData[`proveedor${providerNumber}Count`],
       'All provider fields': {
         [`proveedor${providerNumber}Id`]: quoteData[`proveedor${providerNumber}Id`],
@@ -1146,6 +1178,19 @@ createQuote(idQuote: number, action: string) {
     this.selectedProviderSlot = 0;
   }
 
+  // Collapse the provider detail
+  private collapseProviderDetail(quoteData: any): void {
+    if (this.masterGridApi) {
+      this.masterGridApi.forEachNode((node: any) => {
+        if (node.data && node.data.id === quoteData.id && node.expanded) {
+          node.setExpanded(false);
+        }
+      });
+    }
+    this.expandedRowId = null;
+    this.expandedProviderNumber = null;
+  }
+
   // Open the provider detail grid with COTIZ data
   private openProviderDetail(quoteData: any, providerNumber: number, cotizId: number, idProvider: number): void {
     if (this.masterGridApi) {
@@ -1175,6 +1220,10 @@ createQuote(idQuote: number, action: string) {
           }
         }
       });
+
+      // Track expanded state
+      this.expandedRowId = quoteData.id;
+      this.expandedProviderNumber = providerNumber;
 
       // Collapse all, then expand selected
       this.masterGridApi.forEachNode((node: any) => {
@@ -1264,34 +1313,61 @@ createQuote(idQuote: number, action: string) {
    }
 
   // Load COTIZ info for ALL master rows on initial load
-  loadAllCotizInfo(): void {
+  async loadAllCotizInfo(): Promise<void> {
     const rowsWithReq = this.masterRowData.filter(row => row.idReq);
     if (rowsWithReq.length === 0) return;
 
-    rowsWithReq.forEach(row => {
-      this.quotesService.getCotizByReq(row.idReq, this.typeReference, this.idReference).subscribe({
-        next: (cotizList: any[]) => {
-          const matching = cotizList.filter((c: any) => c.idReq === row.idReq && c.active !== false);
-          matching.slice(0, 3).forEach((cotiz: any, index: number) => {
-            const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
-            row[`proveedor${index + 1}Id`] = cotiz.idProvider;
-            row[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
-            row[`proveedor${index + 1}CotizId`] = cotiz.id;
-            row[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
-          });
-          // Refresh those cells in the grid
-          if (this.masterGridApi) {
-            this.masterGridApi.applyTransaction({ update: [row] });
-            this.masterGridApi.refreshCells({
-              columns: ['proveedor1', 'proveedor2', 'proveedor3'],
-              rowNodes: [this.masterGridApi.getRowNode(row.id)],
-              force: true
-            });
-          }
-        },
-        error: (err) => console.error('Error loading COTIZ for row', row.id, err)
-      });
+    const updatedRows: any[] = [];
+
+    // Load all COTIZ info in parallel and collect results
+    const promises = rowsWithReq.map(async (row) => {
+      try {
+        const cotizList: any[] = await lastValueFrom(
+          this.quotesService.getCotizByReq(row.idReq, this.typeReference, this.idReference)
+        );
+        const matching = cotizList.filter((c: any) => c.idReq === row.idReq && c.active !== false);
+
+        // Initialize provider fields to ensure they exist
+        row.proveedor1Id = 0;
+        row.proveedor1Name = '';
+        row.proveedor1CotizId = null;
+        row.proveedor1Count = 0;
+        row.proveedor2Id = 0;
+        row.proveedor2Name = '';
+        row.proveedor2CotizId = null;
+        row.proveedor2Count = 0;
+        row.proveedor3Id = 0;
+        row.proveedor3Name = '';
+        row.proveedor3CotizId = null;
+        row.proveedor3Count = 0;
+
+        matching.slice(0, 3).forEach((cotiz: any, index: number) => {
+          const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
+          row[`proveedor${index + 1}Id`] = cotiz.idProvider;
+          row[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+          row[`proveedor${index + 1}CotizId`] = cotiz.id;
+          row[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
+        });
+
+        updatedRows.push(row);
+      } catch (err) {
+        console.error('Error loading COTIZ for row', row.id, err);
+      }
     });
+
+    // Wait for all to complete
+    await Promise.all(promises);
+
+    // Refresh the entire grid once after all data is loaded
+    if (this.masterGridApi && updatedRows.length > 0) {
+      // Update all rows in a single transaction
+      this.masterGridApi.applyTransaction({ update: updatedRows });
+
+      // Force redraw of provider columns for all rows
+      this.masterGridApi.redrawRows();
+
+      console.log('✅ Provider columns refreshed for', updatedRows.length, 'rows');
+    }
   }
 
   resetCotizSlots(): void {

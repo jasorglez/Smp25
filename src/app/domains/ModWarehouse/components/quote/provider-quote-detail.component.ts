@@ -80,6 +80,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   cotizId: number = null;
   idProvider: number = null;
   providerName: string = '';
+  isLocked: boolean = false; // True when COTIZ has been converted to OC
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -139,6 +140,14 @@ export class ProviderQuoteDetailComponent implements OnInit {
     // If we have a cotizId, load items from the COTIZ record
     if (this.cotizId) {
       try {
+        // Check if COTIZ is already converted to OC (locked)
+        const cotizMaster: any = await lastValueFrom(
+          this.ocAndReqsService.getDetailedReq(this.cotizId)
+        );
+        // If COTIZ has idOc or locked field, it's been converted
+        this.isLocked = cotizMaster.idOc > 0 || cotizMaster.locked === true;
+        console.log('COTIZ locked status:', this.isLocked, 'idOc:', cotizMaster.idOc);
+
         const items: any[] = await lastValueFrom(
           this.ocAndReqsService.getReqItems(this.cotizId)
         );
@@ -259,13 +268,14 @@ export class ProviderQuoteDetailComponent implements OnInit {
         field: 'price',
         headerName: 'Precio',
         width: 120,
-        editable: true,
+        editable: () => !this.isLocked,
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
         valueFormatter: (params) => {
           return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
         },
         valueSetter: (params: any) => {
+          if (this.isLocked) return false;
           params.data.price = parseFloat(params.newValue) || 0;
           this.calculateTotal(params.data);
           params.data.__modified = true;
@@ -292,7 +302,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
         field: 'comment',
         headerName: 'Comentarios',
         flex: 1,
-        editable: true,
+        editable: () => !this.isLocked,
         cellEditor: 'agLargeTextCellEditor',
         cellEditorParams: {
           maxLength: 500,
@@ -300,6 +310,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
           cols: 50
         },
         valueSetter: (params: any) => {
+          if (this.isLocked) return false;
           params.data.comment = params.newValue;
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
@@ -334,7 +345,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
       const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
       const newItems = this.rowData.filter(item => item.__isNew);
 
-      // Update existing items
+      // Update existing items - do NOT send id field to avoid EF tracking issues
       for (const item of modifiedItems) {
         const updateData: any = {
           idMovement: this.cotizId,
@@ -346,10 +357,15 @@ export class ProviderQuoteDetailComponent implements OnInit {
           comment: item.comment || '',
           active: true
         };
+        // Explicitly ensure no id fields are sent (causes EF key modification error)
+        delete updateData.id;
+        delete updateData.Id;
+        console.log('📤 UPDATE item.id:', item.id, 'updateData:', JSON.stringify(updateData));
         await lastValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), updateData));
       }
 
       // Add new items
+      console.log('📤 New items to add:', newItems.length);
       for (const item of newItems) {
         const provider = this.proveedores.find((p: any) => p.id === this.idProvider);
         const addData: any = {
@@ -364,6 +380,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
           dateuse: item.dateuse,
           active: true
         };
+        console.log('📤 ADD addData:', JSON.stringify(addData));
         await lastValueFrom(this.ocAndReqsService.addReqItem(addData));
       }
 
@@ -421,6 +438,97 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
     this.loadProviderQuoteData();
     this.hasUnsavedChanges = false;
+  }
+
+  // Convert COTIZ to OC (Purchase Order)
+  async convertToOC() {
+    if (!this.cotizId || !this.idProvider) {
+      alerts.basicAlert('Error', 'No hay cotización válida para convertir', 'error');
+      return;
+    }
+
+    if (this.rowData.length === 0) {
+      alerts.basicAlert('Sin items', 'No hay items para crear la Orden de Compra', 'warning');
+      return;
+    }
+
+    // Confirm with user
+    const result = await alerts.confirmAlert(
+      'Convertir a Orden de Compra',
+      `¿Desea crear una Orden de Compra basada en esta cotización de ${this.providerName}?`,
+      'question',
+      'Sí, crear OC'
+    );
+
+    if (!result.isConfirmed) return;
+
+    try {
+      // Get COTIZ master data to copy fields
+      const cotizMaster: any = await lastValueFrom(
+        this.ocAndReqsService.getDetailedReq(this.cotizId)
+      );
+
+      // Create OC record
+      const ocData: any = {
+        type: 'OC',
+        folio: `OC-${cotizMaster.folio || this.cotizId}`,
+        typeReference: cotizMaster.typeReference,
+        idReference: cotizMaster.idReference,
+        idReq: cotizMaster.idReq,
+        idProvider: this.idProvider,
+        dateCreate: new Date().toISOString(),
+        dateSupply: cotizMaster.dateSupply || new Date().toISOString(),
+        idDepartament: cotizMaster.idDepartament || 0,
+        solicit: cotizMaster.solicit || '',
+        delivery: cotizMaster.delivery || 'A',
+        deliveryTime: cotizMaster.deliveryTime || '',
+        typeOc: cotizMaster.typeOc || 'INSUMOS',
+        idPayment: cotizMaster.idPayment || 0,
+        idCurrency: cotizMaster.idCurrency || 0,
+        idAuthorize: cotizMaster.idAuthorize || 0,
+        active: true
+      };
+
+      console.log('Creating OC from COTIZ:', ocData);
+      const ocResponse: any = await lastValueFrom(this.ocAndReqsService.addOcAndReq(ocData));
+      const ocId = ocResponse.id;
+      console.log('OC created with ID:', ocId);
+
+      // Copy items from COTIZ to OC
+      for (const item of this.rowData) {
+        const detailData: any = {
+          idMovement: ocId,
+          idSupplie: item.idSupplie,
+          idProvider: this.idProvider,
+          nameProvider: this.providerName,
+          quantity: item.quantity,
+          price: item.price,
+          dateuse: item.dateuse,
+          type: 'OC',
+          comment: item.comment || '',
+          active: true
+        };
+        await lastValueFrom(this.ocAndReqsService.addReqItem(detailData));
+      }
+
+      // Lock the COTIZ using the PATCH endpoint
+      await lastValueFrom(this.ocAndReqsService.lockRequisition(this.cotizId, true));
+      this.isLocked = true;
+      console.log('COTIZ locked:', this.cotizId);
+
+      // Calculate total
+      const total = this.rowData.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+
+      alerts.basicAlert(
+        'Orden de Compra Creada',
+        `Se ha creado la OC #${ocId} con ${this.rowData.length} items. Total: $${total.toFixed(2)}`,
+        'success'
+      );
+
+    } catch (error) {
+      console.error('Error creating OC from COTIZ:', error);
+      alerts.basicAlert('Error', 'No se pudo crear la Orden de Compra', 'error');
+    }
   }
 
   async generatePDF() {

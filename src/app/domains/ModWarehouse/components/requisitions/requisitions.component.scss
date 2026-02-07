@@ -9,3 +9,11 @@
 ::ng-deep .ag-theme-quartz .detail-purchase-row {
   background-color: #fce4ec !important; /* Rosa claro */
 }
+
+::ng-deep .ag-theme-quartz .locked-row {
+  background-color: #fff3cd !important; /* Amarillo claro - bloqueada */
+}
+
+::ng-deep .ag-theme-quartz .locked-row .ag-cell {
+  color: #856404 !important;
+}
