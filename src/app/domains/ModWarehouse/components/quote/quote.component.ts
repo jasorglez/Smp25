@@ -90,6 +90,7 @@ private lastProcessedQuote: number = null;
   selectedProviderSlot: number = 0; // 1, 2, or 3
   selectedProviderId: number = null;
 
+
   // Catálogos Master
   proveedores: any[] = [];
   departamentos: any[] = [];
@@ -973,6 +974,7 @@ obtenerProveedores() {
 createQuote(idQuote: number, action: string) {
     this.receiptsService.generateOC(idQuote, action);
   }
+
 
   // Método para invalidar la caché de columnas (útil cuando cambian catálogos)
   refreshColumnCache(): void {

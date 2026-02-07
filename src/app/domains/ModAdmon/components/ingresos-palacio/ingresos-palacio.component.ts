@@ -440,6 +440,15 @@ export class IngresosPalacioComponent implements OnInit {
     // Inicializar una sola vez
     this._colMaster = [
       {
+        headerName: '#',
+        valueGetter: (params: any) => params.node ? params.node.rowIndex + 1 : '',
+        width: 50,
+        editable: false,
+        sortable: false,
+        filter: false,
+        cellStyle: { backgroundColor: '#f8f9fa', textAlign: 'center', fontWeight: 'bold' }
+      },
+      {
         field: 'countItems',
         headerName: 'Items',
         width: 90,
