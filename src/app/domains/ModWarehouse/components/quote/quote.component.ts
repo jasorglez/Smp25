@@ -90,12 +90,9 @@ private lastProcessedQuote: number = null;
   selectedProviderSlot: number = 0; // 1, 2, or 3
   selectedProviderId: number = null;
 
-<<<<<<< HEAD
-=======
   // Track expanded provider detail
   expandedRowId: any = null;
   expandedProviderNumber: number | null = null;
->>>>>>> ea50633dee190ce669eecad028e214c96b87790d
 
   // Catálogos Master
   proveedores: any[] = [];
