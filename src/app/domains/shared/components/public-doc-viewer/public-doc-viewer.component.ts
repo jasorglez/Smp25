@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { NotificationsTelegramService } from '../../../../services/notifications-telegram.service';
+import { Base64EncodeService } from '../../../../services/base64encode.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
@@ -37,11 +38,13 @@ export class PublicDocViewerComponent implements OnInit {
   pdfBlobUrl: string | null = null;
   docTitle = '';
   isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  pdfGenerated = false;
 
   constructor(
     private route: ActivatedRoute,
     private notificationsService: NotificationsTelegramService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private base64EncodeService: Base64EncodeService
   ) {}
 
   ngOnInit() {
@@ -78,29 +81,15 @@ export class PublicDocViewerComponent implements OnInit {
     });
   }
 
-  private generatePdf(data: any) {
+  private async generatePdf(data: any) {
     try {
       const docCode = data.documentType?.code?.toUpperCase();
 
-      let docDefinition: any;
       if (docCode === 'OC' || docCode === 'REQUIS') {
-        docDefinition = this.buildOCDocDefinition(data);
+        await this.buildOCReport(data);
       } else {
-        docDefinition = this.buildGenericDocDefinition(data);
+        await this.buildGenericReport(data);
       }
-
-      const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-      pdfDocGenerator.getBlob((blob: Blob) => {
-        const url = URL.createObjectURL(blob);
-        this.pdfBlobUrl = url;
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-        this.loading = false;
-
-        // On mobile, auto-open the PDF
-        if (this.isMobile) {
-          this.downloadPdf();
-        }
-      });
     } catch (error) {
       console.error('Error generando PDF:', error);
       this.loading = false;
@@ -108,7 +97,11 @@ export class PublicDocViewerComponent implements OnInit {
     }
   }
 
-  private buildOCDocDefinition(data: any): any {
+  // ============================================================
+  // COPIA EXACTA del reporte de OC (detail-cell-renderer-purchaseorder-report)
+  // Logos convertidos en FRONTEND con base64EncodeService (igual que el original)
+  // ============================================================
+  private async buildOCReport(data: any) {
     const doc = data.documentData?.document || {};
     const companyData = data.documentData?.companyData || {};
     const providerData = data.documentData?.providerData || {};
@@ -116,18 +109,22 @@ export class PublicDocViewerComponent implements OnInit {
     const items = data.documentData?.details || [];
     const notification = data.notification || {};
 
-    const logoBase64 = data.documentData?.logoBase64 || null;
-    const logo2Base64 = data.documentData?.logo2Base64 || logoBase64;
-    const watermarkBase64 = data.documentData?.watermarkBase64 || null;
+    // Convertir logo principal (picture) a base64 - IGUAL QUE EL ORIGINAL
+    const logoBase64 = companyData?.picture
+      ? await this.base64EncodeService.convertImageToBase64(companyData.picture)
+      : '';
 
-    const fechaOC = this.formatDate(doc.dateCreate);
-    const fechaEntrega = this.formatDate(doc.dateSupply);
-    const ocNumero = doc.folio || notification.folio || 'N/A';
-    const solicitante = doc.solicit || notification.solicitName || 'N/A';
-    const comentarios = doc.comments || '';
-    const docTypeLabel = data.documentType?.code === 'OC' ? 'ORDEN DE COMPRA' : 'REQUISICIÓN';
+    // Convertir segundo logo (picture2) a base64
+    const logo2Base64 = companyData?.picture2
+      ? await this.base64EncodeService.convertImageToBase64(companyData.picture2)
+      : logoBase64;
 
-    // Map items with material descriptions
+    // Convertir marca de agua (picture3) a base64
+    const watermarkBase64 = companyData?.picture3
+      ? await this.base64EncodeService.convertImageToBase64(companyData.picture3)
+      : null;
+
+    // Mapear items con descripciones de materiales
     const articulos = Array.isArray(items) ? items.map((item: any) => {
       const producto = Array.isArray(materials)
         ? materials.find((p: any) => p.id === item.idSupplie)
@@ -139,7 +136,14 @@ export class PublicDocViewerComponent implements OnInit {
       };
     }) : [];
 
-    // Calculate totals
+    const fechaOC = this.formatDate(doc.dateCreate);
+    const fechaEntrega = this.formatDate(doc.dateSupply);
+    const ocNumero = doc.folio || notification.folio || 'N/A';
+    const solicitante = doc.solicit || notification.solicitName || 'N/A';
+    const comentarios = doc.comments || '';
+    const docTypeLabel = data.documentType?.code === 'OC' ? 'ORDEN DE COMPRA' : 'REQUISICIÓN';
+
+    // Calcular totales
     const subtotal = articulos.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
     const descuento = doc.discount || 0;
     const subtotalConDescuento = subtotal - descuento;
@@ -153,11 +157,13 @@ export class PublicDocViewerComponent implements OnInit {
       : notification.status === 'REJECTED' ? '#dc3545'
       : '#ffc107';
 
-    return {
+    const docDefinition: any = {
       pageSize: 'LETTER',
       pageMargins: [40, 80, 40, 40],
-      defaultStyle: { fontSize: 9 },
-      // Watermark
+      defaultStyle: {
+        fontSize: 9
+      },
+      // Marca de agua con logo (picture3)
       background: watermarkBase64 ? [
         {
           image: 'watermark',
@@ -167,30 +173,60 @@ export class PublicDocViewerComponent implements OnInit {
         }
       ] : [],
       content: [
-        // Header with logos
+        // Header con logos - EXACTO al original
         {
           columns: [
-            ...(logoBase64 ? [{ image: 'logo', width: 80, alignment: 'left' as const }] : []),
+            {
+              image: 'logo',
+              width: 80,
+              alignment: 'left'
+            },
             {
               stack: [
-                { text: companyData.name || 'Empresa', style: 'companyName', alignment: 'center' },
-                { text: companyData.email || '', style: 'companyInfo', alignment: 'center' },
-                { text: companyData.web || '', style: 'companyInfo', alignment: 'center' }
+                {
+                  text: companyData?.name || 'Empresa',
+                  style: 'companyName',
+                  alignment: 'center'
+                },
+                {
+                  text: companyData?.email || '',
+                  style: 'companyInfo',
+                  alignment: 'center'
+                },
+                {
+                  text: companyData?.web || '',
+                  style: 'companyInfo',
+                  alignment: 'center'
+                }
               ],
               width: '*'
             },
             {
               stack: [
-                { text: docTypeLabel, style: 'documentTitle', alignment: 'right' },
-                { text: `No. ${ocNumero}`, style: 'documentNumber', alignment: 'right', margin: [0, 5, 0, 0] },
-                { text: `Fecha: ${fechaOC}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }
+                {
+                  text: docTypeLabel,
+                  style: 'documentTitle',
+                  alignment: 'right'
+                },
+                {
+                  text: `No. ${ocNumero}`,
+                  style: 'documentNumber',
+                  alignment: 'right',
+                  margin: [0, 5, 0, 0]
+                },
+                {
+                  text: `Fecha: ${fechaOC}`,
+                  style: 'documentDate',
+                  alignment: 'right',
+                  margin: [0, 3, 0, 0]
+                }
               ],
               width: 150
             }
           ],
           margin: [0, 0, 0, 20]
         },
-        // Status
+        // Estado de autorización
         {
           text: `Estado: ${statusText}`,
           fontSize: 10,
@@ -199,40 +235,50 @@ export class PublicDocViewerComponent implements OnInit {
           alignment: 'right',
           margin: [0, 0, 0, 5]
         },
-        // Line separator
+        // Línea separadora
         {
-          canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#333333' }],
+          canvas: [
+            {
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 515,
+              y2: 0,
+              lineWidth: 1,
+              lineColor: '#333333'
+            }
+          ],
           margin: [0, 0, 0, 15]
         },
-        // Billing and Provider
+        // Datos de facturación y proveedor
         {
           columns: [
             {
               width: '50%',
               stack: [
                 { text: 'FACTURAR A:', bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
-                { text: companyData.name || '', fontSize: 9 },
-                { text: companyData.address || '', fontSize: 9 },
-                { text: companyData.rfc || '', fontSize: 9 },
-                { text: `${companyData.city || ''}, ${companyData.state || ''}, ${companyData.country || ''}`, fontSize: 9 },
-                { text: companyData.phone || '', fontSize: 9 }
+                { text: companyData?.name || '', fontSize: 9 },
+                { text: companyData?.address || '', fontSize: 9 },
+                { text: companyData?.rfc || '', fontSize: 9 },
+                { text: `${companyData?.city || ''}, ${companyData?.state || ''}, ${companyData?.country || ''}`, fontSize: 9 },
+                { text: companyData?.phone || '', fontSize: 9 }
               ]
             },
             {
               width: '50%',
               stack: [
                 { text: 'PROVEEDOR:', bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
-                { text: providerData.name || 'Sin proveedor', fontSize: 9 },
-                { text: providerData.address || '', fontSize: 9 },
-                { text: providerData.rfc || '', fontSize: 9 },
-                { text: `${providerData.city || ''}, ${providerData.state || ''}, ${providerData.country || ''}`, fontSize: 9 },
-                { text: providerData.phone || '', fontSize: 9 }
+                { text: providerData?.name || 'Sin proveedor', fontSize: 9 },
+                { text: providerData?.address || '', fontSize: 9 },
+                { text: providerData?.rfc || '', fontSize: 9 },
+                { text: `${providerData?.city || ''}, ${providerData?.state || ''}, ${providerData?.country || ''}`, fontSize: 9 },
+                { text: providerData?.phone || '', fontSize: 9 }
               ]
             }
           ],
           margin: [0, 0, 0, 15]
         },
-        // Additional info
+        // Información adicional
         {
           table: {
             widths: ['25%', '25%', '25%', '25%'],
@@ -263,7 +309,7 @@ export class PublicDocViewerComponent implements OnInit {
           },
           margin: [0, 0, 0, 15]
         },
-        // Rejection reason
+        // Motivo de rechazo
         ...(notification.status === 'REJECTED' && notification.rejectionReason ? [
           {
             table: {
@@ -286,9 +332,15 @@ export class PublicDocViewerComponent implements OnInit {
             margin: [0, 0, 0, 15]
           }
         ] : []),
-        // Articles title
-        { text: 'ARTÍCULOS', fontSize: 11, bold: true, color: '#0d6efd', margin: [0, 0, 0, 10] },
-        // Articles table
+        // Título de artículos
+        {
+          text: 'ARTÍCULOS',
+          fontSize: 11,
+          bold: true,
+          color: '#0d6efd',
+          margin: [0, 0, 0, 10]
+        },
+        // Tabla de artículos
         {
           table: {
             headerRows: 1,
@@ -306,14 +358,14 @@ export class PublicDocViewerComponent implements OnInit {
               ...(articulos.length > 0
                 ? articulos.map((item: any, index: number) => [
                     { text: (index + 1).toString(), alignment: 'center', fontSize: 7 },
-                    { text: item.numArticle || '', alignment: 'center', fontSize: 7 },
-                    { text: item.article || '', fontSize: 7 },
+                    { text: item.numArticle || item.code || '', alignment: 'center', fontSize: 7 },
+                    { text: item.article || item.description || '', fontSize: 7 },
                     { text: (item.quantity || 0).toString(), alignment: 'center', fontSize: 7 },
                     { text: item.measure || '', alignment: 'center', fontSize: 7 },
                     { text: this.formatCurrency(item.price || 0), alignment: 'right', fontSize: 7 },
                     { text: this.formatCurrency(item.total || 0), alignment: 'right', fontSize: 7 }
                   ])
-                : [[{ text: 'No hay artículos', colSpan: 7, alignment: 'center', color: '#666', italics: true, fontSize: 7 }, {}, {}, {}, {}, {}, {}]]
+                : [[{ text: 'No hay artículos en esta orden de compra', colSpan: 7, alignment: 'center', color: '#666', italics: true, fontSize: 7 }, {}, {}, {}, {}, {}, {}]]
               )
             ]
           },
@@ -329,7 +381,7 @@ export class PublicDocViewerComponent implements OnInit {
           },
           margin: [0, 0, 0, 20]
         },
-        // Totals
+        // Resumen de totales
         {
           columns: [
             { width: '60%', text: '' },
@@ -374,14 +426,14 @@ export class PublicDocViewerComponent implements OnInit {
           ],
           margin: [0, 0, 0, 20]
         },
-        // Comments
+        // Observaciones
         comentarios ? {
           stack: [
             { text: 'OBSERVACIONES:', bold: true, fontSize: 9, margin: [0, 0, 0, 5] },
             { text: comentarios, fontSize: 9, margin: [0, 0, 0, 20] }
           ]
         } : { text: '', margin: [0, 0, 0, 20] },
-        // Signatures
+        // Firmas
         {
           columns: [
             {
@@ -404,31 +456,68 @@ export class PublicDocViewerComponent implements OnInit {
         }
       ],
       styles: {
-        companyName: { fontSize: 14, bold: true, color: '#333333' },
-        companyInfo: { fontSize: 9, color: '#666666' },
-        documentTitle: { fontSize: 11, bold: true, color: '#0d6efd' },
-        documentNumber: { fontSize: 12, bold: true, color: '#333333' },
-        documentDate: { fontSize: 9, color: '#666666' },
-        masterLabel: { bold: true, fontSize: 9, fillColor: '#f8f9fa' },
-        masterValue: { fontSize: 9 },
-        tableHeader: { bold: true, fontSize: 8, color: 'white', fillColor: '#0d6efd' }
+        companyName: {
+          fontSize: 14,
+          bold: true,
+          color: '#333333'
+        },
+        companyInfo: {
+          fontSize: 9,
+          color: '#666666'
+        },
+        documentTitle: {
+          fontSize: 11,
+          bold: true,
+          color: '#0d6efd'
+        },
+        documentNumber: {
+          fontSize: 12,
+          bold: true,
+          color: '#333333'
+        },
+        documentDate: {
+          fontSize: 9,
+          color: '#666666'
+        },
+        masterLabel: {
+          bold: true,
+          fontSize: 9,
+          fillColor: '#f8f9fa'
+        },
+        masterValue: {
+          fontSize: 9
+        },
+        tableHeader: {
+          bold: true,
+          fontSize: 8,
+          color: 'white',
+          fillColor: '#0d6efd'
+        }
       },
-      images: {
-        ...(logoBase64 ? { logo: logoBase64 } : {}),
-        ...(logo2Base64 ? { logo2: logo2Base64 } : {}),
-        ...(watermarkBase64 ? { watermark: watermarkBase64 } : {})
+      // Definición de imágenes - EXACTO al original
+      images: watermarkBase64 ? {
+        logo: logoBase64,
+        logo2: logo2Base64,
+        watermark: watermarkBase64
+      } : {
+        logo: logoBase64,
+        logo2: logo2Base64
       },
-      footer: (currentPage: number, pageCount: number) => ({
-        columns: [
-          { text: `Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#666', margin: [40, 0, 0, 0] },
-          { text: `Página ${currentPage} de ${pageCount}`, fontSize: 8, color: '#666', alignment: 'right', margin: [0, 0, 40, 0] }
-        ],
-        margin: [0, 20, 0, 0]
-      })
+      footer: (currentPage: number, pageCount: number) => {
+        return {
+          columns: [
+            { text: `Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#666', margin: [40, 0, 0, 0] },
+            { text: `Página ${currentPage} de ${pageCount}`, fontSize: 8, color: '#666', alignment: 'right', margin: [0, 0, 40, 0] }
+          ],
+          margin: [0, 20, 0, 0]
+        };
+      }
     };
+
+    this.createPdfOutput(docDefinition);
   }
 
-  private buildGenericDocDefinition(data: any): any {
+  private async buildGenericReport(data: any) {
     const doc = data.documentData?.document || {};
     const notification = data.notification || {};
     const docTypeLabel = data.documentType?.description || 'Documento';
@@ -440,7 +529,7 @@ export class PublicDocViewerComponent implements OnInit {
         { text: String(doc[key]), fontSize: 9 }
       ]);
 
-    return {
+    const docDefinition: any = {
       pageSize: 'LETTER',
       pageMargins: [40, 60, 40, 40],
       defaultStyle: { fontSize: 9 },
@@ -465,6 +554,29 @@ export class PublicDocViewerComponent implements OnInit {
         }
       ]
     };
+
+    this.createPdfOutput(docDefinition);
+  }
+
+  private createPdfOutput(docDefinition: any) {
+    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+    const fileName = `${this.docTitle || 'documento'}.pdf`;
+
+    if (this.isMobile) {
+      // En móvil: usar pdfMake.download() directo - funciona en todos los navegadores móviles
+      pdfDocGenerator.download(fileName);
+      this.loading = false;
+      this.pdfGenerated = true;
+    } else {
+      // En desktop: mostrar en iframe (igual que el original)
+      pdfDocGenerator.getBlob((blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        this.pdfBlobUrl = url;
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        this.loading = false;
+        this.pdfGenerated = true;
+      });
+    }
   }
 
   private getStatusLabel(status: string): string {
@@ -483,16 +595,27 @@ export class PublicDocViewerComponent implements OnInit {
       if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
         const [datePart] = value.split('T');
         const [year, month, day] = datePart.split('-').map(Number);
-        return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+        return [
+          day.toString().padStart(2, '0'),
+          month.toString().padStart(2, '0'),
+          year.toString()
+        ].join('/');
       }
       const date = new Date(value);
       if (isNaN(date.getTime())) return '';
-      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+      return [
+        date.getDate().toString().padStart(2, '0'),
+        (date.getMonth() + 1).toString().padStart(2, '0'),
+        date.getFullYear()
+      ].join('/');
     } catch { return ''; }
   }
 
   private formatCurrency(value: number): string {
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value || 0);
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(value || 0);
   }
 
   private formatFieldName(name: string): string {

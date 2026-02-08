@@ -40,15 +40,12 @@
     </iframe>
   </div>
 
-  <!-- Mobile message -->
-  <div *ngIf="pdfUrl && !loading && !errorMessage && isMobile" class="container mt-4">
+  <!-- Mobile: PDF descargado -->
+  <div *ngIf="pdfGenerated && !loading && !errorMessage && isMobile" class="container mt-4">
     <div class="alert alert-success text-center" role="alert">
       <i class="bi bi-check-circle-fill fs-1 d-block mb-2"></i>
       <h5>Documento generado correctamente</h5>
-      <p class="mb-3">El PDF se ha descargado automáticamente. Si no se descargó, presiona el botón.</p>
-      <button class="btn btn-primary btn-lg" (click)="downloadPdf()">
-        <i class="bi bi-download me-2"></i> Descargar PDF
-      </button>
+      <p class="mb-3">El PDF se ha descargado automáticamente.</p>
     </div>
   </div>
 </div>
