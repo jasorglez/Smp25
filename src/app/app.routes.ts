@@ -2059,5 +2059,11 @@ export const routes: Routes = [
       },
     ],
   },
+  {
+    path: 'public/doc',
+    loadComponent: () =>
+      import('./domains/shared/components/public-doc-viewer/public-doc-viewer.component')
+        .then(m => m.PublicDocViewerComponent)
+  },
   { path: '**', redirectTo: '' },
 ];
