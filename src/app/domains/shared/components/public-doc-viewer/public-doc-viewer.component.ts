@@ -34,7 +34,9 @@ export class PublicDocViewerComponent implements OnInit {
   loading = true;
   errorMessage = '';
   pdfUrl: SafeResourceUrl | null = null;
+  pdfBlobUrl: string | null = null;
   docTitle = '';
+  isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   constructor(
     private route: ActivatedRoute,
@@ -90,8 +92,14 @@ export class PublicDocViewerComponent implements OnInit {
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
       pdfDocGenerator.getBlob((blob: Blob) => {
         const url = URL.createObjectURL(blob);
+        this.pdfBlobUrl = url;
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
         this.loading = false;
+
+        // On mobile, auto-open the PDF
+        if (this.isMobile) {
+          this.downloadPdf();
+        }
       });
     } catch (error) {
       console.error('Error generando PDF:', error);
@@ -107,6 +115,10 @@ export class PublicDocViewerComponent implements OnInit {
     const materials = data.documentData?.materials || [];
     const items = data.documentData?.details || [];
     const notification = data.notification || {};
+
+    const logoBase64 = data.documentData?.logoBase64 || null;
+    const logo2Base64 = data.documentData?.logo2Base64 || logoBase64;
+    const watermarkBase64 = data.documentData?.watermarkBase64 || null;
 
     const fechaOC = this.formatDate(doc.dateCreate);
     const fechaEntrega = this.formatDate(doc.dateSupply);
@@ -145,15 +157,25 @@ export class PublicDocViewerComponent implements OnInit {
       pageSize: 'LETTER',
       pageMargins: [40, 80, 40, 40],
       defaultStyle: { fontSize: 9 },
+      // Watermark
+      background: watermarkBase64 ? [
+        {
+          image: 'watermark',
+          width: 400,
+          opacity: 0.15,
+          absolutePosition: { x: 106, y: 250 }
+        }
+      ] : [],
       content: [
-        // Header
+        // Header with logos
         {
           columns: [
+            ...(logoBase64 ? [{ image: 'logo', width: 80, alignment: 'left' as const }] : []),
             {
               stack: [
-                { text: companyData.name || 'Empresa', style: 'companyName', alignment: 'left' },
-                { text: companyData.email || '', style: 'companyInfo', alignment: 'left' },
-                { text: companyData.web || '', style: 'companyInfo', alignment: 'left' }
+                { text: companyData.name || 'Empresa', style: 'companyName', alignment: 'center' },
+                { text: companyData.email || '', style: 'companyInfo', alignment: 'center' },
+                { text: companyData.web || '', style: 'companyInfo', alignment: 'center' }
               ],
               width: '*'
             },
@@ -163,10 +185,10 @@ export class PublicDocViewerComponent implements OnInit {
                 { text: `No. ${ocNumero}`, style: 'documentNumber', alignment: 'right', margin: [0, 5, 0, 0] },
                 { text: `Fecha: ${fechaOC}`, style: 'documentDate', alignment: 'right', margin: [0, 3, 0, 0] }
               ],
-              width: 180
+              width: 150
             }
           ],
-          margin: [0, 0, 0, 10]
+          margin: [0, 0, 0, 20]
         },
         // Status
         {
@@ -391,6 +413,11 @@ export class PublicDocViewerComponent implements OnInit {
         masterValue: { fontSize: 9 },
         tableHeader: { bold: true, fontSize: 8, color: 'white', fillColor: '#0d6efd' }
       },
+      images: {
+        ...(logoBase64 ? { logo: logoBase64 } : {}),
+        ...(logo2Base64 ? { logo2: logo2Base64 } : {}),
+        ...(watermarkBase64 ? { watermark: watermarkBase64 } : {})
+      },
       footer: (currentPage: number, pageCount: number) => ({
         columns: [
           { text: `Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#666', margin: [40, 0, 0, 0] },
@@ -470,5 +497,13 @@ export class PublicDocViewerComponent implements OnInit {
 
   private formatFieldName(name: string): string {
     return name.replace(/([A-Z])/g, ' $1').replace(/[_-]/g, ' ').replace(/^\s/, '').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  downloadPdf() {
+    if (!this.pdfBlobUrl) return;
+    const a = document.createElement('a');
+    a.href = this.pdfBlobUrl;
+    a.download = `${this.docTitle || 'documento'}.pdf`;
+    a.click();
   }
 }
