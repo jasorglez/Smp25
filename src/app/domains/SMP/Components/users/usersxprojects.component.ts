@@ -41,11 +41,9 @@ export class UsersxprojectsComponent {
   idUser: any = this.profile().idUser();
   idContract = this.signalsService.idContract();
   contractChecked = computed(() => this.signalsService.contractChecked());
-  rootSelected = computed(() => this.signalsService.getRootSelectedBySidebar());
 
 
   notSavedChanges: boolean = false;
-  idRoot: number;
   rowData: any[] = [];
   projects: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
@@ -58,7 +56,6 @@ export class UsersxprojectsComponent {
   constructor() {
     // Effect para detectar cambios en el usuario seleccionado
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       const selectedUserId = this.profile().idUser();
       
       if (selectedUserId && selectedUserId !== this.idUser) {
@@ -88,28 +85,23 @@ export class UsersxprojectsComponent {
     // Actualizar idUser por si cambió
     this.idUser = currentIdUser;
 
-    // Siempre obtener los permisos de proyecto del usuario usando el servicio correcto
-    this.usersxprojectsService.getUsersxPermissionsGeneral(this.permissionType, this.idUser).subscribe({
-      next: (data: any[]) => {
-        // Transformar idPermission a idProject para el grid
-        this.rowData = Array.isArray(data) ? data.map(item => ({
-          ...item,
-          idProject: item.idPermission || item.idProject
-        })) : [];
-
+    if (this.contractChecked()() === true) {
+      
+      this.projectsService.getProjectsByContract(this.idUser, this.idContract).subscribe((data: any[]) => {
+        this.rowData = Array.isArray(data) ? data : [];
+        
         // Forzar actualización de ag-grid si existe
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-
+        
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Get Registro en Usuarios por Proyecto',
           'Menu Administracion Usuarios por Proyecto',
           this.trackingService.getEmail()
         );
-      },
-      error: (error) => {
+      }, error => {
         if (error.status == 404) {
           this.rowData = [];
         } else {
@@ -118,8 +110,33 @@ export class UsersxprojectsComponent {
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-      }
-    });
+      });
+    } else {
+      this.projectsService.getProjectsByContract(this.idUser).subscribe((data: any[]) => {
+        this.rowData = Array.isArray(data) ? data : [];
+        
+        // Forzar actualización de ag-grid si existe
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+        
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          'Get Registro en Usuarios por Proyecto',
+          'Menu Administracion Usuarios por Proyecto',
+          this.trackingService.getEmail()
+        );
+      }, error => {
+        if (error.status == 404) {
+          this.rowData = [];
+        } else {
+          this.rowData = [];
+        }
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+      });
+    }
   }
 
   obtenerProjects(contract: number) {
@@ -153,7 +170,7 @@ export class UsersxprojectsComponent {
       });
     }
     else {
-      this.projectsService.getProjectListByCompany(this.rootSelected()()).subscribe((data: any[]) => {
+      this.projectsService.getProjects().subscribe((data: any[]) => {
         this.projects = data.reduce((acc, dep) => {
           acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name;
           return acc;

@@ -128,7 +128,6 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       headerName: 'Permisos',
       cellStyle: { backgroundColor: '#d4edda' }, 
       flex: 1,
-      hide: !this.isAdvanced && this.idUser !== 42,
       cellRenderer: (params) => {
         // Hacemos que el texto parezca un enlace para indicar que es clickeable.
         return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;

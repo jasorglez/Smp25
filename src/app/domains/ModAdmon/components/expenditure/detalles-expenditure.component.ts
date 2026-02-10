@@ -10,6 +10,8 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { SignalsService } from 'app/services/signals.service';
+// import { ProviderModalService } from '../egresos-palacio/services/provider-modal.service'; // Ya no needed
+import { CustomersService } from 'app/services/customers.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
@@ -88,6 +90,87 @@ import { lastValueFrom } from 'rxjs';
         </div>
       </div>
     </div>
+
+    <!-- Modal para agregar nuevo proveedor -->
+    <div class="modal fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="providerModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title" id="providerModalLabel">
+              <i class="bi bi-plus-circle me-2"></i>Agregar Nuevo Proveedor
+            </h5>
+            <button type="button" class="btn-close btn-close-white" (click)="closeProviderModal()" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="providerCompany" class="form-label">Compañía <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="providerCompany" [(ngModel)]="newProvider.company" name="providerCompany" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="providerContact" class="form-label">Nombre Contacto <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="providerContact" [(ngModel)]="newProvider.nameContact" name="providerContact" required>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="providerPosition" class="form-label">Puesto</label>
+                    <input type="text" class="form-control" id="providerPosition" [(ngModel)]="newProvider.position" name="providerPosition">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="providerPhone" class="form-label">Teléfono</label>
+                    <input type="text" class="form-control" id="providerPhone" [(ngModel)]="newProvider.phone" name="providerPhone">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="providerEmail" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="providerEmail" [(ngModel)]="newProvider.email" name="providerEmail">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="providerRfc" class="form-label">RFC</label>
+                    <input type="text" class="form-control" id="providerRfc" [(ngModel)]="newProvider.rfc" name="providerRfc">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-12">
+                  <div class="mb-3">
+                    <label for="providerAddress" class="form-label">Dirección</label>
+                    <textarea class="form-control" id="providerAddress" [(ngModel)]="newProvider.address" name="providerAddress" rows="2" 
+                              style="word-wrap: break-word; white-space: pre-wrap; resize: vertical;"></textarea>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeProviderModal()">
+              <i class="bi bi-x-circle me-1"></i>Cancelar
+            </button>
+            <button type="button" class="btn btn-success" (click)="saveNewProvider()" [disabled]="!newProvider.company || !newProvider.nameContact">
+              <i class="bi bi-floppy me-1"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backdrop del modal -->
+    <div class="modal-backdrop fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'" 
+         (click)="closeProviderModal()"></div>
   `,
   styleUrl: './detalles-expenditure.component.scss'
 })
@@ -98,6 +181,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private context: any;
   private sanitizer = inject(DomSanitizer);
   private signalsService = inject(SignalsService);
+  // private providerModalService = inject(ProviderModalService); // Ya no needed
+  private customersService = inject(CustomersService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -121,10 +206,48 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   pdfUrl: SafeResourceUrl | null = null;
   private originalPdfUrl: string | null = null;
 
+  // Provider Modal properties
+  showProviderModal: boolean = false;
+  newProvider: any = {
+    idRoot: 0,
+    idBranch: 0,
+    idTypecop: 3,
+    nameContact: '',
+    company: '',
+    rfc: '',
+    city: '',
+    position: 'GERENCIA',
+    address: '',
+    addressFiscal: '',
+    cp: '',
+    state: '',
+    neighborhood: '',
+    total: 0,
+    radio: 0,
+    phone: '',
+    mobile: '',
+    email: '',
+    vigente: true,
+    numCliente: 0,
+    latitud: '',
+    longitud: '',
+    typeCustomer: '',
+    typework: '',
+    type: 'PROVIDERS',
+    fieldContact: 0,
+    fieldBank: 0,
+    fieldCuenta: 0,
+    active: true
+  };
+
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    // Initial load will happen in agInit
+    console.log('📊 Datos disponibles en el componente:', {
+      employeesCount: this.employees?.length || 0,
+      providersCount: this.providers?.length || 0,
+      cuentasContablesCount: this.cuentasContables?.length || 0
+    });
   }
 
   async agInit(params: ICellRendererParams): Promise<void> {
@@ -330,53 +453,89 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       },
       {
         field: 'selectedEntity',
-        headerName: 'Empleado/Proveedor/Cuenta3',
-        width: 220,
+        headerName: 'Empleado/Proveedor/Cuenta',
+        width: 240,
         editable: (params) => !!params.data?.typeExpense,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: (params: any) => {
-          if (!params.data) return { values: [] };
+          if (!params.data) return { options: [] };
           const type = params.data.typeExpense;
+          
           // Leer siempre del contexto para obtener datos actualizados
           const employees = this.context?.employees || this.employees || [];
           const providers = this.context?.providers || this.providers || [];
           const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
 
+          let options = [];
+          
           if (type === 'EMPLEADOS') {
-            return { values: employees.map((e: any) => e.name) };
+            options = employees.map((e: any) => ({
+              id: e.id,
+              description: e.name,
+              valueAddition: e.id.toString(),
+              valueAddition2: e.name
+            }));
           } else if (type === 'PROVEEDORES') {
-            return { values: providers.map((p: any) => p.name) };
+            options = providers.map((p: any) => ({
+              id: p.id,
+              description: p.name,
+              valueAddition: p.id.toString(),
+              valueAddition2: p.name
+            }));
+            // Agregar opción "Agregar Proveedor" al final
+            options.push({
+              id: -999,
+              description: '➕ Agregar Proveedor...',
+              valueAddition: '-999',
+              valueAddition2: '➕ Agregar Proveedor...'
+            });
           } else if (type === 'OTROS') {
-            return { values: cuentasContables.map((c: any) => `${c['codigo']} - ${c['nombre']}`) };
+            options = cuentasContables.map((cuenta: any) => ({
+              id: cuenta.id,
+              description: `${cuenta['codigo']} - ${cuenta['nombre']}`,
+              valueAddition: cuenta.id.toString(),
+              valueAddition2: `${cuenta['codigo']} - ${cuenta['nombre']}`
+            }));
           }
-          return { values: [] };
+
+          return { options };
         },
         valueSetter: (params) => {
           if (!params.data) return false;
           const type = params.data.typeExpense;
+          
+          // Si seleccionó "Agregar Proveedor"
+          if (params.newValue === -999) {
+            console.log('🟢 Usuario seleccionó "Agregar Proveedor..."');
+            this.openProviderModal(this.context?.idRoot || 0);
+            params.data.idExpense = params.oldValue || null;
+            return false;
+          }
+          
+          // Obtener listas actualizadas
           const employees = this.context?.employees || this.employees || [];
           const providers = this.context?.providers || this.providers || [];
           const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
 
           if (type === 'EMPLEADOS') {
-            const employee = employees.find((e: any) => e.name === params.newValue);
+            const employee = employees.find((e: any) => e.id === params.newValue);
             if (employee) {
               params.data.idExpense = employee.id;
-              params.data.selectedEntity = params.newValue;
+              params.data.selectedEntity = employee.name;
               return true;
             }
           } else if (type === 'PROVEEDORES') {
-            const provider = providers.find((p: any) => p.name === params.newValue);
+            const provider = providers.find((p: any) => p.id === params.newValue);
             if (provider) {
               params.data.idExpense = provider.id;
-              params.data.selectedEntity = params.newValue;
+              params.data.selectedEntity = provider.name;
               return true;
             }
           } else if (type === 'OTROS') {
-            const cuenta = cuentasContables.find((c: any) => `${c['codigo']} - ${c['nombre']}` === params.newValue);
+            const cuenta = cuentasContables.find((c: any) => c.id === params.newValue);
             if (cuenta) {
               params.data.idExpense = cuenta.id;
-              params.data.selectedEntity = params.newValue;
+              params.data.selectedEntity = `${cuenta['codigo']} - ${cuenta['nombre']}`;
               return true;
             }
           }
@@ -386,6 +545,12 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           if (!params || !params.data) return '';
           const type = params.data.typeExpense;
           const idExpense = params.data.idExpense;
+          
+          // Si es el caso especial de "Agregar Proveedor"
+          if (type === 'PROVEEDORES' && idExpense === -999) {
+            return '➕ Agregar Proveedor...';
+          }
+          
           if (!type || !idExpense) return params.data.selectedEntity || '';
 
           const employees = this.context?.employees || this.employees || [];
@@ -409,11 +574,31 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         field: 'description',
         headerName: 'Concepto Adicional',
         editable: true,
-        width: 180
+        width: 200,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 500,
+          cols: 60,
+          rows: 4,
+          style: 'word-wrap: break-word; white-space: pre-wrap; resize: vertical;',
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          const value = params.value || '';
+          console.log('🔍 Rendering description cell:', value, 'typeExpense:', params.data?.typeExpense, 'idExpense:', params.data?.idExpense);
+          return `<div class="description-content" style="word-wrap: break-word; white-space: normal; line-height: 1.2; padding: 2px; overflow: visible; max-height: none;">${value}</div>`;
+        }
       },
       {
         field: 'idContribuyente',
-        headerName: 'Detalle hijo',
+        headerName: 'Detalle Cuenta Contable',
         editable: true,
         width: 200,
         cellEditor: 'agSelectCellEditor',
@@ -495,7 +680,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   public gridOptions: any = {
     headerHeight: 35,
-    rowHeight: 35,
+    rowHeight: 45, // Aumentado para accommodate descripciones largas
     animateRows: true,
     rowSelection: 'single',
     getRowClass: (params) => {
@@ -677,14 +862,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         console.log('✅ Guardado exitoso.');
         this.hasUnsavedChanges = false;
 
-        // Close detail and refresh master grid
-        if (this.context?.componentParent) {
-          this.context.componentParent.collapseCurrentRow(expenditureId);
-          setTimeout(() => {
-            if (this.context.componentParent.gridApi) {
-              this.context.componentParent.gridApi.refreshCells({ force: true });
-            }
-          }, 200);
+        // Refresh master grid (detail stays open for user to close manually)
+        if (this.context?.componentParent?.gridApi) {
+          this.context.componentParent.gridApi.refreshCells({ force: true });
         }
       } catch (error) {
         console.error('❌ Error al guardar:', error);
@@ -710,6 +890,12 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     if (event.colDef.field === 'typeExpense') {
       event.data.idExpense = null;
       event.data.selectedEntity = null;
+      
+      // Forzar refresh completo de la columna para que se actualicen las opciones del editor
+      this._colDefs = [];
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+      
+      // Luego forzar refresh de la celda específica
       this.gridApi.refreshCells({
         rowNodes: [event.node],
         force: true,
@@ -755,6 +941,138 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   closeReport() {
     this.closeDetail();
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE PROVEEDOR ====================
+
+  openProviderModal(idRoot: number) {
+    console.log('🟢 Abriendo modal de proveedor con idRoot:', idRoot);
+    
+    // Resetear el formulario del proveedor
+    this.newProvider = {
+      ...this.newProvider,
+      idRoot: idRoot,
+      idBranch: this.context?.componentParent?.idBranch || 0,
+      company: '',
+      nameContact: '',
+      phone: '',
+      email: '',
+      rfc: '',
+      address: ''
+    };
+    
+    console.log('📋 Formulario de proveedor reseteado:', this.newProvider);
+    
+    // Mostrar el modal con un pequeño delay para asegurar que se renderice
+    setTimeout(() => {
+      this.showProviderModal = true;
+      document.body.classList.add('modal-open');
+      console.log('✅ Modal visible:', this.showProviderModal);
+    }, 50);
+  }
+
+  closeProviderModal() {
+    this.showProviderModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewProvider() {
+    if (!this.newProvider.company || !this.newProvider.nameContact) {
+      alerts.basicAlert(
+        'Error',
+        'La Compañía y el Nombre de Contacto son obligatorios.',
+        'error'
+      );
+      return;
+    }
+
+    try {
+      console.log('💾 Guardando nuevo proveedor:', this.newProvider);
+      const result: any = await lastValueFrom(
+        this.customersService.addCustomer(this.newProvider)
+      );
+
+      alerts.basicAlert(
+        'Proveedor creado',
+        'El proveedor se ha creado correctamente.',
+        'success'
+      );
+
+      console.log('✅ Proveedor creado con ID:', result.id);
+
+      // Actualizar la lista de proveedores en el contexto
+      const newProvider = {
+        id: result.id,
+        name: this.newProvider.company
+      };
+
+      if (this.context?.providers) {
+        this.context.providers.push(newProvider);
+      } else {
+        this.providers.push(newProvider);
+      }
+
+      // También actualizar la lista local
+      this.providers.push(newProvider);
+
+      this.closeProviderModal();
+
+      // Actualizar el grid para que aparezca el nuevo proveedor
+      this.onProviderCreated(newProvider);
+
+    } catch (error) {
+      console.error('❌ Error al crear proveedor:', error);
+      alerts.basicAlert(
+        'Error',
+        `Error al crear el proveedor. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
+  }
+
+  onProviderCreated(providerData: { id: number; name: string }) {
+    console.log('🔄 Actualizando lista de proveedores con:', providerData);
+
+    // Refrescar las columnas para que aparezca el nuevo proveedor en el combo
+    this._colDefs = [];
+    if (this.gridApi) {
+      console.log('🔧 Refrescando columnDefs del grid...');
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+    }
+
+    // Esperar un poco y luego actualizar la celda si está seleccionada
+    setTimeout(() => {
+      const selectedNodes = this.gridApi?.getSelectedNodes();
+      if (selectedNodes && selectedNodes.length > 0) {
+        const selectedNode = selectedNodes[0];
+        console.log('🎯 Nodo seleccionado:', selectedNode.data);
+        
+        if (selectedNode.data.typeExpense === 'PROVEEDORES') {
+          console.log('✏️ Actualizando celda con nuevo proveedor:', providerData);
+          
+          // Actualizar los valores directamente en el nodo
+          selectedNode.data.idExpense = providerData.id;
+          selectedNode.data.selectedEntity = providerData.name;
+          selectedNode.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          
+          // Refrescar la celda específica
+          this.gridApi.refreshCells({
+            rowNodes: [selectedNode],
+            columns: ['selectedEntity'],
+            force: true
+          });
+
+          // También forzar un refresh de toda la fila para asegurar que se actualice
+          this.gridApi.refreshCells({
+            rowNodes: [selectedNode],
+            force: true
+          });
+
+          console.log('✅ Celda actualizada exitosamente');
+        }
+      }
+    }, 100);
   }
 
   // ==================== PDF GENERATION ====================

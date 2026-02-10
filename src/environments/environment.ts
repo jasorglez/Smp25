@@ -1,3 +1,6 @@
+// This file can be replaced during build by using the `fileReplacements` array.
+// `ng build --prod` replaces `environment.ts` with `environment.prod.ts`.
+// The list of file replacements can be found in `angular.json`.
 
 export const environment = {
   firebase: {
@@ -39,6 +42,9 @@ export const environment = {
   urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
+  urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
+  //urlNotifications: 'http://localhost:5011/api',
+
   root: 'root@bi2.mx',
 
   //  urlAzure    : 'https://localhost:7089/',
@@ -62,9 +68,11 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.47 (1 Febrero 2026 20:29) - Metamorphosis',
+  version: '4.77 (9 Febrero 2026 21:16) - Iris',
 
 
 };
+
+
 
 

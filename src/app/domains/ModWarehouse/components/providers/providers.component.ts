@@ -138,6 +138,20 @@ export class ProvidersComponent implements CanComponentDeactivate {
     // Si no, el effect del constructor se encargará cuando las señales estén listas
   }
 
+  // Método para actualizar el filterList del autocomplete
+  updateContactFilterList() {
+    if (this.rowData && Array.isArray(this.rowData)) {
+      const contactList = this.rowData
+        .map(e => e.nameContact)
+        .filter(name => name && typeof name === 'string' && name.trim() !== '');
+      
+      console.log('🔄 Actualizando filterList de contactos:', contactList.length, 'contactos');
+      
+      // Actualizar todas las definiciones de columna que usan autocomplete
+      this._colMaster = [];
+    }
+  }
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.notSavedChanges) {
@@ -168,6 +182,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
+  private isNewRowEditing: boolean = false; // Flag para saber si estamos en modo agregar fila
+  private newRowEditingIndex: number = -1; // Índice de la fila nueva en edición
 
   private isProcessingMouseOver = false; // Bandera para evitar eventos MouseOver en cascada
   private lastExpandedNode: any = null;
@@ -225,6 +241,43 @@ export class ProvidersComponent implements CanComponentDeactivate {
     masterDetail: true,
     isRowMaster: (dataItem) => {
       return true; // Todas las filas de proveedores son maestras
+    },
+    onCellEditingStopped: (event: any) => {
+      console.log('🔚 Edición detenida - celda:', event.column.colId, 'valor:', event.value);
+
+      // Si se presionó Escape, cancelar modo de edición secuencial
+      const isEscapeKey = event.event?.key === 'Escape' || event.event?.keyCode === 27;
+      if (isEscapeKey) {
+        this.isNewRowEditing = false;
+        this.newRowEditingIndex = -1;
+        return;
+      }
+
+      // Avanzar a la siguiente columna editable si se presionó Enter o estamos en modo agregar
+      const isEnterKey = event.event?.key === 'Enter' || event.event?.keyCode === 13;
+
+      if (isEnterKey || (this.isNewRowEditing && event.data?.__isNew)) {
+        const allColumns = this.gridApi.getColumnDefs();
+        const currentIndex = allColumns.findIndex(col => 'field' in col && col.field === event.column.colId);
+        // Buscar siguiente columna editable, saltando las que no tienen field o están ocultas
+        const nextEditableCol = allColumns.slice(currentIndex + 1).find(col =>
+          'field' in col && col.field && col.editable && !('hide' in col && col.hide)
+        );
+
+        if (nextEditableCol && 'field' in nextEditableCol) {
+          console.log('➡️ Moviendo a siguiente columna:', nextEditableCol.field);
+          setTimeout(() => {
+            this.gridApi.startEditingCell({
+              rowIndex: event.rowIndex,
+              colKey: nextEditableCol.field
+            });
+          }, 100);
+        } else {
+          // Ya no hay más columnas editables, salir del modo agregar
+          this.isNewRowEditing = false;
+          this.newRowEditingIndex = -1;
+        }
+      }
     },
     detailCellRendererSelector: (params) => {
       // Función helper para calcular altura dinámica
@@ -325,17 +378,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'company',
         headerName: 'Compañía',
-        editable: true,
-        valueSetter: (params) => {
-          const rawValue = params.newValue;
-          // Permitir vacío, la validación de "al menos uno" se hace al guardar
-          if (!rawValue || rawValue.toString().trim() === '') {
-            params.data[params.colDef.field] = '';
-            return true;
-          }
-          params.data[params.colDef.field] = rawValue.toString().toUpperCase();
-          return true;
-        }
+        editable: true
       },
 
       {
@@ -360,12 +403,22 @@ export class ProvidersComponent implements CanComponentDeactivate {
           }); 
           return div; 
         },*/
-        cellEditorParams: {
-          filterList: this.rowData?.map(e => e.nameContact
-          ),
-          filterKey: 'nameContact',
-          placeholder: 'Nombre Contacto',
-          minLength: 1
+        cellEditorParams: (params: any) => {
+          // Generar el filterList en tiempo real
+          const contactList = this.rowData && Array.isArray(this.rowData) 
+            ? this.rowData
+                .map(e => e.nameContact)
+                .filter(name => name && typeof name === 'string' && name.trim() !== '')
+            : [];
+          
+          console.log('🔧 cellEditorParams - filterList generado:', contactList.length, 'contactos');
+          
+          return {
+            filterList: contactList,
+            filterKey: 'nameContact',
+            placeholder: 'Nombre Contacto',
+            minLength: 1
+          };
         },
 
         valueSetter: (params) => {
@@ -492,26 +545,21 @@ export class ProvidersComponent implements CanComponentDeactivate {
         valueSetter: (params) => {
           const rawValue = params.newValue;
 
-          // Permitir vacío, el email es opcional
-          if (!rawValue || typeof rawValue !== 'string' || rawValue.trim() === '') {
+          // Si es vacío, null, undefined o caracteres basura como '*', limpiar
+          if (!rawValue || rawValue === null || rawValue === undefined) {
             params.data[params.colDef.field] = '';
             return true;
           }
 
-          const normalizedValue = rawValue.trim().toLowerCase();
+          const trimmed = rawValue.toString().trim();
 
-          // Validar formato de email solo si se proporciona
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(normalizedValue)) {
-            alerts.basicAlert(
-              'Email inválido',
-              'Por favor ingrese un email válido (ejemplo: usuario@dominio.com)',
-              'error'
-            );
-            return false;
+          // Si el valor es solo caracteres no válidos para email (*, etc.), ignorar
+          if (trimmed.length <= 1 && !/[a-zA-Z0-9]/.test(trimmed)) {
+            params.data[params.colDef.field] = '';
+            return true;
           }
 
-          params.data[params.colDef.field] = normalizedValue;
+          params.data[params.colDef.field] = trimmed;
           return true;
         },
       },
@@ -653,9 +701,23 @@ export class ProvidersComponent implements CanComponentDeactivate {
         .getProvidersxmaterials(this.idRoot)
         .subscribe({
           next: (data: any) => {
+            // Limpiar emails basura que vienen de la BD (como '*', caracteres sueltos)
+            if (Array.isArray(data)) {
+              data.forEach(row => {
+                if (row.email) {
+                  const trimmed = row.email.toString().trim();
+                  // Si el email es un solo carácter no alfanumérico (como '*'), limpiarlo
+                  if (trimmed.length <= 1 && !/[a-zA-Z0-9]/.test(trimmed)) {
+                    row.email = '';
+                  }
+                }
+              });
+            }
             this.rowData = data;
-            console.log(this.rowData)
-            console.log(data)
+
+            // Actualizar el filterList después de cargar los datos
+            this.updateContactFilterList();
+            
             resolve(true);
           },
           error: (error) => {
@@ -696,6 +758,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any) {
+    console.log('🔧 onCellValueChanged - field:', event.colDef.field, 'newValue:', event.newValue);
+    
     event.data.__modified = true;
     this.notSavedChanges = true;
 
@@ -896,7 +960,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       rfc: '',
       city: '',
       mobile: '',
-      email: 'info@bi2.mx',
+      email: '',
       address: '',
       addressfiscal: '',
       state: '',
@@ -920,27 +984,28 @@ export class ProvidersComponent implements CanComponentDeactivate {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
 
-    // Encontrar el índice de la nueva fila
-    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
-
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find((col) => col.editable);
-    const firstEditableColKey = firstEditableCol
-      ? firstEditableCol.field
-      : null;
+    // Activar modo de edición de nueva fila
+    this.isNewRowEditing = true;
+    this.newRowEditingIndex = 0;
 
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-
     setTimeout(() => {
       const firstRowIndex = 0;
 
+      // Asegurar que la fila sea visible
       this.gridApi.ensureIndexVisible(firstRowIndex);
 
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'idBranch'
-      });
-    }, 0);// Un pequeño retraso de 50ms
+      // Seleccionar la fila
+      this.gridApi.getModel().getRow(firstRowIndex)?.setSelected(true);
+
+      // Iniciar edición en 'company' (primera columna útil)
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: firstRowIndex,
+          colKey: 'company'
+        });
+      }, 200);
+    }, 100);
   }
 
   async saveChanges() {
@@ -960,12 +1025,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
         return false;
       }
 
-      // Validar formato de Email solo si está presente (el email es opcional)
-      if (item.email && item.email.toString().trim() !== '') {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(item.email)) {
-          errorMessage = `Fila ${index + 1}: El formato del Email es inválido.`;
-          return false;
+      // Validar formato de Email solo en filas nuevas o modificadas
+      if ((item.__isNew || item.__modified) && item.email && item.email.toString().trim() !== '') {
+        const emailStr = item.email.toString().trim();
+        // Ignorar caracteres basura como '*'
+        if (emailStr.length <= 1 && !/[a-zA-Z0-9]/.test(emailStr)) {
+          item.email = ''; // Limpiar basura silenciosamente
+        } else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(emailStr)) {
+            errorMessage = `Fila ${index + 1}: El formato del Email "${emailStr}" es inválido.`;
+            return false;
+          }
         }
       }
 

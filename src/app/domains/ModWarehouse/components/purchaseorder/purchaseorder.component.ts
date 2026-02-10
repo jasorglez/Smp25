@@ -24,10 +24,14 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { NotificationsTelegramService } from 'app/services/notifications-telegram.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { DetailCellRendererPurchaseOrderItemsComponent } from './detail-cell-renderer-purchase-order-items.component';
+import { PdfButtonCellRendererPurchaseOrderComponent } from './pdf-button-cell-renderer-purchaseorder.component';
+import { DetailCellRendererPurchaseOrderReportComponent } from './detail-cell-renderer-purchaseorder-report.component';
 
 interface Catalog {
   id: number;
@@ -42,7 +46,7 @@ interface Provider {
 @Component({
   selector: 'app-purchaseorder',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DetailCellRendererPurchaseOrderItemsComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DetailCellRendererPurchaseOrderItemsComponent, DetailCellRendererPurchaseOrderReportComponent],
   templateUrl: './purchaseorder.component.html',
   styleUrl: './purchaseorder.component.scss',
 })
@@ -59,6 +63,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
   private setupService = inject(SetupService);
+  private prefixSetupService = inject(PrefixSetupService);
+  private notificationsService = inject(NotificationsTelegramService);
 
   // Variables compartidas
 
@@ -70,6 +76,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   idReference: number = null;
   private tempIdCounter: number = 0;
   idRequisition: number = null;
+  private expandedRowId: string | null = null;
   private masterGridApi: GridApi;
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
@@ -176,9 +183,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     rowHeight: 20,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 400,
+    detailRowHeight: 1400,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererPurchaseOrderItemsComponent,
+    detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'report') {
+        return {
+          component: DetailCellRendererPurchaseOrderReportComponent,
+          params: {}
+        };
+      }
+      // Por defecto, mostrar items
+      return { component: DetailCellRendererPurchaseOrderItemsComponent };
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -212,6 +228,24 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       setTimeout(() => {
         this.masterGridApi.refreshCells({ rowNodes: [event.node], force: true });
       }, 0);
+    },
+    onCellKeyDown: (params) => {
+      if (params.event.key === 'Enter') {
+        const editableColumns = this.colMaster.filter((col) => col.editable);
+        const currentColIndex = editableColumns.findIndex(
+          (col) => col.field === params.column.getColDef().field
+        );
+
+        if (currentColIndex < editableColumns.length - 1) {
+          requestAnimationFrame(() => {
+            params.api.startEditingCell({
+              rowIndex: params.node.rowIndex,
+              colKey: editableColumns[currentColIndex + 1].field,
+            });
+          });
+        }
+        params.event.preventDefault();
+      }
     }
   };
 
@@ -283,11 +317,34 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
       {
+        field: 'pdf',
+        headerName: 'PDF',
+        width: 50,
+        cellRenderer: PdfButtonCellRendererPurchaseOrderComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleReportCascade(node),
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Generar reporte PDF de la Orden de Compra'
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
+      },
+      {
         field: 'folio',
         headerName: 'Orden de compra',
         editable: true,
         filter: true,
         width: 150,
+        cellStyle: (params) => {
+          if (params.api.getEditingCells()?.some(cell => 
+            cell.rowIndex === params.node.rowIndex && 
+            cell.column.getColId() === params.column.getColId()
+          )) {
+            return { backgroundColor: '#fff3cd' };
+          }
+          return {};
+        }
       },
       {
         field: 'dateCreate',
@@ -846,22 +903,27 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.id = event.data.id;
   }
 
-  addMasterRow() {
+  async addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Generar folio automáticamente desde PrefixSetup
+    const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
+    const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'oc');
+
     const newItem = {
       id: tempId,
-      folio: '',
+      folio: folio || '',
       typeReference: this.typeReference,
       idReference: this.idProject,
       dateCreate: new Date().toISOString(),
       idProvider: 0,
       idDepartament: 0,
-      delivery: '',
-      deliveryTime: '',
+      delivery: '1 dia',
+      deliveryTime: '1',
       dateSupply: '',
       idPayment: 0,
       idCurrency: 0,
-      conditions: '',
+      conditions: 'Ninguna',
       IdAuthorize: 0,
       priority: '',
       solicit: this.signalsService.getDisplayName()(),
@@ -933,8 +995,20 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         'Se han actualizado los datos correctamente.',
         'success'
       );
+
+      // Enviar notificación Telegram para OCs nuevas
+      if (newRows.length > 0) {
+        for (const response of responses.slice(0, newRows.length)) {
+          const savedOc = response as any;
+          if (savedOc?.id && savedOc?.folio && savedOc?.idAuthorize) {
+            this.sendAuthorizationNotification(savedOc.id, savedOc.folio, savedOc.idAuthorize);
+          }
+        }
+      }
+
       this.masterNotSavedChanges = false;
       this.newlyAddedMasterRows = [];
+      this.masterRowData = [];
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
       console.error(error);
@@ -944,6 +1018,37 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         'error'
       );
     }
+  }
+
+  private sendAuthorizationNotification(documentId: number, folio: string, idAuthorize: number) {
+    this.notificationsService.sendNotification({
+      documentType: 'OC',
+      documentId: documentId,
+      folio: `Orden de Compra ${folio}`,
+      description: `Se ha creado la OC ${folio} y requiere autorización`,
+      idSolicit: this.signalsService.getIdUSer()(),
+      idAuthorize: idAuthorize
+    }).subscribe({
+      next: (res) => {
+        if (res.success) {
+          console.log('Notificación enviada:', res);
+        } else {
+          console.warn('Notificación no enviada:', res.error);
+          const msg = res.error?.includes('Telegram ID')
+            ? 'El autorizador no tiene configurado su Telegram ID. La notificación no fue enviada.'
+            : res.error || 'No se pudo enviar la notificación.';
+          alerts.basicAlert('Notificación', msg, 'warning');
+        }
+      },
+      error: (err) => {
+        console.error('Error enviando notificación:', err);
+        const errorMsg = err.error?.error || 'Error al enviar la notificación.';
+        const msg = errorMsg.includes('Telegram ID')
+          ? 'El autorizador no tiene configurado su Telegram ID. La notificación no fue enviada.'
+          : errorMsg;
+        alerts.basicAlert('Notificación', msg, 'warning');
+      }
+    });
   }
 
   deleteMasterEntry() {
@@ -1298,30 +1403,32 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       const node = event.node;
       const api = event.api;
 
-      console.log('🔍 PO - Click en nodo:', node.id, 'expanded:', node.expanded, 'detailType:', event.data.detailType);
-
-      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'items';
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === 'items' && this.expandedRowId === node.id;
 
       if (isCurrentlyExpanded) {
-        console.log('🔍 PO - Colapsando...');
         // Si ya está expandido, colapsarlo y mostrar todas las filas
         node.setExpanded(false);
         event.data.detailType = null;
+        this.expandedRowId = null;
 
         api.forEachNode((otherNode: any) => {
           otherNode.setRowHeight(undefined);
         });
         api.onRowHeightChanged();
       } else {
-        console.log('🔍 PO - Expandiendo...');
         // Colapsar cualquier otra fila expandida y resetear alturas
-        api.forEachNode((otherNode: any) => {
-          if (otherNode.id !== node.id) {
-            if (otherNode.expanded) {
-              console.log('🔍 PO - Colapsando otro nodo:', otherNode.id);
+        if (this.expandedRowId) {
+          api.forEachNode((otherNode: any) => {
+            if (otherNode.id === this.expandedRowId) {
               otherNode.setExpanded(false);
               otherNode.data.detailType = null;
+              otherNode.data.isExpanded = false;
             }
+          });
+        }
+
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id !== node.id) {
             otherNode.setRowHeight(0);
           } else {
             otherNode.setRowHeight(undefined);
@@ -1331,14 +1438,88 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         // Cambiar el tipo de detalle ANTES de expandir
         event.data.detailType = 'items';
 
+        // Guardar el ID de la fila expandida
+        this.expandedRowId = node.id;
+        event.data.isExpanded = true;
+
         // Aplicar los cambios de altura
         api.onRowHeightChanged();
 
         // Expandir el nodo
-        console.log('🔍 PO - Llamando a setExpanded(true)...');
         node.setExpanded(true);
-        console.log('🔍 PO - Después de setExpanded, node.expanded:', node.expanded);
       }
+    }
+  }
+
+  toggleReportCascade(node: any) {
+    node.setSelected(true);
+
+    // Verificar si ya está expandido con reporte
+    const isCurrentlyExpanded = node.expanded &&
+      node.data.detailType === 'report' &&
+      this.expandedRowId === node.id;
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido, colapsarlo y restaurar todas las filas
+      node.setExpanded(false);
+      this.expandedRowId = null;
+      node.data.isExpanded = false;
+
+      // Restaurar alturas de todas las filas
+      this.masterGridApi.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      this.masterGridApi.onRowHeightChanged();
+      this.masterGridApi.redrawRows();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      if (this.expandedRowId) {
+        this.masterGridApi.forEachNode((otherNode: any) => {
+          if (otherNode.id === this.expandedRowId) {
+            otherNode.setExpanded(false);
+            otherNode.data.isExpanded = false;
+          }
+        });
+      }
+
+      // Ocultar todas las demás filas (altura 0)
+      this.masterGridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Establecer el tipo de detalle como reporte
+      node.data.detailType = 'report';
+
+      // Guardar el ID de la fila expandida
+      this.expandedRowId = node.id;
+      node.data.isExpanded = true;
+
+      // Aplicar los cambios de altura
+      this.masterGridApi.onRowHeightChanged();
+      this.masterGridApi.redrawRows();
+
+      // Expandir con el detalle del reporte
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  collapseReportDetail() {
+    if (this.expandedRowId && this.masterGridApi) {
+      this.masterGridApi.forEachNode((node: any) => {
+        if (node.id === this.expandedRowId) {
+          node.setExpanded(false);
+          node.data.isExpanded = false;
+          node.data.detailType = null;
+        }
+        node.setRowHeight(undefined);
+      });
+      this.expandedRowId = null;
+      this.masterGridApi.onRowHeightChanged();
+      this.masterGridApi.redrawRows();
     }
   }
 

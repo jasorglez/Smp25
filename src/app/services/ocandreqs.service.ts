@@ -24,7 +24,7 @@ export class OcAndReqsService {
     return this.http.post(`${environment.urlWarehouse}/Ocandreq`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  updateOcAndReq(id: string, data: any): Observable<any> {
+  updateOcAndReq(id: number, data: any): Observable<any> {
     return this.http.put<any[]>(`${environment.urlWarehouse}/Ocandreq/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
@@ -52,5 +52,16 @@ export class OcAndReqsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Material/providers-by-material?idMaterial=${id}&typeIntOrExt=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCotizByReq(idReq: number, typeReference: string, idReference: number): Observable<any> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Ocandreq?typeReference=${typeReference}&idReference=${idReference}&type=COTIZ`, { headers: this.trackingService.getHeaders() });
+  }
+
+  lockRequisition(id: number, locked: boolean): Observable<any> {
+    return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/lock`, { locked }, { headers: this.trackingService.getHeaders() });
+  }
+
+  setCountItem(id: number, countItem: number): Observable<any> {
+    return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/countitem`, { countItem }, { headers: this.trackingService.getHeaders() });
+  }
 
 }

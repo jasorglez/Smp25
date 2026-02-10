@@ -25,7 +25,7 @@ import { environment } from '@env/environment';
 import { AuthService } from 'app/services/auth.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ButtonCellRendererExpenditureComponent } from './button-cell-renderer-expenditure.component';
-import { DetailCellRendererExpenditureComponent } from './detail-cell-renderer-expenditure.component';
+import { DetallesEgresospalaciosComponent } from './detalles-egresospalacios.component';
 import { PdfButtonCellRendererComponent } from './pdf-button-cell-renderer.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
@@ -40,7 +40,7 @@ declare var bootstrap: any;
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, ButtonCellRendererExpenditureComponent, DetailCellRendererExpenditureComponent,
+    FormsModule, ButtonCellRendererExpenditureComponent, DetallesEgresospalaciosComponent,
     PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
@@ -137,10 +137,9 @@ export class EgresosPalacioComponent {
 
   constructor() {
     effect(async () => {
-      
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      
+
       if (!this.idRoot) return;
 
       await this.getBankAccounts();
@@ -203,7 +202,7 @@ export class EgresosPalacioComponent {
   newlyAddedRows: string[] = [];
   selectedIncomes: any = null;
   currentUser: string;
-  
+
   idRoot: any;
   idBranch: number;
   triggerValue: number = 0;
@@ -268,7 +267,7 @@ export class EgresosPalacioComponent {
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 840,
-    detailCellRenderer: DetailCellRendererExpenditureComponent,
+    detailCellRenderer: DetallesEgresospalaciosComponent,
     suppressMenuHide: false,
     popupParent: document.body,
     isExternalFilterPresent: () => {
@@ -858,7 +857,7 @@ export class EgresosPalacioComponent {
           }
           return false;
         },
-        
+
       },
 
       {
@@ -948,7 +947,7 @@ export class EgresosPalacioComponent {
       {
         field: 'totalComp',
         headerName: 'Por Comprobar',
-        filter: true, 
+        filter: true,
         editable: true,
         width: 140,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
@@ -972,7 +971,7 @@ export class EgresosPalacioComponent {
         field: 'total',
         headerName: 'Comprobado',
         editable: false,
-         filter: true,
+        filter: true,
         width: 130,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
         cellRenderer: (params: any) => {
@@ -2009,8 +2008,8 @@ export class EgresosPalacioComponent {
             modifiedBy: this.currentUser
           };
           this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
-            next: () => {},
-            error: () => {}
+            next: () => { },
+            error: () => { }
           });
         }
       });

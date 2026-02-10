@@ -23,6 +23,7 @@ export class DetallesRequisicionesComponent implements OnInit {
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   productos: any[] = [];
+  isLocked: boolean = false; // True when requisition is assigned to a QUOTE
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -35,8 +36,11 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.params = params;
     this.context = params.context;
     this.productos = this.context?.productos || [];
+    // Check if requisition is locked (assigned to a QUOTE for cotización)
+    this.isLocked = params.data?.locked === true;
     console.log('🔍 Detail Renderer - productos array:', this.productos);
     console.log('🔍 Detail Renderer - productos length:', this.productos.length);
+    console.log('🔒 Detail Renderer - isLocked:', this.isLocked, 'locked:', params.data?.locked);
     this.loadData();
   }
 
@@ -77,7 +81,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'idSupplie',
         headerName: 'Producto',
-        editable: true,
+        editable: () => !this.isLocked,
         width: 300,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
@@ -108,7 +112,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'quantity',
         headerName: 'Cantidad',
-        editable: true,
+        editable: () => !this.isLocked,
         width: 100,
         type: 'numericColumn',
         valueSetter: (params: any) => {
@@ -119,7 +123,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'dateuse',
         headerName: 'Fecha de uso',
-        editable: true,
+        editable: () => !this.isLocked,
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -136,7 +140,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'comment',
         headerName: 'Comentario',
-        editable: true,
+        editable: () => !this.isLocked,
         width: 250,
         cellEditor: 'agLargeTextCellEditor',
         cellEditorParams: {
@@ -167,6 +171,10 @@ export class DetallesRequisicionesComponent implements OnInit {
   };
 
   addItem() {
+    if (this.isLocked) {
+      alerts.basicAlert('Requisicion bloqueada', 'No se pueden agregar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
+      return;
+    }
     const tempId = `temp_item_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -200,6 +208,10 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   deleteSelectedItem() {
+    if (this.isLocked) {
+      alerts.basicAlert('Requisicion bloqueada', 'No se pueden eliminar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
+      return;
+    }
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -219,6 +231,10 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   async saveChanges() {
+    if (this.isLocked) {
+      alerts.basicAlert('Requisicion bloqueada', 'No se pueden guardar cambios. Esta requisicion esta en proceso de cotizacion.', 'warning');
+      return;
+    }
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -246,6 +262,9 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   discardChanges() {
+    if (this.isLocked) {
+      return; // Nothing to discard when locked
+    }
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
       return;

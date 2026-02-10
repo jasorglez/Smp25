@@ -1,14 +1,16 @@
-<div class="container-fluid mt-3">
 
+<div class="container-fluid mt-3">
   <!-- Main Content: Buttons Left, Grid Right -->
   <div class="row">
     <!-- Left Panel: CRUD Buttons -->
     <nav class="col-auto d-flex flex-column align-items-start">
-      <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRequisition()">
+      <button type="button" class="btn btn-primary me-1 mb-2" (click)="addRequisition()"
+          *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_prin', 'create')">
         <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
       </button>
 
-      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
+      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()"
+        *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_prin', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_prin', 'update')">
         <i class="bi bi-floppy" style="font-size: 1rem;"></i>
         <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
           *ngIf="hasUnsavedChanges">
@@ -20,7 +22,8 @@
         <i class="bi bi-arrow-clockwise" style="font-size: 1rem;"></i>
       </button>
 
-      <button type="button" class="btn btn-danger mb-2" (click)="deleteRequisition()">
+      <button type="button" class="btn btn-danger mb-2" (click)="deleteRequisition()"
+        *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_prin', 'delete')">
         <i class="bi bi-trash" style="font-size: 1rem;"></i>
       </button>
     </nav>

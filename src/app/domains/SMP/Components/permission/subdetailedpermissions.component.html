@@ -1,0 +1,36 @@
+<div class="col-12 mt-3">
+  <div class="row">
+    <!-- Columna de botones -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="onAdd()" title="Agregar Permiso2">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+
+        <button type="button" class="btn btn-secondary ms-1 me-1" (click)="onEdit()" title="Editar Permiso">
+          <i class="bi bi-pencil"></i>
+        </button>
+
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="onDelete()" title="Eliminar Permiso">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Columna de la tabla -->
+    <div class="col">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{'height': gridHeight}"
+        class="ag-theme-quartz small-text-ag-grid"
+        [modules]="modules"
+        [rowData]="rowData$ | async"
+        [columnDefs]="colDefs"
+        [defaultColDef]="defaultColDef"
+        [gridOptions]="gridOptions"
+        (gridReady)="onGridReady($event)"
+        [rowSelection]="'single'"
+      ></ag-grid-angular>
+    </div>
+  </div>
+</div>

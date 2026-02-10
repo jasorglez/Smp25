@@ -134,6 +134,17 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           if (!params.value) return '';
           const foundItem = this.productos.find((item) => item.id === params.value);
           return foundItem ? foundItem.description : params.value;
+        },
+        valueSetter: (params: any) => {
+          // Validar si el material ya existe
+          const existingItem = this.findExistingMaterial(params.newValue);
+          if (existingItem && existingItem.id !== params.data.id) {
+            // Material duplicado encontrado
+            this.showDuplicateMaterialAlert(existingItem, params);
+            return false; // No cambiar el valor hasta confirmación
+          }
+          params.data.idSupplie = params.newValue;
+          return true;
         }
       },
       {
@@ -352,5 +363,89 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
 
   refreshByParent() {
     this.loadData();
+  }
+
+  private findExistingMaterial(materialId: number): any {
+    return this.rowData.find(item =>
+      item.idSupplie === materialId &&
+      item.id !== this.params.data?.id
+    );
+  }
+
+  private showDuplicateMaterialAlert(existingItem: any, params: any): void {
+    const existingProduct = this.productos.find(p => p.id === existingItem.idSupplie);
+    const productName = existingProduct ? existingProduct.description : 'Material desconocido';
+
+    alerts.confirmAlert(
+      'Material Duplicado',
+      `El material "${productName}" ya existe con cantidad ${existingItem.quantity}.\n\n¿Desea sumar las cantidades?`,
+      'warning',
+      'Sí, sumar cantidades'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        // Usuario confirma - solicitar cantidad a sumar
+        this.promptForQuantity(existingItem, params);
+      } else {
+        // Usuario cancela - mantener selección pero no sumar
+        params.data.idSupplie = params.newValue;
+        if (this.gridApi) {
+          this.gridApi.refreshCells({
+            rowNodes: [this.gridApi.getRowNode(params.data.id)],
+            columns: ['idSupplie'],
+            force: true
+          });
+        }
+      }
+    });
+  }
+
+  private promptForQuantity(existingItem: any, params: any): void {
+    alerts.inputAlert(
+      'Sumar Cantidades',
+      `Material actual: ${existingItem.quantity}\nCantidad a agregar:`,
+      'text',
+      '',
+      {
+        confirmButtonText: 'Sumar',
+        required: true
+      }
+    ).then((result) => {
+      if (result.isConfirmed && result.value) {
+        const newQuantity = parseFloat(result.value);
+        if (!isNaN(newQuantity) && newQuantity > 0) {
+          // Sumar cantidades
+          existingItem.quantity += newQuantity;
+          existingItem.__modified = true;
+          this.hasUnsavedChanges = true;
+
+          // Recalcular el total del item existente
+          this.updateTotal(existingItem);
+
+          // Eliminar la fila actual
+          const updatedRowData = this.rowData.filter(item => item.id !== params.data.id);
+          this.rowData = updatedRowData;
+
+          // Actualizar grid
+          this.gridApi.setGridOption('rowData', this.rowData);
+
+          // Actualizar el contador en el master grid
+          if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
+            this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
+          }
+
+          alerts.basicAlert(
+            'Cantidades Sumadas',
+            `Se sumaron ${newQuantity} unidades al material existente. Total: ${existingItem.quantity}`,
+            'success'
+          );
+        } else {
+          alerts.basicAlert(
+            'Error',
+            'La cantidad debe ser un número mayor a cero.',
+            'error'
+          );
+        }
+      }
+    });
   }
 }

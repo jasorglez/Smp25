@@ -21,6 +21,7 @@ import { RolesDetailedDelisonComponent } from './rolesDelison-detailed/rolesDeli
 import { PosicionDelisonComponent } from './posicionDelison/posicionDelison.component';
 import { TrackingService } from 'app/services/tracking.service';
 import { AuthService } from 'app/services/auth.service';
+import { PosicionesService } from 'app/services/posiciones.service';
 
 @Injectable({
   providedIn: 'root',
@@ -72,6 +73,7 @@ export class RolesDelisonComponent {
   private signalsService = inject(SignalsService);
   private rolesService = inject(RolesService);
   private trackingService = inject(TrackingService);
+  private posicionesService = inject(PosicionesService);
   authService = inject(AuthService);
 
   profile = computed(() => this.signalsService.profile);
@@ -244,11 +246,18 @@ export class RolesDelisonComponent {
           filterList: this.rowData.map(e => e.description),
           filterKey: 'description',
           placeholder: 'Nombre',
-          minLength: 1
+          minLength: 1,
+          toUpperCase: true
         },
         valueSetter: (params) => {
+          const normalized = (params.newValue || '').toUpperCase().trim();
+          if (!normalized) {
+            alerts.basicAlert('Campo requerido', 'El nombre del departamento es obligatorio.', 'error');
+            return false;
+          }
+
           const duplicateExists = this.rowData.some((row, index) =>
-            index !== params.node.rowIndex && row.description === params.newValue
+            index !== params.node.rowIndex && row.description?.toUpperCase() === normalized
           );
 
           if (duplicateExists) {
@@ -260,7 +269,7 @@ export class RolesDelisonComponent {
             return false;
           }
 
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          params.data[params.colDef.field] = normalized;
           return true;
         }
       },
@@ -367,6 +376,13 @@ export class RolesDelisonComponent {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
+
+    setTimeout(() => {
+      this.gridApi.startEditingCell({
+        rowIndex: 0,
+        colKey: 'description',
+      });
+    }, 100);
   }
 
 
@@ -474,7 +490,6 @@ export class RolesDelisonComponent {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log("------------ data del rol: ", selectedData);
     const id = selectedData.id;
 
     if (selectedData.isRoot === 1) {
@@ -486,50 +501,59 @@ export class RolesDelisonComponent {
       return;
     }
 
-    // Mostrar mensaje de confirmación
-    alerts.confirmAlert(
+    // Validar si tiene posiciones antes de eliminar
+    try {
+      const posiciones: any = await lastValueFrom(
+        this.posicionesService.getPositionsByRole(this.idRoot, id).pipe(
+          catchError(() => [])
+        )
+      );
+
+      const posicionesArray = Array.isArray(posiciones) ? posiciones : (posiciones ? [posiciones] : []);
+
+      if (posicionesArray.length > 0) {
+        alerts.basicAlert(
+          'No se puede eliminar',
+          `El departamento "${selectedData.description}" tiene ${posicionesArray.length} posición(es) asignada(s). Elimine las posiciones primero.`,
+          'error'
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando posiciones:', error);
+    }
+
+    const result = await alerts.confirmAlert(
       'Eliminar rol',
       '¿Está seguro que desea eliminar este rol?',
       'warning',
       'Sí, eliminar'
-    ).then((value) => {
-      if (value.isConfirmed) {
-        // Eliminar el usuario
-        console.log('SelectedData', selectedData);
-        selectedData.active = 0;
-        console.log('SelectedData', selectedData);
-        this.rolesService.deleteRoles(id).pipe(
-          catchError((error) => {
-            alerts.basicAlert(
-              'Eliminar entrada',
-              'Error al eliminar la entrada.',
-              'error'
-            );
-            console.error(error);
-            return EMPTY;
-          })
-        )
-          .subscribe(
-            () => {
-              alerts.basicAlert(
-                'Eliminar entrada',
-                'Entrada eliminada satisfactoriamente.',
-                'success'
-              );
-              this.obtenerDatos();
+    );
 
-              alerts.basicAlert(
-                'Eliminar entrada',
-                'Entrada eliminada satisfactoriamente.',
-                'success'
-              );
-              this.trackingService.addLog(this.trackingService.getnameComp(), 'Delete Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
-              this.notSavedChanges = false;
-              this.selectedRowData = null;
-            }
-          )
-      }
-    });
+    if (result.isConfirmed) {
+      selectedData.active = 0;
+      this.rolesService.deleteRoles(id).pipe(
+        catchError((error) => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Error al eliminar la entrada.',
+            'error'
+          );
+          console.error(error);
+          return EMPTY;
+        })
+      ).subscribe(() => {
+        alerts.basicAlert(
+          'Eliminar entrada',
+          'Entrada eliminada satisfactoriamente.',
+          'success'
+        );
+        this.obtenerDatos();
+        this.trackingService.addLog(this.trackingService.getnameComp(), 'Delete Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
+        this.notSavedChanges = false;
+        this.selectedRowData = null;
+      });
+    }
   }
 
   revert() {

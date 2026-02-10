@@ -1,0 +1,51 @@
+<div class="public-doc-container">
+  <!-- Header -->
+  <div class="header-bar">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 text-white">
+        <i class="bi bi-file-earmark-pdf me-2"></i>
+        {{ docTitle || 'Vista de Documento' }}
+      </h5>
+      <button *ngIf="pdfBlobUrl" class="btn btn-sm btn-light" (click)="downloadPdf()">
+        <i class="bi bi-download me-1"></i> Descargar PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="d-flex justify-content-center align-items-center" style="height: calc(100vh - 60px);">
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+      <p class="mt-2 text-muted">Generando reporte...</p>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage" class="container mt-5">
+    <div class="alert alert-danger text-center" role="alert">
+      <i class="bi bi-exclamation-triangle-fill fs-1 d-block mb-2"></i>
+      <h5>{{ errorMessage }}</h5>
+      <p class="text-muted mb-0">Si crees que esto es un error, contacta al administrador.</p>
+    </div>
+  </div>
+
+  <!-- PDF Viewer (desktop) -->
+  <div *ngIf="pdfUrl && !loading && !errorMessage && !isMobile" class="container-fluid p-3">
+    <iframe
+      [src]="pdfUrl"
+      class="pdf-container w-100"
+      style="border: none;">
+    </iframe>
+  </div>
+
+  <!-- Mobile: PDF descargado -->
+  <div *ngIf="pdfGenerated && !loading && !errorMessage && isMobile" class="container mt-4">
+    <div class="alert alert-success text-center" role="alert">
+      <i class="bi bi-check-circle-fill fs-1 d-block mb-2"></i>
+      <h5>Documento generado correctamente</h5>
+      <p class="mb-3">El PDF se ha descargado automáticamente.</p>
+    </div>
+  </div>
+</div>

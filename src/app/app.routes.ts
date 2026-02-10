@@ -1887,6 +1887,11 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
           },
 
+          {
+            path: 'fam-subfam',
+            loadComponent: () => import('./domains/ModShoppingTD/components/fam-subfam/fam-subfam.component').then((c) => c.FamSubfamComponent),
+          },
+
         ]
       },
       {
@@ -2053,6 +2058,12 @@ export const routes: Routes = [
           ),
       },
     ],
+  },
+  {
+    path: 'public/doc',
+    loadComponent: () =>
+      import('./domains/shared/components/public-doc-viewer/public-doc-viewer.component')
+        .then(m => m.PublicDocViewerComponent)
   },
   { path: '**', redirectTo: '' },
 ];

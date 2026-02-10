@@ -5,7 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from '../../../ModWareHousesTD/components/inandout-st/button-cell-renderer.component';
-import { DetailCellRendererRequisitionsItemsComponent } from './detail-cell-renderer-requisitions-items.component';
+import { DetallesRequisicionDelisonComponent } from './detalles-requisicion-delison.component';
 import { DetailCellRendererRequisitionsPurchasesComponent } from './detail-cell-renderer-requisitions-purchases.component';
 import { SelectDepartmentEditorComponent } from './select-department-editor.component';
 import { PdfButtonCellRendererComponent } from '../../../ModAdmon/components/egresos-palacio/pdf-button-cell-renderer.component';
@@ -18,6 +18,7 @@ import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY } from 'rxjs';
+import { AuthService } from 'app/services/auth.service';
 
 interface Catalog {
   id: number;
@@ -27,7 +28,7 @@ interface Catalog {
 @Component({
   selector: 'app-requisitionsdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererRequisitionsItemsComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetallesRequisicionDelisonComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, PdfButtonCellRendererComponent],
   templateUrl: './requisitionsdelison.component.html',
   styleUrl: './requisitionsdelison.component.scss',
   styles: [`
@@ -48,6 +49,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private typexPrefixesService = inject(TypexPrefixesService);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private rolesService = inject(RolesService);
+  public   authService = inject(AuthService);
 
   private gridApi!: GridApi;
   private isGeneratingReport: boolean = false;
@@ -387,7 +389,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     masterDetail: true,
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererRequisitionsItemsComponent,
+    detailCellRenderer: DetallesRequisicionDelisonComponent,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -758,6 +760,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'articlesCount',
         headerName: 'Articulos que solicita',
         width: 100,
+        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Art'),
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),

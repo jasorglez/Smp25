@@ -6,7 +6,7 @@ import { SetupService } from 'app/services/setup.service';
 import { SignalsService } from 'app/services/signals.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ProjectsService } from 'app/services/projects.service';
-import { TypexPrefixesService } from 'app/services/typexprefixes.service';
+import { PrefixSetupService, PrefixSetup } from 'app/services/prefix-setup.service';
 
 @Component({
   selector: 'app-setupwarehouse',
@@ -20,21 +20,29 @@ export class SetupwarehouseComponent {
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
   private projectsService = inject(ProjectsService);
-  private typexPrefixesService = inject(TypexPrefixesService);
+  private prefixSetupService = inject(PrefixSetupService);
 
   idCompany: number;
   warehouseSetup: any = { projectOrBranch: null };
   newData: boolean = false;
 
-  // Nuevas propiedades
+  // Propiedades para listas
   branches: any[] = [];
   projects: any[] = [];
   selectedContract: number | null = null;
   selectedBranchOrProject: number | null = null;
-  prefix: string = '';
-  consecutive: number = 0;
-  prefixId: number | null = null; // Para saber si ya existe o es nuevo
-  hasPrefixData: boolean = false; // Para saber si usar add o update
+
+  // Propiedades para PrefixSetup
+  prefixSetupId: number | null = null;
+  hasPrefixData: boolean = false;
+
+  // Prefijos y consecutivos
+  prefixReq: string = '';
+  consecutiveReq: number = 0;
+  prefixCotiz: string = '';
+  consecutiveCotiz: number = 0;
+  prefixOc: string = '';
+  consecutiveOc: number = 0;
 
   ngOnInit() {
     this.idCompany = this.signalsService.getRootSelectedBySidebar()();
@@ -116,38 +124,49 @@ export class SetupwarehouseComponent {
       return;
     }
 
-    const reqType = this.warehouseSetup.projectOrBranch === true ? 'project' : 'branch';
-    const prefixData = {
-      reqType: reqType,
-      idReqType: this.selectedBranchOrProject,
-      prefix: this.prefix,
-      consecutive: this.consecutive,
+    const type: 'project' | 'branch' = this.warehouseSetup.projectOrBranch === true ? 'project' : 'branch';
+
+    const prefixData: PrefixSetup = {
+      idProjectOrBranch: this.selectedBranchOrProject,
+      type: type,
+      prefixReq: this.prefixReq || null,
+      consecutiveReq: this.consecutiveReq || 0,
+      prefixCotiz: this.prefixCotiz || null,
+      consecutiveCotiz: this.consecutiveCotiz || 0,
+      prefixOc: this.prefixOc || null,
+      consecutiveOc: this.consecutiveOc || 0,
       active: true
     };
 
-    if (this.hasPrefixData) {
-      // Actualizar prefijo existente
-      this.typexPrefixesService.updatePrefix(reqType, this.selectedBranchOrProject, prefixData).subscribe({
+    console.log('📤 Enviando PrefixSetup:', prefixData);
+    console.log('   - hasPrefixData:', this.hasPrefixData);
+    console.log('   - prefixSetupId:', this.prefixSetupId);
+    console.log('   - Método:', this.hasPrefixData && this.prefixSetupId ? 'PUT' : 'POST');
+
+    if (this.hasPrefixData && this.prefixSetupId) {
+      // PUT - Actualizar prefijo existente
+      this.prefixSetupService.updatePrefixSetup(this.prefixSetupId, prefixData).subscribe({
         next: () => {
-          console.log('✅ Prefijo actualizado correctamente');
+          console.log('✅ PrefixSetup actualizado correctamente');
           alerts.basicAlert("Actualización", "La configuración se ha guardado correctamente", "success");
         },
         error: (err) => {
-          console.error('❌ Error al actualizar prefijo:', err);
-          alerts.basicAlert("Error", "Ha ocurrido un error al guardar el prefijo", "error");
+          console.error('❌ Error al actualizar PrefixSetup:', err);
+          alerts.basicAlert("Error", "Ha ocurrido un error al guardar la configuración de prefijos", "error");
         }
       });
     } else {
-      // Crear nuevo prefijo
-      this.typexPrefixesService.addPrefix(prefixData).subscribe({
-        next: () => {
-          console.log('✅ Prefijo creado correctamente');
+      // POST - Crear nuevo prefijo
+      this.prefixSetupService.createPrefixSetup(prefixData).subscribe({
+        next: (result) => {
+          console.log('✅ PrefixSetup creado correctamente:', result);
+          this.prefixSetupId = result.id;
           this.hasPrefixData = true;
           alerts.basicAlert("Actualización", "La configuración se ha guardado correctamente", "success");
         },
         error: (err) => {
-          console.error('❌ Error al crear prefijo:', err);
-          alerts.basicAlert("Error", "Ha ocurrido un error al guardar el prefijo", "error");
+          console.error('❌ Error al crear PrefixSetup:', err);
+          alerts.basicAlert("Error", "Ha ocurrido un error al guardar la configuración de prefijos", "error");
         }
       });
     }
@@ -160,10 +179,7 @@ export class SetupwarehouseComponent {
   onProjectOrBranchChange() {
     // Limpiar selección al cambiar entre proyectos y sucursales
     this.selectedBranchOrProject = null;
-    this.prefix = '';
-    this.consecutive = 0;
-    this.prefixId = null;
-    this.hasPrefixData = false;
+    this.clearPrefixFields();
 
     // Si cambia a sucursales, cargar sucursales
     if (this.warehouseSetup.projectOrBranch === false) {
@@ -178,32 +194,41 @@ export class SetupwarehouseComponent {
   onBranchOrProjectSelection() {
     // Cuando se selecciona una sucursal o proyecto, cargar su prefijo
     if (!this.selectedBranchOrProject) {
-      this.prefix = '';
-      this.consecutive = 0;
-      this.prefixId = null;
-      this.hasPrefixData = false;
+      this.clearPrefixFields();
       return;
     }
 
-    const reqType = this.warehouseSetup.projectOrBranch === true ? 'project' : 'branch';
+    const type = this.warehouseSetup.projectOrBranch === true ? 'project' : 'branch';
 
-    this.typexPrefixesService.getPrefix(reqType, this.selectedBranchOrProject).subscribe({
-      next: (data: any) => {
-        console.log('✅ Prefijo encontrado:', data);
-        this.prefix = data.prefix || '';
-        this.consecutive = data.consecutive || 0;
-        this.prefixId = data.id;
+    this.prefixSetupService.getPrefixSetup(type, this.selectedBranchOrProject).subscribe({
+      next: (data: PrefixSetup) => {
+        console.log('✅ PrefixSetup encontrado:', data);
+        this.prefixSetupId = data.id;
+        this.prefixReq = data.prefixReq || '';
+        this.consecutiveReq = data.consecutiveReq || 0;
+        this.prefixCotiz = data.prefixCotiz || '';
+        this.consecutiveCotiz = data.consecutiveCotiz || 0;
+        this.prefixOc = data.prefixOc || '';
+        this.consecutiveOc = data.consecutiveOc || 0;
         this.hasPrefixData = true;
       },
       error: (err) => {
         // Si no existe (404), limpiar campos para crear nuevo
-        console.log('ℹ️ No existe prefijo, se creará uno nuevo');
-        this.prefix = '';
-        this.consecutive = 0;
-        this.prefixId = null;
-        this.hasPrefixData = false;
+        console.log('ℹ️ No existe PrefixSetup, se creará uno nuevo');
+        this.clearPrefixFields();
       }
     });
+  }
+
+  private clearPrefixFields() {
+    this.prefixSetupId = null;
+    this.prefixReq = '';
+    this.consecutiveReq = 0;
+    this.prefixCotiz = '';
+    this.consecutiveCotiz = 0;
+    this.prefixOc = '';
+    this.consecutiveOc = 0;
+    this.hasPrefixData = false;
   }
 
   loadBranches() {
@@ -220,10 +245,16 @@ export class SetupwarehouseComponent {
   }
 
   loadProjects(contractId: number) {
-    this.projectsService.getProjectsByContract(contractId).subscribe({
+    const idUser = this.signalsService.idUser();
+    this.projectsService.getProjectsByContract(idUser, contractId).subscribe({
       next: (data: any) => {
-        this.projects = data;
-        console.log('✅ Proyectos cargados:', this.projects.length);
+        // Mapear los datos para tener estructura consistente
+        // El API devuelve: idProject, projectName
+        this.projects = Object.values(data).map((p: any) => ({
+          id: p.idProject,
+          name: p.projectName
+        }));
+        console.log('✅ Proyectos cargados:', this.projects.length, this.projects);
       },
       error: (err) => {
         console.error('❌ Error al cargar proyectos:', err);

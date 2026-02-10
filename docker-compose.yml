@@ -3,9 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        # Lee ENVIRONMENT del .env (generado automáticamente por git hooks)
-        ENVIRONMENT: ${ENVIRONMENT}
     image: smp25-frontend:latest
     container_name: Smp25-Frontend
     restart: unless-stopped
@@ -14,7 +11,7 @@ services:
     networks:
       - smp25-network
     labels:
-      - "com.smp25.version=4.03"
+      - "com.smp25.version=2.50.4"
       - "com.smp25.service=frontend"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost/" ]

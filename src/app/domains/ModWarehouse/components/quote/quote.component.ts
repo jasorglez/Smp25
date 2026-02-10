@@ -14,7 +14,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
-import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
 import { DepartmentsService } from 'app/services/departments.service';
 import { CurrencyService } from 'app/services/currency.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -23,6 +23,7 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
@@ -43,12 +44,12 @@ interface Provider {
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent],
   templateUrl: './quote.component.html',
-  styles: ``
+  styleUrl: './quote.component.scss'
 })
 export class QuoteComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
-  private quotesService = inject(OcAndReqsService);
-  private providersService = inject(ProvidersService);
+private quotesService = inject(OcAndReqsService);
+  private customersService = inject(CustomersService);
   private catalogsService = inject(CatalogsService);
   private departmentsService = inject(DepartmentsService);
   private currencyService = inject(CurrencyService);
@@ -58,6 +59,7 @@ export class QuoteComponent implements CanComponentDeactivate {
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
   private setupService = inject(SetupService);
+  private prefixSetupService = inject(PrefixSetupService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -67,16 +69,33 @@ export class QuoteComponent implements CanComponentDeactivate {
   idReference: number = null;
   private tempIdCounter: number = 0;
   idQuote: number | string = null;
-  private lastProcessedQuote: number = null;
+private lastProcessedQuote: number = null;
   private masterGridApi: GridApi;
   idRoot: number = null;
   projectOrBranch: boolean = null; // True = Project, False = Branch
   typeReference: string = null; // project or branch
+  activateOc: boolean = true; // True = OC enabled, False = comparison mode
 
   // Variables Master
   masterRowData: any[] = [];
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
+
+  // COTIZ tracking - each slot maps to a COTIZ record
+  cotizSlots: { cotizId: number | null; idProvider: number | null; providerName: string }[] = [
+    { cotizId: null, idProvider: null, providerName: '' },
+    { cotizId: null, idProvider: null, providerName: '' },
+    { cotizId: null, idProvider: null, providerName: '' }
+  ];
+
+  // Modal de selección de proveedor
+  showProviderModal: boolean = false;
+  selectedProviderSlot: number = 0; // 1, 2, or 3
+  selectedProviderId: number = null;
+
+  // Track expanded provider detail
+  expandedRowId: any = null;
+  expandedProviderNumber: number | null = null;
 
   // Catálogos Master
   proveedores: any[] = [];
@@ -94,6 +113,7 @@ export class QuoteComponent implements CanComponentDeactivate {
 
   // Items from the selected requisition for the cascades
   requisitionItems: any[] = [];
+  private pendingCotizLoad: boolean = false;
 
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -194,7 +214,7 @@ export class QuoteComponent implements CanComponentDeactivate {
   }
 
   // Column Definitions: Defines the columns to be displayed.
-  public gridOptions: any = {
+public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 35,
     masterDetail: true,
@@ -205,6 +225,10 @@ export class QuoteComponent implements CanComponentDeactivate {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
+      }
+      // Verificar si está bloqueada (convertida a OC)
+      if (params.data?.locked === true) {
+        return 'locked-row';
       }
       return '';
     },
@@ -232,17 +256,17 @@ export class QuoteComponent implements CanComponentDeactivate {
     
     // Construir y cachear las columnas solo la primera vez
     this._colMaster = [
-      {
-        field: 'folio',
-        headerName: 'Número Doc',
-        editable: true,
-        filter: true,
-        width: 150,
-      },
+{
+  field: 'folio',
+  headerName: 'Número Doc',
+  editable: (params) => !params.data?.locked,
+  filter: true,
+  width: 150,
+},
       {
         field: 'dateCreate',
         headerName: 'Fecha Cotizacion',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -256,43 +280,35 @@ export class QuoteComponent implements CanComponentDeactivate {
       {
         field: 'idDepartament',
         headerName: 'Departamento Solicita',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 190,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.departamentos
-            ? this.departamentos.map((item) => item.id)
-            : [],
-        },
+        cellEditorParams: () => ({
+          values: this.departamentos.map((item) => item.id),
+        }),
         valueFormatter: (params) => {
-          const foundItem = this.departamentos
-            ? this.departamentos.find((item) => item.id === params.value)
-            : null;
+          const foundItem = this.departamentos.find((item) => item.id === params.value);
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
       {
         field: 'solicit',
         headerName: 'Solicitante',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 190,
       },
 {
   field: 'idReq',
   headerName: 'Requisición',
-  editable: true,
+  editable: (params) => !params.data?.locked,
   width: 180,
   cellEditor: 'agSelectCellEditor',
-  cellEditorParams: {
-    values: this.requisiciones
-      ? this.requisiciones.map((item) => item.id)
-      : [],
-  },
+  cellEditorParams: () => ({
+    values: this.requisiciones.map((item) => item.id),
+  }),
   valueFormatter: (params) => {
-    const foundItem = this.requisiciones
-      ? this.requisiciones.find((item) => item.id === params.value)
-      : null;
-    return foundItem ? `${foundItem.folio}` : params.value;
+    const foundItem = this.requisiciones.find((item) => item.id === params.value);
+    return foundItem ? `${foundItem.folio}` : (params.value || '');
   },
   onCellValueChanged: (params) => {
     this.onRequisitionChanged(params);
@@ -312,57 +328,63 @@ export class QuoteComponent implements CanComponentDeactivate {
 {
   field: 'proveedor1',
   headerName: 'Proveedor 1',
-  width: 120,
+  width: 150,
   cellRenderer: (params: any) => {
+    // Get provider info from the row data itself, not global slots
+    const providerName = params.data.proveedor1Name || '';
     const count = params.data.proveedor1Count || 0;
-    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
-              <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); return true;">${count} items</button>
+    const hasProvider = params.data.proveedor1Id > 0;
+    const label = providerName ? `${providerName} (${count})` : `${count} items`;
+    const btnClass = hasProvider ? 'btn-primary' : 'btn-outline-primary';
+    return `<div class="provider-cell" style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Provider 1 button clicked, opening quote grid');
-    params.data.providerNumber = 1;
-    
-    // Abrir la cotización para Proveedor 1
+    console.log('Clicked Proveedor 1:', params.data);
     this.openProviderQuote(params.data, 1);
   }
 },
 {
   field: 'proveedor2',
   headerName: 'Proveedor 2',
-  width: 120,
+  width: 150,
   cellRenderer: (params: any) => {
+    // Get provider info from the row data itself, not global slots
+    const providerName = params.data.proveedor2Name || '';
     const count = params.data.proveedor2Count || 0;
-    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
-              <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); return true;">${count} items</button>
+    const hasProvider = params.data.proveedor2Id > 0;
+    const label = providerName ? `${providerName} (${count})` : `${count} items`;
+    const btnClass = hasProvider ? 'btn-success' : 'btn-outline-success';
+    return `<div class="provider-cell" style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Provider 2 button clicked, opening quote grid');
-    params.data.providerNumber = 2;
-    
-    // Abrir la cotización para Proveedor 2
+    console.log('Clicked Proveedor 2:', params.data);
     this.openProviderQuote(params.data, 2);
   }
 },
 {
   field: 'proveedor3',
   headerName: 'Proveedor 3',
-  width: 120,
+  width: 150,
   cellRenderer: (params: any) => {
+    // Get provider info from the row data itself, not global slots
+    const providerName = params.data.proveedor3Name || '';
     const count = params.data.proveedor3Count || 0;
-    return `<div class="provider-cell" style="text-align: center; padding: 5px;">
-              <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); return true;">${count} items</button>
+    const hasProvider = params.data.proveedor3Id > 0;
+    const label = providerName ? `${providerName} (${count})` : `${count} items`;
+    const btnClass = hasProvider ? 'btn-warning' : 'btn-outline-warning';
+    return `<div class="provider-cell" style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
             </div>`;
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Provider 3 button clicked, opening quote grid');
-    params.data.providerNumber = 3;
-    
-    // Abrir la cotización para Proveedor 3
+    console.log('Clicked Proveedor 3:', params.data);
     this.openProviderQuote(params.data, 3);
   }
 },
@@ -399,8 +421,148 @@ export class QuoteComponent implements CanComponentDeactivate {
   },
   },
      ];
-    
+
+    // Add comparison column only when activateOc is false
+    if (!this.activateOc) {
+      this._colMaster.push({
+        field: 'comparacion',
+        headerName: 'Comparación',
+        width: 130,
+        cellRenderer: (params: any) => {
+          // Only show button if at least 2 providers have quotes
+          const hasP1 = params.data.proveedor1Id > 0;
+          const hasP2 = params.data.proveedor2Id > 0;
+          const hasP3 = params.data.proveedor3Id > 0;
+          const providerCount = [hasP1, hasP2, hasP3].filter(Boolean).length;
+
+          if (providerCount < 2) {
+            return `<div style="text-align: center; padding: 5px;">
+                      <span class="text-muted small">Min. 2 proveedores</span>
+                    </div>`;
+          }
+
+          return `<div style="text-align: center; padding: 5px;">
+                    <button class="btn btn-sm btn-info" style="pointer-events: none;">
+                      <i class="bi bi-table"></i> Comparar
+                    </button>
+                  </div>`;
+        },
+        editable: false,
+        onCellClicked: (params: any) => {
+          const hasP1 = params.data.proveedor1Id > 0;
+          const hasP2 = params.data.proveedor2Id > 0;
+          const hasP3 = params.data.proveedor3Id > 0;
+          const providerCount = [hasP1, hasP2, hasP3].filter(Boolean).length;
+
+          if (providerCount >= 2) {
+            this.openComparisonModal(params.data);
+          }
+        }
+      });
+    }
+
     return this._colMaster;
+  }
+
+  // ==================== COMPARISON MODAL ====================
+  showComparisonModal: boolean = false;
+  comparisonData: any = null;
+  comparisonItems: any[] = [];
+
+  openComparisonModal(rowData: any) {
+    this.comparisonData = rowData;
+    this.loadComparisonItems(rowData);
+  }
+
+  async loadComparisonItems(rowData: any) {
+    this.comparisonItems = [];
+    const providerCotizIds = [
+      { slot: 1, cotizId: rowData.proveedor1CotizId, providerId: rowData.proveedor1Id, name: rowData.proveedor1Name },
+      { slot: 2, cotizId: rowData.proveedor2CotizId, providerId: rowData.proveedor2Id, name: rowData.proveedor2Name },
+      { slot: 3, cotizId: rowData.proveedor3CotizId, providerId: rowData.proveedor3Id, name: rowData.proveedor3Name }
+    ].filter(p => p.cotizId > 0);
+
+    try {
+      // Load items for each provider's COTIZ
+      const allItems: any[] = [];
+
+      for (const provider of providerCotizIds) {
+        const items: any = await lastValueFrom(this.quotesService.getReqItems(provider.cotizId));
+        items.forEach((item: any) => {
+          allItems.push({
+            ...item,
+            providerSlot: provider.slot,
+            providerId: provider.providerId,
+            providerName: provider.name
+          });
+        });
+      }
+
+      // Group items by product (idSupplie) for comparison
+      const productMap = new Map<number, any>();
+
+      allItems.forEach(item => {
+        const productId = item.idSupplie;
+        if (!productMap.has(productId)) {
+          const product = this.productos.find((p: any) => p.id === productId);
+          productMap.set(productId, {
+            productId,
+            productName: product?.description || `Producto ${productId}`,
+            unit: product?.unit || '',
+            provider1: null,
+            provider2: null,
+            provider3: null
+          });
+        }
+
+        const entry = productMap.get(productId);
+        const providerKey = `provider${item.providerSlot}`;
+        entry[providerKey] = {
+          quantity: item.quantity,
+          price: item.price,
+          total: item.quantity * item.price,
+          providerName: item.providerName
+        };
+      });
+
+      this.comparisonItems = Array.from(productMap.values());
+      this.showComparisonModal = true;
+      console.log('Comparison items loaded:', this.comparisonItems);
+    } catch (error) {
+      console.error('Error loading comparison items:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar los items para comparación', 'error');
+    }
+  }
+
+  closeComparisonModal() {
+    this.showComparisonModal = false;
+    this.comparisonData = null;
+    this.comparisonItems = [];
+  }
+
+  getBestPrice(item: any): number {
+    const prices = [
+      item.provider1?.price,
+      item.provider2?.price,
+      item.provider3?.price
+    ].filter(p => p != null && p > 0);
+
+    return prices.length > 0 ? Math.min(...prices) : 0;
+  }
+
+  isPriceLowest(item: any, providerSlot: number): boolean {
+    const providerKey = `provider${providerSlot}`;
+    const price = item[providerKey]?.price;
+    if (!price) return false;
+    return price === this.getBestPrice(item);
+  }
+
+  getProviderTotal(providerSlot: number): number {
+    const providerKey = `provider${providerSlot}`;
+    return this.comparisonItems.reduce((total, item) => {
+      const providerData = item[providerKey];
+      return total + (providerData?.total || 0);
+    }, 0);
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -465,16 +627,27 @@ export class QuoteComponent implements CanComponentDeactivate {
         (data: any) => {
           this.masterRowData = data;
           console.log(this.typeReference, this.idReference, this.masterRowData);
+          // Load provider COTIZ info once proveedores are available
+          this.pendingCotizLoad = true;
+          if (this.proveedores.length > 0) {
+            this.loadAllCotizInfo();
+            this.pendingCotizLoad = false;
+          }
         },
         (error) => console.error('Error fetching data:', error)
       );
   }
 
-  obtenerProveedores() {
-    this.providersService.getProviders(this.idRoot).subscribe(
+obtenerProveedores() {
+    this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe(
       (data: any) => {
         this.proveedores = data;
-        console.log(this.proveedores);
+        console.log('Proveedores cargados:', this.proveedores.length);
+        // If master data was already loaded, now load COTIZ info
+        if (this.pendingCotizLoad && this.masterRowData.length > 0) {
+          this.loadAllCotizInfo();
+          this.pendingCotizLoad = false;
+        }
       },
       (error) => console.error('Error fetching providers:', error)
     );
@@ -575,8 +748,12 @@ export class QuoteComponent implements CanComponentDeactivate {
             this.updateGridContext();
           }
         });
+
+        // Load existing COTIZs for this REQUIS
+        this.loadExistingCotiz(this.masterSelectedRowData.idReq);
       } else {
         this.requisitionItems = [];
+        this.resetCotizSlots();
         // Initialize empty cascades
         this.initializeProviderCascades();
       }
@@ -779,18 +956,23 @@ export class QuoteComponent implements CanComponentDeactivate {
     this.masterNotSavedChanges = true;
   }
 
-  addMasterRow() {
+  async addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Generar folio automáticamente desde PrefixSetup
+    const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
+    const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'cotiz');
+
     const newItem = {
       id: tempId,
-      folio: '',
+      folio: folio || '',
       typeReference: this.typeReference,
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProveedor: 0,
       idDepartament: 0,
       delivery: 'A',
-      deliveryTime: '',
+      deliveryTime: 'NA',
       dateSupply: '',
       idPayment: 0,
       idCurrency: 0,
@@ -868,9 +1050,24 @@ export class QuoteComponent implements CanComponentDeactivate {
 
     // Using concat to combine observables and lastValueFrom for async/await
     try {
-      const responses = await lastValueFrom(
+      await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+
+      // Lock requisitions that are assigned to saved QUOTEs
+      // Get all rows that have a requisition associated
+      const allRowsWithReq = [...newRows, ...modifiedRows].filter(row => row.idReq);
+
+      for (const row of allRowsWithReq) {
+        try {
+          // Use the new PATCH endpoint to lock the requisition
+          await lastValueFrom(this.quotesService.lockRequisition(row.idReq, true));
+          console.log('Requisition locked:', row.idReq);
+        } catch (err) {
+          console.error('Error locking requisition:', row.idReq, err);
+        }
+      }
+
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
@@ -944,9 +1141,10 @@ export class QuoteComponent implements CanComponentDeactivate {
     this.masterNotSavedChanges = false;
   }
 
-  createQuote(idQuote: number, action: string) {
+createQuote(idQuote: number, action: string) {
     this.receiptsService.generateOC(idQuote, action);
   }
+
 
   // Método para invalidar la caché de columnas (útil cuando cambian catálogos)
   refreshColumnCache(): void {
@@ -958,14 +1156,191 @@ export class QuoteComponent implements CanComponentDeactivate {
     }
   }
 
-  // Método para abrir cotización de proveedor específico
+// Método para abrir cotización de proveedor específico
   openProviderQuote(quoteData: any, providerNumber: number): void {
     console.log('Provider quote - Data:', { quoteData, providerNumber });
-    
-    // Configurar el detail renderer para proveedor
+
+    // Validar que haya idReq
+    if (!quoteData.idReq) {
+      alerts.basicAlert('Sin Requisición', 'Debe asignar una requisición antes de cotizar con proveedores.', 'warning');
+      return;
+    }
+
+    // Validar que la fila QUOTE esté guardada (no temporal)
+    if (quoteData.id && quoteData.id.toString().startsWith('temp_')) {
+      alerts.basicAlert('Guardar primero', 'Debe guardar la cotización antes de asignar proveedores.', 'warning');
+      return;
+    }
+
+    // Check if clicking same provider on same row - toggle close
+    if (this.expandedRowId === quoteData.id && this.expandedProviderNumber === providerNumber) {
+      console.log('Same provider clicked, collapsing detail');
+      this.collapseProviderDetail(quoteData);
+      return;
+    }
+
+    // Get provider data from row data (not global slots)
+    const providerId = quoteData[`proveedor${providerNumber}Id`] || 0;
+    const providerName = quoteData[`proveedor${providerNumber}Name`] || '';
+    const cotizId = quoteData[`proveedor${providerNumber}CotizId`] || null;
+
+    console.log('Provider data from row:', {
+      providerId,
+      providerName,
+      cotizId,
+      providerCount: quoteData[`proveedor${providerNumber}Count`],
+      'All provider fields': {
+        [`proveedor${providerNumber}Id`]: quoteData[`proveedor${providerNumber}Id`],
+        [`proveedor${providerNumber}Name`]: quoteData[`proveedor${providerNumber}Name`],
+        [`proveedor${providerNumber}CotizId`]: quoteData[`proveedor${providerNumber}CotizId`],
+        [`proveedor${providerNumber}Count`]: quoteData[`proveedor${providerNumber}Count`]
+      }
+    });
+
+    // SI YA HAY COTIZACIÓN CREADA (cotizId y providerId), abrir directamente el detail
+    if (cotizId && providerId > 0) {
+      console.log('Opening provider detail for EXISTING COTIZ with', quoteData[`proveedor${providerNumber}Count`] || 0, 'items');
+      this.openProviderDetail(quoteData, providerNumber, cotizId, providerId);
+      return;
+    }
+
+    // Si no hay cotización creada, abrir modal de selección para crearla
+    console.log('No existing COTIZ found, opening provider selection modal to create new one');
+    this.selectedProviderSlot = providerNumber;
+    this.selectedProviderId = null;
+    this.showProviderModal = true;
+  }
+
+// Confirmar selección de proveedor desde el modal
+  async confirmProviderSelection(): Promise<void> {
+    if (!this.selectedProviderId) {
+      alerts.basicAlert('Selección requerida', 'Debe seleccionar un proveedor.', 'warning');
+      return;
+    }
+
+// Verificar que no esté ya en otro slot (solo para nuevas cotizaciones)
+    const alreadyUsed = this.cotizSlots.find(s => s.idProvider === this.selectedProviderId);
+    if (alreadyUsed && alreadyUsed.cotizId) {
+      alerts.basicAlert('Proveedor duplicado', 'Este proveedor ya está asignado en otro slot.', 'warning');
+      return;
+    }
+
+    this.showProviderModal = false;
+    const providerNumber = this.selectedProviderSlot;
+    const slotIndex = providerNumber - 1;
+    const quoteData = this.masterSelectedRowData;
+    const idProvider = this.selectedProviderId;
+
+    // Get provider name
+    const provider = this.proveedores.find((p: any) => p.id === idProvider);
+    const providerName = provider ? provider.name : `Proveedor ${idProvider}`;
+
+    // Get REQUIS data to copy fields
+    const requis = this.requisiciones.find((r: any) => r.id === quoteData.idReq);
+
+    try {
+      // Create COTIZ record
+      const cotizData: any = {
+        type: 'COTIZ',
+        folio: `COTIZ-${quoteData.folio}-P${providerNumber}`,
+        typeReference: this.typeReference,
+        idReference: this.idReference,
+        idReq: quoteData.idReq,
+        idProvider: idProvider,
+        dateCreate: new Date().toISOString(),
+        dateSupply: new Date().toISOString(),
+        idDepartament: quoteData.idDepartament || (requis ? requis.idDepartament : 0),
+        solicit: quoteData.solicit || (requis ? requis.solicit : ''),
+        delivery: quoteData.delivery || 'A',
+        deliveryTime: quoteData.deliveryTime || '',
+        typeOc: 'INSUMOS',
+        idPayment: 0,
+        idCurrency: 0,
+        idAuthorize: 0,
+        active: true
+      };
+
+      console.log('Creating COTIZ:', cotizData);
+      const cotizResponse: any = await lastValueFrom(this.quotesService.addOcAndReq(cotizData));
+      const cotizId = cotizResponse.id;
+      console.log('COTIZ created with ID:', cotizId);
+
+      // Copy items from REQUIS to COTIZ
+      const reqItems: any[] = await lastValueFrom(this.quotesService.getReqItems(quoteData.idReq));
+      for (const item of reqItems) {
+        const detailData: any = {
+          idMovement: cotizId,
+          idSupplie: item.idSupplie || 0,
+          idProvider: idProvider,
+          nameProvider: providerName,
+          quantity: item.quantity || 0,
+          price: 0,
+          dateuse: item.dateuse,
+          type: 'COTIZ',
+          recurrent: item.recurrent || 'Recurrente',
+          nameArticle: item.nameArticle || item.namearticle || '',
+          numArticle: item.numArticle || item.numarticle || '',
+          intorext: item.intorext || 'Interno',
+          provInt: item.provInt || item.provint || 'Sin Proveedor',
+          typePriority: item.typePriority || item.typepriority || 'Normal',
+          comment: item.comment || '',
+          active: true
+        };
+        await lastValueFrom(this.quotesService.addReqItem(detailData));
+      }
+
+      // Update slot
+      this.cotizSlots[slotIndex] = { cotizId, idProvider, providerName };
+
+      // Update row data with provider info
+      quoteData[`proveedor${providerNumber}Id`] = idProvider;
+      quoteData[`proveedor${providerNumber}Name`] = providerName;
+      quoteData[`proveedor${providerNumber}CotizId`] = cotizId;
+      quoteData[`proveedor${providerNumber}Count`] = reqItems.length;
+
+      // Refresh grid
+      if (this.masterGridApi) {
+        this.masterGridApi.refreshCells({
+          columns: ['proveedor1', 'proveedor2', 'proveedor3'],
+          force: true
+        });
+      }
+
+      alerts.basicAlert('COTIZ creada', `Cotización creada para ${providerName} con ${reqItems.length} items.`, 'success');
+
+      // Open the detail grid
+      this.openProviderDetail(quoteData, providerNumber, cotizId, idProvider);
+
+    } catch (error) {
+      console.error('Error creating COTIZ:', error);
+      alerts.basicAlert('Error', 'No se pudo crear la cotización del proveedor.', 'error');
+    }
+  }
+
+  cancelProviderSelection(): void {
+    this.showProviderModal = false;
+    this.selectedProviderId = null;
+    this.selectedProviderSlot = 0;
+  }
+
+  // Collapse the provider detail
+  private collapseProviderDetail(quoteData: any): void {
+    if (this.masterGridApi) {
+      this.masterGridApi.forEachNode((node: any) => {
+        if (node.data && node.data.id === quoteData.id && node.expanded) {
+          node.setExpanded(false);
+        }
+      });
+    }
+    this.expandedRowId = null;
+    this.expandedProviderNumber = null;
+  }
+
+  // Open the provider detail grid with COTIZ data
+  private openProviderDetail(quoteData: any, providerNumber: number, cotizId: number, idProvider: number): void {
     if (this.masterGridApi) {
       this.masterGridApi.setGridOption('detailCellRenderer', ProviderQuoteDetailComponent);
-      
+
       this.masterGridApi.setGridOption('detailCellRendererParams', {
         getDetailRowData: (params: any) => {
           params.successCallback([{
@@ -980,22 +1355,173 @@ export class QuoteComponent implements CanComponentDeactivate {
           proveedores: this.proveedores,
           componentParent: this,
           gridApi: this.masterGridApi,
+          activateOc: this.activateOc,
           providerQuoteData: {
             quoteData: quoteData,
             providerNumber: providerNumber,
             idQuote: quoteData.id,
-            idReq: quoteData.idReq
+            idReq: quoteData.idReq,
+            cotizId: cotizId,
+            idProvider: idProvider
           }
         }
       });
 
-      // Expandir la fila seleccionada
+      // Track expanded state
+      this.expandedRowId = quoteData.id;
+      this.expandedProviderNumber = providerNumber;
+
+      // Collapse all, then expand selected
       this.masterGridApi.forEachNode((node: any) => {
         if (node.data && node.data.id === quoteData.id) {
-          node.setExpanded(true);
+          node.setExpanded(false);
+          setTimeout(() => node.setExpanded(true), 50);
+        } else if (node.expanded) {
+          node.setExpanded(false);
         }
       });
     }
+  }
+
+// Load existing COTIZs for a given REQUIS ID
+   loadExistingCotiz(idReq: number): void {
+     this.resetCotizSlots();
+
+     this.quotesService.getCotizByReq(idReq, this.typeReference, this.idReference).subscribe({
+       next: (cotizList: any[]) => {
+         // Filter only those with matching idReq
+         const matching = cotizList.filter((c: any) => c.idReq === idReq && c.active !== false);
+         console.log('Existing COTIZs for idReq', idReq, ':', matching);
+
+         // Clear provider data on master row first
+         if (this.masterSelectedRowData) {
+           this.masterSelectedRowData.proveedor1Id = 0;
+           this.masterSelectedRowData.proveedor1Name = '';
+           this.masterSelectedRowData.proveedor1CotizId = null;
+           this.masterSelectedRowData.proveedor2Id = 0;
+           this.masterSelectedRowData.proveedor2Name = '';
+           this.masterSelectedRowData.proveedor2CotizId = null;
+           this.masterSelectedRowData.proveedor3Id = 0;
+           this.masterSelectedRowData.proveedor3Name = '';
+           this.masterSelectedRowData.proveedor3CotizId = null;
+         }
+
+         // Assign to slots (up to 3)
+         matching.slice(0, 3).forEach((cotiz: any, index: number) => {
+           const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
+           this.cotizSlots[index] = {
+             cotizId: cotiz.id,
+             idProvider: cotiz.idProvider,
+             providerName: provider ? provider.name : `Proveedor ${cotiz.idProvider}`
+           };
+
+// Update provider data on master row AND grid data
+            if (this.masterSelectedRowData) {
+              this.masterSelectedRowData[`proveedor${index + 1}Id`] = cotiz.idProvider;
+              this.masterSelectedRowData[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+              this.masterSelectedRowData[`proveedor${index + 1}CotizId`] = cotiz.id;
+              this.masterSelectedRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
+              
+              // Also update the grid row data to persist changes
+              const gridRowData = this.masterRowData.find(row => row.id === this.masterSelectedRowData.id);
+              if (gridRowData) {
+                gridRowData[`proveedor${index + 1}Id`] = cotiz.idProvider;
+                gridRowData[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+                gridRowData[`proveedor${index + 1}CotizId`] = cotiz.id;
+                gridRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
+                console.log(`✅ Updated grid row data for provider ${index + 1}:`, {
+                  id: cotiz.idProvider,
+                  name: provider ? provider.name : `Proveedor ${cotiz.idProvider}`,
+                  cotizId: cotiz.id,
+                  count: cotiz.countrow || 0
+                });
+              }
+            }
+         });
+
+// Refresh provider columns with proper data update
+        if (this.masterGridApi) {
+          // First update the data with applyTransaction
+          this.masterGridApi.applyTransaction({ 
+            update: [this.masterSelectedRowData] 
+          });
+          // Then refresh the cells
+          this.masterGridApi.refreshCells({
+            columns: ['proveedor1', 'proveedor2', 'proveedor3'],
+            force: true
+          });
+        }
+       },
+       error: (error) => {
+         console.error('Error loading existing COTIZs:', error);
+       }
+     });
+   }
+
+  // Load COTIZ info for ALL master rows on initial load
+  async loadAllCotizInfo(): Promise<void> {
+    const rowsWithReq = this.masterRowData.filter(row => row.idReq);
+    if (rowsWithReq.length === 0) return;
+
+    const updatedRows: any[] = [];
+
+    // Load all COTIZ info in parallel and collect results
+    const promises = rowsWithReq.map(async (row) => {
+      try {
+        const cotizList: any[] = await lastValueFrom(
+          this.quotesService.getCotizByReq(row.idReq, this.typeReference, this.idReference)
+        );
+        const matching = cotizList.filter((c: any) => c.idReq === row.idReq && c.active !== false);
+
+        // Initialize provider fields to ensure they exist
+        row.proveedor1Id = 0;
+        row.proveedor1Name = '';
+        row.proveedor1CotizId = null;
+        row.proveedor1Count = 0;
+        row.proveedor2Id = 0;
+        row.proveedor2Name = '';
+        row.proveedor2CotizId = null;
+        row.proveedor2Count = 0;
+        row.proveedor3Id = 0;
+        row.proveedor3Name = '';
+        row.proveedor3CotizId = null;
+        row.proveedor3Count = 0;
+
+        matching.slice(0, 3).forEach((cotiz: any, index: number) => {
+          const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
+          row[`proveedor${index + 1}Id`] = cotiz.idProvider;
+          row[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+          row[`proveedor${index + 1}CotizId`] = cotiz.id;
+          row[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
+        });
+
+        updatedRows.push(row);
+      } catch (err) {
+        console.error('Error loading COTIZ for row', row.id, err);
+      }
+    });
+
+    // Wait for all to complete
+    await Promise.all(promises);
+
+    // Refresh the entire grid once after all data is loaded
+    if (this.masterGridApi && updatedRows.length > 0) {
+      // Update all rows in a single transaction
+      this.masterGridApi.applyTransaction({ update: updatedRows });
+
+      // Force redraw of provider columns for all rows
+      this.masterGridApi.redrawRows();
+
+      console.log('✅ Provider columns refreshed for', updatedRows.length, 'rows');
+    }
+  }
+
+  resetCotizSlots(): void {
+    this.cotizSlots = [
+      { cotizId: null, idProvider: null, providerName: '' },
+      { cotizId: null, idProvider: null, providerName: '' },
+      { cotizId: null, idProvider: null, providerName: '' }
+    ];
   }
 
 
@@ -1019,12 +1545,32 @@ export class QuoteComponent implements CanComponentDeactivate {
     this.lastProcessedQuote = null;
     this.projectOrBranch = null;
     this.typeReference = null;
+
+    // Limpiar COTIZ slots
+    this.resetCotizSlots();
   }
 
-  private cleanDataForServer(data: any): any {
+private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.proveedor1Data;
+    delete cleanedData.proveedor2Data;
+    delete cleanedData.proveedor3Data;
+    delete cleanedData.proveedor1Count;
+    delete cleanedData.proveedor2Count;
+    delete cleanedData.proveedor3Count;
+    delete cleanedData.providerNumber;
+    // Delete provider UI fields
+    delete cleanedData.proveedor1Id;
+    delete cleanedData.proveedor1Name;
+    delete cleanedData.proveedor1CotizId;
+    delete cleanedData.proveedor2Id;
+    delete cleanedData.proveedor2Name;
+    delete cleanedData.proveedor2CotizId;
+    delete cleanedData.proveedor3Id;
+    delete cleanedData.proveedor3Name;
+    delete cleanedData.proveedor3CotizId;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
@@ -1041,7 +1587,10 @@ export class QuoteComponent implements CanComponentDeactivate {
         next: (data: any) => {
           this.projectOrBranch = data[0].projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-          console.log(this.projectOrBranch);
+          this.activateOc = data[0].activateOc !== false; // Default to true if not set
+          console.log('Setup loaded:', { projectOrBranch: this.projectOrBranch, activateOc: this.activateOc });
+          // Reset column cache when setup changes
+          this._colMaster = [];
           resolve(); // Resolvemos la promesa aquí
         },
         error: (err) => {

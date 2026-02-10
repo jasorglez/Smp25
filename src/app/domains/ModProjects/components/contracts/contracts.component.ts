@@ -295,10 +295,11 @@ export class ContractsComponent {
         const foundBranch = this.branchs?.find((item) => item.id === params.value);
         return foundBranch ? foundBranch.name : params.value;
       },
-      valueSetter: (params) => {
-        params.data.idBranch = params.newValue;
-        return true;
-      }
+      valueGetter: (params) => {
+        if (!params.data || !params.data.idBranch) return '';
+        const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+        return branch ? branch.name : '';
+      },
     },
     {
       field: 'description',
@@ -342,10 +343,11 @@ export class ContractsComponent {
         const foundProvider = this.providers?.find((p) => p.id === params.value);
         return foundProvider ? foundProvider.name : params.value;
       },
-      valueSetter: (params) => {
-        params.data.idProvider = params.newValue;
-        return true;
-      }
+      valueGetter: (params) => {
+        if (!params.data || !params.data.idProvider) return '';
+        const provider = this.providers?.find(p => p.id === params.data.idProvider);
+        return provider ? provider.name : '';
+      },
     },
     {
       field: 'resident',
@@ -592,13 +594,11 @@ export class ContractsComponent {
 
     const newItem: any = {
       id: tempId,
-      idContrato: 0,
       idBranch: this.idBranch > 0 ? this.idBranch : null,
       numberContract: '',
-      project: 0,
+      project: '',
       description: '',
       descripSmall: '',
-      name: '',
       resident: '',
       supervisor: '',
       amountMx: 0,
@@ -630,14 +630,23 @@ export class ContractsComponent {
   }
 
   async saveChanges() {
-    const isValid = this.contract.every((item) =>
-      item.numberContract && item.description
-    );
+    const invalidItems = this.contract.filter((item) => {
+      return !item.numberContract || 
+             !item.description || 
+             !item.idBranch;
+    });
 
-    if (!isValid) {
+    if (invalidItems.length > 0) {
+      const invalidContract = invalidItems[0];
+      let errorMessage = 'Debe llenar los campos obligatorios:\n';
+      
+      if (!invalidContract.numberContract) errorMessage += '- Número de Contrato\n';
+      if (!invalidContract.description) errorMessage += '- Descripción\n';
+      if (!invalidContract.idBranch) errorMessage += '- Sucursal\n';
+      
       alerts.basicAlert(
         'Validación',
-        'Debe llenar los campos obligatorios (Contrato y Descripción) antes de guardar.',
+        errorMessage,
         'error'
       );
       return;
@@ -650,13 +659,24 @@ export class ContractsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Guardando nuevo contrato:', cleanedData);
+      console.log('Datos del nuevo contrato antes de enviar:', cleanedData);
+      console.log('Validación del nuevo contrato:', {
+        numberContract: !!cleanedData.numberContract,
+        description: !!cleanedData.description,
+        idBranch: !!cleanedData.idBranch
+      });
       return this.followprojectsService.addContract(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Actualizando contrato:', cleanedData);
+      console.log('Datos del contrato actualizado antes de enviar:', cleanedData);
+      console.log('Validación del contrato actualizado:', {
+        id: cleanedData.id,
+        numberContract: !!cleanedData.numberContract,
+        description: !!cleanedData.description,
+        idBranch: !!cleanedData.idBranch
+      });
       return this.followprojectsService.updateContract(row.id, cleanedData);
     });
 
@@ -677,9 +697,28 @@ export class ContractsComponent {
 
     } catch (error) {
       console.error('Error guardando contratos:', error);
+      
+      let errorMessage = 'Ocurrió un error al guardar los contratos.';
+      
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.error?.errors) {
+        const serverErrors = error.error.errors;
+        if (Array.isArray(serverErrors)) {
+          errorMessage = 'Errores de validación:\n' + serverErrors.join('\n');
+        } else if (typeof serverErrors === 'object') {
+          const errorMessages = Object.values(serverErrors).flat();
+          errorMessage = 'Errores de validación:\n' + errorMessages.join('\n');
+        }
+      } else if (error?.status === 400) {
+        errorMessage = 'Error de validación: Los datos enviados no son válidos.';
+      } else if (error?.status === 500) {
+        errorMessage = 'Error del servidor: Contacte al administrador.';
+      }
+      
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al guardar los contratos.',
+        errorMessage,
         'error'
       );
     }
@@ -689,11 +728,22 @@ export class ContractsComponent {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    delete cleanedData.detailType;
+    delete cleanedData.project; // Este campo se calcula en el backend
+    
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
-      delete cleanedData.idContrato;
     }
+    
+    // Asegurar que los campos numéricos sean números
+    cleanedData.idBranch = Number(cleanedData.idBranch);
+    cleanedData.idProvider = Number(cleanedData.idProvider) || null;
+    cleanedData.amountMx = Number(cleanedData.amountMx) || 0;
+    cleanedData.amountDll = Number(cleanedData.amountDll) || 0;
+    cleanedData.term = Number(cleanedData.term) || 0;
+    cleanedData.consecutive = Number(cleanedData.consecutive) || 0;
+    cleanedData.active = Number(cleanedData.active) || 1;
+    
+    console.log('Datos limpios para enviar al servidor:', cleanedData);
     return cleanedData;
   }
 

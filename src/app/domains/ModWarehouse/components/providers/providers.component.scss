@@ -33,6 +33,12 @@
     gap: 0 !important;
   }
 
+  // Resaltar celda en edición con amarillo
+  .ag-cell-inline-editing {
+    background-color: #fff9c4 !important; // Amarillo claro
+    border: 2px solid #fbc02d !important; // Borde amarillo
+  }
+
   // Asegurar que el detail cell renderer ocupe todo el espacio pero sin overflow
   app-detail-cell-renderer-tipo-proveedor {
     display: block !important;

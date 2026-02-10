@@ -21,12 +21,11 @@
                 [columnDefs]="columnDefs"
                 [defaultColDef]="defaultColDef"
                 (selectionChanged)="onSelectionChanged($event)"
-                (cellValueChanged)="onCellValueChanged($event)"
-                (cellEditingStopped)="onCellEditingStopped($event)"
-                (rowSelected)="onSelectedRow($event)"
-                (gridReady)="onGridReady($event)"
-                rowSelection="single"
-                [components]="components"
+                        (cellValueChanged)="onCellValueChanged($event)"
+                        (rowSelected)="onSelectedRow($event)"
+                        (gridReady)="onGridReady($event)"
+                        (cellEditingStopped)="onCellEditingStopped($event)"
+                        rowSelection="single" [components]="components"
                 [gridOptions]="gridOptions"
                 [stopEditingWhenCellsLoseFocus]="true">
                 </ag-grid-angular>

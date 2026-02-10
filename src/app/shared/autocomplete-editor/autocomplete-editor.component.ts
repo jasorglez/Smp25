@@ -8,13 +8,13 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <input #input class='ag-input-field-input ag-text-field-input'
+    <input #input class='ag-input-field-input ag-text-field-input autocomplete-input-editing'
       [(ngModel)]="value"
       (ngModelChange)="filterValues($event)"
       (keydown)="onKeyDown($event)">
 
     <div class="suggestions" *ngIf="showSuggestions">
-      <div *ngFor="let item of filteredList" 
+      <div *ngFor="let item of filteredList"
            (click)="selectValue(item)"
            class="suggestion-item">
         {{ item }}
@@ -22,6 +22,14 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
     </div>
   `,
   styles: [`
+    :host {
+      background-color: #fff3cd !important;
+      display: block;
+    }
+    .autocomplete-input-editing {
+      background-color: #fff3cd !important;
+      border: 2px solid #ffc107 !important;
+    }
     .suggestions {
       position: absolute;
       background: white;
@@ -55,9 +63,22 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   }
 
   filterValues(searchTerm: string) {
+    // Convertir a mayúsculas mientras escribe si toUpperCase está habilitado
+    if (this.params.toUpperCase && searchTerm) {
+      this.value = searchTerm.toUpperCase();
+      searchTerm = this.value;
+    }
+
+    if (!this.params.filterList || !Array.isArray(this.params.filterList)) {
+      this.filteredList = [];
+      this.showSuggestions = false;
+      return;
+    }
+
     this.filteredList = this.params.filterList.filter((item: string) =>
-      item.toLowerCase().includes(searchTerm.toLowerCase())
+      item && typeof item === 'string' && item.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
     this.showSuggestions = this.filteredList.length > 0;
   }
 

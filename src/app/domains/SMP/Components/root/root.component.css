@@ -1,0 +1,45 @@
+::ng-deep .ag-cell-inline-editing {
+  background-color: #fff3cd !important;
+  border: 2px solid #ffc107 !important;
+  box-shadow: 0 0 5px rgba(255, 193, 7, 0.5) !important;
+}
+
+::ng-deep .ag-cell-inline-editing input,
+::ng-deep .ag-cell-inline-editing select,
+::ng-deep .ag-cell-inline-editing .ag-input-field-input,
+::ng-deep .ag-cell-inline-editing .ag-text-field-input,
+::ng-deep .ag-cell-inline-editing .ag-picker-field-wrapper {
+  background-color: #fff3cd !important;
+}
+
+::ng-deep .ag-cell-edit-wrapper {
+  background-color: #fff3cd !important;
+}
+
+::ng-deep .ag-popup-editor {
+  background-color: #fff3cd !important;
+  border: 2px solid #ffc107 !important;
+  box-shadow: 0 0 5px rgba(255, 193, 7, 0.5) !important;
+}
+
+::ng-deep .ag-popup-editor input {
+  background-color: #fff3cd !important;
+}
+
+::ng-deep .ag-popup-editor .ag-input-field-input,
+::ng-deep .ag-popup-editor .ag-text-field-input {
+  background-color: #fff3cd !important;
+}
+
+/* Estilos para autocomplete editor */
+::ng-deep app-autocomplete-editor {
+  background-color: #fff3cd !important;
+}
+
+::ng-deep app-autocomplete-editor input {
+  background-color: #fff3cd !important;
+}
+
+::ng-deep .ag-select-list {
+  background-color: #fff !important;
+}

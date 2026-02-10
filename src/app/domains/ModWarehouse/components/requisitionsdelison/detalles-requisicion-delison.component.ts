@@ -12,12 +12,13 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { firstValueFrom } from 'rxjs';
+import { AuthService } from 'app/services/auth.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 
 @Component({
-  selector: 'app-detail-cell-renderer-requisitions-items',
+  selector: 'app-detalles-requisicion-delison',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent],
   template: `
@@ -27,19 +28,19 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
         <strong>Artículos de la Requisición</strong>
         <div class="d-flex gap-2">
         
-       <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
+       <button class="btn btn-primary btn-sm me-2" (click)="addItem()" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create')">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
         
-        <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
+        <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()"  >
           <i class="bi bi-arrow-counterclockwise"></i> Deshacer
         </button>
         
-        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!hasRowSelected">
+        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!hasRowSelected" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'delete')">
           <i class="bi bi-trash"></i> Eliminar
         </button>
         
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="isAddingNewItem">
@@ -47,7 +48,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
           </span>
         </button>
 
-           <button class="btn btn-info btn-sm position-relative" (click)="saveMultiGuardar()">
+           <button class="btn btn-info btn-sm position-relative" (click)="saveMultiGuardar()" *ngIf="authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Mul')">
           <i class="bi bi-files"></i> MultiGuardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="hasPedimentoSelection">
@@ -158,7 +159,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
     }
   `]
 })
-export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnDestroy {
+export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   private params!: any;
   private gridApi!: GridApi;
@@ -170,7 +171,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private typexPrefixesService = inject(TypexPrefixesService);
-
+  authService = inject(AuthService);
   // Tooltip
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
@@ -754,6 +755,7 @@ export class DetailCellRendererRequisitionsItemsComponent implements OnInit, OnD
         field: 'comment',
         headerName: 'Observaciones',
         width: 160,
+        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Obs'),
         editable: true,
         // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
         onCellClicked: (params: any) => {

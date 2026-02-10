@@ -23,6 +23,7 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -61,6 +62,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
   private setupService = inject(SetupService);
+  private prefixSetupService = inject(PrefixSetupService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -126,25 +128,25 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       const projectChanged = this.idProject !== currentProject;
       const branchChanged = this.idBranch !== currentBranch;
       const requisitionChanged = this.lastProcessedRequisition !== currentRequisition;
-      
+
       // Solo considerar que cambió la requisición si había una anteriormente o si ahora hay una
-      const onlyRequisitionChanged = !rootChanged && !projectChanged && !branchChanged && 
-                                   requisitionChanged && 
-                                   (this.lastProcessedRequisition !== null || currentRequisition !== null);
-      
+      const onlyRequisitionChanged = !rootChanged && !projectChanged && !branchChanged &&
+        requisitionChanged &&
+        (this.lastProcessedRequisition !== null || currentRequisition !== null);
+
 
       this.idRoot = currentRoot;
       this.idProject = currentProject;
       this.idBranch = currentBranch;
       this.idRequisition = currentRequisition;
-      
+
       // Actualizar el estado procesado después de la lógica
       this.lastProcessedRequisition = currentRequisition;
 
       if (this.idRoot) {
         this.getSetupData().then(() => {
           this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
-          
+
           // Solo cargar datos si tenemos la referencia apropiada Y no es solo cambio de requisición
           if (this.idReference && !onlyRequisitionChanged) {
             this.obtenerDepartamentos();
@@ -156,7 +158,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
             this.obtenerTipoPago();
             this.obtenerProductos();
           }
-          
+
           // Cargar detalles independientemente si hay requisición
           if (this.idRequisition != null) {
             this.obtenerDetalles();
@@ -204,6 +206,9 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
+      }
+      if (params.data?.locked === true) {
+        return 'locked-row';
       }
       if (params.data?.__isNew) {
         return 'new-row-highlight';
@@ -262,16 +267,15 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   get colMaster(): ColDef[] {
     return [
-      
       {
-        field: 'pedimento',
+        field: 'countItem',
         headerName: 'Items',
         width: 60,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
         },
-        valueGetter: params => params.data?.pedimento || 0,
+        valueGetter: params => params.data?.countItem || 0,
         editable: false,
         cellStyle: { backgroundColor: '#e8f9fa', cursor: 'pointer' }
       },
@@ -302,14 +306,14 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       {
         field: 'folio',
         headerName: 'Número Doc',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         filter: true,
         width: 150,
       },
       {
         field: 'dateCreate',
         headerName: 'Fecha Solicitud',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -319,11 +323,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           return '';
         },
       },
-  
+
       {
         field: 'idDepartament',
         headerName: 'Departamento Solicita',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 190,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -341,28 +345,28 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       {
         field: 'solicit',
         headerName: 'Solicitante',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 190,
       },
       {
         field: 'deliveryTime',
         headerName: 'Tiempo Entrega',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         filter: true,
         width: 200,
       },
- 
+
       {
         field: 'priority',
         headerName: 'Prioridad',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 160,
       },
 
-       {
+      {
         field: 'close',
         headerName: 'Cerrado',
-        editable: true,
+        editable: (params) => !params.data?.locked,
         width: 120,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
@@ -619,11 +623,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.id = event.data.id;
   }
 
-  addMasterRow() {
+  async addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Generar folio automáticamente desde PrefixSetup
+    const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
+    const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'req');
+
     const newItem = {
       id: tempId,
-      folio: '',
+      folio: folio || '',
       typeReference: this.typeReference,
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
@@ -733,6 +742,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+
+    // Verificar si está bloqueada (en proceso de cotización)
+    if (selectedData.locked === true) {
+      alerts.basicAlert(
+        'Requisición bloqueada',
+        'No se puede eliminar. Esta requisición está en proceso de cotización.',
+        'warning'
+      );
+      return;
+    }
 
     // Verificar si tiene items asociados
     if (selectedData.countrow > 0) {
@@ -1180,13 +1199,31 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       }
 
       if (newItems.length > 0 || modifiedItems.length > 0) {
+        // Contar los items activos para actualizar el campo pedimento
+        const activeItemsCount = data.filter(item => item.active !== 0).length;
+
+        // Actualizar el campo countItem en la requisición master usando PATCH
+        await lastValueFrom(
+          this.requisitionsService.setCountItem(requisitionId, activeItemsCount)
+        );
+
         alerts.basicAlert(
           'Detalles guardados',
           'Se han guardado los items correctamente.',
           'success'
         );
 
-        // El contador se actualiza automáticamente desde el backend
+        // Actualizar el contador en el master grid localmente
+        const masterRowNode = this.masterGridApi?.getRowNode(requisitionId.toString());
+        if (masterRowNode) {
+          const updatedData = { ...masterRowNode.data, countItem: activeItemsCount };
+          masterRowNode.setData(updatedData);
+          this.masterGridApi.refreshCells({
+            rowNodes: [masterRowNode],
+            columns: ['countItem'],
+            force: true
+          });
+        }
 
         // Limpiar los flags
         data.forEach(row => {
@@ -1249,7 +1286,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.departamentos = [];
     this.productos = [];
     this.monedas = [];
-    
+
     // Limpiar IDs
     this.idReference = null;
     this.idRequisition = null;
