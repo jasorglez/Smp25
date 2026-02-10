@@ -8,8 +8,21 @@
     </div>
   </div>
 
+  <!-- Mensaje cuando no hay configuración -->
+  <div *ngIf="projectOrBranch === null" class="alert alert-info" role="alert">
+    <i class="bi bi-info-circle-fill me-2"></i>
+    Primero debe configurar el almacén en <strong>Setup</strong> para indicar si trabajará por Proyectos o Sucursales.
+  </div>
+
+  <!-- Mensaje cuando no hay proyecto/sucursal seleccionado -->
+  <div *ngIf="projectOrBranch !== null && !idReference" class="alert alert-warning" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <span *ngIf="projectOrBranch">Seleccione un <strong>Proyecto</strong> en el menú lateral para ver las órdenes de compra.</span>
+    <span *ngIf="!projectOrBranch">Seleccione una <strong>Sucursal</strong> en el menú lateral para ver las órdenes de compra.</span>
+  </div>
+
   <!-- Botones y grid principal con master-detail -->
-  <div class="row mb-3">
+  <div class="row mb-3" *ngIf="idReference">
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
         <button type="button" class="btn btn-primary" (click)="addMasterRow()" title="Agregar nueva orden de compra">

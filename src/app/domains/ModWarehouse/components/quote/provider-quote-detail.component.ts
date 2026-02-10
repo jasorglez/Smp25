@@ -11,6 +11,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
@@ -68,6 +69,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   private providersService = inject(ProvidersService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private prefixSetupService = inject(PrefixSetupService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -468,10 +470,14 @@ export class ProviderQuoteDetailComponent implements OnInit {
         this.ocAndReqsService.getDetailedReq(this.cotizId)
       );
 
+      // Generar folio automáticamente desde PrefixSetup
+      const type: 'project' | 'branch' = cotizMaster.typeReference === 'project' ? 'project' : 'branch';
+      const folio = await this.prefixSetupService.getNextFolio(type, cotizMaster.idReference, 'oc');
+
       // Create OC record
       const ocData: any = {
         type: 'OC',
-        folio: `OC-${cotizMaster.folio || this.cotizId}`,
+        folio: folio || `OC-${cotizMaster.folio || this.cotizId}`,
         typeReference: cotizMaster.typeReference,
         idReference: cotizMaster.idReference,
         idReq: cotizMaster.idReq,
@@ -521,7 +527,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
       alerts.basicAlert(
         'Orden de Compra Creada',
-        `Se ha creado la OC #${ocId} con ${this.rowData.length} items. Total: $${total.toFixed(2)}`,
+        `Se ha creado la OC ${ocData.folio} con ${this.rowData.length} items. Total: $${total.toFixed(2)}`,
         'success'
       );
 

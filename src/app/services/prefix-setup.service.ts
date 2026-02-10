@@ -1,8 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
+
+export type DocumentType = 'req' | 'cotiz' | 'oc';
 
 export interface PrefixSetup {
   id?: number;
@@ -87,5 +89,56 @@ export class PrefixSetupService {
       `${environment.urlWarehouse}/PrefixSetup/${id}`,
       { headers: this.trackingService.getHeaders() }
     );
+  }
+
+  /**
+   * Genera el siguiente folio para un tipo de documento y actualiza el consecutivo
+   * @param type 'project' o 'branch'
+   * @param idProjectOrBranch ID del proyecto o sucursal
+   * @param documentType 'req' | 'cotiz' | 'oc'
+   * @returns Promise con el folio generado o null si no hay configuración
+   */
+  async getNextFolio(type: 'project' | 'branch', idProjectOrBranch: number, documentType: DocumentType): Promise<string | null> {
+    try {
+      const prefixSetup = await firstValueFrom(this.getPrefixSetup(type, idProjectOrBranch));
+
+      if (!prefixSetup || !prefixSetup.id) {
+        console.warn('No se encontró configuración de prefijos');
+        return null;
+      }
+
+      let prefix: string = '';
+      let consecutive: number = 0;
+
+      switch (documentType) {
+        case 'req':
+          prefix = prefixSetup.prefixReq || '';
+          consecutive = (prefixSetup.consecutiveReq || 0) + 1;
+          prefixSetup.consecutiveReq = consecutive;
+          break;
+        case 'cotiz':
+          prefix = prefixSetup.prefixCotiz || '';
+          consecutive = (prefixSetup.consecutiveCotiz || 0) + 1;
+          prefixSetup.consecutiveCotiz = consecutive;
+          break;
+        case 'oc':
+          prefix = prefixSetup.prefixOc || '';
+          consecutive = (prefixSetup.consecutiveOc || 0) + 1;
+          prefixSetup.consecutiveOc = consecutive;
+          break;
+      }
+
+      // Actualizar el consecutivo en la base de datos
+      await firstValueFrom(this.updatePrefixSetup(prefixSetup.id, prefixSetup));
+
+      // Concatenar prefijo + consecutivo (sin guion, el usuario lo incluye en el prefijo)
+      const folio = `${prefix}${consecutive}`;
+      console.log(`📝 Folio generado para ${documentType}: ${folio}`);
+
+      return folio;
+    } catch (error) {
+      console.error('Error al generar folio:', error);
+      return null;
+    }
   }
 }

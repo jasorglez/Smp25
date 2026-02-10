@@ -23,6 +23,7 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
@@ -58,6 +59,7 @@ private quotesService = inject(OcAndReqsService);
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
   private setupService = inject(SetupService);
+  private prefixSetupService = inject(PrefixSetupService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -813,11 +815,16 @@ obtenerProveedores() {
     this.masterNotSavedChanges = true;
   }
 
-  addMasterRow() {
+  async addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Generar folio automáticamente desde PrefixSetup
+    const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
+    const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'cotiz');
+
     const newItem = {
       id: tempId,
-      folio: '',
+      folio: folio || '',
       typeReference: this.typeReference,
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
