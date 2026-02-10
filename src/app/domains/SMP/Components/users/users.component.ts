@@ -749,50 +749,72 @@ constructor() {
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    // Validar nuevos registros
-    const newRowsValid = newRows.every(
-      (item) => item.displayName && item.email && item.password
+    // Validar nuevos registros con más detalle
+    const invalidNewRows = newRows.filter(item => 
+      !item.displayName || !item.email || !item.password
     );
 
-    if (!newRowsValid) {
+    if (invalidNewRows.length > 0) {
+      const invalidRow = invalidNewRows[0];
+      let missingFields = [];
+      
+      if (!invalidRow.displayName) missingFields.push('Nombre');
+      if (!invalidRow.email) missingFields.push('Correo electrónico');
+      if (!invalidRow.password) missingFields.push('Contraseña');
+      
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe introducir el nombre del usuario, su correo y su contraseña antes de guardar.',
+        'Validación - Nuevo Usuario',
+        `Faltan campos obligatorios: ${missingFields.join(', ')}`,
         'error'
       );
       return;
     }
 
     // Validar registros modificados (solo nombre y email, password es opcional)
-    const modifiedRowsValid = modifiedRows.every(
-      (item) => item.displayName && item.email
+    const invalidModifiedRows = modifiedRows.filter(item => 
+      !item.displayName || !item.email
     );
 
-    if (!modifiedRowsValid) {
+    if (invalidModifiedRows.length > 0) {
+      const invalidRow = invalidModifiedRows[0];
+      let missingFields = [];
+      
+      if (!invalidRow.displayName) missingFields.push('Nombre');
+      if (!invalidRow.email) missingFields.push('Correo electrónico');
+      
       alerts.basicAlert(
-        'Modificar entrada',
-        'Debe introducir el nombre del usuario y su correo antes de guardar.',
+        'Validación - Usuario Modificado',
+        `Faltan campos obligatorios: ${missingFields.join(', ')}`,
         'error'
       );
       return;
     }
 
-    console.log  ('Nuevas filas:', newRows);
+    console.log('=== INICIANDO GUARDADO ===');
+    console.log('Nuevos registros:', newRows.length);
+    console.log('Registros modificados:', modifiedRows.length);
 
     try {
       // Primero creamos/actualizamos los usuarios
-      const addUserRequests = newRows.map(row => {
+      const addUserRequests = newRows.map((row, index) => {
         const cleanedData = this.cleanDataForServer(row);
-        console.log('this Add CleanedData', cleanedData);
+        console.log(`[${index}] this Add CleanedData:`, cleanedData);
+        
+        // Validación adicional antes de enviar
+        if (!cleanedData.password || cleanedData.password.trim() === '') {
+          console.error(`[${index}] ERROR: El password está vacío o es nulo`);
+        }
+        
         this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios', 'Menu Administracion Usuarios',  this.trackingService.getEmail());
         
         return this.usersService.addUser(cleanedData).pipe(
           tap(response => {
-            console.log('Respuesta directa del addUser:', {
-              posiblesIds: {
-                id: response.data?.id
-              }
-            });
+            console.log(`[${index}] Respuesta directa del addUser:`, response);
+            
+            if (response.code !== 200 || !response.data?.id) {
+              console.error(`[${index}] ERROR: Respuesta inválida del servidor:`, response);
+              throw new Error(`Error del servidor: ${response.message || 'Respuesta inválida'}`);
+            }
           })
         );
       });
@@ -877,12 +899,38 @@ constructor() {
 
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      
+      // Pequeña pausa antes de refrescar para asegurar que el backend procesó todo
+      setTimeout(() => {
+        this.obtenerDatos();
+        console.log('=== DATOS REFRESCADOS DESPUÉS DE GUARDAR ===');
+      }, 500);
     } catch (error) {
-      console.error('Error al guardar:', error);
+      console.error('Error al guardar usuarios:', error);
+      
+      let errorMessage = 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.';
+      
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.error?.errors) {
+        const serverErrors = error.error.errors;
+        if (Array.isArray(serverErrors)) {
+          errorMessage = 'Errores de validación:\n' + serverErrors.join('\n');
+        } else if (typeof serverErrors === 'object') {
+          const errorMessages = Object.values(serverErrors).flat();
+          errorMessage = 'Errores de validación:\n' + errorMessages.join('\n');
+        }
+      } else if (error?.status === 400) {
+        errorMessage = 'Error de validación: Verifique que todos los campos obligatorios estén completos.';
+      } else if (error?.status === 409) {
+        errorMessage = 'Conflicto: El correo electrónico ya está en uso.';
+      } else if (error?.status === 500) {
+        errorMessage = 'Error del servidor: Contacte al administrador.';
+      }
+      
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        errorMessage,
         'error'
       );
     }
@@ -1054,11 +1102,42 @@ constructor() {
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
+    
+    // Eliminar solo los campos temporales de AG Grid
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    
+    // Eliminar ID temporal para nuevos registros
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+    
+    // Asegurar que los campos obligatorios estén presentes
+    if (!cleanedData.password || cleanedData.password === '') {
+      console.warn('El campo password está vacío, esto puede causar el error');
+    }
+    
+    // Procesar imágenes base64 si existen
+    if (cleanedData.picture && cleanedData.picture.startsWith('data:')) {
+      // Ya está en base64, mantenerlo
+    } else if (cleanedData.picture === './assets/img/profile.png') {
+      delete cleanedData.picture; // No enviar la imagen por defecto
+    }
+    
+    if (cleanedData.signature && cleanedData.signature.startsWith('data:')) {
+      // Ya está en base64, mantenerlo
+    } else if (!cleanedData.signature) {
+      delete cleanedData.signature; // No enviar si está vacío
+    }
+    
+    // Asegurar valores numéricos correctos
+    cleanedData.id_company = Number(cleanedData.id_company) || this.idRoot;
+    cleanedData.idRol = Number(cleanedData.idRol) || 0;
+    cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
+    cleanedData.isRoot = Boolean(cleanedData.isRoot);
+    cleanedData.active = Number(cleanedData.active) || 1;
+    
+    console.log('Cleaned data para servidor:', cleanedData);
     return cleanedData;
   }
 
