@@ -93,3 +93,107 @@
   </div>
 </div>
 <div class="modal-backdrop fade show" *ngIf="showProviderModal"></div>
+
+<!-- Modal de comparación de proveedores -->
+<div class="modal fade show" *ngIf="showComparisonModal" style="display: block;" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-table me-2"></i>Comparación de Cotizaciones
+          <small class="ms-2" *ngIf="comparisonData?.folio">- {{ comparisonData.folio }}</small>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeComparisonModal()"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover table-striped mb-0">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th style="width: 200px;">Producto</th>
+                <th style="width: 80px;">Unidad</th>
+                <th class="text-center bg-primary text-white" style="width: 200px;">
+                  <i class="bi bi-1-circle me-1"></i>
+                  {{ comparisonData?.proveedor1Name || 'Proveedor 1' }}
+                </th>
+                <th class="text-center bg-success text-white" style="width: 200px;">
+                  <i class="bi bi-2-circle me-1"></i>
+                  {{ comparisonData?.proveedor2Name || 'Proveedor 2' }}
+                </th>
+                <th class="text-center bg-warning" style="width: 200px;">
+                  <i class="bi bi-3-circle me-1"></i>
+                  {{ comparisonData?.proveedor3Name || 'Proveedor 3' }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of comparisonItems">
+                <td class="fw-bold">{{ item.productName }}</td>
+                <td class="text-center">{{ item.unit }}</td>
+                <!-- Proveedor 1 -->
+                <td class="text-center" [class.table-success]="isPriceLowest(item, 1)">
+                  <div *ngIf="item.provider1">
+                    <div class="small text-muted">Cant: {{ item.provider1.quantity }}</div>
+                    <div class="fw-bold" [class.text-success]="isPriceLowest(item, 1)">
+                      ${{ item.provider1.price?.toFixed(2) }}
+                      <i class="bi bi-check-circle-fill text-success ms-1" *ngIf="isPriceLowest(item, 1)"></i>
+                    </div>
+                    <div class="small">${{ item.provider1.total?.toFixed(2) }}</div>
+                  </div>
+                  <span *ngIf="!item.provider1" class="text-muted">-</span>
+                </td>
+                <!-- Proveedor 2 -->
+                <td class="text-center" [class.table-success]="isPriceLowest(item, 2)">
+                  <div *ngIf="item.provider2">
+                    <div class="small text-muted">Cant: {{ item.provider2.quantity }}</div>
+                    <div class="fw-bold" [class.text-success]="isPriceLowest(item, 2)">
+                      ${{ item.provider2.price?.toFixed(2) }}
+                      <i class="bi bi-check-circle-fill text-success ms-1" *ngIf="isPriceLowest(item, 2)"></i>
+                    </div>
+                    <div class="small">${{ item.provider2.total?.toFixed(2) }}</div>
+                  </div>
+                  <span *ngIf="!item.provider2" class="text-muted">-</span>
+                </td>
+                <!-- Proveedor 3 -->
+                <td class="text-center" [class.table-success]="isPriceLowest(item, 3)">
+                  <div *ngIf="item.provider3">
+                    <div class="small text-muted">Cant: {{ item.provider3.quantity }}</div>
+                    <div class="fw-bold" [class.text-success]="isPriceLowest(item, 3)">
+                      ${{ item.provider3.price?.toFixed(2) }}
+                      <i class="bi bi-check-circle-fill text-success ms-1" *ngIf="isPriceLowest(item, 3)"></i>
+                    </div>
+                    <div class="small">${{ item.provider3.total?.toFixed(2) }}</div>
+                  </div>
+                  <span *ngIf="!item.provider3" class="text-muted">-</span>
+                </td>
+              </tr>
+              <!-- Fila de totales -->
+              <tr class="table-secondary fw-bold">
+                <td colspan="2" class="text-end">TOTAL:</td>
+                <td class="text-center">
+                  ${{ getProviderTotal(1)?.toFixed(2) || '0.00' }}
+                </td>
+                <td class="text-center">
+                  ${{ getProviderTotal(2)?.toFixed(2) || '0.00' }}
+                </td>
+                <td class="text-center">
+                  ${{ getProviderTotal(3)?.toFixed(2) || '0.00' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="me-auto">
+          <span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i> Mejor precio</span>
+          <span class="text-muted small">Los precios más bajos están resaltados en verde</span>
+        </div>
+        <button type="button" class="btn btn-secondary" (click)="closeComparisonModal()">
+          <i class="bi bi-x-lg me-1"></i>Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showComparisonModal"></div>

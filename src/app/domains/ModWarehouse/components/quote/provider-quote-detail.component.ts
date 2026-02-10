@@ -83,6 +83,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   idProvider: number = null;
   providerName: string = '';
   isLocked: boolean = false; // True when COTIZ has been converted to OC
+  activateOc: boolean = true; // True = show convert to OC button, False = hide it
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -120,6 +121,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
     this.productos = this.context?.productos || [];
     this.proveedores = this.context?.proveedores || [];
     this.idRoot = this.context?.idRoot || 0;
+    this.activateOc = this.context?.activateOc !== false; // Default to true if not set
 
     // Get provider name
     if (this.idProvider) {

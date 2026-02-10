@@ -74,6 +74,7 @@ private lastProcessedQuote: number = null;
   idRoot: number = null;
   projectOrBranch: boolean = null; // True = Project, False = Branch
   typeReference: string = null; // project or branch
+  activateOc: boolean = true; // True = OC enabled, False = comparison mode
 
   // Variables Master
   masterRowData: any[] = [];
@@ -420,8 +421,148 @@ public gridOptions: any = {
   },
   },
      ];
-    
+
+    // Add comparison column only when activateOc is false
+    if (!this.activateOc) {
+      this._colMaster.push({
+        field: 'comparacion',
+        headerName: 'Comparación',
+        width: 130,
+        cellRenderer: (params: any) => {
+          // Only show button if at least 2 providers have quotes
+          const hasP1 = params.data.proveedor1Id > 0;
+          const hasP2 = params.data.proveedor2Id > 0;
+          const hasP3 = params.data.proveedor3Id > 0;
+          const providerCount = [hasP1, hasP2, hasP3].filter(Boolean).length;
+
+          if (providerCount < 2) {
+            return `<div style="text-align: center; padding: 5px;">
+                      <span class="text-muted small">Min. 2 proveedores</span>
+                    </div>`;
+          }
+
+          return `<div style="text-align: center; padding: 5px;">
+                    <button class="btn btn-sm btn-info" style="pointer-events: none;">
+                      <i class="bi bi-table"></i> Comparar
+                    </button>
+                  </div>`;
+        },
+        editable: false,
+        onCellClicked: (params: any) => {
+          const hasP1 = params.data.proveedor1Id > 0;
+          const hasP2 = params.data.proveedor2Id > 0;
+          const hasP3 = params.data.proveedor3Id > 0;
+          const providerCount = [hasP1, hasP2, hasP3].filter(Boolean).length;
+
+          if (providerCount >= 2) {
+            this.openComparisonModal(params.data);
+          }
+        }
+      });
+    }
+
     return this._colMaster;
+  }
+
+  // ==================== COMPARISON MODAL ====================
+  showComparisonModal: boolean = false;
+  comparisonData: any = null;
+  comparisonItems: any[] = [];
+
+  openComparisonModal(rowData: any) {
+    this.comparisonData = rowData;
+    this.loadComparisonItems(rowData);
+  }
+
+  async loadComparisonItems(rowData: any) {
+    this.comparisonItems = [];
+    const providerCotizIds = [
+      { slot: 1, cotizId: rowData.proveedor1CotizId, providerId: rowData.proveedor1Id, name: rowData.proveedor1Name },
+      { slot: 2, cotizId: rowData.proveedor2CotizId, providerId: rowData.proveedor2Id, name: rowData.proveedor2Name },
+      { slot: 3, cotizId: rowData.proveedor3CotizId, providerId: rowData.proveedor3Id, name: rowData.proveedor3Name }
+    ].filter(p => p.cotizId > 0);
+
+    try {
+      // Load items for each provider's COTIZ
+      const allItems: any[] = [];
+
+      for (const provider of providerCotizIds) {
+        const items: any = await lastValueFrom(this.quotesService.getReqItems(provider.cotizId));
+        items.forEach((item: any) => {
+          allItems.push({
+            ...item,
+            providerSlot: provider.slot,
+            providerId: provider.providerId,
+            providerName: provider.name
+          });
+        });
+      }
+
+      // Group items by product (idSupplie) for comparison
+      const productMap = new Map<number, any>();
+
+      allItems.forEach(item => {
+        const productId = item.idSupplie;
+        if (!productMap.has(productId)) {
+          const product = this.productos.find((p: any) => p.id === productId);
+          productMap.set(productId, {
+            productId,
+            productName: product?.description || `Producto ${productId}`,
+            unit: product?.unit || '',
+            provider1: null,
+            provider2: null,
+            provider3: null
+          });
+        }
+
+        const entry = productMap.get(productId);
+        const providerKey = `provider${item.providerSlot}`;
+        entry[providerKey] = {
+          quantity: item.quantity,
+          price: item.price,
+          total: item.quantity * item.price,
+          providerName: item.providerName
+        };
+      });
+
+      this.comparisonItems = Array.from(productMap.values());
+      this.showComparisonModal = true;
+      console.log('Comparison items loaded:', this.comparisonItems);
+    } catch (error) {
+      console.error('Error loading comparison items:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar los items para comparación', 'error');
+    }
+  }
+
+  closeComparisonModal() {
+    this.showComparisonModal = false;
+    this.comparisonData = null;
+    this.comparisonItems = [];
+  }
+
+  getBestPrice(item: any): number {
+    const prices = [
+      item.provider1?.price,
+      item.provider2?.price,
+      item.provider3?.price
+    ].filter(p => p != null && p > 0);
+
+    return prices.length > 0 ? Math.min(...prices) : 0;
+  }
+
+  isPriceLowest(item: any, providerSlot: number): boolean {
+    const providerKey = `provider${providerSlot}`;
+    const price = item[providerKey]?.price;
+    if (!price) return false;
+    return price === this.getBestPrice(item);
+  }
+
+  getProviderTotal(providerSlot: number): number {
+    const providerKey = `provider${providerSlot}`;
+    return this.comparisonItems.reduce((total, item) => {
+      const providerData = item[providerKey];
+      return total + (providerData?.total || 0);
+    }, 0);
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -1214,6 +1355,7 @@ createQuote(idQuote: number, action: string) {
           proveedores: this.proveedores,
           componentParent: this,
           gridApi: this.masterGridApi,
+          activateOc: this.activateOc,
           providerQuoteData: {
             quoteData: quoteData,
             providerNumber: providerNumber,
@@ -1445,7 +1587,10 @@ private cleanDataForServer(data: any): any {
         next: (data: any) => {
           this.projectOrBranch = data[0].projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-          console.log(this.projectOrBranch);
+          this.activateOc = data[0].activateOc !== false; // Default to true if not set
+          console.log('Setup loaded:', { projectOrBranch: this.projectOrBranch, activateOc: this.activateOc });
+          // Reset column cache when setup changes
+          this._colMaster = [];
           resolve(); // Resolvemos la promesa aquí
         },
         error: (err) => {
