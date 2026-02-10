@@ -83,6 +83,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   idRoot: number = null;
   projectOrBranch: boolean = null; // True = Project, False = Branch
   typeReference: string = null; // project or branch
+  activateOc: boolean = true; // True = OC enabled, False = disabled
 
   // Variables Master
   masterRowData: any[] = [];
@@ -255,7 +256,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         next: (data: any) => {
           this.projectOrBranch = data[0].projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-          console.log('Referencia', this.typeReference);
+          this.activateOc = data[0].activateOc !== false; // Default to true if not set or null
+          console.log('Referencia', this.typeReference, 'activateOc', this.activateOc);
           resolve();
         },
         error: (err) => {
@@ -1369,6 +1371,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.idRequisition = null;
     this.projectOrBranch = null;
     this.typeReference = null;
+    this.activateOc = true;
   }
 
   private cleanDataForServer(data: any): any {
