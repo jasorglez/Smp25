@@ -60,28 +60,25 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   agInit(params: any): void {
     this.params = params;
     this.value = params.value;
-    
-    // Debug para ver qué llega
-    console.log('🔧 AutocompleteEditor agInit - params:', params);
-    console.log('🔧 AutocompleteEditor agInit - filterList:', params.filterList);
   }
 
   filterValues(searchTerm: string) {
-    console.log('🔍 AutocompleteEditor filterValues - searchTerm:', searchTerm);
-    console.log('🔍 AutocompleteEditor filterValues - filterList:', this.params.filterList);
-    
+    // Convertir a mayúsculas mientras escribe si toUpperCase está habilitado
+    if (this.params.toUpperCase && searchTerm) {
+      this.value = searchTerm.toUpperCase();
+      searchTerm = this.value;
+    }
+
     if (!this.params.filterList || !Array.isArray(this.params.filterList)) {
-      console.log('❌ filterList no es válido, usando array vacío');
       this.filteredList = [];
       this.showSuggestions = false;
       return;
     }
-    
+
     this.filteredList = this.params.filterList.filter((item: string) =>
       item && typeof item === 'string' && item.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
-    console.log('✅ filteredList resultante:', this.filteredList);
+
     this.showSuggestions = this.filteredList.length > 0;
   }
 

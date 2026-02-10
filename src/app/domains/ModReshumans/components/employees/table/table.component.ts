@@ -96,8 +96,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1,
+    enableRowGroup: true,
   };
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -205,20 +204,13 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
-
-      // Obtener todas las columnas
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
-
       // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, true);
-
-      console.log('Autosize completed');
+      params.api.autoSizeColumns(allColumnIds, false);
     }
   };
   
@@ -383,7 +375,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
       {
         field: 'employeeCode',
-        headerName: 'UserName',
+        headerName: 'UserName22',
         headerClass: 'required-header',
         editable: (params) => {
           if (params.data.__isNew) {
@@ -948,6 +940,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         headerName: '#',
         width: 50,
+        hide: true,
         valueGetter: (params) => params.node!.rowIndex! + 1,
         editable: false,
         pinned: 'left',
@@ -1342,43 +1335,67 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         suppressMovable: true,
         filter: true,
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
         },
         width: 190,
         cellEditor: 'agSelectCellEditor',
+        onCellValueChanged: (params) => {
+          const newRolId = params.newValue;
+          if (newRolId && newRolId !== params.oldValue) {
+            this.getPoscionesbyRole(newRolId);
+          }
+        },
         cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
           return {
-            values: this.depto ? this.depto.map((item) => item.id) : [],
+            values: this.catalogRoles
+              ? this.catalogRoles.map(item => item.id)
+              : []
           };
         },
         valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
+          const found = this.catalogRoles?.find(item => item.id === params.value);
+          return found ? found.description : params.value;
+        },
+        valueSetter: (params) => {
+          const newDeptId = params.newValue;
 
-          const foundDepto = this.depto
-            ? this.depto.find((item) => item.id === params.value)
-            : null;
+          if (params.data.idDepto === newDeptId) return false;
 
-          return foundDepto ? foundDepto.description : params.value;
+          params.data.idDepto = newDeptId;
+
+          this.getPoscionesbyRole(newDeptId).then((posiciones) => {
+            this.catalogPosiciones = posiciones;
+
+            const currentPositionId = params.data.idPosition;
+            const isPositionStillValid = posiciones.some(p => p.id === currentPositionId);
+
+            if (!isPositionStillValid) {
+              params.data.idPosition = null;
+            }
+
+            if (this.gridApi) {
+              this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
+            }
+          });
+
+          return true;
         },
         valueGetter: (params) => {
-          // Handle potential null values and properly format the displayed value
           if (!params.data || !params.data.idDepto) return '';
 
-          const foundDepto = this.depto
-            ? this.depto.find((d) => d.id === params.data.idDepto)
+          const foundDepto = this.catalogRoles
+            ? this.catalogRoles.find((d) => d.id === params.data.idDepto)
             : null;
 
           return foundDepto ? foundDepto.description :'';
         },
-        
+
       },
       {
         field: 'idPosition',
         headerName: 'Posicion',
+        width: 190,
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: (params) => {
@@ -1388,36 +1405,39 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
         },
         suppressMovable: true,
-        filter: true,
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
         },
-        width: 190,
+        filter: true,
+        flex: 0,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
           return {
-            values: this.position ? this.position.map((item) => item.id) : [],
+            values: this.catalogPosiciones
+              ? this.catalogPosiciones.map(item => item.id)
+              : []
           };
         },
         valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
           if (!params.value) return '';
+            const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
+            return found ? found.description : params.value;
 
-          const foundDepto = this.depto
-            ? this.position.find((item) => item.id === params.value)
-            : null;
+        },
+        valueSetter: (params) => {
+          const newPosicionId = params.newValue;
 
-          return foundDepto ? foundDepto.description : params.value;
+          if (params.data.idPosition === newPosicionId) return false;
+
+          params.data.idPosition = newPosicionId;
+
+          return true;
         },
         valueGetter: (params) => {
-          // Handle potential null values and properly format the displayed value
           if (!params.data || !params.data.idPosition) return '';
 
-          const foundDepto = this.depto
-            ? this.position.find((item) => item.id === params.data.idPosition)
+          const foundDepto = this.catalogGeneralPosiciones
+            ? this.catalogGeneralPosiciones.find((d) => d.id === params.data.idPosition)
             : null;
 
           return foundDepto ? foundDepto.description :'';
