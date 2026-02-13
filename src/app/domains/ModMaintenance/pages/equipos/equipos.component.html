@@ -5,25 +5,39 @@
       <div class="header-left">
         <i class="fas fa-users header-icon"></i>
         <div>
-          <h1 class="header-title">Gestión de Equipos</h1>
-          <p class="header-subtitle">Equipos de mantenimiento y técnicos especializados</p>
+          <h1 class="header-title">Gestion de Equipos</h1>
+          <p class="header-subtitle">Equipos de mantenimiento y tecnicos especializados</p>
         </div>
       </div>
       <div class="header-right">
-        <button class="btn btn-primary" (click)="toggleForm()">
+        <button class="btn btn-primary" (click)="openCreateForm()">
           <i class="fas fa-plus"></i> Nuevo Equipo
         </button>
       </div>
     </div>
   </div>
 
+  <!-- Loading -->
+  <div class="text-center p-5" *ngIf="loading">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p class="mt-2 text-muted">Cargando equipos...</p>
+  </div>
+
+  <!-- Empty state -->
+  <div class="text-center p-5" *ngIf="!loading && teams.length === 0">
+    <i class="fas fa-users-slash" style="font-size: 3rem; color: #94a3b8;"></i>
+    <p class="mt-2 text-muted">No hay equipos registrados</p>
+  </div>
+
   <!-- Teams Grid -->
-  <div class="teams-grid">
+  <div class="teams-grid" *ngIf="!loading">
     <div class="team-card" *ngFor="let team of teams">
       <div class="team-header">
         <div class="team-info">
           <h3 class="team-name">{{ team.name }}</h3>
-          <p class="team-id">{{ team.id }}</p>
+          <p class="team-id">ID: {{ team.id }}</p>
         </div>
         <span [class]="'status-badge ' + getStatusClass(team.status)">
           {{ team.status }}
@@ -33,7 +47,7 @@
       <div class="team-details">
         <div class="detail-item">
           <i class="fas fa-user-tie icon-small"></i>
-          <span><strong>Líder:</strong> {{ team.leader }}</span>
+          <span><strong>Lider:</strong> {{ team.leaderName }}</span>
         </div>
         <div class="detail-item">
           <i class="fas fa-tools icon-small"></i>
@@ -45,31 +59,31 @@
         </div>
       </div>
 
-      <div class="team-members">
+      <div class="team-members" *ngIf="team.members.length > 0">
         <h4 class="members-title">Miembros del Equipo:</h4>
         <ul class="members-list">
-          <li *ngFor="let member of team.members">{{ member }}</li>
+          <li *ngFor="let member of team.members">{{ member.employeeName }}</li>
         </ul>
       </div>
 
       <div class="team-actions">
-        <button class="btn btn-sm btn-outline-primary action-btn">
-          <i class="fas fa-eye"></i> Ver Detalles
-        </button>
-        <button class="btn btn-sm btn-outline-secondary action-btn">
+        <button class="btn btn-sm btn-outline-warning action-btn" (click)="openEditForm(team)">
           <i class="fas fa-edit"></i> Editar
+        </button>
+        <button class="btn btn-sm btn-outline-danger action-btn" (click)="deleteTeam(team)">
+          <i class="fas fa-trash"></i> Eliminar
         </button>
       </div>
     </div>
   </div>
 
-  <!-- New Team Form Modal -->
-  <div class="modal-backdrop" *ngIf="showForm" (click)="toggleForm()"></div>
+  <!-- Create/Edit Team Form Modal -->
+  <div class="modal-backdrop" *ngIf="showForm" (click)="closeForm()"></div>
   <div class="team-form-modal" *ngIf="showForm">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2 class="modal-title">Crear Nuevo Equipo</h2>
-        <button class="btn btn-sm btn-outline-secondary close-btn" (click)="toggleForm()">
+        <h2 class="modal-title">{{ isEditing ? 'Editar Equipo' : 'Crear Nuevo Equipo' }}</h2>
+        <button class="btn btn-sm btn-outline-secondary close-btn" (click)="closeForm()">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -89,11 +103,17 @@
               </select>
             </div>
             <div class="col-md-6 mb-3">
-              <label class="form-label">Líder del Equipo *</label>
-              <select class="form-select" [(ngModel)]="formData.leader" name="leader" required>
-                <option value="">Seleccionar líder...</option>
-                <option *ngFor="let tech of technicians" [value]="tech">{{ tech }}</option>
-              </select>
+              <label class="form-label">Lider del Equipo</label>
+              <ng-select
+                [(ngModel)]="formData.leader"
+                [items]="employees"
+                bindLabel="name"
+                bindValue="id"
+                name="leader"
+                placeholder="Seleccionar lider..."
+                [clearable]="true"
+                (change)="onLeaderChange()"
+              ></ng-select>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Estado</label>
@@ -106,24 +126,24 @@
 
           <div class="mb-3">
             <label class="form-label">Miembros del Equipo</label>
-            <div class="members-inputs">
-              <div class="input-group mb-2" *ngFor="let member of formData.members; let i = index">
-                <input type="text" class="form-control" [(ngModel)]="formData.members[i]" [name]="'member' + i"
-                       placeholder="Nombre del miembro">
-                <button type="button" class="btn btn-outline-danger" (click)="removeMember(i)"
-                        [disabled]="formData.members.length === 1">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-              <button type="button" class="btn btn-outline-primary btn-sm" (click)="addMember()">
-                <i class="fas fa-plus"></i> Agregar Miembro
-              </button>
-            </div>
+            <ng-select
+              [(ngModel)]="formData.memberIds"
+              [items]="availableMembersList"
+              [multiple]="true"
+              bindLabel="name"
+              bindValue="id"
+              name="members"
+              placeholder="Seleccionar miembros..."
+              [closeOnSelect]="false"
+              [clearable]="true"
+            ></ng-select>
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="toggleForm()">Cancelar</button>
-            <button type="submit" class="btn btn-primary">Crear Equipo</button>
+            <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> {{ isEditing ? 'Guardar Cambios' : 'Crear Equipo' }}
+            </button>
           </div>
         </form>
       </div>
