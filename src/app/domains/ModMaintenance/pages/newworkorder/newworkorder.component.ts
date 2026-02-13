@@ -7,6 +7,7 @@ import { WorkorderTaskService } from 'app/services/workorder-task.service';
 import { MaintenanceConfigService } from 'app/services/maintenance-config.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { TeamService } from 'app/services/team.service'; // Added TeamService
 import { SignalsService } from 'app/services/signals.service';
 import { forkJoin } from 'rxjs';
 
@@ -31,6 +32,7 @@ export class NewworkorderComponent implements OnInit {
   private configService = inject(MaintenanceConfigService);
   private equipmentService = inject(EquipmentService);
   private employeesService = inject(EmployeesService);
+  private teamService = inject(TeamService); // Injected TeamService
   private signalsService = inject(SignalsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -68,6 +70,7 @@ export class NewworkorderComponent implements OnInit {
 
   assets: any[] = [];
   employees: any[] = [];
+  teams: any[] = [];
 
   departments: string[] = [
     'Producción',
@@ -93,10 +96,12 @@ export class NewworkorderComponent implements OnInit {
 
   loadData(): void {
     this.loading = true;
+    const idCompanyStr = this.idcompany.toString();
 
     const requests: any = {
       assets: this.equipmentService.getEquipment(this.idcompany),
-      employees: this.employeesService.getEmployees(this.idBranch)
+      employees: this.employeesService.getEmployees(this.idBranch),
+      teams: this.teamService.getAll(idCompanyStr) // Fetch teams data
     };
 
     if (this.isEditing && this.editingId) {
@@ -108,6 +113,7 @@ export class NewworkorderComponent implements OnInit {
       next: (result: any) => {
         this.assets = (result.assets || []).filter((a: any) => a.active);
         this.employees = (result.employees || []).filter((e: any) => e.active);
+        this.teams = result.teams || []; // Store fetched teams
 
         if (this.isEditing && result.workOrder) {
           const wo = result.workOrder;
@@ -154,6 +160,14 @@ export class NewworkorderComponent implements OnInit {
   onAssetChange(): void {
     const selected = this.assets.find((a: any) => a.id.toString() === this.formData.assetId);
     this.formData.assetName = selected ? selected.description : '';
+
+    // Assign to team if asset has an associated team
+    if (selected && selected.idTeam) {
+      const team = this.teams.find((t: any) => t.id === selected.idTeam);
+      this.formData.assignedTo = team ? team.name : '';
+    } else {
+      this.formData.assignedTo = ''; // Clear if no team is associated
+    }
   }
 
   addTask(): void {

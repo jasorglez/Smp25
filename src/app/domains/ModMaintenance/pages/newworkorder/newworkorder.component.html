@@ -121,8 +121,8 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Asignado a</label>
               <select class="form-select" name="assignedTo" [(ngModel)]="formData.assignedTo">
-                <option value="">Seleccionar técnico...</option>
-                <option *ngFor="let emp of employees" [value]="emp.name">{{ emp.name }}</option>
+                <option value="">Seleccionar equipo...</option>
+                <option *ngFor="let team of teams" [value]="team.name">{{ team.name }}</option>
               </select>
             </div>
             <div class="col-md-4 mb-3">
