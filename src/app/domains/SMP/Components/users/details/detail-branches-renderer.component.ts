@@ -59,7 +59,8 @@ import { DetailWarehousesRendererComponent } from './detail-warehouses-renderer.
           [gridOptions]="branchesGridOptions"
           [components]="components"
           (gridReady)="onBranchesGridReady($event)"
-          (cellValueChanged)="onBranchesCellValueChanged($event)">
+          (cellValueChanged)="onBranchesCellValueChanged($event)"
+          [stopEditingWhenCellsLoseFocus]="true">
         </ag-grid-angular>
       </div>
     </div>
