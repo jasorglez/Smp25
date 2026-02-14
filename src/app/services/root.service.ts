@@ -33,9 +33,19 @@ export class RootService {
   }
 
   get2Root(idUser : number) {
-    return this.http.get(`${environment.urlSmp}/SmpandSecurity/root?idUser=${idUser}`, { headers: this.trackingService.getHeaders() });    
+    return this.http.get(`${environment.urlSmp}/SmpandSecurity/root?idUser=${idUser}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCorporativos() {
+    return this.http.get(`${environment.urlSmp}/GruposCorporativos`, { headers: this.trackingService.getHeaders() });
+  }
 
+  addCorporativo(data: any) {
+    return this.http.post(`${environment.urlSmp}/GruposCorporativos`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCorporativo(id: number, data: any) {
+    return this.http.put(`${environment.urlSmp}/GruposCorporativos/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
 
 }

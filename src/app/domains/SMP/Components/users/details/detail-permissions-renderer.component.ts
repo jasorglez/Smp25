@@ -11,7 +11,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, concatMap } from 'rxjs';
 import { environment } from '@env/environment';
-import { DetailWarehousesRendererComponent } from './detail-warehouses-renderer.component';
+import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 import { DetailBranchesRendererComponent } from './detail-branches-renderer.component';
 import { AuthService } from 'app/services/auth.service';
 import { PermitionsService } from 'app/services/permitions.service';
@@ -21,7 +21,7 @@ import { UsersService } from 'app/services/users.service';
 @Component({
   selector: 'app-detail-permissions-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailWarehousesRendererComponent, DetailBranchesRendererComponent],
+  imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent, DetailBranchesRendererComponent],
   template: `
     <div style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -107,7 +107,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
   private tempIdCounter: number = 0;
 
   components = {
-    detailWarehousesRenderer: DetailWarehousesRendererComponent,
+    detailPermisosXDeptos: DetailPermisosXDeptosComponent,
     detailBranchesRenderer: DetailBranchesRendererComponent
   };
 
@@ -120,11 +120,11 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     isRowMaster: (dataItem: any) => true,
     detailCellRendererSelector: (params: any) => {
       // Si estamos en modo root/empresas, usar DetailBranchesRenderer
-      // Si estamos en modo branches, usar DetailWarehousesRenderer
+      // Si estamos en modo branches, usar DetailPermisosXDeptos
       if (this.isRootUser) {
         return { component: 'detailBranchesRenderer' };
       } else {
-        return { component: 'detailWarehousesRenderer' };
+        return { component: 'detailPermisosXDeptos' };
       }
     },
     detailRowHeight: 21000
