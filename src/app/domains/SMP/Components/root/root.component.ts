@@ -32,6 +32,7 @@ export class RootComponent {
 
   notSavedChanges: boolean = false;
   rowData: any[] = [];
+  corporativos: any[] = [];
   estados: { [key: string]: string } = {};
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
@@ -45,6 +46,20 @@ export class RootComponent {
     this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
     this.obtenerEstados();
+    this.obtenerCorporativos();
+  }
+
+  obtenerCorporativos() {
+    this.rootService.getCorporativos().subscribe({
+      next: (data: any) => {
+        this.corporativos = data || [];
+        this.refreshColumnDefs();
+      },
+      error: (error) => {
+        console.error('Error obteniendo corporativos:', error);
+        this.corporativos = [];
+      }
+    });
   }
 
   obtenerEstados() {
@@ -147,7 +162,7 @@ export class RootComponent {
   // Orden de columnas editables para navegación con Enter (debe coincidir con el orden visual)
   private editableColumnOrder = [
     'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
-    'address', 'city', 'state', 'country', 'rfc', 'cp', 'advanced'
+    'address', 'city', 'state', 'country', 'rfc', 'cp', 'idCorporativo', 'advanced'
   ];
 
   // Flag para controlar si la validación falló y en qué celda
@@ -451,6 +466,22 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'idCorporativo',
+        headerName: 'Corporativo',
+        editable: true,
+        flex: 1.5,
+        minWidth: 251,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: [0, ...this.corporativos.map(c => c.id)]
+        },
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 0) return '(Ninguno)';
+          const corp = this.corporativos.find(c => c.id === params.value);
+          return corp ? corp.name : '';
+        }
+      },
+      {
         field: 'advanced',
         headerName: 'Permisos avanzados',
         editable: true,
@@ -554,6 +585,7 @@ public gridOptions: any = {
       rfc: '',
       cp: '',
       active: 1,
+      idCorporativo: 0,
       __isNew: true,
     };
 

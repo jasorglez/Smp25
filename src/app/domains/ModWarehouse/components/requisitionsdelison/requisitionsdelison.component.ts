@@ -535,52 +535,32 @@ export class RequisitionsDelisonComponent implements OnInit {
                 }
               },
               error: (err) => {
+                // Sin configuración de prefijo: usar valores por defecto
+                const defaultPrefixData = { prefix: '', consecutive: 0 };
+                this.currentPrefixData = defaultPrefixData;
 
-
-                // ✅ Verificar si es una fila nueva o una fila editada
+                let nextConsecutive: number;
                 if (params.data.__isNew) {
-                  // 🗑️ Fila nueva: Eliminar la fila del grid
-
-
-                  alerts.basicAlert(
-                    'Error',
-                    'No se encontró configuración de prefijo para esta sucursal. La fila será eliminada.',
-                    'error'
-                  );
-
-                  // Eliminar de rowData y fullRowData
-                  this.rowData = this.rowData.filter(r => r.id !== params.data.id);
-                  this.fullRowData = this.fullRowData.filter(r => r.id !== params.data.id);
-
-                  // Actualizar el grid
-                  if (this.gridApi) {
-                    this.gridApi.setGridOption('rowData', this.rowData);
+                  let localConsecutive = this.localConsecutivesByBranch.get(branchId);
+                  if (localConsecutive === undefined) {
+                    localConsecutive = 1;
+                    this.localConsecutivesByBranch.set(branchId, localConsecutive);
                   }
+                  nextConsecutive = localConsecutive;
                 } else {
-                  // 🔄 Fila editada: Restaurar al branch original
+                  nextConsecutive = 1;
+                }
 
+                params.data.requisitionNumber = `${nextConsecutive}`;
 
-                  alerts.basicAlert(
-                    'Advertencia',
-                    'No se encontró configuración de prefijo para esta sucursal. Se restaurará la sucursal original.',
-                    'warning'
-                  );
+                alerts.basicAlert(
+                  'Sin configuración',
+                  'No se encontró configuración de prefijo para esta sucursal. Se usarán valores por defecto.',
+                  'warning'
+                );
 
-                  // Restaurar al branch original (usando oldValue del params)
-                  const originalBranchId = params.oldValue;
-                  const originalBranch = this.branches.find(b => b.id === originalBranchId);
-
-                  if (originalBranch) {
-                    params.data.idReference = originalBranchId;
-                    params.data.branch = originalBranch.name || originalBranch.description;
-
-
-
-                    // Forzar actualización del grid
-                    if (this.gridApi) {
-                      this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
-                    }
-                  }
+                if (this.gridApi) {
+                  this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
                 }
               }
             });
@@ -862,7 +842,6 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       if (branchId && this.idUser && !this.rolesByBranchCache.has(branchId)) {
 
-
         this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
           next: (roles: any[]) => {
             const mappedRoles = roles.map(r => ({
@@ -872,10 +851,8 @@ export class RequisitionsDelisonComponent implements OnInit {
             }));
 
             this.rolesByBranchCache.set(branchId, mappedRoles);
-
           },
           error: (err) => {
-
           }
         });
       }
@@ -1155,94 +1132,94 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Obtener el prefijo y consecutivo de la sucursal
     this.typexPrefixesService.getPrefix('branch', selectedBranchId).subscribe({
       next: (prefixData: any) => {
-
         this.currentPrefixData = prefixData;
-
-        // ✅ Usar consecutivo local si ya existe, sino inicializarlo desde el servidor
-        let localConsecutive = this.localConsecutivesByBranch.get(selectedBranchId);
-
-        if (localConsecutive === undefined) {
-          // Primera vez que se agrega una fila para esta sucursal
-          localConsecutive = (prefixData.consecutive || 0) + 1;
-          this.localConsecutivesByBranch.set(selectedBranchId, localConsecutive);
-        } else {
-          // Ya existe un consecutivo local, incrementarlo
-          localConsecutive++;
-          this.localConsecutivesByBranch.set(selectedBranchId, localConsecutive);
-        }
-
-        // Generar el número de requisición: prefix + consecutivo local
-        const requisitionNumber = `${prefixData.prefix || ''}${localConsecutive}`;
-
-
-        // Buscar el nombre de la sucursal
-        const branch = this.branches.find(b => b.id === selectedBranchId);
-        const branchName = branch?.name || branch?.description || '';
-
-        const newId = `temp_${Date.now()}`; // ID temporal hasta que se guarde en DB
-        const newItem = {
-          id: newId,
-          branch: branchName,
-          requisitionNumber: requisitionNumber,
-          requestDate: new Date().toISOString(),
-          departmentId: null,
-          departmentName: '',
-          solicitedBy: this.currentUserName, // Usuario que creó la requisición
-          articlesCount: 0,
-          articleNumber: '',
-          comments: '',
-          column8: '',
-          detailType: null,
-          detailData: [],
-          purchasesData: [],
-          __isNew: true,
-          __modified: false,
-          idReference: selectedBranchId, // ✅ Guardar el ID de la sucursal seleccionada (NO this.idBranch)
-          // Campos adicionales del servidor
-          delivery: '',
-          deliveryTime: '',
-          typeOc: '',
-          dateSupply: '',
-          idPayment: null,
-          idCurrency: null,
-          conditions: '',
-          close: false,
-          active: true
-        };
-
-        this.rowData = [newItem, ...this.rowData];
-        this.fullRowData = [...this.rowData];
-        this.hasUnsavedChanges = true;
-        this.gridApi.setGridOption('rowData', this.rowData);
-
-
-
-        setTimeout(() => {
-          const firstRowIndex = 0;
-          this.gridApi.ensureIndexVisible(firstRowIndex);
-          // ✅ Comenzar editando la columna de Sucursal si está en modo "Todas las sucursales"
-          if (this.idBranch && this.idBranch < 0) {
-            this.gridApi.startEditingCell({
-              rowIndex: firstRowIndex,
-              colKey: 'idReference' // Editar sucursal primero
-            });
-          } else {
-            this.gridApi.startEditingCell({
-              rowIndex: firstRowIndex,
-              colKey: 'departmentId'
-            });
-          }
-        }, 0);
+        this.createNewRequisitionRow(selectedBranchId, prefixData);
       },
       error: (err) => {
+        // Si no existe configuración, usar valores por defecto y mostrar warning
+        const defaultPrefixData = { prefix: '', consecutive: 0 };
+        this.currentPrefixData = defaultPrefixData;
 
         alerts.basicAlert(
-          'Error',
-          'No se encontró configuración de prefijo para esta sucursal. Por favor, configúrelo primero en la sección de configuración.',
-          'error'
+          'Sin configuración',
+          'No se encontró configuración de prefijo para esta sucursal. Se creará con valores por defecto. Configure el prefijo en Configuración de Almacén.',
+          'warning'
         );
+
+        this.createNewRequisitionRow(selectedBranchId, defaultPrefixData);
       }
     });
+  }
+
+  private createNewRequisitionRow(selectedBranchId: number, prefixData: any): void {
+    // Usar consecutivo local si ya existe, sino inicializarlo desde el servidor
+    let localConsecutive = this.localConsecutivesByBranch.get(selectedBranchId);
+
+    if (localConsecutive === undefined) {
+      localConsecutive = (prefixData.consecutive || 0) + 1;
+      this.localConsecutivesByBranch.set(selectedBranchId, localConsecutive);
+    } else {
+      localConsecutive++;
+      this.localConsecutivesByBranch.set(selectedBranchId, localConsecutive);
+    }
+
+    // Generar el número de requisición: prefix + consecutivo local
+    const requisitionNumber = `${prefixData.prefix || ''}${localConsecutive}`;
+
+    // Buscar el nombre de la sucursal
+    const branch = this.branches.find(b => b.id === selectedBranchId);
+    const branchName = branch?.name || branch?.description || '';
+
+    const newId = `temp_${Date.now()}`;
+    const newItem = {
+      id: newId,
+      branch: branchName,
+      requisitionNumber: requisitionNumber,
+      requestDate: new Date().toISOString(),
+      departmentId: null,
+      departmentName: '',
+      solicitedBy: this.currentUserName,
+      articlesCount: 0,
+      articleNumber: '',
+      comments: '',
+      column8: '',
+      detailType: null,
+      detailData: [],
+      purchasesData: [],
+      __isNew: true,
+      __modified: false,
+      idReference: selectedBranchId,
+      delivery: '',
+      deliveryTime: '',
+      typeOc: '',
+      dateSupply: '',
+      idPayment: null,
+      idCurrency: null,
+      conditions: '',
+      close: false,
+      active: true
+    };
+
+    this.rowData = [newItem, ...this.rowData];
+    this.fullRowData = [...this.rowData];
+    this.hasUnsavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
+
+    setTimeout(() => {
+      const firstRowIndex = 0;
+      this.gridApi.ensureIndexVisible(firstRowIndex);
+      if (this.idBranch && this.idBranch < 0) {
+        this.gridApi.startEditingCell({
+          rowIndex: firstRowIndex,
+          colKey: 'idReference'
+        });
+      } else {
+        this.gridApi.startEditingCell({
+          rowIndex: firstRowIndex,
+          colKey: 'departmentId'
+        });
+      }
+    }, 0);
   }
 
   editRequisition(): void {
@@ -1353,8 +1330,6 @@ export class RequisitionsDelisonComponent implements OnInit {
       }
     });
 
-    console.log(`🔄 Pre-cargando roles para ${uniqueBranchIds.size} sucursales...`);
-
     // Cargar roles para cada sucursal única
     uniqueBranchIds.forEach(branchId => {
       // Solo cargar si no están ya en cache
@@ -1369,14 +1344,12 @@ export class RequisitionsDelisonComponent implements OnInit {
 
             this.rolesByBranchCache.set(branchId, mappedRoles);
 
-
             // Refrescar el grid para que muestre los nombres
             if (this.gridApi) {
               this.gridApi.refreshCells({ force: true });
             }
           },
           error: (err) => {
-
           }
         });
       }

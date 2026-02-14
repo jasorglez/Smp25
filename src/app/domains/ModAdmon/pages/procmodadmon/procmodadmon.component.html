@@ -21,6 +21,12 @@
           </a>
         </li>
 
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'transfers')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="transferencias" routerLinkActive="active">
+            <mat-icon>swap_horiz</mat-icon> Transferencias
+          </a>
+        </li>
+
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'income')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="income" routerLinkActive="active">
             <mat-icon>payments</mat-icon> {{ 'income' | translate }}

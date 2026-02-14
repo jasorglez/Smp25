@@ -28,6 +28,7 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
 import { ProviderQuoteDetailComponent } from './provider-quote-detail.component';
+import { DetailCellRendererPedimentosComponent } from '../../../ModShoppingDelison/pages/quote-delison/detail-cell-renderer-pedimentos.component';
 
 interface Catalog {
   id: number;
@@ -42,7 +43,7 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })
@@ -318,10 +319,18 @@ public gridOptions: any = {
   field: 'pedimento',
   headerName: 'Pedimento #',
   editable: false,
-  width: 120,
+  width: 150,
   filter: true,
-  valueFormatter: (params) => {
-    return params.value ? `#${params.value}` : '';
+  cellRenderer: (params: any) => {
+    const count = params.data?.pedimentosCount || 0;
+    const label = params.value ? `#${params.value} (${count})` : `${count} pedimentos`;
+    const btnClass = count > 0 ? 'btn-info' : 'btn-outline-info';
+    return `<div style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
+            </div>`;
+  },
+  onCellClicked: (params: any) => {
+    this.openPedimentoDetail(params.data);
   }
 },
 
@@ -1487,6 +1496,9 @@ createQuote(idQuote: number, action: string) {
         row.proveedor3CotizId = null;
         row.proveedor3Count = 0;
 
+        // Store pedimentos count
+        row.pedimentosCount = matching.length;
+
         matching.slice(0, 3).forEach((cotiz: any, index: number) => {
           const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
           row[`proveedor${index + 1}Id`] = cotiz.idProvider;
@@ -1524,6 +1536,125 @@ createQuote(idQuote: number, action: string) {
     ];
   }
 
+
+  // ==================== PEDIMENTOS METHODS ====================
+
+  async openPedimentoDetail(quoteData: any): Promise<void> {
+    if (!quoteData.idReq) {
+      alerts.basicAlert('Sin Requisición', 'Debe asignar una requisición antes de ver pedimentos.', 'warning');
+      return;
+    }
+
+    if (quoteData.id && quoteData.id.toString().startsWith('temp_')) {
+      alerts.basicAlert('Guardar primero', 'Debe guardar la cotización antes de ver pedimentos.', 'warning');
+      return;
+    }
+
+    // If clicking same row pedimento, toggle close
+    if (this.expandedRowId === quoteData.id && this.expandedProviderNumber === null) {
+      this.collapseProviderDetail(quoteData);
+      return;
+    }
+
+    try {
+      // Load COTIZ records for this QUOTE's requisition
+      const cotizList = await lastValueFrom(
+        this.quotesService.getOcAndReqs('requisition', quoteData.idReq, 'COTIZ')
+      ) as any[];
+      const cotizaciones = Array.isArray(cotizList) ? cotizList.filter((c: any) => c.active !== false) : [];
+
+      // For each COTIZ, load its items
+      const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
+        let items: any[] = [];
+        try {
+          const itemsData: any = await lastValueFrom(this.quotesService.getReqItems(cotizacion.id));
+          items = Array.isArray(itemsData) ? itemsData : [];
+        } catch (error) {
+          console.error('Error loading items for COTIZ', cotizacion.id, error);
+        }
+
+        return {
+          id: cotizacion.id,
+          name: `Pedimento ${cotizacion.pedimento}`,
+          pedimento: cotizacion.pedimento,
+          folio: cotizacion.folio || '',
+          idProvider: cotizacion.idProvider || 0,
+          idProvider2: cotizacion.idProvider2 || 0,
+          idProvider3: cotizacion.idProvider3 || 0,
+          createdBy: cotizacion.createdBy || cotizacion.solicit || '',
+          items: items.map((item: any) => ({
+            id: item.id,
+            idSupplie: item.idSupplie || 0,
+            nameArticle: item.nameArticle || '',
+            recurrent: item.recurrent || '',
+            article: item.description || item.nameArticle || '',
+            quantity: item.quantity || 0,
+            tipo: item.intorext || 'Externo',
+            proveedorInterno: item.provint || '',
+            priority: item.typePriority || 'Normal',
+            comment: item.comment || '',
+            pedimento: item.pedimento || false,
+            numArticle: item.numArticle || '',
+            code: item.code || '',
+            pedimentoNumber: item.pedimentoNum || '',
+            idMovement: item.idMovement || 0,
+            measure: item.measure || '',
+            price: item.price || 0,
+            total: item.total || 0,
+            type: item.type || 'COTIZ',
+            idProvider: item.idProvider || 0,
+            dateuse: item.dateuse || '',
+            active: item.active !== undefined ? item.active : true,
+            typePriority: item.typePriority || 'Normal',
+            descriptionNewArticle: item.descriptionNewArticle || '',
+            urlNewArticle: item.urlNewArticle || '',
+            justificationNewArticle: item.justificationNewArticle || ''
+          })),
+          createdAt: cotizacion.dateCreate
+        };
+      }));
+
+      console.log('Pedimentos loaded:', pedimentosConItems.length);
+
+      // Update the row data with pedimentos
+      quoteData.pedimentos = pedimentosConItems;
+      quoteData.pedimentosCount = pedimentosConItems.length;
+
+      // Refresh the pedimento cell to show updated count
+      if (this.masterGridApi) {
+        this.masterGridApi.refreshCells({
+          columns: ['pedimento'],
+          force: true
+        });
+      }
+
+      // Switch detail renderer to pedimentos
+      if (this.masterGridApi) {
+        this.masterGridApi.setGridOption('detailCellRenderer', DetailCellRendererPedimentosComponent);
+        this.masterGridApi.setGridOption('detailCellRendererParams', {
+          autoHeight: false
+        });
+
+        // Track expanded state (null providerNumber means pedimento detail)
+        this.expandedRowId = quoteData.id;
+        this.expandedProviderNumber = null;
+
+        // Collapse all, then expand selected
+        this.masterGridApi.forEachNode((node: any) => {
+          if (node.data && node.data.id === quoteData.id) {
+            node.setExpanded(false);
+            setTimeout(() => node.setExpanded(true), 50);
+          } else if (node.expanded) {
+            node.setExpanded(false);
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Error loading pedimentos:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar los pedimentos.', 'error');
+    }
+  }
 
   // ==================== UTILITY METHODS ====================
 

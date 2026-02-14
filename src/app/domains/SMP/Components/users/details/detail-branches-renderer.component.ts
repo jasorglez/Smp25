@@ -9,12 +9,12 @@ import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { DetailWarehousesRendererComponent } from './detail-warehouses-renderer.component';
+import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 
 @Component({
   selector: 'app-detail-branches-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailWarehousesRendererComponent],
+  imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent],
   template: `
     <div style="padding: 10px; background-color: #f0f0f0; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -90,7 +90,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   private tempIdCounter: number = 0;
 
   components = {
-    detailWarehousesRenderer: DetailWarehousesRendererComponent
+    detailPermisosXDeptos: DetailPermisosXDeptosComponent
   };
 
   branchesGridOptions: any = {
@@ -100,7 +100,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     rowSelection: 'single',
     masterDetail: true,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: 'detailWarehousesRenderer',
+    detailCellRenderer: 'detailPermisosXDeptos',
     detailRowHeight: 350
   };
 

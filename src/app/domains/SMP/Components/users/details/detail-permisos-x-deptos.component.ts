@@ -16,7 +16,7 @@ import { DetailPermissionsUserComponent } from './detail-permissions-user/detail
 import { PermissionsViewByUserComponent } from './detail-permissions-user/permissions-view.component';
 
 @Component({
-  selector: 'app-detail-warehouses-renderer',
+  selector: 'app-detail-permisos-x-deptos',
   standalone: true,
   imports: [AgGridModule, CommonModule, DetailPermissionsUserComponent, PermissionsViewByUserComponent],
   template: `
@@ -69,7 +69,7 @@ import { PermissionsViewByUserComponent } from './detail-permissions-user/permis
     </div>
   `
 })
-export class DetailWarehousesRendererComponent implements ICellRendererAngularComp {
+export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp {
   private signalsService = inject(SignalsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private warehousesService = inject(WarehousesService);
@@ -129,14 +129,18 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
           onMouseLeave: () => {
             this.collapseTimer = setTimeout(() => {
               params.node.setExpanded(false);
-            }, 300); // Un retardo de 300ms
+            }, 300);
           },
         }
       };
-    } else 
+    } else
     return undefined;
   },
     detailRowHeight: 20000,
+    onRowClicked: (event) => {
+      event.node.setSelected(true);
+      this.selectedWarehouse = event.data;
+    },
     rowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -211,6 +215,14 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
             return false;
           }
 
+          // Guardar el rol original antes de sobreescribir
+          if (!params.data.__originalIdRole && params.data.idRole) {
+            params.data.__originalIdRole = params.data.idRole;
+          }
+          if (!params.data.__originalIdPosicion && params.data.idPosicion) {
+            params.data.__originalIdPosicion = params.data.idPosicion;
+          }
+
           params.data.idRole = newDeptId;
 
           this.getPoscionesbyRole(newDeptId).then((posiciones) => {
@@ -276,7 +288,12 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
 
           if (duplicateExists) {
             alerts.basicAlert('Permiso Duplicado', 'Esta combinación de Departamento y Posición ya ha sido asignada.', 'error');
-            return false; // Evita que el valor se establezca
+            return false;
+          }
+
+          // Guardar la posición original antes de sobreescribir (para el update del backend)
+          if (!params.data.__originalIdPosicion && params.data.idPosicion) {
+            params.data.__originalIdPosicion = params.data.idPosicion;
           }
 
           params.data.idPosicion = newPosicionId;
@@ -294,7 +311,7 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
         cellStyle: { backgroundColor: '#d4edda' },
         cellRenderer: (params) => {
           // Hacemos que el texto parezca un enlace para indicar que es clickeable.
-          return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;
+          return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos2</span>`;
         }
       },
 
@@ -324,8 +341,10 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     this.rolesService.getCatalogRoles(this.idCompany).subscribe(
       (data: any) => {
         this.catalogRoles = data;
-        //console.log(this.catalogRoles)
-      },      
+        if (this.warehousesGridApi) {
+          this.warehousesGridApi.refreshCells({ force: true });
+        }
+      },
       (error) => {
         if (error.status == 404) this.catalogRoles = [];
         console.error('Error fetching data:', error);
@@ -336,9 +355,12 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     this.rolesService.getGeneralPosicion(this.idCompany).subscribe(
       (data: any) => {
         this.catalogGeneralPosiciones = data;
-      },      
+        if (this.warehousesGridApi) {
+          this.warehousesGridApi.refreshCells({ force: true });
+        }
+      },
       (error) => {
-        if (error.status == 404) this.catalogRoles = [];
+        if (error.status == 404) this.catalogGeneralPosiciones = [];
         console.error('Error fetching data:', error);
       }
     );
@@ -450,9 +472,14 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
   }
 
   async saveWarehouses() {
-    const isValid = this.warehousesRowData.every((item) => item.idRole && item.idPosicion);
+    const newRows = this.warehousesRowData.filter((row) => row.__isNew);
+    const modifiedRows = this.warehousesRowData.filter((row) => row.__modified && !row.__isNew);
 
-    if (!isValid) {
+    // Validar solo las filas que se van a guardar (nuevas y modificadas)
+    const rowsToValidate = [...newRows, ...modifiedRows];
+    const invalidRow = rowsToValidate.find((item) => !item.idRole || !item.idPosicion);
+
+    if (invalidRow) {
       alerts.basicAlert(
         'Añadir entrada',
         'Debe seleccionar un Departamento y una Posición antes de guardar.',
@@ -460,9 +487,6 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
       );
       return;
     }
-
-    const newRows = this.warehousesRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.warehousesRowData.filter((row) => row.__modified && !row.__isNew); // Assuming you handle updates
 
     const addObservables = newRows.flatMap((row) => {
       const observables = [];
@@ -499,17 +523,29 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
       return observables;
     });
 
-    const updateObservables = modifiedRows.map((row) => {
-      console.log(this.idPosicionSelect)
-      console.log(row)
-      const cleanedData = this.cleanDataForServer(row);
+    // Para modificados: eliminar el registro viejo y crear el nuevo
+    const updateObservables = modifiedRows.flatMap((row) => {
+      const originalRole = row.__originalIdRole || row.idRole;
+      const originalPosicion = row.__originalIdPosicion || row.idPosicion;
+
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Update Registro de Permisos por Departamento',
         'Menu Administracion Usuarios',
         this.trackingService.getEmail()
       );
-      return this.permitionsService.updatePermitionsByPosicion(this.userId, this.branchId , row.idRole, this.idPosicionSelect , row.idPosicion);
+
+      // 1. Eliminar el registro viejo
+      const deleteOld$ = this.permitionsService.deleteRoles(this.userId, this.branchId, originalRole, originalPosicion).pipe(
+        catchError(() => EMPTY)
+      );
+
+      // 2. Crear el nuevo registro
+      const cleanedData = this.cleanDataForServer(row);
+      delete cleanedData.posicionesDisponibles;
+      const createNew$ = this.permitionsService.addPermitionsDetailBydescription(cleanedData);
+
+      return [deleteOld$, createNew$];
     });
 
     try {
@@ -536,38 +572,61 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
 
   deleteSelectedWarehouse() {
     if (!this.selectedWarehouse) {
-      return;
-    }
-    console.log(this.selectedWarehouse)
-    const warehouseId = this.selectedWarehouse.id;
-
-    this.permitionsService.deleteRoles(this.userId, this.branchId, this.selectedWarehouse.idRole, this.selectedWarehouse.idPosicion).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
-        );
-        console.error(error);
-        return EMPTY;
-      })
-    ).subscribe(() => {
       alerts.basicAlert(
         'Eliminar entrada',
-        'Entrada eliminada satisfactoriamente.',
-        'success'
+        'Por favor, seleccione un departamento para eliminar.',
+        'warning'
       );
+      return;
+    }
 
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Delete Registro de Permisos por Departamento',
-        'Menu Administracion Usuarios',
-        this.trackingService.getEmail()
+    const { idRole, idPosicion } = this.selectedWarehouse;
+
+    if (!idRole || !idPosicion) {
+      alerts.basicAlert(
+        'Eliminar entrada',
+        'El registro seleccionado no tiene Departamento o Posición asignada.',
+        'error'
       );
+      return;
+    }
 
-      this.obternerDatos();
-      this.signalsService.setRefresCantidadPermisos(true);
-      this.selectedWarehouse = null;
+    alerts.confirmAlert(
+      'Eliminar permiso',
+      '¿Está seguro que desea eliminar este permiso de departamento?',
+      'warning',
+      'Sí, eliminar'
+    ).then((value) => {
+      if (value.isConfirmed) {
+        this.permitionsService.deleteRoles(this.userId, this.branchId, idRole, idPosicion).pipe(
+          catchError((error) => {
+            alerts.basicAlert(
+              'Eliminar entrada',
+              'Error al eliminar la entrada.',
+              'error'
+            );
+            console.error(error);
+            return EMPTY;
+          })
+        ).subscribe(() => {
+          alerts.basicAlert(
+            'Eliminar entrada',
+            'Entrada eliminada satisfactoriamente.',
+            'success'
+          );
+
+          this.trackingService.addLog(
+            this.trackingService.getnameComp(),
+            'Delete Registro de Permisos por Departamento',
+            'Menu Administracion Usuarios',
+            this.trackingService.getEmail()
+          );
+
+          this.obternerDatos();
+          this.signalsService.setRefresCantidadPermisos(true);
+          this.selectedWarehouse = null;
+        });
+      }
     });
   }
 
@@ -575,6 +634,8 @@ export class DetailWarehousesRendererComponent implements ICellRendererAngularCo
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.__originalIdRole;
+    delete cleanedData.__originalIdPosicion;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
