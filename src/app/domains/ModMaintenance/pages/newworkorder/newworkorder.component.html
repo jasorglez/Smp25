@@ -3,22 +3,30 @@
     <!-- Header -->
     <div class="card mb-4">
       <div class="card-header bg-primary text-white">
-        <div class="d-flex align-items-center">
-          <i class="fas fa-clipboard-check fs-4 me-3"></i>
-          <div>
-            <h4 class="card-title mb-0">Nueva Orden de Trabajo</h4>
-            <p class="mb-0 opacity-75">Completa la información para crear la orden</p>
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-clipboard-check fs-4 me-3"></i>
+            <div>
+              <h4 class="card-title mb-0">{{ isEditing ? 'Editar Orden de Trabajo' : 'Nueva Orden de Trabajo' }}</h4>
+              <p class="mb-0 opacity-75">{{ isEditing ? 'Modifica la información de la orden' : 'Completa la información para crear la orden' }}</p>
+            </div>
           </div>
+          <button class="btn btn-outline-light" (click)="handleCancel()">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
-      </div>
-      <div class="card-body">
-        <button class="btn btn-outline-secondary position-absolute top-0 end-0 m-3" (click)="handleCancel()">
-          <i class="fas fa-times"></i>
-        </button>
       </div>
     </div>
 
-    <form (ngSubmit)="handleSubmit()">
+    <!-- Loading -->
+    <div class="text-center p-5" *ngIf="loading">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+      <p class="mt-2 text-muted">Cargando datos...</p>
+    </div>
+
+    <form (ngSubmit)="handleSubmit()" *ngIf="!loading">
       <!-- Información General -->
       <div class="card mb-4">
         <div class="card-header">
@@ -29,6 +37,11 @@
         </div>
         <div class="card-body">
           <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Título de la Orden *</label>
+              <input type="text" class="form-control" name="title" [(ngModel)]="formData.title"
+                     placeholder="Ej: Mantenimiento Preventivo - Torno CNC-01" required>
+            </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Tipo de Mantenimiento *</label>
               <select class="form-select" name="type" [(ngModel)]="formData.type" required>
@@ -55,6 +68,16 @@
                 <option *ngFor="let dept of departments" [value]="dept">{{ dept }}</option>
               </select>
             </div>
+            <div class="col-md-4 mb-3" *ngIf="isEditing">
+              <label class="form-label">Estado</label>
+              <select class="form-select" name="status" [(ngModel)]="formData.status">
+                <option value="pendiente">Pendiente</option>
+                <option value="en-proceso">En Proceso</option>
+                <option value="pausada">Pausada</option>
+                <option value="completada">Completada</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -64,22 +87,17 @@
         <div class="card-header">
           <h5 class="card-title mb-0 d-flex align-items-center">
             <i class="fas fa-cogs me-2 text-primary"></i>
-            Activo y Ubicación
+            Activo
           </h5>
         </div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Activo/Equipo *</label>
-              <select class="form-select" name="asset" [(ngModel)]="formData.asset" required>
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Activo/Equipo</label>
+              <select class="form-select" name="assetId" [(ngModel)]="formData.assetId" (change)="onAssetChange()">
                 <option value="">Seleccionar activo...</option>
-                <option *ngFor="let asset of assets" [value]="asset">{{ asset }}</option>
+                <option *ngFor="let asset of assets" [value]="asset.id">{{ asset.description }}</option>
               </select>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Ubicación Física *</label>
-              <input type="text" class="form-control" name="location" [(ngModel)]="formData.location"
-                     placeholder="Ej: Planta Alta, Área de Producción" required>
             </div>
           </div>
         </div>
@@ -96,31 +114,39 @@
         <div class="card-body">
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label class="form-label">Solicitado por *</label>
+              <label class="form-label">Solicitado por</label>
               <input type="text" class="form-control" name="requestedBy" [(ngModel)]="formData.requestedBy"
-                     placeholder="Nombre del solicitante" required>
+                     placeholder="Nombre del solicitante">
             </div>
             <div class="col-md-6 mb-3">
-              <label class="form-label">Asignado a *</label>
-              <select class="form-select" name="assignedTo" [(ngModel)]="formData.assignedTo" required>
-                <option value="">Seleccionar técnico...</option>
-                <option *ngFor="let tech of technicians" [value]="tech">{{ tech }}</option>
+              <label class="form-label">Asignado a</label>
+              <select class="form-select" name="assignedTo" [(ngModel)]="formData.assignedTo">
+                <option value="">Seleccionar equipo...</option>
+                <option *ngFor="let team of teams" [value]="team.name">{{ team.name }}</option>
               </select>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label class="form-label d-flex align-items-center">
                 <i class="fas fa-calendar me-1"></i>
-                Fecha Programada *
+                Fecha Programada
               </label>
-              <input type="date" class="form-control" name="scheduledDate" [(ngModel)]="formData.scheduledDate" required>
+              <input type="date" class="form-control" name="scheduledDate" [(ngModel)]="formData.scheduledDate">
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
               <label class="form-label d-flex align-items-center">
                 <i class="fas fa-clock me-1"></i>
                 Horas Estimadas
               </label>
               <input type="number" class="form-control" name="estimatedHours" [(ngModel)]="formData.estimatedHours"
                      placeholder="Ej: 4" step="0.5" min="0">
+            </div>
+            <div class="col-md-4 mb-3" *ngIf="isEditing">
+              <label class="form-label d-flex align-items-center">
+                <i class="fas fa-clock me-1"></i>
+                Horas Reales
+              </label>
+              <input type="number" class="form-control" name="actualHours" [(ngModel)]="formData.actualHours"
+                     placeholder="Ej: 3.5" step="0.5" min="0">
             </div>
           </div>
         </div>
@@ -143,15 +169,39 @@
           <div class="mb-3" *ngIf="formData.type === 'correctivo'">
             <label class="form-label text-danger d-flex align-items-center">
               <i class="fas fa-exclamation-triangle me-1"></i>
-              Descripción de la Falla *
+              Descripción de la Falla
             </label>
             <textarea class="form-control border-danger" name="failureDescription" [(ngModel)]="formData.failureDescription"
-                      rows="2" placeholder="Describe la falla o problema detectado..." required></textarea>
+                      rows="2" placeholder="Describe la falla o problema detectado..."></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label">Observaciones Adicionales</label>
             <textarea class="form-control" name="observations" [(ngModel)]="formData.observations" rows="2"
                       placeholder="Notas adicionales, precauciones, etc..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Costos -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0 d-flex align-items-center">
+            <i class="fas fa-dollar-sign me-2 text-primary"></i>
+            Costos
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Costo Mano de Obra</label>
+              <input type="number" class="form-control" name="costLabor" [(ngModel)]="formData.costLabor"
+                     step="0.01" min="0" placeholder="0.00">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Costo Repuestos</label>
+              <input type="number" class="form-control" name="costParts" [(ngModel)]="formData.costParts"
+                     step="0.01" min="0" placeholder="0.00">
+            </div>
           </div>
         </div>
       </div>
@@ -171,92 +221,12 @@
           <div class="mb-3" *ngFor="let task of tasks; let i = index">
             <div class="input-group">
               <span class="input-group-text">{{ i + 1 }}.</span>
-              <input type="text" class="form-control" [(ngModel)]="task.description" placeholder="Descripción de la tarea...">
+              <input type="text" class="form-control" [(ngModel)]="task.description" [name]="'task_' + task.id"
+                     placeholder="Descripción de la tarea...">
               <button type="button" class="btn btn-outline-danger" (click)="removeTask(task.id)"
                       [disabled]="tasks.length === 1">
                 <i class="fas fa-trash"></i>
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Materiales y Repuestos -->
-      <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-box me-2 text-primary"></i>
-            Materiales y Repuestos
-          </h5>
-          <button type="button" class="btn btn-primary btn-sm" (click)="addMaterial()">
-            <i class="fas fa-plus"></i> Agregar Material
-          </button>
-        </div>
-        <div class="card-body">
-          <div class="mb-3" *ngFor="let material of materials; let i = index">
-            <div class="row">
-              <div class="col-md-5">
-                <input type="text" class="form-control" [(ngModel)]="material.material"
-                       placeholder="Material o repuesto...">
-              </div>
-              <div class="col-md-3">
-                <input type="number" class="form-control" [(ngModel)]="material.quantity"
-                       placeholder="Cant." min="0" step="0.01">
-              </div>
-              <div class="col-md-3">
-                <select class="form-select" [(ngModel)]="material.unit">
-                  <option value="pza">Pza</option>
-                  <option value="kg">Kg</option>
-                  <option value="lt">Lt</option>
-                  <option value="mt">Mt</option>
-                  <option value="caja">Caja</option>
-                </select>
-              </div>
-              <div class="col-md-1">
-                <button type="button" class="btn btn-outline-danger w-100" (click)="removeMaterial(material.id)"
-                        [disabled]="materials.length === 1">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Adjuntos -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-upload me-2 text-primary"></i>
-            Archivos Adjuntos
-          </h5>
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <div class="border border-dashed border-secondary rounded p-4 text-center">
-              <input type="file" id="fileUpload" multiple (change)="handleFileUpload($event)" class="d-none">
-              <label for="fileUpload" class="cursor-pointer">
-                <i class="fas fa-upload fs-1 text-secondary mb-2"></i>
-                <p class="mb-1">Click para seleccionar archivos o arrastra aquí</p>
-                <p class="text-muted small">PDF, imágenes, documentos (máx. 10MB)</p>
-              </label>
-            </div>
-          </div>
-          <div *ngIf="attachments.length > 0">
-            <div class="mb-2" *ngFor="let file of attachments">
-              <div class="d-flex justify-content-between align-items-center p-2 border rounded">
-                <div class="d-flex align-items-center">
-                  <i class="fas fa-file me-2"></i>
-                  <div>
-                    <small class="fw-medium">{{ file.name }}</small>
-                    <br>
-                    <small class="text-muted">{{ file.size }}</small>
-                  </div>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeAttachment(file.id)">
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -269,12 +239,10 @@
             <button type="button" class="btn btn-outline-secondary" (click)="handleCancel()">
               Cancelar
             </button>
-            <button type="button" class="btn btn-secondary">
-              Guardar como Borrador
-            </button>
-            <button type="submit" class="btn btn-primary d-flex align-items-center">
-              <i class="fas fa-check-square me-1"></i>
-              Crear Orden de Trabajo
+            <button type="submit" class="btn btn-primary d-flex align-items-center" [disabled]="saving">
+              <i class="fas fa-save me-1" *ngIf="!saving"></i>
+              <span class="spinner-border spinner-border-sm me-1" *ngIf="saving"></span>
+              {{ isEditing ? 'Guardar Cambios' : 'Crear Orden de Trabajo' }}
             </button>
           </div>
         </div>

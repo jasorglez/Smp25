@@ -62,7 +62,8 @@ import { PermissionsViewByUserComponent } from './detail-permissions-user/permis
           [components]="components"
           (gridReady)="onWarehousesGridReady($event)"
           (cellValueChanged)="onWarehousesCellValueChanged($event)"
-          (cellClicked)="onCellClicked($event)">
+          (cellClicked)="onCellClicked($event)"
+          [stopEditingWhenCellsLoseFocus]="true">
         </ag-grid-angular>
       </div>
     </div>

@@ -5,8 +5,8 @@
       <div class="header-left">
         <i class="fas fa-cogs header-icon"></i>
         <div>
-          <h1 class="header-title">Gestión de Activos</h1>
-          <p class="header-subtitle">Catálogo completo de equipos y maquinaria</p>
+          <h1 class="header-title">Gestion de Activos</h1>
+          <p class="header-subtitle">Catalogo completo de equipos y maquinaria</p>
         </div>
       </div>
       <div class="header-stats">
@@ -19,8 +19,8 @@
           <span class="stat-label">Operativos</span>
         </div>
         <div class="stat-item">
-          <span class="stat-number">{{ getMaintenanceCount() }}</span>
-          <span class="stat-label">En Mantenimiento</span>
+          <span class="stat-number">{{ getInactiveCount() }}</span>
+          <span class="stat-label">Inactivos</span>
         </div>
       </div>
     </div>
@@ -33,110 +33,93 @@
       <input
         type="text"
         class="form-control search-input"
-        placeholder="Buscar por nombre, ID o ubicación..."
+        placeholder="Buscar por descripcion..."
         [(ngModel)]="searchTerm"
         (input)="onSearchChange()">
     </div>
 
     <div class="filters">
-      <select class="form-select filter-select" [(ngModel)]="selectedCategory" (change)="onFilterChange()">
-        <option value="">Todas las Categorías</option>
-        <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
-      </select>
-
-      <select class="form-select filter-select" [(ngModel)]="selectedStatus" (change)="onFilterChange()">
-        <option value="">Todos los Estados</option>
-        <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
-      </select>
-
-      <select class="form-select filter-select" [(ngModel)]="selectedCriticality" (change)="onFilterChange()">
-        <option value="">Toda Criticidad</option>
-        <option *ngFor="let crit of criticalities" [value]="crit">{{ crit }}</option>
-      </select>
-
-      <button class="btn btn-primary filter-btn" (click)="onNewAsset()">
+      <button class="btn btn-primary filter-btn" (click)="openCreateForm()">
         <i class="fas fa-plus"></i> Nuevo Activo
       </button>
     </div>
   </div>
 
+  <!-- Loading -->
+  <div class="text-center p-5" *ngIf="loading">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p class="mt-2 text-muted">Cargando equipos...</p>
+  </div>
+
+  <!-- Empty state -->
+  <div class="text-center p-5" *ngIf="!loading && filteredAssets.length === 0">
+    <i class="fas fa-box-open" style="font-size: 3rem; color: #94a3b8;"></i>
+    <p class="mt-2 text-muted">No se encontraron equipos</p>
+  </div>
+
   <!-- Assets Grid -->
-  <div class="assets-grid">
+  <div class="assets-grid" *ngIf="!loading">
     <div class="asset-card" *ngFor="let asset of filteredAssets" (click)="viewAssetDetail(asset)">
       <div class="asset-header">
         <div class="asset-info">
-          <h3 class="asset-name">{{ asset.name }}</h3>
-          <p class="asset-id">{{ asset.id }}</p>
+          <h3 class="asset-name">{{ asset.description }}</h3>
+          <p class="asset-id">ID: {{ asset.id }}</p>
         </div>
         <div class="asset-status">
-          <span [class]="'status-badge ' + getStatusClass(asset.status)">
-            {{ asset.status }}
+          <span [class]="'status-badge ' + getStatusClass(asset)">
+            {{ getStatusText(asset) }}
           </span>
         </div>
       </div>
 
       <div class="asset-details">
         <div class="detail-item">
-          <i class="fas fa-tag icon-small"></i>
-          <span>{{ asset.category }}</span>
+          <i class="fas fa-ruler icon-small"></i>
+          <span>Medida: {{ asset.measure || 'N/A' }}</span>
         </div>
         <div class="detail-item">
-          <i class="fas fa-map-marker-alt icon-small"></i>
-          <span>{{ asset.location }}</span>
+          <i class="fas fa-boxes icon-small"></i>
+          <span>Cantidad: {{ asset.quantity || 0 }}</span>
         </div>
         <div class="detail-item">
-          <i class="fas fa-exclamation-triangle icon-small"></i>
-          <span [class]="'criticality-text ' + getCriticalityClass(asset.criticality)">
-            {{ asset.criticality }}
-          </span>
-        </div>
-      </div>
-
-      <div class="asset-maintenance">
-        <div class="maintenance-info">
-          <div class="maintenance-item">
-            <span class="maintenance-label">Último:</span>
-            <span class="maintenance-date">{{ asset.lastMaintenance }}</span>
-          </div>
-          <div class="maintenance-item">
-            <span class="maintenance-label">Próximo:</span>
-            <span class="maintenance-date" [class]="{'overdue': isMaintenanceOverdue(asset)}">
-              {{ asset.nextMaintenance }}
-            </span>
-            <span class="days-until" *ngIf="!isMaintenanceOverdue(asset)">
-              ({{ getDaysUntilMaintenance(asset) }} días)
-            </span>
-          </div>
+          <i class="fas fa-clock icon-small"></i>
+          <span>Dias trabajo: {{ asset.dayswork || 0 }}</span>
         </div>
       </div>
 
       <div class="asset-value">
         <div class="value-info">
-          <span class="current-value">${{ calculateDepreciation(asset) | number:'1.0-0' }}</span>
-          <span class="original-value">${{ asset.purchaseValue | number:'1.0-0' }}</span>
+          <span class="current-value" *ngIf="asset.costMN">
+            ${{ asset.costMN | number:'1.2-2' }} MXN
+          </span>
+          <span class="original-value" *ngIf="asset.costDLL">
+            ${{ asset.costDLL | number:'1.2-2' }} USD
+          </span>
         </div>
       </div>
 
       <div class="asset-actions">
-        <button class="btn btn-sm btn-outline-primary action-btn">
+        <button class="btn btn-sm btn-outline-primary action-btn" (click)="viewAssetDetail(asset); $event.stopPropagation()">
           <i class="fas fa-eye"></i>
         </button>
-        <button class="btn btn-sm btn-outline-secondary action-btn">
+        <button class="btn btn-sm btn-outline-warning action-btn" (click)="openEditForm(asset, $event)">
           <i class="fas fa-edit"></i>
         </button>
-        <button class="btn btn-sm btn-outline-success action-btn">
-          <i class="fas fa-history"></i>
+        <button class="btn btn-sm btn-outline-danger action-btn" (click)="deleteAsset(asset, $event)">
+          <i class="fas fa-trash"></i>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Asset Detail Modal -->
+  <!-- Asset Detail Modal (view only) -->
   <div class="modal-backdrop" *ngIf="showAssetDetail" (click)="closeAssetDetail()"></div>
   <div class="asset-detail-modal" *ngIf="showAssetDetail">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2 class="modal-title">{{ selectedAsset?.name }}</h2>
+        <h2 class="modal-title">{{ selectedAsset?.description }}</h2>
         <button class="btn btn-sm btn-outline-secondary close-btn" (click)="closeAssetDetail()">
           <i class="fas fa-times"></i>
         </button>
@@ -144,115 +127,63 @@
 
       <div class="modal-body" *ngIf="selectedAsset">
         <div class="asset-detail-grid">
-          <!-- Basic Information -->
           <div class="detail-section">
             <h4 class="section-title">
               <i class="fas fa-info-circle icon-section"></i>
-              Información Básica
+              Informacion Basica
             </h4>
             <div class="info-grid">
               <div class="info-item">
-                <label>ID del Activo:</label>
+                <label>ID:</label>
                 <span>{{ selectedAsset.id }}</span>
               </div>
               <div class="info-item">
-                <label>Categoría:</label>
-                <span>{{ selectedAsset.category }}</span>
+                <label>Descripcion:</label>
+                <span>{{ selectedAsset.description }}</span>
               </div>
               <div class="info-item">
-                <label>Ubicación:</label>
-                <span>{{ selectedAsset.location }}</span>
+                <label>Medida:</label>
+                <span>{{ selectedAsset.measure || 'N/A' }}</span>
+              </div>
+              <div class="info-item">
+                <label>Cantidad:</label>
+                <span>{{ selectedAsset.quantity || 0 }}</span>
+              </div>
+              <div class="info-item">
+                <label>Dias de Trabajo:</label>
+                <span>{{ selectedAsset.dayswork || 0 }}</span>
               </div>
               <div class="info-item">
                 <label>Estado:</label>
-                <span [class]="'status-text ' + getStatusClass(selectedAsset.status)">
-                  {{ selectedAsset.status }}
+                <span [class]="'status-text ' + getStatusClass(selectedAsset)">
+                  {{ getStatusText(selectedAsset) }}
                 </span>
-              </div>
-              <div class="info-item">
-                <label>Criticidad:</label>
-                <span [class]="'criticality-text ' + getCriticalityClass(selectedAsset.criticality)">
-                  {{ selectedAsset.criticality }}
-                </span>
-              </div>
-              <div class="info-item">
-                <label>Fabricante:</label>
-                <span>{{ selectedAsset.manufacturer }}</span>
-              </div>
-              <div class="info-item">
-                <label>Modelo:</label>
-                <span>{{ selectedAsset.model }}</span>
-              </div>
-              <div class="info-item">
-                <label>Número de Serie:</label>
-                <span>{{ selectedAsset.serialNumber }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Financial Information -->
           <div class="detail-section">
             <h4 class="section-title">
               <i class="fas fa-dollar-sign icon-section"></i>
-              Información Financiera
+              Informacion Financiera
             </h4>
             <div class="financial-grid">
               <div class="financial-item">
-                <label>Valor de Compra:</label>
-                <span class="financial-value">${{ selectedAsset.purchaseValue | number:'1.0-0' }}</span>
-                <small class="financial-date">{{ selectedAsset.purchaseDate }}</small>
+                <label>Costo MXN:</label>
+                <span class="financial-value">${{ selectedAsset.costMN | number:'1.2-2' }}</span>
               </div>
               <div class="financial-item">
-                <label>Valor Actual:</label>
-                <span class="financial-value">${{ calculateDepreciation(selectedAsset) | number:'1.0-0' }}</span>
-                <small class="financial-note">Calculado con depreciación</small>
+                <label>Costo USD:</label>
+                <span class="financial-value">${{ selectedAsset.costDLL | number:'1.2-2' }}</span>
               </div>
-            </div>
-          </div>
-
-          <!-- Maintenance Information -->
-          <div class="detail-section">
-            <h4 class="section-title">
-              <i class="fas fa-tools icon-section"></i>
-              Información de Mantenimiento
-            </h4>
-            <div class="maintenance-detail-grid">
-              <div class="maintenance-detail-item">
-                <label>Último Mantenimiento:</label>
-                <span>{{ selectedAsset.lastMaintenance }}</span>
+              <div class="financial-item">
+                <label>Precio MXN:</label>
+                <span class="financial-value">${{ selectedAsset.priceMN | number:'1.2-2' }}</span>
               </div>
-              <div class="maintenance-detail-item">
-                <label>Próximo Mantenimiento:</label>
-                <span [class]="{'overdue-text': isMaintenanceOverdue(selectedAsset)}">
-                  {{ selectedAsset.nextMaintenance }}
-                </span>
-                <small *ngIf="!isMaintenanceOverdue(selectedAsset)">
-                  ({{ getDaysUntilMaintenance(selectedAsset) }} días restantes)
-                </small>
+              <div class="financial-item">
+                <label>Precio USD:</label>
+                <span class="financial-value">${{ selectedAsset.priceDLL | number:'1.2-2' }}</span>
               </div>
-            </div>
-          </div>
-
-          <!-- Description -->
-          <div class="detail-section full-width">
-            <h4 class="section-title">
-              <i class="fas fa-file-alt icon-section"></i>
-              Descripción
-            </h4>
-            <p class="asset-description">{{ selectedAsset.description }}</p>
-          </div>
-        </div>
-
-        <!-- QR Code Section -->
-        <div class="qr-section">
-          <h4 class="section-title">
-            <i class="fas fa-qrcode icon-section"></i>
-            Código QR
-          </h4>
-          <div class="qr-code">
-            <div class="qr-placeholder">
-              <i class="fas fa-qrcode qr-icon"></i>
-              <p>{{ selectedAsset.qrCode }}</p>
             </div>
           </div>
         </div>
@@ -260,8 +191,81 @@
 
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="closeAssetDetail()">Cerrar</button>
-        <button class="btn btn-primary">Editar Activo</button>
-        <button class="btn btn-success">Ver Historial</button>
+        <button class="btn btn-warning" (click)="openEditForm(selectedAsset)">
+          <i class="fas fa-edit"></i> Editar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Form Modal -->
+  <div class="modal-backdrop" *ngIf="showForm" (click)="closeForm()"></div>
+  <div class="asset-detail-modal" *ngIf="showForm">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">{{ isEditing ? 'Editar Activo' : 'Nuevo Activo' }}</h2>
+        <button class="btn btn-sm btn-outline-secondary close-btn" (click)="closeForm()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveAsset()">
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Descripcion *</label>
+              <input type="text" class="form-control" [(ngModel)]="formData.description" name="description" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Medida</label>
+              <select class="form-select" [(ngModel)]="formData.measure" name="measure">
+                <option value="DIA">DIA</option>
+                <option value="HRS">HRS</option>
+                <option value="PZA">PZA</option>
+                <option value="KG">KG</option>
+                <option value="LT">LT</option>
+                <option value="MT">MT</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Cantidad</label>
+              <input type="number" class="form-control" [(ngModel)]="formData.quantity" name="quantity">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Dias Trabajo</label>
+              <input type="number" class="form-control" [(ngModel)]="formData.dayswork" name="dayswork">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Costo MXN</label>
+              <input type="number" step="0.01" class="form-control" [(ngModel)]="formData.costMN" name="costMN">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Costo USD</label>
+              <input type="number" step="0.01" class="form-control" [(ngModel)]="formData.costDLL" name="costDLL">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Precio MXN</label>
+              <input type="number" step="0.01" class="form-control" [(ngModel)]="formData.priceMN" name="priceMN">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Precio USD</label>
+              <input type="number" step="0.01" class="form-control" [(ngModel)]="formData.priceDLL" name="priceDLL">
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="form-check mt-4">
+                <input class="form-check-input" type="checkbox" [(ngModel)]="formData.active" name="active" id="activeCheck">
+                <label class="form-check-label" for="activeCheck">Activo</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> {{ isEditing ? 'Guardar Cambios' : 'Crear Activo' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

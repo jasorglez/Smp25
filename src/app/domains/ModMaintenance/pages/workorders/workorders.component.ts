@@ -1,46 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-
-interface WorkOrder {
-  id: string;
-  title: string;
-  asset: string;
-  type: 'preventivo' | 'correctivo' | 'predictivo' | 'inspeccion' | 'mejora';
-  priority: 'urgente' | 'alta' | 'media' | 'baja';
-  status: 'pendiente' | 'en-proceso' | 'pausada' | 'completada' | 'cancelada';
-  requestedBy: string;
-  assignedTo: string;
-  department: string;
-  scheduledDate: string;
-  estimatedHours: number;
-  actualHours?: number;
-  description: string;
-  failureDescription?: string;
-  observations?: string;
-  createdDate: string;
-  completedDate?: string;
-  costLabor: number;
-  costParts: number;
-  totalCost: number;
-}
-
-interface Task {
-  id: number;
-  description: string;
-  completed: boolean;
-  completedDate?: string;
-}
-
-interface Material {
-  id: number;
-  name: string;
-  quantity: number;
-  unit: string;
-  unitCost: number;
-  totalCost: number;
-}
+import { WorkorderService } from 'app/services/workorder.service';
+import { WorkorderTaskService } from 'app/services/workorder-task.service';
+import { EquipmentService } from 'app/services/equipment.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { SignalsService } from 'app/services/signals.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-workorders',
@@ -51,111 +18,25 @@ interface Material {
 })
 export class WorkordersComponent implements OnInit {
 
-  workOrders: WorkOrder[] = [
-    {
-      id: 'OT-2024-156',
-      title: 'Mantenimiento Preventivo - Torno CNC-01',
-      asset: 'Torno CNC-01',
-      type: 'preventivo',
-      priority: 'media',
-      status: 'en-proceso',
-      requestedBy: 'Juan Pérez',
-      assignedTo: 'Carlos Ruiz',
-      department: 'Producción',
-      scheduledDate: '2025-11-28',
-      estimatedHours: 4,
-      actualHours: 3.5,
-      description: 'Mantenimiento preventivo mensual del torno CNC incluyendo lubricación, verificación de calibración y limpieza general.',
-      observations: 'Se detectó desgaste leve en correas de transmisión. Se recomienda reemplazo en próximo mantenimiento.',
-      createdDate: '2025-11-20',
-      costLabor: 280,
-      costParts: 45,
-      totalCost: 325
-    },
-    {
-      id: 'OT-2024-157',
-      title: 'Reparación Correctiva - Compresor CP-12',
-      asset: 'Compresor CP-12',
-      type: 'correctivo',
-      priority: 'urgente',
-      status: 'completada',
-      requestedBy: 'María López',
-      assignedTo: 'Ana Martínez',
-      department: 'Mantenimiento',
-      scheduledDate: '2025-11-22',
-      estimatedHours: 6,
-      actualHours: 8,
-      description: 'Falla en motor eléctrico del compresor. Ruido anormal y sobrecalentamiento detectado.',
-      failureDescription: 'Falla en rodamientos del motor principal. Causa: falta de lubricación preventiva.',
-      observations: 'Se reemplazaron rodamientos y se realizó mantenimiento completo del sistema de lubricación.',
-      createdDate: '2025-11-21',
-      completedDate: '2025-11-23',
-      costLabor: 640,
-      costParts: 285,
-      totalCost: 925
-    },
-    {
-      id: 'OT-2024-158',
-      title: 'Inspección de Seguridad - Montacargas MC-03',
-      asset: 'Montacargas MC-03',
-      type: 'inspeccion',
-      priority: 'alta',
-      status: 'pendiente',
-      requestedBy: 'Roberto García',
-      assignedTo: 'Juan Pérez',
-      department: 'Almacén',
-      scheduledDate: '2025-11-30',
-      estimatedHours: 2,
-      description: 'Inspección de seguridad trimestral del montacargas incluyendo frenos, dirección y sistemas hidráulicos.',
-      observations: 'Inspección programada según calendario de seguridad.',
-      createdDate: '2025-11-25',
-      costLabor: 160,
-      costParts: 0,
-      totalCost: 160
-    },
-    {
-      id: 'OT-2024-159',
-      title: 'Mejora de Eficiencia - Sistema HVAC',
-      asset: 'Sistema HVAC Principal',
-      type: 'mejora',
-      priority: 'baja',
-      status: 'pausada',
-      requestedBy: 'Luis Hernández',
-      assignedTo: 'María López',
-      department: 'Instalaciones',
-      scheduledDate: '2025-12-15',
-      estimatedHours: 12,
-      description: 'Optimización del sistema HVAC para mejorar eficiencia energética y reducir costos operativos.',
-      observations: 'Proyecto en pausa por falta de presupuesto aprobado.',
-      createdDate: '2025-11-15',
-      costLabor: 960,
-      costParts: 1200,
-      totalCost: 2160
-    },
-    {
-      id: 'OT-2024-160',
-      title: 'Mantenimiento Predictivo - Prensa Hidráulica PH-08',
-      asset: 'Prensa Hidráulica PH-08',
-      type: 'predictivo',
-      priority: 'media',
-      status: 'pendiente',
-      requestedBy: 'Ana Martínez',
-      assignedTo: 'Carlos Ruiz',
-      department: 'Producción',
-      scheduledDate: '2025-12-05',
-      estimatedHours: 8,
-      description: 'Mantenimiento basado en análisis predictivo. Vibraciones anormales detectadas en sensor IoT.',
-      observations: 'Alertas del sistema de monitoreo predictivo indican posible desgaste en cilindros hidráulicos.',
-      createdDate: '2025-11-28',
-      costLabor: 640,
-      costParts: 350,
-      totalCost: 990
-    }
-  ];
+  private workorderService = inject(WorkorderService);
+  private taskService = inject(WorkorderTaskService);
+  private equipmentService = inject(EquipmentService);
+  private employeesService = inject(EmployeesService);
+  private signalsService = inject(SignalsService);
+  private router = inject(Router);
 
-  filteredWorkOrders: WorkOrder[] = [];
-  selectedWorkOrder: WorkOrder | null = null;
+  idcompany: number = 0;
+  idBranch: number = 0;
+
+  workOrders: any[] = [];
+  filteredWorkOrders: any[] = [];
+  selectedWorkOrder: any = null;
+  selectedWorkOrderTasks: any[] = [];
   showWorkOrderDetail: boolean = false;
+  loading: boolean = false;
+
+  assets: any[] = [];
+  employees: any[] = [];
 
   // Filters
   searchTerm: string = '';
@@ -206,14 +87,57 @@ export class WorkordersComponent implements OnInit {
     { value: 'Mantenimiento', label: 'Mantenimiento' },
     { value: 'Almacén', label: 'Almacén' },
     { value: 'Instalaciones', label: 'Instalaciones' },
-    { value: 'Calidad', label: 'Calidad' }
+    { value: 'Calidad', label: 'Calidad' },
+    { value: 'Logística', label: 'Logística' }
   ];
 
-  constructor(private router: Router) { }
+  constructor() {
+    effect(() => {
+      this.updateContext();
+    });
+  }
 
   ngOnInit(): void {
-    this.filteredWorkOrders = [...this.workOrders];
-    this.calculateStats();
+    this.updateContext();
+    this.loadData();
+  }
+
+  loadData(): void {
+    if (!this.hasValidContext()) {
+      this.loading = false;
+      this.workOrders = [];
+      this.filteredWorkOrders = [];
+      this.assets = [];
+      this.employees = [];
+      return;
+    }
+
+    this.loading = true;
+    const idCompanyStr = this.idcompany.toString();
+
+    forkJoin({
+      workOrders: this.workorderService.getAll(idCompanyStr),
+      assets: this.equipmentService.getEquipment(this.idcompany),
+      employees: this.employeesService.getEmployees(this.idBranch)
+    }).subscribe({
+      next: (result: any) => {
+        this.assets = result.assets || [];
+        this.employees = (result.employees || []).filter((e: any) => e.active);
+        this.workOrders = (result.workOrders || []).map((wo: any) => ({
+          ...wo,
+          scheduledDate: wo.scheduledDate ? wo.scheduledDate.split('T')[0] : '',
+          createdDate: wo.createdDate ? wo.createdDate.split('T')[0] : '',
+          completedDate: wo.completedDate ? wo.completedDate.split('T')[0] : null
+        }));
+        this.filteredWorkOrders = [...this.workOrders];
+        this.calculateStats();
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error loading data:', err);
+        this.loading = false;
+      }
+    });
   }
 
   calculateStats(): void {
@@ -225,16 +149,16 @@ export class WorkordersComponent implements OnInit {
   }
 
   filterWorkOrders(): void {
-    this.filteredWorkOrders = this.workOrders.filter(workOrder => {
+    this.filteredWorkOrders = this.workOrders.filter(wo => {
       const matchesSearch = !this.searchTerm ||
-        workOrder.title.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        workOrder.id.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        workOrder.asset.toLowerCase().includes(this.searchTerm.toLowerCase());
+        (wo.title || '').toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        (wo.folio || '').toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        (wo.assetName || '').toLowerCase().includes(this.searchTerm.toLowerCase());
 
-      const matchesType = !this.selectedType || workOrder.type === this.selectedType;
-      const matchesPriority = !this.selectedPriority || workOrder.priority === this.selectedPriority;
-      const matchesStatus = !this.selectedStatus || workOrder.status === this.selectedStatus;
-      const matchesDepartment = !this.selectedDepartment || workOrder.department === this.selectedDepartment;
+      const matchesType = !this.selectedType || wo.type === this.selectedType;
+      const matchesPriority = !this.selectedPriority || wo.priority === this.selectedPriority;
+      const matchesStatus = !this.selectedStatus || wo.status === this.selectedStatus;
+      const matchesDepartment = !this.selectedDepartment || wo.department === this.selectedDepartment;
 
       return matchesSearch && matchesType && matchesPriority && matchesStatus && matchesDepartment;
     });
@@ -248,14 +172,21 @@ export class WorkordersComponent implements OnInit {
     this.filterWorkOrders();
   }
 
-  viewWorkOrderDetail(workOrder: WorkOrder): void {
+  viewWorkOrderDetail(workOrder: any): void {
     this.selectedWorkOrder = workOrder;
+    this.selectedWorkOrderTasks = [];
     this.showWorkOrderDetail = true;
+
+    this.taskService.getByWorkOrder(workOrder.id).subscribe({
+      next: (tasks: any) => this.selectedWorkOrderTasks = tasks || [],
+      error: () => this.selectedWorkOrderTasks = []
+    });
   }
 
   closeWorkOrderDetail(): void {
     this.showWorkOrderDetail = false;
     this.selectedWorkOrder = null;
+    this.selectedWorkOrderTasks = [];
   }
 
   getPriorityClass(priority: string): string {
@@ -294,11 +225,12 @@ export class WorkordersComponent implements OnInit {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
-    }).format(amount);
+    }).format(amount || 0);
   }
 
-  getDaysOverdue(workOrder: WorkOrder): number {
+  getDaysOverdue(workOrder: any): number {
     if (workOrder.status === 'completada' || workOrder.status === 'cancelada') return 0;
+    if (!workOrder.scheduledDate) return 0;
 
     const scheduledDate = new Date(workOrder.scheduledDate);
     const now = new Date();
@@ -308,15 +240,14 @@ export class WorkordersComponent implements OnInit {
     return diffDays > 0 ? diffDays : 0;
   }
 
-  isOverdue(workOrder: WorkOrder): boolean {
+  isOverdue(workOrder: any): boolean {
     return this.getDaysOverdue(workOrder) > 0;
   }
 
-  getProgressPercentage(workOrder: WorkOrder): number {
+  getProgressPercentage(workOrder: any): number {
     if (workOrder.status === 'completada') return 100;
     if (workOrder.status === 'cancelada') return 0;
 
-    // Simple progress calculation based on status
     const statusProgress: { [key: string]: number } = {
       'pendiente': 0,
       'en-proceso': 50,
@@ -327,26 +258,72 @@ export class WorkordersComponent implements OnInit {
   }
 
   onNewWorkOrder(): void {
-    // Navigate to create new work order
     this.router.navigate(['/procmodmaintenance/newworkorder']);
   }
 
-  onEditWorkOrder(workOrder: WorkOrder): void {
-    console.log('Editar orden de trabajo:', workOrder.id);
+  onEditWorkOrder(workOrder: any): void {
+    this.closeWorkOrderDetail();
+    this.router.navigate(['/procmodmaintenance/newworkorder'], { queryParams: { id: workOrder.id } });
   }
 
-  onCompleteWorkOrder(workOrder: WorkOrder): void {
-    workOrder.status = 'completada';
-    workOrder.completedDate = new Date().toISOString().split('T')[0];
-    this.calculateStats();
-    console.log('Orden completada:', workOrder.id);
+  onCompleteWorkOrder(workOrder: any): void {
+    if (!confirm('¿Marcar esta orden como completada?')) return;
+    this.workorderService.updateStatus(workOrder.id, 'completada').subscribe({
+      next: () => this.loadData(),
+      error: (err) => console.error('Error completing work order:', err)
+    });
   }
 
-  onCancelWorkOrder(workOrder: WorkOrder): void {
-    if (confirm('¿Está seguro de cancelar esta orden de trabajo?')) {
-      workOrder.status = 'cancelada';
-      this.calculateStats();
-      console.log('Orden cancelada:', workOrder.id);
+  onCancelWorkOrder(workOrder: any): void {
+    if (!confirm('¿Está seguro de cancelar esta orden de trabajo?')) return;
+    this.workorderService.updateStatus(workOrder.id, 'cancelada').subscribe({
+      next: () => this.loadData(),
+      error: (err) => console.error('Error cancelling work order:', err)
+    });
+  }
+
+  deleteWorkOrder(workOrder: any): void {
+    if (!confirm('¿Eliminar la orden "' + (workOrder.folio || workOrder.title) + '"?')) return;
+    this.workorderService.delete(workOrder.id).subscribe({
+      next: () => {
+        this.closeWorkOrderDetail();
+        this.loadData();
+      },
+      error: (err) => console.error('Error deleting work order:', err)
+    });
+  }
+
+  private updateContext(): void {
+    const signalCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (signalCompany !== null && signalCompany !== undefined) {
+      this.idcompany = Number(signalCompany);
+    } else {
+      const companyStorage = localStorage.getItem('company');
+      if (companyStorage) {
+        const parsedCompany = Number(companyStorage);
+        if (!Number.isNaN(parsedCompany)) {
+          this.idcompany = parsedCompany;
+        }
+      }
     }
+
+    const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
+    if (signalBranch !== null && signalBranch !== undefined) {
+      this.idBranch = Number(signalBranch);
+    } else {
+      const branchStorage = localStorage.getItem('branch');
+      if (branchStorage) {
+        const parsedBranch = Number(branchStorage);
+        if (!Number.isNaN(parsedBranch)) {
+          this.idBranch = parsedBranch;
+        }
+      }
+    }
+  }
+
+  private hasValidContext(): boolean {
+    const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch));
+    return hasCompany && hasBranch;
   }
 }

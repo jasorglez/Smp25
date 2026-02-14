@@ -69,7 +69,8 @@ import { UsersService } from 'app/services/users.service';
           [gridOptions]="permissionsGridOptions"
           [components]="components"
           (gridReady)="onPermissionsGridReady($event)"
-          (cellValueChanged)="onPermissionsCellValueChanged($event)">
+          (cellValueChanged)="onPermissionsCellValueChanged($event)"
+          [stopEditingWhenCellsLoseFocus]="true">
         </ag-grid-angular>
       </div>
     </div>

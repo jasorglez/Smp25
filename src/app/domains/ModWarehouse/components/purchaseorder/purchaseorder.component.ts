@@ -24,6 +24,7 @@ import { ReceiptsService } from 'app/services/receipts.service';
 import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { NotificationsTelegramService } from 'app/services/notifications-telegram.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
@@ -62,6 +63,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
   private setupService = inject(SetupService);
+  private prefixSetupService = inject(PrefixSetupService);
   private notificationsService = inject(NotificationsTelegramService);
 
   // Variables compartidas
@@ -81,6 +83,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   idRoot: number = null;
   projectOrBranch: boolean = null; // True = Project, False = Branch
   typeReference: string = null; // project or branch
+  activateOc: boolean = true; // True = OC enabled, False = disabled
 
   // Variables Master
   masterRowData: any[] = [];
@@ -253,7 +256,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         next: (data: any) => {
           this.projectOrBranch = data[0].projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-          console.log('Referencia', this.typeReference);
+          this.activateOc = data[0].activateOc !== false; // Default to true if not set or null
+          console.log('Referencia', this.typeReference, 'activateOc', this.activateOc);
           resolve();
         },
         error: (err) => {
@@ -901,11 +905,16 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.id = event.data.id;
   }
 
-  addMasterRow() {
+  async addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+
+    // Generar folio automáticamente desde PrefixSetup
+    const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
+    const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'oc');
+
     const newItem = {
       id: tempId,
-      folio: '',
+      folio: folio || '',
       typeReference: this.typeReference,
       idReference: this.idProject,
       dateCreate: new Date().toISOString(),
@@ -1362,6 +1371,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.idRequisition = null;
     this.projectOrBranch = null;
     this.typeReference = null;
+    this.activateOc = true;
   }
 
   private cleanDataForServer(data: any): any {

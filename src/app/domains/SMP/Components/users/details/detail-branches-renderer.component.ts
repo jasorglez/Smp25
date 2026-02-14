@@ -59,7 +59,8 @@ import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.compo
           [gridOptions]="branchesGridOptions"
           [components]="components"
           (gridReady)="onBranchesGridReady($event)"
-          (cellValueChanged)="onBranchesCellValueChanged($event)">
+          (cellValueChanged)="onBranchesCellValueChanged($event)"
+          [stopEditingWhenCellsLoseFocus]="true">
         </ag-grid-angular>
       </div>
     </div>
