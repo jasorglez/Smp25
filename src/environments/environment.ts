@@ -45,7 +45,7 @@ export const environment = {
   urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlMantenimiento: 'http://localhost:5201/api',
+  urlMantenimiento: 'https://bi2.com.mx/maintenance/api',
 
   root: 'root@bi2.mx',
 
