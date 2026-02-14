@@ -4,6 +4,7 @@ import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
 import { TrackingService } from './tracking.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
+import { catchError } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root',
@@ -19,8 +20,29 @@ export class EquipmentService {
     );
   }
 
+  getEquipmentByBranch(idBranch: number): Observable<MaterialsResponse[]> {
+    const headers = this.trackingService.getHeaders();
+    return this.http.get<MaterialsResponse[]>(
+      `${environment.urlSmp}/Equipment/branch/${idBranch}`,
+      { headers }
+    ).pipe(
+      catchError(() =>
+        this.http.get<MaterialsResponse[]>(
+          `${environment.urlSmp}/Equipment/company/${idBranch}`,
+          { headers }
+        )
+      )
+    );
+  }
+
   addEquipment(data: any): Observable<any> {
     return this.http.post(`${environment.urlSmp}/Equipment`, data, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  addEquipmentFromAssets(data: any): Observable<any> {
+    return this.http.post(`${environment.urlSmp}/Equipment/assets`, data, {
       headers: this.trackingService.getHeaders(),
     });
   }
@@ -29,6 +51,14 @@ export class EquipmentService {
     console.log('Updating equipment with ID:', id, 'and data:', data);
     return this.http.put<any[]>(
       `${environment.urlSmp}/Equipment/${id}`,
+      data,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  updateEquipmentFromAssets(id: string, data: any): Observable<any> {
+    return this.http.put<any[]>(
+      `${environment.urlSmp}/Equipment/assets/${id}`,
       data,
       { headers: this.trackingService.getHeaders() }
     );

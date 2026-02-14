@@ -43,6 +43,8 @@ export class NewworkorderComponent implements OnInit {
   editingId: number | null = null;
   loading: boolean = false;
   saving: boolean = false;
+  private initialized: boolean = false;
+  private lastBranchId: number = 0;
 
   formData: any = {
     type: 'preventivo',
@@ -84,6 +86,14 @@ export class NewworkorderComponent implements OnInit {
   constructor() {
     effect(() => {
       this.updateContext();
+      if (!this.initialized) {
+        return;
+      }
+
+      if (this.idBranch !== this.lastBranchId) {
+        this.lastBranchId = this.idBranch;
+        this.loadData();
+      }
     });
   }
 
@@ -96,6 +106,8 @@ export class NewworkorderComponent implements OnInit {
       this.editingId = parseInt(editId, 10);
     }
 
+    this.lastBranchId = this.idBranch;
+    this.initialized = true;
     this.loadData();
   }
 
@@ -109,12 +121,12 @@ export class NewworkorderComponent implements OnInit {
     }
 
     this.loading = true;
-    const idCompanyStr = this.idcompany.toString();
+    const idBranchStr = this.idBranch.toString();
 
     const requests: any = {
-      assets: this.equipmentService.getEquipment(this.idcompany),
+      assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
       employees: this.employeesService.getEmployees(this.idBranch),
-      teams: this.teamService.getAll(idCompanyStr) // Fetch teams data
+      teams: this.teamService.getAll(idBranchStr) // Fetch teams data
     };
 
     if (this.isEditing && this.editingId) {
@@ -184,6 +196,10 @@ export class NewworkorderComponent implements OnInit {
   }
 
   addTask(): void {
+    if (!this.canCreateByBranch()) {
+      return;
+    }
+
     this.tasks.push({ id: this.tasks.length + 1, description: '', completed: false });
   }
 
@@ -198,10 +214,10 @@ export class NewworkorderComponent implements OnInit {
     if (!this.hasValidContext()) return;
 
     this.saving = true;
-    const idCompanyStr = this.idcompany.toString();
+    const idBranchStr = this.idBranch.toString();
 
     const workOrderData: any = {
-      idCompany: idCompanyStr,
+      idBranch: idBranchStr,
       title: this.formData.title,
       type: this.formData.type,
       priority: this.formData.priority,
@@ -233,7 +249,7 @@ export class NewworkorderComponent implements OnInit {
     } else {
       workOrderData.createdDate = new Date().toISOString();
 
-      this.configService.getByCompany(idCompanyStr).subscribe({
+      this.configService.getByBranch(idBranchStr).subscribe({
         next: (configs: any) => {
           const config = Array.isArray(configs) && configs.length > 0 ? configs[0] : null;
           const prefix = config?.prefixWorkOrder || 'OT';
@@ -364,22 +380,16 @@ export class NewworkorderComponent implements OnInit {
     }
 
     const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
-    if (signalBranch !== null && signalBranch !== undefined) {
-      this.idBranch = Number(signalBranch);
-    } else {
-      const branchStorage = localStorage.getItem('branch');
-      if (branchStorage) {
-        const parsedBranch = Number(branchStorage);
-        if (!Number.isNaN(parsedBranch)) {
-          this.idBranch = parsedBranch;
-        }
-      }
-    }
+    this.idBranch = signalBranch !== null && signalBranch !== undefined ? Number(signalBranch) : 0;
   }
 
   private hasValidContext(): boolean {
     const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
-    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
     return hasCompany && hasBranch;
+  }
+
+  canCreateByBranch(): boolean {
+    return this.idBranch > 0;
   }
 }

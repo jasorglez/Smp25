@@ -25,6 +25,8 @@ export class EquiposComponent implements OnInit {
   teams: any[] = [];
   employees: any[] = [];
   loading: boolean = false;
+  private initialized: boolean = false;
+  private lastBranchId: number = 0;
 
   showForm: boolean = false;
   isEditing: boolean = false;
@@ -52,11 +54,21 @@ export class EquiposComponent implements OnInit {
   constructor() {
     effect(() => {
       this.updateContext();
+      if (!this.initialized) {
+        return;
+      }
+
+      if (this.idBranch !== this.lastBranchId) {
+        this.lastBranchId = this.idBranch;
+        this.loadData();
+      }
     });
   }
 
   ngOnInit(): void {
     this.updateContext();
+    this.lastBranchId = this.idBranch;
+    this.initialized = true;
     this.loadData();
   }
 
@@ -69,10 +81,10 @@ export class EquiposComponent implements OnInit {
     }
 
     this.loading = true;
-    const idCompanyStr = this.idcompany.toString();
+    const idBranchStr = this.idBranch.toString();
 
     forkJoin({
-      teams: this.teamService.getAll(idCompanyStr),
+      teams: this.teamService.getAll(idBranchStr),
       employees: this.employeesService.getEmployees(this.idBranch)
     }).subscribe({
       next: (result: any) => {
@@ -131,6 +143,10 @@ export class EquiposComponent implements OnInit {
   }
 
   openCreateForm(): void {
+    if (!this.canCreateByBranch()) {
+      return;
+    }
+
     this.isEditing = false;
     this.editingTeamId = null;
     this.formData = {
@@ -165,9 +181,10 @@ export class EquiposComponent implements OnInit {
 
   handleSubmit(): void {
     if (!this.formData.name || !this.formData.specialty) return;
+    if (!this.hasValidContext()) return;
 
     const teamData: any = {
-      idCompany: this.idcompany.toString(),
+      idBranch: this.idBranch.toString(),
       name: this.formData.name,
       leader: this.formData.leader || null,
       specialty: this.formData.specialty,
@@ -259,22 +276,16 @@ export class EquiposComponent implements OnInit {
     }
 
     const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
-    if (signalBranch !== null && signalBranch !== undefined) {
-      this.idBranch = Number(signalBranch);
-    } else {
-      const branchStorage = localStorage.getItem('branch');
-      if (branchStorage) {
-        const parsedBranch = Number(branchStorage);
-        if (!Number.isNaN(parsedBranch)) {
-          this.idBranch = parsedBranch;
-        }
-      }
-    }
+    this.idBranch = signalBranch !== null && signalBranch !== undefined ? Number(signalBranch) : 0;
   }
 
   private hasValidContext(): boolean {
     const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
-    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
     return hasCompany && hasBranch;
+  }
+
+  canCreateByBranch(): boolean {
+    return this.idBranch > 0;
   }
 }

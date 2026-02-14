@@ -10,7 +10,7 @@
         </div>
       </div>
       <div class="header-right">
-        <button class="btn btn-primary" (click)="openCreateForm()">
+        <button class="btn btn-primary" (click)="openCreateForm()" [disabled]="!canCreateByBranch()">
           <i class="fas fa-plus"></i> Nuevo Equipo
         </button>
       </div>
@@ -141,7 +141,7 @@
 
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" [disabled]="!isEditing && !canCreateByBranch()">
               <i class="fas fa-save"></i> {{ isEditing ? 'Guardar Cambios' : 'Crear Equipo' }}
             </button>
           </div>

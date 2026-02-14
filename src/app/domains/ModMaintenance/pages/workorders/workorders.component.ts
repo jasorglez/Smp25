@@ -34,6 +34,8 @@ export class WorkordersComponent implements OnInit {
   selectedWorkOrderTasks: any[] = [];
   showWorkOrderDetail: boolean = false;
   loading: boolean = false;
+  private initialized: boolean = false;
+  private lastBranchId: number = 0;
 
   assets: any[] = [];
   employees: any[] = [];
@@ -94,11 +96,22 @@ export class WorkordersComponent implements OnInit {
   constructor() {
     effect(() => {
       this.updateContext();
+      if (!this.initialized) {
+        return;
+      }
+
+      if (this.idBranch !== this.lastBranchId) {
+        this.lastBranchId = this.idBranch;
+        this.closeWorkOrderDetail();
+        this.loadData();
+      }
     });
   }
 
   ngOnInit(): void {
     this.updateContext();
+    this.lastBranchId = this.idBranch;
+    this.initialized = true;
     this.loadData();
   }
 
@@ -113,11 +126,11 @@ export class WorkordersComponent implements OnInit {
     }
 
     this.loading = true;
-    const idCompanyStr = this.idcompany.toString();
+    const idBranchStr = this.idBranch.toString();
 
     forkJoin({
-      workOrders: this.workorderService.getAll(idCompanyStr),
-      assets: this.equipmentService.getEquipment(this.idcompany),
+      workOrders: this.workorderService.getAll(idBranchStr),
+      assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
       employees: this.employeesService.getEmployees(this.idBranch)
     }).subscribe({
       next: (result: any) => {
@@ -258,6 +271,10 @@ export class WorkordersComponent implements OnInit {
   }
 
   onNewWorkOrder(): void {
+    if (!this.canCreateByBranch()) {
+      return;
+    }
+
     this.router.navigate(['/procmodmaintenance/newworkorder']);
   }
 
@@ -308,22 +325,16 @@ export class WorkordersComponent implements OnInit {
     }
 
     const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
-    if (signalBranch !== null && signalBranch !== undefined) {
-      this.idBranch = Number(signalBranch);
-    } else {
-      const branchStorage = localStorage.getItem('branch');
-      if (branchStorage) {
-        const parsedBranch = Number(branchStorage);
-        if (!Number.isNaN(parsedBranch)) {
-          this.idBranch = parsedBranch;
-        }
-      }
-    }
+    this.idBranch = signalBranch !== null && signalBranch !== undefined ? Number(signalBranch) : 0;
   }
 
   private hasValidContext(): boolean {
     const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
-    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
     return hasCompany && hasBranch;
+  }
+
+  canCreateByBranch(): boolean {
+    return this.idBranch > 0;
   }
 }
