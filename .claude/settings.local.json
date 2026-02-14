@@ -90,7 +90,17 @@
       "WebFetch(domain:66.179.240.10)",
       "mcp__mssql-notifications__get_table_schema",
       "mcp__mssql-security__get_table_schema",
-      "mcp__mssql-smp__get_table_schema"
+      "mcp__mssql-smp__get_table_schema",
+      "Bash(git config:*)",
+      "mcp__github__search_repositories",
+      "mcp__github__list_issues",
+      "Bash(git -C /c/Developer/Angular/angular18/smp25 remote -v)",
+      "mcp__github__get_file_contents",
+      "mcp__notion__API-get-self",
+      "Bash(gh run list:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(python3:*)",
+      "Bash(git credential:*)"
     ],
     "deny": [],
     "ask": []

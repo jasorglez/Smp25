@@ -527,12 +527,28 @@ constructor() {
         onCellClicked: this.togglePermissions.bind(this)
 
       },
-     /*  {
+    
+    /*  {
         field: 'phone',
         headerName: 'Teléfono',
         cellEditor: 'agTextCellEditor',
         editable: true,
       }, */
+
+      {
+        field: 'isRoot',
+        headerName: 'Root',
+        //cellEditor: 'agTextCellEditor',
+        editable: (params) => {
+          if (params.data.__isNew) {
+            return true;
+          }
+          return true
+        },
+        width: 90,
+    
+      },
+
       {
         field: 'picture',
         headerName: 'Imagen de perfil',
@@ -630,20 +646,8 @@ constructor() {
         },
         editable: false,
         flex: 1
-      },
-      {
-        field: 'isRoot',
-        headerName: 'Root',
-        //cellEditor: 'agTextCellEditor',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
-        width: 90,
-        hide: !this.authorizedPass
       }
+   
     ];
 
     return this._columnDefs;
