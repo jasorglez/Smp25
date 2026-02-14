@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -81,9 +81,14 @@ export class NewworkorderComponent implements OnInit {
     'Instalaciones'
   ];
 
+  constructor() {
+    effect(() => {
+      this.updateContext();
+    });
+  }
+
   ngOnInit(): void {
-    this.idcompany = this.signalsService.getRootSelectedBySidebar()();
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.updateContext();
 
     const editId = this.route.snapshot.queryParamMap.get('id');
     if (editId) {
@@ -95,6 +100,14 @@ export class NewworkorderComponent implements OnInit {
   }
 
   loadData(): void {
+    if (!this.hasValidContext()) {
+      this.loading = false;
+      this.assets = [];
+      this.employees = [];
+      this.teams = [];
+      return;
+    }
+
     this.loading = true;
     const idCompanyStr = this.idcompany.toString();
 
@@ -182,6 +195,7 @@ export class NewworkorderComponent implements OnInit {
 
   handleSubmit(): void {
     if (!this.formData.title || !this.formData.description) return;
+    if (!this.hasValidContext()) return;
 
     this.saving = true;
     const idCompanyStr = this.idcompany.toString();
@@ -333,5 +347,39 @@ export class NewworkorderComponent implements OnInit {
     if (confirm('¿Deseas cancelar? Se perderán los datos no guardados.')) {
       this.router.navigate(['/procmodmaintenance/workorders']);
     }
+  }
+
+  private updateContext(): void {
+    const signalCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (signalCompany !== null && signalCompany !== undefined) {
+      this.idcompany = Number(signalCompany);
+    } else {
+      const companyStorage = localStorage.getItem('company');
+      if (companyStorage) {
+        const parsedCompany = Number(companyStorage);
+        if (!Number.isNaN(parsedCompany)) {
+          this.idcompany = parsedCompany;
+        }
+      }
+    }
+
+    const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
+    if (signalBranch !== null && signalBranch !== undefined) {
+      this.idBranch = Number(signalBranch);
+    } else {
+      const branchStorage = localStorage.getItem('branch');
+      if (branchStorage) {
+        const parsedBranch = Number(branchStorage);
+        if (!Number.isNaN(parsedBranch)) {
+          this.idBranch = parsedBranch;
+        }
+      }
+    }
+  }
+
+  private hasValidContext(): boolean {
+    const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch));
+    return hasCompany && hasBranch;
   }
 }

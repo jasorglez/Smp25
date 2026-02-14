@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -31,12 +31,25 @@ export class AssetsComponent implements OnInit {
   isEditing: boolean = false;
   formData: any = {};
 
+  constructor() {
+    effect(() => {
+      this.updateCompanyContext();
+    });
+  }
+
   ngOnInit(): void {
-    this.idcompany = this.signalsService.getRootSelectedBySidebar()();
+    this.updateCompanyContext();
     this.loadEquipments();
   }
 
   loadEquipments(): void {
+    if (!this.hasValidCompany()) {
+      this.assets = [];
+      this.filteredAssets = [];
+      this.loading = false;
+      return;
+    }
+
     this.loading = true;
     this.equipmentService.getEquipment(this.idcompany).subscribe(
       (data: any) => {
@@ -155,5 +168,25 @@ export class AssetsComponent implements OnInit {
 
   getInactiveCount(): number {
     return this.assets.filter(a => !a.active).length;
+  }
+
+  private updateCompanyContext(): void {
+    const signalCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (signalCompany !== null && signalCompany !== undefined) {
+      this.idcompany = Number(signalCompany);
+      return;
+    }
+
+    const companyStorage = localStorage.getItem('company');
+    if (companyStorage) {
+      const parsed = Number(companyStorage);
+      if (!Number.isNaN(parsed)) {
+        this.idcompany = parsed;
+      }
+    }
+  }
+
+  private hasValidCompany(): boolean {
+    return this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
   }
 }

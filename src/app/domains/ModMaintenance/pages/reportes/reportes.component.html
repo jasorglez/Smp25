@@ -40,19 +40,19 @@
       </div>
 
       <div class="report-actions">
-        <button class="btn btn-primary btn-sm" (click)="generateReport(report.id)">
-          <i class="fas fa-file-alt"></i> Generar Reporte
+        <button class="btn btn-primary btn-sm" (click)="generateReport(report.id)" [disabled]="exportingReportId === report.id">
+          <i class="fas fa-file-alt"></i> Generar Reporte ({{ getSelectedFormat(report.id) }})
         </button>
         <div class="dropdown">
-          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-download"></i> Exportar
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="exportingReportId === report.id">
+            <i class="fas fa-sliders-h"></i> Opción: {{ getSelectedFormat(report.id) }}
           </button>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" (click)="exportReport(report.id, 'PDF'); $event.preventDefault()">
+            <li><a class="dropdown-item" href="#" (click)="setSelectedFormat(report.id, 'PDF'); $event.preventDefault()">
               <i class="fas fa-file-pdf text-danger"></i> PDF</a></li>
-            <li><a class="dropdown-item" href="#" (click)="exportReport(report.id, 'Excel'); $event.preventDefault()">
+            <li><a class="dropdown-item" href="#" (click)="setSelectedFormat(report.id, 'Excel'); $event.preventDefault()">
               <i class="fas fa-file-excel text-success"></i> Excel</a></li>
-            <li><a class="dropdown-item" href="#" (click)="exportReport(report.id, 'CSV'); $event.preventDefault()">
+            <li><a class="dropdown-item" href="#" (click)="setSelectedFormat(report.id, 'CSV'); $event.preventDefault()">
               <i class="fas fa-file-csv text-primary"></i> CSV</a></li>
           </ul>
         </div>

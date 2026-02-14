@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectComponent } from '@ng-select/ng-select';
@@ -49,13 +49,25 @@ export class EquiposComponent implements OnInit {
     'General'
   ];
 
+  constructor() {
+    effect(() => {
+      this.updateContext();
+    });
+  }
+
   ngOnInit(): void {
-    this.idcompany = this.signalsService.getRootSelectedBySidebar()();
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.updateContext();
     this.loadData();
   }
 
   loadData(): void {
+    if (!this.hasValidContext()) {
+      this.loading = false;
+      this.teams = [];
+      this.employees = [];
+      return;
+    }
+
     this.loading = true;
     const idCompanyStr = this.idcompany.toString();
 
@@ -230,5 +242,39 @@ export class EquiposComponent implements OnInit {
 
   getStatusClass(status: string): string {
     return status === 'Activo' ? 'status-active' : 'status-inactive';
+  }
+
+  private updateContext(): void {
+    const signalCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (signalCompany !== null && signalCompany !== undefined) {
+      this.idcompany = Number(signalCompany);
+    } else {
+      const companyStorage = localStorage.getItem('company');
+      if (companyStorage) {
+        const parsedCompany = Number(companyStorage);
+        if (!Number.isNaN(parsedCompany)) {
+          this.idcompany = parsedCompany;
+        }
+      }
+    }
+
+    const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
+    if (signalBranch !== null && signalBranch !== undefined) {
+      this.idBranch = Number(signalBranch);
+    } else {
+      const branchStorage = localStorage.getItem('branch');
+      if (branchStorage) {
+        const parsedBranch = Number(branchStorage);
+        if (!Number.isNaN(parsedBranch)) {
+          this.idBranch = parsedBranch;
+        }
+      }
+    }
+  }
+
+  private hasValidContext(): boolean {
+    const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch));
+    return hasCompany && hasBranch;
   }
 }
