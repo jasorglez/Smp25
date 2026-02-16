@@ -39,20 +39,46 @@
         <p>{{ report.description }}</p>
       </div>
 
+      <div class="report-date-range" *ngIf="requiresDateRange(report.id)">
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label mb-1">Fecha inicial</label>
+            <input
+              type="date"
+              class="form-control form-control-sm"
+              [ngModel]="getDateFrom(report.id)"
+              (ngModelChange)="setDateFrom(report.id, $event)"
+              [disabled]="!canGenerateByBranch()">
+          </div>
+          <div class="col-6">
+            <label class="form-label mb-1">Fecha final</label>
+            <input
+              type="date"
+              class="form-control form-control-sm"
+              [ngModel]="getDateTo(report.id)"
+              (ngModelChange)="setDateTo(report.id, $event)"
+              [disabled]="!canGenerateByBranch()">
+          </div>
+        </div>
+      </div>
+
       <div class="report-actions">
-        <button class="btn btn-primary btn-sm" (click)="generateReport(report.id)">
-          <i class="fas fa-file-alt"></i> Generar Reporte
+        <button
+          class="btn btn-primary btn-sm"
+          (click)="generateReport(report.id)"
+          [disabled]="exportingReportId === report.id || !canGenerateByBranch() || !hasDateRange(report.id)">
+          <i class="fas fa-file-alt"></i> Generar Reporte ({{ getSelectedFormat(report.id) }})
         </button>
         <div class="dropdown">
-          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-download"></i> Exportar
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="exportingReportId === report.id || !canGenerateByBranch()">
+            <i class="fas fa-sliders-h"></i> Opción: {{ getSelectedFormat(report.id) }}
           </button>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" (click)="exportReport(report.id, 'PDF'); $event.preventDefault()">
+            <li><a class="dropdown-item" href="#" (click)="setSelectedFormat(report.id, 'PDF'); $event.preventDefault()">
               <i class="fas fa-file-pdf text-danger"></i> PDF</a></li>
-            <li><a class="dropdown-item" href="#" (click)="exportReport(report.id, 'Excel'); $event.preventDefault()">
+            <li><a class="dropdown-item" href="#" (click)="setSelectedFormat(report.id, 'Excel'); $event.preventDefault()">
               <i class="fas fa-file-excel text-success"></i> Excel</a></li>
-            <li><a class="dropdown-item" href="#" (click)="exportReport(report.id, 'CSV'); $event.preventDefault()">
+            <li><a class="dropdown-item" href="#" (click)="setSelectedFormat(report.id, 'CSV'); $event.preventDefault()">
               <i class="fas fa-file-csv text-primary"></i> CSV</a></li>
           </ul>
         </div>

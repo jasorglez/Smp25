@@ -181,13 +181,11 @@ error: (error) => {
   }
 
   async getpermissionxBranchs(idRoot: number) {
-    // Verificar si el root actual está en rootAdministrator
-    // Si es admin root, o si tiene el permiso principal/see-all-branches, añadir la opción "Todas las sucursales" al principio
+    const hasPermission = this.authService.hasDetailedPermission('principal', 'see-all-branches');
+    const isRoot = this.signalsService.getemailChoose() === environment.root;
 
-    if (
-      this.authService.hasDetailedPermission('principal', 'see-all-branches') ||
-      this.signalsService.getemailChoose() === environment.root
-    ) {
+    if (hasPermission || isRoot) {
+
       await this.branchService.getBranches2fields(idRoot).subscribe(
         (data) => {
           data.sort((a, b) => a.name.localeCompare(b.name));
@@ -304,7 +302,7 @@ error: (error) => {
     if (this.selectedBranchId) {
       // Limpiar selects de contracts y projects cuando cambia branch
       this.clearContractsAndProjects();
-      
+
       // Lógica para añadir la signal de branch
       this.signalsService.setBranchSelectedBySidebar(
         Number(this.selectedBranchId)

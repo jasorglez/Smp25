@@ -179,6 +179,35 @@
   border-bottom: none;
 }
 
+.member-rate {
+  font-size: 0.8rem;
+  color: #10b981;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+.hourly-rate-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid #86efac;
+  border-radius: 12px;
+  font-size: 1rem;
+  color: #166534;
+}
+
+.hourly-rate-display i {
+  font-size: 1.25rem;
+  color: #22c55e;
+}
+
+.hourly-rate-display strong {
+  font-size: 1.1rem;
+  color: #15803d;
+}
+
 .team-actions {
   display: flex;
   gap: 0.75rem;
@@ -219,6 +248,10 @@
 }
 
 .team-form-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: white;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);

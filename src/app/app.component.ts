@@ -23,14 +23,6 @@ export class AppComponent implements OnInit {
       const isAdvanced = this.signalsService.getIsAdvanced();
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-      // --- INICIO DE LA SOLUCIÓN ---
-      // Si es un usuario avanzado y la sucursal ha cambiado,
-      // reseteamos los permisos para forzar la recarga.
-      if (isAdvanced && idBranch !== this.lastLoadedBranchId) {
-        this.authService.setUserPermissions(null);
-      }
-      // --- FIN DE LA SOLUCIÓN ---
-
       // Solo cargamos permisos si tenemos el email y, en caso de ser avanzado, el idBranch.
       if (email && (!isAdvanced || (isAdvanced && idBranch))) {
         this.loadPermissions(email, isAdvanced, idBranch);
@@ -43,29 +35,45 @@ export class AppComponent implements OnInit {
   }
 
   private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {
-    // --- INICIO DE LA SOLUCIÓN ---
-    // Si los permisos ya existen en el servicio, no los volvemos a cargar.
-    // Esto evita que se sobrescriban los permisos establecidos durante el login.
+    // Si los permisos ya existen y no han cambiado las condiciones, no recargar.
     if (this.authService.getUserPermissions() && Object.keys(this.authService.getUserPermissions()).length > 0) {
-      // Si no es avanzado, o si es avanzado y la sucursal no ha cambiado, no hacemos nada.
       if (!isAdvanced || (isAdvanced && idBranch === this.lastLoadedBranchId)) {
-      return;
+        return;
+      }
     }
-    }
-    // --- FIN DE LA SOLUCIÓN ---
-    //alert('Carga desde app component' + idBranch)
+
     this.authService.getUserId(email).subscribe((userId) => {
-      const permissions$ = isAdvanced
-        ? this.authService.fetchUserPermissionsAdvanced(userId, idBranch)
-        : this.authService.fetchUserPermissions(userId);
- 
-      permissions$.subscribe({
-        next: (data: any) => {
-          this.authService.setUserPermissions(data.permissions);
-          this.lastLoadedBranchId = idBranch; // Actualizamos la última sucursal cargada
-        },
-        error: (error) => console.error('Error fetching user permissions:', error),
-      });
+      if (isAdvanced && idBranch > 0) {
+        // Intentar cargar permisos avanzados por sucursal
+        this.authService.fetchUserPermissionsAdvanced(userId, idBranch).subscribe({
+          next: (data: any) => {
+            const perms = data.permissions;
+            if (perms && Object.keys(perms).length > 0) {
+              // Tiene permisos CRUD detallados para esta sucursal
+              this.authService.setUserPermissions(perms);
+            } else {
+              // No tiene CrudPremissions para esta sucursal, usar permisos básicos
+              this.authService.fetchUserPermissions(userId).subscribe({
+                next: (basicData: any) => {
+                  this.authService.setUserPermissions(basicData.permissions);
+                },
+                error: (error) => console.error('Error fetching basic permissions:', error),
+              });
+            }
+            this.lastLoadedBranchId = idBranch;
+          },
+          error: (error) => console.error('Error fetching advanced permissions:', error),
+        });
+      } else {
+        // No avanzado o "Todas las sucursales" (idBranch negativo): usar permisos básicos
+        this.authService.fetchUserPermissions(userId).subscribe({
+          next: (data: any) => {
+            this.authService.setUserPermissions(data.permissions);
+            this.lastLoadedBranchId = idBranch;
+          },
+          error: (error) => console.error('Error fetching user permissions:', error),
+        });
+      }
     });
   }
 }

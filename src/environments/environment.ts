@@ -45,6 +45,8 @@ export const environment = {
   urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
+  urlMantenimiento: 'https://bi2.com.mx/maintenance/api',
+
   root: 'root@bi2.mx',
 
   //  urlAzure    : 'https://localhost:7089/',
@@ -68,11 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.77 (9 Febrero 2026 21:16) - Iris',
+  version: '4.82 (14 Febrero 2026 16:55) - Iris',
 
 
 };
-
-
-
-

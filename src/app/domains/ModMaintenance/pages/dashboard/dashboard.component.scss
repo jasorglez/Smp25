@@ -276,6 +276,16 @@
   color: #d97706;
   border: 1px solid #f59e0b;
 }
+.status-badge.pausada {
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: #6d28d9;
+  border: 1px solid #a78bfa;
+}
+.status-badge.cancelada {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
 
 .order-technician {
   font-size: 0.85rem;

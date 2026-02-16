@@ -943,6 +943,32 @@
   }
 }
 
+/* Task List */
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.task-list li:last-child {
+  border-bottom: none;
+}
+
+.task-list li.completed {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .workorder-card, .filter-btn, .modal-footer .btn, .action-btn {

@@ -1,27 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-
-interface Asset {
-  id: string;
-  name: string;
-  category: string;
-  location: string;
-  status: string;
-  lastMaintenance: string;
-  nextMaintenance: string;
-  criticality: string;
-  purchaseDate: string;
-  purchaseValue: number;
-  currentValue: number;
-  manufacturer: string;
-  model: string;
-  serialNumber: string;
-  description: string;
-  imageUrl: string;
-  qrCode: string;
-}
+import { EquipmentService } from 'app/services/equipment.service';
+import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-assets',
@@ -32,139 +14,75 @@ interface Asset {
 })
 export class AssetsComponent implements OnInit {
 
-  assets: Asset[] = [
-    {
-      id: 'ACT-001',
-      name: 'Torno CNC-01',
-      category: 'Maquinaria Industrial',
-      location: 'Planta de Producción A',
-      status: 'Operativo',
-      lastMaintenance: '2025-10-15',
-      nextMaintenance: '2025-12-15',
-      criticality: 'Alta',
-      purchaseDate: '2020-03-15',
-      purchaseValue: 250000,
-      currentValue: 180000,
-      manufacturer: 'Mazak',
-      model: 'QT-250',
-      serialNumber: 'MZ20200315001',
-      description: 'Torno CNC de alta precisión para mecanizado de piezas metálicas',
-      imageUrl: '/assets/img/cnc-lathe.jpg',
-      qrCode: 'QR-ACT-001'
-    },
-    {
-      id: 'ACT-002',
-      name: 'Compresor CP-12',
-      category: 'Equipos de Aire Comprimido',
-      location: 'Sala de Compresores',
-      status: 'En Mantenimiento',
-      lastMaintenance: '2025-11-20',
-      nextMaintenance: '2026-02-20',
-      criticality: 'Media',
-      purchaseDate: '2019-08-10',
-      purchaseValue: 85000,
-      currentValue: 65000,
-      manufacturer: 'Atlas Copco',
-      model: 'GA-15',
-      serialNumber: 'AC20190810001',
-      description: 'Compresor de aire industrial con motor eléctrico',
-      imageUrl: '/assets/img/compressor.jpg',
-      qrCode: 'QR-ACT-002'
-    },
-    {
-      id: 'ACT-003',
-      name: 'Montacargas MC-03',
-      category: 'Vehículos Industriales',
-      location: 'Área de Almacén',
-      status: 'Operativo',
-      lastMaintenance: '2025-11-10',
-      nextMaintenance: '2026-01-10',
-      criticality: 'Alta',
-      purchaseDate: '2021-05-20',
-      purchaseValue: 120000,
-      currentValue: 95000,
-      manufacturer: 'Toyota',
-      model: '7FBRU25',
-      serialNumber: 'TY20210520001',
-      description: 'Montacargas eléctrico con capacidad de 2.5 toneladas',
-      imageUrl: '/assets/img/forklift.jpg',
-      qrCode: 'QR-ACT-003'
-    },
-    {
-      id: 'ACT-004',
-      name: 'Sistema HVAC Principal',
-      category: 'Sistemas de Climatización',
-      location: 'Techo Edificio Principal',
-      status: 'Operativo',
-      lastMaintenance: '2025-09-30',
-      nextMaintenance: '2025-12-30',
-      criticality: 'Crítica',
-      purchaseDate: '2018-11-15',
-      purchaseValue: 180000,
-      currentValue: 120000,
-      manufacturer: 'Carrier',
-      model: '30XA-150',
-      serialNumber: 'CR20181115001',
-      description: 'Sistema de climatización central con capacidad de 150 TR',
-      imageUrl: '/assets/img/hvac.jpg',
-      qrCode: 'QR-ACT-004'
-    },
-    {
-      id: 'ACT-005',
-      name: 'Prensa Hidráulica PH-08',
-      category: 'Maquinaria Industrial',
-      location: 'Área de Prensas',
-      status: 'Fuera de Servicio',
-      lastMaintenance: '2025-08-25',
-      nextMaintenance: '2026-02-25',
-      criticality: 'Alta',
-      purchaseDate: '2017-12-01',
-      purchaseValue: 95000,
-      currentValue: 55000,
-      manufacturer: 'Schuler',
-      model: 'PH-80',
-      serialNumber: 'SC20171201001',
-      description: 'Prensa hidráulica de 80 toneladas para conformado de metales',
-      imageUrl: '/assets/img/hydraulic-press.jpg',
-      qrCode: 'QR-ACT-005'
-    }
-  ];
+  private equipmentService = inject(EquipmentService);
+  private signalsService = inject(SignalsService);
+  private router = inject(Router);
 
-  filteredAssets: Asset[] = [];
+  idcompany: number = 0;
+  idBranch: number = 0;
+  assets: any[] = [];
+  filteredAssets: any[] = [];
   searchTerm: string = '';
-  selectedCategory: string = '';
-  selectedStatus: string = '';
-  selectedCriticality: string = '';
-  selectedAsset: Asset | null = null;
+  selectedAsset: any = null;
   showAssetDetail: boolean = false;
+  loading: boolean = false;
+  private initialized: boolean = false;
+  private lastBranchId: number = 0;
 
-  categories: string[] = ['Todas', 'Maquinaria Industrial', 'Equipos de Aire Comprimido', 'Vehículos Industriales', 'Sistemas de Climatización', 'Equipos de Oficina'];
-  statuses: string[] = ['Todos', 'Operativo', 'En Mantenimiento', 'Fuera de Servicio', 'En Reparación'];
-  criticalities: string[] = ['Todas', 'Crítica', 'Alta', 'Media', 'Baja'];
+  // Edit/Create modal
+  showForm: boolean = false;
+  isEditing: boolean = false;
+  formData: any = {};
 
-  constructor(private router: Router) { }
+  constructor() {
+    effect(() => {
+      this.updateContext();
+      if (!this.initialized) {
+        return;
+      }
+
+      if (this.idBranch !== this.lastBranchId) {
+        this.lastBranchId = this.idBranch;
+        this.loadEquipments();
+      }
+    });
+  }
 
   ngOnInit(): void {
-    this.filteredAssets = [...this.assets];
+    this.updateContext();
+    this.lastBranchId = this.idBranch;
+    this.initialized = true;
+    this.loadEquipments();
+  }
+
+  loadEquipments(): void {
+    if (!this.hasValidContext()) {
+      this.assets = [];
+      this.filteredAssets = [];
+      this.loading = false;
+      return;
+    }
+
+    this.loading = true;
+    this.equipmentService.getEquipmentByBranch(this.idBranch).subscribe(
+      (data: any) => {
+        this.assets = data;
+        this.filteredAssets = [...this.assets];
+        this.loading = false;
+      },
+      (error) => {
+        console.error('Error fetching equipments:', error);
+        this.loading = false;
+      }
+    );
   }
 
   filterAssets(): void {
     this.filteredAssets = this.assets.filter(asset => {
       const matchesSearch = !this.searchTerm ||
-        asset.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        asset.id.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        asset.location.toLowerCase().includes(this.searchTerm.toLowerCase());
-
-      const matchesCategory = !this.selectedCategory || this.selectedCategory === 'Todas' ||
-        asset.category === this.selectedCategory;
-
-      const matchesStatus = !this.selectedStatus || this.selectedStatus === 'Todos' ||
-        asset.status === this.selectedStatus;
-
-      const matchesCriticality = !this.selectedCriticality || this.selectedCriticality === 'Todas' ||
-        asset.criticality === this.selectedCriticality;
-
-      return matchesSearch && matchesCategory && matchesStatus && matchesCriticality;
+        (asset.description || '').toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        (asset.measure || '').toLowerCase().includes(this.searchTerm.toLowerCase());
+      return matchesSearch;
     });
   }
 
@@ -172,11 +90,7 @@ export class AssetsComponent implements OnInit {
     this.filterAssets();
   }
 
-  onFilterChange(): void {
-    this.filterAssets();
-  }
-
-  viewAssetDetail(asset: Asset): void {
+  viewAssetDetail(asset: any): void {
     this.selectedAsset = asset;
     this.showAssetDetail = true;
   }
@@ -186,57 +100,138 @@ export class AssetsComponent implements OnInit {
     this.selectedAsset = null;
   }
 
-  getStatusClass(status: string): string {
-    const classes: { [key: string]: string } = {
-      'Operativo': 'status-operational',
-      'En Mantenimiento': 'status-maintenance',
-      'Fuera de Servicio': 'status-out-of-service',
-      'En Reparación': 'status-repair'
+  // --- Create / Edit ---
+  openCreateForm(): void {
+    if (!this.canCreateByBranch()) {
+      return;
+    }
+
+    this.isEditing = false;
+    this.formData = {
+      idCompany: this.idcompany,
+      idBranch: this.idBranch,
+      id_company: this.idcompany,
+      id_branch: this.idBranch,
+      description: '',
+      measure: 'DIA',
+      quantity: 1,
+      costMN: 0,
+      costDLL: 0,
+      priceMN: 0,
+      priceDLL: 0,
+      dayswork: 8,
+      daysWork: 8,
+      imprimir: true,
+      charged: true,
+      active: true
     };
-    return classes[status] || 'status-unknown';
+    this.showForm = true;
   }
 
-  getCriticalityClass(criticality: string): string {
-    const classes: { [key: string]: string } = {
-      'Crítica': 'criticality-critical',
-      'Alta': 'criticality-high',
-      'Media': 'criticality-medium',
-      'Baja': 'criticality-low'
+  openEditForm(asset: any, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.isEditing = true;
+    const normalizedDaysWork = asset?.daysWork ?? asset?.dayswork ?? 0;
+    this.formData = {
+      ...asset,
+      dayswork: normalizedDaysWork,
+      daysWork: normalizedDaysWork
     };
-    return classes[criticality] || 'criticality-unknown';
+    this.showForm = true;
+    this.closeAssetDetail();
   }
 
-  calculateDepreciation(asset: Asset): number {
-    const purchaseDate = new Date(asset.purchaseDate);
-    const now = new Date();
-    const yearsDiff = (now.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
-    const depreciationRate = 0.1; // 10% annual depreciation
-    const depreciation = asset.purchaseValue * depreciationRate * yearsDiff;
-    return Math.max(0, asset.purchaseValue - depreciation);
+  closeForm(): void {
+    this.showForm = false;
+    this.formData = {};
   }
 
-  isMaintenanceOverdue(asset: Asset): boolean {
-    const nextMaintenance = new Date(asset.nextMaintenance);
-    const now = new Date();
-    return nextMaintenance < now;
+  saveAsset(): void {
+    if (!this.formData.description || !this.hasValidContext()) return;
+
+    const payload = {
+      ...this.formData,
+      dayswork: this.formData.daysWork ?? this.formData.dayswork ?? 0,
+      daysWork: this.formData.daysWork ?? this.formData.dayswork ?? 0,
+      active: true,
+      idCompany: this.idcompany,
+      idBranch: this.idBranch,
+      id_company: this.idcompany,
+      id_branch: this.idBranch
+    };
+
+    if (this.isEditing) {
+      this.equipmentService.updateEquipmentFromAssets(this.formData.id, payload).subscribe({
+        next: () => {
+          this.closeForm();
+          this.loadEquipments();
+        },
+        error: (err) => console.error('Error updating equipment:', err)
+      });
+    } else {
+      this.equipmentService.addEquipmentFromAssets(payload).subscribe({
+        next: () => {
+          this.closeForm();
+          this.loadEquipments();
+        },
+        error: (err) => console.error('Error creating equipment:', err)
+      });
+    }
   }
 
-  getDaysUntilMaintenance(asset: Asset): number {
-    const nextMaintenance = new Date(asset.nextMaintenance);
-    const now = new Date();
-    const diffTime = nextMaintenance.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  deleteAsset(asset: any, event?: Event): void {
+    if (event) event.stopPropagation();
+    if (!confirm('Eliminar "' + asset.description + '"?')) return;
+    this.equipmentService.deleteEquipment(asset.id).subscribe({
+      next: () => {
+        this.closeAssetDetail();
+        this.loadEquipments();
+      },
+      error: (err) => console.error('Error deleting equipment:', err)
+    });
+  }
+
+  getStatusClass(asset: any): string {
+    return asset.active ? 'status-operational' : 'status-out-of-service';
+  }
+
+  getStatusText(asset: any): string {
+    return asset.active ? 'Operativo' : 'Fuera de Servicio';
   }
 
   getOperationalCount(): number {
-    return this.assets.filter(a => a.status === 'Operativo').length;
+    return this.assets.filter(a => a.active).length;
   }
 
-  getMaintenanceCount(): number {
-    return this.assets.filter(a => a.status === 'En Mantenimiento').length;
+  getInactiveCount(): number {
+    return this.assets.filter(a => !a.active).length;
   }
 
-  onNewAsset(): void {
-    this.router.navigate(['/procmodmaintenance/newasset']);
+  private updateContext(): void {
+    const signalCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (signalCompany !== null && signalCompany !== undefined) {
+      this.idcompany = Number(signalCompany);
+    } else {
+      const companyStorage = localStorage.getItem('company');
+      if (companyStorage) {
+        const parsed = Number(companyStorage);
+        if (!Number.isNaN(parsed)) {
+          this.idcompany = parsed;
+        }
+      }
+    }
+
+    const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.idBranch = signalBranch !== null && signalBranch !== undefined ? Number(signalBranch) : 0;
+  }
+
+  private hasValidContext(): boolean {
+    const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
+    return hasCompany && hasBranch;
+  }
+
+  canCreateByBranch(): boolean {
+    return this.idBranch > 0;
   }
 }
