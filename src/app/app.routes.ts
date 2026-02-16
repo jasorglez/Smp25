@@ -634,20 +634,6 @@ export const routes: Routes = [
             // canDeactivate: [UnsavedChangesGuard],
           },
           {
-            path: 'corporativos',
-            loadComponent: () =>
-              import('./domains/SMP/Components/corporativos/corporativos.component').then(
-                (c) => c.CorporativosComponent
-              ),
-            canActivate: [TrackingGuard],
-            data: {
-              tracking: {
-                logMessage: 'Click en Pestaña Configuración Módulo Corporativos',
-                category: 'Setup'
-              }
-            }
-          },
-          {
             path: 'root',
             loadComponent: () =>
               import('./domains/SMP/Components/root/root.component').then(
@@ -855,23 +841,6 @@ export const routes: Routes = [
               },
             ],
           },
-
-          {
-            path: 'transferencias',
-            loadComponent: () =>
-              import(
-                './domains/ModAdmon/components/transferencias/transferencias.component'
-              ).then((t) => t.TransferenciasComponent),
-            canActivate: [TrackingGuard],
-            data: {
-              tracking: {
-                logMessage: 'Click en Pestaña Transferencias',
-                category: 'Administration'
-              }
-            },
-            canDeactivate: [UnsavedChangesGuard]
-          },
-
           {
             path: 'income',
             loadComponent: () =>

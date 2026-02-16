@@ -9,12 +9,11 @@ import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { DetailWarehousesRendererComponent } from './detail-warehouses-renderer.component';
 
 @Component({
   selector: 'app-detail-branches-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailWarehousesRendererComponent],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div style="padding: 10px; background-color: #f0f0f0; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -57,7 +56,6 @@ import { DetailWarehousesRendererComponent } from './detail-warehouses-renderer.
           [columnDefs]="branchesColumnDefs"
           [rowData]="branchesRowData"
           [gridOptions]="branchesGridOptions"
-          [components]="components"
           (gridReady)="onBranchesGridReady($event)"
           (cellValueChanged)="onBranchesCellValueChanged($event)">
         </ag-grid-angular>
@@ -87,10 +85,6 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   branches: any[] = [];
 
   private tempIdCounter: number = 0;
-
-  components = {
-    detailWarehousesRenderer: DetailWarehousesRendererComponent
-  };
 
   branchesGridOptions: any = {
     headerHeight: 25,

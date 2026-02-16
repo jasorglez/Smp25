@@ -11,7 +11,6 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, concatMap } from 'rxjs';
 import { environment } from '@env/environment';
-import { DetailWarehousesRendererComponent } from './detail-warehouses-renderer.component';
 import { DetailBranchesRendererComponent } from './detail-branches-renderer.component';
 import { AuthService } from 'app/services/auth.service';
 import { PermitionsService } from 'app/services/permitions.service';
@@ -21,7 +20,7 @@ import { UsersService } from 'app/services/users.service';
 @Component({
   selector: 'app-detail-permissions-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailWarehousesRendererComponent, DetailBranchesRendererComponent],
+  imports: [AgGridModule, CommonModule, DetailBranchesRendererComponent],
   template: `
     <div style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -80,7 +79,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);
   private rootService = inject(RootService);
-  private usersService        = inject(UsersService);
+  private usersService = inject(UsersService);
   private trackingService = inject(TrackingService);
   private permitionsService = inject(PermitionsService);
   authService = inject(AuthService);
@@ -107,7 +106,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
   private tempIdCounter: number = 0;
 
   components = {
-    detailWarehousesRenderer: DetailWarehousesRendererComponent,
     detailBranchesRenderer: DetailBranchesRendererComponent
   };
 
@@ -169,11 +167,11 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           },
           valueParser: (params: any) => params.newValue,
           editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
+            if (params.data.__isNew) {
+              return true;
+            }
+            return true
+          },
           flex: 1
         }
       ];
@@ -191,11 +189,11 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           field: 'name',
           headerName: 'Sucursal',
           editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
+            if (params.data.__isNew) {
+              return true;
+            }
+            return true
+          },
           suppressMovable: true,
           filter: false,
           flex: 1,
@@ -257,7 +255,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
       ];
     }
   }
-  getInfoByUser(){
+  getInfoByUser() {
     this.permitionsService.getInfoByUser(this.userId)
       .subscribe((data: any) => {
         this.permiso = [];
@@ -266,13 +264,13 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
       });
   }
   constructor() {
-      effect(() => {
-         if(this.signalsService.getRefresCantidadPermisos()()){
-          this.loadCatalogs();
-          this.getInfoByUser();
-          this.signalsService.setRefresCantidadPermisos(false);
-         }
-      })
+    effect(() => {
+      if (this.signalsService.getRefresCantidadPermisos()()) {
+        this.loadCatalogs();
+        this.getInfoByUser();
+        this.signalsService.setRefresCantidadPermisos(false);
+      }
+    })
   }
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -292,7 +290,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     // Decidir qué mostrar:
     // Si tiene permiso de companies (empresas), mostrar root
     // Si no, mostrar branches directamente
-    this.isRootUser =false;
+    this.isRootUser = false;
     this.canSeeBranches = this.showRoot || hasBranchesPermission;
 
     // Cargar catálogos y datos
@@ -346,7 +344,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           this.trackingService.getEmail()
         );
       });
-    } else 
+    } else
       // Para usuarios normales, cargar sucursales
       this.branchesService.getBranchesByUserAndCompany(this.userId, this.idRoot).subscribe(
         (data: any) => {
@@ -355,7 +353,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             ...row,
             // Asegurar que idPermission contenga el ID de la sucursal
             idPermission: row.idPermission || row.idBranch || row.id
-            
+
           }));
 
           if (this.allBranches.length > 0) {
@@ -372,7 +370,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             'Menu Administracion Usuarios por Sucursal',
             this.trackingService.getEmail()
           );
-          
+
           console.log('Data loaded:', this.permissionsRowData);
           setTimeout(() => {
             if (this.permissionsGridApi && this.branches.length > 0) {
@@ -473,7 +471,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         'Menu Administracion Usuarios',
         this.trackingService.getEmail()
       );
-      
+
       return this.usersxpermissionsService.addUserxPermission(cleanedData).pipe(
         concatMap(() => this.usersService.updateActulizarSecurity(cleanedData.idUser, 'SUMA'))
       );
@@ -522,7 +520,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
 
     const permissionId = this.selectedPermission.internalId;
     console.log(this.selectedPermission)
-    this.usersxpermissionsService.deleteUserxPermission(permissionId).pipe(      
+    this.usersxpermissionsService.deleteUserxPermission(permissionId).pipe(
       concatMap(() => this.usersService.updateActulizarSecurity(this.userId, 'RESTA')),
       catchError((error) => {
         alerts.basicAlert(
@@ -530,7 +528,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           'Error al eliminar la entrada.',
           'error'
         );
-        console.error(error);        
+        console.error(error);
         return EMPTY; // Detiene el flujo del observable en caso de error
       })
     ).subscribe(() => {
