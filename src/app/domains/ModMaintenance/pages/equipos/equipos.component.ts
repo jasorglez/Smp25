@@ -41,6 +41,8 @@ export class EquiposComponent implements OnInit {
     memberIds: [] as number[]
   };
 
+  calculatedHourlyRate: number = 0;
+
   specialties: string[] = [
     'Electricidad',
     'Mecanica',
@@ -100,14 +102,18 @@ export class EquiposComponent implements OnInit {
         const memberRequests = teamsRaw.map((t: any) => this.teamService.getMembers(t.id));
         forkJoin(memberRequests).subscribe({
           next: (membersArrays: any) => {
-            this.teams = teamsRaw.map((team: any, i: number) => ({
-              ...team,
-              leaderName: this.getEmployeeName(team.leader),
-              members: (membersArrays[i] || []).map((m: any) => ({
+            this.teams = teamsRaw.map((team: any, i: number) => {
+              const members = (membersArrays[i] || []).map((m: any) => ({
                 ...m,
-                employeeName: this.getEmployeeName(m.idEmployee)
-              }))
-            }));
+                employeeName: this.getEmployeeName(m.idEmployee),
+                baseHours: this.getEmployeeBaseHours(m.idEmployee)
+              }));
+              return {
+                ...team,
+                leaderName: this.getEmployeeName(team.leader),
+                members: members
+              };
+            });
             this.loading = false;
           },
           error: () => {
@@ -133,13 +139,41 @@ export class EquiposComponent implements OnInit {
     return emp ? emp.name : `Empleado #${id}`;
   }
 
+  getEmployeeBaseHours(id: number | null): number {
+    if (!id) return 0;
+    const emp = this.employees.find((e: any) => e.id === id);
+    return emp?.baseHours || emp?.basehours || 0;
+  }
+
   updateAvailableMembers(): void {
     const leaderId = this.formData.leader;
     this.availableMembersList = this.employees.filter((e: any) => e.id !== leaderId);
+    this.recalculateHourlyRate();
   }
 
   onLeaderChange(): void {
     this.updateAvailableMembers();
+  }
+
+  onMembersChange(): void {
+    this.recalculateHourlyRate();
+  }
+
+  recalculateHourlyRate(): void {
+    let total = 0;
+
+    // Include leader's hourly rate
+    if (this.formData.leader) {
+      total += this.getEmployeeBaseHours(this.formData.leader);
+    }
+
+    // Include members' hourly rates
+    const memberIds: number[] = this.formData.memberIds || [];
+    for (const empId of memberIds) {
+      total += this.getEmployeeBaseHours(empId);
+    }
+
+    this.calculatedHourlyRate = Math.round(total * 100) / 100;
   }
 
   openCreateForm(): void {
@@ -156,6 +190,7 @@ export class EquiposComponent implements OnInit {
       status: 'Activo',
       memberIds: []
     };
+    this.calculatedHourlyRate = 0;
     this.updateAvailableMembers();
     this.showForm = true;
   }
@@ -189,6 +224,7 @@ export class EquiposComponent implements OnInit {
       leader: this.formData.leader || null,
       specialty: this.formData.specialty,
       status: this.formData.status,
+      hourlyRate: this.calculatedHourlyRate,
       active: true
     };
 
@@ -259,6 +295,13 @@ export class EquiposComponent implements OnInit {
 
   getStatusClass(status: string): string {
     return status === 'Activo' ? 'status-active' : 'status-inactive';
+  }
+
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(amount || 0);
   }
 
   private updateContext(): void {

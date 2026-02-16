@@ -2,12 +2,15 @@ import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { WorkorderService } from 'app/services/workorder.service';
 import { WorkorderTaskService } from 'app/services/workorder-task.service';
+import { WorkorderMaterialService } from 'app/services/workorder-material.service';
 import { MaintenanceConfigService } from 'app/services/maintenance-config.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { EmployeesService } from 'app/services/employees.service';
-import { TeamService } from 'app/services/team.service'; // Added TeamService
+import { TeamService } from 'app/services/team.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
 import { forkJoin } from 'rxjs';
 
@@ -18,10 +21,20 @@ interface Task {
   completed: boolean;
 }
 
+interface MaterialItem {
+  id: number;
+  dbId?: number;
+  materialId: number;
+  materialName: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
 @Component({
   selector: 'app-newworkorder',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgSelectComponent],
   templateUrl: './newworkorder.component.html',
   styleUrl: './newworkorder.component.scss'
 })
@@ -29,10 +42,12 @@ export class NewworkorderComponent implements OnInit {
 
   private workorderService = inject(WorkorderService);
   private taskService = inject(WorkorderTaskService);
+  private materialService = inject(WorkorderMaterialService);
   private configService = inject(MaintenanceConfigService);
   private equipmentService = inject(EquipmentService);
   private employeesService = inject(EmployeesService);
-  private teamService = inject(TeamService); // Injected TeamService
+  private teamService = inject(TeamService);
+  private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -73,6 +88,9 @@ export class NewworkorderComponent implements OnInit {
   assets: any[] = [];
   employees: any[] = [];
   teams: any[] = [];
+  materials: any[] = [];
+  selectedMaterials: MaterialItem[] = [];
+  selectedTeam: any = null;
 
   departments: string[] = [
     'Producción',
@@ -117,6 +135,9 @@ export class NewworkorderComponent implements OnInit {
       this.assets = [];
       this.employees = [];
       this.teams = [];
+      this.materials = [];
+      this.selectedMaterials = [];
+      this.selectedTeam = null;
       return;
     }
 
@@ -126,19 +147,22 @@ export class NewworkorderComponent implements OnInit {
     const requests: any = {
       assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
       employees: this.employeesService.getEmployees(this.idBranch),
-      teams: this.teamService.getAll(idBranchStr) // Fetch teams data
+      teams: this.teamService.getAll(idBranchStr),
+      materials: this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE')
     };
 
     if (this.isEditing && this.editingId) {
       requests.workOrder = this.workorderService.getById(this.editingId);
       requests.tasks = this.taskService.getByWorkOrder(this.editingId);
+      requests.woMaterials = this.materialService.getByWorkOrder(this.editingId);
     }
 
     forkJoin(requests).subscribe({
       next: (result: any) => {
         this.assets = (result.assets || []).filter((a: any) => a.active);
         this.employees = (result.employees || []).filter((e: any) => e.active);
-        this.teams = result.teams || []; // Store fetched teams
+        this.teams = result.teams || [];
+        this.materials = (result.materials || []).filter((m: any) => m.active);
 
         if (this.isEditing && result.workOrder) {
           const wo = result.workOrder;
@@ -171,6 +195,25 @@ export class NewworkorderComponent implements OnInit {
               completed: t.completed || false
             }));
           }
+
+          // Set selected team for labor cost display
+          if (this.formData.assignedTo) {
+            this.selectedTeam = this.teams.find((t: any) => t.name === this.formData.assignedTo) || null;
+          }
+
+          // Load existing materials
+          const woMaterials = result.woMaterials || [];
+          if (woMaterials.length > 0) {
+            this.selectedMaterials = woMaterials.map((m: any, i: number) => ({
+              id: i + 1,
+              dbId: m.id,
+              materialId: m.idMaterial,
+              materialName: m.materialName || '',
+              quantity: m.quantity || 1,
+              unitCost: m.unitCost || 0,
+              totalCost: m.totalCost || 0
+            }));
+          }
         }
 
         this.loading = false;
@@ -189,10 +232,83 @@ export class NewworkorderComponent implements OnInit {
     // Assign to team if asset has an associated team
     if (selected && selected.idTeam) {
       const team = this.teams.find((t: any) => t.id === selected.idTeam);
-      this.formData.assignedTo = team ? team.name : '';
+      if (team) {
+        this.formData.assignedTo = team.name;
+        this.selectedTeam = team;
+        this.calculateLaborCost();
+      }
     } else {
-      this.formData.assignedTo = ''; // Clear if no team is associated
+      this.formData.assignedTo = '';
+      this.selectedTeam = null;
+      this.formData.costLabor = 0;
     }
+  }
+
+  onTeamChange(): void {
+    this.selectedTeam = this.teams.find((t: any) => t.name === this.formData.assignedTo) || null;
+    this.calculateLaborCost();
+  }
+
+  onEstimatedHoursChange(): void {
+    this.calculateLaborCost();
+  }
+
+  calculateLaborCost(): void {
+    if (this.selectedTeam && this.formData.estimatedHours) {
+      const hourlyRate = this.selectedTeam.hourlyRate || 0;
+      this.formData.costLabor = Math.round(hourlyRate * this.formData.estimatedHours * 100) / 100;
+    } else {
+      this.formData.costLabor = 0;
+    }
+  }
+
+  addMaterial(): void {
+    if (!this.canCreateByBranch()) return;
+
+    const newId = this.selectedMaterials.length > 0
+      ? Math.max(...this.selectedMaterials.map(m => m.id)) + 1
+      : 1;
+
+    this.selectedMaterials.push({
+      id: newId,
+      materialId: 0,
+      materialName: '',
+      quantity: 1,
+      unitCost: 0,
+      totalCost: 0
+    });
+  }
+
+  removeMaterial(id: number): void {
+    this.selectedMaterials = this.selectedMaterials.filter(m => m.id !== id);
+    this.calculatePartsCost();
+  }
+
+  onMaterialSelect(item: MaterialItem): void {
+    const material = this.materials.find((m: any) => m.id === item.materialId);
+    if (material) {
+      item.materialName = material.description;
+      item.unitCost = material.costoMN || 0;
+      item.totalCost = Math.round(item.unitCost * item.quantity * 100) / 100;
+    }
+    this.calculatePartsCost();
+  }
+
+  onQuantityChange(item: MaterialItem): void {
+    item.totalCost = Math.round(item.unitCost * item.quantity * 100) / 100;
+    this.calculatePartsCost();
+  }
+
+  calculatePartsCost(): void {
+    this.formData.costParts = this.selectedMaterials.reduce((sum, m) => sum + m.totalCost, 0);
+    this.formData.costParts = Math.round(this.formData.costParts * 100) / 100;
+  }
+
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(amount || 0);
   }
 
   addTask(): void {
@@ -286,15 +402,33 @@ export class NewworkorderComponent implements OnInit {
 
   private saveTasks(workOrderId: number): void {
     const validTasks = this.tasks.filter(t => t.description.trim());
-    if (validTasks.length === 0) {
+    const validMaterials = this.selectedMaterials.filter(m => m.materialId > 0);
+
+    const ops: any[] = [];
+
+    // Add task operations
+    for (const t of validTasks) {
+      ops.push(this.taskService.add({ idWorkorder: workOrderId, description: t.description, completed: t.completed, active: true }));
+    }
+
+    // Add material operations
+    for (const m of validMaterials) {
+      ops.push(this.materialService.add({
+        idWorkorder: workOrderId,
+        idMaterial: m.materialId,
+        materialName: m.materialName,
+        quantity: m.quantity,
+        unitCost: m.unitCost,
+        totalCost: m.totalCost,
+        active: true
+      }));
+    }
+
+    if (ops.length === 0) {
       this.saving = false;
       this.router.navigate(['/procmodmaintenance/workorders']);
       return;
     }
-
-    const ops = validTasks.map(t =>
-      this.taskService.add({ idWorkorder: workOrderId, description: t.description, completed: t.completed, active: true })
-    );
 
     forkJoin(ops).subscribe({
       next: () => {
@@ -343,6 +477,60 @@ export class NewworkorderComponent implements OnInit {
 
         if (ops.length > 0) {
           forkJoin(ops).subscribe({
+            complete: () => this.syncMaterials(workOrderId)
+          });
+        } else {
+          this.syncMaterials(workOrderId);
+        }
+      },
+      error: () => {
+        this.saveTasks(workOrderId);
+      }
+    });
+  }
+
+  private syncMaterials(workOrderId: number): void {
+    this.materialService.getByWorkOrder(workOrderId).subscribe({
+      next: (currentMaterials: any[]) => {
+        const ops: any[] = [];
+        const validMaterials = this.selectedMaterials.filter(m => m.materialId > 0);
+
+        // Delete removed materials
+        const currentDbIds = validMaterials.filter(m => m.dbId).map(m => m.dbId);
+        for (const cm of (currentMaterials || [])) {
+          if (!currentDbIds.includes(cm.id)) {
+            ops.push(this.materialService.delete(cm.id));
+          }
+        }
+
+        // Update existing or add new materials
+        for (const mat of validMaterials) {
+          if (mat.dbId) {
+            ops.push(this.materialService.update(mat.dbId, {
+              id: mat.dbId,
+              idWorkorder: workOrderId,
+              idMaterial: mat.materialId,
+              materialName: mat.materialName,
+              quantity: mat.quantity,
+              unitCost: mat.unitCost,
+              totalCost: mat.totalCost,
+              active: true
+            }));
+          } else {
+            ops.push(this.materialService.add({
+              idWorkorder: workOrderId,
+              idMaterial: mat.materialId,
+              materialName: mat.materialName,
+              quantity: mat.quantity,
+              unitCost: mat.unitCost,
+              totalCost: mat.totalCost,
+              active: true
+            }));
+          }
+        }
+
+        if (ops.length > 0) {
+          forkJoin(ops).subscribe({
             complete: () => {
               this.saving = false;
               this.router.navigate(['/procmodmaintenance/workorders']);
@@ -354,7 +542,30 @@ export class NewworkorderComponent implements OnInit {
         }
       },
       error: () => {
-        this.saveTasks(workOrderId);
+        // If error getting materials, just save them as new
+        const validMaterials = this.selectedMaterials.filter(m => m.materialId > 0);
+        if (validMaterials.length > 0) {
+          const adds = validMaterials.map(m =>
+            this.materialService.add({
+              idWorkorder: workOrderId,
+              idMaterial: m.materialId,
+              materialName: m.materialName,
+              quantity: m.quantity,
+              unitCost: m.unitCost,
+              totalCost: m.totalCost,
+              active: true
+            })
+          );
+          forkJoin(adds).subscribe({
+            complete: () => {
+              this.saving = false;
+              this.router.navigate(['/procmodmaintenance/workorders']);
+            }
+          });
+        } else {
+          this.saving = false;
+          this.router.navigate(['/procmodmaintenance/workorders']);
+        }
       }
     });
   }
