@@ -69,23 +69,6 @@ export class PermissionsViewByUserComponent implements OnInit {
   rawData: any[] = [];
   notSavedChanges: boolean = false;
 
-
-  // Datos planos originales como los recibes de la API
-  /*rawData = [
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Principal',canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Ahorros', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Prestamos', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Horarios",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Historico Préstamos",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Historico Ahorros",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Nómina",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Nómina", showColumn: 'Horas Extras', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Bonos Historicos",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Histórico de Nominas Digitales",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Compras delison", masterRead: false, detailedPermissionName: "Proveedores", detailedRead: false, subdetailedPermissionName:  "Proveedores",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Compras delison", masterRead: false, detailedPermissionName: "Requisiciones", detailedRead: false, subdetailedPermissionName:  "Requisiciones",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-  ];*/
-
   // Aquí almacenaremos los datos transformados en una estructura jerárquica
   groupedPermissions: MasterPermission[] = [];
 
@@ -98,6 +81,7 @@ export class PermissionsViewByUserComponent implements OnInit {
     // Data fetching should happen in agInit for cell renderers.
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
   }
+  
   agInit(params: ICellRendererParams & { idUser: number, idBranch: number, idRole: number, idPosicion: number }): void {
       this.params = params;
       this.userId = params.idUser; // Corrected access
@@ -118,6 +102,7 @@ export class PermissionsViewByUserComponent implements OnInit {
        });
     this.groupedPermissions = this.transformData(this.rawData);
   }
+  
    modificar(){
     //if(this.authService.getCrudPermission('setup', 'users','','','', 'create')){
        this.permitionsService.getPermitionsDetail(this.idEmpresa, this.userId, this.branchId, this.idRole, this.idPosicion)
@@ -131,7 +116,6 @@ export class PermissionsViewByUserComponent implements OnInit {
     //}/
        
   }
-
 
   /**
    * Transforma una lista plana de permisos en una estructura jerárquica.
@@ -226,8 +210,23 @@ export class PermissionsViewByUserComponent implements OnInit {
     }
   
     onCrudChange(permission: CrudPermission) {
+      // Si se activa canRead en Principal, automáticamente activar todos los permisos CRUD
+      if (permission.canRead && permission.name === 'Principal') {
+        permission.canCreate = true;
+        permission.canUpdate = true;
+        permission.canDelete = true;
+      }
+      
+      // Si se desactiva canRead, desactivar todos los permisos CRUD
+      if (!permission.canRead) {
+        permission.canCreate = false;
+        permission.canUpdate = false;
+        permission.canDelete = false;
+      }
+      
       this.checkForChanges();
     }
+    
   async saveDetailChanges() {
     const modifiedPermissions = this.untransformData(this.groupedPermissions);
 

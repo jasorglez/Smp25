@@ -11,18 +11,19 @@
               <span class="visually-hidden">Hay cambios sin guardar</span>
             </span>
           </button>
-          <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertChanges()">
+          <button type="button" class="btn btn-warning ms-1 me-1"  (click)="revertChanges()">
             <i class="bi bi-arrow-clockwise"></i>
           </button>
         </div>
       </div>
   
   <div class="col">
+  <div class="permissions-grid">
   <div *ngFor="let master of groupedPermissions" class="master-group">
     <div id="master" class="permission-header master-header ">
       <span class="permission-name">{{ master.masterPermissionName }}</span>
       <label class="switch">
-        <input type="checkbox" [(ngModel)]="master.masterRead" (ngModelChange)="onMasterReadChange(master)">
+        <input type="checkbox" [(ngModel)]="master.masterRead"  (ngModelChange)="onMasterReadChange(master)">
         <span class="slider round"></span>
       </label>
     </div>
@@ -59,9 +60,9 @@
               </div>
               <!-- Permisos CRUD para "Principal" -->
               <div *ngIf="subdetailGroup.principal.canRead" class="crud-permissions-container">
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canCreate" (ngModelChange)="onCrudChange(subdetailGroup.principal)"> Crear</label>
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canUpdate" (ngModelChange)="onCrudChange(subdetailGroup.principal)"> Actualizar</label>
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canDelete" (ngModelChange)="onCrudChange(subdetailGroup.principal)"> Borrar</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canCreate"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Crear</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canUpdate"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Actualizar</label>
+                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canDelete"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Borrar</label>
               </div>
             </div>
 
@@ -93,5 +94,6 @@
     </div>
     </div>
   </div>
+</div>
 </div>
 </div>
