@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-newasset',
@@ -16,6 +17,7 @@ export class NewassetComponent implements OnInit {
   private router = inject(Router);
   private equipmentService = inject(EquipmentService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
   idcompany: number = 0;
   idBranch: number = 0;
   saving: boolean = false;
@@ -92,6 +94,13 @@ export class NewassetComponent implements OnInit {
 
     const branch = this.signalsService.getBranchSelectedBySidebar()();
     this.idBranch = branch !== null && branch !== undefined ? Number(branch) : 0;
+
+    this.trackingService.addLog(
+      String(this.idcompany),
+      'Acceso a Nuevo Activo',
+      'ModMaintenance/NewAsset',
+      ''
+    );
   }
 
   handleInputChange(event: any): void {
@@ -133,6 +142,12 @@ export class NewassetComponent implements OnInit {
     this.saving = true;
     this.equipmentService.addEquipmentFromAssets(payload).subscribe({
       next: () => {
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Activo creado: ${description}`,
+          'ModMaintenance/NewAsset',
+          ''
+        );
         this.saving = false;
         alert('Activo creado exitosamente.');
         this.router.navigate(['/procmodmaintenance/assets']);

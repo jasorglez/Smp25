@@ -9,6 +9,7 @@ import { alerts } from 'app/helpers/alerts';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkorderService } from 'app/services/workorder.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin } from 'rxjs';
 
 interface Report {
@@ -30,6 +31,7 @@ export class ReportesComponent implements OnInit {
   private equipmentService = inject(EquipmentService);
   private signalsService = inject(SignalsService);
   private workorderService = inject(WorkorderService);
+  private trackingService = inject(TrackingService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -87,6 +89,12 @@ export class ReportesComponent implements OnInit {
         this.dateRangeByReport[report.id] = { from: '', to: '' };
       }
     }
+    this.trackingService.addLog(
+      String(this.idcompany),
+      'Acceso a Reportes de Mantenimiento',
+      'ModMaintenance/Reportes',
+      ''
+    );
   }
 
   constructor() {
@@ -199,6 +207,12 @@ export class ReportesComponent implements OnInit {
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Informe de Activos (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Activos exportado en ${format}.`,
@@ -284,6 +298,12 @@ export class ReportesComponent implements OnInit {
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Órdenes de Trabajo (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Órdenes de Trabajo exportado en ${format}.`,
@@ -338,6 +358,12 @@ export class ReportesComponent implements OnInit {
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Costos de Mantenimiento (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Costos de Mantenimiento exportado en ${format}.`,
@@ -393,6 +419,12 @@ export class ReportesComponent implements OnInit {
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Mantenimiento Preventivo (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Mantenimiento Preventivo exportado en ${format}.`,
@@ -456,6 +488,12 @@ export class ReportesComponent implements OnInit {
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Disponibilidad de Equipos (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Disponibilidad de Equipos exportado en ${format}.`,

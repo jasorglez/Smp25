@@ -12,6 +12,7 @@ import { EmployeesService } from 'app/services/employees.service';
 import { TeamService } from 'app/services/team.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin } from 'rxjs';
 
 interface Task {
@@ -49,6 +50,7 @@ export class NewworkorderComponent implements OnInit {
   private teamService = inject(TeamService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -127,6 +129,13 @@ export class NewworkorderComponent implements OnInit {
     this.lastBranchId = this.idBranch;
     this.initialized = true;
     this.loadData();
+
+    this.trackingService.addLog(
+      String(this.idcompany),
+      this.isEditing ? 'Acceso a Editar Orden de Trabajo' : 'Acceso a Nueva Orden de Trabajo',
+      'ModMaintenance/NewWorkOrder',
+      ''
+    );
   }
 
   loadData(): void {
@@ -356,7 +365,15 @@ export class NewworkorderComponent implements OnInit {
 
     if (this.isEditing && this.editingId) {
       this.workorderService.update(this.editingId, workOrderData).subscribe({
-        next: () => this.syncTasks(this.editingId!),
+        next: () => {
+          this.trackingService.addLog(
+            String(this.idcompany),
+            `Orden de trabajo actualizada: ${workOrderData.title}`,
+            'ModMaintenance/NewWorkOrder',
+            ''
+          );
+          this.syncTasks(this.editingId!);
+        },
         error: (err) => {
           console.error('Error updating work order:', err);
           this.saving = false;
@@ -375,6 +392,12 @@ export class NewworkorderComponent implements OnInit {
 
           this.workorderService.add(workOrderData).subscribe({
             next: (created: any) => {
+              this.trackingService.addLog(
+                String(this.idcompany),
+                `Orden de trabajo creada: ${workOrderData.folio} - ${workOrderData.title}`,
+                'ModMaintenance/NewWorkOrder',
+                ''
+              );
               if (config) {
                 this.configService.update(config.id, { ...config, consecutiveWO: consecutive + 1 }).subscribe();
               }

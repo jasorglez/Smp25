@@ -6,6 +6,7 @@ import { TeamService } from 'app/services/team.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin } from 'rxjs';
 
 @Component({
@@ -21,6 +22,7 @@ export class EquiposComponent implements OnInit {
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
   private catalogService = inject(MaintenanceCatalogService);
+  private trackingService = inject(TrackingService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -67,6 +69,12 @@ export class EquiposComponent implements OnInit {
     this.lastBranchId = this.idBranch;
     this.initialized = true;
     this.loadData();
+    this.trackingService.addLog(
+      String(this.idcompany),
+      'Acceso a Equipos de Trabajo',
+      'ModMaintenance/Equipos',
+      ''
+    );
   }
 
   loadData(): void {
@@ -238,12 +246,28 @@ export class EquiposComponent implements OnInit {
 
     if (this.isEditing && this.editingTeamId) {
       this.teamService.update(this.editingTeamId, teamData).subscribe({
-        next: () => this.syncMembers(this.editingTeamId!),
+        next: () => {
+          this.trackingService.addLog(
+            String(this.idcompany),
+            `Equipo actualizado: ${teamData.name}`,
+            'ModMaintenance/Equipos',
+            ''
+          );
+          this.syncMembers(this.editingTeamId!);
+        },
         error: (err) => console.error('Error updating team:', err)
       });
     } else {
       this.teamService.add(teamData).subscribe({
-        next: (created: any) => this.syncMembers(created.id),
+        next: (created: any) => {
+          this.trackingService.addLog(
+            String(this.idcompany),
+            `Equipo creado: ${teamData.name}`,
+            'ModMaintenance/Equipos',
+            ''
+          );
+          this.syncMembers(created.id);
+        },
         error: (err) => console.error('Error creating team:', err)
       });
     }
@@ -296,7 +320,15 @@ export class EquiposComponent implements OnInit {
   deleteTeam(team: any): void {
     if (!confirm('Eliminar equipo "' + team.name + '"?')) return;
     this.teamService.delete(team.id).subscribe({
-      next: () => this.loadData(),
+      next: () => {
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Equipo eliminado: ${team.name}`,
+          'ModMaintenance/Equipos',
+          ''
+        );
+        this.loadData();
+      },
       error: (err) => console.error('Error deleting team:', err)
     });
   }

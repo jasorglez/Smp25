@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-assets',
@@ -19,6 +20,7 @@ export class AssetsComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private router = inject(Router);
   private catalogService = inject(MaintenanceCatalogService);
+  private trackingService = inject(TrackingService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -76,6 +78,12 @@ export class AssetsComponent implements OnInit {
     this.lastBranchId = this.idBranch;
     this.initialized = true;
     this.loadEquipments();
+    this.trackingService.addLog(
+      String(this.idcompany),
+      'Acceso a Activos de Mantenimiento',
+      'ModMaintenance/Assets',
+      ''
+    );
   }
 
   loadEquipments(): void {
@@ -237,6 +245,12 @@ export class AssetsComponent implements OnInit {
     if (this.isEditing) {
       this.equipmentService.updateEquipmentFromAssets(this.formData.id, payload).subscribe({
         next: () => {
+          this.trackingService.addLog(
+            String(this.idcompany),
+            `Activo actualizado: ${payload.description}`,
+            'ModMaintenance/Assets',
+            ''
+          );
           this.closeForm();
           this.loadEquipments();
         },
@@ -245,6 +259,12 @@ export class AssetsComponent implements OnInit {
     } else {
       this.equipmentService.addEquipmentFromAssets(payload).subscribe({
         next: () => {
+          this.trackingService.addLog(
+            String(this.idcompany),
+            `Activo creado: ${payload.description}`,
+            'ModMaintenance/Assets',
+            ''
+          );
           this.closeForm();
           this.loadEquipments();
         },
@@ -258,6 +278,12 @@ export class AssetsComponent implements OnInit {
     if (!confirm('Eliminar "' + asset.description + '"?')) return;
     this.equipmentService.deleteEquipment(asset.id).subscribe({
       next: () => {
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Activo eliminado: ${asset.description}`,
+          'ModMaintenance/Assets',
+          ''
+        );
         this.closeAssetDetail();
         this.loadEquipments();
       },

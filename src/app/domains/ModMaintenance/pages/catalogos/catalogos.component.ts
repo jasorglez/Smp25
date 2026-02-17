@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, CellValueChangedEvent } from 'ag-grid-enterprise';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { concat } from 'rxjs';
 import { toArray } from 'rxjs/operators';
@@ -26,6 +27,7 @@ export class CatalogosMaintenanceComponent implements OnInit {
 
   private catalogService = inject(MaintenanceCatalogService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   private gridApi!: GridApi;
@@ -123,6 +125,12 @@ export class CatalogosMaintenanceComponent implements OnInit {
     const company = this.signalsService.getRootSelectedBySidebar()();
     this.idCompany = company !== null && company !== undefined ? Number(company) : 0;
     this.loadData();
+    this.trackingService.addLog(
+      String(this.idCompany),
+      'Acceso a Catálogos de Mantenimiento',
+      'ModMaintenance/Catalogos',
+      ''
+    );
   }
 
   onGridReady(params: GridReadyEvent): void {
@@ -226,6 +234,12 @@ export class CatalogosMaintenanceComponent implements OnInit {
       if (addOps.length > 0 || updateOps.length > 0) {
         await concat(...addOps, ...updateOps).pipe(toArray()).toPromise();
       }
+      this.trackingService.addLog(
+        String(this.idCompany),
+        `Catálogo ${this.getSelectedTypeName()} guardado (${newRows.length} nuevos, ${modifiedRows.length} modificados)`,
+        'ModMaintenance/Catalogos',
+        ''
+      );
       alert('Datos guardados correctamente');
       this.hasUnsavedChanges = false;
       this.loadData();
@@ -269,6 +283,12 @@ export class CatalogosMaintenanceComponent implements OnInit {
     this.saving = true;
     this.catalogService.delete(selectedData.id).subscribe({
       next: () => {
+        this.trackingService.addLog(
+          String(this.idCompany),
+          `Catálogo eliminado: ${selectedData.description} (${this.getSelectedTypeName()})`,
+          'ModMaintenance/Catalogos',
+          ''
+        );
         alert('Registro eliminado');
         this.loadData();
         this.saving = false;
