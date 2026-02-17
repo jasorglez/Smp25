@@ -5,6 +5,7 @@ import { NgSelectComponent } from '@ng-select/ng-select';
 import { TeamService } from 'app/services/team.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
+import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
 import { forkJoin } from 'rxjs';
 
 @Component({
@@ -19,6 +20,7 @@ export class EquiposComponent implements OnInit {
   private teamService = inject(TeamService);
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
+  private catalogService = inject(MaintenanceCatalogService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -43,15 +45,8 @@ export class EquiposComponent implements OnInit {
 
   calculatedHourlyRate: number = 0;
 
-  specialties: string[] = [
-    'Electricidad',
-    'Mecanica',
-    'Hidraulica',
-    'Neumatica',
-    'Soldadura',
-    'Pintura',
-    'General'
-  ];
+  // Specialties loaded from catalog (SPECIALTY type)
+  specialties: any[] = [];
 
   constructor() {
     effect(() => {
@@ -84,6 +79,19 @@ export class EquiposComponent implements OnInit {
 
     this.loading = true;
     const idBranchStr = this.idBranch.toString();
+
+    // Load specialties from catalog
+    if (this.idcompany > 0) {
+      this.catalogService.getByCompanyAndType(this.idcompany, 'SPECIALTY').subscribe({
+        next: (data) => {
+          this.specialties = data;
+        },
+        error: (err) => {
+          console.error('Error loading specialties catalog:', err);
+          this.specialties = [];
+        }
+      });
+    }
 
     forkJoin({
       teams: this.teamService.getAll(idBranchStr),

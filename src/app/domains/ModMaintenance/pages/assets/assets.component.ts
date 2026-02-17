@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
+import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
 
 @Component({
   selector: 'app-assets',
@@ -17,6 +18,7 @@ export class AssetsComponent implements OnInit {
   private equipmentService = inject(EquipmentService);
   private signalsService = inject(SignalsService);
   private router = inject(Router);
+  private catalogService = inject(MaintenanceCatalogService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -33,6 +35,27 @@ export class AssetsComponent implements OnInit {
   showForm: boolean = false;
   isEditing: boolean = false;
   formData: any = {};
+
+  // Measures loaded from catalog (MEASURE type)
+  measures: any[] = [];
+
+  // Asset types loaded from catalog (ASSET_TYPE type)
+  assetTypes: any[] = [];
+
+  // Pagination
+  pageSize: number = 9;
+  currentPage: number = 1;
+  Math = Math;
+
+  get totalPages(): number {
+    return Math.ceil(this.filteredAssets.length / this.pageSize);
+  }
+
+  get paginatedAssets(): any[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    const end = start + this.pageSize;
+    return this.filteredAssets.slice(start, end);
+  }
 
   constructor() {
     effect(() => {
@@ -64,10 +87,35 @@ export class AssetsComponent implements OnInit {
     }
 
     this.loading = true;
+
+    // Load catalogs
+    if (this.idcompany > 0) {
+      this.catalogService.getByCompanyAndType(this.idcompany, 'MEASURE').subscribe({
+        next: (data) => {
+          this.measures = data;
+        },
+        error: (err) => {
+          console.error('Error loading measures catalog:', err);
+          this.measures = [];
+        }
+      });
+
+      this.catalogService.getByCompanyAndType(this.idcompany, 'ASSET_TYPE').subscribe({
+        next: (data) => {
+          this.assetTypes = data;
+        },
+        error: (err) => {
+          console.error('Error loading asset types catalog:', err);
+          this.assetTypes = [];
+        }
+      });
+    }
+
     this.equipmentService.getEquipmentByBranch(this.idBranch).subscribe(
       (data: any) => {
         this.assets = data;
         this.filteredAssets = [...this.assets];
+        this.currentPage = 1;
         this.loading = false;
       },
       (error) => {
@@ -81,13 +129,38 @@ export class AssetsComponent implements OnInit {
     this.filteredAssets = this.assets.filter(asset => {
       const matchesSearch = !this.searchTerm ||
         (asset.description || '').toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        (asset.measure || '').toLowerCase().includes(this.searchTerm.toLowerCase());
+        (asset.measure || '').toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        (asset.assetType || '').toLowerCase().includes(this.searchTerm.toLowerCase());
       return matchesSearch;
     });
+    this.currentPage = 1; // Reset to first page on filter
   }
 
   onSearchChange(): void {
     this.filterAssets();
+  }
+
+  // Pagination methods
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+    }
+  }
+
+  getPageNumbers(): number[] {
+    const pages: number[] = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(this.totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
   }
 
   viewAssetDetail(asset: any): void {
@@ -113,7 +186,8 @@ export class AssetsComponent implements OnInit {
       id_company: this.idcompany,
       id_branch: this.idBranch,
       description: '',
-      measure: 'DIA',
+      assetType: '',
+      measure: '',
       quantity: 1,
       costMN: 0,
       costDLL: 0,

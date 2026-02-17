@@ -2,7 +2,7 @@
   <div class="programacion-header">
     <h2>Últimas Programaciones de Mantenimiento</h2>
     <button class="btn btn-primary" (click)="nuevaProgramacion()">
-      <i class="fas fa-plus"></i> Nueva Programación
+      <i class="bi bi-plus-lg"></i> Nueva Programación
     </button>
   </div>
 
@@ -28,8 +28,8 @@
             <span class="status" [ngClass]="prog.estado.toLowerCase().replace(' ', '-')">{{ prog.estado }}</span>
           </td>
           <td class="actions">
-            <button class="btn-action btn-edit"><i class="fas fa-edit"></i></button>
-            <button class="btn-action btn-delete"><i class="fas fa-trash"></i></button>
+            <button class="btn-action btn-edit"><i class="bi bi-pencil"></i></button>
+            <button class="btn-action btn-delete"><i class="bi bi-trash"></i></button>
           </td>
         </tr>
       </tbody>

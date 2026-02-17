@@ -49,9 +49,9 @@ export class DashboardComponent implements OnInit {
 
   stats: Stat[] = [
     { label: 'Activos Totales', value: '0', icon: 'box', color: 'blue' },
-    { label: 'OT Abiertas', value: '0', icon: 'clipboard-list', color: 'orange' },
+    { label: 'OT Abiertas', value: '0', icon: 'clipboard-check', color: 'orange' },
     { label: 'Preventivos del Mes', value: '0', icon: 'calendar', color: 'green' },
-    { label: 'Disponibilidad', value: '0.0%', icon: 'chart-line', color: 'purple' }
+    { label: 'Disponibilidad', value: '0.0%', icon: 'graph-up', color: 'purple' }
   ];
 
   recentOrders: WorkOrder[] = [];

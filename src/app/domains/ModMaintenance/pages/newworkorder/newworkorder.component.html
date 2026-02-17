@@ -5,14 +5,14 @@
       <div class="card-header bg-primary text-white">
         <div class="d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center">
-            <i class="fas fa-clipboard-check fs-4 me-3"></i>
+            <i class="bi bi-clipboard-check fs-4 me-3"></i>
             <div>
               <h4 class="card-title mb-0">{{ isEditing ? 'Editar Orden de Trabajo' : 'Nueva Orden de Trabajo' }}</h4>
               <p class="mb-0 opacity-75">{{ isEditing ? 'Modifica la información de la orden' : 'Completa la información para crear la orden' }}</p>
             </div>
           </div>
           <button class="btn btn-outline-light" (click)="handleCancel()">
-            <i class="fas fa-times"></i>
+            <i class="bi bi-x-lg"></i>
           </button>
         </div>
       </div>
@@ -31,7 +31,7 @@
       <div class="card mb-4">
         <div class="card-header">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-file-alt me-2 text-primary"></i>
+            <i class="bi bi-file-earmark-alt me-2 text-primary"></i>
             Información General
           </h5>
         </div>
@@ -86,7 +86,7 @@
       <div class="card mb-4">
         <div class="card-header">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-cogs me-2 text-primary"></i>
+            <i class="bi bi-gear-fill me-2 text-primary"></i>
             Activo
           </h5>
         </div>
@@ -107,7 +107,7 @@
       <div class="card mb-4">
         <div class="card-header">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-user me-2 text-primary"></i>
+            <i class="bi bi-person me-2 text-primary"></i>
             Asignación y Programación
           </h5>
         </div>
@@ -147,14 +147,14 @@
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label d-flex align-items-center">
-                <i class="fas fa-calendar me-1"></i>
+                <i class="bi bi-calendar me-1"></i>
                 Fecha Programada
               </label>
               <input type="date" class="form-control" name="scheduledDate" [(ngModel)]="formData.scheduledDate">
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label d-flex align-items-center">
-                <i class="fas fa-clock me-1"></i>
+                <i class="bi bi-clock me-1"></i>
                 Horas Estimadas
               </label>
               <input type="number" class="form-control" name="estimatedHours" [(ngModel)]="formData.estimatedHours"
@@ -162,7 +162,7 @@
             </div>
             <div class="col-md-4 mb-3" *ngIf="isEditing">
               <label class="form-label d-flex align-items-center">
-                <i class="fas fa-clock me-1"></i>
+                <i class="bi bi-clock me-1"></i>
                 Horas Reales
               </label>
               <input type="number" class="form-control" name="actualHours" [(ngModel)]="formData.actualHours"
@@ -176,7 +176,7 @@
       <div class="card mb-4">
         <div class="card-header">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-wrench me-2 text-primary"></i>
+            <i class="bi bi-wrench me-2 text-primary"></i>
             Descripción del Trabajo
           </h5>
         </div>
@@ -188,7 +188,7 @@
           </div>
           <div class="mb-3" *ngIf="formData.type === 'correctivo'">
             <label class="form-label text-danger d-flex align-items-center">
-              <i class="fas fa-exclamation-triangle me-1"></i>
+              <i class="bi bi-exclamation-triangle me-1"></i>
               Descripción de la Falla
             </label>
             <textarea class="form-control border-danger" name="failureDescription" [(ngModel)]="formData.failureDescription"
@@ -206,7 +206,7 @@
       <div class="card mb-4">
         <div class="card-header">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-dollar-sign me-2 text-primary"></i>
+            <i class="bi bi-currency-dollar me-2 text-primary"></i>
             Costos
           </h5>
         </div>
@@ -237,7 +237,7 @@
           <div class="row mt-3">
             <div class="col-12">
               <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
-                <span><i class="fas fa-calculator me-2"></i> <strong>Costo Total Estimado:</strong></span>
+                <span><i class="bi bi-calculator me-2"></i> <strong>Costo Total Estimado:</strong></span>
                 <span class="fs-5 fw-bold">{{ formatCurrency((formData.costLabor || 0) + (formData.costParts || 0)) }}</span>
               </div>
             </div>
@@ -249,16 +249,16 @@
       <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-boxes me-2 text-primary"></i>
+            <i class="bi bi-boxes me-2 text-primary"></i>
             Materiales/Repuestos
           </h5>
           <button type="button" class="btn btn-primary btn-sm" (click)="addMaterial()" [disabled]="!canCreateByBranch()">
-            <i class="fas fa-plus"></i> Agregar Material
+            <i class="bi bi-plus-lg"></i> Agregar Material
           </button>
         </div>
         <div class="card-body">
           <div class="text-muted text-center py-3" *ngIf="selectedMaterials.length === 0">
-            <i class="fas fa-box-open" style="font-size: 2rem; opacity: 0.5;"></i>
+            <i class="bi bi-box" style="font-size: 2rem; opacity: 0.5;"></i>
             <p class="mt-2 mb-0">No hay materiales agregados. Haz clic en "Agregar Material" para comenzar.</p>
           </div>
 
@@ -295,7 +295,7 @@
                   <td class="text-end fw-bold">{{ formatCurrency(item.totalCost) }}</td>
                   <td class="text-center">
                     <button type="button" class="btn btn-outline-danger btn-sm" (click)="removeMaterial(item.id)">
-                      <i class="fas fa-trash"></i>
+                      <i class="bi bi-trash"></i>
                     </button>
                   </td>
                 </tr>
@@ -316,11 +316,11 @@
       <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="fas fa-check-square me-2 text-primary"></i>
+            <i class="bi bi-check-lg-square me-2 text-primary"></i>
             Lista de Tareas/Checklist
           </h5>
           <button type="button" class="btn btn-primary btn-sm" (click)="addTask()" [disabled]="!canCreateByBranch()">
-            <i class="fas fa-plus"></i> Agregar Tarea
+            <i class="bi bi-plus-lg"></i> Agregar Tarea
           </button>
         </div>
         <div class="card-body">
@@ -331,7 +331,7 @@
                      placeholder="Descripción de la tarea...">
               <button type="button" class="btn btn-outline-danger" (click)="removeTask(task.id)"
                       [disabled]="tasks.length === 1">
-                <i class="fas fa-trash"></i>
+                <i class="bi bi-trash"></i>
               </button>
             </div>
           </div>
@@ -346,7 +346,7 @@
               Cancelar
             </button>
             <button type="submit" class="btn btn-primary d-flex align-items-center" [disabled]="saving || !canCreateByBranch()">
-              <i class="fas fa-save me-1" *ngIf="!saving"></i>
+              <i class="bi bi-floppy me-1" *ngIf="!saving"></i>
               <span class="spinner-border spinner-border-sm me-1" *ngIf="saving"></span>
               {{ isEditing ? 'Guardar Cambios' : 'Crear Orden de Trabajo' }}
             </button>

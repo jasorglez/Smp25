@@ -8,7 +8,7 @@
   </div>
 
   <div class="text-center p-5" *ngIf="!loading && errorMessage">
-    <i class="fas fa-triangle-exclamation text-warning" style="font-size: 2.5rem;"></i>
+    <i class="bi bi-exclamation-triangle text-warning" style="font-size: 2.5rem;"></i>
     <p class="mt-3 text-muted">{{ errorMessage }}</p>
   </div>
 
@@ -21,7 +21,7 @@
           <p class="stat-label">{{ stat.label }}</p>
           <p class="stat-value">{{ stat.value }}</p>
         </div>
-        <i [class]="'fas fa-' + stat.icon + ' stat-icon ' + stat.color"></i>
+        <i [class]="'bi bi-' + stat.icon + ' stat-icon ' + stat.color"></i>
       </div>
     </div>
   </div>
@@ -31,7 +31,7 @@
     <!-- Recent Orders -->
     <div class="card">
       <h3 class="card-title">
-        <i class="fas fa-clipboard-list icon-title"></i>
+        <i class="bi bi-clipboard-list icon-title"></i>
         Órdenes de Trabajo Recientes
       </h3>
       <div class="orders-list">
@@ -62,7 +62,7 @@
     <!-- Upcoming Maintenance -->
     <div class="card">
       <h3 class="card-title">
-        <i class="fas fa-calendar icon-title"></i>
+        <i class="bi bi-calendar icon-title"></i>
         Próximos Mantenimientos
       </h3>
       <div class="maintenance-list">
