@@ -4,6 +4,7 @@ import { forkJoin } from 'rxjs';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkorderService } from 'app/services/workorder.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface Stat {
   label: string;
@@ -39,6 +40,7 @@ export class DashboardComponent implements OnInit {
   private equipmentService = inject(EquipmentService);
   private workorderService = inject(WorkorderService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -49,9 +51,9 @@ export class DashboardComponent implements OnInit {
 
   stats: Stat[] = [
     { label: 'Activos Totales', value: '0', icon: 'box', color: 'blue' },
-    { label: 'OT Abiertas', value: '0', icon: 'clipboard-list', color: 'orange' },
+    { label: 'OT Abiertas', value: '0', icon: 'clipboard-check', color: 'orange' },
     { label: 'Preventivos del Mes', value: '0', icon: 'calendar', color: 'green' },
-    { label: 'Disponibilidad', value: '0.0%', icon: 'chart-line', color: 'purple' }
+    { label: 'Disponibilidad', value: '0.0%', icon: 'graph-up', color: 'purple' }
   ];
 
   recentOrders: WorkOrder[] = [];
@@ -77,6 +79,12 @@ export class DashboardComponent implements OnInit {
     this.lastBranchId = this.idBranch;
     this.initialized = true;
     this.loadDashboardData();
+    this.trackingService.addLog(
+      String(this.idcompany),
+      'Acceso a Dashboard de Mantenimiento',
+      'ModMaintenance/Dashboard',
+      ''
+    );
   }
 
   loadDashboardData(): void {

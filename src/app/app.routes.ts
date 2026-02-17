@@ -1376,6 +1376,13 @@ export const routes: Routes = [
               ).then((s) => s.SetupComponent),
           },
           {
+            path: 'catalogos',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/catalogos/catalogos.component'
+              ).then((c) => c.CatalogosMaintenanceComponent),
+          },
+          {
             path: 'equipments',
             loadComponent: () =>
               import(

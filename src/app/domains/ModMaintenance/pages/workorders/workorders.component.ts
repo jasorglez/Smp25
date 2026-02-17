@@ -7,6 +7,7 @@ import { WorkorderTaskService } from 'app/services/workorder-task.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin } from 'rxjs';
 
 @Component({
@@ -23,6 +24,7 @@ export class WorkordersComponent implements OnInit {
   private equipmentService = inject(EquipmentService);
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
   private router = inject(Router);
 
   idcompany: number = 0;
@@ -113,6 +115,12 @@ export class WorkordersComponent implements OnInit {
     this.lastBranchId = this.idBranch;
     this.initialized = true;
     this.loadData();
+    this.trackingService.addLog(
+      String(this.idcompany),
+      'Acceso a Órdenes de Trabajo',
+      'ModMaintenance/WorkOrders',
+      ''
+    );
   }
 
   loadData(): void {
@@ -286,7 +294,15 @@ export class WorkordersComponent implements OnInit {
   onCompleteWorkOrder(workOrder: any): void {
     if (!confirm('¿Marcar esta orden como completada?')) return;
     this.workorderService.updateStatus(workOrder.id, 'completada').subscribe({
-      next: () => this.loadData(),
+      next: () => {
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Orden de trabajo completada: ${workOrder.folio || workOrder.title}`,
+          'ModMaintenance/WorkOrders',
+          ''
+        );
+        this.loadData();
+      },
       error: (err) => console.error('Error completing work order:', err)
     });
   }
@@ -294,7 +310,15 @@ export class WorkordersComponent implements OnInit {
   onCancelWorkOrder(workOrder: any): void {
     if (!confirm('¿Está seguro de cancelar esta orden de trabajo?')) return;
     this.workorderService.updateStatus(workOrder.id, 'cancelada').subscribe({
-      next: () => this.loadData(),
+      next: () => {
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Orden de trabajo cancelada: ${workOrder.folio || workOrder.title}`,
+          'ModMaintenance/WorkOrders',
+          ''
+        );
+        this.loadData();
+      },
       error: (err) => console.error('Error cancelling work order:', err)
     });
   }
@@ -303,6 +327,12 @@ export class WorkordersComponent implements OnInit {
     if (!confirm('¿Eliminar la orden "' + (workOrder.folio || workOrder.title) + '"?')) return;
     this.workorderService.delete(workOrder.id).subscribe({
       next: () => {
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Orden de trabajo eliminada: ${workOrder.folio || workOrder.title}`,
+          'ModMaintenance/WorkOrders',
+          ''
+        );
         this.closeWorkOrderDetail();
         this.loadData();
       },

@@ -3,7 +3,7 @@
   <div class="header">
     <div class="header-content">
       <div class="header-left">
-        <i class="fas fa-users header-icon"></i>
+        <i class="bi bi-people header-icon"></i>
         <div>
           <h1 class="header-title">Gestion de Equipos</h1>
           <p class="header-subtitle">Equipos de mantenimiento y tecnicos especializados</p>
@@ -11,7 +11,7 @@
       </div>
       <div class="header-right">
         <button class="btn btn-primary" (click)="openCreateForm()" [disabled]="!canCreateByBranch()">
-          <i class="fas fa-plus"></i> Nuevo Equipo
+          <i class="bi bi-plus-lg"></i> Nuevo Equipo
         </button>
       </div>
     </div>
@@ -27,7 +27,7 @@
 
   <!-- Empty state -->
   <div class="text-center p-5" *ngIf="!loading && teams.length === 0">
-    <i class="fas fa-users-slash" style="font-size: 3rem; color: #94a3b8;"></i>
+    <i class="bi bi-people-slash" style="font-size: 3rem; color: #94a3b8;"></i>
     <p class="mt-2 text-muted">No hay equipos registrados</p>
   </div>
 
@@ -46,21 +46,21 @@
 
       <div class="team-details">
         <div class="detail-item">
-          <i class="fas fa-user-tie icon-small"></i>
+          <i class="bi bi-person-badge icon-small"></i>
           <span><strong>Lider:</strong> {{ team.leaderName }}
             <span class="member-rate" *ngIf="getEmployeeBaseHours(team.leader)">({{ formatCurrency(getEmployeeBaseHours(team.leader)) }}/hr)</span>
           </span>
         </div>
         <div class="detail-item">
-          <i class="fas fa-tools icon-small"></i>
+          <i class="bi bi-tools icon-small"></i>
           <span><strong>Especialidad:</strong> {{ team.specialty }}</span>
         </div>
         <div class="detail-item">
-          <i class="fas fa-users icon-small"></i>
+          <i class="bi bi-people icon-small"></i>
           <span><strong>Miembros:</strong> {{ team.members.length }}</span>
         </div>
         <div class="detail-item">
-          <i class="fas fa-dollar-sign icon-small"></i>
+          <i class="bi bi-currency-dollar icon-small"></i>
           <span><strong>Costo/Hora:</strong> {{ formatCurrency(team.hourlyRate) }}</span>
         </div>
       </div>
@@ -77,10 +77,10 @@
 
       <div class="team-actions">
         <button class="btn btn-sm btn-outline-warning action-btn" (click)="openEditForm(team)">
-          <i class="fas fa-edit"></i> Editar
+          <i class="bi bi-pencil"></i> Editar
         </button>
         <button class="btn btn-sm btn-outline-danger action-btn" (click)="deleteTeam(team)">
-          <i class="fas fa-trash"></i> Eliminar
+          <i class="bi bi-trash"></i> Eliminar
         </button>
       </div>
     </div>
@@ -93,7 +93,7 @@
       <div class="modal-header">
         <h2 class="modal-title">{{ isEditing ? 'Editar Equipo' : 'Crear Nuevo Equipo' }}</h2>
         <button class="btn btn-sm btn-outline-secondary close-btn" (click)="closeForm()">
-          <i class="fas fa-times"></i>
+          <i class="bi bi-x-lg"></i>
         </button>
       </div>
 
@@ -108,7 +108,7 @@
               <label class="form-label">Especialidad *</label>
               <select class="form-select" [(ngModel)]="formData.specialty" name="specialty" required>
                 <option value="">Seleccionar especialidad...</option>
-                <option *ngFor="let spec of specialties" [value]="spec">{{ spec }}</option>
+                <option *ngFor="let spec of specialties" [value]="spec.description">{{ spec.description }}</option>
               </select>
             </div>
             <div class="col-md-6 mb-3">
@@ -151,7 +151,7 @@
 
           <div class="mb-3">
             <div class="hourly-rate-display">
-              <i class="fas fa-calculator"></i>
+              <i class="bi bi-calculator"></i>
               <span>Costo por Hora del Equipo: <strong>{{ formatCurrency(calculatedHourlyRate) }}</strong></span>
             </div>
           </div>
@@ -159,7 +159,7 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
             <button type="submit" class="btn btn-primary" [disabled]="!isEditing && !canCreateByBranch()">
-              <i class="fas fa-save"></i> {{ isEditing ? 'Guardar Cambios' : 'Crear Equipo' }}
+              <i class="bi bi-floppy"></i> {{ isEditing ? 'Guardar Cambios' : 'Crear Equipo' }}
             </button>
           </div>
         </form>

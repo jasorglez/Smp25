@@ -2,10 +2,14 @@ import { Component, OnInit, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import * as XLSX from 'xlsx';
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 import { alerts } from 'app/helpers/alerts';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkorderService } from 'app/services/workorder.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin } from 'rxjs';
 
 interface Report {
@@ -27,6 +31,7 @@ export class ReportesComponent implements OnInit {
   private equipmentService = inject(EquipmentService);
   private signalsService = inject(SignalsService);
   private workorderService = inject(WorkorderService);
+  private trackingService = inject(TrackingService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -39,35 +44,35 @@ export class ReportesComponent implements OnInit {
       id: 'REP-001',
       name: 'Informe de Activos',
       description: 'Catálogo completo de activos con estado y ubicación',
-      icon: 'fas fa-cogs',
+      icon: 'bi bi-gear-fill',
       category: 'Activos'
     },
     {
       id: 'REP-002',
       name: 'Órdenes de Trabajo',
       description: 'Historial completo de órdenes de trabajo por período',
-      icon: 'fas fa-clipboard-list',
+      icon: 'bi bi-clipboard-check',
       category: 'Mantenimiento'
     },
     {
       id: 'REP-003',
       name: 'Costos de Mantenimiento',
       description: 'Análisis de costos por tipo de mantenimiento y período',
-      icon: 'fas fa-dollar-sign',
+      icon: 'bi bi-currency-dollar',
       category: 'Financiero'
     },
     {
       id: 'REP-004',
       name: 'Disponibilidad de Equipos',
       description: 'Tiempo de actividad y downtime por equipo',
-      icon: 'fas fa-chart-line',
+      icon: 'bi bi-graph-up',
       category: 'Operativo'
     },
     {
       id: 'REP-005',
       name: 'Mantenimiento Preventivo',
       description: 'Calendario y cumplimiento de mantenimientos preventivos',
-      icon: 'fas fa-calendar-check',
+      icon: 'bi bi-calendar-check',
       category: 'Mantenimiento'
     }
   ];
@@ -84,6 +89,12 @@ export class ReportesComponent implements OnInit {
         this.dateRangeByReport[report.id] = { from: '', to: '' };
       }
     }
+    this.trackingService.addLog(
+      String(this.idcompany),
+      'Acceso a Reportes de Mantenimiento',
+      'ModMaintenance/Reportes',
+      ''
+    );
   }
 
   constructor() {
@@ -113,10 +124,10 @@ export class ReportesComponent implements OnInit {
       return;
     }
 
-    if (format !== 'CSV' && format !== 'Excel') {
+    if (format !== 'CSV' && format !== 'Excel' && format !== 'PDF') {
       alerts.basicAlert(
         'Formato no disponible',
-        'Por ahora solo están disponibles CSV y Excel.',
+        'Los formatos disponibles son CSV, Excel y PDF.',
         'warning'
       );
       return;
@@ -167,34 +178,41 @@ export class ReportesComponent implements OnInit {
     this.equipmentService.getEquipmentByBranch(this.idBranch).subscribe({
       next: (assets: any[]) => {
         const rows = this.mapAssetsForReport(assets || []);
+        const headers = [
+          'ID',
+          'Descripcion',
+          'Medida',
+          'Cantidad',
+          'DiasTrabajo',
+          'CostoMN',
+          'CostoUSD',
+          'PrecioMN',
+          'PrecioUSD',
+          'Cobrado',
+          'Imprimir',
+          'Estado'
+        ];
 
         if (format === 'CSV') {
-          this.downloadCsv(
+          this.downloadCsv(rows, headers, this.buildFileName('informe_activos', 'csv'));
+        } else if (format === 'Excel') {
+          this.downloadExcel(rows, 'Activos', this.buildFileName('informe_activos', 'xlsx'));
+        } else if (format === 'PDF') {
+          this.downloadPdf(
+            'Informe de Activos',
+            'Catálogo completo de activos con estado y ubicación',
             rows,
-            [
-              'ID',
-              'Descripcion',
-              'Medida',
-              'Cantidad',
-              'DiasTrabajo',
-              'CostoMN',
-              'CostoUSD',
-              'PrecioMN',
-              'PrecioUSD',
-              'Cobrado',
-              'Imprimir',
-              'Estado'
-            ],
-            this.buildFileName('informe_activos', 'csv')
-          );
-        } else {
-          this.downloadExcel(
-            rows,
-            'Activos',
-            this.buildFileName('informe_activos', 'xlsx')
+            headers,
+            this.buildFileName('informe_activos', 'pdf')
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Informe de Activos (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Activos exportado en ${format}.`,
@@ -225,44 +243,67 @@ export class ReportesComponent implements OnInit {
       next: (workOrders: any[]) => {
         const filteredWorkOrders = this.filterWorkOrdersByDateRange(workOrders || [], reportId);
         const rows = this.mapWorkOrdersForReport(filteredWorkOrders);
+        const headers = [
+          'Folio',
+          'Titulo',
+          'Tipo',
+          'Prioridad',
+          'Estado',
+          'AsignadoA',
+          'Activo',
+          'FechaProgramada',
+          'HorasEstimadas',
+          'CostoTotal'
+        ];
+        const allHeaders = [
+          'ID',
+          'Folio',
+          'Titulo',
+          'Tipo',
+          'Prioridad',
+          'Estado',
+          'SolicitadoPor',
+          'AsignadoA',
+          'Departamento',
+          'Activo',
+          'FechaProgramada',
+          'HorasEstimadas',
+          'HorasReales',
+          'CostoManoObra',
+          'CostoRefacciones',
+          'CostoTotal',
+          'FechaCreacion',
+          'FechaCompletada',
+          'Descripcion',
+          'DescripcionFalla',
+          'Observaciones',
+          'ActivoRegistro'
+        ];
 
         if (format === 'CSV') {
-          this.downloadCsv(
+          this.downloadCsv(rows, allHeaders, this.buildFileName('informe_workorders', 'csv'));
+        } else if (format === 'Excel') {
+          this.downloadExcel(rows, 'WorkOrders', this.buildFileName('informe_workorders', 'xlsx'));
+        } else if (format === 'PDF') {
+          const range = this.dateRangeByReport[reportId];
+          const subtitle = range?.from && range?.to
+            ? `Período: ${this.formatDateValue(range.from)} - ${this.formatDateValue(range.to)}`
+            : 'Historial completo de órdenes de trabajo';
+          this.downloadPdf(
+            'Órdenes de Trabajo',
+            subtitle,
             rows,
-            [
-              'ID',
-              'Folio',
-              'Titulo',
-              'Tipo',
-              'Prioridad',
-              'Estado',
-              'SolicitadoPor',
-              'AsignadoA',
-              'Departamento',
-              'Activo',
-              'FechaProgramada',
-              'HorasEstimadas',
-              'HorasReales',
-              'CostoManoObra',
-              'CostoRefacciones',
-              'CostoTotal',
-              'FechaCreacion',
-              'FechaCompletada',
-              'Descripcion',
-              'DescripcionFalla',
-              'Observaciones',
-              'ActivoRegistro'
-            ],
-            this.buildFileName('informe_workorders', 'csv')
-          );
-        } else {
-          this.downloadExcel(
-            rows,
-            'WorkOrders',
-            this.buildFileName('informe_workorders', 'xlsx')
+            headers,
+            this.buildFileName('informe_workorders', 'pdf')
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Órdenes de Trabajo (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Órdenes de Trabajo exportado en ${format}.`,
@@ -292,30 +333,37 @@ export class ReportesComponent implements OnInit {
     this.workorderService.getAll(this.idBranch.toString()).subscribe({
       next: (workOrders: any[]) => {
         const rows = this.mapMaintenanceCostsForReport(workOrders || []);
+        const headers = [
+          'Periodo',
+          'TipoMantenimiento',
+          'TotalOrdenes',
+          'OrdenesCompletadas',
+          'CostoManoObra',
+          'CostoRefacciones',
+          'CostoTotal',
+          'PromedioPorOrden'
+        ];
 
         if (format === 'CSV') {
-          this.downloadCsv(
+          this.downloadCsv(rows, headers, this.buildFileName('informe_costos_mantenimiento', 'csv'));
+        } else if (format === 'Excel') {
+          this.downloadExcel(rows, 'CostosMantenimiento', this.buildFileName('informe_costos_mantenimiento', 'xlsx'));
+        } else if (format === 'PDF') {
+          this.downloadPdf(
+            'Costos de Mantenimiento',
+            'Análisis de costos por tipo de mantenimiento y período',
             rows,
-            [
-              'Periodo',
-              'TipoMantenimiento',
-              'TotalOrdenes',
-              'OrdenesCompletadas',
-              'CostoManoObra',
-              'CostoRefacciones',
-              'CostoTotal',
-              'PromedioPorOrden'
-            ],
-            this.buildFileName('informe_costos_mantenimiento', 'csv')
-          );
-        } else {
-          this.downloadExcel(
-            rows,
-            'CostosMantenimiento',
-            this.buildFileName('informe_costos_mantenimiento', 'xlsx')
+            headers,
+            this.buildFileName('informe_costos_mantenimiento', 'pdf')
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Costos de Mantenimiento (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Costos de Mantenimiento exportado en ${format}.`,
@@ -345,31 +393,38 @@ export class ReportesComponent implements OnInit {
     this.workorderService.getAll(this.idBranch.toString()).subscribe({
       next: (workOrders: any[]) => {
         const rows = this.mapPreventiveMaintenanceForReport(workOrders || []);
+        const headers = [
+          'Periodo',
+          'Folio',
+          'Activo',
+          'Departamento',
+          'Estado',
+          'FechaProgramada',
+          'FechaCompletada',
+          'DiasAtraso',
+          'Cumplimiento'
+        ];
 
         if (format === 'CSV') {
-          this.downloadCsv(
+          this.downloadCsv(rows, headers, this.buildFileName('informe_mantenimiento_preventivo', 'csv'));
+        } else if (format === 'Excel') {
+          this.downloadExcel(rows, 'MantenimientoPreventivo', this.buildFileName('informe_mantenimiento_preventivo', 'xlsx'));
+        } else if (format === 'PDF') {
+          this.downloadPdf(
+            'Mantenimiento Preventivo',
+            'Calendario y cumplimiento de mantenimientos preventivos',
             rows,
-            [
-              'Periodo',
-              'Folio',
-              'Activo',
-              'Departamento',
-              'Estado',
-              'FechaProgramada',
-              'FechaCompletada',
-              'DiasAtraso',
-              'Cumplimiento'
-            ],
-            this.buildFileName('informe_mantenimiento_preventivo', 'csv')
-          );
-        } else {
-          this.downloadExcel(
-            rows,
-            'MantenimientoPreventivo',
-            this.buildFileName('informe_mantenimiento_preventivo', 'xlsx')
+            headers,
+            this.buildFileName('informe_mantenimiento_preventivo', 'pdf')
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Mantenimiento Preventivo (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Mantenimiento Preventivo exportado en ${format}.`,
@@ -403,31 +458,42 @@ export class ReportesComponent implements OnInit {
       next: (result: any) => {
         const filteredWorkOrders = this.filterWorkOrdersByDateRange(result.workOrders || [], reportId);
         const rows = this.mapEquipmentAvailabilityForReport(result.assets || [], filteredWorkOrders, reportId);
+        const headers = [
+          'IDActivo',
+          'Activo',
+          'Periodo',
+          'TotalOT',
+          'OTCorrectivas',
+          'HorasInactividad',
+          'HorasPeriodo',
+          'Disponibilidad',
+          'EstadoDisponibilidad'
+        ];
 
         if (format === 'CSV') {
-          this.downloadCsv(
+          this.downloadCsv(rows, headers, this.buildFileName('informe_disponibilidad_equipos', 'csv'));
+        } else if (format === 'Excel') {
+          this.downloadExcel(rows, 'DisponibilidadEquipos', this.buildFileName('informe_disponibilidad_equipos', 'xlsx'));
+        } else if (format === 'PDF') {
+          const range = this.dateRangeByReport[reportId];
+          const subtitle = range?.from && range?.to
+            ? `Período: ${this.formatDateValue(range.from)} - ${this.formatDateValue(range.to)}`
+            : 'Tiempo de actividad y downtime por equipo';
+          this.downloadPdf(
+            'Disponibilidad de Equipos',
+            subtitle,
             rows,
-            [
-              'IDActivo',
-              'Activo',
-              'Periodo',
-              'TotalOT',
-              'OTCorrectivas',
-              'HorasInactividad',
-              'HorasPeriodo',
-              'Disponibilidad',
-              'EstadoDisponibilidad'
-            ],
-            this.buildFileName('informe_disponibilidad_equipos', 'csv')
-          );
-        } else {
-          this.downloadExcel(
-            rows,
-            'DisponibilidadEquipos',
-            this.buildFileName('informe_disponibilidad_equipos', 'xlsx')
+            headers,
+            this.buildFileName('informe_disponibilidad_equipos', 'pdf')
           );
         }
 
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Reporte exportado: Disponibilidad de Equipos (${format})`,
+          'ModMaintenance/Reportes',
+          ''
+        );
         alerts.basicAlert(
           'Éxito',
           `Informe de Disponibilidad de Equipos exportado en ${format}.`,
@@ -690,6 +756,179 @@ export class ReportesComponent implements OnInit {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     XLSX.writeFile(workbook, fileName);
+  }
+
+  private downloadPdf(title: string, subtitle: string, rows: any[], headers: string[], fileName: string): void {
+    const tableBody: any[][] = [];
+
+    // Header row
+    tableBody.push(
+      headers.map((header) => ({
+        text: this.formatHeaderLabel(header),
+        style: 'tableHeader',
+        alignment: 'center'
+      }))
+    );
+
+    // Data rows
+    for (const row of rows) {
+      tableBody.push(
+        headers.map((header) => {
+          const value = row[header] ?? '';
+          const isNumeric = typeof value === 'number' || !isNaN(Number(value));
+          return {
+            text: String(value),
+            alignment: isNumeric ? 'right' : 'left',
+            fontSize: 8
+          };
+        })
+      );
+    }
+
+    const columnWidths = this.calculateColumnWidths(headers, rows);
+
+    const docDefinition: any = {
+      pageSize: 'LETTER',
+      pageOrientation: headers.length > 6 ? 'landscape' : 'portrait',
+      pageMargins: [30, 80, 30, 50],
+      header: {
+        columns: [
+          {
+            stack: [
+              { text: title, style: 'reportTitle' },
+              { text: subtitle, style: 'reportSubtitle' }
+            ],
+            margin: [30, 20, 30, 0]
+          }
+        ]
+      },
+      footer: (currentPage: number, pageCount: number) => ({
+        columns: [
+          {
+            text: `Generado: ${this.formatDateValue(new Date().toISOString())}`,
+            alignment: 'left',
+            fontSize: 8,
+            margin: [30, 0, 0, 0]
+          },
+          {
+            text: `Página ${currentPage} de ${pageCount}`,
+            alignment: 'right',
+            fontSize: 8,
+            margin: [0, 0, 30, 0]
+          }
+        ]
+      }),
+      content: [
+        {
+          table: {
+            headerRows: 1,
+            widths: columnWidths,
+            body: tableBody
+          },
+          layout: {
+            fillColor: (rowIndex: number) => (rowIndex === 0 ? '#1e40af' : (rowIndex % 2 === 0 ? '#f8fafc' : null)),
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#cbd5e1',
+            vLineColor: () => '#cbd5e1'
+          }
+        },
+        {
+          text: `Total de registros: ${rows.length}`,
+          style: 'totalRecords',
+          margin: [0, 10, 0, 0]
+        }
+      ],
+      styles: {
+        reportTitle: {
+          fontSize: 16,
+          bold: true,
+          color: '#1e3a5f'
+        },
+        reportSubtitle: {
+          fontSize: 10,
+          color: '#64748b',
+          margin: [0, 4, 0, 0]
+        },
+        tableHeader: {
+          fontSize: 8,
+          bold: true,
+          color: '#ffffff'
+        },
+        totalRecords: {
+          fontSize: 9,
+          italics: true,
+          color: '#64748b'
+        }
+      },
+      defaultStyle: {
+        fontSize: 9
+      }
+    };
+
+    pdfMake.createPdf(docDefinition).download(fileName);
+  }
+
+  private formatHeaderLabel(header: string): string {
+    const labels: Record<string, string> = {
+      ID: 'ID',
+      IDActivo: 'ID Activo',
+      Descripcion: 'Descripción',
+      Medida: 'Medida',
+      Cantidad: 'Cantidad',
+      DiasTrabajo: 'Días Trabajo',
+      CostoMN: 'Costo MXN',
+      CostoUSD: 'Costo USD',
+      PrecioMN: 'Precio MXN',
+      PrecioUSD: 'Precio USD',
+      Cobrado: 'Cobrado',
+      Imprimir: 'Imprimir',
+      Estado: 'Estado',
+      Folio: 'Folio',
+      Titulo: 'Título',
+      Tipo: 'Tipo',
+      Prioridad: 'Prioridad',
+      SolicitadoPor: 'Solicitado Por',
+      AsignadoA: 'Asignado A',
+      Departamento: 'Departamento',
+      Activo: 'Activo',
+      FechaProgramada: 'Fecha Programada',
+      HorasEstimadas: 'Horas Est.',
+      HorasReales: 'Horas Reales',
+      CostoManoObra: 'Costo M.O.',
+      CostoRefacciones: 'Costo Refacc.',
+      CostoTotal: 'Costo Total',
+      FechaCreacion: 'Fecha Creación',
+      FechaCompletada: 'Fecha Completada',
+      DescripcionFalla: 'Desc. Falla',
+      Observaciones: 'Observaciones',
+      ActivoRegistro: 'Registro Activo',
+      Periodo: 'Período',
+      TipoMantenimiento: 'Tipo Mant.',
+      TotalOrdenes: 'Total OTs',
+      OrdenesCompletadas: 'OTs Completadas',
+      PromedioPorOrden: 'Prom./Orden',
+      TotalOT: 'Total OT',
+      OTCorrectivas: 'OT Correctivas',
+      HorasInactividad: 'Hrs Inactividad',
+      HorasPeriodo: 'Hrs Período',
+      Disponibilidad: 'Disponibilidad',
+      EstadoDisponibilidad: 'Estado Disp.',
+      DiasAtraso: 'Días Atraso',
+      Cumplimiento: 'Cumplimiento'
+    };
+    return labels[header] || header;
+  }
+
+  private calculateColumnWidths(headers: string[], rows: any[]): (string | number)[] {
+    const totalColumns = headers.length;
+    if (totalColumns <= 4) {
+      return Array(totalColumns).fill('*');
+    }
+    if (totalColumns <= 6) {
+      return Array(totalColumns).fill('auto');
+    }
+    return Array(totalColumns).fill('auto');
   }
 
   private buildFileName(prefix: string, extension: string): string {

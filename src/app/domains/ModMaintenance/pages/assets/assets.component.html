@@ -3,7 +3,7 @@
   <div class="header">
     <div class="header-content">
       <div class="header-left">
-        <i class="fas fa-cogs header-icon"></i>
+        <i class="bi bi-gear-fill header-icon"></i>
         <div>
           <h1 class="header-title">Gestion de Activos</h1>
           <p class="header-subtitle">Catalogo completo de equipos y maquinaria</p>
@@ -29,18 +29,14 @@
   <!-- Filters and Search -->
   <div class="filters-section">
     <div class="search-bar">
-      <i class="fas fa-search search-icon"></i>
-      <input
-        type="text"
-        class="form-control search-input"
-        placeholder="Buscar por descripcion..."
-        [(ngModel)]="searchTerm"
-        (input)="onSearchChange()">
+      <i class="bi bi-search search-icon"></i>
+      <input type="text" class="form-control search-input" placeholder="Buscar por descripcion..."
+        [(ngModel)]="searchTerm" (input)="onSearchChange()">
     </div>
 
     <div class="filters">
       <button class="btn btn-primary filter-btn" (click)="openCreateForm()" [disabled]="!canCreateByBranch()">
-        <i class="fas fa-plus"></i> Nuevo Activo
+        <i class="bi bi-plus-lg"></i> Nuevo Activo
       </button>
     </div>
   </div>
@@ -55,36 +51,36 @@
 
   <!-- Empty state -->
   <div class="text-center p-5" *ngIf="!loading && filteredAssets.length === 0">
-    <i class="fas fa-box-open" style="font-size: 3rem; color: #94a3b8;"></i>
+    <i class="bi bi-box" style="font-size: 3rem; color: #94a3b8;"></i>
     <p class="mt-2 text-muted">No se encontraron equipos</p>
   </div>
 
   <!-- Assets Grid -->
   <div class="assets-grid" *ngIf="!loading">
-    <div class="asset-card" *ngFor="let asset of filteredAssets" (click)="viewAssetDetail(asset)">
+    <div class="asset-card" *ngFor="let asset of paginatedAssets" (click)="viewAssetDetail(asset)">
       <div class="asset-header">
         <div class="asset-info">
           <h3 class="asset-name">{{ asset.description }}</h3>
           <p class="asset-id">ID: {{ asset.id }}</p>
         </div>
         <div class="asset-status">
-          <span [class]="'status-badge ' + getStatusClass(asset)">
-            {{ getStatusText(asset) }}
+          <span class="status-badge status-type">
+            {{ asset.assetType || 'Sin Tipo' }}
           </span>
         </div>
       </div>
 
       <div class="asset-details">
         <div class="detail-item">
-          <i class="fas fa-ruler icon-small"></i>
+          <i class="bi bi-rulers icon-small"></i>
           <span>Medida: {{ asset.measure || 'N/A' }}</span>
         </div>
         <div class="detail-item">
-          <i class="fas fa-boxes icon-small"></i>
+          <i class="bi bi-boxes icon-small"></i>
           <span>Cantidad: {{ asset.quantity || 0 }}</span>
         </div>
         <div class="detail-item">
-          <i class="fas fa-clock icon-small"></i>
+          <i class="bi bi-clock icon-small"></i>
           <span>Dias trabajo: {{ asset.daysWork ?? asset.dayswork ?? 0 }}</span>
         </div>
       </div>
@@ -101,17 +97,43 @@
       </div>
 
       <div class="asset-actions">
-        <button class="btn btn-sm btn-outline-primary action-btn" (click)="viewAssetDetail(asset); $event.stopPropagation()">
-          <i class="fas fa-eye"></i>
+        <button class="btn btn-sm btn-outline-primary action-btn"
+          (click)="viewAssetDetail(asset); $event.stopPropagation()">
+          <i class="bi bi-eye"></i>
         </button>
         <button class="btn btn-sm btn-outline-warning action-btn" (click)="openEditForm(asset, $event)">
-          <i class="fas fa-edit"></i>
+          <i class="bi bi-pencil"></i>
         </button>
         <button class="btn btn-sm btn-outline-danger action-btn" (click)="deleteAsset(asset, $event)">
-          <i class="fas fa-trash"></i>
+          <i class="bi bi-trash"></i>
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination-container" *ngIf="!loading && filteredAssets.length > pageSize">
+    <nav aria-label="Paginación de activos">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" [class.disabled]="currentPage === 1">
+          <a class="page-link" (click)="goToPage(currentPage - 1)" aria-label="Anterior">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+        <li class="page-item" *ngFor="let page of getPageNumbers()" [class.active]="page === currentPage">
+          <a class="page-link" (click)="goToPage(page)">{{ page }}</a>
+        </li>
+        <li class="page-item" [class.disabled]="currentPage === totalPages">
+          <a class="page-link" (click)="goToPage(currentPage + 1)" aria-label="Siguiente">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <p class="text-center text-muted pagination-info">
+      Mostrando {{ ((currentPage - 1) * pageSize) + 1 }} - {{ Math.min(currentPage * pageSize, filteredAssets.length) }}
+      de {{ filteredAssets.length }} activos
+    </p>
   </div>
 
   <!-- Asset Detail Modal (view only) -->
@@ -121,7 +143,7 @@
       <div class="modal-header">
         <h2 class="modal-title">{{ selectedAsset?.description }}</h2>
         <button class="btn btn-sm btn-outline-secondary close-btn" (click)="closeAssetDetail()">
-          <i class="fas fa-times"></i>
+          <i class="bi bi-x-lg"></i>
         </button>
       </div>
 
@@ -129,7 +151,7 @@
         <div class="asset-detail-grid">
           <div class="detail-section">
             <h4 class="section-title">
-              <i class="fas fa-info-circle icon-section"></i>
+              <i class="bi bi-info-circle icon-section"></i>
               Informacion Basica
             </h4>
             <div class="info-grid">
@@ -140,6 +162,10 @@
               <div class="info-item">
                 <label>Descripcion:</label>
                 <span>{{ selectedAsset.description }}</span>
+              </div>
+              <div class="info-item">
+                <label>Tipo de Activo:</label>
+                <span>{{ selectedAsset.assetType || 'N/A' }}</span>
               </div>
               <div class="info-item">
                 <label>Medida:</label>
@@ -153,18 +179,12 @@
                 <label>Dias de Trabajo:</label>
                 <span>{{ selectedAsset.daysWork ?? selectedAsset.dayswork ?? 0 }}</span>
               </div>
-              <div class="info-item">
-                <label>Estado:</label>
-                <span [class]="'status-text ' + getStatusClass(selectedAsset)">
-                  {{ getStatusText(selectedAsset) }}
-                </span>
-              </div>
             </div>
           </div>
 
           <div class="detail-section">
             <h4 class="section-title">
-              <i class="fas fa-dollar-sign icon-section"></i>
+              <i class="bi bi-currency-dollar icon-section"></i>
               Informacion Financiera
             </h4>
             <div class="financial-grid">
@@ -192,7 +212,7 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="closeAssetDetail()">Cerrar</button>
         <button class="btn btn-warning" (click)="openEditForm(selectedAsset)">
-          <i class="fas fa-edit"></i> Editar
+          <i class="bi bi-pencil"></i> Editar
         </button>
       </div>
     </div>
@@ -205,26 +225,29 @@
       <div class="modal-header">
         <h2 class="modal-title">{{ isEditing ? 'Editar Activo' : 'Nuevo Activo' }}</h2>
         <button class="btn btn-sm btn-outline-secondary close-btn" (click)="closeForm()">
-          <i class="fas fa-times"></i>
+          <i class="bi bi-x-lg"></i>
         </button>
       </div>
 
       <div class="modal-body">
         <form (ngSubmit)="saveAsset()">
           <div class="row">
-            <div class="col-md-12 mb-3">
+            <div class="col-md-8 mb-3">
               <label class="form-label">Descripcion *</label>
               <input type="text" class="form-control" [(ngModel)]="formData.description" name="description" required>
             </div>
             <div class="col-md-4 mb-3">
+              <label class="form-label">Tipo de Activo</label>
+              <select class="form-select" [(ngModel)]="formData.assetType" name="assetType">
+                <option value="">Seleccionar tipo...</option>
+                <option *ngFor="let t of assetTypes" [value]="t.description">{{ t.description }}</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
               <label class="form-label">Medida</label>
               <select class="form-select" [(ngModel)]="formData.measure" name="measure">
-                <option value="DIA">DIA</option>
-                <option value="HRS">HRS</option>
-                <option value="PZA">PZA</option>
-                <option value="KG">KG</option>
-                <option value="LT">LT</option>
-                <option value="MT">MT</option>
+                <option value="">Seleccionar medida...</option>
+                <option *ngFor="let m of measures" [value]="m.description">{{ m.description }}</option>
               </select>
             </div>
             <div class="col-md-4 mb-3">
@@ -253,7 +276,8 @@
             </div>
             <div class="col-md-4 mb-3">
               <div class="form-check mt-4">
-                <input class="form-check-input" type="checkbox" [ngModel]="true" name="activeReadonly" id="activeCheck" disabled>
+                <input class="form-check-input" type="checkbox" [ngModel]="true" name="activeReadonly" id="activeCheck"
+                  disabled>
                 <label class="form-check-label" for="activeCheck">Activo (interno)</label>
               </div>
             </div>
@@ -262,7 +286,7 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
             <button type="submit" class="btn btn-primary" [disabled]="!isEditing && !canCreateByBranch()">
-              <i class="fas fa-save"></i> {{ isEditing ? 'Guardar Cambios' : 'Crear Activo' }}
+              <i class="bi bi-floppy"></i> {{ isEditing ? 'Guardar Cambios' : 'Crear Activo' }}
             </button>
           </div>
         </form>
