@@ -19,12 +19,15 @@ export class AssetsComponent implements OnInit {
   private router = inject(Router);
 
   idcompany: number = 0;
+  idBranch: number = 0;
   assets: any[] = [];
   filteredAssets: any[] = [];
   searchTerm: string = '';
   selectedAsset: any = null;
   showAssetDetail: boolean = false;
   loading: boolean = false;
+  private initialized: boolean = false;
+  private lastBranchId: number = 0;
 
   // Edit/Create modal
   showForm: boolean = false;
@@ -33,17 +36,27 @@ export class AssetsComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      this.updateCompanyContext();
+      this.updateContext();
+      if (!this.initialized) {
+        return;
+      }
+
+      if (this.idBranch !== this.lastBranchId) {
+        this.lastBranchId = this.idBranch;
+        this.loadEquipments();
+      }
     });
   }
 
   ngOnInit(): void {
-    this.updateCompanyContext();
+    this.updateContext();
+    this.lastBranchId = this.idBranch;
+    this.initialized = true;
     this.loadEquipments();
   }
 
   loadEquipments(): void {
-    if (!this.hasValidCompany()) {
+    if (!this.hasValidContext()) {
       this.assets = [];
       this.filteredAssets = [];
       this.loading = false;
@@ -51,7 +64,7 @@ export class AssetsComponent implements OnInit {
     }
 
     this.loading = true;
-    this.equipmentService.getEquipment(this.idcompany).subscribe(
+    this.equipmentService.getEquipmentByBranch(this.idBranch).subscribe(
       (data: any) => {
         this.assets = data;
         this.filteredAssets = [...this.assets];
@@ -89,9 +102,16 @@ export class AssetsComponent implements OnInit {
 
   // --- Create / Edit ---
   openCreateForm(): void {
+    if (!this.canCreateByBranch()) {
+      return;
+    }
+
     this.isEditing = false;
     this.formData = {
+      idCompany: this.idcompany,
+      idBranch: this.idBranch,
       id_company: this.idcompany,
+      id_branch: this.idBranch,
       description: '',
       measure: 'DIA',
       quantity: 1,
@@ -100,6 +120,7 @@ export class AssetsComponent implements OnInit {
       priceMN: 0,
       priceDLL: 0,
       dayswork: 8,
+      daysWork: 8,
       imprimir: true,
       charged: true,
       active: true
@@ -110,7 +131,12 @@ export class AssetsComponent implements OnInit {
   openEditForm(asset: any, event?: Event): void {
     if (event) event.stopPropagation();
     this.isEditing = true;
-    this.formData = { ...asset };
+    const normalizedDaysWork = asset?.daysWork ?? asset?.dayswork ?? 0;
+    this.formData = {
+      ...asset,
+      dayswork: normalizedDaysWork,
+      daysWork: normalizedDaysWork
+    };
     this.showForm = true;
     this.closeAssetDetail();
   }
@@ -121,10 +147,21 @@ export class AssetsComponent implements OnInit {
   }
 
   saveAsset(): void {
-    if (!this.formData.description) return;
+    if (!this.formData.description || !this.hasValidContext()) return;
+
+    const payload = {
+      ...this.formData,
+      dayswork: this.formData.daysWork ?? this.formData.dayswork ?? 0,
+      daysWork: this.formData.daysWork ?? this.formData.dayswork ?? 0,
+      active: true,
+      idCompany: this.idcompany,
+      idBranch: this.idBranch,
+      id_company: this.idcompany,
+      id_branch: this.idBranch
+    };
 
     if (this.isEditing) {
-      this.equipmentService.updateEquipment(this.formData.id, this.formData).subscribe({
+      this.equipmentService.updateEquipmentFromAssets(this.formData.id, payload).subscribe({
         next: () => {
           this.closeForm();
           this.loadEquipments();
@@ -132,7 +169,7 @@ export class AssetsComponent implements OnInit {
         error: (err) => console.error('Error updating equipment:', err)
       });
     } else {
-      this.equipmentService.addEquipment(this.formData).subscribe({
+      this.equipmentService.addEquipmentFromAssets(payload).subscribe({
         next: () => {
           this.closeForm();
           this.loadEquipments();
@@ -170,23 +207,31 @@ export class AssetsComponent implements OnInit {
     return this.assets.filter(a => !a.active).length;
   }
 
-  private updateCompanyContext(): void {
+  private updateContext(): void {
     const signalCompany = this.signalsService.getRootSelectedBySidebar()();
     if (signalCompany !== null && signalCompany !== undefined) {
       this.idcompany = Number(signalCompany);
-      return;
-    }
-
-    const companyStorage = localStorage.getItem('company');
-    if (companyStorage) {
-      const parsed = Number(companyStorage);
-      if (!Number.isNaN(parsed)) {
-        this.idcompany = parsed;
+    } else {
+      const companyStorage = localStorage.getItem('company');
+      if (companyStorage) {
+        const parsed = Number(companyStorage);
+        if (!Number.isNaN(parsed)) {
+          this.idcompany = parsed;
+        }
       }
     }
+
+    const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.idBranch = signalBranch !== null && signalBranch !== undefined ? Number(signalBranch) : 0;
   }
 
-  private hasValidCompany(): boolean {
-    return this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+  private hasValidContext(): boolean {
+    const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
+    return hasCompany && hasBranch;
+  }
+
+  canCreateByBranch(): boolean {
+    return this.idBranch > 0;
   }
 }

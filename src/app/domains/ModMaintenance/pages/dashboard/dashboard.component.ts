@@ -44,6 +44,8 @@ export class DashboardComponent implements OnInit {
   idBranch: number = 0;
   loading: boolean = false;
   errorMessage: string = '';
+  private initialized: boolean = false;
+  private lastBranchId: number = 0;
 
   stats: Stat[] = [
     { label: 'Activos Totales', value: '0', icon: 'box', color: 'blue' },
@@ -59,17 +61,27 @@ export class DashboardComponent implements OnInit {
   constructor() {
     effect(() => {
       this.updateContext();
+      if (!this.initialized) {
+        return;
+      }
+
+      if (this.idBranch !== this.lastBranchId) {
+        this.lastBranchId = this.idBranch;
+        this.loadDashboardData();
+      }
     });
   }
 
   ngOnInit(): void {
     this.updateContext();
+    this.lastBranchId = this.idBranch;
+    this.initialized = true;
     this.loadDashboardData();
   }
 
   loadDashboardData(): void {
-    if (!this.hasValidCompany()) {
-      this.errorMessage = 'No hay compañía seleccionada para cargar el dashboard.';
+    if (!this.hasValidContext()) {
+      this.errorMessage = 'No hay contexto activo (compañía/sucursal) para cargar el dashboard.';
       return;
     }
 
@@ -77,8 +89,8 @@ export class DashboardComponent implements OnInit {
     this.errorMessage = '';
 
     forkJoin({
-      assets: this.equipmentService.getEquipment(this.idcompany),
-      workOrders: this.workorderService.getAll(this.idcompany.toString())
+      assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
+      workOrders: this.workorderService.getAll(this.idBranch.toString())
     }).subscribe({
       next: (result: any) => {
         const assets = result.assets || [];
@@ -204,21 +216,13 @@ export class DashboardComponent implements OnInit {
     }
 
     const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
-    if (signalBranch !== null && signalBranch !== undefined) {
-      this.idBranch = Number(signalBranch);
-    } else {
-      const branchStorage = localStorage.getItem('branch');
-      if (branchStorage) {
-        const parsedBranch = Number(branchStorage);
-        if (!Number.isNaN(parsedBranch)) {
-          this.idBranch = parsedBranch;
-        }
-      }
-    }
+    this.idBranch = signalBranch !== null && signalBranch !== undefined ? Number(signalBranch) : 0;
   }
 
-  private hasValidCompany(): boolean {
-    return this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+  private hasValidContext(): boolean {
+    const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
+    return hasCompany && hasBranch;
   }
 
   getPriorityClass(priority: string): string {

@@ -12,16 +12,16 @@ export class WorkorderService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getAll(idCompany: string): Observable<any> {
-    return this.http.get(`${environment.urlMantenimiento}/WorkOrder?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  getAll(idBranch: string): Observable<any> {
+    return this.http.get(`${environment.urlMantenimiento}/WorkOrder?idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   getById(id: number): Observable<any> {
     return this.http.get(`${environment.urlMantenimiento}/WorkOrder/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getByStatus(idCompany: string, status: string): Observable<any> {
-    return this.http.get(`${environment.urlMantenimiento}/WorkOrder/status?idCompany=${idCompany}&status=${status}`, { headers: this.trackingService.getHeaders() });
+  getByStatus(idBranch: string, status: string): Observable<any> {
+    return this.http.get(`${environment.urlMantenimiento}/WorkOrder/status?idBranch=${idBranch}&status=${status}`, { headers: this.trackingService.getHeaders() });
   }
 
   add(data: any): Observable<any> {

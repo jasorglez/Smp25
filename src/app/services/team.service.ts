@@ -12,8 +12,8 @@ export class TeamService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getAll(idCompany: string): Observable<any> {
-    return this.http.get(`${environment.urlMantenimiento}/Team?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  getAll(idBranch: string): Observable<any> {
+    return this.http.get(`${environment.urlMantenimiento}/Team?idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   getById(id: number): Observable<any> {

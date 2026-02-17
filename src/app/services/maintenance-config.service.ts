@@ -12,8 +12,8 @@ export class MaintenanceConfigService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getByCompany(idCompany: string): Observable<any> {
-    return this.http.get(`${environment.urlMantenimiento}/MaintenanceConfig?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  getByBranch(idBranch: string): Observable<any> {
+    return this.http.get(`${environment.urlMantenimiento}/MaintenanceConfig?idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
   add(data: any): Observable<any> {

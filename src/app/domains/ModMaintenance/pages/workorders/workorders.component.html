@@ -63,7 +63,7 @@
         <option *ngFor="let dept of departments" [value]="dept.value">{{ dept.label }}</option>
       </select>
 
-      <button class="btn btn-primary filter-btn" (click)="onNewWorkOrder()">
+      <button class="btn btn-primary filter-btn" (click)="onNewWorkOrder()" [disabled]="!canCreateByBranch()">
         <i class="fas fa-plus"></i> Nueva Orden
       </button>
     </div>

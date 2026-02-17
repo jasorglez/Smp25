@@ -6,6 +6,7 @@ import { alerts } from 'app/helpers/alerts';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkorderService } from 'app/services/workorder.service';
+import { forkJoin } from 'rxjs';
 
 interface Report {
   id: string;
@@ -28,6 +29,7 @@ export class ReportesComponent implements OnInit {
   private workorderService = inject(WorkorderService);
 
   idcompany: number = 0;
+  idBranch: number = 0;
   exportingReportId: string | null = null;
   exportingFormat: string | null = null;
   selectedFormatByReport: Record<string, string> = {};
@@ -72,11 +74,15 @@ export class ReportesComponent implements OnInit {
 
   categories: string[] = ['Todos', 'Activos', 'Mantenimiento', 'Financiero', 'Operativo', 'Recursos Humanos'];
   selectedCategory: string = 'Todos';
+  dateRangeByReport: Record<string, { from: string; to: string }> = {};
 
   ngOnInit(): void {
     this.updateCompanyId();
     for (const report of this.reports) {
       this.selectedFormatByReport[report.id] = 'CSV';
+      if (this.requiresDateRange(report.id)) {
+        this.dateRangeByReport[report.id] = { from: '', to: '' };
+      }
     }
   }
 
@@ -94,12 +100,16 @@ export class ReportesComponent implements OnInit {
   }
 
   generateReport(reportId: string): void {
+    if (this.requiresDateRange(reportId) && !this.ensureValidDateRange(reportId)) {
+      return;
+    }
+
     const selectedFormat = this.getSelectedFormat(reportId);
     this.exportReport(reportId, selectedFormat);
   }
 
   exportReport(reportId: string, format: string): void {
-    if (!this.ensureValidCompanyId()) {
+    if (!this.ensureValidContext()) {
       return;
     }
 
@@ -109,6 +119,10 @@ export class ReportesComponent implements OnInit {
         'Por ahora solo están disponibles CSV y Excel.',
         'warning'
       );
+      return;
+    }
+
+    if (this.requiresDateRange(reportId) && !this.ensureValidDateRange(reportId)) {
       return;
     }
 
@@ -127,6 +141,16 @@ export class ReportesComponent implements OnInit {
       return;
     }
 
+    if (reportId === 'REP-004') {
+      this.exportEquipmentAvailabilityReport(format);
+      return;
+    }
+
+    if (reportId === 'REP-005') {
+      this.exportPreventiveMaintenanceReport(format);
+      return;
+    }
+
     const report = this.reports.find((r) => r.id === reportId);
     alerts.basicAlert(
       'Pendiente',
@@ -140,7 +164,7 @@ export class ReportesComponent implements OnInit {
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    this.equipmentService.getEquipment(this.idcompany).subscribe({
+    this.equipmentService.getEquipmentByBranch(this.idBranch).subscribe({
       next: (assets: any[]) => {
         const rows = this.mapAssetsForReport(assets || []);
 
@@ -197,9 +221,10 @@ export class ReportesComponent implements OnInit {
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    this.workorderService.getAll(this.idcompany.toString()).subscribe({
+    this.workorderService.getAll(this.idBranch.toString()).subscribe({
       next: (workOrders: any[]) => {
-        const rows = this.mapWorkOrdersForReport(workOrders || []);
+        const filteredWorkOrders = this.filterWorkOrdersByDateRange(workOrders || [], reportId);
+        const rows = this.mapWorkOrdersForReport(filteredWorkOrders);
 
         if (format === 'CSV') {
           this.downloadCsv(
@@ -264,7 +289,7 @@ export class ReportesComponent implements OnInit {
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    this.workorderService.getAll(this.idcompany.toString()).subscribe({
+    this.workorderService.getAll(this.idBranch.toString()).subscribe({
       next: (workOrders: any[]) => {
         const rows = this.mapMaintenanceCostsForReport(workOrders || []);
 
@@ -312,6 +337,118 @@ export class ReportesComponent implements OnInit {
     });
   }
 
+  private exportPreventiveMaintenanceReport(format: string): void {
+    const reportId = 'REP-005';
+    this.exportingReportId = reportId;
+    this.exportingFormat = format;
+
+    this.workorderService.getAll(this.idBranch.toString()).subscribe({
+      next: (workOrders: any[]) => {
+        const rows = this.mapPreventiveMaintenanceForReport(workOrders || []);
+
+        if (format === 'CSV') {
+          this.downloadCsv(
+            rows,
+            [
+              'Periodo',
+              'Folio',
+              'Activo',
+              'Departamento',
+              'Estado',
+              'FechaProgramada',
+              'FechaCompletada',
+              'DiasAtraso',
+              'Cumplimiento'
+            ],
+            this.buildFileName('informe_mantenimiento_preventivo', 'csv')
+          );
+        } else {
+          this.downloadExcel(
+            rows,
+            'MantenimientoPreventivo',
+            this.buildFileName('informe_mantenimiento_preventivo', 'xlsx')
+          );
+        }
+
+        alerts.basicAlert(
+          'Éxito',
+          `Informe de Mantenimiento Preventivo exportado en ${format}.`,
+          'success'
+        );
+        this.exportingReportId = null;
+        this.exportingFormat = null;
+      },
+      error: (error) => {
+        console.error('Error exporting preventive maintenance report:', error);
+        alerts.basicAlert(
+          'Error',
+          'No fue posible obtener las órdenes para generar el reporte preventivo.',
+          'error'
+        );
+        this.exportingReportId = null;
+        this.exportingFormat = null;
+      }
+    });
+  }
+
+  private exportEquipmentAvailabilityReport(format: string): void {
+    const reportId = 'REP-004';
+    this.exportingReportId = reportId;
+    this.exportingFormat = format;
+
+    forkJoin({
+      assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
+      workOrders: this.workorderService.getAll(this.idBranch.toString())
+    }).subscribe({
+      next: (result: any) => {
+        const filteredWorkOrders = this.filterWorkOrdersByDateRange(result.workOrders || [], reportId);
+        const rows = this.mapEquipmentAvailabilityForReport(result.assets || [], filteredWorkOrders, reportId);
+
+        if (format === 'CSV') {
+          this.downloadCsv(
+            rows,
+            [
+              'IDActivo',
+              'Activo',
+              'Periodo',
+              'TotalOT',
+              'OTCorrectivas',
+              'HorasInactividad',
+              'HorasPeriodo',
+              'Disponibilidad',
+              'EstadoDisponibilidad'
+            ],
+            this.buildFileName('informe_disponibilidad_equipos', 'csv')
+          );
+        } else {
+          this.downloadExcel(
+            rows,
+            'DisponibilidadEquipos',
+            this.buildFileName('informe_disponibilidad_equipos', 'xlsx')
+          );
+        }
+
+        alerts.basicAlert(
+          'Éxito',
+          `Informe de Disponibilidad de Equipos exportado en ${format}.`,
+          'success'
+        );
+        this.exportingReportId = null;
+        this.exportingFormat = null;
+      },
+      error: (error) => {
+        console.error('Error exporting equipment availability report:', error);
+        alerts.basicAlert(
+          'Error',
+          'No fue posible obtener los datos para generar el reporte de disponibilidad.',
+          'error'
+        );
+        this.exportingReportId = null;
+        this.exportingFormat = null;
+      }
+    });
+  }
+
   isExporting(reportId: string, format: string): boolean {
     return this.exportingReportId === reportId && this.exportingFormat === format;
   }
@@ -324,13 +461,47 @@ export class ReportesComponent implements OnInit {
     return this.selectedFormatByReport[reportId] || 'CSV';
   }
 
+  canGenerateByBranch(): boolean {
+    return this.idBranch > 0;
+  }
+
+  getDateFrom(reportId: string): string {
+    return this.dateRangeByReport[reportId]?.from || '';
+  }
+
+  getDateTo(reportId: string): string {
+    return this.dateRangeByReport[reportId]?.to || '';
+  }
+
+  setDateFrom(reportId: string, value: string): void {
+    const current = this.dateRangeByReport[reportId] || { from: '', to: '' };
+    this.dateRangeByReport[reportId] = { ...current, from: value || '' };
+  }
+
+  setDateTo(reportId: string, value: string): void {
+    const current = this.dateRangeByReport[reportId] || { from: '', to: '' };
+    this.dateRangeByReport[reportId] = { ...current, to: value || '' };
+  }
+
+  hasDateRange(reportId: string): boolean {
+    if (!this.requiresDateRange(reportId)) {
+      return true;
+    }
+    const range = this.dateRangeByReport[reportId];
+    return !!range?.from && !!range?.to;
+  }
+
+  requiresDateRange(reportId: string): boolean {
+    return reportId === 'REP-002' || reportId === 'REP-004';
+  }
+
   private mapAssetsForReport(assets: any[]): any[] {
     return assets.map((asset) => ({
       ID: asset.id ?? '',
       Descripcion: asset.description ?? '',
       Medida: asset.measure ?? '',
       Cantidad: asset.quantity ?? 0,
-      DiasTrabajo: asset.dayswork ?? 0,
+      DiasTrabajo: asset.daysWork ?? asset.dayswork ?? 0,
       CostoMN: asset.costMN ?? asset.costoMN ?? 0,
       CostoUSD: asset.costDLL ?? asset.costoDLL ?? 0,
       PrecioMN: asset.priceMN ?? asset.ventaMN ?? 0,
@@ -420,6 +591,80 @@ export class ReportesComponent implements OnInit {
     return rows;
   }
 
+  private mapPreventiveMaintenanceForReport(workOrders: any[]): any[] {
+    const preventiveOrders = (workOrders || [])
+      .filter((wo: any) => (wo.type || '').toLowerCase() === 'preventivo')
+      .map((workOrder: any) => {
+        const scheduledDate = workOrder.scheduledDate || null;
+        const completedDate = workOrder.completedDate || null;
+        const status = (workOrder.status || '').toLowerCase();
+        const isClosed = status === 'completada' || status === 'cancelada';
+        const delayDays = this.getDelayDays(scheduledDate, isClosed ? completedDate : null);
+
+        return {
+          Periodo: this.getPeriodKey(scheduledDate || workOrder.createdDate),
+          Folio: workOrder.folio ?? '',
+          Activo: workOrder.assetName ?? '',
+          Departamento: workOrder.department ?? '',
+          Estado: workOrder.status ?? '',
+          FechaProgramada: this.formatDateValue(scheduledDate),
+          FechaCompletada: this.formatDateValue(completedDate),
+          DiasAtraso: delayDays,
+          Cumplimiento: status === 'completada' ? 'Cumplido' : 'Pendiente'
+        };
+      });
+
+    preventiveOrders.sort((a: any, b: any) => {
+      if (a.Periodo === b.Periodo) {
+        return (a.Folio || '').localeCompare(b.Folio || '');
+      }
+      return a.Periodo.localeCompare(b.Periodo);
+    });
+
+    return preventiveOrders;
+  }
+
+  private mapEquipmentAvailabilityForReport(assets: any[], workOrders: any[], reportId: string): any[] {
+    const currentPeriod = this.getDateRangeLabel(reportId);
+    const periodHours = this.getDateRangeHours(reportId);
+
+    const rows = (assets || []).map((asset: any) => {
+      const assetId = String(asset?.id ?? '');
+      const assetName = String(asset?.description ?? '');
+      const relatedOrders = (workOrders || []).filter((wo: any) => {
+        const byId = String(wo?.assetId ?? '') === assetId;
+        const byName = String(wo?.assetName ?? '').trim().toLowerCase() === assetName.trim().toLowerCase();
+        return byId || byName;
+      });
+
+      const activeOrders = relatedOrders.filter((wo: any) => (wo?.status || '').toLowerCase() !== 'cancelada');
+      const correctiveOrders = activeOrders.filter((wo: any) => (wo?.type || '').toLowerCase() === 'correctivo');
+      const downtimeHours = activeOrders.reduce((sum: number, wo: any) => {
+        const actual = this.normalizeNumber(wo?.actualHours);
+        const estimated = this.normalizeNumber(wo?.estimatedHours);
+        return sum + (actual > 0 ? actual : estimated);
+      }, 0);
+
+      const rawAvailability = periodHours > 0 ? ((periodHours - downtimeHours) / periodHours) * 100 : 100;
+      const availability = Math.max(0, Math.min(100, rawAvailability));
+
+      return {
+        IDActivo: asset?.id ?? '',
+        Activo: assetName,
+        Periodo: currentPeriod,
+        TotalOT: activeOrders.length,
+        OTCorrectivas: correctiveOrders.length,
+        HorasInactividad: this.round2(downtimeHours),
+        HorasPeriodo: periodHours,
+        Disponibilidad: `${this.round2(availability)}%`,
+        EstadoDisponibilidad: this.getAvailabilityState(availability)
+      };
+    });
+
+    rows.sort((a: any, b: any) => a.Activo.localeCompare(b.Activo));
+    return rows;
+  }
+
   private downloadCsv(rows: any[], headers: string[], fileName: string): void {
     const csvRows = [
       headers.join(','),
@@ -484,6 +729,121 @@ export class ReportesComponent implements OnInit {
     return `${date.getFullYear()}-${month}`;
   }
 
+  private getDelayDays(
+    scheduledDateValue: string | null | undefined,
+    completedDateValue: string | null | undefined
+  ): number {
+    if (!scheduledDateValue) {
+      return 0;
+    }
+
+    const scheduledDate = new Date(scheduledDateValue);
+    if (Number.isNaN(scheduledDate.getTime())) {
+      return 0;
+    }
+
+    const reference = completedDateValue ? new Date(completedDateValue) : new Date();
+    if (Number.isNaN(reference.getTime())) {
+      return 0;
+    }
+
+    const diffTime = reference.getTime() - scheduledDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  }
+
+  private filterWorkOrdersByDateRange(workOrders: any[], reportId: string): any[] {
+    const range = this.dateRangeByReport[reportId];
+    if (!range?.from || !range?.to) {
+      return workOrders || [];
+    }
+
+    const fromDate = new Date(`${range.from}T00:00:00`);
+    const toDate = new Date(`${range.to}T23:59:59`);
+
+    return (workOrders || []).filter((workOrder: any) => {
+      const workOrderDate = this.getWorkOrderDate(workOrder);
+      if (!workOrderDate) {
+        return false;
+      }
+      return workOrderDate >= fromDate && workOrderDate <= toDate;
+    });
+  }
+
+  private getWorkOrderDate(workOrder: any): Date | null {
+    const value = workOrder?.scheduledDate || workOrder?.createdDate;
+    if (!value) {
+      return null;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+
+    return date;
+  }
+
+  private getDateRangeLabel(reportId: string): string {
+    const range = this.dateRangeByReport[reportId];
+    if (!range?.from || !range?.to) {
+      return 'sin-rango';
+    }
+    return `${range.from} a ${range.to}`;
+  }
+
+  private getDateRangeHours(reportId: string): number {
+    const range = this.dateRangeByReport[reportId];
+    if (!range?.from || !range?.to) {
+      return 0;
+    }
+
+    const fromDate = new Date(`${range.from}T00:00:00`);
+    const toDate = new Date(`${range.to}T00:00:00`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      return 0;
+    }
+
+    const diffMs = toDate.getTime() - fromDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays > 0 ? diffDays * 24 : 0;
+  }
+
+  private ensureValidDateRange(reportId: string): boolean {
+    const range = this.dateRangeByReport[reportId];
+    if (!range?.from || !range?.to) {
+      alerts.basicAlert(
+        'Rango requerido',
+        'Selecciona fecha inicial y fecha final para generar este reporte.',
+        'warning'
+      );
+      return false;
+    }
+
+    const fromDate = new Date(`${range.from}T00:00:00`);
+    const toDate = new Date(`${range.to}T00:00:00`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      alerts.basicAlert(
+        'Rango inválido',
+        'Verifica que la fecha inicial sea menor o igual a la fecha final.',
+        'warning'
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  private getAvailabilityState(availability: number): string {
+    if (availability >= 95) {
+      return 'Alta';
+    }
+    if (availability >= 85) {
+      return 'Media';
+    }
+    return 'Baja';
+  }
+
   private normalizeNumber(value: any): number {
     const numberValue = Number(value);
     return Number.isFinite(numberValue) ? numberValue : 0;
@@ -510,26 +870,30 @@ export class ReportesComponent implements OnInit {
     const signalCompanyId = this.signalsService.getRootSelectedBySidebar()();
     if (signalCompanyId !== null && signalCompanyId !== undefined) {
       this.idcompany = Number(signalCompanyId);
-      return;
-    }
-
-    const companyFromStorage = localStorage.getItem('company');
-    if (companyFromStorage) {
-      const parsedCompany = Number(companyFromStorage);
-      if (!Number.isNaN(parsedCompany)) {
-        this.idcompany = parsedCompany;
+    } else {
+      const companyFromStorage = localStorage.getItem('company');
+      if (companyFromStorage) {
+        const parsedCompany = Number(companyFromStorage);
+        if (!Number.isNaN(parsedCompany)) {
+          this.idcompany = parsedCompany;
+        }
       }
     }
+
+    const signalBranchId = this.signalsService.getBranchSelectedBySidebar()();
+    this.idBranch = signalBranchId !== null && signalBranchId !== undefined ? Number(signalBranchId) : 0;
   }
 
-  private ensureValidCompanyId(): boolean {
-    if (this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany))) {
+  private ensureValidContext(): boolean {
+    const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
+    if (hasCompany && hasBranch) {
       return true;
     }
 
     alerts.basicAlert(
       'Contexto incompleto',
-      'No se encontró la compañía activa. Selecciona una compañía e intenta nuevamente.',
+      'No se encontró el contexto activo (compañía/sucursal). Selecciona una sucursal e intenta nuevamente.',
       'warning'
     );
     return false;

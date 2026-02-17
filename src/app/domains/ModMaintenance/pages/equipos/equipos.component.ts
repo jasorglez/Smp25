@@ -25,6 +25,8 @@ export class EquiposComponent implements OnInit {
   teams: any[] = [];
   employees: any[] = [];
   loading: boolean = false;
+  private initialized: boolean = false;
+  private lastBranchId: number = 0;
 
   showForm: boolean = false;
   isEditing: boolean = false;
@@ -39,6 +41,8 @@ export class EquiposComponent implements OnInit {
     memberIds: [] as number[]
   };
 
+  calculatedHourlyRate: number = 0;
+
   specialties: string[] = [
     'Electricidad',
     'Mecanica',
@@ -52,11 +56,21 @@ export class EquiposComponent implements OnInit {
   constructor() {
     effect(() => {
       this.updateContext();
+      if (!this.initialized) {
+        return;
+      }
+
+      if (this.idBranch !== this.lastBranchId) {
+        this.lastBranchId = this.idBranch;
+        this.loadData();
+      }
     });
   }
 
   ngOnInit(): void {
     this.updateContext();
+    this.lastBranchId = this.idBranch;
+    this.initialized = true;
     this.loadData();
   }
 
@@ -69,10 +83,10 @@ export class EquiposComponent implements OnInit {
     }
 
     this.loading = true;
-    const idCompanyStr = this.idcompany.toString();
+    const idBranchStr = this.idBranch.toString();
 
     forkJoin({
-      teams: this.teamService.getAll(idCompanyStr),
+      teams: this.teamService.getAll(idBranchStr),
       employees: this.employeesService.getEmployees(this.idBranch)
     }).subscribe({
       next: (result: any) => {
@@ -88,14 +102,18 @@ export class EquiposComponent implements OnInit {
         const memberRequests = teamsRaw.map((t: any) => this.teamService.getMembers(t.id));
         forkJoin(memberRequests).subscribe({
           next: (membersArrays: any) => {
-            this.teams = teamsRaw.map((team: any, i: number) => ({
-              ...team,
-              leaderName: this.getEmployeeName(team.leader),
-              members: (membersArrays[i] || []).map((m: any) => ({
+            this.teams = teamsRaw.map((team: any, i: number) => {
+              const members = (membersArrays[i] || []).map((m: any) => ({
                 ...m,
-                employeeName: this.getEmployeeName(m.idEmployee)
-              }))
-            }));
+                employeeName: this.getEmployeeName(m.idEmployee),
+                baseHours: this.getEmployeeBaseHours(m.idEmployee)
+              }));
+              return {
+                ...team,
+                leaderName: this.getEmployeeName(team.leader),
+                members: members
+              };
+            });
             this.loading = false;
           },
           error: () => {
@@ -121,16 +139,48 @@ export class EquiposComponent implements OnInit {
     return emp ? emp.name : `Empleado #${id}`;
   }
 
+  getEmployeeBaseHours(id: number | null): number {
+    if (!id) return 0;
+    const emp = this.employees.find((e: any) => e.id === id);
+    return emp?.baseHours || emp?.basehours || 0;
+  }
+
   updateAvailableMembers(): void {
     const leaderId = this.formData.leader;
     this.availableMembersList = this.employees.filter((e: any) => e.id !== leaderId);
+    this.recalculateHourlyRate();
   }
 
   onLeaderChange(): void {
     this.updateAvailableMembers();
   }
 
+  onMembersChange(): void {
+    this.recalculateHourlyRate();
+  }
+
+  recalculateHourlyRate(): void {
+    let total = 0;
+
+    // Include leader's hourly rate
+    if (this.formData.leader) {
+      total += this.getEmployeeBaseHours(this.formData.leader);
+    }
+
+    // Include members' hourly rates
+    const memberIds: number[] = this.formData.memberIds || [];
+    for (const empId of memberIds) {
+      total += this.getEmployeeBaseHours(empId);
+    }
+
+    this.calculatedHourlyRate = Math.round(total * 100) / 100;
+  }
+
   openCreateForm(): void {
+    if (!this.canCreateByBranch()) {
+      return;
+    }
+
     this.isEditing = false;
     this.editingTeamId = null;
     this.formData = {
@@ -140,6 +190,7 @@ export class EquiposComponent implements OnInit {
       status: 'Activo',
       memberIds: []
     };
+    this.calculatedHourlyRate = 0;
     this.updateAvailableMembers();
     this.showForm = true;
   }
@@ -165,13 +216,15 @@ export class EquiposComponent implements OnInit {
 
   handleSubmit(): void {
     if (!this.formData.name || !this.formData.specialty) return;
+    if (!this.hasValidContext()) return;
 
     const teamData: any = {
-      idCompany: this.idcompany.toString(),
+      idBranch: this.idBranch.toString(),
       name: this.formData.name,
       leader: this.formData.leader || null,
       specialty: this.formData.specialty,
       status: this.formData.status,
+      hourlyRate: this.calculatedHourlyRate,
       active: true
     };
 
@@ -244,6 +297,13 @@ export class EquiposComponent implements OnInit {
     return status === 'Activo' ? 'status-active' : 'status-inactive';
   }
 
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(amount || 0);
+  }
+
   private updateContext(): void {
     const signalCompany = this.signalsService.getRootSelectedBySidebar()();
     if (signalCompany !== null && signalCompany !== undefined) {
@@ -259,22 +319,16 @@ export class EquiposComponent implements OnInit {
     }
 
     const signalBranch = this.signalsService.getBranchSelectedBySidebar()();
-    if (signalBranch !== null && signalBranch !== undefined) {
-      this.idBranch = Number(signalBranch);
-    } else {
-      const branchStorage = localStorage.getItem('branch');
-      if (branchStorage) {
-        const parsedBranch = Number(branchStorage);
-        if (!Number.isNaN(parsedBranch)) {
-          this.idBranch = parsedBranch;
-        }
-      }
-    }
+    this.idBranch = signalBranch !== null && signalBranch !== undefined ? Number(signalBranch) : 0;
   }
 
   private hasValidContext(): boolean {
     const hasCompany = this.idcompany !== null && this.idcompany !== undefined && !Number.isNaN(Number(this.idcompany));
-    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch));
+    const hasBranch = this.idBranch !== null && this.idBranch !== undefined && !Number.isNaN(Number(this.idBranch)) && Number(this.idBranch) > 0;
     return hasCompany && hasBranch;
+  }
+
+  canCreateByBranch(): boolean {
+    return this.idBranch > 0;
   }
 }
