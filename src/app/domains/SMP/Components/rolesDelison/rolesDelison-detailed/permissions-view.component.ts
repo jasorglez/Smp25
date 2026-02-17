@@ -60,22 +60,6 @@ export class PermissionsViewComponent implements OnInit {
   rawData: any[] = [];
   notSavedChanges: boolean = false;
 
-  // Datos planos originales como los recibes de la API
-  /*rawData = [
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Principal',canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Ahorros', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Prestamos', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Horarios",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Historico Préstamos",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Historico Ahorros",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Nómina",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Nómina", showColumn: 'Horas Extras', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Bonos Historicos",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Histórico de Nominas Digitales",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Compras delison", masterRead: false, detailedPermissionName: "Proveedores", detailedRead: false, subdetailedPermissionName:  "Proveedores",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Compras delison", masterRead: false, detailedPermissionName: "Requisiciones", detailedRead: false, subdetailedPermissionName:  "Requisiciones",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-  ];*/
-
   // Aquí almacenaremos los datos transformados en una estructura jerárquica
   groupedPermissions: MasterPermission[] = [];
 
@@ -127,6 +111,20 @@ export class PermissionsViewComponent implements OnInit {
   }
 
   onCrudChange(permission: CrudPermission) {
+    // Si se activa canRead en Principal, automáticamente activar todos los permisos CRUD
+    if (permission.canRead && permission.name === 'Principal') {
+      permission.canCreate = true;
+      permission.canUpdate = true;
+      permission.canDelete = true;
+    }
+    
+    // Si se desactiva canRead, desactivar todos los permisos CRUD
+    if (!permission.canRead) {
+      permission.canCreate = false;
+      permission.canUpdate = false;
+      permission.canDelete = false;
+    }
+    
     this.checkForChanges();
   }
 

@@ -311,7 +311,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         cellStyle: { backgroundColor: '#d4edda' },
         cellRenderer: (params) => {
           // Hacemos que el texto parezca un enlace para indicar que es clickeable.
-          return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos2</span>`;
+          return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;
         }
       },
 

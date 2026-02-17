@@ -9,11 +9,35 @@
   background-color: #f9f9f9;
 }
 
+/* Botones laterales fijos */
+.col-auto {
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  z-index: 100;
+}
+
 h2 {
   text-align: center;
   color: #333;
   margin-bottom: 25px;
 }
+
+/* ===== GRID DE 2 COLUMNAS - ÚNICO CAMBIO ===== */
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.9375rem;
+  align-items: start;
+}
+
+/* Responsive - En móviles vuelve a 1 columna */
+@media (max-width: 768px) {
+  .permissions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* ============================================== */
 
 /* Estilos para cada grupo de permiso maestro */
 .master-group {
