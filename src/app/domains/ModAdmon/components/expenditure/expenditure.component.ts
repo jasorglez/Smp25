@@ -224,8 +224,9 @@ export class ExpenditureComponent {
   // Grid Options con Master-Detail
   public gridOptions: any = {
     headerHeight: 24,
-    rowHeight: 35, // Aumentado para accommodate descripciones largas
+    rowHeight: 35,
     animateRows: true,
+    enableBrowserTooltips: true,
     masterDetail: true,
     detailRowHeight: 600,
     detailCellRenderer: DetallesExpenditureComponent,
