@@ -584,6 +584,7 @@ export class ExpenditureComponent {
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((item) => item.id)
               : [],
+            useFormatter: true,
           };
         },
         valueFormatter: (params) => {
@@ -948,9 +949,12 @@ export class ExpenditureComponent {
 
     setTimeout(() => {
       this.gridApi.ensureIndexVisible(newRowIndex);
+      // Si la columna idBranch está visible, comenzar edición ahí primero
+      const branchCol = this.gridApi.getColumn('idBranch');
+      const startCol = (branchCol && !branchCol.isVisible()) ? 'date' : 'idBranch';
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
-        colKey: 'date',
+        colKey: startCol,
       });
     }, 50);
   }
@@ -1343,7 +1347,7 @@ export class ExpenditureComponent {
         tax: tax,
         total: total,
         countitems: conceptsData.length,
-        idBranch: mainDocument.idBranch // Preservar la sucursal existente
+        idBranch: data.idBranch != null ? data.idBranch : mainDocument.idBranch
       };
 
       await lastValueFrom(
