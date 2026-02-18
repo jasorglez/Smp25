@@ -848,14 +848,16 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'area',
         headerName: 'Area',
-        
+
         filter: true,
-        
+
         width: 100,
         editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.catalogArea.map(area => area.description)
+        cellEditorParams: (params: any) => {
+          return {
+            values: this.catalogArea.map(area => area.description)
+          };
         }
       },
       {
