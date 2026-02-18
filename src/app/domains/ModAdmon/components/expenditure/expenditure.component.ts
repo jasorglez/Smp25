@@ -592,10 +592,9 @@ export class ExpenditureComponent {
             : null;
           return foundBranch ? foundBranch.name : params.value;
         },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
+        valueSetter: (params) => {
+          params.data.idBranch = params.newValue;
+          return true;
         },
       },
       {
@@ -704,6 +703,11 @@ export class ExpenditureComponent {
           if (!params.value) return '';
           const project = this.projects?.find((p) => p.id === params.value);
           return project ? project.name : params.value;
+        },
+        tooltipValueGetter: (params) => {
+          if (!params.value) return '';
+          const project = this.projects?.find((p) => p.id === params.value);
+          return project ? project.name : '';
         }
       },
       {
