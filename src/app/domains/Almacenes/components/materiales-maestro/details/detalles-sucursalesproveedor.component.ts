@@ -11,7 +11,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 
 @Component({
-  selector: 'app-detail-cell-renderer-proveedor-sucursal',
+  selector: 'app-detalles-sucursalesproveedor',
   standalone: true,
   imports: [CommonModule, AgGridModule],
   template: `
@@ -51,7 +51,7 @@ import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMater
     </div>
   `,
 })
-export class DetailCellRendererProveedorSucursalComponent implements ICellRendererAngularComp {
+export class DetallesSucursalesProveedorComponent implements ICellRendererAngularComp {
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
@@ -101,12 +101,22 @@ export class DetailCellRendererProveedorSucursalComponent implements ICellRender
                 
           cellEditor: SelectWithTooltipEditorV2Component,
                 
-          cellEditorParams: () => ({
-            options: (this.allBranches || []).map((p: any) => ({
-              id: p.id,                  // number
-              description: p.name        // string
-            }))
-          }),
+          cellEditorParams: (params) => {
+            const currentIdSucursal = Number(params.data.idSucursal);
+            const usedIds = new Set(
+              (this.sucursalRowData || [])
+                .map((row: any) => Number(row.idSucursal))
+                .filter((id: number) => !isNaN(id) && id !== 0 && id !== currentIdSucursal)
+            );
+            return {
+              options: (this.allBranches || [])
+                .filter((p: any) => !usedIds.has(p.id))
+                .map((p: any) => ({
+                  id: p.id,
+                  description: p.name
+                }))
+            };
+          },
         
           // Mostrar el nombre de la sucursal
           valueFormatter: (params) => {

@@ -5,15 +5,16 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { DetailCellRendererProveedoresComponent } from './details/detail-cell-renderer-proveedores.component';
+import { DetalleAsignProveedsMaestroComponent } from './details/detalle-asignproveeds-matmaestro.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
 import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
-import { DetailCellRendererProveedorSucursalComponent } from './details/detail-cell-renderer-proveedor-sucursal.component';
+import { DetallesSucursalesProveedorComponent } from './details/detalles-sucursalesproveedor.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
 import { MaterialsService } from 'app/services/materials.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
@@ -33,16 +34,17 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
     CommonModule,
     FormsModule,
     AgGridModule,
-    DetailCellRendererProveedoresComponent,
+    DetalleAsignProveedsMaestroComponent,
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
     DetailCellRendererCostosComponent,
     DetailCellRendererSubfamiliaComponent,
-    DetailCellRendererProveedorSucursalComponent,
+    DetallesSucursalesProveedorComponent,
     DetailCellRendererParametrosComponent,
     DetailCellRendererHistoricoComponent,
     SelectWithTooltipEditorV2Component,
-    ImageCellRendererComponent
+    ImageCellRendererComponent,
+    AutocompleteEditorComponent
   ],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
@@ -73,6 +75,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   idRoot: number | null = null;
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
+  private pendingScrollTarget: { id?: number | string; articulo?: string } | null = null;
   data: any[] = [];
   // Catálogos para los combos
   categories: any[] = [];
@@ -209,11 +212,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     this.materialsService.getMaterialsxview(this.idRoot).subscribe({
       next: (data) => {
-        // Agregar datos falsos para la columna de costos
         this.rowData = data.map(material => ({
           ...material,
         }));
         console.log('Materials loaded:', data);
+        if (this.pendingScrollTarget) {
+          setTimeout(() => this.scrollToTarget(), 150);
+        }
       },
       error: (error) => {
         console.error('Error loading materials:', error);
@@ -272,12 +277,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
 
   components = {
-    detailCellRendererProveedores: DetailCellRendererProveedoresComponent,
+    autocompleteEditor: AutocompleteEditorComponent,
+    detailCellRendererProveedores: DetalleAsignProveedsMaestroComponent,
     detailCellRendererFamilia: DetailCellRendererFamiliaComponent,
     detailCellRendererSucursal: DetailCellRendererSucursalComponent,
     detailCellRendererCostos: DetailCellRendererCostosComponent,
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
-    detailCellRendererProveedorSucursal: DetailCellRendererProveedorSucursalComponent,
+    detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent,
     detailCellRendererParametros: DetailCellRendererParametrosComponent,
     detailCellRendererHistorico: DetailCellRendererHistoricoComponent
   };
@@ -401,14 +407,44 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         width: 350,
         filter: true,
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'windows',
         },
         editable: true,
-        cellEditor: 'agTextCellEditor',
-        valueParser: (params: any) => {
-          return params.newValue ? params.newValue.toUpperCase() : '';
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: () => ({
+          filterList: this.rowData
+            .filter((row: any) => !row.__isNew)
+            .map((row: any) => (row.articulo || '').toUpperCase())
+            .filter((v: string) => v.length > 0),
+          toUpperCase: true,
+          placeholder: 'Buscar artículo...'
+        }),
+        valueSetter: (params: any) => {
+          const newValue = (params.newValue || '').toUpperCase().trim();
+          if (!newValue) return false;
+
+          const duplicate = this.rowData.some((row: any, idx: number) =>
+            !row.__isNew &&
+            (row.articulo || '').toUpperCase().trim() === newValue
+          );
+
+          if (duplicate) {
+            alerts.basicAlert(
+              'Artículo duplicado',
+              `El artículo "${newValue}" ya existe en el catálogo.`,
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = newValue;
+          return true;
+        },
+        cellStyle: (params: any) => {
+          if ((params.data.providerCount ?? 0) === 0) {
+            return { backgroundColor: '#ffe4ec' };
+          }
+          return null;
         }
       },
       {
@@ -588,7 +624,14 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           // Muestra el valor formateado.
           return `$${params.value}`;
         },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: (params: any) => {
+          const familia = this.families?.find((f: any) => f.id === params.data.idFamilia);
+          const familiaDesc = familia?.description || params.data.familia || '';
+          if (familiaDesc.toUpperCase().includes('BASICA')) {
+            return { backgroundColor: '#e8f5e9', cursor: 'not-allowed', color: '#aaa', textDecoration: 'none' };
+          }
+          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
+        }
       },
       {
         field: 'parametros',
@@ -702,6 +745,15 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
+      // Si la columna es "Materiales" y la Familia es "Básica", bloquear el clic
+      if (colId === 'costo') {
+        const familia = this.families?.find((f: any) => f.id === event.data.idFamilia);
+        const familiaDesc = familia?.description || event.data.familia || '';
+        if (familiaDesc.toUpperCase().includes('BASICA')) {
+          return;
+        }
+      }
+
       const node = event.node;
       const api = event.api;
       const detailType = this.getDetailTypeFromColId(colId);
@@ -718,6 +770,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           otherNode.setRowHeight(undefined);
         });
         api.onRowHeightChanged();
+
+        // Regresar el scroll al registro que estaba seleccionado
+        setTimeout(() => {
+          api.ensureNodeVisible(node, 'middle');
+        }, 50);
       } else {
         // Colapsar cualquier otra fila expandida
         api.forEachNode((otherNode: any) => {
@@ -954,6 +1011,23 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Validar campos requeridos en filas nuevas
+    for (const row of newRows) {
+      const faltantes: string[] = [];
+      if (!row.idCategory)   faltantes.push('Categoría');
+      if (!row.idFamilia)    faltantes.push('Familia');
+      if (!row.idSubfamilia) faltantes.push('Subfamilia');
+
+      if (faltantes.length > 0) {
+        alerts.basicAlert(
+          'Campos requeridos',
+          `El registro "${row.articulo || row.insumo || 'nuevo'}" requiere completar: ${faltantes.join(', ')}.`,
+          'warning'
+        );
+        return;
+      }
+    }
+
     try {
       // Guardar nuevos registros
       for (const newRow of newRows) {
@@ -978,7 +1052,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           this.activeModal.close();
         }
       } else {
-        // En modo standalone, recargar normalmente
+        // En modo standalone, recargar y posicionarse en el registro guardado
+        if (modifiedRows.length > 0) {
+          this.pendingScrollTarget = { id: modifiedRows[0].id };
+        } else if (newRows.length > 0) {
+          this.pendingScrollTarget = { articulo: newRows[0].articulo };
+        }
         this.loadMaterials();
       }
     } catch (error: any) {
@@ -1289,5 +1368,22 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       presentation: 'secondary'
     };
     return colors[this.modalType];
+  }
+
+  private scrollToTarget(): void {
+    if (!this.pendingScrollTarget || !this.gridApi) return;
+    const target = this.pendingScrollTarget;
+    this.pendingScrollTarget = null;
+
+    this.gridApi.forEachNode((node: any) => {
+      const matchById = target.id !== undefined && node.data.id === target.id;
+      const matchByArticulo = target.articulo &&
+        (node.data.articulo || '').toUpperCase() === target.articulo.toUpperCase();
+
+      if (matchById || matchByArticulo) {
+        this.gridApi.ensureNodeVisible(node, 'middle');
+        node.setSelected(true);
+      }
+    });
   }
 }
