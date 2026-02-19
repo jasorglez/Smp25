@@ -960,14 +960,24 @@ export class ExpenditureComponent {
   }
 
   async saveChanges() {
-    const isValid = this.incomes.every((item) => item.description);
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
-      );
-      return;
+    // Campos requeridos (idProject NO es requerido - puede ir vacío)
+    const requiredFields = [
+      { field: 'description', label: 'Descripción',  check: (v: any) => !!v },
+      { field: 'date',        label: 'Fecha',         check: (v: any) => !!v },
+      { field: 'idExpend',    label: 'Tipo Gasto',    check: (v: any) => !!v && v !== 0 },
+    ];
+
+    for (const item of this.incomes) {
+      for (const rf of requiredFields) {
+        if (!rf.check(item[rf.field])) {
+          alerts.basicAlert(
+            'Campo requerido',
+            `Falta llenar el campo: "${rf.label}"`,
+            'error'
+          );
+          return;
+        }
+      }
     }
 
     const newRows = this.incomes.filter((row) => row.__isNew);
