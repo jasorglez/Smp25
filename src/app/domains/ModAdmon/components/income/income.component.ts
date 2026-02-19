@@ -927,11 +927,15 @@ async saveChanges() {
     this.newlyAddedRows = [];
     await this.getIncomes(); // Refrescar los datos
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error crítico en saveChanges:', error);
+    const detail = error?.error?.message
+      || error?.error?.title
+      || error?.message
+      || JSON.stringify(error?.error || error || '');
     alerts.basicAlert(
-      'Error',
-      'Ocurrió un error al guardar los registros. Por favor, intente nuevamente.',
+      'Error al guardar',
+      detail,
       'error'
     );
   }
