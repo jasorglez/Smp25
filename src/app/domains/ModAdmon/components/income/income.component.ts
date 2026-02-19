@@ -849,6 +849,25 @@ async saveChanges() {
     }
   }
 
+  // Validar que la cuenta bancaria tenga Máscaras y Consecutivos configurados
+  const selectedAccount = this.bankAccounts.find(a => a.id === this._idAccount);
+  if (selectedAccount) {
+    const missingBankFields: string[] = [];
+    if (!selectedAccount.maskin)   missingBankFields.push('Máscara IN (maskin)');
+    if (!selectedAccount.consecin) missingBankFields.push('Consecutivo IN (consecin)');
+    if (!selectedAccount.maskex)   missingBankFields.push('Máscara EX (maskex)');
+    if (!selectedAccount.consecex) missingBankFields.push('Consecutivo EX (consecex)');
+
+    if (missingBankFields.length > 0) {
+      alerts.basicAlert(
+        'Cuenta bancaria incompleta',
+        `La cuenta "${selectedAccount.nameAccount}" no tiene configurados los siguientes campos requeridos:\n\n• ${missingBankFields.join('\n• ')}\n\nConfigúralos en Cuentas Bancarias antes de guardar.`,
+        'warning'
+      );
+      return;
+    }
+  }
+
   const newRows = this.incomes.filter((row) => row.__isNew);
   const modifiedRows = this.incomes.filter(
     (row) => row.__modified && !row.__isNew
