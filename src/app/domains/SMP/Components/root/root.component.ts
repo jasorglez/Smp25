@@ -154,12 +154,6 @@ export class RootComponent {
   };
 
 
-  // Orden de columnas editables para navegación con Enter (debe coincidir con el orden visual)
-  private editableColumnOrder = [
-    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
-    'address', 'city', 'state', 'country', 'rfc', 'cp', 'idCorporativo', 'advanced'
-  ];
-
   // Flag para controlar si la validación falló y en qué celda
   private validationFailed: boolean = false;
   private failedCellInfo: { rowIndex: number; colKey: string } | null = null;
@@ -193,12 +187,8 @@ public gridOptions: any = {
   }
 };
 
-  // Mover a la siguiente celda editable con Enter
+  // Retener el foco en la celda si la validación falló
   onCellEditingStopped(event: any) {
-    const currentColId = event.column.getColId();
-    const currentIndex = this.editableColumnOrder.indexOf(currentColId);
-
-    // Si la validación falló, quedarse en la misma celda
     if (this.validationFailed && this.failedCellInfo) {
       const cellInfo = this.failedCellInfo;
       setTimeout(() => {
@@ -209,21 +199,8 @@ public gridOptions: any = {
       }, 100);
       return;
     }
-
-    // Resetear flags
     this.validationFailed = false;
     this.failedCellInfo = null;
-
-    // Avanzar a la siguiente columna
-    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
-      const nextColId = this.editableColumnOrder[currentIndex + 1];
-      setTimeout(() => {
-        this.gridApi.startEditingCell({
-          rowIndex: event.rowIndex,
-          colKey: nextColId
-        });
-      }, 100);
-    }
   }
   
   private _columnDefs: ColDef[] = [];
