@@ -283,9 +283,13 @@ public gridOptions: any = {
               'Ya existe una empresa con ese nombre.',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'name' };
             return false;
           }
 
+          this.validationFailed = false;
+          this.failedCellInfo = null;
           params.data[params.colDef.field] = params.newValue;
           return true;
         }
@@ -303,6 +307,8 @@ public gridOptions: any = {
               'El nombre corto no puede tener más de 10 caracteres.',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'nameSmall' };
             return false;
           }
 
@@ -316,9 +322,13 @@ public gridOptions: any = {
               'Ya existe una empresa con ese nombre',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'nameSmall' };
             return false;
           }
 
+          this.validationFailed = false;
+          this.failedCellInfo = null;
           params.data[params.colDef.field] = params.newValue;
           return true;
         }
