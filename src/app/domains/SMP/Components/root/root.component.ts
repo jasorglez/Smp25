@@ -163,11 +163,11 @@ export class RootComponent {
     resizable: true,
     minWidth: 100,
     suppressKeyboardEvent: (params) => {
-      // Captura Enter mientras se edita: evita que AG Grid baje de fila
-      // y activa el avance a la siguiente columna
       if (params.event.key === 'Enter' && params.editing) {
         this.enterPressed = true;
-        return true;
+        // Forzar cierre del editor para que cellEditingStopped se dispare
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true; // evitar que AG Grid baje de fila
       }
       return false;
     }
