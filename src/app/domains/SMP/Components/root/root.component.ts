@@ -11,7 +11,6 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { BranchsService } from 'app/services/branchs.service';
-import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-root',
@@ -148,10 +147,6 @@ export class RootComponent {
       });
   }
 
-  components = {
-    autocompleteEditor: AutocompleteEditorComponent
-  }
-
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
@@ -276,13 +271,7 @@ public gridOptions: any = {
         headerName: 'Nombre',
         editable: true,
         flex: 2,
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData.map(e => e.name),
-          filterKey: 'name',
-          placeholder: 'Nombre...',
-          minLength: 1
-        },
+        cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
           const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.name === params.newValue
@@ -306,13 +295,7 @@ public gridOptions: any = {
         headerName: 'Nombre Corto',
         editable: true,
         flex: 1,
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData.map(e => e.nameSmall),
-          filterKey: 'nameSmall',
-          placeholder: 'Nombre...',
-          minLength: 1
-        },
+        cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
           if (params.newValue.length > 10) {
             alerts.basicAlert(
