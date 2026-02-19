@@ -26,6 +26,11 @@ export class CorporativosComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
+  private editableColumnOrder = [
+    'name', 'partner1', 'partner2', 'partner3', 'partner4', 'partner5', 'comment', 'active'
+  ];
+  private enterPressed: boolean = false;
+
   ngOnInit() {
     this.obtenerDatos();
   }
@@ -52,7 +57,15 @@ export class CorporativosComponent {
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
-    minWidth: 100
+    minWidth: 100,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
   };
 
   public gridOptions: any = {
@@ -181,6 +194,21 @@ export class CorporativosComponent {
     setTimeout(() => {
       params.api.sizeColumnsToFit();
     }, 100);
+  }
+
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const currentColId = event.column.getColId();
+    const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[currentIndex + 1]
+        });
+      }, 100);
+    }
   }
 
   addRow() {
