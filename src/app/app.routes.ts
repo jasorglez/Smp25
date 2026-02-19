@@ -811,10 +811,26 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
               ).then((s) => s.DashboarhostComponent),
-            canActivate: [TrackingGuard],
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
             data: {
+              permissions: { master: 'administration', detailed: 'dashboard' },
               tracking: {
                 logMessage: 'Click en Pestaña Dashboard Modulo Administracion',
+                category: 'Administration'
+              }
+            }
+          },
+
+          {
+            path: 'dashboard-hco',
+            loadComponent: () =>
+              import('./domains/ModAdmon/pages/dashboard-hco/dashboard-hco.component'
+              ).then((d) => d.DashboardHcoComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'administration', detailed: 'dashboard-hco' },
+              tracking: {
+                logMessage: 'Click en Dashboard HCO - SIAF',
                 category: 'Administration'
               }
             }

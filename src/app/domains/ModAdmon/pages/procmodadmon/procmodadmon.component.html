@@ -3,9 +3,15 @@
     <div class="card-header px-2">
       <ul class="nav nav-pills">
 
-         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="dashmodadmon" routerLinkActive="active">
-             <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}             
+            <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}
+          </a>
+        </li>
+
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashboard-hco" routerLinkActive="active">
+            <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}
           </a>
         </li>
 
@@ -39,12 +45,12 @@
           </a>
         </li>
 
-        <li class="nav-item"  *ngIf="idUser === 42">
+        <li class="nav-item" *ngIf="idUser === 42">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="masterExpenses" routerLinkActive="active">
             <mat-icon>paid</mat-icon> {{ 'expend' | translate }} 3
           </a>
         </li>
-        
+
         <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'customer')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="page02" routerLinkActive="active">
             <mat-icon>people</mat-icon> {{ 'customer' | translate }}
@@ -52,33 +58,35 @@
         </li>
 
         <li class="nav-item">
-                <a class="nav-link" routerLink="providers-st" routerLinkActive="active">
-                    <i class="bi bi-people-fill"></i> {{'providers' | translate}}
-                </a>
+          <a class="nav-link" routerLink="providers-st" routerLinkActive="active">
+            <i class="bi bi-people-fill"></i> {{'providers' | translate}}
+          </a>
         </li>
 
-         <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'electronic_invoice')">
+        <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'electronic_invoice')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="page04" routerLinkActive="active">
             <mat-icon>receipt_longe</mat-icon> {{ 'electronic_invoice' | translate }}
           </a>
         </li>
 
         <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'palacio_municipal')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="palacio-municipal" routerLinkActive="active">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="palacio-municipal"
+            routerLinkActive="active">
             <mat-icon>account_balance</mat-icon> {{ 'palacio_municipal' | translate }}
           </a>
         </li>
 
         <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'accounting_accounts')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="cuentas-contables" routerLinkActive="active">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="cuentas-contables"
+            routerLinkActive="active">
             <mat-icon>account_tree</mat-icon> {{ 'Cuentas Contables' | translate }}
           </a>
         </li>
 
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'catalogs')">
-          <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i
-              class="bi bi-list-ul"></i> {{'catalogs' | translate}}</a>
-       </li>
+          <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i class="bi bi-list-ul"></i>
+            {{'catalogs' | translate}}</a>
+        </li>
 
 
       </ul>

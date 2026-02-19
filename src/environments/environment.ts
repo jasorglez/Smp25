@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.96 (18 Febrero 2026 19:45) - Iris',
+  version: '4.97 (19 Febrero 2026 15:00) - Dashboard HCO egresos e ingresos separados',
 
 
 };
