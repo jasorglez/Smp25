@@ -150,9 +150,9 @@ export class AportacionesComponent {
       if (corp) {
         for (let i = 1; i <= 5; i++) {
           const nombre: string = corp[`partner${i}`];
-          if (nombre && nombre.trim()) {
-            this.socios.push({ label: `Socio ${i} - ${nombre.trim()}`, value: nombre.trim() });
-          }
+          const label = nombre?.trim() ? `Socio ${i} - ${nombre.trim()}` : `Socio ${i}`;
+          const value = nombre?.trim() ? nombre.trim() : `Socio ${i}`;
+          this.socios.push({ label, value });
         }
       }
     } catch (err) {
