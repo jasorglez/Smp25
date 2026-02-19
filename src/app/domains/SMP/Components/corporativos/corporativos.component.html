@@ -22,6 +22,7 @@
                 [defaultColDef]="defaultColDef"
                 (selectionChanged)="onSelectionChanged($event)"
                         (cellValueChanged)="onCellValueChanged($event)"
+                        (cellEditingStopped)="onCellEditingStopped($event)"
                         (gridReady)="onGridReady($event)"
                         rowSelection="single"
                 [gridOptions]="gridOptions"

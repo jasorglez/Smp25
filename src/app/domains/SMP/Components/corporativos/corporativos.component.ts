@@ -26,6 +26,11 @@ export class CorporativosComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
+  private editableColumnOrder = [
+    'name', 'partner1', 'partner2', 'partner3', 'partner4', 'partner5', 'comment', 'active'
+  ];
+  private enterPressed: boolean = false;
+
   ngOnInit() {
     this.obtenerDatos();
   }
@@ -52,7 +57,15 @@ export class CorporativosComponent {
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
-    minWidth: 100
+    minWidth: 100,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
   };
 
   public gridOptions: any = {
@@ -93,15 +106,38 @@ export class CorporativosComponent {
       headerName: 'Socio 1',
       editable: true,
       flex: 1.5,
-      minWidth: 150
+      minWidth: 140
     },
     {
       field: 'partner2',
       headerName: 'Socio 2',
       editable: true,
       flex: 1.5,
-      minWidth: 150
+      minWidth: 140
     },
+
+      {
+      field: 'partner3',
+      headerName: 'Socio 3',
+      editable: true,
+      flex: 1.5,
+      minWidth: 140
+    },
+    {
+      field: 'partner4',
+      headerName: 'Socio 4',
+      editable: true,
+      flex: 1.5,
+      minWidth: 140
+    },
+{
+      field: 'partner5',
+      headerName: 'Socio 5',
+      editable: true,
+      flex: 1.5,
+      minWidth: 140
+    },
+
     {
       field: 'image',
       headerName: 'Imagen',
@@ -160,6 +196,21 @@ export class CorporativosComponent {
     }, 100);
   }
 
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const currentColId = event.column.getColId();
+    const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[currentIndex + 1]
+        });
+      }, 100);
+    }
+  }
+
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
 
@@ -168,6 +219,9 @@ export class CorporativosComponent {
       name: '',
       partner1: '',
       partner2: '',
+      partner3: '',
+      partner4: '',
+      partner5: '',
       image: '',
       comment: '',
       active: true,

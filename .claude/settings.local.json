@@ -109,7 +109,9 @@
       "Bash(node:*)",
       "mcp__notion__API-retrieve-a-page",
       "mcp__notion__API-get-block-children",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "mcp__notion__API-patch-block-children",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

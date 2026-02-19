@@ -889,6 +889,21 @@ export const routes: Routes = [
           },
 
           {
+            path: 'aportaciones',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/aportaciones/aportaciones.component'
+              ).then((m) => m.AportacionesComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Aportaciones',
+                category: 'Administration'
+              }
+            }
+          },
+
+          {
             path: 'income',
             loadComponent: () =>
               import(
