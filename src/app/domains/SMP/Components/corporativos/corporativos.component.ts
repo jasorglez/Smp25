@@ -93,15 +93,38 @@ export class CorporativosComponent {
       headerName: 'Socio 1',
       editable: true,
       flex: 1.5,
-      minWidth: 150
+      minWidth: 140
     },
     {
       field: 'partner2',
       headerName: 'Socio 2',
       editable: true,
       flex: 1.5,
-      minWidth: 150
+      minWidth: 140
     },
+
+      {
+      field: 'partner3',
+      headerName: 'Socio 3',
+      editable: true,
+      flex: 1.5,
+      minWidth: 140
+    },
+    {
+      field: 'partner4',
+      headerName: 'Socio 4',
+      editable: true,
+      flex: 1.5,
+      minWidth: 140
+    },
+{
+      field: 'partner5',
+      headerName: 'Socio 5',
+      editable: true,
+      flex: 1.5,
+      minWidth: 140
+    },
+
     {
       field: 'image',
       headerName: 'Imagen',
@@ -168,6 +191,9 @@ export class CorporativosComponent {
       name: '',
       partner1: '',
       partner2: '',
+      partner3: '',
+      partner4: '',
+      partner5: '',
       image: '',
       comment: '',
       active: true,
