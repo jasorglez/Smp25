@@ -342,6 +342,12 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
       this.hasChanges = false;
       this.loadCatalogData();
 
+      // Notificar al componente padre (proveedores) para que refresque los colores
+      const parent = (this.params as any)?.context?.componentParent;
+      if (parent && typeof parent.loadSucursalCounts === 'function') {
+        parent.loadSucursalCounts();
+      }
+
       // Seleccionar la fila apropiada después de recargar
       /*if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
