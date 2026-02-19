@@ -787,7 +787,7 @@ onSelectionChanged(event: any) {
       idCustomer     : 0,
       idExpend       : 0,
       uuid           : "NA",
-      dateStamped: null,
+      dateStamped: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       description: "",
       type: "DEPOSITO",
       subtotal: 0,
