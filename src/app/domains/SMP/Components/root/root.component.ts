@@ -147,16 +147,31 @@ export class RootComponent {
       });
   }
 
+  // Orden de columnas para navegación con Enter
+  private editableColumnOrder = [
+    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
+    'address', 'city', 'state', 'country', 'rfc', 'cp', 'idCorporativo', 'advanced'
+  ];
+
+  // Flags de validación y navegación
+  private validationFailed: boolean = false;
+  private failedCellInfo: { rowIndex: number; colKey: string } | null = null;
+  private enterPressed: boolean = false;
+
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
-    minWidth: 100
+    minWidth: 100,
+    suppressKeyboardEvent: (params) => {
+      // Captura Enter mientras se edita: evita que AG Grid baje de fila
+      // y activa el avance a la siguiente columna
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        return true;
+      }
+      return false;
+    }
   };
-
-
-  // Flag para controlar si la validación falló y en qué celda
-  private validationFailed: boolean = false;
-  private failedCellInfo: { rowIndex: number; colKey: string } | null = null;
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
@@ -187,10 +202,11 @@ public gridOptions: any = {
   }
 };
 
-  // Retener el foco en la celda si la validación falló
   onCellEditingStopped(event: any) {
+    // Si validación falló: retener foco en la misma celda
     if (this.validationFailed && this.failedCellInfo) {
       const cellInfo = this.failedCellInfo;
+      this.enterPressed = false;
       setTimeout(() => {
         this.gridApi.startEditingCell({
           rowIndex: cellInfo.rowIndex,
@@ -199,8 +215,24 @@ public gridOptions: any = {
       }, 100);
       return;
     }
+
     this.validationFailed = false;
     this.failedCellInfo = null;
+
+    // Solo avanzar si fue Enter (Tab lo maneja AG Grid de forma nativa)
+    if (this.enterPressed) {
+      this.enterPressed = false;
+      const currentColId = event.column.getColId();
+      const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+      if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+        setTimeout(() => {
+          this.gridApi.startEditingCell({
+            rowIndex: event.rowIndex,
+            colKey: this.editableColumnOrder[currentIndex + 1]
+          });
+        }, 100);
+      }
+    }
   }
   
   private _columnDefs: ColDef[] = [];
