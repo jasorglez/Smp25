@@ -569,7 +569,7 @@ public gridOptions: any = {
       setTimeout(() => {
         this.gridApi.startEditingCell({
           rowIndex: 0,
-          colKey: this.editableColumnOrder[0]
+          colKey: 'orden'
         });
       }, 100);
     }, 50);
