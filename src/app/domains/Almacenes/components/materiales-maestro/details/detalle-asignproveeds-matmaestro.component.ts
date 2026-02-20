@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -71,13 +72,15 @@ import { firstValueFrom } from 'rxjs';
     </div>
   `
 })
-export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp {
+export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp, OnDestroy {
 
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
+
+  private _sucursalSub: Subscription;
 
   params: any;
   materialId: number;
@@ -400,6 +403,25 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.loadBranches();
     this.loadProveedorData();
 
+    // Suscribirse al evento de sucursal guardada para quitar color rosa
+    this._sucursalSub = this.sucursalByMaterialProveedorService.sucursalSaved$.subscribe(
+      (idProveedor: number) => {
+        const row = this.proveedorRowData.find((r: any) => r.id === idProveedor);
+        if (row) {
+          row._hasSucursales = true;
+          if (this.proveedorGridApi) {
+            let targetNode: any = null;
+            this.proveedorGridApi.forEachNode((node: any) => {
+              if (node.data?.id === idProveedor) targetNode = node;
+            });
+            if (targetNode) {
+              this.proveedorGridApi.redrawRows({ rowNodes: [targetNode] });
+            }
+          }
+        }
+      }
+    );
+
     // Pasar el contexto del componente padre (MaterialesMaestroComponent) al siguiente nivel de detalle
     this.proveedorGridOptions.context = {
       ...params.context,
@@ -462,6 +484,10 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         }, 0);
       }
     }
+  }
+
+  ngOnDestroy() {
+    this._sucursalSub?.unsubscribe();
   }
 
   refresh(): boolean {
