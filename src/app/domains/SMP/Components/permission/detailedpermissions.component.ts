@@ -248,13 +248,11 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
       for (const row of modifiedRows) {
         const payload = {
           id: row.id,
-          masterId: row.masterId,
+          masterId: row.masterId || this.masterId,
           permissionName: row.permissionName,
           comment: row.comment,
           identifier: row.identifier,
-          active: row.active,
-          masterPermission: row.masterPermission,
-          usersSecurity: row.usersSecurity
+          active: row.active
         };
         await lastValueFrom(this.detailedPermissionsService.updateDetailedPermissions(row.id, payload));
       }

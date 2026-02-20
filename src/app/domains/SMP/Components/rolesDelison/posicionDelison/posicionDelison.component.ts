@@ -17,6 +17,36 @@ import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-v
   standalone: true,
   providers: [CurrencyPipe],
   imports: [AgGridModule, CommonModule,RolesDetailedDelisonComponent, PermissionsViewComponent ],
+  styles: [`
+    ::ng-deep .ag-cell-inline-editing {
+      background-color: #fff3cd !important;
+      border: 2px solid #ffc107 !important;
+      box-shadow: 0 0 5px rgba(255, 193, 7, 0.5) !important;
+    }
+    ::ng-deep .ag-cell-inline-editing input,
+    ::ng-deep .ag-cell-inline-editing select,
+    ::ng-deep .ag-cell-inline-editing .ag-input-field-input,
+    ::ng-deep .ag-cell-inline-editing .ag-text-field-input,
+    ::ng-deep .ag-cell-inline-editing .ag-picker-field-wrapper {
+      background-color: #fff3cd !important;
+    }
+    ::ng-deep .ag-cell-edit-wrapper {
+      background-color: #fff3cd !important;
+    }
+    ::ng-deep .ag-popup-editor {
+      background-color: #fff3cd !important;
+      border: 2px solid #ffc107 !important;
+      box-shadow: 0 0 5px rgba(255, 193, 7, 0.5) !important;
+    }
+    ::ng-deep .ag-popup-editor input,
+    ::ng-deep .ag-popup-editor .ag-input-field-input,
+    ::ng-deep .ag-popup-editor .ag-text-field-input {
+      background-color: #fff3cd !important;
+    }
+    ::ng-deep .ag-select-list {
+      background-color: #fff !important;
+    }
+  `],
   template: `
     <!-- Contenedor principal con Flexbox -->
     <div #container tabindex="-1" style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; outline: none;">
@@ -25,22 +55,22 @@ import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-v
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Posiciones para el Rol: {{ roleName }}</strong>
           <div>
-            <button 
-              class="btn btn-sm btn-success me-2" 
+            <button
+              class="btn btn-sm btn-success me-2"
               (click)="addPosicion()"
               [disabled]="!posicionGridApi"
               >
               <i class="bi bi-plus-circle"></i> Agregar
             </button>
-            <button 
-              class="btn btn-sm btn-primary me-2" 
+            <button
+              class="btn btn-sm btn-primary me-2"
               (click)="savePosiciones()"
               [disabled]="!hasPosicionChanges"
              >
               <i class="bi bi-floppy"></i> Guardar
             </button>
-            <button 
-              class="btn btn-sm btn-danger" 
+            <button
+              class="btn btn-sm btn-danger"
               (click)="deleteSelectedPosicion()"
               [disabled]="!selectedPosicion"
               >
@@ -55,18 +85,20 @@ import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-v
           [columnDefs]="posicionColumnDefs"
           [rowData]="posicionRowData"
           [gridOptions]="posicionGridOptions"
+          [defaultColDef]="posicionDefaultColDef"
           (gridReady)="onPosicionGridReady($event)"
           (selectionChanged)="onPosicionSelectionChanged($event)"
           (cellValueChanged)="onPosicionCellValueChanged($event)"
-          (cellClicked)="onCellClicked($event)">
+          (cellClicked)="onCellClicked($event)"
+          (cellEditingStopped)="onCellEditingStopped($event)">
         </ag-grid-angular>
       </div>
       <div *ngIf="permisos" style="flex: 1 1 75%; overflow-y: auto; margin-top: 10px;">
         <app-permissions-view></app-permissions-view>
       </div>
     </div>
-    
-    
+
+
   `
 })
 export class PosicionDelisonComponent implements ICellRendererAngularComp, AfterViewInit {
@@ -85,6 +117,22 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   isAdvanced: boolean = false;
   permisos: boolean = false;
   
+  private editableColumnOrder = ['description'];
+  private enterPressed = false;
+
+  posicionDefaultColDef: any = {
+    sortable: true,
+    resizable: true,
+    suppressKeyboardEvent: (params: any) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.posicionGridApi) this.posicionGridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
+  };
+
   posicionGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
@@ -199,6 +247,30 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     // La limpieza del filtro ahora se maneja en onCellClicked del componente padre.
   }
 
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+
+    // Validar campo requerido: description
+    if (event.column.getColId() === 'description' && !event.data.description?.trim()) {
+      alerts.basicAlert('Campo requerido', 'La descripción es obligatoria', 'warning');
+      setTimeout(() => {
+        this.posicionGridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: 'description' });
+      }, 100);
+      return;
+    }
+
+    const currentIndex = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.posicionGridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[currentIndex + 1]
+        });
+      }, 100);
+    }
+  }
+
   onPosicionGridReady(params: any) {
     this.posicionGridApi = params.api;
     this.posicionGridApi.sizeColumnsToFit();
@@ -240,9 +312,18 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     };
     this.posicionRowData = [newPosicion, ...this.posicionRowData];
     this.hasPosicionChanges = true;
+    setTimeout(() => {
+      this.posicionGridApi.startEditingCell({ rowIndex: 0, colKey: 'description' });
+    }, 150);
   }
 
   async savePosiciones() {
+    const invalid = this.posicionRowData.find(row => (row.__isNew || row.__modified) && !row.description?.trim());
+    if (invalid) {
+      alerts.basicAlert('Campo requerido', 'La descripción es obligatoria en todos los registros', 'warning');
+      return;
+    }
+
     const newRows = this.posicionRowData.filter(row => row.__isNew);
     const modifiedRows = this.posicionRowData.filter(row => row.__modified && !row.__isNew);
 

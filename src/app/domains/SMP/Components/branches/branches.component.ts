@@ -65,6 +65,24 @@ export class BranchesComponent implements CanComponentDeactivate {
   private masterGridApi: GridApi;
   private tempIdCounter: number = 0;
 
+  // Enter-key navigation
+  private editableColumnOrder = ['name', 'description', 'idEstado', 'address'];
+  private enterPressed: boolean = false;
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.masterGridApi) this.masterGridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
+  };
+
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
 
@@ -744,6 +762,20 @@ export class BranchesComponent implements CanComponentDeactivate {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const currentIndex = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.masterGridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[currentIndex + 1]
+        });
+      }, 100);
+    }
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

@@ -38,6 +38,7 @@ export class PermissionComponent implements OnInit {
   public gridApi!: GridApi;
   gridHeight: string = '70vh';
   masterNotSavedChanges: boolean = false;
+  selectedPermission: any = null;
 
   public colDefs: ColDef[] = [
     {
@@ -173,6 +174,11 @@ export class PermissionComponent implements OnInit {
     this.gridApi = params.api;
   }
 
+  onSelectionChanged(event: any): void {
+    const selectedNodes = this.gridApi.getSelectedNodes();
+    this.selectedPermission = selectedNodes.length > 0 ? selectedNodes[0].data : null;
+  }
+
   onAdd() {
     const newPermission = {
       permissionName: '',
@@ -192,11 +198,22 @@ export class PermissionComponent implements OnInit {
     }, 100);
   }
 
-  onEdit() { 
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length > 0) {
+  onEdit() {
+    if (!this.selectedPermission) {
+      alerts.basicAlert('Aviso', 'Selecciona un permiso de la lista para editar', 'info');
+      return;
+    }
+    // Buscar el nodo actual en el grid
+    let targetNode: any = null;
+    this.gridApi.forEachNode((node) => {
+      if (node.data === this.selectedPermission || node.data.id === this.selectedPermission.id) {
+        targetNode = node;
+      }
+    });
+    if (targetNode) {
+      targetNode.setSelected(true);
       this.gridApi.startEditingCell({
-        rowIndex: selectedNodes[0].rowIndex!,
+        rowIndex: targetNode.rowIndex!,
         colKey: 'permissionName'
       });
     }
