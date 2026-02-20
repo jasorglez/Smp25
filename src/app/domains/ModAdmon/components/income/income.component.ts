@@ -61,6 +61,7 @@ export class IncomeComponent {
   reportStartDate: string = '';
   reportEndDate: string = '';
   isGeneratingIngresoReport: boolean = false;
+  reportIngresoType: string = 'listado'; // 'listado' | 'saldos'
 
 
   ngOnInit() {
@@ -1298,6 +1299,11 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       return;
     }
 
+    if (this.reportIngresoType === 'saldos') {
+      await this.generateSaldosIngresoReport();
+      return;
+    }
+
     const [sy, sm, sd] = this.reportStartDate.split('-');
     const [ey, em, ed] = this.reportEndDate.split('-');
     const startDate = new Date(+sy, +sm - 1, +sd);
@@ -1523,6 +1529,166 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
     } catch (error) {
       console.error('Error generando reporte:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte PDF', 'error');
+    } finally {
+      this.isGeneratingIngresoReport = false;
+    }
+  }
+
+  // ==================== REPORTE DE SALDOS (INGRESOS) ====================
+
+  private async generateSaldosIngresoReport() {
+    this.isGeneratingIngresoReport = true;
+    try {
+      const selectedAccount = this.bankAccounts.find(a => a.id === this.idAccount);
+      const accountName = selectedAccount
+        ? `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`
+        : 'Cuenta';
+
+      const response: any = await lastValueFrom(
+        this.administrationService.getBalance(this.idAccount)
+      );
+
+      if (!response || !response.hasData || !response.data || response.data.length === 0) {
+        alerts.basicAlert('Aviso', 'No hay movimientos disponibles para esta cuenta', 'info');
+        return;
+      }
+
+      const filtered = response.data.filter((item: any) => {
+        if (!item.fecha) return false;
+        const d = new Date(item.fecha);
+        if (isNaN(d.getTime())) return false;
+        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        return ds >= this.reportStartDate && ds <= this.reportEndDate;
+      });
+
+      if (filtered.length === 0) {
+        alerts.basicAlert('Sin datos', 'No hay movimientos en el rango de fechas seleccionado', 'info');
+        return;
+      }
+
+      let logoData: string | null = null;
+      try {
+        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.root || 1));
+        if (rootData?.picture) {
+          logoData = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        }
+      } catch {}
+
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      pdfMake.vfs = pdfFonts.vfs;
+
+      const period = `Del ${this.reportStartDate} al ${this.reportEndDate}`;
+
+      const tableRows: any[] = [[
+        { text: 'NUMERO DOCUMENTO', style: 'th' },
+        { text: 'FECHA',            style: 'th' },
+        { text: 'DESCRIPCION',      style: 'th' },
+        { text: 'TIPO',             style: 'th' },
+        { text: 'DEPOSITO',         style: 'th' },
+        { text: 'GASTO',            style: 'th' },
+        { text: 'SALDO',            style: 'th' },
+      ]];
+
+      let totalDeposito = 0;
+      let totalGasto = 0;
+
+      filtered.forEach((item: any, idx: number) => {
+        const bg = idx % 2 === 0 ? '#eaf4fb' : '#ffffff';
+        const deposito = parseFloat(item.deposito) || 0;
+        const gasto    = parseFloat(item.gasto)    || 0;
+        const saldo    = parseFloat(item.saldo)    || 0;
+        totalDeposito += deposito;
+        totalGasto    += gasto;
+
+        const fechaDisplay = (() => {
+          try {
+            const d = new Date(item.fecha);
+            return isNaN(d.getTime()) ? (item.fecha || '') :
+              `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+          } catch { return item.fecha || ''; }
+        })();
+
+        tableRows.push([
+          { text: item.numeroDocumento || '', style: 'td', fillColor: bg },
+          { text: fechaDisplay, style: 'td', fillColor: bg, alignment: 'center' },
+          { text: item.descripcion || '', style: 'td', fillColor: bg },
+          { text: item.tipo || '', style: 'td', fillColor: bg, alignment: 'center' },
+          { text: deposito > 0 ? `$${this.formatCurrencyNumber(deposito)}` : '', style: 'td', fillColor: bg, alignment: 'right', color: '#008000' },
+          { text: gasto > 0 ? `$${this.formatCurrencyNumber(gasto)}` : '', style: 'td', fillColor: bg, alignment: 'right', color: '#CC0000' },
+          { text: `$${this.formatCurrencyNumber(saldo)}`, style: 'td', fillColor: bg, alignment: 'right', color: saldo >= 0 ? '#000080' : '#CC0000' },
+        ]);
+      });
+
+      tableRows.push([
+        { text: 'TOTAL', colSpan: 4, style: 'totalLabel', alignment: 'right', bold: true, border: [false, true, false, false] },
+        {}, {}, {},
+        { text: `$${this.formatCurrencyNumber(totalDeposito)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#008000' },
+        { text: `$${this.formatCurrencyNumber(totalGasto)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#CC0000' },
+        { text: '', border: [false, true, false, false] },
+      ]);
+
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape',
+        pageMargins: [20, 60, 20, 40],
+        header: (currentPage: number, pageCount: number) => ({
+          columns: [
+            logoData
+              ? { image: logoData, width: 60, margin: [20, 10, 0, 0] }
+              : { text: '', width: 60, margin: [20, 10, 0, 0] },
+            {
+              stack: [
+                { text: 'ESTADO DE CUENTA / REPORTE DE SALDOS', fontSize: 11, bold: true, alignment: 'center' },
+                { text: accountName, fontSize: 9, alignment: 'center', color: '#444' },
+                { text: period, fontSize: 8, alignment: 'center', color: '#666' },
+              ],
+              margin: [0, 10, 0, 0]
+            },
+            {
+              stack: [
+                { text: 'Referencia: EST-CTB', fontSize: 7, alignment: 'right', color: '#666' },
+                { text: 'Código: 09', fontSize: 7, alignment: 'right', color: '#666' },
+                { text: 'Rev: 00', fontSize: 7, alignment: 'right', color: '#666' },
+                { text: `Pág. ${currentPage}/${pageCount}`, fontSize: 7, alignment: 'right', color: '#666' },
+              ],
+              margin: [0, 10, 20, 0]
+            }
+          ]
+        }),
+        content: [{
+          table: {
+            headerRows: 1,
+            widths: [85, 65, '*', 65, 70, 70, 70],
+            body: tableRows,
+          },
+          layout: {
+            hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length) ? 1 : 0.3,
+            vLineWidth: () => 0.3,
+            hLineColor: () => '#aaa',
+            vLineColor: () => '#aaa',
+          }
+        }],
+        styles: {
+          th:         { fontSize: 7, bold: true, color: '#FFFFFF', fillColor: '#1a5276', alignment: 'center', margin: [2, 3, 2, 3] },
+          td:         { fontSize: 7, margin: [2, 2, 2, 2] },
+          totalLabel: { fontSize: 7, margin: [2, 3, 2, 3] },
+          totalValue: { fontSize: 7, margin: [2, 3, 2, 3] },
+        }
+      };
+
+      const pdf = pdfMake.createPdf(docDefinition);
+      pdf.download(`saldos-cuenta-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
+      this.closeIngresoReportModal();
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Reporte de Saldos generado: ${this.reportStartDate} al ${this.reportEndDate}`,
+        'Menu Administracion Ingresos - Saldos',
+        this.trackingService.getEmail()
+      );
+    } catch (error) {
+      console.error('Error al generar reporte de saldos:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte de saldos', 'error');
     } finally {
       this.isGeneratingIngresoReport = false;
     }
