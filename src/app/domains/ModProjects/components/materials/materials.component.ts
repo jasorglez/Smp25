@@ -30,6 +30,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { CommonModule } from '@angular/common';
 import { FamilyModalService } from './services/family-modal.service';
 import { SubfamilyModalService } from './services/subfamily-modal.service';
+import { MeasureModalService } from './services/measure-modal.service';
 
 @Component({
   selector: 'custom-group-renderer',
@@ -136,6 +137,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private catalogsService = inject(CatalogsService);
   private familyModalService = inject(FamilyModalService);
   private subfamilyModalService = inject(SubfamilyModalService);
+  private measureModalService = inject(MeasureModalService);
   private isOpen: boolean = false;
 
   // Variables para modal de familia
@@ -146,6 +148,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
   showSubfamilyModal: boolean = false;
   newSubfamily: any = {};
   selectedParentFamilyDescription: string = '';
+
+  // Variables para modal de unidad
+  showMeasureModal: boolean = false;
+  newMeasure: any = {};
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
 
@@ -238,6 +244,16 @@ export class MaterialsComponent implements CanComponentDeactivate {
     // Suscribirse a confirmación de guardado de subfamilia
     this.subfamilyModalService.saveConfirmed$.subscribe((subfamilyData) => {
       this.onSubfamilyCreated(subfamilyData);
+    });
+
+    // Suscribirse a solicitudes de apertura del modal de unidad
+    this.measureModalService.modalRequest$.subscribe((data) => {
+      this.openMeasureModal(data.idCompany);
+    });
+
+    // Suscribirse a confirmación de guardado de unidad
+    this.measureModalService.saveConfirmed$.subscribe((measureData) => {
+      this.onMeasureCreated(measureData);
     });
   }
   obtenerDatos(){
@@ -611,24 +627,31 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Unidad',
         editable: true,
         width: 130,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
-          values: this.unitsCatalog ? this.unitsCatalog.map(u => u.description) : [],
+          options: [
+            ...this.unitsCatalog.map(u => ({
+              id: u.id,
+              description: u.description,
+              valueAddition: '',
+              valueAddition2: ''
+            })),
+            {
+              id: -997,
+              description: '➕ Agregar nueva unidad...',
+              valueAddition: '-997',
+              valueAddition2: '➕ Agregar nueva unidad...'
+            }
+          ],
+          specialValues: [-997],
+          onSpecialValue: (_value: any, _params: any) => {
+            this.measureModalService.openModal({ idCompany: this.idcompany });
+          }
         }),
-        valueGetter: (params) => {
-          if (!params.data || params.data.idMedida == null) return '';
-          const found = this.unitsCatalog?.find(u => u.id == params.data.idMedida);
-          return found ? found.description : '';
-        },
-        valueSetter: (params) => {
-          const found = this.unitsCatalog?.find(u => u.description === params.newValue);
-          if (!found) return false;
-          params.data.idMedida = found.id;
-          return true;
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          return params.value;
+        cellRenderer: (params: any) => {
+          if (!params.value || params.value === -997) return '';
+          const unit = this.unitsCatalog.find(u => u.id === params.value);
+          return unit ? unit.description : (params.value || '');
         },
       },
       {
@@ -1301,6 +1324,76 @@ export class MaterialsComponent implements CanComponentDeactivate {
           columns: ['idSubfamilia'],
           force: true
         });
+      }
+    }, 500);
+  }
+
+  // ==================== MÉTODOS PARA EL MODAL DE UNIDAD ====================
+
+  openMeasureModal(idCompany: number) {
+    this.newMeasure = {
+      idCompany: idCompany,
+      description: '',
+      valueAddition: 'NA',
+      valueAdditionBit2: false,
+      valueAdditionBit3: false,
+      vigente: true,
+      type: 'Units',
+      active: 1
+    };
+    this.showMeasureModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeMeasureModal() {
+    this.showMeasureModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNewMeasure() {
+    if (!this.newMeasure.description) {
+      alerts.basicAlert('Error', 'La descripción de la unidad es obligatoria.', 'error');
+      return;
+    }
+
+    try {
+      const result: any = await lastValueFrom(
+        this.catalogsService.addCatalog(this.newMeasure)
+      );
+
+      alerts.basicAlert('Unidad creada', 'La unidad se ha creado correctamente.', 'success');
+
+      this.measureModalService.confirmSave({
+        id: result.id,
+        description: this.newMeasure.description
+      });
+
+      this.closeMeasureModal();
+
+    } catch (error: any) {
+      alerts.basicAlert(
+        'Error',
+        `Error al crear la unidad. ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    }
+  }
+
+  onMeasureCreated(measureData: { id: number; description: string }) {
+    // Recargar la lista de unidades
+    this.obtenerUnidades();
+
+    // Asignar la nueva unidad a la fila seleccionada
+    setTimeout(() => {
+      const selectedNodes = this.gridApi?.getSelectedNodes();
+      if (selectedNodes && selectedNodes.length > 0) {
+        const selectedRow = selectedNodes[0];
+        selectedRow.setDataValue('idMedida', measureData.id);
+        this.notSavedChanges = true;
+      }
+
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ columns: ['idMedida'], force: true });
       }
     }, 500);
   }
