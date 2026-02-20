@@ -1364,18 +1364,38 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       let totalIva = 0;
       let totalGeneral = 0;
 
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       filtered.forEach(income => {
         const project = this.projects.find(p => p.id === income.idProject);
         const invoiceDate = income.dateStamped ? new Date(income.dateStamped) : null;
         const paymentDate = income.date ? new Date(income.date) : null;
+
+        // Días entre fecha factura y fecha pago
         const dias = invoiceDate && paymentDate
           ? Math.round((paymentDate.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24))
           : '';
+
+        // Fecha de vencimiento = fecha factura + 30 días
+        let fechaVenc = '';
+        let diasVenc: number | string = '';
+        if (invoiceDate) {
+          const dueDate = new Date(invoiceDate.getTime());
+          dueDate.setDate(dueDate.getDate() + 30);
+          fechaVenc = this.formatDateForInput(dueDate).split('-').reverse().join('-'); // dd-MM-yyyy
+          diasVenc = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
         const actura = income.uuid && income.uuid !== 'NA' ? income.uuid.substring(0, 10) + '...' : income.numberDocument || '';
 
         totalSubtotal  += income.subtotal || 0;
         totalIva       += income.tax || 0;
         totalGeneral   += income.total || 0;
+
+        // Color para días de vencimiento: rojo si vencido, verde si al corriente, o si ya está pagada
+        const diasVencColor = income.status === 'Pagada' ? '#155724'
+          : (typeof diasVenc === 'number' && diasVenc < 0) ? '#721c24' : '#000';
 
         tableBody.push([
           { text: income.paymentMonth || '',             style: 'td', alignment: 'center' },
@@ -1393,8 +1413,8 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
           { text: income.status || '',                   style: 'td', alignment: 'center' },
           { text: income.formaPago || '',                style: 'td', alignment: 'center' },
           { text: dias.toString(),                       style: 'td', alignment: 'center' },
-          { text: '',                                    style: 'td', alignment: 'center' },
-          { text: '',                                    style: 'td', alignment: 'center' },
+          { text: fechaVenc,                             style: 'td', alignment: 'center' },
+          { text: diasVenc.toString(), style: 'td', alignment: 'center', color: diasVencColor, bold: typeof diasVenc === 'number' && diasVenc < 0 },
         ]);
       });
 
