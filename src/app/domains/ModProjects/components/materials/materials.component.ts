@@ -254,7 +254,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     return this.catalogsService.getUnits(this.idcompany).subscribe(
       (data: any) => {
         this.unitsCatalog = data;
-        console.log(this.unitsCatalog)
+        this.refreshColumnCache();
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -607,6 +607,31 @@ export class MaterialsComponent implements CanComponentDeactivate {
         width: 150,
       },
       {
+        field: 'idMedida',
+        headerName: 'Unidad',
+        editable: true,
+        width: 130,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.unitsCatalog ? this.unitsCatalog.map(u => u.description) : [],
+        }),
+        valueGetter: (params) => {
+          if (!params.data || params.data.idMedida == null) return '';
+          const found = this.unitsCatalog?.find(u => u.id == params.data.idMedida);
+          return found ? found.description : '';
+        },
+        valueSetter: (params) => {
+          const found = this.unitsCatalog?.find(u => u.description === params.newValue);
+          if (!found) return false;
+          params.data.idMedida = found.id;
+          return true;
+        },
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          return params.value;
+        },
+      },
+      {
         field: 'materialDescription',
         headerName: 'Descripción del Material',
         editable: true,
@@ -705,10 +730,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
       familiaDescription: defaultFamilia?.description || '',
       idSubfamilia: defaultSubfamilia?.id || null,
       subfamiliaDescription: defaultSubfamilia?.description || '',
+      idMedida: null,
       barcode: '',
       picture: '',
       costoMN: 0,
       ventaMN: 0,
+      typeMaterial: 'CONSUMABLE',
       stockMin: 1,
       stockMax: 30,
       active: true,
