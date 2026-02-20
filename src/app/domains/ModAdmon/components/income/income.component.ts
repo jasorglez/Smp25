@@ -56,6 +56,12 @@ export class IncomeComponent {
 
   private isGeneratingReport: boolean = false;
 
+  // Propiedades para el modal de reporte de ingresos
+  showIngresoReportModal: boolean = false;
+  reportStartDate: string = '';
+  reportEndDate: string = '';
+  isGeneratingIngresoReport: boolean = false;
+
 
   ngOnInit() {
 
@@ -1252,6 +1258,254 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       company: '',
       idTypecop: null
     };
+  }
+
+  // ==================== METODOS PARA REPORTE DE INGRESOS ====================
+
+  openIngresoReportModal() {
+    const now = new Date();
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const firstDay = new Date(previousMonth.getFullYear(), previousMonth.getMonth(), 1);
+    const lastDay = new Date(previousMonth.getFullYear(), previousMonth.getMonth() + 1, 0);
+    this.reportStartDate = this.formatDateForInput(firstDay);
+    this.reportEndDate = this.formatDateForInput(lastDay);
+    this.showIngresoReportModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeIngresoReportModal() {
+    this.showIngresoReportModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  private formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private formatCurrencyNumber(amount: number): string {
+    return (amount || 0).toLocaleString('es-MX', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  async generateIngresoReport() {
+    if (!this.reportStartDate || !this.reportEndDate) {
+      alerts.basicAlert('Error', 'Por favor seleccione ambas fechas', 'error');
+      return;
+    }
+
+    const [sy, sm, sd] = this.reportStartDate.split('-');
+    const [ey, em, ed] = this.reportEndDate.split('-');
+    const startDate = new Date(+sy, +sm - 1, +sd);
+    const endDate   = new Date(+ey, +em - 1, +ed);
+
+    if (startDate > endDate) {
+      alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
+      return;
+    }
+
+    // Filtrar ingresos en el rango usando fecha de factura (dateStamped)
+    const filtered = this.incomes.filter(income => {
+      const raw = income.dateStamped || income.date;
+      if (!raw) return false;
+      const d = new Date(raw);
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return ds >= this.reportStartDate && ds <= this.reportEndDate;
+    });
+
+    if (filtered.length === 0) {
+      alerts.basicAlert('Sin datos', 'No se encontraron ingresos en el rango de fechas seleccionado', 'warning');
+      return;
+    }
+
+    this.isGeneratingIngresoReport = true;
+
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Obtener información de la empresa
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.root));
+      const companyName: string = rootResponse?.name || rootResponse?.nameCompany || 'Empresa';
+      const logoBase64 = rootResponse?.picture
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture)
+        : null;
+
+      // Construir filas de la tabla
+      const tableBody: any[] = [
+        // Encabezado
+        [
+          { text: 'MES',              style: 'th', alignment: 'center' },
+          { text: 'EMPRESA',          style: 'th', alignment: 'center' },
+          { text: 'PROYECTO',         style: 'th', alignment: 'center' },
+          { text: 'FECHA FACTURA',    style: 'th', alignment: 'center' },
+          { text: 'FECHA DE PAGO',    style: 'th', alignment: 'center' },
+          { text: 'FACTURA',          style: 'th', alignment: 'center' },
+          { text: 'OC',               style: 'th', alignment: 'center' },
+          { text: 'IMP. FACTURADO',   style: 'th', alignment: 'right'  },
+          { text: 'IMP. N/DESCUENTO', style: 'th', alignment: 'right'  },
+          { text: 'SUBTOTAL',         style: 'th', alignment: 'right'  },
+          { text: 'IVA',              style: 'th', alignment: 'right'  },
+          { text: 'TOTAL',            style: 'th', alignment: 'right'  },
+          { text: 'ESTATUS',          style: 'th', alignment: 'center' },
+          { text: 'ESTATUS PAGO',     style: 'th', alignment: 'center' },
+          { text: 'DÍAS',             style: 'th', alignment: 'center' },
+          { text: 'F. VENCIMIENTO',   style: 'th', alignment: 'center' },
+          { text: 'DÍAS VENC.',       style: 'th', alignment: 'center' },
+        ]
+      ];
+
+      let totalSubtotal = 0;
+      let totalIva = 0;
+      let totalGeneral = 0;
+
+      filtered.forEach(income => {
+        const project = this.projects.find(p => p.id === income.idProject);
+        const invoiceDate = income.dateStamped ? new Date(income.dateStamped) : null;
+        const paymentDate = income.date ? new Date(income.date) : null;
+        const dias = invoiceDate && paymentDate
+          ? Math.round((paymentDate.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24))
+          : '';
+        const actura = income.uuid && income.uuid !== 'NA' ? income.uuid.substring(0, 10) + '...' : income.numberDocument || '';
+
+        totalSubtotal  += income.subtotal || 0;
+        totalIva       += income.tax || 0;
+        totalGeneral   += income.total || 0;
+
+        tableBody.push([
+          { text: income.paymentMonth || '',             style: 'td', alignment: 'center' },
+          { text: companyName,                           style: 'td', alignment: 'left'   },
+          { text: project?.name || '',                   style: 'td', alignment: 'left'   },
+          { text: this.formatDate(income.dateStamped),   style: 'td', alignment: 'center' },
+          { text: this.formatDate(income.date),          style: 'td', alignment: 'center' },
+          { text: actura,                                style: 'td', alignment: 'center' },
+          { text: income.oc || '',                       style: 'td', alignment: 'center' },
+          { text: `$${this.formatCurrencyNumber(income.total)}`,     style: 'td', alignment: 'right' },
+          { text: '',                                    style: 'td', alignment: 'right'  },
+          { text: `$${this.formatCurrencyNumber(income.subtotal)}`,  style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyNumber(income.tax)}`,       style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyNumber(income.total)}`,     style: 'td', alignment: 'right' },
+          { text: income.status || '',                   style: 'td', alignment: 'center' },
+          { text: income.formaPago || '',                style: 'td', alignment: 'center' },
+          { text: dias.toString(),                       style: 'td', alignment: 'center' },
+          { text: '',                                    style: 'td', alignment: 'center' },
+          { text: '',                                    style: 'td', alignment: 'center' },
+        ]);
+      });
+
+      // Fila de totales
+      tableBody.push([
+        { text: 'TOTAL', colSpan: 9, style: 'totalLabel', alignment: 'right', bold: true, border: [false, true, false, false] },
+        {}, {}, {}, {}, {}, {}, {}, {},
+        { text: `$${this.formatCurrencyNumber(totalSubtotal)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
+        { text: `$${this.formatCurrencyNumber(totalIva)}`,      style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
+        { text: `$${this.formatCurrencyNumber(totalGeneral)}`,  style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000' },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+      ]);
+
+      // Período en texto
+      const startDateObj = new Date(+sy, +sm - 1, 1);
+      const endDateObj   = new Date(+ey, +em - 1, 1);
+      const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+      let periodText = '';
+      if (+sy === +ey && +sm === +em) {
+        periodText = `MES DE ${meses[startDateObj.getMonth()]} ${sy}`;
+      } else if (+sy === +ey) {
+        periodText = `PERIODO DE ${meses[startDateObj.getMonth()]} A ${meses[endDateObj.getMonth()]} ${sy}`;
+      } else {
+        periodText = `PERIODO DE ${meses[startDateObj.getMonth()]} ${sy} A ${meses[endDateObj.getMonth()]} ${ey}`;
+      }
+
+      // Celda del logo
+      const logoCell: any = logoBase64
+        ? { image: logoBase64, width: 70, alignment: 'left' }
+        : { text: companyName, bold: true, fontSize: 11, alignment: 'left' };
+
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape',
+        pageMargins: [20, 60, 20, 40],
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} / ${pageCount}`,
+          alignment: 'center',
+          fontSize: 7,
+          margin: [0, 10, 0, 0]
+        }),
+        header: () => ({
+          margin: [20, 8, 20, 0],
+          table: {
+            widths: ['20%', '*', '25%'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: 'Control de Facturación e Ingresos', style: 'reportTitle', alignment: 'center' },
+                  { text: 'Sistema de Gestión de Calidad',     fontSize: 8,  alignment: 'center', color: '#555' },
+                  { text: periodText,                           fontSize: 7,  alignment: 'center', color: '#333', margin: [0, 2, 0, 0] },
+                ]
+              },
+              {
+                stack: [
+                  { text: 'Referencia: HCO-ADM-SGC-004', fontSize: 7, alignment: 'right' },
+                  { text: 'Código:     HCO-ADM-FO-013',  fontSize: 7, alignment: 'right' },
+                  { text: 'Rev.:       00',               fontSize: 7, alignment: 'right' },
+                ]
+              }
+            ]]
+          },
+          layout: 'noBorders'
+        }),
+        content: [
+          {
+            table: {
+              headerRows: 1,
+              widths: [40, 52, 52, 42, 42, 50, 32, 46, 46, 42, 38, 44, 40, 38, 24, 44, 36],
+              body: tableBody
+            },
+            layout: {
+              hLineWidth:  (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
+              vLineWidth:  () => 0.3,
+              hLineColor:  () => '#aaa',
+              vLineColor:  () => '#ccc',
+              fillColor:   (rowIndex: number) => rowIndex === 0 ? '#1a5276' : (rowIndex % 2 === 0 ? '#eaf4fb' : null),
+            }
+          }
+        ],
+        styles: {
+          reportTitle: { fontSize: 12, bold: true, color: '#1a5276' },
+          th:          { fontSize: 6,  bold: true, color: '#ffffff', margin: [1, 2, 1, 2] },
+          td:          { fontSize: 6,  color: '#222',   margin: [1, 1, 1, 1] },
+          totalLabel:  { fontSize: 7,  bold: true },
+          totalValue:  { fontSize: 7,  bold: true },
+        }
+      };
+
+      const pdf = pdfMake.createPdf(docDefinition);
+      pdf.download(`reporte-ingresos-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
+
+      this.closeIngresoReportModal();
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Reporte de Ingresos generado: ${this.reportStartDate} al ${this.reportEndDate}`,
+        'Menu Administracion Ingresos - Reporte',
+        this.trackingService.getEmail()
+      );
+
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte PDF', 'error');
+    } finally {
+      this.isGeneratingIngresoReport = false;
+    }
   }
 
   saveNewCustomer() {

@@ -53,6 +53,63 @@
 </div>
 <div class="modal-backdrop fade" [class.show]="showCustomerModal" *ngIf="showCustomerModal"></div>
 
+<!-- Modal para Reporte Control de Facturación e Ingresos -->
+<div class="modal fade" [class.show]="showIngresoReportModal" [style.display]="showIngresoReportModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Control de Facturación e Ingresos
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeIngresoReportModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Seleccione el rango de fechas para generar el reporte.
+        </p>
+        <form>
+          <div class="mb-3">
+            <label for="ingresoReportStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="ingresoReportStartDate"
+              [(ngModel)]="reportStartDate"
+              name="ingresoReportStartDate"
+              required>
+          </div>
+          <div class="mb-3">
+            <label for="ingresoReportEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="ingresoReportEndDate"
+              [(ngModel)]="reportEndDate"
+              name="ingresoReportEndDate"
+              required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeIngresoReportModal()">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-info text-white"
+          (click)="generateIngresoReport()"
+          [disabled]="!reportStartDate || !reportEndDate || isGeneratingIngresoReport">
+          <span *ngIf="isGeneratingIngresoReport" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i *ngIf="!isGeneratingIngresoReport" class="bi bi-file-earmark-pdf me-1"></i>
+          {{ isGeneratingIngresoReport ? 'Generando...' : 'Generar PDF' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showIngresoReportModal" [style.display]="showIngresoReportModal ? 'block' : 'none'"></div>
+
 <div class="col-12">
   <div class="row mt-3 mb-3">
     <div class="col">
@@ -147,6 +204,15 @@
           title="Eliminar ingreso"
         >
           <i class="bi bi-trash"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-info"
+          (click)="openIngresoReportModal()"
+          [disabled]="!idAccount"
+          title="Generar Reporte Control de Facturación e Ingresos PDF"
+        >
+          <i class="bi bi-file-earmark-pdf"></i>
         </button>
       </div>
     </div>
