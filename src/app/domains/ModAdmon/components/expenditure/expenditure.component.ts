@@ -1705,7 +1705,12 @@ export class ExpenditureComponent {
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      pdf.download(`reporte-egresos-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`reporte-egresos-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
+        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+      }
 
       this.closeEgresoReportModal();
       this.trackingService.addLog(
@@ -1867,7 +1872,12 @@ export class ExpenditureComponent {
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      pdf.download(`saldos-cuenta-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`saldos-cuenta-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
+        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+      }
       this.closeEgresoReportModal();
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

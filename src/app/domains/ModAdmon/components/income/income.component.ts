@@ -1516,7 +1516,12 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      pdf.download(`reporte-ingresos-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`reporte-ingresos-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
+        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+      }
 
       this.closeIngresoReportModal();
       this.trackingService.addLog(
@@ -1678,7 +1683,12 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      pdf.download(`saldos-cuenta-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`saldos-cuenta-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
+        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+      }
       this.closeIngresoReportModal();
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
