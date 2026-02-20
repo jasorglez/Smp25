@@ -1213,28 +1213,25 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onFamilyCreated(familyData: { id: number; description: string }) {
-    // Recargar la lista de familias
+    // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
+    this.familiasCatalog = [...this.familiasCatalog, { id: familyData.id, description: familyData.description }];
+    this.refreshColumnCache();
+
+    // Asignar a la fila seleccionada
+    const selectedNodes = this.gridApi?.getSelectedNodes();
+    if (selectedNodes && selectedNodes.length > 0) {
+      const selectedRow = selectedNodes[0];
+      selectedRow.setDataValue('idFamilia', familyData.id);
+      selectedRow.setDataValue('familiaDescription', familyData.description);
+      this.notSavedChanges = true;
+    }
+
+    if (this.gridApi) {
+      this.gridApi.refreshCells({ columns: ['idFamilia'], force: true });
+    }
+
+    // Recargar lista completa en background
     this.obtenerFamilias();
-
-    // Esperar a que se carguen las familias y luego auto-seleccionar la nueva
-    setTimeout(() => {
-      // Buscar la fila actualmente seleccionada
-      const selectedNodes = this.gridApi?.getSelectedNodes();
-      if (selectedNodes && selectedNodes.length > 0) {
-        const selectedRow = selectedNodes[0];
-        selectedRow.setDataValue('idFamilia', familyData.id);
-        selectedRow.setDataValue('familiaDescription', familyData.description);
-        this.notSavedChanges = true;
-      }
-
-      // Refrescar la columna para mostrar el nuevo valor
-      if (this.gridApi) {
-        this.gridApi.refreshCells({
-          columns: ['idFamilia'],
-          force: true
-        });
-      }
-    }, 500);
   }
 
   // ==================== MÉTODOS PARA EL MODAL DE SUBFAMILIA ====================
@@ -1301,31 +1298,28 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onSubfamilyCreated(subfamilyData: { id: number; description: string; parentId: number }) {
-    // Recargar la lista de subfamilias
+    // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
+    this.subfamiliasCatalog = [...this.subfamiliasCatalog, { id: subfamilyData.id, description: subfamilyData.description, parentId: subfamilyData.parentId }];
+    this.subfamiliasFiltered = [...this.subfamiliasFiltered, { id: subfamilyData.id, description: subfamilyData.description, parentId: subfamilyData.parentId }];
+    this.refreshColumnCache();
+
+    // Asignar a la fila seleccionada (si coincide la familia)
+    const selectedNodes = this.gridApi?.getSelectedNodes();
+    if (selectedNodes && selectedNodes.length > 0) {
+      const selectedRow = selectedNodes[0];
+      if (selectedRow.data.idFamilia === subfamilyData.parentId) {
+        selectedRow.setDataValue('idSubfamilia', subfamilyData.id);
+        selectedRow.setDataValue('subfamiliaDescription', subfamilyData.description);
+        this.notSavedChanges = true;
+      }
+    }
+
+    if (this.gridApi) {
+      this.gridApi.refreshCells({ columns: ['idSubfamilia'], force: true });
+    }
+
+    // Recargar lista completa en background
     this.obtenerSubfamilias();
-
-    // Esperar a que se carguen las subfamilias y luego auto-seleccionar la nueva
-    setTimeout(() => {
-      // Buscar la fila actualmente seleccionada
-      const selectedNodes = this.gridApi?.getSelectedNodes();
-      if (selectedNodes && selectedNodes.length > 0) {
-        const selectedRow = selectedNodes[0];
-        // Solo asignar si la familia de la fila coincide con el parentId
-        if (selectedRow.data.idFamilia === subfamilyData.parentId) {
-          selectedRow.setDataValue('idSubfamilia', subfamilyData.id);
-          selectedRow.setDataValue('subfamiliaDescription', subfamilyData.description);
-          this.notSavedChanges = true;
-        }
-      }
-
-      // Refrescar la columna para mostrar el nuevo valor
-      if (this.gridApi) {
-        this.gridApi.refreshCells({
-          columns: ['idSubfamilia'],
-          force: true
-        });
-      }
-    }, 500);
   }
 
   // ==================== MÉTODOS PARA EL MODAL DE UNIDAD ====================
@@ -1380,21 +1374,23 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onMeasureCreated(measureData: { id: number; description: string }) {
-    // Recargar la lista de unidades
+    // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
+    this.unitsCatalog = [...this.unitsCatalog, { id: measureData.id, description: measureData.description }];
+    this.refreshColumnCache();
+
+    // Asignar a la fila seleccionada
+    const selectedNodes = this.gridApi?.getSelectedNodes();
+    if (selectedNodes && selectedNodes.length > 0) {
+      const selectedRow = selectedNodes[0];
+      selectedRow.setDataValue('idMedida', measureData.id);
+      this.notSavedChanges = true;
+    }
+
+    if (this.gridApi) {
+      this.gridApi.refreshCells({ columns: ['idMedida'], force: true });
+    }
+
+    // Recargar lista completa en background
     this.obtenerUnidades();
-
-    // Asignar la nueva unidad a la fila seleccionada
-    setTimeout(() => {
-      const selectedNodes = this.gridApi?.getSelectedNodes();
-      if (selectedNodes && selectedNodes.length > 0) {
-        const selectedRow = selectedNodes[0];
-        selectedRow.setDataValue('idMedida', measureData.id);
-        this.notSavedChanges = true;
-      }
-
-      if (this.gridApi) {
-        this.gridApi.refreshCells({ columns: ['idMedida'], force: true });
-      }
-    }, 500);
   }
 }
