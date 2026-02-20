@@ -88,9 +88,17 @@
           class="btn btn-danger"
           (click)="deleteEntry()"
           [disabled]="!idAccount || !selectedIncomes"
-          
         >
           <i class="bi bi-trash"></i>
+        </button>
+        <button
+          type="button"
+          class="btn btn-info"
+          (click)="openEgresoReportModal()"
+          [disabled]="!idAccount"
+          title="Generar Reporte Concentrado de Egresos PDF"
+        >
+          <i class="bi bi-file-earmark-pdf"></i>
         </button>
       </div>
     </div>
@@ -116,3 +124,60 @@
     </div>
   </div>
 </div>
+
+<!-- Modal para Reporte Concentrado de Egresos -->
+<div class="modal fade" [class.show]="showEgresoReportModal" [style.display]="showEgresoReportModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Concentrado de Egresos
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeEgresoReportModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Seleccione el rango de fechas para generar el reporte.
+        </p>
+        <form>
+          <div class="mb-3">
+            <label for="egresoReportStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="egresoReportStartDate"
+              [(ngModel)]="reportEgresoStartDate"
+              name="egresoReportStartDate"
+              required>
+          </div>
+          <div class="mb-3">
+            <label for="egresoReportEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
+            <input
+              type="date"
+              class="form-control"
+              id="egresoReportEndDate"
+              [(ngModel)]="reportEgresoEndDate"
+              name="egresoReportEndDate"
+              required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeEgresoReportModal()">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-info text-white"
+          (click)="generateEgresoReport()"
+          [disabled]="!reportEgresoStartDate || !reportEgresoEndDate || isGeneratingEgresoReport">
+          <span *ngIf="isGeneratingEgresoReport" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i *ngIf="!isGeneratingEgresoReport" class="bi bi-file-earmark-pdf me-1"></i>
+          {{ isGeneratingEgresoReport ? 'Generando...' : 'Generar PDF' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showEgresoReportModal" [style.display]="showEgresoReportModal ? 'block' : 'none'"></div>

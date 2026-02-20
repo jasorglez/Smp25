@@ -144,6 +144,12 @@ export class ExpenditureComponent {
   // Propiedades para datos pendientes y control
   private pendingMasterUpdate: any = null;
   private isGeneratingReport: boolean = false;
+
+  // Propiedades para el modal de reporte de egresos
+  showEgresoReportModal: boolean = false;
+  reportEgresoStartDate: string = '';
+  reportEgresoEndDate: string = '';
+  isGeneratingEgresoReport: boolean = false;
   externalFilterActive: boolean = false;
   showform: string = '';
   branchs: any[] = [];
@@ -1461,6 +1467,250 @@ export class ExpenditureComponent {
       currentData.total = updatedData.total;
       this.gridApi.applyTransaction({ update: [currentData] });
       console.log(`Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
+    }
+  }
+
+  // ==================== MÉTODOS PARA REPORTE DE EGRESOS ====================
+
+  openEgresoReportModal() {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const firstDay = new Date(prev.getFullYear(), prev.getMonth(), 1);
+    const lastDay  = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+    this.reportEgresoStartDate = this.formatDateForInputE(firstDay);
+    this.reportEgresoEndDate   = this.formatDateForInputE(lastDay);
+    this.showEgresoReportModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeEgresoReportModal() {
+    this.showEgresoReportModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  private formatDateForInputE(date: Date): string {
+    const y = date.getFullYear();
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const d = date.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private formatCurrencyE(amount: number): string {
+    return (amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  async generateEgresoReport() {
+    if (!this.reportEgresoStartDate || !this.reportEgresoEndDate) {
+      alerts.basicAlert('Error', 'Por favor seleccione ambas fechas', 'error');
+      return;
+    }
+
+    const [sy, sm, sd] = this.reportEgresoStartDate.split('-');
+    const [ey, em, ed] = this.reportEgresoEndDate.split('-');
+    const startDate = new Date(+sy, +sm - 1, +sd);
+    const endDate   = new Date(+ey, +em - 1, +ed);
+
+    if (startDate > endDate) {
+      alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
+      return;
+    }
+
+    // Filtrar egresos por rango de fecha (campo date)
+    const filtered = this.incomes.filter(income => {
+      if (!income.date) return false;
+      const d = new Date(income.date);
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return ds >= this.reportEgresoStartDate && ds <= this.reportEgresoEndDate;
+    });
+
+    if (filtered.length === 0) {
+      alerts.basicAlert('Sin datos', 'No se encontraron egresos en el rango de fechas seleccionado', 'warning');
+      return;
+    }
+
+    this.isGeneratingEgresoReport = true;
+
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Info de la empresa
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.idRoot));
+      const companyName: string = rootResponse?.name || rootResponse?.nameCompany || 'Empresa';
+      const logoBase64 = rootResponse?.picture
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture)
+        : null;
+
+      // Cuenta bancaria seleccionada
+      const selectedAccount = this.bankAccounts.find(a => a.id === this._idAccount);
+      const cuentaName = selectedAccount ? `${selectedAccount.nameAccount} - ${selectedAccount.bankName}` : '';
+
+      // Período texto
+      const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+      const startDateObj = new Date(+sy, +sm - 1, 1);
+      const endDateObj   = new Date(+ey, +em - 1, 1);
+      let periodText = '';
+      if (+sy === +ey && +sm === +em) {
+        periodText = `MES DE ${meses[startDateObj.getMonth()]} ${sy}`;
+      } else if (+sy === +ey) {
+        periodText = `PERIODO DE ${meses[startDateObj.getMonth()]} A ${meses[endDateObj.getMonth()]} ${sy}`;
+      } else {
+        periodText = `PERIODO DE ${meses[startDateObj.getMonth()]} ${sy} A ${meses[endDateObj.getMonth()]} ${ey}`;
+      }
+
+      // Encabezado de tabla
+      const tableBody: any[] = [[
+        { text: 'EMPRESA',          style: 'th', alignment: 'center' },
+        { text: 'PROYECTO',         style: 'th', alignment: 'center' },
+        { text: 'FECHA',            style: 'th', alignment: 'center' },
+        { text: 'MES',              style: 'th', alignment: 'center' },
+        { text: 'AÑO',              style: 'th', alignment: 'center' },
+        { text: '# DOCUMENTO',      style: 'th', alignment: 'center' },
+        { text: 'CLASIFICACIÓN',    style: 'th', alignment: 'left'   },
+        { text: 'SUBCLASIFICACIÓN', style: 'th', alignment: 'left'   },
+        { text: 'CONCEPTO',         style: 'th', alignment: 'left'   },
+        { text: 'IMP. S/IVA',       style: 'th', alignment: 'right'  },
+        { text: 'IVA',              style: 'th', alignment: 'right'  },
+        { text: 'OTROS IMP.',       style: 'th', alignment: 'right'  },
+        { text: 'IMPORTE TOTAL',    style: 'th', alignment: 'right'  },
+        { text: '# FACTURA',        style: 'th', alignment: 'center' },
+        { text: 'PROVEEDOR',        style: 'th', alignment: 'left'   },
+        { text: 'TIPO DE PAGO',     style: 'th', alignment: 'center' },
+        { text: 'CUENTA',           style: 'th', alignment: 'left'   },
+      ]];
+
+      let totalSubtotal = 0;
+      let totalIva = 0;
+      let totalGeneral = 0;
+
+      filtered.forEach(income => {
+        const project = this.projects.find(p => p.id === income.idProject);
+        const clasificacion = this.cuentasContablesNivel2?.find(c => c.id === income.idExpend);
+        const claseText = clasificacion ? `${clasificacion.codigo} - ${clasificacion.nombre}` : '';
+        const dateObj = income.date ? new Date(income.date) : null;
+        const anio = dateObj ? dateObj.getFullYear().toString() : '';
+        const uuid = income.uuid && income.uuid !== 'NA' ? income.uuid.substring(0, 12) + '...' : (income.numberDocument || '');
+
+        totalSubtotal  += income.subtotal || 0;
+        totalIva       += income.tax || 0;
+        totalGeneral   += income.total || 0;
+
+        tableBody.push([
+          { text: companyName,                           style: 'td', alignment: 'left'   },
+          { text: project?.name || '',                   style: 'td', alignment: 'left'   },
+          { text: this.formatDate(income.date),          style: 'td', alignment: 'center' },
+          { text: income.paymentMonth || '',             style: 'td', alignment: 'center' },
+          { text: anio,                                  style: 'td', alignment: 'center' },
+          { text: income.numberDocument || '',           style: 'td', alignment: 'center' },
+          { text: claseText,                             style: 'td', alignment: 'left'   },
+          { text: '',                                    style: 'td', alignment: 'left'   },
+          { text: income.description || '',              style: 'td', alignment: 'left'   },
+          { text: `$${this.formatCurrencyE(income.subtotal)}`, style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyE(income.tax)}`,      style: 'td', alignment: 'right' },
+          { text: '$0.00',                               style: 'td', alignment: 'right'  },
+          { text: `$${this.formatCurrencyE(income.total)}`,    style: 'td', alignment: 'right' },
+          { text: uuid,                                  style: 'td', alignment: 'center' },
+          { text: '',                                    style: 'td', alignment: 'left'   },
+          { text: income.status || '',                   style: 'td', alignment: 'center' },
+          { text: cuentaName,                            style: 'td', alignment: 'left'   },
+        ]);
+      });
+
+      // Fila de totales
+      tableBody.push([
+        { text: 'TOTAL', colSpan: 9, style: 'totalLabel', alignment: 'right', bold: true, border: [false, true, false, false] },
+        {}, {}, {}, {}, {}, {}, {}, {},
+        { text: `$${this.formatCurrencyE(totalSubtotal)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
+        { text: `$${this.formatCurrencyE(totalIva)}`,      style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
+        { text: '$0.00',                                   style: 'totalValue', alignment: 'right', border: [false, true, false, false] },
+        { text: `$${this.formatCurrencyE(totalGeneral)}`,  style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000' },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+        { text: '', border: [false, true, false, false] },
+      ]);
+
+      // Celda del logo
+      const logoCell: any = logoBase64
+        ? { image: logoBase64, width: 70, alignment: 'left' }
+        : { text: companyName, bold: true, fontSize: 11, alignment: 'left' };
+
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape',
+        pageMargins: [20, 60, 20, 40],
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} / ${pageCount}`,
+          alignment: 'center',
+          fontSize: 7,
+          margin: [0, 10, 0, 0]
+        }),
+        header: () => ({
+          margin: [20, 8, 20, 0],
+          table: {
+            widths: ['20%', '*', '25%'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: 'Concentrado de Egresos', style: 'reportTitle', alignment: 'center' },
+                  { text: 'Sistema de Gestión de Calidad', fontSize: 8, alignment: 'center', color: '#555' },
+                  { text: periodText, fontSize: 7, alignment: 'center', color: '#333', margin: [0, 2, 0, 0] },
+                ]
+              },
+              {
+                stack: [
+                  { text: 'Referencia: ICO-ADM-SGC-005', fontSize: 7, alignment: 'right' },
+                  { text: 'Código:     HCO-ADM-FO-016',  fontSize: 7, alignment: 'right' },
+                  { text: 'Rev.:       01',               fontSize: 7, alignment: 'right' },
+                ]
+              }
+            ]]
+          },
+          layout: 'noBorders'
+        }),
+        content: [
+          {
+            table: {
+              headerRows: 1,
+              widths: [48, 46, 38, 38, 24, 44, 60, 50, 60, 40, 34, 36, 44, 46, 46, 36, 60],
+              body: tableBody
+            },
+            layout: {
+              hLineWidth:  (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
+              vLineWidth:  () => 0.3,
+              hLineColor:  () => '#aaa',
+              vLineColor:  () => '#ccc',
+              fillColor:   (rowIndex: number) => rowIndex === 0 ? '#1a5276' : (rowIndex % 2 === 0 ? '#eaf4fb' : null),
+            }
+          }
+        ],
+        styles: {
+          reportTitle: { fontSize: 12, bold: true, color: '#1a5276' },
+          th:          { fontSize: 6, bold: true, color: '#ffffff', margin: [1, 2, 1, 2] },
+          td:          { fontSize: 6, color: '#222', margin: [1, 1, 1, 1] },
+          totalLabel:  { fontSize: 7, bold: true },
+          totalValue:  { fontSize: 7, bold: true },
+        }
+      };
+
+      const pdf = pdfMake.createPdf(docDefinition);
+      pdf.download(`reporte-egresos-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
+
+      this.closeEgresoReportModal();
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Reporte de Egresos generado: ${this.reportEgresoStartDate} al ${this.reportEgresoEndDate}`,
+        'Egresos - Reporte',
+        this.trackingService.getEmail()
+      );
+
+    } catch (error) {
+      console.error('Error generando reporte de egresos:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte PDF', 'error');
+    } finally {
+      this.isGeneratingEgresoReport = false;
     }
   }
 
