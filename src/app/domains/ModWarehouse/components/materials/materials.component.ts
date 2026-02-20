@@ -1744,7 +1744,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idCompany: 1,
+      idCompany: this.idRoot,
       insumo: '',
       articulo: '',
       description: '',
@@ -1763,6 +1763,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       stockMax: 0,
       vigente: true,
       active: true,
+      typematerial: this.type,
       __isNew: true,
     };
 
