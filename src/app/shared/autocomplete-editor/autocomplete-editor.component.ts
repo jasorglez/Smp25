@@ -106,9 +106,18 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   onKeyDown(event: any): void {
     if (event.key === 'Escape') {
       this.isCanceled = true;
+      this.params.stopEditing();
     }
-    if (event.key === 'Enter' && this.showSuggestions) {
+    if (event.key === 'Enter') {
       event.preventDefault();
+      event.stopPropagation();
+      if (this.showSuggestions && this.filteredList.length > 0) {
+        this.selectValue(this.filteredList[0]);
+      }
+      if (this.params.onEnterPressed) {
+        this.params.onEnterPressed();
+      }
+      this.params.stopEditing();
     }
   }
 }

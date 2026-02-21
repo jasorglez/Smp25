@@ -342,6 +342,10 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
       this.hasChanges = false;
       this.loadCatalogData();
 
+      // Notificar al componente de proveedores para que quite el color rosa
+      const idProveedor = this.signalsService.getIdProveedor();
+      this.sucursalByMaterialProveedorService.notifySucursalSaved(idProveedor);
+
       // Seleccionar la fila apropiada después de recargar
       /*if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {

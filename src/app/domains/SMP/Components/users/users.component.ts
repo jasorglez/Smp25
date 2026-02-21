@@ -68,6 +68,9 @@ export class UsersComponent {
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';
 
+  private editableColumnOrder = ['displayName', 'email', 'password', 'isRoot'];
+  private enterPressed: boolean = false;
+
   private usersService        = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
   private usersxrootService   = inject(UsersxpermissionsService);
@@ -281,6 +284,34 @@ constructor() {
     this.gridApi.setColumnsVisible(['idRol'], showSecurity);
   }
 
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const currentIndex = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[currentIndex + 1]
+        });
+      }, 100);
+    }
+  }
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    minWidth: 100,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
+  };
+
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     headerHeight: 30,
@@ -355,7 +386,8 @@ constructor() {
           filterList: this.empleadoCatalgos.map(e => e.name),
           filterKey: 'name',
           placeholder: 'Nombre',
-          minLength: 1
+          minLength: 1,
+          onEnterPressed: () => { this.enterPressed = true; }
         }),
         valueSetter: (params) => {
           const newValue = params.newValue?.toUpperCase() ?? '';
