@@ -830,32 +830,63 @@ export const routes: Routes = [
           },
           {
             path: 'dashmodadmon',
-            loadComponent: () =>
-              import('./domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
-              ).then((s) => s.DashboarhostComponent),
-            canActivate: [MasterPermissionsGuard, TrackingGuard],
-            data: {
-              permissions: { master: 'administration', detailed: 'dashboard' },
-              tracking: {
-                logMessage: 'Click en Pestaña Dashboard Modulo Administracion',
-                category: 'Administration'
-              }
-            }
+            redirectTo: 'tablero/dashmodadmon',
+            pathMatch: 'full'
           },
-
           {
             path: 'dashboard-hco',
+            redirectTo: 'tablero/dashboard-hco',
+            pathMatch: 'full'
+          },
+          {
+            path: 'tablero',
             loadComponent: () =>
-              import('./domains/ModAdmon/pages/dashboard-hco/dashboard-hco.component'
-              ).then((d) => d.DashboardHcoComponent),
-            canActivate: [MasterPermissionsGuard, TrackingGuard],
-            data: {
-              permissions: { master: 'administration', detailed: 'dashboard-hco' },
-              tracking: {
-                logMessage: 'Click en Dashboard HCO - SIAF',
-                category: 'Administration'
+              import('./domains/ModAdmon/pages/tablero/tablero.component'
+              ).then((t) => t.TableroComponent),
+            children: [
+              {
+                path: 'dashmodadmon',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
+                  ).then((s) => s.DashboarhostComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard' },
+                  tracking: {
+                    logMessage: 'Click en Pestaña Dashboard Modulo Administracion',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'dashboard-hco',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/dashboard-hco/dashboard-hco.component'
+                  ).then((d) => d.DashboardHcoComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Dashboard HCO - SIAF',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'reporte-operativo-sin-iva',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/reporte-operativo-sin-iva/reporte-operativo-sin-iva.component'
+                  ).then((r) => r.ReporteOperativoSinIvaComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Reporte Operativo sin IVA',
+                    category: 'Administration'
+                  }
+                }
               }
-            }
+            ]
           },
 
           {

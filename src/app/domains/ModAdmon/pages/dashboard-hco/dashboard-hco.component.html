@@ -1,4 +1,4 @@
-<div class="dashboard-hco-container">
+<div #dashboardExportRef class="dashboard-hco-container">
   <!-- Header con filtros -->
   <div class="header-section">
     <div class="header-title">
@@ -20,6 +20,26 @@
           <option [ngValue]="null">Todos</option>
           <option *ngFor="let year of availableYears" [ngValue]="year">{{ year }}</option>
         </select>
+      </div>
+      <div class="export-buttons" data-html2canvas-ignore="true">
+        <button
+          class="btn btn-sm btn-danger"
+          type="button"
+          [disabled]="isExportingPdf || isExportingXlsx"
+          (click)="exportToPdf()"
+        >
+          <i class="bi bi-filetype-pdf"></i>
+          {{ isExportingPdf ? 'Exportando...' : 'PDF' }}
+        </button>
+        <button
+          class="btn btn-sm btn-success"
+          type="button"
+          [disabled]="isExportingPdf || isExportingXlsx"
+          (click)="exportToXlsx()"
+        >
+          <i class="bi bi-filetype-xlsx"></i>
+          {{ isExportingXlsx ? 'Exportando...' : 'XLSX' }}
+        </button>
       </div>
     </div>
   </div>

@@ -1,11 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
 import { NgApexchartsModule } from 'ng-apexcharts';
+import html2canvas from 'html2canvas';
+import { Workbook } from 'exceljs';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -82,6 +85,8 @@ export interface FlujoMensual {
   styleUrl: './dashboard-hco.component.scss'
 })
 export class DashboardHcoComponent {
+  @ViewChild('dashboardExportRef') private dashboardExportRef?: ElementRef<HTMLElement>;
+
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private cuentasContablesService = inject(CuentasContablesService);
   private signalsService = inject(SignalsService);
@@ -92,6 +97,8 @@ export class DashboardHcoComponent {
   public endDate: string = '';
   public selectedYear: number | null = null;
   public availableYears: number[] = [];
+  public isExportingPdf = false;
+  public isExportingXlsx = false;
 
   // Datos crudos - separados por tipo
   private egresosData: any[] = [];
@@ -139,6 +146,506 @@ export class DashboardHcoComponent {
     this.processAllData();
   }
 
+  public async exportToPdf(): Promise<void> {
+    if (this.isExportingPdf || this.isExportingXlsx) return;
+    this.isExportingPdf = true;
+
+    try {
+      const [pieChart, barChart, lineChart] = await Promise.all([
+        this.captureElementAsBase64('.charts-column .chart-card:nth-child(1)'),
+        this.captureElementAsBase64('.charts-column .chart-card:nth-child(2)'),
+        this.captureElementAsBase64('.chart-card.full-width')
+      ]);
+
+      const content = this.buildStructuredPdfContent({
+        pieChart,
+        barChart,
+        lineChart
+      });
+
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      const documentDefinition = {
+        pageSize: 'A4',
+        pageOrientation: 'landscape',
+        pageMargins: [20, 20, 20, 20],
+        content,
+        styles: {
+          title: { bold: true, color: '#1A365D', fontSize: 14, alignment: 'center' },
+          subtitle: { color: '#475569', fontSize: 10, alignment: 'center' },
+          sectionTitle: { bold: true, color: '#1A365D', fontSize: 10, margin: [0, 0, 0, 4] },
+          kpiTitle: { bold: true, color: '#475569', fontSize: 8, alignment: 'center' },
+          kpiValue: { bold: true, color: '#0F172A', fontSize: 11, alignment: 'center' },
+          tableHeader: { bold: true, color: '#FFFFFF', fontSize: 8 },
+          tableCell: { fontSize: 7.5, color: '#334155' },
+          tableCellRight: { fontSize: 7.5, color: '#334155', alignment: 'right' },
+          totalLabel: { bold: true, fontSize: 8, color: '#0F172A' },
+          totalValue: { bold: true, fontSize: 8, color: '#0F172A', alignment: 'right' }
+        },
+      };
+
+      (pdfMake as any).createPdf(documentDefinition).download(this.getExportFileName('pdf'));
+    } catch (error) {
+      console.error('Error exportando dashboard a PDF:', error);
+      alerts.basicAlert('Error', 'No fue posible exportar el dashboard a PDF.', 'error');
+    } finally {
+      this.isExportingPdf = false;
+    }
+  }
+
+  private buildStructuredPdfContent(images: {
+    pieChart: string | null;
+    barChart: string | null;
+    lineChart: string | null;
+  }): any[] {
+    const kpiTable = {
+      table: {
+        widths: ['25%', '25%', '25%', '25%'],
+        body: [[
+          this.buildPdfKpiCell('EGRESOS TOTALES', this.formatCurrency(this.totalEgresos), '#DC2626'),
+          this.buildPdfKpiCell('INGRESOS TOTALES', this.formatCurrency(this.totalIngresos), '#16A34A'),
+          this.buildPdfKpiCell('FLUJO NETO', this.formatCurrency(this.flujoNeto), this.flujoNeto >= 0 ? '#2563EB' : '#DC2626'),
+          this.buildPdfKpiCell('MARGEN', `${this.margenPorcentaje.toFixed(1)}%`, '#7C3AED')
+        ]]
+      },
+      layout: {
+        hLineColor: () => '#E2E8F0',
+        vLineColor: () => '#E2E8F0',
+        paddingLeft: () => 6,
+        paddingRight: () => 6,
+        paddingTop: () => 8,
+        paddingBottom: () => 8
+      },
+      margin: [0, 8, 0, 12]
+    };
+
+    const rightColumnCharts: any[] = [];
+    if (images.pieChart) {
+      rightColumnCharts.push({ text: 'GASTO TOTAL ACUMULADO', style: 'sectionTitle' });
+      rightColumnCharts.push({ image: images.pieChart, width: 285, margin: [0, 0, 0, 10] });
+    }
+    if (images.barChart) {
+      rightColumnCharts.push({ text: 'RESUMEN ANUAL', style: 'sectionTitle' });
+      rightColumnCharts.push({ image: images.barChart, width: 285, margin: [0, 0, 0, 10] });
+    }
+    if (rightColumnCharts.length === 0) {
+      rightColumnCharts.push({ text: 'Sin graficas para mostrar', style: 'tableCell' });
+    }
+
+    const content: any[] = [
+      { text: 'SISTEMA INTEGRAL DE ADMINISTRACION FINANCIERA', style: 'title' },
+      { text: `Dashboard HCO - ${this.getFilterPeriodLabel()}`, style: 'subtitle', margin: [0, 2, 0, 4] },
+      kpiTable,
+      {
+        columns: [
+          {
+            width: '*',
+            stack: [
+              { text: 'CLASIFICACION DE EGRESOS (CUENTAS CONTABLES)', style: 'sectionTitle' },
+              this.buildPdfClasificacionTable(),
+              { text: ' ', margin: [0, 4, 0, 4] },
+              { text: 'GASTO E INGRESO POR MES', style: 'sectionTitle' },
+              this.buildPdfFlujoMensualTable()
+            ]
+          },
+          {
+            width: 295,
+            stack: rightColumnCharts
+          }
+        ],
+        columnGap: 10
+      }
+    ];
+
+    if (images.lineChart) {
+      content.push({ text: 'COMPORTAMIENTO DEL NEGOCIO', style: 'sectionTitle', margin: [0, 10, 0, 4] });
+      content.push({ image: images.lineChart, width: 780 });
+    }
+
+    return content;
+  }
+
+  private buildPdfKpiCell(label: string, value: string, color: string): any {
+    return {
+      stack: [
+        { text: label, style: 'kpiTitle', color },
+        { text: value, style: 'kpiValue' }
+      ],
+      fillColor: '#F8FAFC'
+    };
+  }
+
+  private buildPdfClasificacionTable(): any {
+    const body: any[] = [[
+      { text: 'CLASIFICACION', style: 'tableHeader', fillColor: '#1A365D' },
+      { text: 'TOTAL ANTERIOR', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
+      { text: this.getMesActualNombre().toUpperCase(), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
+      { text: 'TOTAL ACUMULADO', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' }
+    ]];
+
+    this.clasificacionEgresos.forEach(item => {
+      body.push([
+        { text: `${item.codigo} - ${item.nombre}`, style: 'tableCell' },
+        { text: this.formatCurrency(item.gastoAnterior), style: 'tableCellRight' },
+        { text: this.formatCurrency(item.gastoMesActual), style: 'tableCellRight' },
+        { text: this.formatCurrency(item.gastoAcumulado), style: 'tableCellRight' }
+      ]);
+    });
+
+    body.push([
+      { text: 'Gran Total Egresos', style: 'totalLabel', fillColor: '#FEE2E2' },
+      { text: this.formatCurrency(this.getTotalEgresoAnterior()), style: 'totalValue', fillColor: '#FEE2E2' },
+      { text: this.formatCurrency(this.getTotalEgresoMesActual()), style: 'totalValue', fillColor: '#FEE2E2' },
+      { text: this.formatCurrency(this.getTotalEgresoAcumulado()), style: 'totalValue', fillColor: '#FEE2E2' }
+    ]);
+
+    return {
+      table: {
+        headerRows: 1,
+        widths: ['46%', '18%', '18%', '18%'],
+        body
+      },
+      layout: 'lightHorizontalLines'
+    };
+  }
+
+  private buildPdfFlujoMensualTable(): any {
+    const body: any[] = [[
+      { text: 'MES', style: 'tableHeader', fillColor: '#1A365D' },
+      { text: 'EGRESO MENSUAL S/IVA', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
+      { text: 'INGRESO S/IVA', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
+      { text: 'FLUJO MENSUAL', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' }
+    ]];
+
+    this.flujoMensual.forEach((item, index) => {
+      body.push([
+        { text: item.mes, style: 'tableCell' },
+        { text: this.formatCurrency(item.egresoMensual), style: 'tableCellRight' },
+        { text: this.formatCurrency(item.ingresoMensual), style: 'tableCellRight' },
+        { text: this.formatCurrency(item.flujoMensual), style: 'tableCellRight', color: item.flujoMensual >= 0 ? '#15803D' : '#DC2626' }
+      ]);
+
+      if (this.flujoMensual[index + 1]?.anio !== item.anio) {
+        const flujoAnio = this.getTotalAnio(item.anio, 'flujo');
+        body.push([
+          { text: `Total ${item.anio}`, style: 'totalLabel', fillColor: '#DBEAFE' },
+          { text: this.formatCurrency(this.getTotalAnio(item.anio, 'egreso')), style: 'totalValue', fillColor: '#DBEAFE' },
+          { text: this.formatCurrency(this.getTotalAnio(item.anio, 'ingreso')), style: 'totalValue', fillColor: '#DBEAFE' },
+          { text: this.formatCurrency(flujoAnio), style: 'totalValue', fillColor: '#DBEAFE', color: flujoAnio >= 0 ? '#15803D' : '#DC2626' }
+        ]);
+      }
+    });
+
+    const totalGeneral = this.getTotalGeneral();
+    body.push([
+      { text: 'Total General', style: 'tableHeader', fillColor: '#1A365D' },
+      { text: this.formatCurrency(totalGeneral.egreso), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
+      { text: this.formatCurrency(totalGeneral.ingreso), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
+      { text: this.formatCurrency(totalGeneral.flujo), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' }
+    ]);
+
+    body.push([
+      { text: '', border: [false, false, false, false] },
+      { text: '', border: [false, false, false, false] },
+      { text: 'Margen', style: 'totalLabel', alignment: 'right' },
+      { text: `${this.margenPorcentaje.toFixed(1)}%`, style: 'totalValue', color: '#15803D' }
+    ]);
+
+    return {
+      table: {
+        headerRows: 1,
+        widths: ['28%', '24%', '24%', '24%'],
+        body
+      },
+      layout: 'lightHorizontalLines'
+    };
+  }
+
+  private formatCurrency(value: number): string {
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return `$${safeValue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  public async exportToXlsx(): Promise<void> {
+    if (this.isExportingPdf || this.isExportingXlsx) return;
+    this.isExportingXlsx = true;
+
+    try {
+      const workbook = new Workbook();
+      const worksheet = workbook.addWorksheet('Dashboard HCO');
+      const endRow = this.buildEditableDashboardWorksheet(worksheet);
+      await this.addDashboardChartsToWorksheet(workbook, worksheet, endRow);
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob(
+        [buffer],
+        { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+      );
+      this.downloadBlob(blob, this.getExportFileName('xlsx'));
+    } catch (error) {
+      console.error('Error exportando dashboard a XLSX:', error);
+      alerts.basicAlert('Error', 'No fue posible exportar el dashboard a XLSX.', 'error');
+    } finally {
+      this.isExportingXlsx = false;
+    }
+  }
+
+  private buildEditableDashboardWorksheet(worksheet: any): number {
+    worksheet.views = [{ showGridLines: false }];
+    worksheet.pageSetup = {
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0
+    };
+
+    worksheet.columns = [
+      { width: 38 }, { width: 19 }, { width: 19 }, { width: 19 }, { width: 3 },
+      { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
+      { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 }
+    ];
+
+    worksheet.mergeCells('A1:N1');
+    const titleCell = worksheet.getCell('A1');
+    titleCell.value = 'SISTEMA INTEGRAL DE ADMINISTRACION FINANCIERA';
+    titleCell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 14 };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+
+    worksheet.mergeCells('A2:N2');
+    const subtitleCell = worksheet.getCell('A2');
+    subtitleCell.value = `Dashboard HCO - ${this.getFilterPeriodLabel()}`;
+    subtitleCell.font = { italic: true, color: { argb: 'FF1A365D' }, size: 11 };
+    subtitleCell.alignment = { horizontal: 'center' };
+
+    this.writeKpiCard(worksheet, 'A4', 'C4', 'A5', 'C5', 'EGRESOS TOTALES', this.totalEgresos, 'FFDC2626');
+    this.writeKpiCard(worksheet, 'D4', 'F4', 'D5', 'F5', 'INGRESOS TOTALES', this.totalIngresos, 'FF16A34A');
+    this.writeKpiCard(worksheet, 'G4', 'I4', 'G5', 'I5', 'FLUJO NETO', this.flujoNeto, this.flujoNeto >= 0 ? 'FF2563EB' : 'FFDC2626');
+
+    worksheet.mergeCells('J4:L4');
+    const margenTitle = worksheet.getCell('J4');
+    margenTitle.value = 'MARGEN';
+    margenTitle.font = { bold: true, color: { argb: 'FF7C3AED' } };
+    margenTitle.alignment = { horizontal: 'center' };
+    margenTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F3FF' } };
+
+    worksheet.mergeCells('J5:L5');
+    const margenValue = worksheet.getCell('J5');
+    margenValue.value = (this.margenPorcentaje || 0) / 100;
+    margenValue.numFmt = '0.0%';
+    margenValue.font = { bold: true, size: 12, color: { argb: 'FF7C3AED' } };
+    margenValue.alignment = { horizontal: 'center' };
+    margenValue.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F3FF' } };
+
+    let currentRow = 8;
+    currentRow = this.writeClasificacionEgresosTable(worksheet, currentRow);
+    currentRow += 2;
+    currentRow = this.writeFlujoMensualTable(worksheet, currentRow);
+    return currentRow;
+  }
+
+  private writeKpiCard(
+    worksheet: any,
+    titleFrom: string,
+    titleTo: string,
+    valueFrom: string,
+    valueTo: string,
+    title: string,
+    value: number,
+    color: string
+  ): void {
+    worksheet.mergeCells(`${titleFrom}:${titleTo}`);
+    const titleCell = worksheet.getCell(titleFrom);
+    titleCell.value = title;
+    titleCell.font = { bold: true, color: { argb: color }, size: 10 };
+    titleCell.alignment = { horizontal: 'center' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+
+    worksheet.mergeCells(`${valueFrom}:${valueTo}`);
+    const valueCell = worksheet.getCell(valueFrom);
+    valueCell.value = Number.isFinite(value) ? value : 0;
+    valueCell.numFmt = '"$"#,##0.00';
+    valueCell.font = { bold: true, size: 13, color: { argb: 'FF1E293B' } };
+    valueCell.alignment = { horizontal: 'center' };
+    valueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+  }
+
+  private writeClasificacionEgresosTable(worksheet: any, startRow: number): number {
+    worksheet.mergeCells(`A${startRow}:D${startRow}`);
+    const titleCell = worksheet.getCell(`A${startRow}`);
+    titleCell.value = 'CLASIFICACION DE EGRESOS (CUENTAS CONTABLES)';
+    titleCell.font = { bold: true, color: { argb: 'FFDC2626' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF1F2' } };
+
+    const headerRow = startRow + 1;
+    const headers = ['CLASIFICACION', 'TOTAL ANTERIOR', this.getMesActualNombre().toUpperCase(), 'TOTAL ACUMULADO'];
+    headers.forEach((header, index) => {
+      const cell = worksheet.getCell(headerRow, index + 1);
+      cell.value = header;
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+      cell.alignment = { horizontal: index === 0 ? 'left' : 'right' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+    });
+
+    let row = headerRow + 1;
+    this.clasificacionEgresos.forEach(item => {
+      worksheet.getCell(`A${row}`).value = `${item.codigo} - ${item.nombre}`;
+      this.setMoneyCell(worksheet.getCell(`B${row}`), item.gastoAnterior);
+      this.setMoneyCell(worksheet.getCell(`C${row}`), item.gastoMesActual);
+      this.setMoneyCell(worksheet.getCell(`D${row}`), item.gastoAcumulado);
+      row++;
+    });
+
+    worksheet.getCell(`A${row}`).value = 'Gran Total Egresos';
+    worksheet.getCell(`A${row}`).font = { bold: true, color: { argb: 'FFB91C1C' } };
+    worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+    this.setMoneyCell(worksheet.getCell(`B${row}`), this.getTotalEgresoAnterior(), true);
+    this.setMoneyCell(worksheet.getCell(`C${row}`), this.getTotalEgresoMesActual(), true);
+    this.setMoneyCell(worksheet.getCell(`D${row}`), this.getTotalEgresoAcumulado(), true);
+
+    return row;
+  }
+
+  private writeFlujoMensualTable(worksheet: any, startRow: number): number {
+    worksheet.mergeCells(`A${startRow}:D${startRow}`);
+    const titleCell = worksheet.getCell(`A${startRow}`);
+    titleCell.value = 'GASTO E INGRESO POR MES';
+    titleCell.font = { bold: true, color: { argb: 'FF1A365D' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+
+    const headerRow = startRow + 1;
+    const headers = ['MES', 'EGRESO MENSUAL S/IVA', 'INGRESO S/IVA', 'FLUJO MENSUAL'];
+    headers.forEach((header, index) => {
+      const cell = worksheet.getCell(headerRow, index + 1);
+      cell.value = header;
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+      cell.alignment = { horizontal: index === 0 ? 'left' : 'right' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+    });
+
+    let row = headerRow + 1;
+    this.flujoMensual.forEach((item, index) => {
+      worksheet.getCell(`A${row}`).value = item.mes;
+      this.setMoneyCell(worksheet.getCell(`B${row}`), item.egresoMensual);
+      this.setMoneyCell(worksheet.getCell(`C${row}`), item.ingresoMensual);
+      this.setMoneyCell(worksheet.getCell(`D${row}`), item.flujoMensual, false, item.flujoMensual >= 0 ? 'FF15803D' : 'FFDC2626');
+      row++;
+
+      if (this.flujoMensual[index + 1]?.anio !== item.anio) {
+        worksheet.getCell(`A${row}`).value = `Total ${item.anio}`;
+        worksheet.getCell(`A${row}`).font = { bold: true, color: { argb: 'FF1E40AF' } };
+        worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+        this.setMoneyCell(worksheet.getCell(`B${row}`), this.getTotalAnio(item.anio, 'egreso'), true);
+        this.setMoneyCell(worksheet.getCell(`C${row}`), this.getTotalAnio(item.anio, 'ingreso'), true);
+        const flujoAnual = this.getTotalAnio(item.anio, 'flujo');
+        this.setMoneyCell(worksheet.getCell(`D${row}`), flujoAnual, true, flujoAnual >= 0 ? 'FF15803D' : 'FFDC2626');
+        row++;
+      }
+    });
+
+    worksheet.getCell(`A${row}`).value = 'Total General';
+    worksheet.getCell(`A${row}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+
+    const totalGeneral = this.getTotalGeneral();
+    this.setMoneyCell(worksheet.getCell(`B${row}`), totalGeneral.egreso, true, 'FFFFFFFF', 'FF1A365D');
+    this.setMoneyCell(worksheet.getCell(`C${row}`), totalGeneral.ingreso, true, 'FFFFFFFF', 'FF1A365D');
+    this.setMoneyCell(worksheet.getCell(`D${row}`), totalGeneral.flujo, true, 'FFFFFFFF', 'FF1A365D');
+    row++;
+
+    worksheet.getCell(`C${row}`).value = 'Margen';
+    worksheet.getCell(`C${row}`).font = { bold: true, color: { argb: 'FF15803D' } };
+    worksheet.getCell(`C${row}`).alignment = { horizontal: 'right' };
+    const marginCell = worksheet.getCell(`D${row}`);
+    marginCell.value = (this.margenPorcentaje || 0) / 100;
+    marginCell.numFmt = '0.0%';
+    marginCell.font = { bold: true, color: { argb: 'FF15803D' } };
+    marginCell.alignment = { horizontal: 'right' };
+
+    return row;
+  }
+
+  private setMoneyCell(
+    cell: any,
+    value: number,
+    bold = false,
+    fontColor = 'FF1E293B',
+    fillColor = ''
+  ): void {
+    cell.value = Number.isFinite(value) ? value : 0;
+    cell.numFmt = '"$"#,##0.00';
+    cell.alignment = { horizontal: 'right' };
+    cell.font = { bold, color: { argb: fontColor } };
+    if (fillColor) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
+    }
+  }
+
+  private async addDashboardChartsToWorksheet(workbook: Workbook, worksheet: any, endRow: number): Promise<void> {
+    const [pieChart, barChart, lineChart] = await Promise.all([
+      this.captureElementAsBase64('.charts-column .chart-card:nth-child(1)'),
+      this.captureElementAsBase64('.charts-column .chart-card:nth-child(2)'),
+      this.captureElementAsBase64('.chart-card.full-width')
+    ]);
+
+    if (pieChart) {
+      const imageId = workbook.addImage({ base64: pieChart, extension: 'png' });
+      worksheet.addImage(imageId, {
+        tl: { col: 5, row: 7 },
+        ext: { width: 500, height: 260 }
+      });
+    }
+
+    if (barChart) {
+      const imageId = workbook.addImage({ base64: barChart, extension: 'png' });
+      worksheet.addImage(imageId, {
+        tl: { col: 5, row: 24 },
+        ext: { width: 500, height: 250 }
+      });
+    }
+
+    if (lineChart) {
+      const imageId = workbook.addImage({ base64: lineChart, extension: 'png' });
+      worksheet.addImage(imageId, {
+        tl: { col: 0, row: Math.max(endRow + 2, 42) },
+        ext: { width: 1230, height: 300 }
+      });
+    }
+  }
+
+  private async captureElementAsBase64(selector: string): Promise<string | null> {
+    const rootElement = this.dashboardExportRef?.nativeElement;
+    if (!rootElement) return null;
+
+    const element = rootElement.querySelector(selector) as HTMLElement | null;
+    if (!element) return null;
+
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const canvas = await html2canvas(element, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+      windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
+      windowHeight: Math.max(document.documentElement.clientHeight, element.scrollHeight),
+      scrollX: 0,
+      scrollY: -window.scrollY
+    });
+
+    return canvas.toDataURL('image/png');
+  }
+
+  private getFilterPeriodLabel(): string {
+    const start = this.startDate || 'sin fecha inicial';
+    const end = this.endDate || 'sin fecha final';
+    const year = this.selectedYear ? String(this.selectedYear) : 'Todos';
+    return `Periodo ${start} al ${end} | Ano: ${year}`;
+  }
+
   private loadData(rootId: number): void {
     // Cargar catálogo de cuentas contables para clasificar tipo de gasto
     this.cuentasContablesService.getAll(rootId).subscribe(data => {
@@ -157,6 +664,22 @@ export class DashboardHcoComponent {
       console.log('✅ Ingresos cargados (DEPOSITO):', this.ingresosData.length);
       this.processAllData();
     });
+  }
+
+  private downloadBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private getExportFileName(extension: 'pdf' | 'xlsx'): string {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    return `dashboard-hco_${timestamp}.${extension}`;
   }
 
   private processAllData(): void {
