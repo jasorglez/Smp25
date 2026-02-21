@@ -259,10 +259,18 @@ export class EquipmentComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
+        headerName: '#',
+        width: 50,
+        editable: false,
+        suppressMenu: true,
+        valueGetter: (params) => params.node.rowIndex + 1,
+        cellStyle: { textAlign: 'center', fontWeight: 'bold' }
+      },
+      {
         field: 'description',
         headerName: 'Descripción',
         editable: true,
-        width: 490,
+        width: 550,
       },
       /*{
         field: 'date',
