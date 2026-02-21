@@ -32,7 +32,7 @@ import { DetailCellRendererComponentContact } from './details/detail-cell-render
 import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
 import { DetailCellRendererTipoProveedorComponent } from './details/detail-cell-renderer-tipo-proveedor.component';
-import { DetailCellRendererComponentMateriales } from './details/detail-cell-renderer-materiales.component';
+import { DetallesMaterialexprovComponent } from './details/detalles-materialexprov.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -67,7 +67,7 @@ import { TrackingService } from 'app/services/tracking.service';
     DetailCellRendererComponentBanck,
     DetailCellRendererComponentCuentas,
     DetailCellRendererTipoProveedorComponent,
-    DetailCellRendererComponentMateriales
+    DetallesMaterialexprovComponent
   ],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
@@ -228,7 +228,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     detailCellRendererBanck: DetailCellRendererComponentBanck,
     detailCellRendererCuentas: DetailCellRendererComponentCuentas,
     detailCellRendererTipoProveedor: DetailCellRendererTipoProveedorComponent,
-    detailCellRendererMateriales: DetailCellRendererComponentMateriales
+    detailCellRendererMateriales: DetallesMaterialexprovComponent
   };
 
   idClient = this.signalsService.getIdClient();
@@ -383,7 +383,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'nameContact',
-        headerName: 'Contacto principal',
+        headerName: 'Contacto principal2',
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',

@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
       style="padding: 10px; background-color: #e1f5fe; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <strong>Materiales de: {{ articuloName }}</strong>
+          <strong>Materiales de33: {{ articuloName }}</strong>
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
