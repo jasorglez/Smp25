@@ -197,9 +197,9 @@ export class MaterialsComponent implements CanComponentDeactivate {
     // Asegurar que los IDs de familia y subfamilia estén presentes
     cleanedData.idFamilia = data.idFamilia || null;
     cleanedData.idSubfamilia = data.idSubfamilia || null;
+    cleanedData.idMedida = data.idMedida || null;
     cleanedData.idCompany = this.idcompany;
 
-    console.log('Datos limpiados para servidor:', cleanedData);
     return cleanedData;
   }
 
@@ -260,7 +260,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     return this.materialsService.getAllMaterialsxFamilyview(this.idcompany).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log(this.rowData)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -280,7 +279,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     return this.catalogsService.getCatalogs(this.idcompany, 'FAMILY').subscribe(
       (data: any) => {
         this.familiasCatalog = data;
-        console.log('Familias:', this.familiasCatalog);
         this.refreshColumnCache();
       },
       (error) => console.error('Error fetching familias:', error)
@@ -291,8 +289,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     return this.catalogsService.getCatalogs(this.idcompany, 'SUBFAMILY').subscribe(
       (data: any) => {
         this.subfamiliasCatalog = data;
-        this.subfamiliasFiltered = data; // Inicialmente todas
-        console.log('Subfamilias:', this.subfamiliasCatalog);
+        this.subfamiliasFiltered = data;
         this.refreshColumnCache();
       },
       (error) => console.error('Error fetching subfamilias:', error)
@@ -306,7 +303,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     } else {
       this.subfamiliasFiltered = this.subfamiliasCatalog;
     }
-    console.log('Subfamilias filtradas para familia', idFamilia, ':', this.subfamiliasFiltered);
   }
   
 
@@ -365,8 +361,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
   onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data, 'Campo:', event.column.getColId());
-
     // Si cambió idFamilia, actualizar familiaDescription y filtrar subfamilias
     if (event.column.getColId() === 'idFamilia') {
       const familia = this.familiasCatalog.find(f => f.id === event.newValue);
@@ -391,6 +385,16 @@ export class MaterialsComponent implements CanComponentDeactivate {
       if (subfamilia) {
         event.data.subfamiliaDescription = subfamilia.description;
       }
+    }
+
+    // Si cambió idMedida, actualizar unidadDescription
+    if (event.column.getColId() === 'idMedida') {
+      const unitId = Number(event.newValue);
+      const unit = this.unitsCatalog.find(u => Number(u.id) === unitId);
+      if (unit) {
+        event.data.unidadDescription = unit.description;
+      }
+      event.data.idMedida = unitId;
     }
 
     event.data.__modified = true;
@@ -627,11 +631,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Unidad',
         editable: true,
         width: 130,
+        valueGetter: (params) => params.data?.idMedida ?? null,
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
           options: [
             ...this.unitsCatalog.map(u => ({
-              id: u.id,
+              id: Number(u.id),
               description: u.description,
               valueAddition: '',
               valueAddition2: ''
@@ -648,10 +653,21 @@ export class MaterialsComponent implements CanComponentDeactivate {
             this.measureModalService.openModal({ idCompany: this.idcompany });
           }
         }),
+        onCellValueChanged: (event: any) => {
+          if (event.newValue === -997) {
+            event.data.idMedida = event.oldValue || null;
+            this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+            this.measureModalService.openModal({ idCompany: this.idcompany });
+          }
+        },
         cellRenderer: (params: any) => {
           if (!params.value || params.value === -997) return '';
-          const unit = this.unitsCatalog.find(u => u.id === params.value);
-          return unit ? unit.description : (params.value || '');
+          const unit = this.unitsCatalog.find(u => Number(u.id) === Number(params.value));
+          if (unit) {
+            return unit.description;
+          }
+          // Fallback: si no encuentra en catálogo, intentar mostrar el campo measure
+          return params.data?.measure || params.value || '';
         },
       },
       {
@@ -1332,7 +1348,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       valueAdditionBit2: false,
       valueAdditionBit3: false,
       vigente: true,
-      type: 'Units',
+      type: 'MEASURE',
       active: 1
     };
     this.showMeasureModal = true;
