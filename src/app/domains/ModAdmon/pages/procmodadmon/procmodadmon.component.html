@@ -3,14 +3,9 @@
     <div class="card-header px-2">
       <ul class="nav nav-pills">
 
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashmodadmon" routerLinkActive="active">
-            <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}
-          </a>
-        </li>
-
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashboard-hco" routerLinkActive="active">
+        <li class="nav-item"
+          *ngIf="authService.hasDetailedPermission('administration', 'dashboard') || authService.hasDetailedPermission('administration', 'dashboard-hco')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="tablero" routerLinkActive="active">
             <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}
           </a>
         </li>

@@ -1,0 +1,120 @@
+<div class="operativo-wrapper">
+  <div class="top-toolbar">
+    <div class="filter-group">
+      <label for="startDateOperativo">Fecha Inicio</label>
+      <input id="startDateOperativo" type="date" class="form-control" [(ngModel)]="startDate" (change)="onFilterChange()">
+    </div>
+    <div class="filter-group">
+      <label for="endDateOperativo">Fecha Fin</label>
+      <input id="endDateOperativo" type="date" class="form-control" [(ngModel)]="endDate" (change)="onFilterChange()">
+    </div>
+  </div>
+
+  <div class="sheet-header">
+    <div class="logo-zone">
+      <img src="assets/img/HCOLogo.png" alt="HCO">
+    </div>
+    <div class="title-zone">
+      <h2>REPORTE OPERATIVO PROYECTOS HCO</h2>
+      <span>Sistema de Gestion de Calidad</span>
+    </div>
+    <div class="meta-zone">
+      <div><strong>Referencia:</strong> HCO-ADM-SGC-005</div>
+      <div><strong>Codigo:</strong> HCO-ADM-FO-018</div>
+      <div><strong>Rev.:</strong> 00</div>
+      <div><strong>Fecha Corte:</strong> {{ endDate || '-' }}</div>
+      <div><strong>Fecha Actual:</strong> {{ (today | date: 'dd-MMM-yy':'':'es-MX') || '-' }}</div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>Empresa</th>
+          <th>Proyecto</th>
+          <th>FI</th>
+          <th>FT</th>
+          <th class="text-end">Monto Contratado</th>
+          <th class="text-end">Monto Facturado</th>
+          <th class="text-end">Monto Cobrado</th>
+          <th class="text-end">Monto Pendiente de Cobro</th>
+          <th class="text-end">Monto Erogado</th>
+          <th class="text-end">Margen Bruto</th>
+          <th class="text-end">Retiro de Utilidad social</th>
+          <th class="text-end">Margen Neto</th>
+          <th class="text-end">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="isLoading">
+          <td colspan="13" class="loading-cell">Cargando informacion...</td>
+        </tr>
+        <tr *ngIf="!isLoading && rows.length === 0">
+          <td colspan="13" class="loading-cell">Sin datos para el periodo seleccionado.</td>
+        </tr>
+        <tr *ngFor="let row of rows">
+          <td>{{ row.empresa }}</td>
+          <td>{{ row.proyecto }}</td>
+          <td>{{ row.fi }}</td>
+          <td>{{ row.ft }}</td>
+          <td class="text-end">{{ row.montoContratado | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.montoFacturado | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.montoCobrado | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.montoPendienteCobro | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.montoErogado | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.margenBruto | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.retiroUtilidadSocial | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.margenNeto | currency:'$':'symbol':'1.2-2' }}</td>
+          <td class="text-end">{{ row.porcentaje | number:'1.0-0' }}%</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="text-end"><strong>Total</strong></td>
+          <td class="text-end"><strong>{{ totals.montoContratado | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.montoFacturado | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.montoCobrado | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.montoPendienteCobro | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.montoErogado | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.margenBruto | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.retiroUtilidadSocial | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.margenNeto | currency:'$':'symbol':'1.2-2' }}</strong></td>
+          <td class="text-end"><strong>{{ totals.porcentaje | number:'1.0-0' }}%</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="assets-title">INVERSION DE ACTIVOS</div>
+
+  <div class="table-card">
+    <table class="report-table assets-table">
+      <thead>
+        <tr>
+          <th>ACTIVO</th>
+          <th class="text-end" *ngFor="let company of companyColumns">{{ company }}</th>
+          <th class="text-end">TOTAL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of assetRows">
+          <td>{{ row.activo }}</td>
+          <td class="text-end" *ngFor="let company of companyColumns">
+            {{ row.valoresPorEmpresa[company] | currency:'$':'symbol':'1.2-2' }}
+          </td>
+          <td class="text-end">{{ row.total | currency:'$':'symbol':'1.2-2' }}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td><strong>Total General</strong></td>
+          <td class="text-end" *ngFor="let company of companyColumns">
+            <strong>{{ assetTotals[company] | currency:'$':'symbol':'1.2-2' }}</strong>
+          </td>
+          <td class="text-end"><strong>{{ totalActivos | currency:'$':'symbol':'1.2-2' }}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
