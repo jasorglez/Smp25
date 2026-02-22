@@ -1,131 +1,95 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
-import { LogbookService } from 'app/services/logbook.service';
+import { ColDef } from 'ag-grid-enterprise';
+import { BitacoraBaseComponent, BITACORA_TEMPLATE, BITACORA_STYLES, DATE_COL } from './bitacora-base.component';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-bitacora-personal',
   standalone: true,
   imports: [CommonModule, AgGridModule],
-  template: `
-    <div class="detail-grid-container">
-      <div class="detail-actions d-flex align-items-center mb-2 gap-1">
-        <button class="btn btn-outline-secondary btn-sm" (click)="closeDetail()">
-          <i class="bi bi-x-lg"></i>
-        </button>
-        <button class="btn btn-primary btn-sm" (click)="addRow()">
-          <i class="bi bi-plus-lg"></i>
-        </button>
-        <button class="btn btn-warning btn-sm" (click)="discardChanges()">
-          <i class="bi bi-arrow-counterclockwise"></i>
-        </button>
-        <button class="btn btn-danger btn-sm" (click)="deleteSelected()">
-          <i class="bi bi-trash"></i>
-        </button>
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
-          <i class="bi bi-floppy"></i>
-          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="hasUnsavedChanges"></span>
-        </button>
-      </div>
-      <ag-grid-angular
-        class="ag-theme-quartz small-text-ag-grid"
-        [rowData]="rowData"
-        [columnDefs]="columnDefs"
-        [gridOptions]="gridOptions"
-        (gridReady)="onGridReady($event)"
-        (cellValueChanged)="onCellValueChanged($event)"
-        style="height: 300px; width: 100%;">
-      </ag-grid-angular>
-    </div>
-  `,
-  styles: [`.detail-grid-container { padding: 5px; background-color: #f8f9fa; border-radius: 4px; }`, `.gap-1 { gap: 4px !important; }`]
+  template: BITACORA_TEMPLATE,
+  styles: BITACORA_STYLES,
 })
-export class BitacoraPersonalComponent {
-  private logbookService = inject(LogbookService);
-  private gridApi!: GridApi;
-  private context: any;
-
-  rowData: any[] = [];
-  hasUnsavedChanges: boolean = false;
-  reportData: any = null;
-  tempIdCounter: number = 0;
-
-  columnDefs: ColDef[] = [
-    { headerName: '#', width: 50, valueGetter: (p) => p.node!.rowIndex! + 1, pinned: 'left' },
-    { field: 'date', headerName: 'Fecha', editable: true, width: 120 },
-    { field: 'idResource', headerName: 'ID Recurso', editable: true, width: 100 },
-    { field: 'position', headerName: 'Puesto', editable: true, width: 120 },
-    { field: 'quantity', headerName: 'Cantidad', editable: true, width: 100, type: 'numericColumn' },
-    { field: 'start', headerName: 'Inicio', editable: true, width: 100 },
-    { field: 'end', headerName: 'Término', editable: true, width: 100 },
-    { field: 'description', headerName: 'Descripción', editable: true, flex: 1 },
+export class BitacoraPersonalComponent extends BitacoraBaseComponent {
+  readonly bitacoraType  = 'personal';
+  readonly typeNoteValue = 'PERSONAL';
+  readonly editableCols  = ['position', 'quantity', 'start', 'end', 'description'];
+  readonly requiredFields = [
+    { field: 'position', label: 'Puesto'   },
+    { field: 'quantity', label: 'Cantidad' },
   ];
 
-  gridOptions: any = { headerHeight: 30, rowHeight: 30, rowSelection: 'single' };
-
-  agInit(params: ICellRendererParams): void {
-    this.context = params.context;
-    this.reportData = params.data;
-    this.loadData();
-  }
-
-  private loadData() {
-    if (!this.reportData?.id) return;
-    this.logbookService.getInfoByReporte(this.reportData.id, 'PERSONAL').subscribe({
-      next: (resp: any) => {
-        this.rowData = resp.success ? (resp.data || []).map((item: any, i: number) => ({
-          ...item,
-          id: item.id || `temp_${Date.now()}_${i}`,
-          __isNew: false, __modified: false
-        })) : [];
+  get colDefs(): ColDef[] {
+    return [
+      { headerName: '#', width: 45, valueGetter: (p) => p.node!.rowIndex! + 1, pinned: 'left', editable: false },
+      {
+        field: 'position', headerName: 'Puesto', editable: true, width: 260,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.posicionesValues }),
+        valueFormatter: (p) => p.value || '',
       },
-      error: () => this.rowData = []
-    });
+      { field: 'quantity',    headerName: 'Cantidad',    editable: true, width: 150,  type: 'numericColumn' },
+      { field: 'start',       headerName: 'Inicio',      editable: true, width: 150  },
+      { field: 'end',         headerName: 'Término',     editable: true, width: 150  },
+    ];
   }
 
-  onGridReady(params: GridReadyEvent) { this.gridApi = params.api; }
-
-  addRow() {
-    this.rowData = [{
+  override addRow(): void {
+    const newRow = {
       id: `temp_${this.tempIdCounter++}`,
       idReporte: this.reportData?.id,
-      date: new Date().toISOString().split('T')[0],
-      description: '', active: true, __isNew: true, __modified: false
-    }, ...this.rowData];
+      position: '',
+      quantity: 1,
+      start: null,
+      end: null,
+      description: null,
+      active: true, __isNew: true, __modified: false,
+    };
+    this.rowData = [newRow, ...this.rowData];
     this.hasUnsavedChanges = true;
+    setTimeout(() => {
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: this.editableCols[0] });
+    }, 50);
   }
 
-  deleteSelected() {
-    const rows = this.gridApi.getSelectedRows();
-    if (!rows.length) { alerts.basicAlert('Error', 'Seleccione un registro', 'warning'); return; }
-    this.rowData = this.rowData.filter(r => r !== rows[0]);
-    this.hasUnsavedChanges = true;
-  }
-
-  saveChanges() {
-    alerts.basicAlert('Guardar', 'Funcionalidad en desarrollo', 'info');
-    this.hasUnsavedChanges = false;
-    if (this.context?.componentParent?.updateBitacoraCount) {
-      this.context.componentParent.updateBitacoraCount(this.reportData?.id, 'personal', this.rowData.length);
+  override onCellValueChanged(event: any): void {
+    if (event.colDef.field === 'quantity') {
+      event.data.quantity = 1;
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['quantity'], force: true });
     }
-  }
 
-  discardChanges() {
-    this.loadData();
-    this.hasUnsavedChanges = false;
-  }
+    if (event.colDef.field === 'position' && event.newValue) {
+      const duplicateExists = this.rowData.some((row, index) =>
+        index !== event.rowIndex &&
+        row.position === event.newValue
+      );
 
-  onCellValueChanged(event: any) {
+      if (duplicateExists) {
+        alerts.basicAlert(
+          'Puesto duplicado',
+          `El puesto "${event.newValue}" ya está agregado. No se permiten puestos repetidos.`,
+          'warning'
+        );
+        event.node.setDataValue('position', event.oldValue);
+        return;
+      }
+    }
+
     if (!event.data.__isNew) event.data.__modified = true;
     this.hasUnsavedChanges = true;
   }
 
-  closeDetail() {
-    if (this.context?.componentParent?.collapseBitacoraDetail) {
-      this.context.componentParent.collapseBitacoraDetail(this.reportData?.id);
-    }
+  buildPayload(item: any): any {
+    return {
+      ...this.basePayload(item),
+      description: item.description?.trim() || null,
+      position:    item.position    ?? null,
+      start:       item.start       ?? null,
+      end:         item.end         ?? null,
+      idResource:  item.idResource  ?? null,
+    };
   }
 }

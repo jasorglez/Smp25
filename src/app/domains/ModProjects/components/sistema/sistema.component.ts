@@ -8,16 +8,25 @@ import { LogbookService } from 'app/services/logbook.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererExpenditureComponent } from '../../../ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
-import { BitacoraWrapperComponent } from './bitacora-wrapper.component';
-import { PdfButtonCellRendererComponent } from './pdf-button-cell-renderer.component';
-import { PdfDetailComponent } from './pdf-detail.component';
+import { PdfButtonCellRendererComponent }  from './pdf-button-cell-renderer.component';
+import { PdfDetailComponent }              from './pdf-detail.component';
+import { BitacoraPersonalComponent }  from './bitacora-personal.component';
+import { BitacoraMaterialComponent }  from './bitacora-material.component';
+import { BitacoraEquiposComponent }   from './bitacora-equipos.component';
+import { BitacoraFotosComponent }     from './bitacora-fotos.component';
+import { BitacoraVideosComponent }    from './bitacora-videos.component';
+import { BitacoraConceptosComponent } from './bitacora-conceptos.component';
+import { BitacoraNotasComponent }     from './bitacora-notas.component';
 
 @Component({
   selector: 'app-sistema',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, AgGridModule, ButtonCellRendererExpenditureComponent,
-    BitacoraWrapperComponent, PdfButtonCellRendererComponent, PdfDetailComponent
+    CommonModule, FormsModule, AgGridModule,
+    ButtonCellRendererExpenditureComponent,
+    PdfButtonCellRendererComponent, PdfDetailComponent,
+    BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
+    BitacoraFotosComponent, BitacoraVideosComponent, BitacoraConceptosComponent, BitacoraNotasComponent,
   ],
   templateUrl: './sistema.component.html',
   styleUrl: './sistema.component.scss'
@@ -49,15 +58,15 @@ export class SistemaComponent implements OnInit {
     masterDetail: true,
     detailRowHeight: 600,
     detailCellRendererSelector: (params: any) => {
-      const detailType = params.data?.detailType;
-      if (detailType === 'pdf') {
-        return { component: PdfDetailComponent };
-      }
-      return { component: BitacoraWrapperComponent };
-    },
-    frameworkComponents: {
-      bitacoraWrapper: BitacoraWrapperComponent,
-      pdfDetail: PdfDetailComponent
+      const t = params.data?.detailType;
+      if (t === 'pdf')       return { component: PdfDetailComponent };
+      if (t === 'material')  return { component: BitacoraMaterialComponent };
+      if (t === 'equipos')   return { component: BitacoraEquiposComponent };
+      if (t === 'fotos')     return { component: BitacoraFotosComponent };
+      if (t === 'videos')    return { component: BitacoraVideosComponent };
+      if (t === 'conceptos') return { component: BitacoraConceptosComponent };
+      if (t === 'notas')     return { component: BitacoraNotasComponent };
+      return { component: BitacoraPersonalComponent }; // default: personal
     },
     suppressMenuHide: false,
     context: {
@@ -82,7 +91,14 @@ export class SistemaComponent implements OnInit {
     { field: 'id', headerName: 'ID', width: 80, editable: false, hide: true },
     {
       field: 'date', headerName: 'Fecha', width: 120, editable: true,
-      valueFormatter: (p) => p.value ? new Date(p.value).toLocaleDateString('es-MX') : '',
+      cellEditor: 'agDateCellEditor',
+      valueGetter: (p) => p.data?.date ? String(p.data.date).substring(0, 10) : '',
+      valueSetter: (p) => { p.data.date = p.newValue; return true; },
+      valueFormatter: (p) => {
+        if (!p.value) return '';
+        const [y, m, d] = String(p.value).split('-');
+        return d && m && y ? `${d}/${m}/${y}` : p.value;
+      },
     },
     { field: 'startTime', headerName: 'Inicio', width: 100, editable: true },
     { field: 'endTime', headerName: 'Término', width: 120, editable: true },
@@ -133,6 +149,31 @@ export class SistemaComponent implements OnInit {
       cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
     },
    
+        {
+      field: 'material',
+      headerName: 'Materiales',
+      width: 130,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'material'),
+      },
+      valueGetter: params => params.data.material || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer', textDecoration: 'underline' }
+    },
+    {
+      field: 'equipos',
+      headerName: 'Equipos',
+      width: 120,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'equipos'),
+      },
+      valueGetter: params => params.data.equipos || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer', textDecoration: 'underline' }
+    },
+
     {
       field: 'fotos',
       headerName: 'Fotos',
@@ -157,30 +198,7 @@ export class SistemaComponent implements OnInit {
       editable: false,
       cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
     },
-    {
-      field: 'material',
-      headerName: 'Materiales',
-      width: 130,
-      cellRenderer: ButtonCellRendererExpenditureComponent,
-      cellRendererParams: {
-        onClick: (node: any) => this.toggleBitacoraDetail(node, 'material'),
-      },
-      valueGetter: params => params.data.material || 0,
-      editable: false,
-      cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer', textDecoration: 'underline' }
-    },
-    {
-      field: 'equipos',
-      headerName: 'Equipos',
-      width: 120,
-      cellRenderer: ButtonCellRendererExpenditureComponent,
-      cellRendererParams: {
-        onClick: (node: any) => this.toggleBitacoraDetail(node, 'equipos'),
-      },
-      valueGetter: params => params.data.equipos || 0,
-      editable: false,
-      cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer', textDecoration: 'underline' }
-    },
+
 
     {
       field: 'notas',
@@ -212,9 +230,10 @@ export class SistemaComponent implements OnInit {
   ];
 
   constructor() {
+    // Usa getSidebarProjectId (nunca modificada por ordenes) para evitar
+    // que la selección de una OT de otra empresa contamine esta vista.
     effect(() => {
-      const projectId = this.signalsService.getProjectSelectedBySidebar()();
-      console.log('Signal projectId:', projectId);
+      const projectId = this.signalsService.getSidebarProjectId()();
       if (projectId && projectId !== this.idProject) {
         this.idProject = projectId;
         this.rowData = [];
@@ -231,8 +250,7 @@ export class SistemaComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const projectId = this.signalsService.getProjectSelectedBySidebar()();
-    console.log('ngOnInit projectId:', projectId);
+    const projectId = this.signalsService.getSidebarProjectId()();
     if (projectId) {
       this.idProject = projectId;
       this.loadReports();
@@ -275,7 +293,7 @@ export class SistemaComponent implements OnInit {
       return;
     }
     const newRow = {
-      id: null,
+      idOt: null,
       idProject: this.idProject,
       date: new Date().toISOString().substring(0, 10),
       startTime: '07:52:00',
@@ -306,23 +324,68 @@ export class SistemaComponent implements OnInit {
   async saveChanges(): Promise<void> {
     const newItems      = this.rowData.filter(r => r.__isNew);
     const modifiedItems = this.rowData.filter(r => r.__modified && !r.__isNew);
+    
+    if (!newItems.length && !modifiedItems.length) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      return;
+    }
+
     try {
       for (const item of newItems) {
         await new Promise((resolve, reject) => {
           this.dailyReportService.addDailyReport(this.cleanForServer(item))
-            .subscribe({ next: resolve, error: reject });
+            .subscribe({ 
+              next: resolve, 
+              error: (err) => {
+                console.error('❌ Error al agregar:', err);
+                let msg = 'Error desconocido';
+                if (err.error) {
+                  if (typeof err.error === 'string') {
+                    msg = err.error;
+                  } else if (err.error.errors) {
+                    const errors = Object.entries(err.error.errors);
+                    msg = errors.map(([field, value]: [string, any]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`).join(' | ');
+                  } else if (err.error.message) {
+                    msg = err.error.message;
+                  }
+                } else if (err.message) {
+                  msg = err.message;
+                }
+                reject(new Error(`Error al agregar reporte del ${item.date}: ${msg}`));
+              } 
+            });
         });
       }
       for (const item of modifiedItems) {
         await new Promise((resolve, reject) => {
           this.dailyReportService.updateDailyReport(item.id, this.cleanForServer(item))
-            .subscribe({ next: resolve, error: reject });
+            .subscribe({ 
+              next: resolve, 
+              error: (err) => {
+                console.error('❌ Error al actualizar:', err);
+                let msg = 'Error desconocido';
+                if (err.error) {
+                  if (typeof err.error === 'string') {
+                    msg = err.error;
+                  } else if (err.error.errors) {
+                    const errors = Object.entries(err.error.errors);
+                    msg = errors.map(([field, value]: [string, any]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`).join(' | ');
+                  } else if (err.error.message) {
+                    msg = err.error.message;
+                  }
+                } else if (err.message) {
+                  msg = err.message;
+                }
+                reject(new Error(`Error al actualizar reporte ID ${item.id}: ${msg}`));
+              } 
+            });
         });
       }
       alerts.basicAlert('Éxito', 'Cambios guardados correctamente', 'success');
       this.loadReports();
-    } catch {
-      alerts.basicAlert('Error', 'Error al guardar los cambios', 'error');
+    } catch (error: any) {
+      console.error('Error al guardar:', error);
+      alerts.basicAlert('Error', error?.message || 'Error al guardar los cambios', 'error');
     }
   }
 
@@ -365,7 +428,8 @@ export class SistemaComponent implements OnInit {
   }
 
   private cleanForServer(item: any): any {
-    const { __isNew, __modified, ...data } = item;
+    const { __isNew, __modified, detailType, detailData, visible, ...data } = item;
+    console.log('📤 Enviando al servidor:', data);
     return data;
   }
 
@@ -427,16 +491,16 @@ export class SistemaComponent implements OnInit {
   updateBitacoraCount(reportId: number, bitacoraType: string, count: number) {
     if (!this.gridApi) return;
 
-    const rowNode = this.gridApi.getRowNode(reportId.toString());
-    if (rowNode && rowNode.data) {
-      rowNode.data[bitacoraType] = count;
-      this.gridApi.applyTransaction({ update: [rowNode.data] });
-      this.gridApi.refreshCells({
-        rowNodes: [rowNode],
-        columns: [bitacoraType],
-        force: true
-      });
-    }
+    this.gridApi.forEachNode((node) => {
+      if (node.data?.id === reportId) {
+        node.data[bitacoraType] = count;
+        this.gridApi.refreshCells({
+          rowNodes: [node],
+          columns: [bitacoraType],
+          force: true
+        });
+      }
+    });
   }
 
   togglePdfDetail(node: any) {

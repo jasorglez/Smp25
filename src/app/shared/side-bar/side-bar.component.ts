@@ -278,6 +278,7 @@ error: (error) => {
       );
       // Borro la signal de project para resetear el dato
       this.signalsService.setProjectSelectedBySidebar(null);
+      this.signalsService.setSidebarProjectId(null);
       this.trackingService.setContract(this.selectedContractId);
       this.signalsService.setContractSelectedBySidebar(
         Number(this.selectedContractId)
@@ -345,6 +346,8 @@ error: (error) => {
       this.signalsService.setProjectSelectedBySidebar(
         Number(this.selectedProjectId)
       );
+      // Signal exclusiva del sidebar (no la toca ordenes)
+      this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
     }
   }
 
@@ -360,6 +363,8 @@ error: (error) => {
             this.selectedProjectId = this.projectData[0].idProject;
             this.trackingService.setProject(this.selectedProjectId);
             this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
+            // Signal exclusiva del sidebar (no la toca ordenes)
+            this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
             setTimeout(() => {
               const selectElement = document.getElementById('project') as HTMLSelectElement;
               if (selectElement) selectElement.value = this.selectedProjectId;
@@ -367,6 +372,7 @@ error: (error) => {
           } else {
             this.selectedProjectId = '';
             this.trackingService.setProject('');
+            this.signalsService.setSidebarProjectId(null);
           }
         },
         error: (error) => {
@@ -531,6 +537,7 @@ error: (error) => {
     this.projectData = [];
     this.selectedProjectId = '';
     this.signalsService.setProjectSelectedBySidebar(null);
+    this.signalsService.setSidebarProjectId(null);
     this.trackingService.setProject('');
     
     // Limpiar los selects en el DOM

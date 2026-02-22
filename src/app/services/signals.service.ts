@@ -109,6 +109,18 @@ getMasterUpdateTrigger() {
     this.projectSelectedBySidebar.set(id);
   }
 
+  /** Signal exclusiva del sidebar (nunca modificada por ordenes).
+   *  Usada por sistema/reportes-diarios para evitar contaminación cruzada. */
+  private sidebarProjectId = signal<number | null>(null);
+
+  setSidebarProjectId(id: number | null) {
+    this.sidebarProjectId.set(id);
+  }
+
+  getSidebarProjectId() {
+    return this.sidebarProjectId;
+  }
+
   private branchSelectedBySidebar = signal<number | null>(null);
 
   setBranchSelectedBySidebar(id: number) {

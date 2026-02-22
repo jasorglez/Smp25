@@ -1,129 +1,129 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
-import { LogbookService } from 'app/services/logbook.service';
+import { ColDef } from 'ag-grid-enterprise';
+import { BitacoraBaseComponent, BITACORA_TEMPLATE, BITACORA_STYLES } from './bitacora-base.component';
 import { alerts } from 'app/helpers/alerts';
+import { EquipmentService } from 'app/services/equipment.service';
 
 @Component({
   selector: 'app-bitacora-equipos',
   standalone: true,
   imports: [CommonModule, AgGridModule],
-  template: `
-    <div class="detail-grid-container">
-      <div class="detail-actions d-flex align-items-center mb-2 gap-1">
-        <button class="btn btn-outline-secondary btn-sm" (click)="closeDetail()">
-          <i class="bi bi-x-lg"></i>
-        </button>
-        <button class="btn btn-primary btn-sm" (click)="addRow()">
-          <i class="bi bi-plus-lg"></i>
-        </button>
-        <button class="btn btn-warning btn-sm" (click)="discardChanges()">
-          <i class="bi bi-arrow-counterclockwise"></i>
-        </button>
-        <button class="btn btn-danger btn-sm" (click)="deleteSelected()">
-          <i class="bi bi-trash"></i>
-        </button>
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
-          <i class="bi bi-floppy"></i>
-          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="hasUnsavedChanges"></span>
-        </button>
-      </div>
-      <ag-grid-angular
-        class="ag-theme-quartz small-text-ag-grid"
-        [rowData]="rowData"
-        [columnDefs]="columnDefs"
-        [gridOptions]="gridOptions"
-        (gridReady)="onGridReady($event)"
-        (cellValueChanged)="onCellValueChanged($event)"
-        style="height: 300px; width: 100%;">
-      </ag-grid-angular>
-    </div>
-  `,
-  styles: [`.detail-grid-container { padding: 5px; background-color: #f8f9fa; border-radius: 4px; }`, `.gap-1 { gap: 4px !important; }`]
+  template: BITACORA_TEMPLATE,
+  styles: BITACORA_STYLES,
 })
-export class BitacoraEquiposComponent {
-  private logbookService = inject(LogbookService);
-  private gridApi!: GridApi;
-  private context: any;
-
-  rowData: any[] = [];
-  hasUnsavedChanges: boolean = false;
-  reportData: any = null;
-  tempIdCounter: number = 0;
-
-  columnDefs: ColDef[] = [
-    { headerName: '#', width: 50, valueGetter: (p) => p.node!.rowIndex! + 1, pinned: 'left' },
-    { field: 'date', headerName: 'Fecha', editable: true, width: 120 },
-    { field: 'idResource', headerName: 'ID Equipo', editable: true, width: 120 },
-    { field: 'quantity', headerName: 'Cantidad', editable: true, width: 100, type: 'numericColumn' },
-    { field: 'hours', headerName: 'Horas', editable: true, width: 100, type: 'numericColumn' },
-    { field: 'description', headerName: 'Descripción', editable: true, flex: 1 },
+export class BitacoraEquiposComponent extends BitacoraBaseComponent {
+  private equipmentService = inject(EquipmentService);
+  
+  readonly bitacoraType  = 'equipos';
+  readonly typeNoteValue = 'EQUIPMENT';
+  readonly editableCols  = ['name', 'quantity', 'hours', 'description'];
+  readonly requiredFields = [
+    { field: 'name',     label: 'Equipo'   },
+    { field: 'quantity', label: 'Cantidad' },
   ];
 
-  gridOptions: any = { headerHeight: 30, rowHeight: 30, rowSelection: 'single' };
+  equiposCatalog: any[] = [];
 
-  agInit(params: ICellRendererParams): void {
-    this.context = params.context;
-    this.reportData = params.data;
-    this.loadData();
-  }
-
-  private loadData() {
-    if (!this.reportData?.id) return;
-    this.logbookService.getInfoByReporte(this.reportData.id, 'EQUIPMENT').subscribe({
-      next: (resp: any) => {
-        this.rowData = resp.success ? (resp.data || []).map((item: any, i: number) => ({
-          ...item,
-          id: item.id || `temp_${Date.now()}_${i}`,
-          __isNew: false, __modified: false
-        })) : [];
+  protected override onLoadCatalogs(idRoot: number): void {
+    this.equipmentService.getEquipment(idRoot).subscribe({
+      next: (resp: any[]) => { 
+        this.equiposCatalog = resp.filter(e => e.active !== false);
+        console.log('📦 Equipos cargados:', this.equiposCatalog.slice(0, 3));
       },
-      error: () => this.rowData = []
+      error: () => {},
     });
   }
 
-  onGridReady(params: GridReadyEvent) { this.gridApi = params.api; }
+  // DB description → nombre equipo, DB supervisor → nota usuario,
+  // DB idResource  → id equipo,     DB position   → horas
+  protected override remapFromDb(item: any): any {
+    return {
+      ...item,
+      name:        item.description,
+      description: item.supervisor,
+      idEquipment: item.idResource,
+      hours:       item.position,
+    };
+  }
 
-  addRow() {
-    this.rowData = [{
+  get colDefs(): ColDef[] {
+    return [
+      { headerName: '#', width: 45, valueGetter: (p) => p.node!.rowIndex! + 1, pinned: 'left', editable: false },
+      {
+        field: 'name', headerName: 'Equipo', editable: true, flex: 1,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.equiposCatalog.map(e => e.description || e.name) }),
+        valueSetter: (p) => {
+          const eq = this.equiposCatalog.find(e => (e.description || e.name) === p.newValue);
+          if (eq) {
+            p.data.name = eq.description || eq.name;
+            p.data.idEquipment = eq.id;
+          } else {
+            p.data.name = p.newValue;
+          }
+          return true;
+        },
+      },
+      { field: 'quantity',    headerName: 'Cantidad',    editable: true, width: 90, type: 'numericColumn' },
+      { field: 'hours',       headerName: 'Horas',       editable: true, width: 80              },
+   //   { field: 'description', headerName: 'Descripción', editable: true, width: 180             },
+    ];
+  }
+
+  override addRow(): void {
+    const newRow = {
       id: `temp_${this.tempIdCounter++}`,
       idReporte: this.reportData?.id,
-      date: new Date().toISOString().split('T')[0],
-      description: '', active: true, __isNew: true, __modified: false
-    }, ...this.rowData];
+      name: '',
+      quantity: 1,
+      hours: null,
+      description: null,
+      active: true, __isNew: true, __modified: false,
+    };
+    this.rowData = [newRow, ...this.rowData];
     this.hasUnsavedChanges = true;
+    setTimeout(() => {
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: this.editableCols[0] });
+    }, 50);
   }
 
-  deleteSelected() {
-    const rows = this.gridApi.getSelectedRows();
-    if (!rows.length) { alerts.basicAlert('Error', 'Seleccione un registro', 'warning'); return; }
-    this.rowData = this.rowData.filter(r => r !== rows[0]);
-    this.hasUnsavedChanges = true;
-  }
-
-  saveChanges() {
-    alerts.basicAlert('Guardar', 'Funcionalidad en desarrollo', 'info');
-    this.hasUnsavedChanges = false;
-    if (this.context?.componentParent?.updateBitacoraCount) {
-      this.context.componentParent.updateBitacoraCount(this.reportData?.id, 'equipos', this.rowData.length);
+  override onCellValueChanged(event: any): void {
+    if (event.colDef.field === 'quantity') {
+      event.data.quantity = 1;
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['quantity'], force: true });
     }
-  }
 
-  discardChanges() {
-    this.loadData();
-    this.hasUnsavedChanges = false;
-  }
+    if (event.colDef.field === 'name' && event.newValue) {
+      const duplicateExists = this.rowData.some((row, index) =>
+        index !== event.rowIndex &&
+        row.name === event.newValue
+      );
 
-  onCellValueChanged(event: any) {
+      if (duplicateExists) {
+        alerts.basicAlert(
+          'Equipo repetido',
+          `El equipo "${event.newValue}" ya está agregado. No se permiten equipos repetidos.`,
+          'warning'
+        );
+        event.node.setDataValue('name', event.oldValue);
+        return;
+      }
+    }
+
     if (!event.data.__isNew) event.data.__modified = true;
     this.hasUnsavedChanges = true;
   }
 
-  closeDetail() {
-    if (this.context?.componentParent?.collapseBitacoraDetail) {
-      this.context.componentParent.collapseBitacoraDetail(this.reportData?.id);
-    }
+  buildPayload(item: any): any {
+    return {
+      ...this.basePayload(item),
+      description: item.name?.trim()        || null,  // nombre equipo → description
+      supervisor:  item.description?.trim() || null,  // nota usuario  → supervisor
+      position:    item.hours != null ? String(item.hours) : null, // horas → position
+      idResource:  item.idEquipment         ?? null,  // id equipo     → idResource
+    };
   }
 }
