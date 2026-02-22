@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.71 (22 Febrero 2026 13:01) - Iris: Menú clic derecho para copiar del día anterior',
+  version: '5.72 (22 Febrero 2026) - Iris: PDF reporte diario con bitácoras y fotografías',
 
 };

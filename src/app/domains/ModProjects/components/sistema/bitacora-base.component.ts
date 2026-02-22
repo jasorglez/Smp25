@@ -64,6 +64,8 @@ export const BITACORA_TEMPLATE = `
     (gridReady)="onGridReady($event)"
     (cellValueChanged)="onCellValueChanged($event)"
     (cellEditingStopped)="onCellEditingStopped($event)"
+    (cellClicked)="onCellClicked($event)"
+    (cellDoubleClicked)="onCellDoubleClicked($event)"
     style="height: 300px; width: 100%;">
   </ag-grid-angular>
 </div>
@@ -205,6 +207,14 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
         this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableCols[idx + 1] });
       }, 100);
     }
+  }
+
+  onCellDoubleClicked(event: any): void {
+    // Base implementation - can be overridden by child components
+  }
+
+  onCellClicked(event: any): void {
+    // Base implementation - can be overridden by child components
   }
 
   // ── CRUD ─────────────────────────────────────────────────────────────────
