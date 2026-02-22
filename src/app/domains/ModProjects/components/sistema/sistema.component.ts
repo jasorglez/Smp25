@@ -72,6 +72,40 @@ export class SistemaComponent implements OnInit {
     context: {
       componentParent: null
     },
+    getContextMenuItems: (params: any) => {
+      if (!params.node?.data) return ['copy'];
+      const row = params.node.data;
+      return [
+        {
+          name: '<b>Traer Personal</b>',
+          icon: '<i class="bi bi-people-fill" style="color:#1976d2"></i>',
+          action: () => this.copyFromPreviousDay(row, ['PERSONAL']),
+        },
+        {
+          name: '<b>Traer Material</b>',
+          icon: '<i class="bi bi-box-fill" style="color:#e91e63"></i>',
+          action: () => this.copyFromPreviousDay(row, ['MATERIAL']),
+        },
+        {
+          name: '<b>Traer Equipo</b>',
+          icon: '<i class="bi bi-truck" style="color:#9c27b0"></i>',
+          action: () => this.copyFromPreviousDay(row, ['EQUIPMENT']),
+        },
+        'separator',
+        {
+          name: '<b>Traer Personal, Material y Equipo</b>',
+          icon: '<i class="bi bi-clipboard-check-fill" style="color:#2e7d32"></i>',
+          action: () => this.copyFromPreviousDay(row, ['PERSONAL', 'MATERIAL', 'EQUIPMENT']),
+        },
+        {
+          name: '<b>Traer todo del día anterior</b>',
+          icon: '<i class="bi bi-calendar-check-fill" style="color:#f57c00"></i>',
+          action: () => this.copyFromPreviousDay(row, ['PERSONAL', 'MATERIAL', 'EQUIPMENT', 'CONCEPT', 'NOTE']),
+        },
+        'separator',
+        'copy',
+      ];
+    },
     isExternalFilterPresent: () => {
       return this.externalFilterActive;
     },
@@ -90,7 +124,7 @@ export class SistemaComponent implements OnInit {
   public colDefs: ColDef[] = [
     { field: 'id', headerName: 'ID', width: 80, editable: false, hide: true },
     {
-      field: 'date', headerName: 'Fecha', width: 120, editable: true,
+      field: 'date', headerName: 'Fecha', width: 110, editable: true,
       cellEditor: 'agDateCellEditor',
       valueGetter: (p) => p.data?.date ? String(p.data.date).substring(0, 10) : '',
       valueSetter: (p) => { p.data.date = p.newValue; return true; },
@@ -102,10 +136,10 @@ export class SistemaComponent implements OnInit {
     },
     { field: 'startTime', headerName: 'Inicio', width: 100, editable: true },
     { field: 'endTime', headerName: 'Término', width: 120, editable: true },
-    { field: 'type', headerName: 'Tipo', width: 100, editable: true },
+//    { field: 'type', headerName: 'Tipo', width: 100, editable: true },
     { field: 'description', headerName: 'Descripción', width: 200, editable: true },
     {
-      field: 'totalPay', headerName: 'Total $', width: 140, editable: true,
+      field: 'totalPay', headerName: 'Total $', width: 120, editable: true,
       cellEditor: 'agNumberCellEditor',
       valueFormatter: (p) => p.value != null
         ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p.value)
@@ -113,7 +147,7 @@ export class SistemaComponent implements OnInit {
     },
     {
       headerName: 'PDF',
-      width: 70,
+      width: 100,
       cellRenderer: PdfButtonCellRendererComponent,
       cellRendererParams: {
         onClick: (node: any) => this.togglePdfDetail(node),
@@ -139,7 +173,7 @@ export class SistemaComponent implements OnInit {
     {
       field: 'personal',
       headerName: 'Personal',
-      width: 140,
+      width: 130,
       cellRenderer: ButtonCellRendererExpenditureComponent,
       cellRendererParams: {
         onClick: (node: any) => this.toggleBitacoraDetail(node, 'personal'),
@@ -549,5 +583,118 @@ export class SistemaComponent implements OnInit {
       });
       this.gridApi.onFilterChanged();
     }
+  }
+
+  // ==================== COPIAR DEL DÍA ANTERIOR ====================
+
+  async copyFromPreviousDay(row: any, types: string[]): Promise<void> {
+    if (!row.id) {
+      alerts.basicAlert('Aviso', 'Guarda el reporte primero antes de copiar datos del día anterior', 'warning');
+      return;
+    }
+
+    // Buscar el reporte más reciente con fecha anterior a la del row seleccionado
+    const currentDate = new Date(String(row.date).substring(0, 10) + 'T00:00:00');
+    const prevReport = this.rowData
+      .filter(r => r.id && r.id !== row.id && new Date(String(r.date).substring(0, 10) + 'T00:00:00') < currentDate)
+      .sort((a, b) => new Date(String(b.date).substring(0, 10)).getTime() - new Date(String(a.date).substring(0, 10)).getTime())[0];
+
+    if (!prevReport) {
+      alerts.basicAlert('Sin reporte previo', 'No se encontró ningún reporte anterior a este día', 'warning');
+      return;
+    }
+
+    const typeLabels = types.map(t => this.typeLabel(t)).join(', ');
+    const result = await alerts.confirmAlert(
+      'Copiar del día anterior',
+      `Se copiará <b>${typeLabels}</b> del <b>${this.fmtDateMx(prevReport.date)}</b> al <b>${this.fmtDateMx(row.date)}</b>.\n\nLos registros existentes no se eliminarán.`,
+      'question',
+      'Copiar'
+    );
+    if (!result.isConfirmed) return;
+
+    let totalCopied = 0;
+    const destDate = String(row.date).substring(0, 10);
+
+    try {
+      for (const typeNote of types) {
+        const resp: any = await new Promise((res, rej) =>
+          this.logbookService.getInfoByReporte(prevReport.id, typeNote).subscribe({ next: res, error: rej }));
+
+        if (!resp?.success || !resp?.data?.length) continue;
+
+        const items: any[] = resp.data;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const payload = {
+            idReporte:   row.id,
+            idProject:   row.idProject ?? null,
+            typeNote,
+            date:        destDate,
+            orden:       i + 1,
+            quantity:    item.quantity    ?? null,
+            description: item.description ?? null,
+            supervisor:  item.supervisor  ?? null,
+            position:    item.position    ?? null,
+            idResource:  item.idResource  ?? null,
+            imageUrl:    item.imageUrl    ?? null,
+            active:      true,
+          };
+          await new Promise((res, rej) =>
+            this.logbookService.addDataForOt(payload).subscribe({ next: res, error: rej }));
+          totalCopied++;
+        }
+      }
+
+      alerts.basicAlert('Éxito', `Se copiaron ${totalCopied} registro(s) del día anterior`, 'success');
+
+      // Actualizar contadores en el grid maestro
+      for (const typeNote of types) {
+        const field = this.typeToField(typeNote);
+        if (!field) continue;
+        const resp: any = await new Promise((res, rej) =>
+          this.logbookService.getInfoByReporte(row.id, typeNote).subscribe({ next: res, error: rej }));
+        if (resp?.success) {
+          const count = resp.data?.length ?? 0;
+          this.updateBitacoraCount(row.id, field, count);
+          this.dailyReportService.updateBitacoraCount(row.id, typeNote, count).subscribe();
+        }
+      }
+    } catch (e: any) {
+      console.error('Error al copiar del día anterior:', e);
+      alerts.basicAlert('Error', e?.message || 'No se pudo copiar del día anterior', 'error');
+    }
+  }
+
+  private typeLabel(typeNote: string): string {
+    const labels: Record<string, string> = {
+      'PERSONAL':  'Personal',
+      'MATERIAL':  'Material',
+      'EQUIPMENT': 'Equipos',
+      'CONCEPT':   'Conceptos',
+      'NOTE':      'Notas',
+      'Photo':     'Fotos',
+      'Video':     'Videos',
+    };
+    return labels[typeNote] ?? typeNote;
+  }
+
+  private typeToField(typeNote: string): string | null {
+    const map: Record<string, string> = {
+      'PERSONAL':  'personal',
+      'MATERIAL':  'material',
+      'EQUIPMENT': 'equipos',
+      'CONCEPT':   'conceptos',
+      'NOTE':      'notas',
+      'Photo':     'fotos',
+      'Video':     'videos',
+    };
+    return map[typeNote] ?? null;
+  }
+
+  private fmtDateMx(dateStr: string): string {
+    if (!dateStr) return '';
+    const [y, m, d] = String(dateStr).substring(0, 10).split('-');
+    return d && m && y ? `${d}/${m}/${y}` : dateStr;
   }
 }

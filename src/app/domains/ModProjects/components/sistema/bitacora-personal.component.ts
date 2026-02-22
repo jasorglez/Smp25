@@ -25,7 +25,7 @@ export class BitacoraPersonalComponent extends BitacoraBaseComponent {
     return [
       { headerName: '#', width: 45, valueGetter: (p) => p.node!.rowIndex! + 1, pinned: 'left', editable: false },
       {
-        field: 'position', headerName: 'Puesto', editable: true, width: 260,
+        field: 'position', headerName: 'Puesto', editable: true, width: 400,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.posicionesValues }),
         valueFormatter: (p) => p.value || '',
