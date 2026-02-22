@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.72 (22 Febrero 2026) - Iris: PDF reporte diario con bitácoras y fotografías',
+  version: '5.72 (22 Febrero 2026 15:00) - Iris: PDF reporte diario TMDB'
 
 };

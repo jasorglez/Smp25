@@ -76,6 +76,8 @@ export const BITACORA_STYLES = [
   `.gap-1 { gap: 4px !important; }`,
   `.editing-cell { background-color: #fff3cd !important; }`,
   `.ag-cell.editing-cell { background-color: #fff3cd !important; }`,
+  `.ag-cell { white-space: pre-wrap !important; word-wrap: break-word !important; }`,
+  `.ag-theme-quartz .ag-cell { white-space: pre-wrap !important; }`,
 ];
 
 // ── Clase base abstracta ──────────────────────────────────────────────────────
