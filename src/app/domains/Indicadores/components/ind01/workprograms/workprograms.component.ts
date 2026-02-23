@@ -2,7 +2,7 @@ import { Component, effect, HostListener, inject, NgZone } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
-import { Observable, catchError, forkJoin, lastValueFrom, map, of } from 'rxjs';
+import { Observable, catchError, finalize, forkJoin, lastValueFrom, map, of } from 'rxjs';
 import { AuxiliarsComponent } from './auxiliars/auxiliars.component';
 import { MaterialsComponent } from './materials/materials.component';
 import { PersonalComponent } from './personal/personal.component';
@@ -44,6 +44,7 @@ export class WorkprogramsComponent {
   typeWorkProgram: string = 'Project';
   measures: any;
   notSavedChanges: boolean = false;
+  isSaving: boolean = false;
   idcompany: number = null;
 
   showNewFaseModal: boolean = false;
@@ -474,8 +475,14 @@ export class WorkprogramsComponent {
       return;
     }
 
+    if (this.isSaving) {
+      return;
+    }
+
     const tasks = gantt.getTaskByTime();
     const requests: Observable<any>[] = [];
+    const createTasks: any[] = [];
+    const updateRequestsCountRef = { count: 0 };
 
     tasks.forEach(task => {
       if (!this.deletedTasks.has(task['idEntry'])) {
@@ -483,10 +490,12 @@ export class WorkprogramsComponent {
 
         if (task['idEntry'] === undefined) {
           // Nueva tarea
+          createTasks.push(task);
           requests.push(this.workprogramsService.addWorkProgram(transformedTask));
 
         } else {
           // Tarea existente
+          updateRequestsCountRef.count++;
           requests.push(this.workprogramsService.updateWorkProgram(task['idEntry'], transformedTask));
         }
         console.log(transformedTask);
@@ -498,18 +507,32 @@ export class WorkprogramsComponent {
       requests.push(this.workprogramsService.deleteWorkProgram(idEntry));
     });
 
-    forkJoin(requests).subscribe({
+    if (requests.length === 0) {
+      this.notSavedChanges = false;
+      return;
+    }
+
+    this.isSaving = true;
+
+    forkJoin(requests).pipe(
+      finalize(() => this.isSaving = false)
+    ).subscribe({
       next: (results) => {
         alerts.basicAlert('Editar', 'Todas las operaciones completadas con éxito', 'success');
         console.log('Todas las operaciones completadas con éxito', results);
-        // Actualizar idEntry para nuevas tareas
-        let newTaskIndex = 0;
-        tasks.forEach(task => {
-          if (task['idEntry'] === undefined && !this.deletedTasks.has(task['idEntry'])) {
-            task['idEntry'] = results[newTaskIndex].id;
-            newTaskIndex++;
+        // Actualizar idEntry para nuevas tareas usando offset correcto
+        const createStartIndex = updateRequestsCountRef.count;
+        createTasks.forEach((task, index) => {
+          const createResult = results[createStartIndex + index];
+          const createdId = typeof createResult === 'number'
+            ? createResult
+            : createResult?.id ?? createResult?.Id ?? createResult?.data?.id;
+
+          if (createdId !== undefined && createdId !== null) {
+            task['idEntry'] = createdId;
           }
         });
+
         // Limpiar la lista de tareas eliminadas
         this.deletedTasks.clear();
         this.loadDataFromAPI();
