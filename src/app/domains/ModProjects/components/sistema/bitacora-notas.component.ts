@@ -19,7 +19,9 @@ import { alerts } from 'app/helpers/alerts';
 export class BitacoraNotasComponent extends BitacoraBaseComponent {
   readonly bitacoraType  = 'notas';
   readonly typeNoteValue = 'NOTE';
-  readonly editableCols  = ['title', 'content'];
+  readonly editableCols  = ['title'];
+  private readonly maxContentLength = 4000;
+  private _colDefs: ColDef[] = [];
   readonly requiredFields = [
     { field: 'title',   label: 'Título'    },
     { field: 'content', label: 'Contenido' },
@@ -39,6 +41,9 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
       this.catalogService.getTypeNote(idRoot).subscribe({
         next: (data: any) => {
           this.typeNotesCatalog = data;
+          // Rebuild cached column defs when catalog changes
+          this._colDefs = [];
+          this.gridApi?.setGridOption('columnDefs', this.colDefs);
         },
         error: (error) => {
           console.error('Error fetching type notes:', error);
@@ -58,7 +63,8 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
   }
 
   get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs.length > 0) return this._colDefs;
+    this._colDefs = [
       { headerName: '#', width: 45, valueGetter: (p) => p.node!.rowIndex! + 1, pinned: 'left', editable: false },
       {
         field: 'title',
@@ -99,33 +105,29 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
         headerName: 'Descripción',
         editable: false,
         flex: 1,
-        wrapText: true,
-        autoHeight: true,
+        tooltipValueGetter: (params) => this.normalizeContentValue(params.value),
+        cellRenderer: (params) => this.formatContentPreview(params.value),
         cellStyle: {
-          'white-space': 'normal',
+          'white-space': 'pre-wrap',
           'word-wrap': 'break-word',
-          'line-height': '20px',
-          'padding': '5px 8px',
-        },
-        cellRenderer: (params: any) => {
-          if (!params.value) {
-            const div = document.createElement('div');
-            div.style.cssText = 'color:#999;font-style:italic;font-size:12px';
-            div.textContent = 'Click para agregar descripción...';
-            return div;
-          }
-          const div = document.createElement('div');
-          div.style.cssText = 'white-space:normal;word-break:break-word;line-height:20px;color:#333';
-          div.textContent = String(params.value).toUpperCase();
-          return div;
-        },
-        onCellClicked: (event: any) => {
-          if (event.colDef.field === 'content') {
-            this.openContentModal(event.value || '', event.node);
-          }
+          'line-height': '18px',
+          'padding': '4px',
+          'cursor': 'pointer',
         },
       },
+      {
+        colId: 'contentEdit',
+        headerName: '',
+        width: 44,
+        pinned: 'right',
+        sortable: false,
+        filter: false,
+        resizable: false,
+        cellRenderer: () => '<button class="btn btn-sm btn-outline-primary p-0 px-1" title="Editar">✎</button>',
+        cellStyle: { 'text-align': 'center' },
+      },
     ];
+    return this._colDefs;
   }
 
   override addRow(): void {
@@ -155,24 +157,24 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
     const currentValue = event.value || '';
     const fieldName = event.colDef.field;
 
-    alerts.inputAlert(
+    alerts.largeTextAlert(
       'Editar Descripción',
       'Ingrese la descripción:',
-      'textarea',
       currentValue,
       {
-        inputAttributes: {
-          maxlength: '1000',
-          rows: '8',
-          cols: '80',
-          style: 'min-height: 200px; min-width: 400px; resize: both;',
-          placeholder: 'Escriba aquí la descripción...'
-        },
+        maxLength: this.maxContentLength,
+        placeholder: 'Escriba aquí la descripción...',
         showCancelButton: true,
         confirmButtonText: 'Guardar',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d'
+        cancelButtonColor: '#6c757d',
+        swalOptions: {
+          width: '98vw',
+          grow: 'fullscreen',
+          heightAuto: false,
+          padding: '1rem 1.5rem'
+        }
       }
     ).then((result) => {
       if (result.isConfirmed && result.value !== undefined) {
@@ -186,24 +188,25 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
   }
 
   openContentModal(currentValue: string, node: any): void {
-    alerts.inputAlert(
+    this.gridApi?.stopEditing();
+    alerts.largeTextAlert(
       'Editar Descripción',
       'Ingrese la descripción:',
-      'textarea',
       currentValue || '',
       {
-        inputAttributes: {
-          maxlength: '1000',
-          rows: '8',
-          cols: '80',
-          style: 'min-height: 200px; min-width: 400px; resize: both;',
-          placeholder: 'Escriba aquí la descripción...'
-        },
+        maxLength: this.maxContentLength,
+        placeholder: 'Escriba aquí la descripción...',
         showCancelButton: true,
         confirmButtonText: 'Guardar',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d'
+        cancelButtonColor: '#6c757d',
+        swalOptions: {
+          width: '98vw',
+          grow: 'fullscreen',
+          heightAuto: false,
+          padding: '1rem 1.5rem'
+        }
       }
     ).then((result) => {
       if (result.isConfirmed && result.value !== undefined) {
@@ -225,5 +228,30 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
       description: item.content?.trim() || null,
       idResource: item.idResource ?? null,
     };
+  }
+
+  override onCellDoubleClicked(event: any): void {
+    if (event?.colDef?.field === 'content') {
+      const currentValue = this.normalizeContentValue(event.value);
+      this.openContentModal(currentValue, event.node);
+    }
+  }
+
+  override onCellClicked(event: any): void {
+    if (event?.colDef?.colId === 'contentEdit') {
+      const currentValue = this.normalizeContentValue(event.data?.content);
+      this.openContentModal(currentValue, event.node);
+    }
+  }
+
+  private normalizeContentValue(value: any): string {
+    return value === null || value === undefined ? '' : String(value);
+  }
+
+  private formatContentPreview(value: any): string {
+    const text = this.normalizeContentValue(value).replace(/\r\n/g, '\n').trim();
+    if (!text) return '';
+    const firstLine = text.split('\n')[0];
+    return firstLine.length > 140 ? `${firstLine.slice(0, 140)}...` : firstLine;
   }
 }
