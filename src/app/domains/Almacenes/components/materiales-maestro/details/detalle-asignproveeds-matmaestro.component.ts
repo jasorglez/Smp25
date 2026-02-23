@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
-import { ICellRendererParams } from 'ag-grid-enterprise';
+import { ColDef, ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
@@ -11,6 +12,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetallesSucursalesProveedorComponent } from './detalles-sucursalesproveedor.component';
+import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detalle-asignproveeds-matmaestro',
@@ -69,12 +72,15 @@ import { DetallesSucursalesProveedorComponent } from './detalles-sucursalesprove
     </div>
   `
 })
-export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp {
+export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp, OnDestroy {
 
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
+  private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
+
+  private _sucursalSub: Subscription;
 
   params: any;
   materialId: number;
@@ -126,7 +132,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent
   };
 
-  proveedorColumnDefs = [
+  proveedorColumnDefs: ColDef[] = [
     {
         field: 'id',
         headerName: 'Id',
@@ -178,16 +184,35 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         editable: true,
         width: 200,
         flex: 1,
-
+        cellStyle: (params: any) => {
+          if (params.data?.__isNew) return null;
+          if (params.data?._hasSucursales === false) {
+            return { backgroundColor: '#fce4ec', borderLeft: '3px solid #e91e63' };
+          }
+          return null;
+        },
+        tooltipValueGetter: (params: any) => {
+          if (params.data?._hasSucursales === false) return 'Sin sucursales asignadas';
+          return null;
+        },
         // Nuevo editor
         cellEditor: SelectWithTooltipEditorV2Component,
 
         cellEditorParams: (params: any) => {
+          const currentIdTabla = params.data.idTabla;
+          const usedIds = new Set(
+            (this.proveedorRowData || [])
+              .map((row: any) => row.idTabla)
+              .filter((id: any) => id && id !== 0 && id !== currentIdTabla)
+          );
           return {
-            options: (this.filteredProviders || []).map((p: any) => ({
-              id: p.id,
-              description: this.getProviderDisplayName(p)
-            }))
+            options: (this.filteredProviders || [])
+              .filter((p: any) => !usedIds.has(p.id))
+              .map((p: any) => ({
+                id: p.id,
+                description: this.getProviderDisplayName(p)
+              }))
+              .sort((a: any, b: any) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }))
           };
         },
       
@@ -334,11 +359,20 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       headerName: 'Sucursal',
       width: 150,
       flex: 1,
-      cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' },
+      cellStyle: (params: any) => {
+        if (params.data?.__isNew) {
+          return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd' };
+        }
+        return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
+      },
       cellRenderer: (params: any) => {
-        // Mostrar siempre "Ver"
         const div = document.createElement('div');
-        div.innerText = 'Ver';
+        if (params.data?.__isNew) {
+          div.innerText = 'Guarda primero';
+          div.title = 'Guarda el proveedor antes de ver sucursales';
+        } else {
+          div.innerText = 'Ver';
+        }
         return div;
       }
     }
@@ -369,6 +403,25 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.loadBranches();
     this.loadProveedorData();
 
+    // Suscribirse al evento de sucursal guardada para quitar color rosa
+    this._sucursalSub = this.sucursalByMaterialProveedorService.sucursalSaved$.subscribe(
+      (idProveedor: number) => {
+        const row = this.proveedorRowData.find((r: any) => r.id === idProveedor);
+        if (row) {
+          row._hasSucursales = true;
+          if (this.proveedorGridApi) {
+            let targetNode: any = null;
+            this.proveedorGridApi.forEachNode((node: any) => {
+              if (node.data?.id === idProveedor) targetNode = node;
+            });
+            if (targetNode) {
+              this.proveedorGridApi.redrawRows({ rowNodes: [targetNode] });
+            }
+          }
+        }
+      }
+    );
+
     // Pasar el contexto del componente padre (MaterialesMaestroComponent) al siguiente nivel de detalle
     this.proveedorGridOptions.context = {
       ...params.context,
@@ -380,6 +433,14 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     const colId = event.column.getColId();
 
     if (colId === 'branchName') {
+      if (event.data?.__isNew) {
+        alerts.basicAlert(
+          'Guarda primero',
+          'Debes guardar el proveedor antes de asignar sucursales.',
+          'warning'
+        );
+        return;
+      }
       const node = event.node;
       const api = event.api;
       const detailType = 'proveedorSucursal';
@@ -423,6 +484,10 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         }, 0);
       }
     }
+  }
+
+  ngOnDestroy() {
+    this._sucursalSub?.unsubscribe();
   }
 
   refresh(): boolean {
@@ -483,6 +548,11 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         console.log('⚠️ Material sin subfamilia, mostrando todos los proveedores');
       }
 
+      // Ordenar filas por nombre de proveedor A-Z (ahora que filteredProviders ya está listo)
+      if (this.proveedorRowData.length > 0) {
+        this.sortProveedorRowData();
+      }
+
       // Refrescar el grid para que los combos se actualicen
       if (this.proveedorGridApi) {
         this.proveedorGridApi.refreshCells({ force: true });
@@ -511,7 +581,44 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.load) {
       this.params.context.MATERIAL.load(this.materialId, 'MATERIAL', (data: any) => {
         this.proveedorRowData = data;
+        this.sortProveedorRowData();
+        this.loadSucursalCounts();
       });
+    }
+  }
+
+  async loadSucursalCounts() {
+    const savedRows = this.proveedorRowData.filter(
+      (row: any) => row.id && !String(row.id).startsWith('temp_')
+    );
+    await Promise.all(
+      savedRows.map(async (row: any) => {
+        try {
+          const sucursales = await firstValueFrom(
+            this.sucursalByMaterialProveedorService.getSucursalByMaterial(row.id)
+          );
+          row._hasSucursales = sucursales && sucursales.length > 0;
+        } catch {
+          row._hasSucursales = false;
+        }
+      })
+    );
+    if (this.proveedorGridApi) {
+      this.proveedorGridApi.refreshCells({ force: true });
+    }
+  }
+
+  private sortProveedorRowData() {
+    if (!this.providers?.length && !this.filteredProviders?.length) return;
+    this.proveedorRowData = [...this.proveedorRowData].sort((a: any, b: any) => {
+      const pA = this.filteredProviders?.find((x: any) => x.id === a.idTabla) || this.providers?.find((x: any) => x.id === a.idTabla);
+      const pB = this.filteredProviders?.find((x: any) => x.id === b.idTabla) || this.providers?.find((x: any) => x.id === b.idTabla);
+      const nameA = pA ? this.getProviderDisplayName(pA) : '';
+      const nameB = pB ? this.getProviderDisplayName(pB) : '';
+      return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
+    if (this.proveedorGridApi) {
+      this.proveedorGridApi.setGridOption('rowData', this.proveedorRowData);
     }
   }
 
@@ -603,6 +710,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
         // Actualizar el contador de proveedores en el grid padre
         this.updateProviderCountInParent();
+        this.loadSucursalCounts();
 
       } catch (error) {
         console.error('❌ Error al guardar proveedores:', error);
@@ -632,9 +740,28 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.selectedProveedor = null;
   }
 
-  deleteSelectedProveedor(): void {
+  async deleteSelectedProveedor(): Promise<void> {
     if (!this.selectedProveedor || !this.params.context.MATERIAL.delete) {
       return;
+    }
+
+    // Validar si el proveedor tiene sucursales asociadas antes de borrar
+    if (this.selectedProveedor.id && !String(this.selectedProveedor.id).startsWith('temp_')) {
+      try {
+        const sucursales = await firstValueFrom(
+          this.sucursalByMaterialProveedorService.getSucursalByMaterial(this.selectedProveedor.id)
+        );
+        if (sucursales && sucursales.length > 0) {
+          alerts.basicAlert(
+            'No se puede eliminar',
+            `Este proveedor tiene ${sucursales.length} sucursal(es) asignada(s). Elimine primero las sucursales antes de borrar el proveedor.`,
+            'warning'
+          );
+          return;
+        }
+      } catch (error) {
+        console.error('Error verificando sucursales del proveedor:', error);
+      }
     }
 
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.delete) {

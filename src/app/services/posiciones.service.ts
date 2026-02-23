@@ -20,6 +20,10 @@ export class PosicionesService {
       return this.http.get(`${environment.urlSecurity}/PosicionDelison/posiciones/${company}/${role}`, { headers: this.trackingService.getHeaders() });
     }
 
+    getPositionsByCompany(company: number): Observable<any> {
+      return this.http.get(`${environment.urlSecurity}/PosicionDelison/posiciones/company/${company}`, { headers: this.trackingService.getHeaders() });
+    }
+
 
     addPosition(data: any): Observable<any> {
       console.log('DATA EN EL ADD', data)

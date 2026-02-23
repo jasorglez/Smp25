@@ -77,6 +77,32 @@ export class ComploginComponent implements OnInit {
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.randomImage = this.images[Math.floor(Math.random() * this.images.length)];
+    // Refactorización: si hay un email en signals, cargar permisos en inicio
+    const storedEmail = this.signalsService.getemailChoose();
+    if (storedEmail) {
+      this.emailcapt = storedEmail;
+      // Obtener branch actual y decidir si aplicar permisos avanzados
+      const branchAtInit = this.signalsService.getBranchSelectedBySidebar()();
+      const isAdv = this.signalsService.getIsAdvanced();
+      // Usamos directamente getUserId -> pero protegemos branch null
+      this.auth.getUserId(this.emailcapt).pipe(
+        switchMap(userId => {
+          if (isAdv && branchAtInit != null && branchAtInit !== 0) {
+            return this.auth.fetchUserPermissionsAdvanced(userId, branchAtInit);
+          }
+          return this.auth.fetchUserPermissions(userId);
+        })
+      ).subscribe({
+        next: (permissionsData: any) => {
+          if (permissionsData && permissionsData.permissions) {
+            this.auth.setUserPermissions(permissionsData.permissions);
+          }
+        },
+        error: (err) => {
+          console.error('Error fetching permissions on init:', err);
+        }
+      });
+    }
   }
 
   toggleHide() {
@@ -130,31 +156,48 @@ export class ComploginComponent implements OnInit {
                this.signalsService.setrootChoose(datauser.userRoot) ;
                // Guardar userRoot en localStorage para persistir al recargar
                localStorage.setItem('userRoot', datauser.userRoot.toString());
+              // Guardar email en localStorage y marcar si es advanced
+              localStorage.setItem('mail', this.emailcapt);
+              this.signalsService.setIsAdvanced(!!datauser.advanced);
+              // Asegurar que la sucursal aplicable del usuario quede registrada
+              if (datauser.applybranch != null) {
+                this.signalsService.setBranchSelectedBySidebar(datauser.applybranch);
+                this.idBranch = datauser.applybranch;
+              }
 
-              // Refactorización: Encadenar observables con switchMap
-              this.auth.getUserId(this.emailcapt).pipe(
-                switchMap(userId => {
-                  // Determinar qué llamada de permisos hacer basado en el estado 'advanced' del usuario
-                  const isAdvanced = datauser.advanced;
-                  // Nota: idBranch no está disponible aquí. Si es necesario, debe obtenerse de 'datauser'
-                  // o de una selección previa al login. Asumimos que no es estrictamente necesario para el primer login.
-                   
-                  const permissions$ = this.isAdvanced
-                    ? this.auth.fetchUserPermissionsAdvanced(userId, this.idBranch) // Usar null o un valor por defecto
-                    : this.auth.fetchUserPermissions(userId);
-                  return permissions$;
-                }),
-                tap((permissionsData: any) => {
-                  this.auth.setUserPermissions(permissionsData.permissions);
-                  // El spinner se mantiene hasta que navegue exitosamente
-                  this.router.navigate(['/main']);
-                })
-              ).subscribe({
-                error: (permError) => {
-                  console.error('Error fetching user permissions:', permError);
-                  this.isLoading = false;
-                }
-              });
+              // Usar directamente datauser.id para evitar llamada extra a getUserId
+              const userId = datauser.id;
+              const isAdvancedLocal = !!datauser.advanced;
+              const branchIdLocal = datauser.applybranch ?? this.idBranch;
+
+              if (isAdvancedLocal && branchIdLocal != null && branchIdLocal !== 0) {
+                this.auth.fetchUserPermissionsAdvanced(userId, branchIdLocal).pipe(
+                ).subscribe({
+                  next: (permissionsData: any) => {
+                    if (permissionsData && permissionsData.permissions) {
+                      this.auth.setUserPermissions(permissionsData.permissions);
+                    }
+                    this.router.navigate(['/main']);
+                  },
+                  error: (permError) => {
+                    console.error('Error fetching advanced permissions:', permError);
+                    this.isLoading = false;
+                  }
+                });
+              } else {
+                this.auth.fetchUserPermissions(userId).subscribe({
+                  next: (permissionsData: any) => {
+                    if (permissionsData && permissionsData.permissions) {
+                      this.auth.setUserPermissions(permissionsData.permissions);
+                    }
+                    this.router.navigate(['/main']);
+                  },
+                  error: (permError) => {
+                    console.error('Error fetching permissions:', permError);
+                    this.isLoading = false;
+                  }
+                });
+              }
             }
           },
           error: (error) => {

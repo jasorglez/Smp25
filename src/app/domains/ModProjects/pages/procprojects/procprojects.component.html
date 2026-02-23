@@ -18,6 +18,20 @@
                 </a>
              </li>
 
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'sistema')">
+                <a class="nav-link modern-tab" routerLink="sistema" routerLinkActive="active">
+                  <i class="bi bi-calendar-check"></i>
+                  <span>Proyectos/Sistema</span>
+                </a>
+             </li>
+
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'sistema')">
+                <a class="nav-link modern-tab" routerLink="posiciones" routerLinkActive="active">
+                  <i class="bi bi-person-badge"></i>
+                  <span>Posiciones</span>
+                </a>
+             </li>
+
                 <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'ot')">
                 <a class="nav-link modern-tab" routerLink="ot" routerLinkActive="active">
                   <i class="bi bi-tools"></i>

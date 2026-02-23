@@ -970,9 +970,34 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const material: any = this.selectedMaterial;
+    const referencias: string[] = [];
+
+    if (material.providerCount > 0) {
+      referencias.push(`${material.providerCount} Proveedor(es)`);
+    }
+    if (material.subfamilyCount > 0) {
+      referencias.push(`${material.subfamilyCount} Registro(s) en "Donde Usa"`);
+    }
+    if (material.parametros > 0) {
+      referencias.push(`${material.parametros} Parametro(s)`);
+    }
+    if (material.historico > 0) {
+      referencias.push(`${material.historico} Historico(s)`);
+    }
+
+    if (referencias.length > 0) {
+      alerts.basicAlert(
+        'No se puede eliminar',
+        `El material "${material.insumo} - ${material.articulo}" tiene las siguientes referencias:\n\n${referencias.join('\n')}\n\nElimine las referencias primero antes de borrar el material.`,
+        'warning'
+      );
+      return;
+    }
+
     const result = await alerts.confirmAlert(
       '¿Eliminar material?',
-      `¿Está seguro de eliminar el material ${this.selectedMaterial.insumo} - ${this.selectedMaterial.articulo}?`,
+      `¿Está seguro de eliminar el material ${material.insumo} - ${material.articulo}?`,
       'warning',
       'Sí, eliminar'
     );

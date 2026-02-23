@@ -29,6 +29,18 @@ body {
   --ag-font-size: 11px;
 }
 
+// Fila nueva (no guardada) — resaltado amarillo en bitácoras
+.ag-theme-quartz .ag-row.new-row-highlight {
+  background-color: #fff8c5 !important;
+  border-left: 3px solid #f0ad4e !important;
+}
+
+// Celda en edición dentro de fila nueva — borde naranja fuerte
+.ag-theme-quartz .ag-row.new-row-highlight .ag-cell-inline-editing {
+  background-color: #ffeaa0 !important;
+  border: 2px solid #e67e00 !important;
+}
+
 // DHTMLX Gantt CSS
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 

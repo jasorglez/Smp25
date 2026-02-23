@@ -186,8 +186,8 @@ error: (error) => {
 
     if (hasPermission || isRoot) {
 
-      await this.branchService.getBranches2fields(idRoot).subscribe(
-        (data) => {
+      this.branchService.getBranches2fields(idRoot).subscribe(
+        async (data) => {
           data.sort((a, b) => a.name.localeCompare(b.name));
 
           // Crear el array de branches
@@ -203,7 +203,6 @@ error: (error) => {
           if (this.branchData.length > 0) {
             this.selectedBranchId = this.branchData[0].id;
 
-            // Agregamos estas líneas para simular la selección automática
             this.signalsService.setBranchSelectedBySidebar(
               Number(this.selectedBranchId)
             );
@@ -212,22 +211,19 @@ error: (error) => {
             );
             this.trackingService.setContract(this.selectedBranchId);
 
-            // Forzamos la actualización del select
+            // Actualizar el DOM del select
             setTimeout(() => {
-              const selectElement = document.getElementById(
-                'branchs'
-              ) as HTMLSelectElement;
-              if (selectElement) {
-                selectElement.value = this.selectedBranchId;
-                // Disparamos el evento change manualmente
-                selectElement.dispatchEvent(new Event('change'));
-              }
-            }, 500);
+              const selectElement = document.getElementById('branchs') as HTMLSelectElement;
+              if (selectElement) selectElement.value = this.selectedBranchId;
+            }, 50);
+
+            // Cargar contratos directamente sin depender del evento DOM
+            await this.getpermissionxContracts();
           }
         },
         (error) => {
           console.error('Error al obtener branches:', error);
-          this.branchData = []; // Asignar un array vacío en caso de error
+          this.branchData = [];
         }
       );
     } else {
@@ -237,8 +233,7 @@ error: (error) => {
           parseInt(localStorage.getItem('company'))
         )
         .subscribe(
-          (data) => {
-            // Crear el array de branches
+          async (data) => {
             this.branchData = data.project.map((branch: any) => ({
               id: branch.id,
               name: branch.name,
@@ -247,7 +242,6 @@ error: (error) => {
             if (this.branchData.length > 0) {
               this.selectedBranchId = this.branchData[0].id;
 
-              // Agregamos estas líneas para simular la selección automática
               this.signalsService.setBranchSelectedBySidebar(
                 Number(this.selectedBranchId)
               );
@@ -256,22 +250,19 @@ error: (error) => {
               );
               this.trackingService.setContract(this.selectedBranchId);
 
-              // Forzamos la actualización del select
+              // Actualizar el DOM del select
               setTimeout(() => {
-                const selectElement = document.getElementById(
-                  'branchs'
-                ) as HTMLSelectElement;
-                if (selectElement) {
-                  selectElement.value = this.selectedBranchId;
-                  // Disparamos el evento change manualmente
-                  selectElement.dispatchEvent(new Event('change'));
-                }
-              }, 500);
+                const selectElement = document.getElementById('branchs') as HTMLSelectElement;
+                if (selectElement) selectElement.value = this.selectedBranchId;
+              }, 50);
+
+              // Cargar contratos directamente sin depender del evento DOM
+              await this.getpermissionxContracts();
             }
           },
           (error) => {
             console.error('Error al obtener branches:', error);
-            this.branchData = []; // Asignar un array vacío en caso de error
+            this.branchData = [];
           }
         );
     }
@@ -287,6 +278,7 @@ error: (error) => {
       );
       // Borro la signal de project para resetear el dato
       this.signalsService.setProjectSelectedBySidebar(null);
+      this.signalsService.setSidebarProjectId(null);
       this.trackingService.setContract(this.selectedContractId);
       this.signalsService.setContractSelectedBySidebar(
         Number(this.selectedContractId)
@@ -328,14 +320,15 @@ error: (error) => {
         const contract = Object.values(data);
         if (contract && contract.length > 0) {
           this.contractData = contract;
-          // this.getpermissionxProjects(parseInt(this.selectedContractId));
-          if (this.contractData.length === 1) {
-            this.selectedContractId = this.contractData[0].contractId;
-            this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
-            this.trackingService.setContract(this.selectedContractId);
-            // Llama a getpermissionxProjects automáticamente si lo necesitas
-            await this.getpermissionxProjects(Number(this.selectedContractId));
-          }
+          // Auto-seleccionar siempre el primer contrato
+          this.selectedContractId = this.contractData[0].contractId;
+          this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+          this.trackingService.setContract(this.selectedContractId);
+          setTimeout(() => {
+            const selectElement = document.getElementById('contracts') as HTMLSelectElement;
+            if (selectElement) selectElement.value = this.selectedContractId;
+          }, 50);
+          await this.getpermissionxProjects(Number(this.selectedContractId));
         }
       });
   } 
@@ -353,6 +346,8 @@ error: (error) => {
       this.signalsService.setProjectSelectedBySidebar(
         Number(this.selectedProjectId)
       );
+      // Signal exclusiva del sidebar (no la toca ordenes)
+      this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
     }
   }
 
@@ -364,14 +359,20 @@ error: (error) => {
         next: (data) => {
           this.projectData = Object.values(data);
           if (this.projectData.length > 0) {
-            if (this.projectData.length === 1) {
-              this.selectedProjectId = this.projectData[0].idProject;
-              this.trackingService.setProject(this.selectedProjectId);
-              this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
-            }
+            // Auto-seleccionar siempre el primer proyecto
+            this.selectedProjectId = this.projectData[0].idProject;
+            this.trackingService.setProject(this.selectedProjectId);
+            this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
+            // Signal exclusiva del sidebar (no la toca ordenes)
+            this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
+            setTimeout(() => {
+              const selectElement = document.getElementById('project') as HTMLSelectElement;
+              if (selectElement) selectElement.value = this.selectedProjectId;
+            }, 50);
           } else {
             this.selectedProjectId = '';
             this.trackingService.setProject('');
+            this.signalsService.setSidebarProjectId(null);
           }
         },
         error: (error) => {
@@ -536,6 +537,7 @@ error: (error) => {
     this.projectData = [];
     this.selectedProjectId = '';
     this.signalsService.setProjectSelectedBySidebar(null);
+    this.signalsService.setSidebarProjectId(null);
     this.trackingService.setProject('');
     
     // Limpiar los selects en el DOM

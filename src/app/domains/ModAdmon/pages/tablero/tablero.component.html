@@ -1,0 +1,27 @@
+<div class="col-md-12">
+  <div class="card">
+    <div class="card-header px-2">
+      <ul class="nav nav-pills">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashmodadmon" routerLinkActive="active">
+            <mat-icon>dashboard</mat-icon> Dashboard
+          </a>
+        </li>
+
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashboard-hco" routerLinkActive="active">
+            <mat-icon>analytics</mat-icon> Dashboard HCO
+          </a>
+        </li>
+
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="reporte-operativo-sin-iva" routerLinkActive="active">
+            <mat-icon>table_view</mat-icon> Reporte Operativo sin IVA
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <router-outlet></router-outlet>
+  </div>
+</div>

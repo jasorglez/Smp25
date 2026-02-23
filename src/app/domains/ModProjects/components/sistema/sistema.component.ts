@@ -1,0 +1,700 @@
+import { Component, OnInit, inject, effect, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AgGridModule } from 'ag-grid-angular';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { DailyReportService } from 'app/services/daily-report.service';
+import { LogbookService } from 'app/services/logbook.service';
+import { SignalsService } from 'app/services/signals.service';
+import { alerts } from 'app/helpers/alerts';
+import { ButtonCellRendererExpenditureComponent } from '../../../ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
+import { PdfButtonCellRendererComponent }  from './pdf-button-cell-renderer.component';
+import { PdfDetailComponent }              from './pdf-detail.component';
+import { BitacoraPersonalComponent }  from './bitacora-personal.component';
+import { BitacoraMaterialComponent }  from './bitacora-material.component';
+import { BitacoraEquiposComponent }   from './bitacora-equipos.component';
+import { BitacoraFotosComponent }     from './bitacora-fotos.component';
+import { BitacoraVideosComponent }    from './bitacora-videos.component';
+import { BitacoraConceptosComponent } from './bitacora-conceptos.component';
+import { BitacoraNotasComponent }     from './bitacora-notas.component';
+
+@Component({
+  selector: 'app-sistema',
+  standalone: true,
+  imports: [
+    CommonModule, FormsModule, AgGridModule,
+    ButtonCellRendererExpenditureComponent,
+    PdfButtonCellRendererComponent, PdfDetailComponent,
+    BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
+    BitacoraFotosComponent, BitacoraVideosComponent, BitacoraConceptosComponent, BitacoraNotasComponent,
+  ],
+  templateUrl: './sistema.component.html',
+  styleUrl: './sistema.component.scss'
+})
+export class SistemaComponent implements OnInit {
+
+  private dailyReportService = inject(DailyReportService);
+  private logbookService = inject(LogbookService);
+  private signalsService    = inject(SignalsService);
+
+  public rowData: any[]       = [];
+  private originalRowData: any[] = [];
+  public gridApi!: GridApi;
+  public hasUnsavedChanges   = false;
+  public selectedRow: any    = null;
+  private idProject: number  = 0;
+  private idRoot: number    = 0;
+  
+  externalFilterActive: boolean = false;
+  
+  public gridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 28,
+    suppressDragLeaveHidesColumns: true,
+    animateRows: true,
+    pagination: true,
+    paginationPageSize: 25,
+    rowSelection: 'single',
+    masterDetail: true,
+    detailRowHeight: 600,
+    detailCellRendererSelector: (params: any) => {
+      const t = params.data?.detailType;
+      if (t === 'pdf')       return { component: PdfDetailComponent };
+      if (t === 'material')  return { component: BitacoraMaterialComponent };
+      if (t === 'equipos')   return { component: BitacoraEquiposComponent };
+      if (t === 'fotos')     return { component: BitacoraFotosComponent };
+      if (t === 'videos')    return { component: BitacoraVideosComponent };
+      if (t === 'conceptos') return { component: BitacoraConceptosComponent };
+      if (t === 'notas')     return { component: BitacoraNotasComponent };
+      return { component: BitacoraPersonalComponent }; // default: personal
+    },
+    suppressMenuHide: false,
+    context: {
+      componentParent: null
+    },
+    getContextMenuItems: (params: any) => {
+      if (!params.node?.data) return ['copy'];
+      const row = params.node.data;
+      return [
+        {
+          name: '<b>Traer Personal</b>',
+          icon: '<i class="bi bi-people-fill" style="color:#1976d2"></i>',
+          action: () => this.copyFromPreviousDay(row, ['PERSONAL']),
+        },
+        {
+          name: '<b>Traer Material</b>',
+          icon: '<i class="bi bi-box-fill" style="color:#e91e63"></i>',
+          action: () => this.copyFromPreviousDay(row, ['MATERIAL']),
+        },
+        {
+          name: '<b>Traer Equipo</b>',
+          icon: '<i class="bi bi-truck" style="color:#9c27b0"></i>',
+          action: () => this.copyFromPreviousDay(row, ['EQUIPMENT']),
+        },
+        'separator',
+        {
+          name: '<b>Traer Personal, Material y Equipo</b>',
+          icon: '<i class="bi bi-clipboard-check-fill" style="color:#2e7d32"></i>',
+          action: () => this.copyFromPreviousDay(row, ['PERSONAL', 'MATERIAL', 'EQUIPMENT']),
+        },
+        {
+          name: '<b>Traer todo del día anterior</b>',
+          icon: '<i class="bi bi-calendar-check-fill" style="color:#f57c00"></i>',
+          action: () => this.copyFromPreviousDay(row, ['PERSONAL', 'MATERIAL', 'EQUIPMENT', 'CONCEPT', 'NOTE']),
+        },
+        'separator',
+        'copy',
+      ];
+    },
+    isExternalFilterPresent: () => {
+      return this.externalFilterActive;
+    },
+    doesExternalFilterPass: (node: any) => {
+      return node.data.visible !== false;
+    },
+  };
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    minWidth: 80,
+  };
+
+  public colDefs: ColDef[] = [
+    { field: 'id', headerName: 'ID', width: 80, editable: false, hide: true },
+    {
+      field: 'date', headerName: 'Fecha', width: 110, editable: true,
+      cellEditor: 'agDateCellEditor',
+      valueGetter: (p) => p.data?.date ? String(p.data.date).substring(0, 10) : '',
+      valueSetter: (p) => { p.data.date = p.newValue; return true; },
+      valueFormatter: (p) => {
+        if (!p.value) return '';
+        const [y, m, d] = String(p.value).split('-');
+        return d && m && y ? `${d}/${m}/${y}` : p.value;
+      },
+    },
+    { field: 'startTime', headerName: 'Inicio', width: 100, editable: true },
+    { field: 'endTime', headerName: 'Término', width: 120, editable: true },
+//    { field: 'type', headerName: 'Tipo', width: 100, editable: true },
+    { field: 'description', headerName: 'Descripción', width: 200, editable: true },
+    {
+      field: 'totalPay', headerName: 'Total $', width: 120, editable: true,
+      cellEditor: 'agNumberCellEditor',
+      valueFormatter: (p) => p.value != null
+        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p.value)
+        : '$0.00',
+    },
+    {
+      headerName: 'PDF',
+      width: 100,
+      cellRenderer: PdfButtonCellRendererComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.togglePdfDetail(node),
+      },
+      editable: false,
+      cellStyle: { textAlign: 'center' }
+    },
+
+    // Columnas de Bitácoras como botones
+   {
+      field: 'conceptos',
+      headerName: 'Conceptos',
+      width: 130,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'conceptos'),
+      },
+      valueGetter: params => params.data.conceptos || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#e0f2f1', cursor: 'pointer', textDecoration: 'underline' }
+   },
+
+    {
+      field: 'personal',
+      headerName: 'Personal',
+      width: 130,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'personal'),
+      },
+      valueGetter: params => params.data.personal || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
+    },
+   
+        {
+      field: 'material',
+      headerName: 'Materiales',
+      width: 130,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'material'),
+      },
+      valueGetter: params => params.data.material || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer', textDecoration: 'underline' }
+    },
+    {
+      field: 'equipos',
+      headerName: 'Equipos',
+      width: 120,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'equipos'),
+      },
+      valueGetter: params => params.data.equipos || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer', textDecoration: 'underline' }
+    },
+
+    {
+      field: 'fotos',
+      headerName: 'Fotos',
+      width: 120,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'fotos'),
+      },
+      valueGetter: params => params.data.fotos || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+    },
+    {
+      field: 'videos',
+      headerName: 'Videos',
+      width: 120,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'videos'),
+      },
+      valueGetter: params => params.data.videos || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
+    },
+
+
+    {
+      field: 'notas',
+      headerName: 'Notas',
+      width: 120,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'notas'),
+      },
+      valueGetter: params => params.data.notas || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#efebe9', cursor: 'pointer', textDecoration: 'underline' }
+    },
+
+    {
+      field: 'close', headerName: 'Cerrado', width: 90, editable: true,
+      cellEditor: 'agCheckboxCellEditor',
+      cellRenderer: (p: any) => p.value
+        ? '<i class="bi bi-check-circle-fill text-success"></i>'
+        : '<i class="bi bi-x-circle-fill text-danger"></i>',
+    },
+    {
+      field: 'paid', headerName: 'Pagado', width: 90, editable: true,
+      cellEditor: 'agCheckboxCellEditor',
+      cellRenderer: (p: any) => p.value
+        ? '<i class="bi bi-check-circle-fill text-success"></i>'
+        : '<i class="bi bi-x-circle-fill text-danger"></i>',
+    },
+  ];
+
+  constructor() {
+    // Usa getSidebarProjectId (nunca modificada por ordenes) para evitar
+    // que la selección de una OT de otra empresa contamine esta vista.
+    effect(() => {
+      const projectId = this.signalsService.getSidebarProjectId()();
+      if (projectId && projectId !== this.idProject) {
+        this.idProject = projectId;
+        this.rowData = [];
+        this.originalRowData = [];
+        this.hasUnsavedChanges = false;
+        this.selectedRow = null;
+        this.loadReports();
+      }
+    });
+
+    effect(() => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    });
+  }
+
+  ngOnInit(): void {
+    const projectId = this.signalsService.getSidebarProjectId()();
+    if (projectId) {
+      this.idProject = projectId;
+      this.loadReports();
+    }
+  }
+
+  onGridReady(event: GridReadyEvent): void {
+    this.gridApi = event.api;
+    this.gridOptions.context.componentParent = this;
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params) => {
+        params.successCallback(params.data.detailData || []);
+      },
+      context: this.gridOptions.context
+    });
+  }
+
+  loadReports(): void {
+    if (!this.idProject) return;
+    this.dailyReportService.getDailyReportsByProject(this.idProject).subscribe({
+      next: (resp: any) => {
+        // Agregar propiedades para master-detail
+        this.rowData = (resp.data || []).map((report: any) => ({
+          ...report,
+          detailType: null,
+          detailData: [],
+          visible: true
+        }));
+        this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+        this.hasUnsavedChanges = false;
+        this.selectedRow = null;
+      },
+      error: () => alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error'),
+    });
+  }
+
+  add(): void {
+    if (!this.idProject) {
+      alerts.basicAlert('Aviso', 'Selecciona un Proyecto antes de agregar un reporte', 'warning');
+      return;
+    }
+    const newRow = {
+      idOt: null,
+      idProject: this.idProject,
+      date: new Date().toISOString().substring(0, 10),
+      startTime: '07:52:00',
+      endTime: '17:02:00',
+      type: 'CORTE',
+      description: '',
+      totalPay: 0,
+      close: false,
+      paid: true,
+      personal: 0,
+      fotos: 0,
+      videos: 0,
+      material: 0,
+      equipos: 0,
+      conceptos: 0,
+      notas: 0,
+      active: true,
+      __isNew: true,
+    };
+    this.rowData = [newRow, ...this.rowData];
+    this.hasUnsavedChanges = true;
+    setTimeout(() => {
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'date' });
+    }, 50);
+  }
+
+  async saveChanges(): Promise<void> {
+    const newItems      = this.rowData.filter(r => r.__isNew);
+    const modifiedItems = this.rowData.filter(r => r.__modified && !r.__isNew);
+    
+    if (!newItems.length && !modifiedItems.length) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      return;
+    }
+
+    try {
+      for (const item of newItems) {
+        await new Promise((resolve, reject) => {
+          this.dailyReportService.addDailyReport(this.cleanForServer(item))
+            .subscribe({ 
+              next: resolve, 
+              error: (err) => {
+                console.error('❌ Error al agregar:', err);
+                let msg = 'Error desconocido';
+                if (err.error) {
+                  if (typeof err.error === 'string') {
+                    msg = err.error;
+                  } else if (err.error.errors) {
+                    const errors = Object.entries(err.error.errors);
+                    msg = errors.map(([field, value]: [string, any]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`).join(' | ');
+                  } else if (err.error.message) {
+                    msg = err.error.message;
+                  }
+                } else if (err.message) {
+                  msg = err.message;
+                }
+                reject(new Error(`Error al agregar reporte del ${item.date}: ${msg}`));
+              } 
+            });
+        });
+      }
+      for (const item of modifiedItems) {
+        await new Promise((resolve, reject) => {
+          this.dailyReportService.updateDailyReport(item.id, this.cleanForServer(item))
+            .subscribe({ 
+              next: resolve, 
+              error: (err) => {
+                console.error('❌ Error al actualizar:', err);
+                let msg = 'Error desconocido';
+                if (err.error) {
+                  if (typeof err.error === 'string') {
+                    msg = err.error;
+                  } else if (err.error.errors) {
+                    const errors = Object.entries(err.error.errors);
+                    msg = errors.map(([field, value]: [string, any]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`).join(' | ');
+                  } else if (err.error.message) {
+                    msg = err.error.message;
+                  }
+                } else if (err.message) {
+                  msg = err.message;
+                }
+                reject(new Error(`Error al actualizar reporte ID ${item.id}: ${msg}`));
+              } 
+            });
+        });
+      }
+      alerts.basicAlert('Éxito', 'Cambios guardados correctamente', 'success');
+      this.loadReports();
+    } catch (error: any) {
+      console.error('Error al guardar:', error);
+      alerts.basicAlert('Error', error?.message || 'Error al guardar los cambios', 'error');
+    }
+  }
+
+  revertChanges(): void {
+    this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
+    this.hasUnsavedChanges = false;
+    this.gridApi?.setGridOption('rowData', this.rowData);
+  }
+
+  async delete(): Promise<void> {
+    if (!this.selectedRow) return;
+    if (this.selectedRow.__isNew) {
+      this.rowData = this.rowData.filter(r => r !== this.selectedRow);
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = this.rowData.some(r => r.__isNew || r.__modified);
+      this.selectedRow = null;
+      return;
+    }
+    const result = await alerts.confirmAlert(
+      '¿Eliminar reporte?', 'Esta acción no se puede deshacer', 'warning', 'Eliminar'
+    );
+    if (!result.isConfirmed) return;
+    this.dailyReportService.deleteDailyReport(this.selectedRow.id).subscribe({
+      next: () => { alerts.basicAlert('Eliminado', 'Reporte eliminado', 'success'); this.loadReports(); },
+      error: () => alerts.basicAlert('Error', 'No se pudo eliminar el reporte', 'error'),
+    });
+  }
+
+  onRowSelected(event: any): void {
+    if (event.node?.isSelected()) {
+      this.selectedRow = event.data;
+    }
+  }
+
+  onCellValueChanged(event: any): void {
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+    }
+    this.hasUnsavedChanges = true;
+  }
+
+  private cleanForServer(item: any): any {
+    const { __isNew, __modified, detailType, detailData, visible, ...data } = item;
+    console.log('📤 Enviando al servidor:', data);
+    return data;
+  }
+
+  // ==================== MÉTODOS PARA CASCADAS DE BITÁCORAS ====================
+
+  toggleBitacoraDetail(node: any, bitacoraType: string) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === bitacoraType;
+
+    if (isCurrentlyExpanded) {
+      node.setExpanded(false);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
+      });
+      api.onFilterChanged();
+      return;
+    }
+
+    // Expandir con la bitácora seleccionada, ocultar las demás filas
+    this.externalFilterActive = true;
+    api.forEachNode((n: any) => {
+      n.data.visible = n.id === node.id ? true : false;
+    });
+    api.onFilterChanged();
+
+    // Si la fila está expandida con otro tipo de detalle, cerrarla
+    if (node.expanded && node.data.detailType !== bitacoraType) {
+      node.setExpanded(false);
+    }
+
+    // Cambiar el tipo de detalle
+    node.data.detailType = bitacoraType;
+
+    // Expandir
+    setTimeout(() => {
+      node.setExpanded(true);
+    }, 0);
+  }
+
+  collapseBitacoraDetail(reportId: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === reportId) {
+          node.setExpanded(false);
+          node.data.detailType = null;
+        }
+      });
+      // Mostrar todas las filas
+      this.externalFilterActive = false;
+      this.gridApi.forEachNode((node) => {
+        if (node.data) node.data.visible = true;
+      });
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  updateBitacoraCount(reportId: number, bitacoraType: string, count: number) {
+    if (!this.gridApi) return;
+
+    this.gridApi.forEachNode((node) => {
+      if (node.data?.id === reportId) {
+        node.data[bitacoraType] = count;
+        this.gridApi.refreshCells({
+          rowNodes: [node],
+          columns: [bitacoraType],
+          force: true
+        });
+      }
+    });
+  }
+
+  togglePdfDetail(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'pdf';
+
+    if (isCurrentlyExpanded) {
+      node.setExpanded(false);
+      node.data.detailType = null;
+      this.externalFilterActive = false;
+      api.forEachNode((n: any) => {
+        n.data.visible = true;
+      });
+      api.onFilterChanged();
+      return;
+    }
+
+    this.externalFilterActive = true;
+    api.forEachNode((n: any) => {
+      n.data.visible = n.id === node.id ? true : false;
+    });
+    api.onFilterChanged();
+
+    if (node.expanded && node.data.detailType !== 'pdf') {
+      node.setExpanded(false);
+    }
+
+    node.data.detailType = 'pdf';
+
+    setTimeout(() => {
+      node.setExpanded(true);
+    }, 0);
+  }
+
+  collapsePdfDetail(reportId: number) {
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node) => {
+        if (node.data && node.data.id === reportId) {
+          node.setExpanded(false);
+          node.data.detailType = null;
+        }
+      });
+      this.externalFilterActive = false;
+      this.gridApi.forEachNode((node) => {
+        if (node.data) node.data.visible = true;
+      });
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  // ==================== COPIAR DEL DÍA ANTERIOR ====================
+
+  async copyFromPreviousDay(row: any, types: string[]): Promise<void> {
+    if (!row.id) {
+      alerts.basicAlert('Aviso', 'Guarda el reporte primero antes de copiar datos del día anterior', 'warning');
+      return;
+    }
+
+    // Buscar el reporte más reciente con fecha anterior a la del row seleccionado
+    const currentDate = new Date(String(row.date).substring(0, 10) + 'T00:00:00');
+    const prevReport = this.rowData
+      .filter(r => r.id && r.id !== row.id && new Date(String(r.date).substring(0, 10) + 'T00:00:00') < currentDate)
+      .sort((a, b) => new Date(String(b.date).substring(0, 10)).getTime() - new Date(String(a.date).substring(0, 10)).getTime())[0];
+
+    if (!prevReport) {
+      alerts.basicAlert('Sin reporte previo', 'No se encontró ningún reporte anterior a este día', 'warning');
+      return;
+    }
+
+    const typeLabels = types.map(t => this.typeLabel(t)).join(', ');
+    const result = await alerts.confirmAlert(
+      'Copiar del día anterior',
+      `Se copiará <b>${typeLabels}</b> del <b>${this.fmtDateMx(prevReport.date)}</b> al <b>${this.fmtDateMx(row.date)}</b>.\n\nLos registros existentes no se eliminarán.`,
+      'question',
+      'Copiar'
+    );
+    if (!result.isConfirmed) return;
+
+    let totalCopied = 0;
+    const destDate = String(row.date).substring(0, 10);
+
+    try {
+      for (const typeNote of types) {
+        const resp: any = await new Promise((res, rej) =>
+          this.logbookService.getInfoByReporte(prevReport.id, typeNote).subscribe({ next: res, error: rej }));
+
+        if (!resp?.success || !resp?.data?.length) continue;
+
+        const items: any[] = resp.data;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const payload = {
+            idReporte:   row.id,
+            idProject:   row.idProject ?? null,
+            typeNote,
+            date:        destDate,
+            orden:       i + 1,
+            quantity:    item.quantity    ?? null,
+            description: item.description ?? null,
+            supervisor:  item.supervisor  ?? null,
+            position:    item.position    ?? null,
+            idResource:  item.idResource  ?? null,
+            imageUrl:    item.imageUrl    ?? null,
+            active:      true,
+          };
+          await new Promise((res, rej) =>
+            this.logbookService.addDataForOt(payload).subscribe({ next: res, error: rej }));
+          totalCopied++;
+        }
+      }
+
+      alerts.basicAlert('Éxito', `Se copiaron ${totalCopied} registro(s) del día anterior`, 'success');
+
+      // Actualizar contadores en el grid maestro
+      for (const typeNote of types) {
+        const field = this.typeToField(typeNote);
+        if (!field) continue;
+        const resp: any = await new Promise((res, rej) =>
+          this.logbookService.getInfoByReporte(row.id, typeNote).subscribe({ next: res, error: rej }));
+        if (resp?.success) {
+          const count = resp.data?.length ?? 0;
+          this.updateBitacoraCount(row.id, field, count);
+          this.dailyReportService.updateBitacoraCount(row.id, typeNote, count).subscribe();
+        }
+      }
+    } catch (e: any) {
+      console.error('Error al copiar del día anterior:', e);
+      alerts.basicAlert('Error', e?.message || 'No se pudo copiar del día anterior', 'error');
+    }
+  }
+
+  private typeLabel(typeNote: string): string {
+    const labels: Record<string, string> = {
+      'PERSONAL':  'Personal',
+      'MATERIAL':  'Material',
+      'EQUIPMENT': 'Equipos',
+      'CONCEPT':   'Conceptos',
+      'NOTE':      'Notas',
+      'Photo':     'Fotos',
+      'Video':     'Videos',
+    };
+    return labels[typeNote] ?? typeNote;
+  }
+
+  private typeToField(typeNote: string): string | null {
+    const map: Record<string, string> = {
+      'PERSONAL':  'personal',
+      'MATERIAL':  'material',
+      'EQUIPMENT': 'equipos',
+      'CONCEPT':   'conceptos',
+      'NOTE':      'notas',
+      'Photo':     'fotos',
+      'Video':     'videos',
+    };
+    return map[typeNote] ?? null;
+  }
+
+  private fmtDateMx(dateStr: string): string {
+    if (!dateStr) return '';
+    const [y, m, d] = String(dateStr).substring(0, 10).split('-');
+    return d && m && y ? `${d}/${m}/${y}` : dateStr;
+  }
+}

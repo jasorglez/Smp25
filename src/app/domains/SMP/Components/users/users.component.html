@@ -23,22 +23,24 @@
                 </div>
                 <div class="row">
                     <ag-grid-angular style="width: 100%;"
-                        [ngStyle]="{'height': gridHeight}"
-                        class="ag-theme-quartz small-text-ag-grid"
-                        [rowData]="rowData"
-                        [columnDefs]="columnDefs"
-                        [pagination]="false"
-                        [paginationPageSize]="paginationPageSize"
-                        [paginationPageSizeSelector]="paginationPageSizeSelector"
-                        rowSelection="single"
-                        (selectionChanged)="onSelectionChanged($event)"
-                        (cellValueChanged)="onCellValueChanged($event)"
-                        (rowSelected)="onSelectedRow($event)"
-                        (gridReady)="onGridReady($event)"
-                        [components]="components"
-                        [gridOptions]="gridOptions"
-                        [stopEditingWhenCellsLoseFocus]="true">
-                    </ag-grid-angular>
+                    [ngStyle]="{'height': gridHeight}"
+                    class="ag-theme-quartz small-text-ag-grid"
+                    [rowData]="rowData"
+                    [columnDefs]="columnDefs"
+                    [defaultColDef]="defaultColDef"
+                    [pagination]="false"
+                    [paginationPageSize]="paginationPageSize"
+                    [paginationPageSizeSelector]="paginationPageSizeSelector"
+                    rowSelection="single"
+                    (selectionChanged)="onSelectionChanged($event)"
+                    (cellValueChanged)="onCellValueChanged($event)"
+                    (cellEditingStopped)="onCellEditingStopped($event)"
+                    (rowSelected)="onSelectedRow($event)"
+                    (gridReady)="onGridReady($event)"
+                    [components]="components"
+                    [gridOptions]="gridOptions"
+                    [stopEditingWhenCellsLoseFocus]="true">
+                </ag-grid-angular>
                 </div>
             </div>
         </div>

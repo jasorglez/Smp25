@@ -4,7 +4,7 @@ import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
-import { catchError, EMPTY, map, Observable, throwError } from 'rxjs';
+import { catchError, EMPTY, map, Observable, Subject, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -13,6 +13,14 @@ export class SucursalByMaterialProveedorService {
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+
+  // Evento global: cuando se guardan sucursales, emite el idProveedor
+  private sucursalSaved = new Subject<number>();
+  sucursalSaved$ = this.sucursalSaved.asObservable();
+
+  notifySucursalSaved(idProveedor: number) {
+    this.sucursalSaved.next(idProveedor);
+  }
 
   private getAuthToken(): string {
     return localStorage.getItem('token') || '';

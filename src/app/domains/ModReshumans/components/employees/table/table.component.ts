@@ -658,43 +658,35 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         flex: 0,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          // Ensure catalogPosiciones data is available when creating editor
           return {
-            values: this.catalogPosiciones 
-              ? this.catalogPosiciones.map(item => item.id)
+            values: this.catalogPosiciones
+              ? this.catalogPosiciones.map(item => item.description)
               : []
           };
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
-            const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
+            const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
             return found ? found.description : params.value;
 
         },
         valueSetter: (params) => {
-          const newPosicionId = params.newValue;
-          const currentDeptId = params.data.idDepto;
-
-          if (params.data.idPosition === newPosicionId) return false;
-
-          // Verificar si la combinación de rol y posición ya existe
-
-          params.data.idPosition = newPosicionId;
-
+          const selectedDesc = params.newValue;
+          let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
+          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
+          if (!found) return false;
+          params.data.idPosition = found.id;
           return true;
         },
         valueGetter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.data || !params.data.idPosition) return '';
-
-          const foundDepto = this.catalogGeneralPosiciones
-            ? this.catalogGeneralPosiciones.find((d) => d.id === params.data.idPosition)
+          if (!params.data || params.data.idPosition == null) return '';
+          const found = this.catalogGeneralPosiciones
+            ? this.catalogGeneralPosiciones.find((d) => d.id == params.data.idPosition)
             : null;
-
-          return foundDepto ? foundDepto.description :'';
+          return found ? found.description : '';
         },
       },
-      
+
       {
         field: 'idBank',
         headerName: 'Banco',
@@ -1414,36 +1406,33 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         cellEditorParams: (params) => {
           return {
             values: this.catalogPosiciones
-              ? this.catalogPosiciones.map(item => item.id)
+              ? this.catalogPosiciones.map(item => item.description)
               : []
           };
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
-            const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
+            const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
             return found ? found.description : params.value;
 
         },
         valueSetter: (params) => {
-          const newPosicionId = params.newValue;
-
-          if (params.data.idPosition === newPosicionId) return false;
-
-          params.data.idPosition = newPosicionId;
-
+          const selectedDesc = params.newValue;
+          let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
+          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
+          if (!found) return false;
+          params.data.idPosition = found.id;
           return true;
         },
         valueGetter: (params) => {
-          if (!params.data || !params.data.idPosition) return '';
-
-          const foundDepto = this.catalogGeneralPosiciones
-            ? this.catalogGeneralPosiciones.find((d) => d.id === params.data.idPosition)
+          if (!params.data || params.data.idPosition == null) return '';
+          const found = this.catalogGeneralPosiciones
+            ? this.catalogGeneralPosiciones.find((d) => d.id == params.data.idPosition)
             : null;
-
-          return foundDepto ? foundDepto.description :'';
+          return found ? found.description : '';
         },
       },
-      
+
       {
         field: 'idBank',
         headerName: 'Banco',

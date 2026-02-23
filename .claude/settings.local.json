@@ -109,7 +109,12 @@
       "Bash(node:*)",
       "mcp__notion__API-retrieve-a-page",
       "mcp__notion__API-get-block-children",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "mcp__notion__API-patch-block-children",
+      "Bash(git stash:*)",
+      "Bash(cmd /c \"npx ng build bi-aug-24 --configuration development 2>&1\")",
+      "Bash(cd \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosSmp\\\\SMP\" && dotnet build --configuration Release 2>&1)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

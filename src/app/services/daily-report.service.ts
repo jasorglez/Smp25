@@ -21,6 +21,10 @@ export class DailyReportService {
     return this.http.get(`${environment.urlSmp}/DailyReport/xot/${idOt}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getDailyReportsByProject(idproject: number): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/DailyReport/xproject/${idproject}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getReportxCost(idReport: number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/DailyReport/cost?idReport=${idReport}`, { headers: this.trackingService.getHeaders() });
   }
@@ -56,6 +60,13 @@ export class DailyReportService {
   // Eliminar un reporte diario
   deleteDailyReport(idReport: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/DailyReport/${idReport}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // Actualizar conteo de bitácora en el reporte diario
+  updateBitacoraCount(idReport: number, typeNote: string, count: number): Observable<any> {
+    return this.http.patch(`${environment.urlSmp}/DailyReport/${idReport}/count`,
+      { typeNote, count },
+      { headers: this.trackingService.getHeaders() });
   }
 
   // Métodos adicionales para funcionalidades específicas
