@@ -102,7 +102,20 @@ export class UsersxbranchesComponent {
     console.log('📊 Loading user branches data for user:', this.idUser, 'company:', this.idRoot);
     this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe(
       (data: any) => {
-        this.rowData = data.project; // Extract the array from the response
+        const sourceRows = Array.isArray(data?.project) ? data.project : [];
+        this.rowData = sourceRows.map((row: any) => {
+          let resolvedIdPermission = Number(row.idPermission ?? row.idBranch ?? row.branchId ?? 0);
+
+          if (!resolvedIdPermission && row.name && Array.isArray(this.branchs)) {
+            const foundByName = this.branchs.find((branch) => branch.name === row.name);
+            resolvedIdPermission = foundByName ? Number(foundByName.id) : 0;
+          }
+
+          return {
+            ...row,
+            idPermission: resolvedIdPermission
+          };
+        });
         console.log('✅ User branches data loaded:', this.rowData);
         console.log('📊 Branches available for formatting:', this.branchs.length);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
@@ -197,6 +210,14 @@ export class UsersxbranchesComponent {
           if (params.newValue && this.branchs) {
             const selectedBranch = this.branchs.find(b => b.name === params.newValue);
             if (selectedBranch) {
+              const duplicateExists = this.rowData.some((row, index) =>
+                index !== params.node.rowIndex && Number(row.idPermission) === Number(selectedBranch.id)
+              );
+              if (duplicateExists) {
+                alerts.basicAlert('Sucursal duplicada', 'Esa sucursal ya está asignada al usuario.', 'error');
+                return false;
+              }
+
               // Solo actualizar idPermission (que es lo que soporta el endpoint)
               // El name se mostrará via valueFormatter
               params.data.idPermission = selectedBranch.id;
@@ -298,16 +319,13 @@ public gridOptions: any = {
     const tempId = `temp_${this.tempIdCounter++}`;
     
     console.log('➕ Adding new row. Available branches:', this.branchs.length);
-    
-    // Get first branch ID if available, otherwise 0
-    const defaultBranchId = this.branchs.length > 0 ? this.branchs[0].id : 0;
-    
-    console.log('🏢 Default branch ID for new row:', defaultBranchId);
+    console.log('🏢 New row will start without selected branch');
     
     const newItem = {
       id: tempId,
       idUser: this.idUser,
-      idPermission: defaultBranchId,
+      idPermission: 0,
+      name: '',
       type: this.permissionType,
       active: 1,
       __isNew: true,
@@ -329,12 +347,26 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.id);
+    const isValid = this.rowData.every((item) => Number(item.idPermission) > 0);
 
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
         'Debe seleccionar una sucursal antes de guardar.',
+        'error'
+      );
+      return;
+    }
+
+    const selectedBranchIds = this.rowData
+      .map((item) => Number(item.idPermission))
+      .filter((id) => id > 0);
+    const hasDuplicates = new Set(selectedBranchIds).size !== selectedBranchIds.length;
+
+    if (hasDuplicates) {
+      alerts.basicAlert(
+        'Sucursales duplicadas',
+        'Hay sucursales repetidas en la tabla. Corrija antes de guardar.',
         'error'
       );
       return;
