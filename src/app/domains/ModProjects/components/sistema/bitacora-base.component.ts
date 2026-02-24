@@ -293,7 +293,7 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   }
 
   // ── Utilidades ───────────────────────────────────────────────────────────
-  private validateRows(items: any[]): string | null {
+  protected validateRows(items: any[]): string | null {
     for (const item of items) {
       for (const { field, label } of this.requiredFields) {
         const v = item[field];

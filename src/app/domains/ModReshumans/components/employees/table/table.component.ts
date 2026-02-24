@@ -1044,6 +1044,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         suppressMovable: true,
         width: 270,
         filter: 'agSetColumnFilter',
+        //esta es la busqueda correcta
         filterParams: {
           //excelMode: 'mac',
           defaultToNothingSelected: true,

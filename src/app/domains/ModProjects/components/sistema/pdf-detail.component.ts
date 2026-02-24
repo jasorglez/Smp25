@@ -7,6 +7,7 @@ import { LogbookService }      from 'app/services/logbook.service';
 import { RootService }         from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { SignalsService }      from 'app/services/signals.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 import { lastValueFrom }       from 'rxjs';
 import pdfMake   from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -41,8 +42,9 @@ const hCell = (txt: string, align: 'left'|'center'|'right' = 'left'): any => ({
   text: txt, fontSize: 8, bold: true, color: WHITE, fillColor: BLUE, alignment: align,
 });
 
-const dCell = (txt: string, alt: boolean, align: 'left'|'center'|'right' = 'left'): any => ({
+const dCell = (txt: string, alt: boolean, align: 'left'|'center'|'right' = 'left', indent = 0): any => ({
   text: String(txt ?? ''), fontSize: 8, fillColor: alt ? ALT : WHITE, alignment: align,
+  margin: [indent, 0, 0, 0],
 });
 
 const emptyRow = (cols: number): any[] => [
@@ -141,6 +143,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   private rootService    = inject(RootService);
   private base64Service  = inject(Base64EncodeService);
   private signalsService = inject(SignalsService);
+  private workprogramsService = inject(WorkprogramsService);
   private sanitizer      = inject(DomSanitizer);
 
   pdfUrl: SafeResourceUrl | null = null;
@@ -204,13 +207,17 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       this.loadingMsg = 'Cargando datos del reporte...';
       const safe = async (obs: any) => { try { return await lastValueFrom(obs); } catch { return null; } };
 
-      const [rootResp, notasR, personalR, materialR, equiposR, fotosR] = await Promise.all([
+      const report      = this.reportData;
+      const projectId = report?.idProject ?? null;
+      const [rootResp, notasR, personalR, materialR, equiposR, fotosR, conceptsR, conceptosBitacoraR] = await Promise.all([
         safe(this.rootService.getRootbyId(idRoot)),
         reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'NOTE'))      : null,
         reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'PERSONAL'))  : null,
         reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'MATERIAL'))  : null,
         reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'EQUIPMENT')) : null,
         reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'Photo'))     : null,
+        projectId ? safe(this.workprogramsService.getConceptsHierarchy(projectId))  : null,
+        reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'CONCEPTO'))   : null,
       ]);
 
       const root     = rootResp    as any;
@@ -219,10 +226,42 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       const material = ((materialR as any)?.data ?? []) as any[];
       const equipos  = ((equiposR  as any)?.data ?? []) as any[];
       const fotos    = ((fotosR    as any)?.data ?? []) as any[];
+      const conceptsHierarchy = (conceptsR ?? []) as any[];
+      const conceptosBitacora = ((conceptosBitacoraR as any)?.data ?? []) as any[];
+
+      // ── Lookup maps SUBPARTIDA id/activity → jerarquía ───────────────────
+      const subpartidaById  = new Map<number, { sysAct: string; sysTxt: string; subAct: string; subTxt: string }>();
+      const subpartidaByAct = new Map<string, { sysAct: string; sysTxt: string; subAct: string; subTxt: string }>();
+      for (const sys of conceptsHierarchy) {
+        const sysAct = String(sys.activity ?? '').trim();
+        const sysTxt = String(sys.text     ?? '').trim();
+        for (const sub of sys.subpartidas ?? []) {
+          const subAct = String(sub.activity ?? '').trim();
+          const subTxt = String(sub.text     ?? '').trim();
+          const info   = { sysAct, sysTxt, subAct, subTxt };
+          if (sub.id)  subpartidaById.set(Number(sub.id), info);
+          if (subAct)  subpartidaByAct.set(subAct, info);
+        }
+      }
+
+      // ── Resolver cada entrada de bitácora → { subAct, cAct } ─────────────
+      // Estrategia 1: id_padre → workprogram.id del SUBPARTIDA
+      // Estrategia 2 (fallback): parsear description "1.1 A INGENIERIA..."
+      const resolvedConceptos: Array<{ subAct: string; cAct: string; entry: any }> = [];
+      for (const c of conceptosBitacora) {
+        const idPadre = Number(c.idPadre ?? c.id_padre ?? 0);
+        let info = idPadre > 0 ? subpartidaById.get(idPadre) : undefined;
+        if (!info) {
+          const tok0 = String(c.description ?? c.metadata ?? '').trim().split(/\s+/)[0];
+          if (tok0) info = subpartidaByAct.get(tok0);
+        }
+        if (!info) continue;
+        const descC = String(c.descriptionconcept ?? '').trim();
+        const cAct  = descC.split(/\s+/)[0] ?? '';
+        resolvedConceptos.push({ subAct: info.subAct, cAct, entry: c });
+      }
 
       const companyName = root?.name    || 'EMPRESA';
-      const report      = this.reportData;
-
       // Logos
       this.loadingMsg = 'Cargando logos...';
       const logoB64  = root?.picture  ? await this.tryB64(root.picture)  : null;
@@ -251,7 +290,102 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
 
       // ── Contenido ─────────────────────────────────────────────────────────
 
-      // • Info general (página 1)
+      // • Bitácora de Conceptos — SISTEMA > SUBPARTIDA > CONCEPTO > entradas
+      const fmtT = (v: any): string => {
+        if (!v) return '';
+        const s = String(v);
+        // "1970-01-01T08:00:00.000Z" → "08:00"  |  "08:00:00" → "08:00"
+        return s.includes('T') ? s.substring(11, 16) : s.substring(0, 5);
+      };
+      const SEQ = 'abcdefghijklmnopqrstuvwxyz';
+
+      const cRows: any[][] = [[
+        hCell('EDT'),
+        hCell('INICIO',  'center'),
+        hCell('TÉRMINO', 'center'),
+        hCell('DESCRIPCIÓN DE LAS ACTIVIDADES'),
+        hCell('CANT.', 'right'),
+      ]];
+
+      for (const sys of conceptsHierarchy) {
+        const sysAct = String(sys.activity ?? '').trim();
+        const sysTxt = String(sys.text     ?? '').trim();
+        let sysAdded = false;
+
+        for (const sub of sys.subpartidas ?? []) {
+          const subAct = String(sub.activity ?? '').trim();
+          const subTxt = String(sub.text     ?? '').trim();
+          let subAdded = false;
+
+          for (const c of sub.conceptos ?? []) {
+            const cAct = String(c.activity ?? '').trim();
+            const cTxt = String(c.text     ?? '').trim();
+            const entries = resolvedConceptos
+              .filter(r => r.subAct === subAct && r.cAct === cAct)
+              .map(r => r.entry);
+            if (!entries.length) continue;
+
+            // ─ SISTEMA (una sola vez por sistema) ──────────────────────────
+            if (!sysAdded) {
+              cRows.push([
+                { text: sysAct, fontSize: 8, bold: true, color: WHITE, fillColor: NAVY },
+                { text: '',     fillColor: NAVY },
+                { text: '',     fillColor: NAVY },
+                { text: sysTxt.toUpperCase(), fontSize: 8, bold: true, color: WHITE, fillColor: NAVY },
+                { text: '',     fillColor: NAVY },
+              ]);
+              sysAdded = true;
+            }
+
+            // ─ SUBPARTIDA (una sola vez por subpartida) ────────────────────
+            if (!subAdded) {
+              cRows.push([
+                { text: subAct, fontSize: 8, bold: true, color: NAVY, fillColor: LBLUE },
+                { text: '',     fillColor: LBLUE },
+                { text: '',     fillColor: LBLUE },
+                { text: subTxt.toUpperCase(), fontSize: 8, bold: true, color: NAVY, fillColor: LBLUE },
+                { text: '',     fillColor: LBLUE },
+              ]);
+              subAdded = true;
+            }
+
+            // ─ CONCEPTO catálogo ───────────────────────────────────────────
+            const edtC = `${subAct}.${cAct}`;
+            cRows.push([
+              { text: edtC, fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
+              { text: '',   fillColor: '#eaf0fb' },
+              { text: '',   fillColor: '#eaf0fb' },
+              { text: cTxt.toUpperCase(), fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
+              { text: '',   fillColor: '#eaf0fb' },
+            ]);
+
+            // ─ Entradas de bitácora ────────────────────────────────────────
+            for (let ei = 0; ei < entries.length; ei++) {
+              const e   = entries[ei];
+              const alt = ei % 2 === 0;
+              cRows.push([
+                dCell(`${edtC}.${SEQ[ei] ?? String(ei + 1)}`, alt),
+                dCell(fmtT(e.start), alt, 'center'),
+                dCell(fmtT(e.end),   alt, 'center'),
+                dCell(String(e.description ?? e.metadata ?? ''), alt),
+                dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
+              ]);
+            }
+          }
+        }
+      }
+
+      const pgConceptos: any[] = [
+        mkSectionTitle('Bitácora de Conceptos'),
+        cRows.length > 1
+          ? {
+              table: { widths: [55, 35, 42, '*', 35], headerRows: 1, body: cRows },
+              layout: TBL_LAYOUT,
+              margin: [0, 0, 0, 10],
+            }
+          : { text: 'Sin conceptos registrados.', fontSize: 8, color: GRAY, italics: true, margin: [0, 4, 0, 10] },
+      ];
+
       const pgInfoGeneral: any[] = [
         // Datos del reporte
         {
@@ -270,26 +404,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
           text: [{ text: 'DESCRIPCIÓN: ', bold: true, fontSize: 9, color: NAVY }, { text: report.description || 'Sin descripción', fontSize: 9 }],
           margin: [0, 0, 0, 24],
         },
-        // Firmas
-        { text: 'FIRMAS DE AUTORIZACIÓN', fontSize: 10, bold: true, color: NAVY, alignment: 'center', margin: [0, 0, 0, 8] },
-        {
-          table: {
-            widths: ['33%', '34%', '33%'],
-            body: [
-              [
-                { text: 'SUPERINTENDENTE',   bold: true, fontSize: 8, alignment: 'center', color: NAVY, fillColor: LBLUE },
-                { text: 'RESIDENTE DE OBRA', bold: true, fontSize: 8, alignment: 'center', color: NAVY, fillColor: LBLUE },
-                { text: 'DIRECTOR',          bold: true, fontSize: 8, alignment: 'center', color: NAVY, fillColor: LBLUE },
-              ],
-              [
-                { text: '________________________________', alignment: 'center', margin: [0, 28, 0, 4], fontSize: 9, color: GRAY },
-                { text: '________________________________', alignment: 'center', margin: [0, 28, 0, 4], fontSize: 9, color: GRAY },
-                { text: '________________________________', alignment: 'center', margin: [0, 28, 0, 4], fontSize: 9, color: GRAY },
-              ],
-            ],
-          },
-          layout: TBL_LAYOUT,
-        },
+        ...pgConceptos,
       ];
 
       // • Notas (página 4) — tipo como encabezado, contenido a todo el ancho
@@ -479,7 +594,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       const docDef: any = {
         pageSize: 'LETTER',
         pageOrientation: 'portrait',
-        pageMargins: [40, 88, 40, 48],
+        pageMargins: [40, 88, 40, 130],
         info: {
           title: `Reporte Diario — ${companyName}`,
           author: companyName,
@@ -517,19 +632,44 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
           ],
         }),
 
-        // Footer con línea + número de página
-        footer: (currentPage: number, pageCount: number) => ({
-          margin: [40, 0, 40, 10],
-          stack: [
-            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 492, y2: 0, lineWidth: 0.4, lineColor: '#cccccc' }] },
-            {
-              columns: [
-                { text: companyName, fontSize: 7, color: GRAY, margin: [0, 3, 0, 0] },
-                { text: `Pág. ${currentPage} de ${pageCount}`, fontSize: 7, color: GRAY, alignment: 'right', margin: [0, 3, 0, 0] },
-              ],
-            },
-          ],
-        }),
+        // Footer: página 1 con firmas, resto solo línea + página
+        footer: (currentPage: number, pageCount: number) => {
+          const sepLine = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 492, y2: 0, lineWidth: 0.4, lineColor: '#cccccc' }] };
+          const pageNum = {
+            columns: [
+              { text: companyName, fontSize: 7, color: GRAY, margin: [0, 3, 0, 0] },
+              { text: `Pág. ${currentPage} de ${pageCount}`, fontSize: 7, color: GRAY, alignment: 'right', margin: [0, 3, 0, 0] },
+            ],
+          };
+
+          return {
+            margin: [40, 5, 40, 0],
+            stack: [
+              { text: 'FIRMAS DE AUTORIZACIÓN', fontSize: 8, bold: true, color: NAVY, alignment: 'center', margin: [0, 0, 0, 5] },
+              {
+                table: {
+                  widths: ['33%', '34%', '33%'],
+                  body: [
+                    [
+                      { text: 'SUPERINTENDENTE',   bold: true, fontSize: 7, alignment: 'center', color: NAVY, fillColor: LBLUE },
+                      { text: 'RESIDENTE DE OBRA', bold: true, fontSize: 7, alignment: 'center', color: NAVY, fillColor: LBLUE },
+                      { text: 'DIRECTOR',          bold: true, fontSize: 7, alignment: 'center', color: NAVY, fillColor: LBLUE },
+                    ],
+                    [
+                      { text: '________________________', alignment: 'center', margin: [0, 20, 0, 3], fontSize: 8, color: GRAY },
+                      { text: '________________________', alignment: 'center', margin: [0, 20, 0, 3], fontSize: 8, color: GRAY },
+                      { text: '________________________', alignment: 'center', margin: [0, 20, 0, 3], fontSize: 8, color: GRAY },
+                    ],
+                  ],
+                },
+                layout: TBL_LAYOUT,
+                margin: [0, 0, 0, 8],
+              },
+              sepLine,
+              pageNum,
+            ],
+          };
+        },
 
         background: wmB64 ? [{
           image: 'wm', width: 380, opacity: 0.05,

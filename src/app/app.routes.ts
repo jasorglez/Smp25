@@ -546,17 +546,6 @@ export const routes: Routes = [
             },
           },
           {
-            path: 'posiciones',
-            loadComponent: () =>
-              import(
-                './domains/ModProjects/components/sistema/posiciones.component'
-              ).then((p) => p.PosicionesComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: {
-              permissions: { master: 'projects', detailed: 'sistema' }
-            },
-          },
-          {
             path: 'ot',
             loadComponent: () =>
               import(

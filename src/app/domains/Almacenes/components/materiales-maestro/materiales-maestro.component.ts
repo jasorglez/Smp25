@@ -365,6 +365,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
           }, 0);
         }
+      },
+      onColumnPinned: (event: any) => {
+        this.saveColumnState();
+      },
+      onColumnVisible: (event: any) => {
+        this.saveColumnState();
+      },
+      onColumnMoved: (event: any) => {
+        this.saveColumnState();
+      },
+      onColumnResized: (event: any) => {
+        this.saveColumnState();
       }
     };
 
@@ -812,8 +824,46 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
 
+    // Cargar estado de columnas desde localStorage
+    this.loadColumnState();
+
     // Configurar master-detail después de que el grid esté listo
     this.updateGridContext();
+  }
+
+  // Guardar estado de columnas (pin, orden, visibilidades) en localStorage
+  private saveColumnState() {
+    if (!this.gridApi) return;
+
+    try {
+      const columnState = this.gridApi.getColumnState();
+      const localStorageKey = `materiales_column_state_${this.idRoot}`;
+      localStorage.setItem(localStorageKey, JSON.stringify(columnState));
+      console.log('💾 Estado de columnas guardado:', columnState);
+    } catch (error) {
+      console.error('Error guardando estado de columnas:', error);
+    }
+  }
+
+  // Cargar estado de columnas desde localStorage
+  private loadColumnState() {
+    if (!this.gridApi) return;
+
+    try {
+      const localStorageKey = `materiales_column_state_${this.idRoot}`;
+      const savedState = localStorage.getItem(localStorageKey);
+
+      if (savedState) {
+        const columnState = JSON.parse(savedState);
+        this.gridApi.applyColumnState({
+          state: columnState,
+          applyOrder: true
+        });
+        console.log('📂 Estado de columnas cargado:', columnState);
+      }
+    } catch (error) {
+      console.error('Error cargando estado de columnas:', error);
+    }
   }
 
   // Actualizar el contexto del grid (llamado cuando cambia idRoot o al inicializar el grid)

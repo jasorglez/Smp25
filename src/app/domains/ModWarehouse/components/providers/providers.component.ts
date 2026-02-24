@@ -31,7 +31,7 @@ import { ProvidersPaymentsComponent } from './providers-payments.component';
 import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component'; // This seems to be the one for contacts
 import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
-import { DetailCellRendererTipoProveedorComponent } from './details/detail-cell-renderer-tipo-proveedor.component';
+import { DetallesTiposProveedorComponent } from './details/detalles-tipos-proveedor.component';
 import { DetallesMaterialexprovComponent } from './details/detalles-materialexprov.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
@@ -66,7 +66,7 @@ import { TrackingService } from 'app/services/tracking.service';
     DetailCellRendererComponentContact,
     DetailCellRendererComponentBanck,
     DetailCellRendererComponentCuentas,
-    DetailCellRendererTipoProveedorComponent,
+    DetallesTiposProveedorComponent,
     DetallesMaterialexprovComponent
   ],
   templateUrl: './providers.component.html',
@@ -227,7 +227,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     detailCellRenderer: DetailCellRendererComponentContact,
     detailCellRendererBanck: DetailCellRendererComponentBanck,
     detailCellRendererCuentas: DetailCellRendererComponentCuentas,
-    detailCellRendererTipoProveedor: DetailCellRendererTipoProveedorComponent,
+    detailCellRendererTipoProveedor: DetallesTiposProveedorComponent,
     detailCellRendererMateriales: DetallesMaterialexprovComponent
   };
 
@@ -242,6 +242,22 @@ export class ProvidersComponent implements CanComponentDeactivate {
     isRowMaster: (dataItem) => {
       return true; // Todas las filas de proveedores son maestras
     },
+    onColumnPinned: (event: any) => {
+      // Guardar estado de columnas cuando se hace pin/unpin
+      this.saveColumnState();
+    },
+    onColumnVisible: (event: any) => {
+      // Guardar estado de columnas cuando se muestra/oculta
+      this.saveColumnState();
+    },
+    onColumnMoved: (event: any) => {
+      // Guardar estado de columnas cuando se mueve
+      this.saveColumnState();
+    },
+    onColumnResized: (event: any) => {
+      // Guardar estado de columnas cuando se redimensiona
+      this.saveColumnState();
+    },
     onCellEditingStopped: (event: any) => {
       console.log('🔚 Edición detenida - celda:', event.column.colId, 'valor:', event.value);
 
@@ -250,6 +266,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
       if (isEscapeKey) {
         this.isNewRowEditing = false;
         this.newRowEditingIndex = -1;
+        return;
+      }
+
+      // Verificar si el editor tiene flag para prevenir avance (columnas con autocomplete)
+      const colDef = event.column.getColDef();
+      if (colDef?.cellEditorParams?.disableAdvanceOnEnter) {
         return;
       }
 
@@ -377,16 +399,48 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'company',
-        headerName: 'Compañía',
-        editable: true
+        headerName: 'Compañía *',
+        editable: true,
+        headerClass: 'my-header-red',
+        valueSetter: (params) => {
+          const rawValue = params.newValue;
+
+          // Permitir vacío, la validación de "al menos uno" se hace al guardar
+          if (!rawValue || typeof rawValue !== 'string' || rawValue.trim() === '') {
+            params.data[params.colDef.field] = '';
+            return true;
+          }
+
+          const normalizedValue = rawValue.trim().toUpperCase();
+
+          // Verificar duplicados en company (solo en el mismo idRoot)
+          const duplicateExists = this.rowData.some(
+            (row, index) =>
+              index !== params.node.rowIndex &&
+              row.company?.toUpperCase() === normalizedValue
+          );
+
+          if (duplicateExists) {
+            alerts.basicAlert(
+              'Empresa duplicada',
+              'Ya existe una empresa registrada con ese nombre.',
+              'error'
+            );
+            return false;
+          }
+
+          params.data[params.colDef.field] = normalizedValue;
+          return true;
+        }
       },
 
       {
         field: 'nameContact',
-        headerName: 'Contacto principal2',
+        headerName: 'Contacto principal *',
         editable: true,
         filter: true,
         cellEditor: 'autocompleteEditor',
+        headerClass: 'my-header-red',
         /*cellRenderer: (params) => { 
           const div = document.createElement('div');  #
           div.innerText = params.value; 
@@ -417,7 +471,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
             filterList: contactList,
             filterKey: 'nameContact',
             placeholder: 'Nombre Contacto',
-            minLength: 1
+            minLength: 1,
+            disableAdvanceOnEnter: true
           };
         },
 
@@ -461,6 +516,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         field: 'position',
         headerName: 'Puesto/Area',
         editable: true,
+        headerClass: 'my-header-red',
         valueSetter: (params) => {
           const rawValue = params.newValue;
           // Permitir vacío, el campo es opcional
@@ -510,6 +566,38 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
           return div;
         },
+      }, 
+
+      {
+        field: 'fieldBank',
+        headerName: 'Bancos',
+        editable: false,
+        cellRenderer: this.createDetailToggleCellRenderer('bank'),
+        cellStyle: { backgroundColor: '#d4edda' },
+      },
+
+      {
+        field: 'fieldCuenta',
+        headerName: 'Cuentas x Pagar',
+        cellRenderer: this.createDetailToggleCellRenderer('Cuentas'),
+        cellStyle: { backgroundColor: '#d4edda' },
+        editable: false
+      },
+
+      {
+        field: 'fieldMaterial',
+        headerName: 'Materiales y Sucursales',
+        cellRenderer: this.createDetailToggleCellRenderer('materiales'),
+        editable: false,
+        cellStyle: { backgroundColor: '#d4edda' },
+      },
+
+       {
+        field: 'fieldContact',
+        headerName: 'Contactos',
+        cellRenderer: this.createDetailToggleCellRenderer('contact'),
+        editable: false,
+        cellStyle: { backgroundColor: '#d4edda' },
       },
 
       {
@@ -562,38 +650,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           params.data[params.colDef.field] = trimmed;
           return true;
         },
-      },
-
-      {
-        field: 'fieldContact',
-        headerName: 'Contactos',
-        cellRenderer: this.createDetailToggleCellRenderer('contact'),
-        editable: false,
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-
-      {
-        field: 'fieldBank',
-        headerName: 'Bancos',
-        editable: false,
-        cellRenderer: this.createDetailToggleCellRenderer('bank'),
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-
-      {
-        field: 'fieldCuenta',
-        headerName: 'Cuentas x Pagar',
-        cellRenderer: this.createDetailToggleCellRenderer('Cuentas'),
-        cellStyle: { backgroundColor: '#d4edda' },
-        editable: false
-      },
-
-      {
-        field: 'fieldMaterial',
-        headerName: 'Materiales y Sucursales',
-        cellRenderer: this.createDetailToggleCellRenderer('materiales'),
-        editable: false,
-        cellStyle: { backgroundColor: '#d4edda' },
       },
 
 
@@ -882,6 +938,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
 
+    // Cargar estado de columnas desde localStorage
+    this.loadColumnState();
+
     // Configurar master-detail después de que el grid esté listo
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params) => {
@@ -943,6 +1002,41 @@ export class ProvidersComponent implements CanComponentDeactivate {
     });
 
 
+  }
+
+  // Guardar estado de columnas (pin, orden, visibilidad) en localStorage
+  private saveColumnState() {
+    if (!this.gridApi) return;
+
+    try {
+      const columnState = this.gridApi.getColumnState();
+      const localStorageKey = `providers_column_state_${this.idRoot}`;
+      localStorage.setItem(localStorageKey, JSON.stringify(columnState));
+      console.log('💾 Estado de columnas guardado:', columnState);
+    } catch (error) {
+      console.error('Error guardando estado de columnas:', error);
+    }
+  }
+
+  // Cargar estado de columnas desde localStorage
+  private loadColumnState() {
+    if (!this.gridApi) return;
+
+    try {
+      const localStorageKey = `providers_column_state_${this.idRoot}`;
+      const savedState = localStorage.getItem(localStorageKey);
+
+      if (savedState) {
+        const columnState = JSON.parse(savedState);
+        this.gridApi.applyColumnState({
+          state: columnState,
+          applyOrder: true
+        });
+        console.log('📂 Estado de columnas cargado:', columnState);
+      }
+    } catch (error) {
+      console.error('Error cargando estado de columnas:', error);
+    }
   }
 
   addRow() {

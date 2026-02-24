@@ -114,7 +114,8 @@
       "Bash(git stash:*)",
       "Bash(cmd /c \"npx ng build bi-aug-24 --configuration development 2>&1\")",
       "Bash(cd \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosSmp\\\\SMP\" && dotnet build --configuration Release 2>&1)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []

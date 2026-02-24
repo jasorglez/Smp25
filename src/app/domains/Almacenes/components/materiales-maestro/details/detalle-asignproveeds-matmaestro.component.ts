@@ -502,23 +502,29 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
       console.log('📦 Total proveedores vigentes:', this.providers.length);
 
-      // 2. Filtrar proveedores que manejan la subfamilia del material
+      // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
         console.log('🔍 Filtrando proveedores por subfamilyId:', this.materialSubfamilyId);
 
         try {
-          // Obtener todos los proveedores y sus subfamilias asociadas
+          // Obtener todos los proveedores y sus subfamilias VIGENTES asociadas
           const providerSubfamilyPromises = this.providers.map(async (provider: any) => {
             try {
-              const subfamilies: any = await this.providersService.getSubfamilyxProviderByProvider(provider.id).toPromise();
+              // Usar el endpoint de subfamilias vigentes
+              const subfamilies: any = await this.providersService.getSubfamilyxVigentes(provider.id).toPromise();
+              
+              // Buscar si alguna subfamilia coincide con la subfamilia del material
+              const matchingSubfamily = subfamilies?.find((s: any) => s.idSubfamily === this.materialSubfamilyId);
+              
               return {
                 providerId: provider.id,
                 providerName: this.getProviderDisplayName(provider),
-                hasSubfamily: subfamilies.some((s: any) => s.idSubfamily === this.materialSubfamilyId)
+                hasSubfamily: matchingSubfamily !== undefined,
+                subfamilyDescription: matchingSubfamily?.description || null
               };
             } catch (error) {
-              console.error(`Error obteniendo subfamilias del proveedor ${provider.id}:`, error);
-              return { providerId: provider.id, providerName: this.getProviderDisplayName(provider), hasSubfamily: false };
+              console.error(`Error obteniendo subfamilias vigentes del proveedor ${provider.id}:`, error);
+              return { providerId: provider.id, providerName: this.getProviderDisplayName(provider), hasSubfamily: false, subfamilyDescription: null };
             }
           });
 
@@ -526,16 +532,18 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
           console.log('📊 Resultados de búsqueda:', results);
 
-          const providerIdsWithSubfamily = results
-            .filter(r => r.hasSubfamily)
-            .map(r => r.providerId);
+          // Filtrar solo los proveedores que tienen la subfamilia del material vigente
+          const providersWithMatchingSubfamily = results
+            .filter(r => r.hasSubfamily);
 
-          console.log('🔑 IDs de proveedores que manejan la subfamilia:', providerIdsWithSubfamily);
+          console.log('🔑 Proveedores con subfamilia vigente:', providersWithMatchingSubfamily);
 
-          // Filtrar solo los proveedores que manejan la subfamilia del material
-          this.filteredProviders = this.providers.filter(p => providerIdsWithSubfamily.includes(p.id));
+          // Crear el arreglo filtrado con la información del proveedor y la subfamilia
+          this.filteredProviders = this.providers.filter(p => 
+            providersWithMatchingSubfamily.some(pm => pm.providerId === p.id)
+          );
 
-          console.log('✅ Proveedores filtrados por subfamilia:', this.filteredProviders.length);
+          console.log('✅ Proveedores filtrados por subfamilia vigente:', this.filteredProviders.length);
           console.log('📋 Lista de proveedores filtrados:', this.filteredProviders.map(p => this.getProviderDisplayName(p)));
         } catch (error) {
           console.error('❌ Error filtrando proveedores por subfamilia:', error);

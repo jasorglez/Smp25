@@ -1,5 +1,11 @@
 // Estilos para eliminar padding extra en el contenedor de detalles de AG Grid
 ::ng-deep {
+  // Estilo para header de columnas obligatorias (texto rojo)
+  .my-header-red {
+    color: #dc3545 !important;
+    font-weight: 600 !important;
+  }
+
   // Eliminar padding del contenedor de detalles
   .ag-details-row {
     padding: 0 !important;
