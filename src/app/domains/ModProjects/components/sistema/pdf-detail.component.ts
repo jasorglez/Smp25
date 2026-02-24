@@ -139,12 +139,12 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   @Input() data: any;
   @Input() context: any;
 
-  private logbookService = inject(LogbookService);
-  private rootService    = inject(RootService);
-  private base64Service  = inject(Base64EncodeService);
-  private signalsService = inject(SignalsService);
+  private logbookService      = inject(LogbookService);
+  private rootService         = inject(RootService);
+  private base64Service       = inject(Base64EncodeService);
+  private signalsService      = inject(SignalsService);
   private workprogramsService = inject(WorkprogramsService);
-  private sanitizer      = inject(DomSanitizer);
+  private sanitizer           = inject(DomSanitizer);
 
   pdfUrl: SafeResourceUrl | null = null;
   pdfBlob: Blob | null = null;
@@ -207,17 +207,19 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       this.loadingMsg = 'Cargando datos del reporte...';
       const safe = async (obs: any) => { try { return await lastValueFrom(obs); } catch { return null; } };
 
-      const report      = this.reportData;
+      const report    = this.reportData;
       const projectId = report?.idProject ?? null;
-      const [rootResp, notasR, personalR, materialR, equiposR, fotosR, conceptsR, conceptosBitacoraR] = await Promise.all([
+
+      const [rootResp, notasR, personalR, materialR, equiposR, fotosR, conceptsR, conceptosBitacoraR, wpFlatR] = await Promise.all([
         safe(this.rootService.getRootbyId(idRoot)),
-        reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'NOTE'))      : null,
-        reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'PERSONAL'))  : null,
-        reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'MATERIAL'))  : null,
-        reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'EQUIPMENT')) : null,
-        reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'Photo'))     : null,
-        projectId ? safe(this.workprogramsService.getConceptsHierarchy(projectId))  : null,
-        reportId ? safe(this.logbookService.getInfoByReporte(reportId, 'CONCEPTO'))   : null,
+        reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'NOTE'))      : null,
+        reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'PERSONAL'))  : null,
+        reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'MATERIAL'))  : null,
+        reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'EQUIPMENT')) : null,
+        reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'Photo'))     : null,
+        projectId  ? safe(this.workprogramsService.getConceptsHierarchy(projectId))    : null,
+        reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'CONCEPTO'))  : null,
+        projectId  ? safe(this.workprogramsService.getWorkPrograms(projectId, 'Project')) : null,
       ]);
 
       const root     = rootResp    as any;
@@ -228,6 +230,15 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       const fotos    = ((fotosR    as any)?.data ?? []) as any[];
       const conceptsHierarchy = (conceptsR ?? []) as any[];
       const conceptosBitacora = ((conceptosBitacoraR as any)?.data ?? []) as any[];
+      const wpFlat        = (wpFlatR ?? []) as any[];
+      // Fila CONTRATO: activity='0', measure='CONTRATO'
+      const contratoRow   = wpFlat.find((r: any) =>
+        String(r.measure ?? r.Measure ?? '').toUpperCase() === 'CONTRATO' &&
+        String(r.activity ?? r.Activity ?? '') === '0'
+      );
+      const numberContract = String(this.signalsService.nameContract() ?? '');
+      // El campo C# es 'Text' (propiedad) mapeado a columna 'description', en JSON → 'text'
+      const contratoDesc   = String(contratoRow?.text ?? contratoRow?.Text ?? contratoRow?.description ?? '');
 
       // ── Lookup maps SUBPARTIDA id/activity → jerarquía ───────────────────
       const subpartidaById  = new Map<number, { sysAct: string; sysTxt: string; subAct: string; subTxt: string }>();
@@ -386,26 +397,17 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
           : { text: 'Sin conceptos registrados.', fontSize: 8, color: GRAY, italics: true, margin: [0, 4, 0, 10] },
       ];
 
-      const pgInfoGeneral: any[] = [
-        // Datos del reporte
-        {
-          table: {
-            widths: ['*', '*', 160],
-            body: [[
-              { text: [{ text: 'INICIO: ', bold: true, color: NAVY }, report.startTime || '—'], fontSize: 9 },
-              { text: [{ text: 'TÉRMINO: ', bold: true, color: NAVY }, report.endTime || '—'], fontSize: 9 },
-              { text: [{ text: 'TOTAL: ', bold: true, color: RED }, { text: this.fmtCurrency(report.totalPay), color: RED }], fontSize: 9 },
-            ]],
-          },
-          layout: 'noBorders',
-          margin: [0, 0, 0, 8],
-        },
-        {
-          text: [{ text: 'DESCRIPCIÓN: ', bold: true, fontSize: 9, color: NAVY }, { text: report.description || 'Sin descripción', fontSize: 9 }],
-          margin: [0, 0, 0, 24],
-        },
-        ...pgConceptos,
-      ];
+      // ── Determinar SISTEMA primario para Descripción de la OT ─────────────
+      const primarySistema   = conceptsHierarchy[0] ?? null;
+      const sistemaAct       = String(primarySistema?.activity ?? '').trim();
+      const sistemaTxt       = String(primarySistema?.text ?? (primarySistema as any)?.Text ?? '').trim();
+      const otNumber         = numberContract && sistemaAct
+                               ? `${numberContract}-${sistemaAct}`
+                               : numberContract || sistemaAct || '—';
+
+      // Fecha formateada para el header (capturada aquí para el closure)
+      const reportDateLong     = this.fmtDateLong(report.date);
+      const platicasSeguridad  = String(report?.platicasSeguridad ?? (report as any)?.PlaticasSeguridad ?? '');
 
       // • Notas (página 4) — tipo como encabezado, contenido a todo el ancho
       const pgNotas: any[] = [
@@ -594,43 +596,76 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       const docDef: any = {
         pageSize: 'LETTER',
         pageOrientation: 'portrait',
-        pageMargins: [40, 88, 40, 130],
+        pageMargins: [40, 148, 40, 130],
         info: {
           title: `Reporte Diario — ${companyName}`,
           author: companyName,
           subject: 'Reporte Diario de Obra',
         },
 
-        // Header dinámico
-        header: (currentPage: number, pageCount: number) => ({
-          margin: [40, 12, 40, 0],
-          stack: [
-            {
-              columns: [
-                logoB64
-                  ? { image: 'logo',  width: 52, alignment: 'left'  }
-                  : { text: '', width: 52 },
-                {
-                  width: '*',
-                  stack: [
-                    { text: companyName,            style: 'hdrTitle'                    },
-                    { text: 'REPORTE DIARIO DE OBRA', style: 'hdrSub', margin: [0,2,0,0] },
-                    {
-                      text: `Fecha: ${this.fmtDate(report.date)}   ·   Pág. ${currentPage} / ${pageCount}`,
-                      style: 'hdrMeta', margin: [0,2,0,0],
-                    },
+        // Header dinámico — aparece en TODAS las páginas
+        header: (_currentPage: number, _pageCount: number) => {
+          // Helpers compactos (7pt)
+          const il  = (txt: string): any => ({ text: txt, fontSize: 7, bold: true, color: NAVY, margin: [3, 1, 3, 1] });
+          const ilD = (txt: string): any => ({ text: txt, fontSize: 7, bold: true, color: WHITE, fillColor: NAVY, margin: [3, 1, 3, 1] });
+          const ic  = (txt: string, extra: any = {}): any => ({ text: txt || '—', fontSize: 7, margin: [3, 1, 3, 1], ...extra });
+
+          return {
+            margin: [40, 6, 40, 0],
+            stack: [
+              // Fila logos + título
+              {
+                columns: [
+                  logoB64  ? { image: 'logo',  width: 42 } : { text: '', width: 42 },
+                  {
+                    width: '*',
+                    stack: [
+                      { text: 'REPORTE DE ACTIVIDADES DIARIAS', fontSize: 10, bold: true, color: NAVY, alignment: 'center' },
+                      { text: `Contrato No. ${numberContract}`,  fontSize: 8, color: NAVY, alignment: 'center', margin: [0, 1, 0, 0] },
+                    ],
+                  },
+                  logo2B64 ? { image: 'logo2', width: 42 } : { text: '', width: 42 },
+                ],
+                margin: [0, 0, 0, 3],
+              },
+              // Línea separadora
+              { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 492, y2: 0, lineWidth: 0.8, lineColor: NAVY }] },
+              // Tabla de información (6 filas × 4 cols, 7pt, compacta)
+              {
+                table: {
+                  widths: [150, 120, 95, 167],
+                  body: [
+                    [ il('Inicio de actividades:'),
+                      ic(fmtT(report.startTime) ? fmtT(report.startTime) + ' hrs' : '—'),
+                      il('No. De Reporte:'),
+                      ic(report.numReporte || '—', { bold: true, fillColor: '#FFD700' }) ],
+                    [ il('Fin de actividades:'),
+                      ic(fmtT(report.endTime) ? fmtT(report.endTime) + ' hrs' : '—'),
+                      il('Ubicación:'),
+                      ic(report.ubication || '—') ],
+                    [ il('Condiciones Meteorológicas:'),
+                      ic(report.condition || '—'),
+                      il('Fecha:'),
+                      ic(reportDateLong) ],
+                    [ ilD('Objeto del Contrato'),
+                      { text: contratoDesc || '—', fontSize: 7, margin: [3, 1, 3, 1], colSpan: 3 }, {}, {} ],
+                    [ il('Descripción de la Orden Trabajo'),
+                      { text: sistemaTxt || '—', fontSize: 7, margin: [3, 1, 3, 1], colSpan: 2 }, {},
+                      { stack: [
+                          { text: 'Orden de Trabajo No.', fontSize: 7, bold: true, color: NAVY, margin: [3, 1, 3, 0] },
+                          { text: otNumber || '—', fontSize: 7, margin: [3, 0, 3, 1] },
+                        ]
+                      } ],
+                    [ ilD('Tema de Plática de Seguridad'),
+                      { text: report.platicasSeguridad || '—', fontSize: 7, margin: [3, 1, 3, 1], colSpan: 3 }, {}, {} ],
                   ],
-                  alignment: 'center',
                 },
-                logo2B64
-                  ? { image: 'logo2', width: 52, alignment: 'right' }
-                  : { text: '', width: 52 },
-              ],
-            },
-            // Línea divisoria bajo el header
-            { canvas: [{ type: 'line', x1: 0, y1: 4, x2: 492, y2: 4, lineWidth: 1, lineColor: NAVY }] },
-          ],
-        }),
+                layout: TBL_LAYOUT,
+                margin: [0, 3, 0, 0],
+              },
+            ],
+          };
+        },
 
         // Footer: página 1 con firmas, resto solo línea + página
         footer: (currentPage: number, pageCount: number) => {
@@ -677,7 +712,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
         }] : [],
 
         content: [
-          ...pgInfoGeneral,
+          ...pgConceptos,
           ...pgNotas,
           ...pgPersonalMaterialEquipos,
           ...pgFotos,
@@ -716,5 +751,15 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   private fmtCurrency(val: number | null | undefined): string {
     if (val == null) return '$0.00';
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val);
+  }
+
+  private fmtDateLong(val: any): string {
+    if (!val) return '';
+    const s = String(val).substring(0, 10);
+    const [y, m, d] = s.split('-');
+    if (!d || !m || !y) return s;
+    const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
+                    'septiembre','octubre','noviembre','diciembre'];
+    return `${parseInt(d)} de ${months[parseInt(m) - 1]} del ${y}`;
   }
 }
