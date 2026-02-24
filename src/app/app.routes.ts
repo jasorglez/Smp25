@@ -885,6 +885,20 @@ export const routes: Routes = [
                     category: 'Administration'
                   }
                 }
+              },
+              {
+                path: 'reporte-facturacion-anual',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/reporte-facturacion-anual/reporte-facturacion-anual.component'
+                  ).then((r) => r.ReporteFacturacionAnualComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Reporte Facturación Anual',
+                    category: 'Administration'
+                  }
+                }
               }
             ]
           },
