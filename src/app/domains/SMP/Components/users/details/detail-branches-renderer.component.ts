@@ -57,7 +57,9 @@ import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.compo
           [columnDefs]="branchesColumnDefs"
           [rowData]="branchesRowData"
           [gridOptions]="branchesGridOptions"
+          [defaultColDef]="defaultColDef"
           [components]="components"
+          [detailRowAutoHeight]="true"
           (gridReady)="onBranchesGridReady($event)"
           (cellValueChanged)="onBranchesCellValueChanged($event)"
           [stopEditingWhenCellsLoseFocus]="true">
@@ -78,19 +80,23 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   companyId: number;
   companyName: string;
 
-  // Branches grid properties
   branchesRowData: any[] = [];
   hasBranchChanges: boolean = false;
   branchesGridApi: any;
   selectedBranch: any = null;
 
-  // Data for dropdowns
   branches: any[] = [];
 
   private tempIdCounter: number = 0;
 
   components = {
     detailPermisosXDeptos: DetailPermisosXDeptosComponent
+  };
+
+  // Evita que AG Grid genere columnas automáticas desde los datos
+  defaultColDef = {
+    suppressMovable: true,
+    filter: false,
   };
 
   branchesGridOptions: any = {
@@ -101,7 +107,12 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     masterDetail: true,
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: 'detailPermisosXDeptos',
-    detailRowHeight: 350
+    detailRowHeight: 350,
+    suppressAutoSize: true,
+    detailCellRendererParams: {
+      autoHeight: true,
+    },
+    getRowStyle: () => ({ width: '100%' }),
   };
 
   get branchesColumnDefs(): any[] {
@@ -145,7 +156,36 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
           }
           return false;
         }
-      }
+      },
+      {
+        field: 'idRole',
+        headerName: 'Departamento',
+        suppressMovable: true,
+        filter: false,
+        flex: 1,
+        valueFormatter: (params: any) => params.value || '',
+      },
+      {
+        field: 'idPosicion',
+        headerName: 'Posición',
+        suppressMovable: true,
+        filter: false,
+        flex: 1,
+        valueFormatter: (params: any) => params.value || '',
+      },
+      // ✅ Principal DESPUÉS de Posición
+      {
+        field: 'principal',
+        headerName: 'Principal',
+        width: 110,
+        editable: true,
+        cellEditor: 'agCheckboxCellEditor',
+        cellRenderer: 'agCheckboxCellRenderer',
+        valueSetter: (params: any) => {
+          params.data.principal = params.newValue;
+          return true;
+        }
+      },
     ];
   }
 
@@ -164,7 +204,6 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   async loadCatalogs() {
-    // Cargar sucursales de la empresa
     this.branchesService.getBranches(this.companyId).subscribe(
       (data: any) => {
         this.branches = data;
@@ -181,8 +220,6 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   loadBranchesData() {
-    const permissionType = 'branch';
-
     this.branchesService.getBranchesByUserAndCompany(this.userId, this.companyId).subscribe(
       (data: any) => {
         this.branchesRowData = (data.project || []).map((row: any) => ({
