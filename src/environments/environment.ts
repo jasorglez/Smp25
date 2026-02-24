@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.77 (24 Febrero 2026) - Columnas Gastos y Diferencia agregadas al Reporte Facturación',
+  version: '5.77 (24 Febrero 2026 16:00) - Reporte Diario TMDB',
 
 };
