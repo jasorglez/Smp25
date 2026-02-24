@@ -90,7 +90,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   branchName: string;
   idCompany: number;
 
-  // Warehouses grid properties
   warehousesRowData: any[] = [];
   catalogRoles: any[] = [];
   catalogPosiciones: any[] = [];
@@ -101,7 +100,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   idPosicionSelect: number;
   selectedWarehouse: any = null;
 
-  // Data for dropdowns
   warehouses: any[] = [];
   warehousesMap: { [key: string]: string } = {};
 
@@ -137,6 +135,19 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         headerName: 'ID',
         filter: 'agNumberColumnFilter',
         hide: true,
+      },
+      // ✅ Principal ANTES de Departamento
+      {
+        field: 'principal',
+        headerName: 'Principal',
+        width: 110,
+        editable: true,
+        cellEditor: 'agCheckboxCellEditor',
+        cellRenderer: 'agCheckboxCellRenderer',
+        valueSetter: (params: any) => {
+          params.data.principal = params.newValue;
+          return true;
+        }
       },
       {
         field: 'idRole',
@@ -376,6 +387,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       id: tempId,
       idUser: this.userId,
       idBranch: this.branchId,
+      principal: false,
       __isNew: true
     };
 
@@ -541,7 +553,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       this.catalogPosiciones = roleId ? await this.getPoscionesbyRole(roleId) : [];
     }
 
-    // ✅ Único cambio relevante: abre el modal en el padre vía ModalService
     if (colId === 'Permisos') {
       this.modalService.openPermissions({
         idUser: this.userId,

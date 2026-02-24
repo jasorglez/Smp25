@@ -30,15 +30,13 @@ import { UsersService } from 'app/services/users.service';
           <button
             class="btn btn-primary ms-1"
             (click)="addPermission()"
-            [disabled]="!permissionsGridApi"
-            >
+            [disabled]="!permissionsGridApi">
             <i class="bi bi-plus-lg"></i>
           </button>
           <button
             class="btn btn-success ms-1 position-relative"
             (click)="savePermissions()"
-            [disabled]="!hasPermissionChanges"
-           >
+            [disabled]="!hasPermissionChanges">
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -49,15 +47,9 @@ import { UsersService } from 'app/services/users.service';
           <button
             class="btn btn-danger ms-1"
             (click)="deleteSelectedPermission()"
-            [disabled]="!selectedPermission"
-            >
+            [disabled]="!selectedPermission">
             <i class="bi bi-trash"></i>
           </button>
-          <!--<button
-            class="btn btn-info ms-1"
-            (click)="isRootUser ? toggleBranches() : toggleWarehouses()">
-            <i class="bi bi-shield-lock"></i>
-          </button>-->
         </div>
       </div>
       <div style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0;">
@@ -81,7 +73,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);
   private rootService = inject(RootService);
-  private usersService        = inject(UsersService);
+  private usersService = inject(UsersService);
   private trackingService = inject(TrackingService);
   private permitionsService = inject(PermitionsService);
   authService = inject(AuthService);
@@ -93,13 +85,12 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
   showRoot: boolean = false;
   canSeeBranches: boolean = false;
   permiso: any[] = [];
-  // Permissions grid properties
+
   permissionsRowData: any[] = [];
   hasPermissionChanges: boolean = false;
   permissionsGridApi: any;
   selectedPermission: any = null;
 
-  // Data for dropdowns
   branches: any[] = [];
   allBranches: any[] = [];
   roots: any[] = [];
@@ -120,8 +111,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     masterDetail: true,
     isRowMaster: (dataItem: any) => true,
     detailCellRendererSelector: (params: any) => {
-      // Si estamos en modo root/empresas, usar DetailBranchesRenderer
-      // Si estamos en modo branches, usar DetailPermisosXDeptos
       if (this.isRootUser) {
         return { component: 'detailBranchesRenderer' };
       } else {
@@ -133,7 +122,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
 
   get permissionsColumnDefs(): any[] {
     if (this.isRootUser) {
-      // Columna para empresas (root)
       return [
         {
           field: 'id',
@@ -153,16 +141,13 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           valueSetter: (params: any) => {
             const selectedId = params.newValue;
             if (this.roots.hasOwnProperty(selectedId)) {
-              // Verificar si la empresa ya ha sido asignada
               const duplicateExists = this.permissionsRowData.some(
                 (row, index) => row.idPermission === selectedId && params.node.rowIndex !== index
               );
-
               if (duplicateExists) {
                 alerts.basicAlert('Empresa Duplicada', 'Esta empresa ya ha sido asignada al usuario.', 'error');
-                return false; // Evita que el valor se establezca
+                return false;
               }
-
               params.data[params.colDef.field] = selectedId;
               return true;
             }
@@ -170,16 +155,13 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           },
           valueParser: (params: any) => params.newValue,
           editable: (params) => {
-          if (params.data.__isNew) {
+            if (params.data.__isNew) return true;
             return true;
-          }
-          return true
-        },
+          },
           flex: 1
         }
       ];
     } else {
-      // Columna para sucursales (branches)
       return [
         {
           field: 'id',
@@ -192,11 +174,9 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           field: 'name',
           headerName: 'Sucursal',
           editable: (params) => {
-          if (params.data.__isNew) {
+            if (params.data.__isNew) return true;
             return true;
-          }
-          return true
-        },
+          },
           suppressMovable: true,
           filter: false,
           flex: 1,
@@ -219,16 +199,13 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             if (params.newValue && this.branches) {
               const selectedBranch = this.branches.find((b: any) => b.name === params.newValue);
               if (selectedBranch) {
-                // Verificar si la sucursal ya ha sido asignada
                 const duplicateExists = this.permissionsRowData.some(
                   (row, index) => row.idPermission === selectedBranch.id && params.node.rowIndex !== index
                 );
-
                 if (duplicateExists) {
                   alerts.basicAlert('Sucursal Duplicada', 'Esta sucursal ya ha sido asignada al usuario.', 'error');
-                  return false; // Evita que el valor se establezca
+                  return false;
                 }
-
                 params.data.idPermission = selectedBranch.id;
                 params.data[params.colDef.field] = params.newValue;
                 return true;
@@ -237,12 +214,13 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             return false;
           }
         },
+        // ✅ Departamento ANTES de Principal
         {
           field: 'department',
           headerName: 'Departamento',
           valueFormatter: (params) => {
             const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
-            return found ? found.departmentCount ?? 0 : 0; // ← muestra 0 si no existe
+            return found ? found.departmentCount ?? 0 : 0;
           },
           cellStyle: { backgroundColor: '#d4edda' },
           onCellClicked: this.toggleBranches.bind(this)
@@ -252,29 +230,48 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           headerName: 'Posición',
           valueFormatter: (params) => {
             const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
-            return found ? found.positionCount ?? 0 : 0; // ← muestra 0 si no existe
+            return found ? found.positionCount ?? 0 : 0;
           }
-        }
+        },
+        // ✅ Principal DESPUÉS de Posición
+        {
+          field: 'principal',
+          headerName: 'Principal',
+          width: 110,
+          editable: true,
+          cellEditor: 'agCheckboxCellEditor',
+          cellRenderer: 'agCheckboxCellRenderer',
+          valueGetter: (params: any) => {
+            return params.data.advanced !== null && params.data.advanced !== undefined;
+          },
+          valueSetter: (params: any) => {
+            params.data.advanced = params.newValue ? 1 : null;
+            params.data.principal = params.newValue;
+            return true;
+          }
+        },
       ];
     }
   }
-  getInfoByUser(){
+
+  getInfoByUser() {
     this.permitionsService.getInfoByUser(this.userId)
       .subscribe((data: any) => {
-        this.permiso = [];
         this.permiso = data;
-        console.log("algo aqui", this.permiso)
+        console.log('🔵 getInfoByUser - permiso:', this.permiso);
       });
   }
+
   constructor() {
-      effect(() => {
-         if(this.signalsService.getRefresCantidadPermisos()()){
-          this.loadCatalogs();
-          this.getInfoByUser();
-          this.signalsService.setRefresCantidadPermisos(false);
-         }
-      })
+    effect(() => {
+      if (this.signalsService.getRefresCantidadPermisos()()) {
+        this.loadCatalogs();
+        this.getInfoByUser();
+        this.signalsService.setRefresCantidadPermisos(false);
+      }
+    });
   }
+
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.userId = params.data.id;
@@ -282,21 +279,15 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     this.getInfoByUser();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-    // Determinar permisos según users-menu lógica
     const userEmail = this.signalsService.getemailChoose();
     this.showRoot = userEmail === environment.root;
 
-    // Verificar permisos detallados
     const hasCompaniesPermission = this.authService.hasDetailedPermission('users-setup', 'companies');
     const hasBranchesPermission = this.authService.hasDetailedPermission('users-setup', 'branches');
 
-    // Decidir qué mostrar:
-    // Si tiene permiso de companies (empresas), mostrar root
-    // Si no, mostrar branches directamente
-    this.isRootUser =false;
+    this.isRootUser = false;
     this.canSeeBranches = this.showRoot || hasBranchesPermission;
 
-    // Cargar catálogos y datos
     this.loadCatalogs();
   }
 
@@ -306,7 +297,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
 
   async loadCatalogs() {
     if (this.isRootUser) {
-      // Cargar empresas
       this.rootService.getRoot().subscribe((data: any[]) => {
         this.roots = data.reduce((acc, dep) => {
           acc[dep.id] = dep.name;
@@ -315,18 +305,14 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         this.loadPermissionsData();
       });
     } else {
-      // Cargar sucursales
       this.branchesService.getBranches(this.idRoot).subscribe(
         (data: any) => {
           this.allBranches = data;
           this.branches = data;
           this.loadPermissionsData();
-          console.log('Branches loaded:', this.branches);
         },
         (error) => {
-          if (error.status == 404) {
-            this.branches = [];
-          }
+          if (error.status == 404) this.branches = [];
           console.error('Error fetching branches:', error);
         }
       );
@@ -337,7 +323,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     const permissionType = this.isRootUser ? 'root' : 'branch';
 
     if (this.isRootUser) {
-      // Para root, cargar permisos de empresas
       this.usersxpermissionsService.getDataUsersxPermissions(permissionType).subscribe((data: any) => {
         this.permissionsRowData = data.filter((row: any) => row.idUser === this.userId);
         this.trackingService.addLog(
@@ -347,17 +332,18 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           this.trackingService.getEmail()
         );
       });
-    } else 
-      // Para usuarios normales, cargar sucursales
+    } else {
       this.branchesService.getBranchesByUserAndCompany(this.userId, this.idRoot).subscribe(
         (data: any) => {
-          // Mapear los datos para asegurar que tienen la estructura correcta
+          console.log('🔴 RAW data.project:', data.project);
+
           this.permissionsRowData = (data.project || []).map((row: any) => ({
             ...row,
-            // Asegurar que idPermission contenga el ID de la sucursal
-            idPermission: row.idPermission || row.idBranch || row.id
-            
+            idPermission: row.idPermission || row.idBranch || row.id,
+            principal: row.advanced !== null && row.advanced !== undefined
           }));
+
+          console.log('🟢 permissionsRowData mapeado:', this.permissionsRowData);
 
           if (this.allBranches.length > 0) {
             const assignedIds = this.permissionsRowData.map((p: any) => p.idPermission);
@@ -373,8 +359,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
             'Menu Administracion Usuarios por Sucursal',
             this.trackingService.getEmail()
           );
-          
-          console.log('Data loaded:', this.permissionsRowData);
+
           setTimeout(() => {
             if (this.permissionsGridApi && this.branches.length > 0) {
               this.permissionsGridApi.refreshCells();
@@ -386,6 +371,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
           console.error('Error fetching branches data:', error);
         }
       );
+    }
   }
 
   onPermissionsGridReady(params: any) {
@@ -422,6 +408,8 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
       idUser: this.userId,
       idPermission: defaultPermissionId,
       type: permissionType,
+      principal: false,
+      advanced: null,
       active: 1,
       __isNew: true
     };
@@ -474,7 +462,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         'Menu Administracion Usuarios',
         this.trackingService.getEmail()
       );
-      
       return this.usersxpermissionsService.addUserxPermission(cleanedData).pipe(
         concatMap(() => this.usersService.updateActulizarSecurity(cleanedData.idUser, 'SUMA'))
       );
@@ -495,51 +482,32 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     });
 
     try {
-      const responses = await lastValueFrom(
+      await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.hasPermissionChanges = false;
       this.signalsService.setRefresSecurity(true);
       this.loadPermissionsData();
     } catch (error) {
       console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
+      alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
   }
 
   deleteSelectedPermission() {
-    if (!this.selectedPermission) {
-      return;
-    }
+    if (!this.selectedPermission) return;
 
     const permissionId = this.selectedPermission.internalId;
-    console.log(this.selectedPermission)
-    this.usersxpermissionsService.deleteUserxPermission(permissionId).pipe(      
+    this.usersxpermissionsService.deleteUserxPermission(permissionId).pipe(
       concatMap(() => this.usersService.updateActulizarSecurity(this.userId, 'RESTA')),
       catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
-        );
-        console.error(error);        
-        return EMPTY; // Detiene el flujo del observable en caso de error
+        alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
+        console.error(error);
+        return EMPTY;
       })
     ).subscribe(() => {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Entrada eliminada satisfactoriamente.',
-        'success'
-      );
+      alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
 
       const logMessage = this.isRootUser
         ? 'Delete Registro en Usuarios por Empresa'
@@ -561,11 +529,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     const selectedNodes = this.permissionsGridApi.getSelectedNodes();
 
     if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Sucursales',
-        'Por favor, seleccione una empresa para ver sus sucursales.',
-        'warning'
-      );
+      alerts.basicAlert('Sucursales', 'Por favor, seleccione una empresa para ver sus sucursales.', 'warning');
       return;
     }
 
@@ -573,7 +537,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     const selectedData = selectedNode.data;
     const isCurrentlyExpanded = selectedNode.expanded;
 
-    // Agregar datos necesarios para el componente hijo
     selectedData.idUser = this.userId;
     selectedData.userName = this.userName;
     selectedData.companyName = this.roots[selectedData.idPermission] || '';
@@ -582,7 +545,6 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
       selectedNode.setExpanded(false);
       this.permissionsGridApi.setFilterModel(null);
       this.permissionsGridApi.onFilterChanged();
-
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Ocultar Sucursales',
@@ -590,29 +552,17 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         this.trackingService.getEmail()
       );
     } else {
-      // Colapsar otros
       this.permissionsGridApi.forEachNode((node: any) => {
-        if (node.expanded) {
-          node.setExpanded(false);
-        }
+        if (node.expanded) node.setExpanded(false);
       });
 
-      // Limpiar filtro previo
       this.permissionsGridApi.setFilterModel(null);
-
-      // Aplicar filtro para mostrar solo la empresa seleccionada
       const filterModel = {
-        id: {
-          filterType: 'number',
-          type: 'equals',
-          filter: selectedData.id
-        }
+        id: { filterType: 'number', type: 'equals', filter: selectedData.id }
       };
-
       this.permissionsGridApi.setFilterModel(filterModel);
       this.permissionsGridApi.onFilterChanged();
 
-      // Expandir después de aplicar el filtro
       setTimeout(() => {
         selectedNode.setExpanded(true);
       }, 50);
@@ -630,11 +580,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     const selectedNodes = this.permissionsGridApi.getSelectedNodes();
 
     if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Almacenes',
-        'Por favor, seleccione una sucursal para ver sus almacenes.',
-        'warning'
-      );
+      alerts.basicAlert('Almacenes', 'Por favor, seleccione una sucursal para ver sus almacenes.', 'warning');
       return;
     }
 
@@ -642,16 +588,13 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     const selectedData = selectedNode.data;
     const isCurrentlyExpanded = selectedNode.expanded;
 
-    // Agregar datos necesarios para el componente hijo
     selectedData.idUser = this.userId;
     selectedData.userName = this.userName;
 
     if (isCurrentlyExpanded) {
-      // Colapsar y limpiar filtro
       selectedNode.setExpanded(false);
       this.permissionsGridApi.setFilterModel(null);
       this.permissionsGridApi.onFilterChanged();
-
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Ocultar Almacenes',
@@ -659,29 +602,17 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
         this.trackingService.getEmail()
       );
     } else {
-      // Colapsar otros
       this.permissionsGridApi.forEachNode((node: any) => {
-        if (node.expanded) {
-          node.setExpanded(false);
-        }
+        if (node.expanded) node.setExpanded(false);
       });
 
-      // Limpiar filtro previo
       this.permissionsGridApi.setFilterModel(null);
-
-      // Aplicar filtro para mostrar solo la sucursal seleccionada
       const filterModel = {
-        id: {
-          filterType: 'number',
-          type: 'equals',
-          filter: selectedData.id
-        }
+        id: { filterType: 'number', type: 'equals', filter: selectedData.id }
       };
-
       this.permissionsGridApi.setFilterModel(filterModel);
       this.permissionsGridApi.onFilterChanged();
 
-      // Expandir después de aplicar el filtro
       setTimeout(() => {
         selectedNode.setExpanded(true);
       }, 50);
@@ -701,6 +632,7 @@ export class DetailPermissionsRendererComponent implements ICellRendererAngularC
     delete cleanedData.__modified;
     delete cleanedData.name;
     delete cleanedData.userName;
+    delete cleanedData.principal;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
