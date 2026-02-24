@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.72 (23 Febrero 2026) - Iris: Corrección de workprograms',
+  version: '5.75 (23 Febrero 2026) - Aportación Socios agregado al Reporte Ejecutivo HCO',
 
 };
