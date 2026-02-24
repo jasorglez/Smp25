@@ -98,7 +98,7 @@
             <button type="button" class="btn btn-primary ms-1 me-1" (click)="indentSelectedTasks()" title="Aplicar sangría">
                 <i class="bi bi-indent"></i>
             </button>
-            <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="save()">
+            <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="save()" [disabled]="isSaving">
                 <i class="bi bi-floppy"></i>
                 <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                       *ngIf="notSavedChanges">

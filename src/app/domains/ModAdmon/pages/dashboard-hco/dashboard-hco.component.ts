@@ -168,7 +168,7 @@ export class DashboardHcoComponent {
       (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
       const documentDefinition = {
-        pageSize: 'A4',
+        pageSize: 'LETTER',
         pageOrientation: 'landscape',
         pageMargins: [20, 20, 20, 20],
         content,
