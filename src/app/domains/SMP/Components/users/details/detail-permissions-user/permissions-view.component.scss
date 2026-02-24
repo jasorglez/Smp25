@@ -1,175 +1,443 @@
-/* Estilos generales del contenedor */
-.permissions-container {
-  font-family: Arial, sans-serif;
-  width: 100%;
-  margin: 20px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
+// ================================
+// ANIMACIONES
+// ================================
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Contenedor de la fila */
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; transform: translateY(-8px); }
+  to   { opacity: 1; max-height: 2000px; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease both;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s ease both;
+}
+
+// ================================
+// LAYOUT BASE
+// ================================
+.permissions-container {
+  display: none;
+}
+
 .row {
   display: flex;
   align-items: flex-start;
   position: relative;
 }
 
-/* Botones laterales fijos */
 .col-auto {
   position: sticky;
   top: 20px;
   flex-shrink: 0;
   z-index: 1000;
   margin-right: 1rem;
-  
+
   .d-flex {
     position: sticky;
     top: 20px;
   }
 }
 
-/* ===== GRID DE 2 COLUMNAS ===== */
+// ================================
+// GRID IZQUIERDO
+// ================================
 .permissions-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.9375rem;
-  align-items: start;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  width: 25%;
+  border-right: 1px solid #e5e7eb;
+  padding-right: 16px;
 }
 
-/* Responsive - En móviles vuelve a 1 columna */
 @media (max-width: 768px) {
   .permissions-grid {
     grid-template-columns: 1fr;
   }
 }
-/* ================================ */
 
-h2 {
-  text-align: center;
-  color: #333;
-  margin-bottom: 25px;
+.master-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  cursor: pointer;
+  margin-bottom: 4px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+  }
 }
 
-/* Estilos para cada grupo de permiso maestro */
-.master-group {
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  margin-bottom: 15px;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+.master-activo {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.2) !important;
 }
 
 .permission-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  font-weight: bold;
+  padding: 10px 14px;
+  font-weight: 600;
 }
 
 .master-header {
-  background-color: #e9ecef;
-  font-size: 1.1em;
-  color: #495057;
+  font-size: 0.92em;
+  border-radius: 0;
 }
 
-/* Contenedores para los niveles anidados */
-.details-container {
-  padding: 0 15px 15px 30px; /* Sangría para el segundo nivel */
+.master-header .permission-name {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
 }
 
-.detail-group {
-  border-top: 1px dashed #ccc;
-  padding-top: 10px;
-  margin-top: 10px;
-}
-
-.detail-header {
-  background-color: #f8f9fa;
-  padding: 8px 12px;
-  border-radius: 4px;
-}
-
-.subdetail-header-group {
-  font-weight: bold;
-  color: #333;
-}
-
-.crud-item-wrapper:not(:first-child) {
-  margin-top: 10px;
-}
-
-.subdetail-group {
-  border-top: 1px solid #eee;
-  padding-top: 10px;
-  margin-top: 10px;
-}
-
-.subdetail-header {
-  padding: 6px 0;
-  font-weight: normal;
-}
-
-.subdetails-container {
-  padding-left: 30px; /* Sangría para el tercer nivel */
-  margin-top: 10px;
-  padding-bottom: 10px;
-}
-
-.crud-permissions-container {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px 15px;
-  background-color: #fdfdfd;
-  border-radius: 4px;
-}
-
-.crud-permissions-container label, .crud-permissions label {
-  margin-left: 15px;
-  font-weight: normal;
-  font-size: 0.9em;
-}
-
-.children-container {
-  padding-left: 20px; /* Sangría para los elementos hijos (Ahorros, Prestamos) */
-}
-#master{
-  background-color: #000000;
-  color: white;
-}
-#detail{
-  background-color: #2b2b2a;
-  color: white;
-}
-#subdetail{
-  background-color: #a5a5a3;
-}
-#columns{
-  background-color: #ff0000;
-  color: white;
-}
-
-
-/* Estilos para el interruptor (toggle switch) */
+// ================================
+// TOGGLE SWITCH
+// ================================
 .switch {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 24px;
+  width: 44px;
+  height: 22px;
+  flex-shrink: 0;
 }
 .switch input { display: none; }
 .slider {
-  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc; transition: .4s;
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #d1d5db;
+  transition: 0.3s ease;
+  border-radius: 22px;
 }
 .slider:before {
-  position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px;
-  background-color: white; transition: .4s;
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.3s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
-input:checked + .slider { background-color: #2196F3; }
-input:checked + .slider:before { transform: translateX(26px); }
-.slider.round { border-radius: 24px; }
-.slider.round:before { border-radius: 50%; }
+input:checked + .slider { background-color: #3b82f6; }
+input:checked + .slider:before { transform: translateX(22px); }
+
+// ================================
+// COLORES MASTER - todos iguales
+// ================================
+.master-color-0 .master-header { background-color: #003366; }
+.master-color-1 .master-header { background-color: #003366; }
+.master-color-2 .master-header { background-color: #003366; }
+.master-color-3 .master-header { background-color: #003366; }
+.master-color-4 .master-header { background-color: #003366; }
+.master-color-5 .master-header { background-color: #003366; }
+
+.master-color-0 .master-header .permission-name,
+.master-color-1 .master-header .permission-name,
+.master-color-2 .master-header .permission-name,
+.master-color-3 .master-header .permission-name,
+.master-color-4 .master-header .permission-name,
+.master-color-5 .master-header .permission-name {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+// ================================
+// PANEL DERECHO
+// ================================
+.panel-izquierdo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0 0 20px 20px;
+}
+
+.texto-placeholder {
+  color: #9ca3af;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+
+  .placeholder-icon {
+    font-size: 1.2rem;
+    animation: nudge 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes nudge {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(-5px); }
+}
+
+.titulo-wrapper {
+  width: 100%;
+}
+
+.titulo-tira {
+  border-radius: 10px;
+  padding: 14px 20px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.titulo-seleccionado {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+// ================================
+// SUBMODULOS GRID - 3 columnas
+// ================================
+.submodulos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.submodulo-item {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+}
+
+.submodulo-activo .submodulo-header {
+  background-color: #1e40af !important;
+  box-shadow: inset 0 0 0 2px #93c5fd;
+}
+
+.submodulo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+  background-color: #1f2937;
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 0.88rem;
+  transition: background-color 0.2s ease;
+}
+
+// ================================
+// CRUD PANEL
+// ================================
+.crud-panel {
+  margin-top: 14px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  width: 100%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.crud-panel-titulo {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.crud-panel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+// ================================
+// SECCIONES GRID (3 cols siempre)
+// ================================
+.crud-secciones-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.crud-seccion {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+}
+
+.crud-seccion-header {
+  background-color: #6b7280;
+  padding: 7px 12px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.crud-check-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+// ================================
+// CHECKBOXES
+// ================================
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #1d4ed8;
+  }
+
+  input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #3b82f6;
+    border-radius: 3px;
+  }
+}
+
+.check-text {
+  font-size: 0.875rem;
+}
+
+.crud-check-group label,
+.child-check-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.crud-check-group input[type="checkbox"],
+.child-check-group input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+// ================================
+// CHILDREN BLOQUE
+// ================================
+.children-bloque {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #d1d5db;
+}
+
+.children-bloque-titulo {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.children-bloque-icon {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.children-bloque-subtitulo {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.children-secciones-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+
+  &.single {
+    grid-template-columns: 1fr;
+  }
+}
+
+.child-seccion {
+  background-color: #ffffff;
+  border: 1px solid #e0e7ff;
+  border-radius: 7px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(59,130,246,0.1);
+  }
+}
+
+.child-seccion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background-color: #3b82f6;
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+
+.child-check-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+}

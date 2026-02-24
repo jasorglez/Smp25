@@ -1,103 +1,163 @@
-<div class="permissions-container">
-  <div class="row">
-      <!-- Columna de botones -->
-      <div class="col-auto">
-        <div class="d-flex flex-column gap-1">
-          <button type="button" class="btn btn-primary ms-1 me-1 position-relative" (click)="modificar()" >
-            <i class="bi bi-pencil"></i>
-            
-          </button>
-          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
-            <i class="bi bi-floppy"></i>
-            <span
-              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-              *ngIf="notSavedChanges">
-              <span class="visually-hidden">Hay cambios sin guardar</span>
-            </span>
-          </button>
-          <button type="button" class="btn btn-warning ms-1 me-1"  (click)="revertChanges()">
-            <i class="bi bi-arrow-clockwise"></i>
-          </button>
-        </div>
-      </div>
-  
-  <div class="col">
-  <div class="permissions-grid">
-  <div *ngFor="let master of groupedPermissions" class="master-group">
-    <div id="master" class="permission-header master-header ">
-      <span class="permission-name">{{ master.masterPermissionName }}</span>
-      <label class="switch">
-        <input type="checkbox" [(ngModel)]="master.masterRead"  (ngModelChange)="onMasterReadChange(master)">
-        <span class="slider round"></span>
-      </label>
-    </div>
+<div class="d-flex flex-column">
 
-    <!-- Nivel 2: Contenedor para los permisos detallados. Solo se muestra si masterRead es true -->
-    <div *ngIf="master.masterRead" class="details-container">
-      <div *ngFor="let detail of master.details" class="detail-group">
-        <div id="detail" class="permission-header detail-header">
-          <span class="permission-name">{{ detail.detailedPermissionName }}</span>
-          <label class="switch">
-            <input type="checkbox" [(ngModel)]="detail.detailedRead" (ngModelChange)="onDetailedReadChange(detail)">
+  <div class="d-flex">
+
+    <!-- Tarjetas lado izquierdo -->
+    <div class="permissions-grid">
+      <div *ngFor="let master of groupedPermissions; let i = index"
+           class="master-group"
+           [class]="'master-color-' + (i % 6)"
+           [class.master-activo]="masterSeleccionado === master"
+           (click)="seleccionarMaster(master)">
+        <div class="permission-header master-header">
+          <span class="permission-name">{{ master.masterPermissionName }}</span>
+          <label class="switch" (click)="$event.stopPropagation()">
+            <input type="checkbox" [(ngModel)]="master.masterRead" (ngModelChange)="onMasterReadChange(master)">
             <span class="slider round"></span>
           </label>
         </div>
+      </div>
+    </div>
 
-        <!-- Nivel 3: Contenedor para los sub-detalles. Solo se muestra si detailedRead es true -->
-        <div *ngIf="detail.detailedRead" class="subdetails-container">
-          <div *ngFor="let subdetailGroup of detail.subdetails" class="subdetail-group">            
-            <!-- Nivel 3.5: Encabezado para el grupo de subdetalle (ej: "Empleados") -->
-            <div id="subdetail" class="permission-header subdetail-header-group">
-              <span class="permission-name">{{ subdetailGroup.subdetailedPermissionName }}</span>
-            </div>
+    <!-- Panel derecho -->
+    <div class="panel-izquierdo">
+      <div *ngIf="masterSeleccionado" class="titulo-wrapper animate-fade-in">
+        <div class="titulo-tira" [style.backgroundColor]="getColorMaster(getIndexMasterSeleccionado())">
+          <h4 class="titulo-seleccionado">{{ masterSeleccionado.masterPermissionName }}</h4>
+        </div>
 
-            <!-- Nivel 4: Renderizar el item "Principal" si existe -->
-            <div *ngIf="subdetailGroup.principal" class="crud-item-wrapper">
-              <div class="permission-header subdetail-header">
-                <span class="permission-name">{{ subdetailGroup.principal.name }}</span>
-                <div class="crud-permissions">
-                  <label class="switch">
-                    <input type="checkbox" [(ngModel)]="subdetailGroup.principal.canRead" (ngModelChange)="onCrudChange(subdetailGroup.principal)">
-                    <span class="slider round"></span>
-                  </label>
-                </div>
-              </div>
-              <!-- Permisos CRUD para "Principal" -->
-              <div *ngIf="subdetailGroup.principal.canRead" class="crud-permissions-container">
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canCreate"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Crear</label>
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canUpdate"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Actualizar</label>
-                <label><input type="checkbox" [(ngModel)]="subdetailGroup.principal.canDelete"(ngModelChange)="onCrudChange(subdetailGroup.principal)"> Borrar</label>
-              </div>
-            </div>
-
-            <!-- Nivel 4.5: Contenedor para los hijos, visible solo si 'Principal' tiene canRead=true -->
-            <div *ngIf="subdetailGroup.principal && subdetailGroup.principal.canRead" class="children-container">
-              <!-- Iterar sobre los items hijos (Ahorros, Prestamos, etc.) -->
-              <div  *ngFor="let child of subdetailGroup.children" class="crud-item-wrapper">
-                <div id="columns" class="permission-header subdetail-header">
-                  <span class="permission-name">{{ child.name }}</span>
-                  <div class="crud-permissions">
-                    <label class="switch">
-                      <input type="checkbox" [(ngModel)]="child.canRead" (ngModelChange)="onCrudChange(child)">
-                      <span class="slider round"></span>
-                    </label>
-                  </div>
-                </div>
-                <!-- Permisos CRUD para el hijo -->
-                <div *ngIf="child.canRead" class="crud-permissions-container">
-                  <label><input type="checkbox" [(ngModel)]="child.canCreate" (ngModelChange)="onCrudChange(child)"> Crear</label>
-                  <label><input type="checkbox" [(ngModel)]="child.canUpdate" (ngModelChange)="onCrudChange(child)"> Actualizar</label>
-                  <label><input type="checkbox" [(ngModel)]="child.canDelete" (ngModelChange)="onCrudChange(child)"> Borrar</label>
-                </div>
-              </div>
+        <div class="submodulos-grid">
+          <div *ngFor="let detail of masterSeleccionado.details"
+               class="submodulo-item"
+               [class.submodulo-activo]="detailSeleccionado === detail"
+               (click)="seleccionarDetail(detail)">
+            <div class="submodulo-header">
+              <span>{{ detail.detailedPermissionName }}</span>
+              <label class="switch" (click)="$event.stopPropagation()">
+                <input type="checkbox" [(ngModel)]="detail.detailedRead" (ngModelChange)="onDetailedReadChange(detail)">
+                <span class="slider round"></span>
+              </label>
             </div>
           </div>
         </div>
 
+        <!-- CRUD del submodulo seleccionado -->
+        <div *ngIf="detailSeleccionado" class="crud-panel animate-slide-down">
+          <div class="crud-panel-titulo">
+            <span class="crud-panel-dot"></span>
+            {{ detailSeleccionado.detailedPermissionName }}
+          </div>
+
+          <!-- Secciones principales siempre en grid de 3 -->
+          <div class="crud-secciones-grid">
+            <div *ngFor="let subdetail of detailSeleccionado.subdetails" class="crud-seccion">
+
+              <div class="crud-seccion-header">
+                <span>{{ subdetail.subdetailedPermissionName }}</span>
+              </div>
+
+              <div *ngIf="subdetail.principal" class="crud-check-group">
+                <label class="check-label">
+                  <input type="checkbox"
+                         [(ngModel)]="subdetail.principal.canCreate"
+                         (ngModelChange)="onCrudChange(subdetail.principal)">
+                  <span class="check-text">Crear</span>
+                </label>
+                <label class="check-label">
+                  <input type="checkbox"
+                         [(ngModel)]="subdetail.principal.canUpdate"
+                         (ngModelChange)="onCrudChange(subdetail.principal)">
+                  <span class="check-text">Actualizar</span>
+                </label>
+                <label class="check-label">
+                  <input type="checkbox"
+                         [(ngModel)]="subdetail.principal.canDelete"
+                         (ngModelChange)="onCrudChange(subdetail.principal)">
+                  <span class="check-text">Borrar</span>
+                </label>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Children fuera del grid principal -->
+          <ng-container *ngFor="let subdetail of detailSeleccionado.subdetails">
+            <div *ngIf="subdetail.children && subdetail.children.length > 0" class="children-bloque animate-fade-in">
+
+              <div class="children-bloque-titulo">
+                <span class="children-bloque-icon">⚙</span>
+                <span>{{ subdetail.subdetailedPermissionName }}</span>
+                <span class="children-bloque-subtitulo">— acciones adicionales</span>
+              </div>
+
+              <div class="children-secciones-grid"
+                   [class.single]="subdetail.children.length === 1">
+                <div *ngFor="let child of subdetail.children" class="child-seccion">
+
+                  <div class="child-seccion-header">
+                    <span>{{ child.name }}</span>
+                    <label class="switch" (click)="$event.stopPropagation()">
+                      <input type="checkbox"
+                             [(ngModel)]="child.canRead"
+                             (ngModelChange)="onCrudChange(child)">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
+
+                  <div *ngIf="child.canRead" class="child-check-group animate-slide-down">
+                    <label class="check-label">
+                      <input type="checkbox"
+                             [(ngModel)]="child.canCreate"
+                             (ngModelChange)="onCrudChange(child)">
+                      <span class="check-text">Crear</span>
+                    </label>
+                    <label class="check-label">
+                      <input type="checkbox"
+                             [(ngModel)]="child.canUpdate"
+                             (ngModelChange)="onCrudChange(child)">
+                      <span class="check-text">Actualizar</span>
+                    </label>
+                    <label class="check-label">
+                      <input type="checkbox"
+                             [(ngModel)]="child.canDelete"
+                             (ngModelChange)="onCrudChange(child)">
+                      <span class="check-text">Borrar</span>
+                    </label>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </ng-container>
+
+        </div>
+
       </div>
+      <p *ngIf="!masterSeleccionado" class="texto-placeholder">
+        <span class="placeholder-icon">←</span>
+        Selecciona un módulo
+      </p>
     </div>
-    </div>
+
   </div>
-</div>
-</div>
+
+  <!-- Botones Bootstrap originales -->
+  <div class="d-flex flex-row gap-1 mt-2 justify-content-end">
+    <button type="button" class="btn btn-primary ms-1 me-1 position-relative" (click)="modificar()">
+      <i class="bi bi-pencil"></i>
+    </button>
+    <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
+      <i class="bi bi-floppy"></i>
+      <span
+        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+        *ngIf="notSavedChanges">
+        <span class="visually-hidden">Hay cambios sin guardar</span>
+      </span>
+    </button>
+    <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertChanges()">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+  </div>
+
 </div>
