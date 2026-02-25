@@ -29,7 +29,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { ProvidersPaymentsComponent } from './providers-payments.component';
 
 import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component'; // This seems to be the one for contacts
-import { DetailCellRendererComponentBanck } from './details/detail-cell-renderer-banck.component'; // This will be for banks
+import { DetallesBancosxproveedorComponent } from './details/detalles-bancosxproveedor.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
 import { DetallesTiposProveedorComponent } from './details/detalles-tipos-proveedor.component';
 import { DetallesMaterialexprovComponent } from './details/detalles-materialexprov.component';
@@ -64,7 +64,7 @@ import { TrackingService } from 'app/services/tracking.service';
     MultiLineEditorComponent,
     ProvidersPaymentsComponent,
     DetailCellRendererComponentContact,
-    DetailCellRendererComponentBanck,
+    DetallesBancosxproveedorComponent,
     DetailCellRendererComponentCuentas,
     DetallesTiposProveedorComponent,
     DetallesMaterialexprovComponent
@@ -193,6 +193,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   newlyAddedRows: string[] = [];
   providersXTableData: { [key: number]: any[] } = {};
   expandedProviders: Set<number> = new Set();
+  cellValidationErrors: Map<string, boolean> = new Map(); // Track validation errors per cell
 
   id: string;
   idRoot: number;
@@ -225,7 +226,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
     detailCellRenderer: DetailCellRendererComponentContact,
-    detailCellRendererBanck: DetailCellRendererComponentBanck,
+    detailCellRendererBanck: DetallesBancosxproveedorComponent,
     detailCellRendererCuentas: DetailCellRendererComponentCuentas,
     detailCellRendererTipoProveedor: DetallesTiposProveedorComponent,
     detailCellRendererMateriales: DetallesMaterialexprovComponent
@@ -259,7 +260,21 @@ export class ProvidersComponent implements CanComponentDeactivate {
       this.saveColumnState();
     },
     onCellEditingStopped: (event: any) => {
-      console.log('🔚 Edición detenida - celda:', event.column.colId, 'valor:', event.value);
+      console.log('🔚 Edición detenida - celda:', event.column.colId, 'valor:', event.value, 'event:', event.event?.key);
+
+      // Verificar si hay error de validación en esta celda
+      const cellKey = `${event.rowIndex}_${event.column.colId}`;
+      if (this.cellValidationErrors.has(cellKey)) {
+        console.log('⛔ Hay error de validación, manteniendo en edición:', cellKey);
+        // Mantener la celda en modo edición
+        setTimeout(() => {
+          this.gridApi.startEditingCell({
+            rowIndex: event.rowIndex,
+            colKey: event.column.colId
+          });
+        }, 100);
+        return;
+      }
 
       // Si se presionó Escape, cancelar modo de edición secuencial
       const isEscapeKey = event.event?.key === 'Escape' || event.event?.keyCode === 27;
@@ -271,14 +286,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       // Verificar si el editor tiene flag para prevenir avance (columnas con autocomplete)
       const colDef = event.column.getColDef();
-      if (colDef?.cellEditorParams?.disableAdvanceOnEnter) {
+      const isEnterKey = event.event?.key === 'Enter' || event.event?.keyCode === 13;
+      
+      // Solo prevenir avance si es un Enter real Y la columna tiene disableAdvanceOnEnter
+      if (colDef?.cellEditorParams?.disableAdvanceOnEnter && isEnterKey) {
+        console.log('⛔ Prevented advance due to disableAdvanceOnEnter');
         return;
       }
 
-      // Avanzar a la siguiente columna editable si se presionó Enter o estamos en modo agregar
-      const isEnterKey = event.event?.key === 'Enter' || event.event?.keyCode === 13;
-
-      if (isEnterKey || (this.isNewRowEditing && event.data?.__isNew)) {
+      // Avanzar a la siguiente columna editable si se presiona Enter
+      if (isEnterKey) {
         const allColumns = this.gridApi.getColumnDefs();
         const currentIndex = allColumns.findIndex(col => 'field' in col && col.field === event.column.colId);
         // Buscar siguiente columna editable, saltando las que no tienen field o están ocultas
@@ -295,9 +312,11 @@ export class ProvidersComponent implements CanComponentDeactivate {
             });
           }, 100);
         } else {
-          // Ya no hay más columnas editables, salir del modo agregar
-          this.isNewRowEditing = false;
-          this.newRowEditingIndex = -1;
+          // Ya no hay más columnas editables
+          if (this.isNewRowEditing && event.data?.__isNew) {
+            this.isNewRowEditing = false;
+            this.newRowEditingIndex = -1;
+          }
         }
       }
     },
@@ -402,12 +421,30 @@ export class ProvidersComponent implements CanComponentDeactivate {
         headerName: 'Compañía *',
         editable: true,
         headerClass: 'my-header-red',
+        cellEditor: 'autocompleteEditor',
+        cellEditorParams: (params: any) => {
+          const companyList = this.rowData && Array.isArray(this.rowData)
+            ? this.rowData
+                .map(e => e.company)
+                .filter(name => name && typeof name === 'string' && name.trim() !== '')
+            : [];
+          
+          return {
+            filterList: companyList,
+            filterKey: 'company',
+            placeholder: 'Nombre Compañía',
+            minLength: 1,
+            disableAdvanceOnEnter: true
+          };
+        },
         valueSetter: (params) => {
           const rawValue = params.newValue;
 
           // Permitir vacío, la validación de "al menos uno" se hace al guardar
           if (!rawValue || typeof rawValue !== 'string' || rawValue.trim() === '') {
             params.data[params.colDef.field] = '';
+            // Limpiar error de validación
+            this.cellValidationErrors.delete(`${params.node.rowIndex}_company`);
             return true;
           }
 
@@ -421,6 +458,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           );
 
           if (duplicateExists) {
+            // Marcar error de validación
+            this.cellValidationErrors.set(`${params.node.rowIndex}_company`, true);
             alerts.basicAlert(
               'Empresa duplicada',
               'Ya existe una empresa registrada con ese nombre.',
@@ -429,6 +468,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
             return false;
           }
 
+          // Limpiar error de validación si pasó la validación
+          this.cellValidationErrors.delete(`${params.node.rowIndex}_company`);
           params.data[params.colDef.field] = normalizedValue;
           return true;
         }

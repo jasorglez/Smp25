@@ -5,15 +5,14 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { AuthService } from 'app/services/auth.service';
 import { AdministrationService } from 'app/services/administration.service';
-import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { SignalsService } from 'app/services/signals.service';
 
 
 @Component({
-  selector: 'app-detail-cell-renderer-banck',
+  selector: 'app-detalles-bancosxproveedor',
   standalone: true,
-  imports: [AgGridModule, CommonModule, SelectWithTooltipEditorV2Component],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div 
       style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;">
@@ -69,7 +68,7 @@ import { SignalsService } from 'app/services/signals.service';
     </div>
   `
 })
-export class DetailCellRendererComponentBanck implements ICellRendererAngularComp {
+export class DetallesBancosxproveedorComponent implements ICellRendererAngularComp {
   private administrationService = inject(AdministrationService);
   private signalsService = inject(SignalsService);
   params: any;
@@ -95,11 +94,33 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
     getRowStyle: (params: any) => {
-      // Si la fila es el banco principal, aplicar fondo rojo claro
       if (params.data.principal === true) {
         return { background: '#ffcccc' };
       }
       return undefined;
+    },
+    onCellKeyDown: (event: any) => {
+      if (event.event?.key === 'Enter' || event.event?.keyCode === 13) {
+        const allColumns = this.bankGridApi.getColumnDefs();
+        const currentIndex = allColumns.findIndex(col => 'field' in col && col.field === event.column.getColId());
+        const nextEditableCol = allColumns.slice(currentIndex + 1).find(col =>
+          'field' in col && col.field && col.editable && !('hide' in col && col.hide)
+        );
+
+        if (nextEditableCol && 'field' in nextEditableCol) {
+          setTimeout(() => {
+            const rowNode = this.bankGridApi.getRowNode(event.rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+            }
+            this.bankGridApi.ensureIndexVisible(event.rowIndex);
+            this.bankGridApi.startEditingCell({
+              rowIndex: event.rowIndex,
+              colKey: nextEditableCol.field
+            });
+          }, 150);
+        }
+      }
     },
     onFirstDataRendered: (params) => {
       console.log('onFirstDataRendered - autosizing columns...');
@@ -155,8 +176,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   };
 
   components = {
-    autocompleteEditor: AutocompleteEditorComponent,
-    selectWithTooltipEditor: SelectWithTooltipEditorV2Component
+    autocompleteEditor: AutocompleteEditorComponent
   };
 
   bankColumnDefs = [
@@ -209,12 +229,7 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     {
       field: 'campo2',
       headerName: 'Nombre Titular',
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
+      editable: true,
       width: 190,
       valueSetter: (params: any) => {
         // Solo permitir letras, espacios y caracteres especiales (NO números)
@@ -224,23 +239,22 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
       }
     },
    // ...existing code...
-{
+   {
   field: 'campo3',
   headerName: 'Banco',
   width: 200,
-  cellDataType: false, // Desactivar auto-detección de tipo
+  cellDataType: false,
   editable: (params: any) => true,
-  cellEditor: 'selectWithTooltipEditor',
+  cellEditor: 'agSelectCellEditor',
   cellEditorParams: (params: any) => {
     return {
-      options: (this.banks || [])
+      values: (this.banks || [])
         .filter(b => b.active)
-        .map(b => ({ id: b.id, description: b.name }))
+        .map(b => b.name)
     };
   },
 
   valueFormatter: (params: any) => {
-    // Preferir el nombre guardado en la fila si existe
     if (params?.data?.nombreBanco) return params.data.nombreBanco;
     const bank = this.banks?.find(b => String(b.id) === String(params.value) || b.name === params.value);
     return bank ? bank.name : (params.value ?? '');
@@ -249,24 +263,17 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
   valueSetter: (params: any) => {
     let newValue = params.newValue;
 
-    // Si el editor devuelve un objeto con distintas formas, extraer id/valor y descripción
     if (newValue && typeof newValue === 'object') {
-      // cubrir casos comunes: { id, description }, { value, description }, { value }
       const possibleId = newValue.id ?? newValue.value ?? newValue.code ?? null;
       const possibleDesc = newValue.description ?? newValue.label ?? newValue.text ?? null;
       newValue = possibleId ?? possibleDesc ?? newValue;
-      // si ahora newValue es object sin id/desc, dejamos como está y se tratará abajo
       if (possibleId || possibleDesc) {
-        // reemplazar newValue por id si existe, si no por la descripción
         newValue = possibleId ?? possibleDesc;
       }
     }
 
-    // Buscar banco por id o por nombre
-    const selectedBank = this.banks?.find(b => String(b.id) === String(newValue) || b.name === newValue);
+    const selectedBank = this.banks?.find(b => b.name === newValue);
 
-    // Guardar siempre campo3 como STRING (el servidor C# espera string)
-    // y nombre legible en nombreBanco
     params.data.campo3 = selectedBank ? String(selectedBank.id) : String(newValue);
     params.data.nombreBanco = selectedBank ? selectedBank.name : (typeof newValue === 'string' ? newValue : '');
 
@@ -289,17 +296,24 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     {
       field: 'campo4',
       headerName: 'Numero Cuenta',
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
+      editable: true,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: {
+        precision: 0,
+        preventDefaultOnEmpty: true
+      },
       width: 190,
       valueSetter: (params: any) => {
-        // Solo permitir números
-        const sanitizedValue = params.newValue ? params.newValue.replace(/[^0-9]/g, '') : '';
-        params.data.campo4 = sanitizedValue;
+        const rawValue = params.newValue;
+        if (rawValue === null || rawValue === undefined || rawValue === '') {
+          params.data.campo4 = '';
+          return true;
+        }
+        const numValue = Number(rawValue);
+        if (isNaN(numValue)) {
+          return false;
+        }
+        params.data.campo4 = String(numValue);
         return true;
       }
     },
@@ -307,17 +321,24 @@ export class DetailCellRendererComponentBanck implements ICellRendererAngularCom
     {
       field: 'campo5',
       headerName: 'Clabe',
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
+      editable: true,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: {
+        precision: 0,
+        preventDefaultOnEmpty: true
+      },
       width: 190,
       valueSetter: (params: any) => {
-        // Solo permitir números para CLABE
-        const sanitizedValue = params.newValue ? params.newValue.replace(/[^0-9]/g, '') : '';
-        params.data.campo5 = sanitizedValue;
+        const rawValue = params.newValue;
+        if (rawValue === null || rawValue === undefined || rawValue === '') {
+          params.data.campo5 = '';
+          return true;
+        }
+        const numValue = Number(rawValue);
+        if (isNaN(numValue)) {
+          return false;
+        }
+        params.data.campo5 = String(numValue);
         return true;
       }
     },

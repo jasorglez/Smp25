@@ -596,7 +596,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       const docDef: any = {
         pageSize: 'LETTER',
         pageOrientation: 'portrait',
-        pageMargins: [40, 148, 40, 130],
+        pageMargins: [40, 200, 40, 130],
         info: {
           title: `Reporte Diario — ${companyName}`,
           author: companyName,
@@ -605,10 +605,17 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
 
         // Header dinámico — aparece en TODAS las páginas
         header: (_currentPage: number, _pageCount: number) => {
-          // Helpers compactos (7pt)
-          const il  = (txt: string): any => ({ text: txt, fontSize: 7, bold: true, color: NAVY, margin: [3, 1, 3, 1] });
-          const ilD = (txt: string): any => ({ text: txt, fontSize: 7, bold: true, color: WHITE, fillColor: NAVY, margin: [3, 1, 3, 1] });
-          const ic  = (txt: string, extra: any = {}): any => ({ text: txt || '—', fontSize: 7, margin: [3, 1, 3, 1], ...extra });
+          // Helpers compactos (7pt) — márgenes mínimos para no desperdiciar alto
+          const il  = (txt: string): any => ({ text: txt, fontSize: 7, bold: true, color: NAVY,              margin: [2, 1, 2, 1] });
+          const ilD = (txt: string): any => ({ text: txt, fontSize: 7, bold: true, color: WHITE, fillColor: NAVY, margin: [2, 1, 2, 1] });
+          const ic  = (txt: string, extra: any = {}): any => ({ text: txt || '—', fontSize: 7, margin: [2, 1, 2, 1], ...extra });
+          // Layout compacto: padding mínimo para que quepan las 6 filas
+          const hdrLayout = {
+            hLineWidth: () => 0.3, vLineWidth: () => 0.3,
+            hLineColor: () => '#cccccc', vLineColor: () => '#cccccc',
+            paddingLeft: () => 2, paddingRight: () => 2,
+            paddingTop: () => 1, paddingBottom: () => 1,
+          };
 
           return {
             margin: [40, 6, 40, 0],
@@ -621,7 +628,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
                     width: '*',
                     stack: [
                       { text: 'REPORTE DE ACTIVIDADES DIARIAS', fontSize: 10, bold: true, color: NAVY, alignment: 'center' },
-                      { text: `Contrato No. ${numberContract}`,  fontSize: 8, color: NAVY, alignment: 'center', margin: [0, 1, 0, 0] },
+                      { text: `Contrato No. ${numberContract}`, fontSize: 8, color: NAVY, alignment: 'center', margin: [0, 1, 0, 0] },
                     ],
                   },
                   logo2B64 ? { image: 'logo2', width: 42 } : { text: '', width: 42 },
@@ -648,19 +655,18 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
                       il('Fecha:'),
                       ic(reportDateLong) ],
                     [ ilD('Objeto del Contrato'),
-                      { text: contratoDesc || '—', fontSize: 7, margin: [3, 1, 3, 1], colSpan: 3 }, {}, {} ],
+                      { text: contratoDesc || '—', fontSize: 7, margin: [2, 1, 2, 1], colSpan: 3, maxLines: 2 }, {}, {} ],
                     [ il('Descripción de la Orden Trabajo'),
-                      { text: sistemaTxt || '—', fontSize: 7, margin: [3, 1, 3, 1], colSpan: 2 }, {},
-                      { stack: [
-                          { text: 'Orden de Trabajo No.', fontSize: 7, bold: true, color: NAVY, margin: [3, 1, 3, 0] },
-                          { text: otNumber || '—', fontSize: 7, margin: [3, 0, 3, 1] },
-                        ]
-                      } ],
+                      { text: sistemaTxt || '—', fontSize: 7, margin: [2, 1, 2, 1], colSpan: 2, maxLines: 2 }, {},
+                      { text: [
+                          { text: 'OT No.: ', fontSize: 7, bold: true, color: NAVY },
+                          { text: otNumber || '—', fontSize: 7 },
+                        ], margin: [2, 1, 2, 1] } ],
                     [ ilD('Tema de Plática de Seguridad'),
-                      { text: report.platicasSeguridad || '—', fontSize: 7, margin: [3, 1, 3, 1], colSpan: 3 }, {}, {} ],
+                      { text: platicasSeguridad || '—', fontSize: 7, margin: [2, 1, 2, 1], colSpan: 3 }, {}, {} ],
                   ],
                 },
-                layout: TBL_LAYOUT,
+                layout: hdrLayout,
                 margin: [0, 3, 0, 0],
               },
             ],
