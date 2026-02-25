@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.78 (24 Febrero 2026 20:30) Listo Proveedores Delison',
+  version: '5.78 (25 Febrero 2026 11:13) Convenios Campo Vigente',
 
 };

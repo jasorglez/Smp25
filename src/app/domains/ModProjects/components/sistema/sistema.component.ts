@@ -18,6 +18,7 @@ import { BitacoraFotosComponent }     from './bitacora-fotos.component';
 import { BitacoraVideosComponent }    from './bitacora-videos.component';
 import { BitacoraConceptosComponent } from './bitacora-conceptos.component';
 import { BitacoraNotasComponent }     from './bitacora-notas.component';
+import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
 
 @Component({
   selector: 'app-sistema',
@@ -27,7 +28,7 @@ import { BitacoraNotasComponent }     from './bitacora-notas.component';
     ButtonCellRendererExpenditureComponent,
     PdfButtonCellRendererComponent, PdfDetailComponent,
     BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
-    BitacoraFotosComponent, BitacoraVideosComponent, BitacoraConceptosComponent, BitacoraNotasComponent,
+    BitacoraWrapperComponent,
   ],
   templateUrl: './sistema.component.html',
   styleUrl: './sistema.component.scss'
@@ -58,17 +59,7 @@ export class SistemaComponent implements OnInit {
     rowSelection: 'single',
     masterDetail: true,
     detailRowHeight: 600,
-    detailCellRendererSelector: (params: any) => {
-      const t = params.data?.detailType;
-      if (t === 'pdf')       return { component: PdfDetailComponent };
-      if (t === 'material')  return { component: BitacoraMaterialComponent };
-      if (t === 'equipos')   return { component: BitacoraEquiposComponent };
-      if (t === 'fotos')     return { component: BitacoraFotosComponent };
-      if (t === 'videos')    return { component: BitacoraVideosComponent };
-      if (t === 'conceptos') return { component: BitacoraConceptosComponent };
-      if (t === 'notas')     return { component: BitacoraNotasComponent };
-      return { component: BitacoraPersonalComponent }; // default: personal
-    },
+    detailCellRenderer: BitacoraWrapperComponent,
     suppressMenuHide: false,
     context: {
       componentParent: null
@@ -135,14 +126,10 @@ export class SistemaComponent implements OnInit {
         return d && m && y ? `${d}/${m}/${y}` : p.value;
       },
     },
-    { field: 'startTime', headerName: 'Inicio', width: 100, editable: true },
-    { field: 'endTime', headerName: 'Término', width: 120, editable: true },
- // { field: 'type', headerName: 'Tipo', width: 100, editable: true },
- // { field: 'description',      headerName: 'Descripción',       width: 200, editable: true },
-    { field: 'numReporte',       headerName: 'No. Reporte',       width: 160, editable: true },
-    { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 200, editable: true },
-    { field: 'ubication',        headerName: 'Ubicación',         width: 140, editable: true },
-    { field: 'platicasSeguridad',headerName: 'Plática Seguridad', width: 200, editable: true },
+    { field: 'startTime', headerName: 'Inicio', width: 110, editable: true },
+    { field: 'endTime', headerName: 'Término', width: 110, editable: true },
+ /* { field: 'type', headerName: 'Tipo', width: 100, editable: true },
+  { field: 'description',      headerName: 'Descripción',       width: 200, editable: true },
     {
       field: 'totalPay', headerName: 'Total $', width: 120, editable: true,
       cellEditor: 'agNumberCellEditor',
@@ -150,6 +137,12 @@ export class SistemaComponent implements OnInit {
         ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p.value)
         : '$0.00',
     },
+*/    
+    { field: 'numReporte',       headerName: 'No. Reporte',       width: 200, editable: true },
+    { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 180, editable: true },
+    { field: 'ubication',        headerName: 'Ubicación',         width: 130, editable: true },
+    { field: 'platicasSeguridad',headerName: 'Plática Seguridad', width: 180, editable: true },
+ 
     {
       headerName: 'PDF',
       width: 100,
