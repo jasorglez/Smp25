@@ -545,13 +545,20 @@ constructor() {
           setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.accept = 'image/jpeg,image/png';
             input.style.display = 'none';
             document.body.appendChild(input);
 
-            input.onchange = (event) => {
+            input.onchange = async (event) => {
               const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tipo de archivo
+                if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
+
                 // Validar tamaño (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
                   alerts.basicAlert('Archivo muy grande', 'La imagen no puede superar 5MB', 'error');
@@ -559,17 +566,25 @@ constructor() {
                   return;
                 }
 
-                const reader = new FileReader();
-                reader.onload = () => {
-                  params.data.picture = reader.result as string;
+                try {
+                  // Mostrar indicador de carga
+                  alerts.showLoading('Subiendo imagen', 'Por favor espere mientras se sube la imagen de perfil...');
+
+                  // Subir imagen a Firebase y obtener la URL
+                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'users/profile');
+                  params.data.picture = url;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
                   this.notSavedChanges = true;
-                };
-                reader.onerror = () => {
-                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
-                };
-                reader.readAsDataURL(file);
+
+                  // Cerrar loading y mostrar éxito
+                  alerts.closeLoading();
+                  alerts.basicAlert('Imagen subida', 'La imagen de perfil se subió correctamente', 'success');
+                } catch (error) {
+                  console.error('Error al subir imagen:', error);
+                  alerts.closeLoading();
+                  alerts.basicAlert('Error', 'No se pudo subir la imagen a Firebase', 'error');
+                }
               }
               document.body.removeChild(input);
             };
@@ -596,13 +611,20 @@ constructor() {
           setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.accept = 'image/jpeg,image/png';
             input.style.display = 'none';
             document.body.appendChild(input);
 
-            input.onchange = (event) => {
+            input.onchange = async (event) => {
               const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tipo de archivo
+                if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
+
                 // Validar tamaño (max 2MB para firma)
                 if (file.size > 2 * 1024 * 1024) {
                   alerts.basicAlert('Archivo muy grande', 'La firma no puede superar 2MB', 'error');
@@ -610,17 +632,25 @@ constructor() {
                   return;
                 }
 
-                const reader = new FileReader();
-                reader.onload = () => {
-                  params.data.signature = reader.result as string;
+                try {
+                  // Mostrar indicador de carga
+                  alerts.showLoading('Subiendo firma', 'Por favor espere mientras se sube la firma...');
+
+                  // Subir firma a Firebase y obtener la URL
+                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'users/signatures');
+                  params.data.signature = url;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
                   this.notSavedChanges = true;
-                };
-                reader.onerror = () => {
-                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
-                };
-                reader.readAsDataURL(file);
+
+                  // Cerrar loading y mostrar éxito
+                  alerts.closeLoading();
+                  alerts.basicAlert('Firma subida', 'La firma se subió correctamente', 'success');
+                } catch (error) {
+                  console.error('Error al subir firma:', error);
+                  alerts.closeLoading();
+                  alerts.basicAlert('Error', 'No se pudo subir la firma a Firebase', 'error');
+                }
               }
               document.body.removeChild(input);
             };
@@ -1117,17 +1147,21 @@ constructor() {
       console.warn('El campo password está vacío, esto puede causar el error');
     }
     
-    // Procesar imágenes base64 si existen
-    if (cleanedData.picture && cleanedData.picture.startsWith('data:')) {
-      // Ya está en base64, mantenerlo
-    } else if (cleanedData.picture === './assets/img/profile.png') {
+    // Procesar imágenes - ahora son URLs de Firebase, no base64
+    if (cleanedData.picture === './assets/img/profile.png' || !cleanedData.picture) {
       delete cleanedData.picture; // No enviar la imagen por defecto
     }
-    
-    if (cleanedData.signature && cleanedData.signature.startsWith('data:')) {
-      // Ya está en base64, mantenerlo
-    } else if (!cleanedData.signature) {
+    // Si es base64 (legacy o error), advertir pero mantener para evitar pérdida de datos
+    if (cleanedData.picture && cleanedData.picture.startsWith('data:')) {
+      console.warn('Se detectó imagen en base64, debería ser URL de Firebase');
+    }
+
+    if (!cleanedData.signature) {
       delete cleanedData.signature; // No enviar si está vacío
+    }
+    // Si es base64 (legacy o error), advertir
+    if (cleanedData.signature && cleanedData.signature.startsWith('data:')) {
+      console.warn('Se detectó firma en base64, debería ser URL de Firebase');
     }
     
     // Asegurar valores numéricos correctos
