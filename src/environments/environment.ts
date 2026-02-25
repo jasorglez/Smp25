@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.80 (25 Febrero 2026 11:33) - Reporte Diario TMDB',
+  version: '5.78 (25 Febrero 2026 11:05) - Iris',
 
 };
