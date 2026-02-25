@@ -31,7 +31,6 @@ import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.com
 import { CustomersService } from 'app/services/customers.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { InegiService } from 'app/services/inegi.service';
-import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { Icatalog } from 'app/interface/icatalog';
@@ -65,7 +64,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
    private modalService = inject(NgbModal);
    private route = inject(ActivatedRoute);
    private inegiService = inject(InegiService);
-   private branchesService = inject(BranchsService);
    authService = inject(AuthService);
    private catalogsService = inject(CatalogsService);
    private trackingService = inject(TrackingService);
@@ -88,8 +86,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
       this.type = data['type'] || 'CUSTOMERS'; // 'CUSTOMERS' o 'PROVIDERS'
       this.obtenerDatos(); // Llamar a la función para cargar datos
       this.getStates(); // Llamar a la función para obtener los estados
-      this.obtenerBranchs();
-
     });
   }
 
@@ -101,26 +97,13 @@ export class CustomersComponent implements CanComponentDeactivate {s
       }
     });
 
+    // Clientes dependen de la compañía (idRoot), no de la sucursal (idBranch)
     effect(() => {
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
-      this.obtenerBranchs();
       this.getTypecop();
       this.signalsService.deleteClientData();
     }, { allowSignalWrites: true });
-
-    effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.getTypecop();
-  });
-
-    effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerDatos();
-      this.obtenerBranchs();
-      this.getTypecop();
-      console.log(this.contactoCatalog)
-    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -140,7 +123,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
   isOpen: boolean = false;
-  branchs: any[] = [];
   Typecop: any[] = [];
   contactoCatalog: any[] = [];
 
@@ -160,7 +142,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
   idRoot: number;
   private tempIdCounter: number = 0;
   selectedTab: string = 'customers-payments';
-  idBranch: number | null = null;
   idEmployee: number;
   infoCp: any;
   
@@ -258,53 +239,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
           });
           return link;
         }
-      },
-      {
-        field: 'idBranch',
-        headerName: 'Nombre sucursal',
-        headerClass: 'required-header',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        hide:
-          this.authService.hasDetailedPermission(
-            'principal',
-            'see-all-branches'
-          ) || this.signalsService.getemailChoose() === environment.root
-            ? false
-            : true,
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
-        filter: true,
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          // Ensure depto data is available when creating editor
-          return {
-            values: this.branchs ? this.branchs.map((item) => item.id) : [],
-          };
-        },
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-
-          return foundBranch ? foundBranch.name : params.value;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
-        },
       },
       {
         field: 'nameContact',
@@ -754,13 +688,13 @@ export class CustomersComponent implements CanComponentDeactivate {s
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
            this.trackingService.getEmail() );
 
-    if (this.idBranch === null || this.idBranch === undefined) {
+    if (this.idRoot === null || this.idRoot === undefined) {
       return Promise.resolve(false);
     }
 
     return new Promise((resolve) => {
       this.customerService
-        .getCustomers(this.idBranch, this.type)
+        .getCustomersByCompany(this.idRoot, this.type)
         .subscribe({
           next: (data: any) => {
             this.rowData = data;
@@ -772,17 +706,7 @@ export class CustomersComponent implements CanComponentDeactivate {s
           }
         });
     });
-    
-  }
 
-  obtenerBranchs() {
-    // alert('this.branchs'+ this.idBranch)
-    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
-      (data: any) => {
-        this.branchs = data;
-      },
-      (error) => console.error('Error fetching data:', error)
-    );
   }
 
   onSelectedRow(event: any) {
@@ -804,24 +728,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
-
-    if (event.colDef.field === 'idBranch') {
-      const selecteEmpleado = event.newValue;
-      let branchSelect = this.branchs?.find(
-        (item) => item.name === selecteEmpleado
-      );
-      this.customerService
-        .getCustomers(branchSelect.id, this.type)
-        .subscribe({
-          next: (data: any) => {
-            this.contactoCatalog = data;
-            console.log(this.contactoCatalog)
-          },
-          error: (error) => {
-            console.error('Error obteniendo datos:', error);
-          }
-        });
-    }
 
     if (event.colDef.field === 'cp') {
       event.data.neighborhood = '';
@@ -883,7 +789,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
     const newItem = {
       id: tempId,
       idRoot: this.idRoot,
-      idBranch: this.idBranch,
       nameContact: '',
       company: '',
       phone: '',
@@ -929,14 +834,14 @@ export class CustomersComponent implements CanComponentDeactivate {s
 
       this.gridApi.startEditingCell({
         rowIndex: firstRowIndex,
-        colKey: 'idBranch'
+        colKey: 'nameContact'
       });
-    }, 0);// Un pequeño retraso de 50ms
+    }, 0);
   }
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.idBranch && (item.nameContact || item.company) && (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
+      (item) => (item.nameContact || item.company) && (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
     );
     if (!isValid) {
       alerts.basicAlert(
