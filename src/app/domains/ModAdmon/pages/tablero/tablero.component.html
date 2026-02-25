@@ -25,6 +25,12 @@
             <mat-icon>receipt_long</mat-icon> Facturación Anual
           </a>
         </li>
+
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="compuesto-negocio" routerLinkActive="active">
+            <mat-icon>trending_up</mat-icon> Compuesto Negocio
+          </a>
+        </li>
       </ul>
     </div>
 
