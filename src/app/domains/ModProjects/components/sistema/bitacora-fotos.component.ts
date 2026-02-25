@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef } from 'ag-grid-enterprise';
 import { BitacoraBaseComponent, BITACORA_STYLES } from './bitacora-base.component';
@@ -9,9 +10,11 @@ import { alerts } from 'app/helpers/alerts';
 @Component({
   selector: 'app-bitacora-fotos',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
 <div class="detail-grid-container">
+
+  <!-- Barra de botones -->
   <div class="detail-actions d-flex align-items-center mb-2 gap-1">
     <button class="btn btn-outline-secondary btn-sm" (click)="closeDetail()"><i class="bi bi-x-lg"></i></button>
     <button class="btn btn-primary btn-sm"           (click)="addRow()"><i class="bi bi-plus-lg"></i></button>
@@ -24,6 +27,58 @@ import { alerts } from 'app/helpers/alerts';
     </button>
   </div>
 
+  <!-- Modal editar foto -->
+  <div *ngIf="modalOpen"
+       class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+       style="background:rgba(0,0,0,0.75);z-index:9999;"
+       (click)="closeModal()">
+    <div class="bg-white rounded-3 shadow-lg p-3"
+         style="max-width:460px;width:95%;max-height:90vh;overflow-y:auto;"
+         (click)="$event.stopPropagation()">
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-camera me-1 text-primary"></i>Foto</h6>
+        <button class="btn btn-sm btn-outline-secondary" (click)="closeModal()"><i class="bi bi-x-lg"></i></button>
+      </div>
+
+      <!-- Preview -->
+      <div class="text-center mb-3 bg-light rounded"
+           style="min-height:120px;display:flex;align-items:center;justify-content:center;padding:8px;">
+        <img *ngIf="modalImageUrl" [src]="modalImageUrl"
+             style="max-width:100%;max-height:200px;object-fit:contain;border-radius:4px;">
+        <div *ngIf="!modalImageUrl" class="text-muted text-center">
+          <i class="bi bi-image" style="font-size:3rem;display:block;"></i>
+          <small>Sin foto</small>
+        </div>
+      </div>
+
+      <!-- Input file real en el template Angular (nunca dinámico) -->
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Seleccionar foto</label>
+        <input type="file" accept="image/jpeg,image/png,image/webp"
+               class="form-control form-control-sm"
+               [disabled]="uploading"
+               (change)="onFileSelected($event)">
+        <div *ngIf="uploading" class="mt-1 text-muted small">
+          <span class="spinner-border spinner-border-sm me-1"></span>Subiendo...
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Descripción</label>
+        <textarea class="form-control form-control-sm" rows="2"
+                  [(ngModel)]="modalDescription"
+                  placeholder="Descripción de la foto..."></textarea>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2">
+        <button class="btn btn-sm btn-outline-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-sm btn-primary" (click)="saveModal()" [disabled]="uploading">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid -->
   <ag-grid-angular
     class="ag-theme-quartz small-text-ag-grid"
     [rowData]="rowData"
@@ -32,8 +87,8 @@ import { alerts } from 'app/helpers/alerts';
     [gridOptions]="gridOptions"
     (gridReady)="onGridReady($event)"
     (cellValueChanged)="onCellValueChanged($event)"
-    (cellEditingStopped)="onCellEditingStopped($event)"
-    (cellClicked)="onGridCellClicked($event)"
+    (cellClicked)="onCellClicked($event)"
+    (cellDoubleClicked)="onCellDoubleClicked($event)"
     style="height: 350px; width: 100%;">
   </ag-grid-angular>
 </div>
@@ -42,12 +97,18 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class BitacoraFotosComponent extends BitacoraBaseComponent {
   private imageHandlerService = inject(ImageHandlerService);
-  private currentRow: any = null;
 
   readonly bitacoraType   = 'fotos';
   readonly typeNoteValue  = 'Photo';
-  readonly editableCols   = ['description'];
+  readonly editableCols   = [];
   readonly requiredFields = [{ field: 'imageUrl', label: 'Foto' }];
+
+  uploading        = false;
+  selectedRow: any = null;
+  modalOpen        = false;
+  modalDescription = '';
+  modalImageUrl: string | null = null;
+  private editingRow: any = null;
 
   override readonly gridOptions: any = {
     headerHeight: 30, rowHeight: 60, rowSelection: 'single',
@@ -61,62 +122,88 @@ export class BitacoraFotosComponent extends BitacoraBaseComponent {
         valueGetter: (p) => p.node!.rowIndex! + 1,
       },
       {
-        field: 'imageUrl',
-        headerName: 'Foto',
-        width: 130,
-        editable: false,
+        field: 'imageUrl', headerName: 'Foto', width: 130, editable: false,
         cellRenderer: (params: any) => {
-          const container = document.createElement('div');
-          container.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-          container.title = 'Clic para cambiar foto';
+          const div = document.createElement('div');
+          div.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;';
+          div.title = 'Doble clic para editar';
           if (params.value) {
             const img = document.createElement('img');
             img.src = params.value;
-            img.style.cssText = 'max-width:100%;max-height:56px;object-fit:contain;border-radius:4px;';
-            container.appendChild(img);
+            img.style.cssText = 'max-width:100%;max-height:56px;object-fit:contain;border-radius:4px;pointer-events:none;';
+            div.appendChild(img);
           } else {
-            container.innerHTML = '<i class="bi bi-camera" style="font-size:1.5rem;color:#adb5bd;"></i><small class="ms-1 text-muted">Subir</small>';
+            div.innerHTML = '<i class="bi bi-camera" style="font-size:1.5rem;color:#adb5bd;pointer-events:none;"></i>' +
+                            '<small class="ms-1 text-muted" style="pointer-events:none;">2x clic</small>';
           }
-          return container;
+          return div;
         },
       },
       {
-        field: 'description',
-        headerName: 'Descripción',
-        editable: true,
-        flex: 1,
+        field: 'description', headerName: 'Descripción', editable: false, flex: 1,
+        valueFormatter: (p: any) => p.value || 'Doble clic para editar...',
+        cellStyle: (p: any) => p.value
+          ? { color: '#212529' }
+          : { color: '#adb5bd', fontStyle: 'italic' },
       },
     ];
   }
 
-  onGridCellClicked(event: any): void {
-    if (event.colDef?.field !== 'imageUrl') return;
-    this.currentRow = event.node.data;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/jpeg,image/png,image/webp';
-    input.style.cssText = 'position:fixed;top:-200px;left:-200px;opacity:0;';
-    document.body.appendChild(input);
-    input.onchange = (e: any) => {
-      this.onFileSelected(e);
-      document.body.removeChild(input);
+  override addRow(): void {
+    const newRow = {
+      id: `temp_${this.tempIdCounter++}`,
+      idReporte: this.reportData?.id,
+      date: new Date().toISOString().split('T')[0],
+      active: true, __isNew: true, __modified: false,
     };
-    input.click();
+    this.rowData = [newRow, ...this.rowData];
+    this.hasUnsavedChanges = true;
+    setTimeout(() => {
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.openModal(newRow);
+    }, 50);
   }
 
-  private onFileSelected(event: any): void {
+  openModal(row: any): void {
+    if (!row) return;
+    this.editingRow      = row;
+    this.modalDescription = row.description || '';
+    this.modalImageUrl   = row.imageUrl || null;
+    this.modalOpen       = true;
+  }
+
+  closeModal(): void {
+    this.modalOpen  = false;
+    this.editingRow = null;
+  }
+
+  onFileSelected(event: any): void {
     const file: File = event.target.files?.[0];
-    if (!file || !this.currentRow) return;
-    alerts.basicAlert('Subiendo...', 'Por favor espera', 'info');
+    if (!file) return;
+    this.uploading = true;
     this.imageHandlerService.uploadFileToFirebase(file, 'fotos-bitacora')
-      .then(url => {
-        this.currentRow.imageUrl = url;
-        if (!this.currentRow.__isNew) this.currentRow.__modified = true;
-        this.hasUnsavedChanges = true;
-        this.gridApi.refreshCells({ force: true });
-        alerts.basicAlert('Listo', 'Foto subida correctamente', 'success');
-      })
-      .catch(() => alerts.basicAlert('Error', 'No se pudo subir la foto', 'error'));
+      .then(url => { this.modalImageUrl = url; this.uploading = false; })
+      .catch(() => { this.uploading = false; alerts.basicAlert('Error', 'No se pudo subir la foto', 'error'); });
+  }
+
+  // Mismo patrón que bitacora-notas: cellClicked y cellDoubleClicked sí corren en Angular zone
+  override onCellClicked(event: any): void {
+    this.selectedRow = event.data;
+  }
+
+  override onCellDoubleClicked(event: any): void {
+    this.openModal(event.data);
+  }
+
+  saveModal(): void {
+    if (this.editingRow) {
+      this.editingRow.imageUrl    = this.modalImageUrl;
+      this.editingRow.description = this.modalDescription.trim() || null;
+      if (!this.editingRow.__isNew) this.editingRow.__modified = true;
+      this.hasUnsavedChanges = true;
+      this.gridApi.refreshCells({ force: true });
+    }
+    this.closeModal();
   }
 
   buildPayload(item: any): any {

@@ -16,11 +16,12 @@ import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi
 import { ModalService } from 'app/services/modal.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { conventionDetailsComponent } from "./convention-details/convention-details.component";
+import { DetalleButtonRendererComponent } from "./detalle-button-renderer.component";
 
 @Component({
   selector: 'app-conventions',
   standalone: true,
-  imports: [DomainsModule, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, conventionDetailsComponent],
+  imports: [DomainsModule, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, conventionDetailsComponent, DetalleButtonRendererComponent],
   templateUrl: './conventions.component.html',
   styleUrl: './conventions.component.scss'
 })
@@ -53,9 +54,17 @@ export class ConventionsComponent {
 
   constructor() {
     effect(() => {
+      this.idc = this.signalsService.getContractSelectedBySidebar()();
       this.type = "Contract";
-      this.idc = 148;
-      this.obtenerDatos();
+      if (this.idc) {
+        this.obtenerDatos();
+      } else {
+        alerts.basicAlert(
+          'Contrato no seleccionado',
+          'Por favor, seleccione un contrato en el panel lateral para ver los convenios.',
+          'warning'
+        );
+      }
     });
     this.initForm();
   }
@@ -82,9 +91,9 @@ export class ConventionsComponent {
     headerHeight: 25,
     rowHeight: 20,
     rowBuffer: 20,
-    getRowClass: (params) => {
-      if (params.node.isSelected()) {
-        return 'selected-row';
+    getRowStyle: (params) => {
+      if (params.data?.vigente === true) {
+        return { background: '#ffe4e6' };
       }
       return '';
     },
@@ -96,28 +105,8 @@ export class ConventionsComponent {
         return;
       }
     
-      const selectedRowData = event.data;
-      const selectedId = selectedRowData.id;
-      
-      if (this.idConvention === selectedId) {
-        this.isOpen = !this.isOpen;
-        if (this.isOpen) {
-          await this.adjustGridSize();
-          this.showDetailsTab = true;
-        } else {
-          await this.resetGridSize();
-          this.showDetailsTab = false;
-        }
-      } else {
-        this.idConvention = selectedId;
-        this.signalsService.setIdConvention(selectedId);
-        this.notSavedChanges = true;
-        this.selectedRowData = selectedRowData;
-        
-        this.isOpen = true;
-        await this.adjustGridSize();
-        this.showDetailsTab = true;
-      }
+      this.notSavedChanges = true;
+      this.selectedRowData = event.data;
     },
     onRowSelected: (event) => {
       if (event.node.isSelected()) {
@@ -130,18 +119,23 @@ export class ConventionsComponent {
     },
     onCellKeyDown: (params) => {
       if (params.event.key === 'Enter') {
-        const editableColumns = this.columnDefs.filter((col) => col.editable);
-        const currentColIndex = editableColumns.findIndex(
+        const allColumns = this.columnDefs;
+        const currentColIndex = allColumns.findIndex(
           (col) => col.field === params.column.getColDef().field
         );
   
-        if (currentColIndex < editableColumns.length - 1) {
-          requestAnimationFrame(() => {
+        if (currentColIndex < allColumns.length - 1) {
+          setTimeout(() => {
+            const rowNode = params.api.getRowNode(params.node.rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+            }
+            params.api.ensureIndexVisible(params.node.rowIndex);
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
-              colKey: editableColumns[currentColIndex + 1].field,
+              colKey: allColumns[currentColIndex + 1].field,
             });
-          });
+          }, 150);
         }
         params.event.preventDefault();
       }
@@ -154,7 +148,41 @@ export class ConventionsComponent {
         field: 'name',
         headerName: 'Nombre',
         editable: true,
-        flex: 1
+        flex: 1,
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 10
+        },
+        valueSetter: (params) => {
+          const newValue = params.newValue;
+          if (newValue && newValue.length > 10) {
+            alerts.basicAlert('Límite excedido', 'El nombre no puede exceder 10 caracteres.', 'warning');
+            return false;
+          }
+          params.data.name = newValue;
+          return true;
+        }
+      },
+      {
+        field: 'detalle',
+        headerName: 'Detalle',
+        width: 90,
+        editable: false,
+        sortable: false,
+        filter: false,
+        cellStyle: { backgroundColor: '#cfe2ff', cursor: 'pointer', textAlign: 'center' },
+        cellRenderer: DetalleButtonRendererComponent,
+        cellRendererParams: {
+          onDetalleClick: (data: any) => {
+            console.log('Detalle clicked:', data);
+            this.selectedRowData = data;
+            this.idConvention = data.id;
+            this.signalsService.setIdConvention(data.id);
+            this.adjustGridSize();
+            this.showDetailsTab = true;
+            console.log('idConvention:', this.idConvention, 'showDetailsTab:', this.showDetailsTab);
+          }
+        }
       },
       {
         field: 'description',
@@ -177,6 +205,32 @@ export class ConventionsComponent {
             this.modalServiceTable.showModal({
               params: event,
               value: event.value,
+            });
+          }
+        }
+      },
+      {
+        field: 'vigente',
+        headerName: 'Vigente',
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        width: 120,
+        onCellValueChanged: (params: any) => {
+          if (params.newValue === true) {
+            this.rowData.forEach((row: any) => {
+              if (row !== params.data && row.vigente === true) {
+                row.vigente = false;
+              }
+            });
+            const rowNodes: any[] = [];
+            this.gridApi.forEachNode((node: any) => {
+              if (node) rowNodes.push(node);
+            });
+            this.gridApi.refreshCells({
+              rowNodes: rowNodes,
+              columns: ['vigente'],
+              force: true
             });
           }
         }
@@ -262,6 +316,15 @@ export class ConventionsComponent {
   }
 
   obtenerDatos() {
+    if (!this.idc) {
+      alerts.basicAlert(
+        'Contrato no seleccionado',
+        'Por favor, seleccione un contrato en el panel lateral.',
+        'warning'
+      );
+      return;
+    }
+
     this.conventionsService
       .getConventionsByContractOrProject(this.type, this.idc)
       .pipe(
@@ -275,7 +338,14 @@ export class ConventionsComponent {
         })
       )
       .subscribe((data: any) => {
-        this.rowData = data;
+        if (data && Array.isArray(data)) {
+          this.rowData = data.map((row: any) => ({
+            ...row,
+            vigente: row.vigente === 1 || row.vigente === true || row.vigente === '1' || row.vigente === 'true'
+          }));
+        } else {
+          this.rowData = data;
+        }
       });
   }
 
@@ -284,12 +354,9 @@ export class ConventionsComponent {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.id = this.selectedRowData.id;
-      this.idConvention = this.id;
-      this.signalsService.setIdConvention(this.id);
     } else {
       this.selectedRowData = null;
-      this.idConvention = null;
-      this.signalsService.setIdConvention(null);
+      this.id = null;
     }
   }
 
@@ -305,17 +372,23 @@ export class ConventionsComponent {
 
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+    const today = new Date();
+    const startOfYear = new Date(today.getFullYear(), 0, 1);
+    
     const newItem = {
       id: tempId,
       id_type: 1,
-      idContract: this.selectedContract,
+      idContract: this.idc,
       idProject: 0,
       type: this.type,
-      name: '',
+      name: 'CONV-001',
+      description: 'CONVENIO NUMERO',
+      start: startOfYear.toISOString().split('T')[0],
+      end: today.toISOString().split('T')[0],
       amountMX: 0,
       amountDLL: 0,
       comment: '',
-      active: 1,
+      active: true,
       __isNew: true
     };
 
@@ -329,12 +402,17 @@ export class ConventionsComponent {
 
     setTimeout(() => {
       if (firstEditableColKey) {
+        const rowNode = this.gridApi.getRowNode(newRowIndex);
+        if (rowNode) {
+          rowNode.setSelected(true);
+        }
+        this.gridApi.ensureIndexVisible(newRowIndex);
         this.gridApi.startEditingCell({
           rowIndex: newRowIndex,
           colKey: firstEditableColKey,
         });
       }
-    }, 50);
+    }, 100);
   }
 
   editRow() {
@@ -516,9 +594,13 @@ export class ConventionsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('Sending data to server:', cleanedData);
       return this.conventionsService.addConvention(cleanedData).pipe(
         catchError((error) => {
           console.error('Error adding agreement:', error);
+          if (error.error?.errors) {
+            console.error('Validation errors:', JSON.stringify(error.error.errors));
+          }
           return throwError(() => new Error(`Error al añadir acuerdo: ${error.message}`));
         })
       );

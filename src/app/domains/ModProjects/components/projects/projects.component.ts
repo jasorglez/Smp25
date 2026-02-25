@@ -211,7 +211,7 @@ export class ProjectsComponent {
           filterOptions: ['equals'], // Opciones de filtro
         }},
     { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
-    { field: 'number', headerName: 'Proyecto', flex: 1 },
+    { field: 'number', headerName: 'Proyecto5', width: 150, flex: 2 },
     { field: 'name', headerName: 'Nombre', width: 100, filter: true, flex: 2 },
     
     { field: 'year', headerName: 'Año', flex: 1 },
