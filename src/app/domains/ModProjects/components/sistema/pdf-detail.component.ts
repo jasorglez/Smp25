@@ -543,52 +543,61 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
         },
       ];
 
-      // • Fotografías (páginas 6-7)
+      // • Fotografías — 4 por hoja (2 columnas × 2 filas)
       const pgFotos: any[] = [];
       if (fotoImgs.length > 0) {
         pgFotos.push(mkSectionTitle('Registro Fotográfico', true));
 
-        // Contador de fotos
         pgFotos.push({
           text: `Total de fotografías: ${fotoImgs.length}`,
           fontSize: 8, color: GRAY, italics: true,
           margin: [0, 0, 0, 8],
         });
 
-        // Grid 2 columnas
-        const fotoRows: any[] = [];
-        for (let i = 0; i < fotoImgs.length; i += 2) {
-          const mkFotoCell = (f: typeof fotoImgs[0]): any => ({
-            stack: [
-              {
-                table: {
-                  widths: ['*'],
-                  body: [[{ image: f.key, width: 210, alignment: 'center', margin: [0, 4, 0, 4] }]],
-                },
-                layout: {
-                  hLineWidth: () => 0.5, vLineWidth: () => 0.5,
-                  hLineColor: () => '#cccccc', vLineColor: () => '#cccccc',
-                },
+        // Página LETTER portrait: área útil ~462pt alto.
+        // 2 filas × (img 165 + desc 14 + márgenes 16) ≈ 390pt → cabe con holgura.
+        const mkFotoCell = (f: { key: string; desc: string }): any => ({
+          stack: [
+            {
+              table: {
+                widths: ['*'],
+                body: [[{ image: f.key, fit: [225, 165], alignment: 'center', margin: [0, 4, 0, 4] }]],
               },
-              {
-                text: f.desc || ' ',
-                fontSize: 7, alignment: 'center', color: GRAY, italics: true,
-                margin: [0, 4, 0, 8],
+              layout: {
+                hLineWidth: () => 0.5, vLineWidth: () => 0.5,
+                hLineColor: () => '#cccccc', vLineColor: () => '#cccccc',
               },
-            ],
-            margin: [4, 4, 4, 4],
-          });
-
-          fotoRows.push([
-            mkFotoCell(fotoImgs[i]),
-            (i + 1 < fotoImgs.length) ? mkFotoCell(fotoImgs[i + 1]) : { text: '' },
-          ]);
-        }
-
-        pgFotos.push({
-          table: { widths: ['50%', '50%'], body: fotoRows },
-          layout: 'noBorders',
+            },
+            {
+              text: f.desc || ' ',
+              fontSize: 7, alignment: 'center', color: GRAY, italics: true,
+              margin: [0, 4, 0, 8],
+            },
+          ],
+          margin: [4, 4, 4, 4],
         });
+
+        // Agrupar en bloques de 4 (2 filas × 2 columnas por hoja)
+        const FOTOS_POR_HOJA = 4;
+        for (let start = 0; start < fotoImgs.length; start += FOTOS_POR_HOJA) {
+          const chunk = fotoImgs.slice(start, start + FOTOS_POR_HOJA);
+
+          const chunkRows: any[] = [];
+          for (let i = 0; i < chunk.length; i += 2) {
+            chunkRows.push([
+              mkFotoCell(chunk[i]),
+              (i + 1 < chunk.length) ? mkFotoCell(chunk[i + 1]) : { text: '' },
+            ]);
+          }
+
+          // pageBreak directo en el objeto — evita el elemento vacío que genera hoja en blanco
+          const chunkTable: any = {
+            table: { widths: ['50%', '50%'], body: chunkRows },
+            layout: 'noBorders',
+          };
+          if (start > 0) chunkTable.pageBreak = 'before';
+          pgFotos.push(chunkTable);
+        }
       }
 
       // ── Definición del documento ──────────────────────────────────────────
@@ -596,7 +605,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       const docDef: any = {
         pageSize: 'LETTER',
         pageOrientation: 'portrait',
-        pageMargins: [40, 200, 40, 130],
+        pageMargins: [40, 142, 40, 130],
         info: {
           title: `Reporte Diario — ${companyName}`,
           author: companyName,
@@ -697,9 +706,9 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
                       { text: 'DIRECTOR',          bold: true, fontSize: 7, alignment: 'center', color: NAVY, fillColor: LBLUE },
                     ],
                     [
-                      { text: '________________________', alignment: 'center', margin: [0, 20, 0, 3], fontSize: 8, color: GRAY },
-                      { text: '________________________', alignment: 'center', margin: [0, 20, 0, 3], fontSize: 8, color: GRAY },
-                      { text: '________________________', alignment: 'center', margin: [0, 20, 0, 3], fontSize: 8, color: GRAY },
+                      { text: '________________________', alignment: 'center', margin: [0, 10, 0, 2], fontSize: 8, color: GRAY },
+                      { text: '________________________', alignment: 'center', margin: [0, 10, 0, 2], fontSize: 8, color: GRAY },
+                      { text: '________________________', alignment: 'center', margin: [0, 10, 0, 2], fontSize: 8, color: GRAY },
                     ],
                   ],
                 },
