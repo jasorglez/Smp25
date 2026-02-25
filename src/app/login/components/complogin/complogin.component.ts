@@ -31,13 +31,10 @@ import { environment } from '@env/environment';
     RouterModule,
     DomainsModule
   ]
-
 })
 export class ComploginComponent implements OnInit {
 
   environment = environment;
-
-  //idUser      = computed(()=>  this.signalsService.idUser()) ;
 
   hide = true;
   emailcapt   : string = '';
@@ -77,14 +74,11 @@ export class ComploginComponent implements OnInit {
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.randomImage = this.images[Math.floor(Math.random() * this.images.length)];
-    // Refactorización: si hay un email en signals, cargar permisos en inicio
     const storedEmail = this.signalsService.getemailChoose();
     if (storedEmail) {
       this.emailcapt = storedEmail;
-      // Obtener branch actual y decidir si aplicar permisos avanzados
       const branchAtInit = this.signalsService.getBranchSelectedBySidebar()();
       const isAdv = this.signalsService.getIsAdvanced();
-      // Usamos directamente getUserId -> pero protegemos branch null
       this.auth.getUserId(this.emailcapt).pipe(
         switchMap(userId => {
           if (isAdv && branchAtInit != null && branchAtInit !== 0) {
@@ -109,40 +103,32 @@ export class ComploginComponent implements OnInit {
     this.hide = !this.hide;
   }
 
-  // Función Login
   login() {
-    // Validamos que el formulario haya sido enviado
     this.formSubmitted = true;
-
-    // Atrapo la variable para enviarla al servicio
     this.emailcapt = this.flogin.get('emaillogin')?.value ?? '';
     this.trackingService.setEmail(this.emailcapt);
 
     if (this.flogin.invalid) {
       return;
     }
-    // Capturamos la información del formulario en la interfaz
+
     const data: Ilogin = {
       email: this.flogin.get('emaillogin')?.value ?? '',
       password: this.flogin.get('passwordlogin')?.value ?? ''
     };
 
-    // Ejecutamos el servicio del Login
-    //console.log('Datos de Login:', data);
-   // console.log('Email capturado:', this.trackingService.getEmail());
     this.trackingService.addLog('', "Inicio del Sistema", "Origen del Formulario Login", this.emailcapt);
-
-    // Activar spinner
     this.isLoading = true;
 
     this.auth.login(data).subscribe({
       next: (resp: any) => {
+        // ✅ Guardar token e iniciar timers de sesión
         localStorage.setItem('token', resp.data.token);
+        this.auth.startSessionTimers();
+
         this.userService.findEmail(this.emailcapt).subscribe({
           next: (datauser: any) => {
             if (datauser) {
-              // Definición de variables globales
-     
               this.trackingService.setnameUser(datauser.displayName);
               this.trackingService.setpictureUser(datauser.picture);
               this.trackingService.setabranch(datauser.applybranch);
@@ -150,29 +136,22 @@ export class ComploginComponent implements OnInit {
               this.trackingService.setaproject(datauser.applyproject);
               this.trackingService.setId(datauser.id);
               this.signalsService.setidUser(datauser.id);
-              //aqui atrapa la signal, y le doy el valor del email
-              this.signalsService.setemailChoose(this.emailcapt) ;
-
-               this.signalsService.setrootChoose(datauser.userRoot) ;
-               // Guardar userRoot en localStorage para persistir al recargar
-               localStorage.setItem('userRoot', datauser.userRoot.toString());
-              // Guardar email en localStorage y marcar si es advanced
+              this.signalsService.setemailChoose(this.emailcapt);
+              this.signalsService.setrootChoose(datauser.userRoot);
+              localStorage.setItem('userRoot', datauser.userRoot.toString());
               localStorage.setItem('mail', this.emailcapt);
               this.signalsService.setIsAdvanced(!!datauser.advanced);
-              // Asegurar que la sucursal aplicable del usuario quede registrada
               if (datauser.applybranch != null) {
                 this.signalsService.setBranchSelectedBySidebar(datauser.applybranch);
                 this.idBranch = datauser.applybranch;
               }
 
-              // Usar directamente datauser.id para evitar llamada extra a getUserId
               const userId = datauser.id;
               const isAdvancedLocal = !!datauser.advanced;
               const branchIdLocal = datauser.applybranch ?? this.idBranch;
 
               if (isAdvancedLocal && branchIdLocal != null && branchIdLocal !== 0) {
-                this.auth.fetchUserPermissionsAdvanced(userId, branchIdLocal).pipe(
-                ).subscribe({
+                this.auth.fetchUserPermissionsAdvanced(userId, branchIdLocal).subscribe({
                   next: (permissionsData: any) => {
                     if (permissionsData && permissionsData.permissions) {
                       this.auth.setUserPermissions(permissionsData.permissions);
@@ -208,20 +187,13 @@ export class ComploginComponent implements OnInit {
       },
       error: (err) => {
         console.log(err);
-        // Desactivar spinner en caso de error
         this.isLoading = false;
         alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
       }
     });
   }
 
-
-//Validamos formulario
-invalidField(field:string){
-
-return functions.invalidField(field, this.flogin, this.formSubmitted);
-
-}
-
-
+  invalidField(field:string){
+    return functions.invalidField(field, this.flogin, this.formSubmitted);
+  }
 }

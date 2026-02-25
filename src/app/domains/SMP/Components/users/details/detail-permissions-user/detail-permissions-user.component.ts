@@ -205,7 +205,7 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
   }
 
   obtenerDatos(idUser: number, idBranch: number,Role: number, idPosicion: number) {
-    this.permitionsService.getPermitionsSencillo(this.idEmpresa, idUser, idBranch, Role, idPosicion)
+    this.permitionsService.getPermitionsDetail(this.idEmpresa, idUser, idBranch, Role, idPosicion)
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;

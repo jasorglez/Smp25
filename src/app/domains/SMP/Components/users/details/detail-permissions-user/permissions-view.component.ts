@@ -75,6 +75,9 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   groupedPermissions: MasterPermission[] = [];
   masterSeleccionado: MasterPermission | null = null;
   detailSeleccionado: DetailedPermission | null = null;
+  subdetailExpandido: SubdetailPermission | null = null;
+  pasoActual: number = 1;
+  subdetailPaso2: SubdetailPermission | null = null;
 
   readonly coloresMaster: string[] = [
     '#1a1a2e', '#16213e', '#0f3460', '#533483', '#2b2d42', '#1b4332'
@@ -87,6 +90,21 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     'almacenes',
     'recursos',
     'configurac'
+  ];
+
+  // Orden de los details según el menú de navegación
+  readonly ordenDetails: string[] = [
+    'dashboard',
+    'configurac',
+    'banco',
+    'transferenc',
+    'ingreso',
+    'egreso',
+    'cliente',
+    'proveedor',
+    'factura',
+    'cuenta',
+    'catalogo'
   ];
 
   constructor() {}
@@ -148,18 +166,13 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   seleccionarDetail(detail: DetailedPermission) {
     if (this.detailSeleccionado === detail) {
       this.detailSeleccionado = null;
+      this.subdetailExpandido = null;
       return;
     }
     this.detailSeleccionado = detail;
+    this.subdetailExpandido = null;
 
-    detail.subdetails.forEach(subdetail => {
-      if (subdetail.principal) {
-        subdetail.principal.canRead = true;
-        subdetail.principal.canCreate = true;
-        subdetail.principal.canUpdate = true;
-        subdetail.principal.canDelete = true;
-      }
-    });
+    // No forzar valores al seleccionar - respetar los valores existentes
 
     this.checkForChanges();
   }
@@ -170,6 +183,22 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
   getIndexMasterSeleccionado(): number {
     return this.groupedPermissions.indexOf(this.masterSeleccionado);
+  }
+
+  // Verifica si un detail tiene al menos un subdetail con children
+  tieneChildren(detail: DetailedPermission): boolean {
+    return detail.subdetails.some(sd => sd.children && sd.children.length > 0);
+  }
+
+  // Navega al paso 2 mostrando las acciones adicionales del subdetail
+  toggleChildren(subdetail: SubdetailPermission) {
+    this.subdetailPaso2 = subdetail;
+    this.irPaso(2);
+  }
+
+  // Navega entre pasos
+  irPaso(paso: number) {
+    this.pasoActual = paso;
   }
 
   private transformData(data: any[]): MasterPermission[] {
@@ -243,6 +272,19 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       return posA - posB;
     });
 
+    // Ordenar details dentro de cada master según ordenDetails
+    result.forEach(master => {
+      master.details.sort((a, b) => {
+        const nameA = this.normalizar(a.detailedPermissionName);
+        const nameB = this.normalizar(b.detailedPermissionName);
+        const indexA = this.ordenDetails.findIndex(o => nameA.includes(o));
+        const indexB = this.ordenDetails.findIndex(o => nameB.includes(o));
+        const posA = indexA === -1 ? 999 : indexA;
+        const posB = indexB === -1 ? 999 : indexB;
+        return posA - posB;
+      });
+    });
+
     return result;
   }
 
@@ -256,6 +298,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.notSavedChanges = false;
     this.masterSeleccionado = null;
     this.detailSeleccionado = null;
+    this.subdetailExpandido = null;
   }
 
   onMasterReadChange(master: MasterPermission) {
@@ -267,16 +310,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   onCrudChange(permission: CrudPermission) {
-    if (permission.canRead && permission.name === 'Principal') {
-      permission.canCreate = true;
-      permission.canUpdate = true;
-      permission.canDelete = true;
-    }
-    if (!permission.canRead) {
-      permission.canCreate = false;
-      permission.canUpdate = false;
-      permission.canDelete = false;
-    }
+    // El switch (canRead) y los checkboxes son independientes
+    // Solo si se apaga el switch se ocultan los checkboxes visualmente (via *ngIf en HTML)
+    // pero sus valores no se modifican desde aquí
+    this.checkForChanges();
+  }
+
+  onSwitchChange(permission: CrudPermission) {
+    // El switch solo controla canRead, no toca canCreate/canUpdate/canDelete
     this.checkForChanges();
   }
 

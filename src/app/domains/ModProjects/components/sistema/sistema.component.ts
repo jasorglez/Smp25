@@ -7,6 +7,7 @@ import { DailyReportService } from 'app/services/daily-report.service';
 import { LogbookService } from 'app/services/logbook.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { IDailyReport } from 'app/interface/idaily-report';
 import { ButtonCellRendererExpenditureComponent } from '../../../ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { PdfButtonCellRendererComponent }  from './pdf-button-cell-renderer.component';
 import { PdfDetailComponent }              from './pdf-detail.component';
@@ -37,8 +38,8 @@ export class SistemaComponent implements OnInit {
   private logbookService = inject(LogbookService);
   private signalsService    = inject(SignalsService);
 
-  public rowData: any[]       = [];
-  private originalRowData: any[] = [];
+  public rowData: IDailyReport[]       = [];
+  private originalRowData: IDailyReport[] = [];
   public gridApi!: GridApi;
   public hasUnsavedChanges   = false;
   public selectedRow: any    = null;
@@ -100,7 +101,7 @@ export class SistemaComponent implements OnInit {
         {
           name: '<b>Traer todo del día anterior</b>',
           icon: '<i class="bi bi-calendar-check-fill" style="color:#f57c00"></i>',
-          action: () => this.copyFromPreviousDay(row, ['PERSONAL', 'MATERIAL', 'EQUIPMENT', 'CONCEPT', 'NOTE']),
+          action: () => this.copyFromPreviousDay(row, ['PERSONAL', 'MATERIAL', 'EQUIPMENT', 'CONCEPTO', 'NOTE']),
         },
         'separator',
         'copy',
@@ -136,8 +137,12 @@ export class SistemaComponent implements OnInit {
     },
     { field: 'startTime', headerName: 'Inicio', width: 100, editable: true },
     { field: 'endTime', headerName: 'Término', width: 120, editable: true },
-//    { field: 'type', headerName: 'Tipo', width: 100, editable: true },
-    { field: 'description', headerName: 'Descripción', width: 200, editable: true },
+ // { field: 'type', headerName: 'Tipo', width: 100, editable: true },
+ // { field: 'description',      headerName: 'Descripción',       width: 200, editable: true },
+    { field: 'numReporte',       headerName: 'No. Reporte',       width: 160, editable: true },
+    { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 200, editable: true },
+    { field: 'ubication',        headerName: 'Ubicación',         width: 140, editable: true },
+    { field: 'platicasSeguridad',headerName: 'Plática Seguridad', width: 200, editable: true },
     {
       field: 'totalPay', headerName: 'Total $', width: 120, editable: true,
       cellEditor: 'agNumberCellEditor',
@@ -334,6 +339,10 @@ export class SistemaComponent implements OnInit {
       endTime: '17:02:00',
       type: 'CORTE',
       description: '',
+      numReporte: '',
+      condition: '',
+      ubication: '',
+      platicasSeguridad: '',
       totalPay: 0,
       close: false,
       paid: true,
@@ -672,6 +681,7 @@ export class SistemaComponent implements OnInit {
       'MATERIAL':  'Material',
       'EQUIPMENT': 'Equipos',
       'CONCEPT':   'Conceptos',
+      'CONCEPTO':  'Conceptos',
       'NOTE':      'Notas',
       'Photo':     'Fotos',
       'Video':     'Videos',
@@ -685,6 +695,7 @@ export class SistemaComponent implements OnInit {
       'MATERIAL':  'material',
       'EQUIPMENT': 'equipos',
       'CONCEPT':   'conceptos',
+      'CONCEPTO':  'conceptos',
       'NOTE':      'notas',
       'Photo':     'fotos',
       'Video':     'videos',

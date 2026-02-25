@@ -272,18 +272,17 @@ error: (error) => {
     const target = event.target as HTMLSelectElement;
     this.selectedContractId = target.value;
     if (this.selectedContractId) {
-      // Lógica para añadir la signal de solo contract
-      this.signalsService.setContractSelectedBySidebar(
-        Number(this.selectedContractId)
+      const selectedItem = this.contractData.find(
+        (c: any) => String(c.contractId) === this.selectedContractId
       );
-      // Borro la signal de project para resetear el dato
+      this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+      this.signalsService.contractSignal(
+        Number(this.selectedContractId),
+        selectedItem?.contract ?? ''
+      );
       this.signalsService.setProjectSelectedBySidebar(null);
       this.signalsService.setSidebarProjectId(null);
       this.trackingService.setContract(this.selectedContractId);
-      this.signalsService.setContractSelectedBySidebar(
-        Number(this.selectedContractId)
-      );
-      //llamo a los permisos de x Project
       await this.getpermissionxProjects(Number(this.selectedContractId));
     }
   }
@@ -323,6 +322,10 @@ error: (error) => {
           // Auto-seleccionar siempre el primer contrato
           this.selectedContractId = this.contractData[0].contractId;
           this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+          this.signalsService.contractSignal(
+            Number(this.selectedContractId),
+            this.contractData[0].contract ?? ''
+          );
           this.trackingService.setContract(this.selectedContractId);
           setTimeout(() => {
             const selectElement = document.getElementById('contracts') as HTMLSelectElement;

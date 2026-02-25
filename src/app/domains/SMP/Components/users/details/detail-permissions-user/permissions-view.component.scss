@@ -11,6 +11,11 @@
   to   { opacity: 1; max-height: 2000px; transform: translateY(0); }
 }
 
+@keyframes rotarFlecha {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(180deg); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.25s ease both;
 }
@@ -200,6 +205,8 @@ input:checked + .slider:before { transform: translateX(22px); }
   padding: 14px 20px;
   width: 100%;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  background-color: #003366 !important;
+  text-align: center;
 }
 
 .titulo-seleccionado {
@@ -248,6 +255,50 @@ input:checked + .slider:before { transform: translateX(22px); }
   font-weight: 500;
   font-size: 0.88rem;
   transition: background-color 0.2s ease;
+}
+
+// Nombre del submodulo con ellipsis si es largo
+.submodulo-nombre {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+}
+
+// Contenedor de flecha + switch en la tarjeta
+.submodulo-acciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+// Flecha indicadora de acciones adicionales
+.submodulo-flecha {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.25s ease;
+
+  svg {
+    transition: transform 0.25s ease;
+  }
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.28);
+  }
+
+  // Cuando el detail está seleccionado, la flecha rota 180°
+  &.flecha-activa svg {
+    transform: rotate(180deg);
+  }
 }
 
 // ================================
@@ -312,6 +363,104 @@ input:checked + .slider:before { transform: translateX(22px); }
   font-size: 0.82rem;
   color: #ffffff;
   letter-spacing: 0.02em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+// Nombre con ellipsis + clickeable si tiene children
+.crud-seccion-nombre {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.crud-seccion-nombre--clickable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+}
+
+// Contenedor del switch
+.crud-seccion-acciones {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+// Flecha apunta a la derecha, rota 90° al expandir
+.crud-seccion-flecha {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: transform 0.22s ease;
+
+  svg {
+    display: block;
+    transition: transform 0.22s ease;
+  }
+
+  &.flecha-abierta svg {
+    transform: rotate(90deg);
+  }
+}
+
+// Switch pequeño para el header de crud-seccion
+.switch-sm {
+  width: 34px !important;
+  height: 18px !important;
+
+  .slider:before {
+    height: 10px;
+    width: 10px;
+    left: 4px;
+    bottom: 4px;
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(16px);
+  }
+}
+
+// ================================
+// CHILDREN INLINE (expandible)
+// ================================
+.children-inline {
+  border-top: 1px dashed rgba(255,255,255,0.2);
+  margin-top: 10px;
+  padding: 10px 12px 12px;
+  background-color: #f0f4ff;
+  border-radius: 0 0 8px 8px;
+}
+
+.children-inline-titulo {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .crud-check-group {
@@ -440,4 +589,166 @@ input:checked + .slider:before { transform: translateX(22px); }
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px;
+}
+
+// ================================
+// STEPPER
+// ================================
+.steps-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 20px;
+  padding: 12px 0 4px;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.step-circulo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e5e7eb;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.step-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
+  transition: color 0.25s ease;
+  white-space: nowrap;
+}
+
+.step-linea {
+  width: 80px;
+  height: 2px;
+  background-color: #e5e7eb;
+  margin: 0 6px;
+  margin-bottom: 18px;
+  border-radius: 2px;
+  transition: background-color 0.25s ease;
+
+  &.step-linea-activa {
+    background-color: #3b82f6;
+  }
+}
+
+// Paso activo
+.step-activo {
+  .step-circulo {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+  }
+  .step-label {
+    color: #3b82f6;
+  }
+}
+
+// Paso completado
+.step-completado {
+  .step-circulo {
+    background-color: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+  }
+  .step-label {
+    color: #10b981;
+  }
+}
+
+// ================================
+// PASO 2
+// ================================
+.paso2-wrapper {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.paso2-contenido {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.paso2-texto {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.02em;
+}
+
+// ================================
+// PASO 2 - header y breadcrumb
+// ================================
+.paso2-header {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.paso2-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.paso2-breadcrumb-sep {
+  color: #d1d5db;
+  font-size: 0.9rem;
+}
+
+.paso2-breadcrumb-modulo,
+.paso2-breadcrumb-detail {
+  color: #6b7280;
+}
+
+.paso2-breadcrumb-sub {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.paso2-titulo-seccion {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #374151;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paso2-contenido {
+  flex: 1;
+  padding: 4px 0;
+}
+
+// Grid de children a ancho completo (paso 2)
+.children-secciones-grid--full {
+  width: 100%;
+
+  .child-seccion {
+    width: 100%;
+  }
 }

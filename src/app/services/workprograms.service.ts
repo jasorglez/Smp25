@@ -45,4 +45,22 @@ export class WorkprogramsService {
   }
 
 
+  getActivitiesTMDB(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyactivitiesTMDB?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getFathersTMDB(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/onlyfathersTMDB?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
+  getConceptsHierarchy(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/concepts-hierarchy?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getConceptsBySubpartida(id: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/concepts-subpartidas?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+
 }
