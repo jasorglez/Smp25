@@ -5745,16 +5745,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Generar un ID temporal único
-    const tempId = Date.now() + Math.random();
-
     // Calcular el siguiente orden basado en conceptos existentes
     const maxOrden = this.conceptos.length > 0
       ? Math.max(...this.conceptos.map(c => c.orden || 0))
       : 0;
 
     const newConcepto = {
-      id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
