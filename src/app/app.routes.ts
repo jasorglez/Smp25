@@ -899,6 +899,20 @@ export const routes: Routes = [
                     category: 'Administration'
                   }
                 }
+              },
+              {
+                path: 'compuesto-negocio',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/compuesto-negocio/compuesto-negocio.component'
+                  ).then((r) => r.CompuestoNegocioComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Compuesto Negocio',
+                    category: 'Administration'
+                  }
+                }
               }
             ]
           },
