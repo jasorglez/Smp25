@@ -11,7 +11,7 @@ import { alerts } from 'app/helpers/alerts';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 
 @Component({
-  selector: 'app-detail-cell-renderer-tipo-proveedor',
+  selector: 'app-detalles-tipos-proveedor',
   standalone: true,
   imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
   template: `
@@ -86,7 +86,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
     }
   `]
 })
-export class DetailCellRendererTipoProveedorComponent implements ICellRendererAngularComp {
+export class DetallesTiposProveedorComponent implements ICellRendererAngularComp {
 
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);

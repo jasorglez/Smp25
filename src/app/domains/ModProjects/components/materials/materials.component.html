@@ -129,3 +129,36 @@
 
 <!-- Backdrop del modal de subfamilia -->
 <div class="modal-backdrop fade" [class.show]="showSubfamilyModal" [style.display]="showSubfamilyModal ? 'block' : 'none'"></div>
+
+<!-- Modal para agregar nueva unidad -->
+<div class="modal fade" [class.show]="showMeasureModal" [style.display]="showMeasureModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="measureModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="measureModalLabel">
+          <i class="bi bi-plus-circle me-2"></i>Agregar Nueva Unidad
+        </h5>
+        <button type="button" class="btn-close" (click)="closeMeasureModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="mb-3">
+            <label for="measureDescription" class="form-label">Descripción <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="measureDescription" [(ngModel)]="newMeasure.description" name="measureDescription" required placeholder="Ej: KG, LT, PZA...">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeMeasureModal()">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-warning" (click)="saveNewMeasure()" [disabled]="!newMeasure.description">
+          <i class="bi bi-floppy me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop del modal de unidad -->
+<div class="modal-backdrop fade" [class.show]="showMeasureModal" [style.display]="showMeasureModal ? 'block' : 'none'"></div>

@@ -848,14 +848,16 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       {
         field: 'area',
         headerName: 'Area',
-        
+
         filter: true,
-        
+
         width: 100,
         editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.catalogArea.map(area => area.description)
+        cellEditorParams: (params: any) => {
+          return {
+            values: this.catalogArea.map(area => area.description)
+          };
         }
       },
       {
@@ -5743,16 +5745,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Generar un ID temporal único
-    const tempId = Date.now() + Math.random();
-
     // Calcular el siguiente orden basado en conceptos existentes
     const maxOrden = this.conceptos.length > 0
       ? Math.max(...this.conceptos.map(c => c.orden || 0))
       : 0;
 
     const newConcepto = {
-      id: tempId,
       idOt: parseInt(this.selectedOt.id),
       idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,

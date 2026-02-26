@@ -4,17 +4,24 @@
           <div class="nav-wrapper">
             <ul class="nav nav-pills modern-nav">
 
-             <li class="nav-item" style="display: none;">
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'avances')">
+                <a class="nav-link modern-tab" routerLink="advances" routerLinkActive="active">
+                  <i class="bi bi-bar-chart-fill"></i>
+                  <span>{{'advances' | translate}}</span>
+                </a>
+             </li>
+
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'conventions')">
                 <a class="nav-link modern-tab" routerLink="conventions" routerLinkActive="active">
                   <i class="bi bi-list-ul"></i>
                   <span>{{'convention' | translate}}</span>
                 </a>
              </li>
 
-             <li class="nav-item" style="display: none;">
-                <a class="nav-link modern-tab" routerLink="advances" routerLinkActive="active">
-                  <i class="bi bi-bar-chart-fill"></i>
-                  <span>{{'advances' | translate}}</span>
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'sistema')">
+                <a class="nav-link modern-tab" routerLink="sistema" routerLinkActive="active">
+                  <i class="bi bi-calendar-check"></i>
+                  <span>Proyectos/Sistema</span>
                 </a>
              </li>
 

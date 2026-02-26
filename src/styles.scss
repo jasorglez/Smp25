@@ -6,27 +6,30 @@ body {
 }
 
 // AG Grid CSS
-// Aunque uses Enterprise, los estilos base residen en la carpeta de community
-/* Core Grid CSS */
 @import 'ag-grid-community/styles/ag-grid.css';
-/* Quartz Theme Specific CSS */
 @import 'ag-grid-community/styles/ag-theme-quartz.css';
 @import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 .ag-theme-quartz,
 .ag-theme-quartz-dark {
-  /* Changes the color of the grid text */
   --ag-foreground-color: rgb(14, 68, 145);
-  /* Changes the color of the grid background */
   --ag-background-color: rgba(241, 247, 255);
-  /* Changes the header color of the top row */
   --ag-header-background-color: rgba(228, 237, 250);
-  /* Changes the hover color of the row*/
   --ag-row-hover-color: rgba(0, 38, 255, 0.1);
 }
 
 .small-text-ag-grid {
   --ag-font-size: 11px;
+}
+
+.ag-theme-quartz .ag-row.new-row-highlight {
+  background-color: #fff8c5 !important;
+  border-left: 3px solid #f0ad4e !important;
+}
+
+.ag-theme-quartz .ag-row.new-row-highlight .ag-cell-inline-editing {
+  background-color: #ffeaa0 !important;
+  border: 2px solid #e67e00 !important;
 }
 
 // DHTMLX Gantt CSS
@@ -37,15 +40,11 @@ body {
   font-family: 'Roboto', "Helvetica Neue", sans-serif !important;
   font-size: 0.85em !important;
   background-color: #f4f6f9;
-
-  // Fixed light theme
-  background-color: #f4f6f9;
   color: #000000;
 }
 
 .light-blue-background {
   background-color: #f1f7ff;
-  /* Light blue color */
 }
 
 .app-container {
@@ -144,4 +143,9 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* SweetAlert2 por encima de modales personalizados */
+.swal-over-modal {
+  z-index: 9999999 !important;
 }

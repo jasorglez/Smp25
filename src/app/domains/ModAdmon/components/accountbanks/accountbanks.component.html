@@ -20,6 +20,16 @@
         <button type="button" class="btn btn-danger" (click)="deleteEntry()" >
           <i class="bi bi-trash"></i>
         </button>
+        <button type="button" class="btn btn-info" (click)="openSaldosModal()"
+                [disabled]="!selectedRowData || !rowDetails?.length"
+                title="Reporte de Saldos PDF">
+          <i class="bi bi-file-earmark-pdf"></i>
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="openAjusteModal()"
+                [disabled]="!selectedRowData"
+                title="Ajustar Saldo">
+          <i class="bi bi-sliders"></i>
+        </button>
       </div>
     </div>
 
@@ -64,3 +74,112 @@
     </div>
   </div>
 </div>
+
+<!-- Modal Reporte de Saldos -->
+<div class="modal fade" [class.show]="showSaldosModal" [style.display]="showSaldosModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Reporte de Saldos
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeSaldosModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3 small">
+          <i class="bi bi-bank me-1"></i>
+          <strong>{{ selectedRowData?.nameAccount }}</strong>
+        </p>
+        <form>
+          <div class="mb-3">
+            <label for="saldosStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="saldosStartDate"
+                   [(ngModel)]="reportSaldosStartDate" name="saldosStartDate" required>
+          </div>
+          <div class="mb-3">
+            <label for="saldosEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="saldosEndDate"
+                   [(ngModel)]="reportSaldosEndDate" name="saldosEndDate" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeSaldosModal()">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-info text-white"
+                (click)="generateSaldosReport()"
+                [disabled]="!reportSaldosStartDate || !reportSaldosEndDate || isGeneratingSaldosReport">
+          <span *ngIf="isGeneratingSaldosReport" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i *ngIf="!isGeneratingSaldosReport" class="bi bi-file-earmark-pdf me-1"></i>
+          {{ isGeneratingSaldosReport ? 'Generando...' : 'Generar PDF' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showSaldosModal" [style.display]="showSaldosModal ? 'block' : 'none'"></div>
+
+<!-- Modal Ajustar Saldo -->
+<div class="modal fade" [class.show]="showAjusteModal" [style.display]="showAjusteModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-sliders me-2"></i>Ajustar Saldo
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeAjusteModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3 small">
+          <i class="bi bi-bank me-1"></i>
+          <strong>{{ selectedRowData?.nameAccount }}</strong>
+        </p>
+        <div class="alert alert-info d-flex align-items-center mb-3 py-2">
+          <i class="bi bi-wallet2 me-2 fs-5"></i>
+          <span>Saldo actual: <strong>${{ formatCurrencySaldos(saldoActual) }}</strong></span>
+        </div>
+        <form>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de Ajuste <span class="text-danger">*</span></label>
+            <select class="form-select" [(ngModel)]="ajusteTipo" name="ajusteTipo">
+              <option value="DEPOSITO">Depósito (Agregar saldo)</option>
+              <option value="GASTO">Gasto (Restar saldo)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Fecha <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" [(ngModel)]="ajusteDate" name="ajusteDate"
+                   (change)="onAjusteDateChange()" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Monto <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control" [(ngModel)]="ajusteMonto" name="ajusteMonto"
+                     min="0.01" step="0.01" placeholder="0.00" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción <span class="text-danger">*</span></label>
+            <textarea class="form-control" [(ngModel)]="ajusteDescripcion" name="ajusteDescripcion"
+                      rows="2" placeholder="Motivo del ajuste" maxlength="200" required></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="closeAjusteModal()">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-primary"
+                (click)="saveAjuste()"
+                [disabled]="!ajusteDescripcion || !ajusteMonto || !ajusteDate || isSavingAjuste">
+          <span *ngIf="isSavingAjuste" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i *ngIf="!isSavingAjuste" class="bi bi-floppy me-1"></i>
+          {{ isSavingAjuste ? 'Guardando...' : 'Guardar Ajuste' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showAjusteModal" [style.display]="showAjusteModal ? 'block' : 'none'"></div>

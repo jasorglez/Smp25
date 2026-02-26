@@ -3,22 +3,23 @@
         <div class="row mb-3">
             <div class="col">
                 <div class="d-flex justify-content-end mb-2">
-                    <button type="button" class="btn btn-primary ms-1" (click)="addRow()" ><i
-                            class="bi bi-plus-lg"></i></button>
-                    <button type="button" class="btn btn-success ms-1 position-relative" (click)="saveChanges()" >
+                    <button type="button" class="btn btn-primary ms-1" (click)="addRow()">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <button type="button" class="btn btn-success ms-1 position-relative" (click)="saveChanges()">
                         <i class="bi bi-floppy"></i>
                         <span
                             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                            *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                            *ngIf="notSavedChanges">
+                            <span class="visually-hidden">Hay cambios sin guardar</span>
                         </span>
                     </button>
-                    <button type="button" class="btn btn-warning ms-1" (click)="revert()"><i class="bi bi-arrow-clockwise"
-                       ></i></button>
-                    <button type="button" class="btn btn-danger ms-1" (click)="deleteUser()" ><i class="bi bi-trash"
-                           ></i></button>
-                    <!--<button type="button" class="btn btn-info ms-1" (click)="togglePermissions()">
-                        <i class="bi bi-shield-lock"></i> Permisos
-                    </button>-->
+                    <button type="button" class="btn btn-warning ms-1" (click)="revert()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger ms-1" (click)="deleteUser()">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
                 <div class="row">
                     <ag-grid-angular style="width: 100%;"
@@ -26,12 +27,14 @@
                     class="ag-theme-quartz small-text-ag-grid"
                     [rowData]="rowData"
                     [columnDefs]="columnDefs"
+                    [defaultColDef]="defaultColDef"
                     [pagination]="false"
                     [paginationPageSize]="paginationPageSize"
                     [paginationPageSizeSelector]="paginationPageSizeSelector"
                     rowSelection="single"
                     (selectionChanged)="onSelectionChanged($event)"
                     (cellValueChanged)="onCellValueChanged($event)"
+                    (cellEditingStopped)="onCellEditingStopped($event)"
                     (rowSelected)="onSelectedRow($event)"
                     (gridReady)="onGridReady($event)"
                     [components]="components"
@@ -41,5 +44,64 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Modal de Permisos -->
+<div *ngIf="showPermissionsModal"
+    style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;"
+    (click)="closePermissionsModal()">
+    <div style="background:#fff;border-radius:10px;width:96vw;max-width:1600px;height:98vh;max-height:98vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.25);"
+        (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #dee2e6;background:#f8f9fa;border-radius:10px 10px 0 0;">
+            <strong>Permisos — {{ modalUserName }}</strong>
+
+            <div style="display:flex;align-items:center;gap:8px;">
+                <!-- Botón Modificar -->
+                <button class="btn btn-sm btn-primary" (click)="permissionsViewRef.modificar()" title="Modificar">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <!-- Botón Guardar -->
+                <button class="btn btn-sm btn-success position-relative"
+                    (click)="permissionsViewRef.saveDetailChanges()"
+                    [disabled]="!permissionsViewRef?.notSavedChanges"
+                    title="Guardar cambios">
+                    <i class="bi bi-floppy"></i>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                        *ngIf="permissionsViewRef?.notSavedChanges">
+                        <span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                </button>
+                <!-- Botón Revertir -->
+                <button class="btn btn-sm btn-warning"
+                    (click)="permissionsViewRef.revertChanges()"
+                    [disabled]="!permissionsViewRef?.notSavedChanges"
+                    title="Revertir cambios">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <!-- Separador -->
+                <div style="width:1px;height:24px;background:#dee2e6;margin:0 4px;"></div>
+                <!-- Botón Cerrar -->
+                <button class="btn btn-sm btn-outline-secondary" (click)="closePermissionsModal()" title="Cerrar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div style="overflow-y:auto;padding:16px;flex:1;">
+            <app-permissions-view-by-user
+                #permissionsViewRef
+                *ngIf="modalPermissions"
+                [idUserInput]="modalPermissions.idUser"
+                [idBranchInput]="modalPermissions.idBranch"
+                [idRoleInput]="modalPermissions.idRole"
+                [idPosicionInput]="modalPermissions.idPosicion">
+            </app-permissions-view-by-user>
+        </div>
+
     </div>
 </div>

@@ -105,6 +105,9 @@ export class ConceptsincomeComponent {
   objetosImpuesto: any[] = [];
   productosServiciosSAT: any[] = [];
 
+  // Preservar idBranch del registro maestro para no pisarlo al guardar conceptos
+  private storedIdBranch: number | null = null;
+
   // Para obtener el dato de la facturacion y el porcentaje
   async getBillingManagementInfo() {
     if (!this.idRoot) return;
@@ -287,8 +290,14 @@ export class ConceptsincomeComponent {
       this.total = 0;
       return;
     }
-    
-   // console.log('ID en concepts:', this.idIncExp);
+
+    // Guardar idBranch del maestro ANTES de cualquier guardado para no pisarlo
+    this.incomesAndExpensesService.getIncomeAndExpenseById(this.idIncExp).subscribe({
+      next: (data: any[]) => {
+        if (data?.[0]) this.storedIdBranch = data[0].idBranch ?? null;
+      }
+    });
+
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(this.idIncExp).subscribe(
       (data: any) => {
         this.rowData = data || [];
@@ -497,12 +506,13 @@ export class ConceptsincomeComponent {
       // Tomar el primer elemento del array
       const mainDocument = mainDocumentResponse[0];
 
-      // Crear copia actualizada
+      // Crear copia actualizada - preservar idBranch explícitamente para no pisarlo
       const updatedDocument = {
         ...mainDocument,
         subtotal: this.subtotal,
         tax: this.iva2,
-        total: this.total
+        total: this.total,
+        idBranch: this.storedIdBranch ?? mainDocument.idBranch
       };
 
       console.log('Datos a actualizar:', {

@@ -78,6 +78,10 @@ export class ProvidersService {
     return this.http.get(`${environment.urlWarehouse}/SubfamilyxProvider/provider/${idProvider}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getSubfamilyxVigentes(idProvider: number) {
+    return this.http.get(`${environment.urlWarehouse}/SubfamilyxProvider/subfamilyvig/${idProvider}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addSubfamilyxProvider(data: any) {
     return this.http.post(`${environment.urlWarehouse}/SubfamilyxProvider`, data, { headers: this.trackingService.getHeaders() });
   }

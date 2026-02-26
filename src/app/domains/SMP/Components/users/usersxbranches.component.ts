@@ -102,20 +102,7 @@ export class UsersxbranchesComponent {
     console.log('📊 Loading user branches data for user:', this.idUser, 'company:', this.idRoot);
     this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe(
       (data: any) => {
-        const sourceRows = Array.isArray(data?.project) ? data.project : [];
-        this.rowData = sourceRows.map((row: any) => {
-          let resolvedIdPermission = Number(row.idPermission ?? row.idBranch ?? row.branchId ?? 0);
-
-          if (!resolvedIdPermission && row.name && Array.isArray(this.branchs)) {
-            const foundByName = this.branchs.find((branch) => branch.name === row.name);
-            resolvedIdPermission = foundByName ? Number(foundByName.id) : 0;
-          }
-
-          return {
-            ...row,
-            idPermission: resolvedIdPermission
-          };
-        });
+        this.rowData = data.project; // Extract the array from the response
         console.log('✅ User branches data loaded:', this.rowData);
         console.log('📊 Branches available for formatting:', this.branchs.length);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Sucursal', 'Menu Administracion Usuarios por Sucursal',  this.trackingService.getEmail());
@@ -319,13 +306,24 @@ public gridOptions: any = {
     const tempId = `temp_${this.tempIdCounter++}`;
     
     console.log('➕ Adding new row. Available branches:', this.branchs.length);
-    console.log('🏢 New row will start without selected branch');
+    
+    // Use first NON-assigned branch to avoid auto-duplicating an existing value
+    const assignedBranchIds = new Set(
+      this.rowData
+        .map((row) => Number(row.idPermission))
+        .filter((id) => id > 0)
+    );
+    const availableBranch = this.branchs.find((branch) => !assignedBranchIds.has(Number(branch.id)));
+    const defaultBranchId = availableBranch ? availableBranch.id : 0;
+    const defaultBranchName = availableBranch ? availableBranch.name : '';
+    
+    console.log('🏢 Default branch ID for new row:', defaultBranchId);
     
     const newItem = {
       id: tempId,
       idUser: this.idUser,
-      idPermission: 0,
-      name: '',
+      idPermission: defaultBranchId,
+      name: defaultBranchName,
       type: this.permissionType,
       active: 1,
       __isNew: true,

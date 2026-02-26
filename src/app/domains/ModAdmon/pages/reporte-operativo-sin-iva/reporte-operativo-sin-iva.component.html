@@ -1,0 +1,204 @@
+<div class="reporte-container">
+  <!-- Header -->
+  <div class="header-section">
+    <div class="header-left">
+      <h2>REPORTE EJECUTIVO PROYECTOS HCO</h2>
+      <span class="subtitle">Sistema de Gestión de Calidad</span>
+    </div>
+    <div class="header-center">
+      <div class="filters-section">
+        <div class="filter-group">
+          <label for="startDate">Desde:</label>
+          <input type="date" id="startDate" class="form-control form-control-sm"
+                 [(ngModel)]="startDate" (change)="onFilterChange()">
+        </div>
+        <div class="filter-group">
+          <label for="endDate">Hasta:</label>
+          <input type="date" id="endDate" class="form-control form-control-sm"
+                 [(ngModel)]="endDate" (change)="onFilterChange()">
+        </div>
+      </div>
+      <div class="fecha-info">
+        <span><strong>Fecha Corte:</strong> {{ fechaCorte }}</span>
+        <span><strong>Fecha Actual:</strong> {{ fechaActual }}</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="ref-info">
+        <span>Referencia: HCO-ADM-SGC-005</span>
+        <span>Código: HCO-ADM-FO-018</span>
+        <span>Rev.: 00</span>
+      </div>
+      <div class="export-buttons">
+        <button
+          class="btn btn-sm btn-danger"
+          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+          (click)="exportToPdf()">
+          <i class="bi bi-filetype-pdf"></i>
+          {{ isExportingPdf ? 'Exportando...' : 'PDF' }}
+        </button>
+        <button
+          class="btn btn-sm btn-success"
+          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+          (click)="exportToXlsx()">
+          <i class="bi bi-filetype-xlsx"></i>
+          {{ isExportingXlsx ? 'Exportando...' : 'XLSX' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p>Cargando datos del reporte...</p>
+  </div>
+
+  <!-- Contenido principal -->
+  <div *ngIf="!isLoading" class="main-content">
+    <!-- Tabla de Proyectos -->
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="reporte-table">
+          <thead>
+            <tr>
+              <th>Empresa</th>
+              <th>Proyecto</th>
+              <th class="text-center">FI</th>
+              <th class="text-center">FT</th>
+              <th class="text-end">Monto Contratado</th>
+              <th class="text-end">Monto Facturado</th>
+              <th class="text-end">Monto Cobrado</th>
+              <th class="text-end">Monto Pendiente de Cobro</th>
+              <th class="text-end">Monto Erogado</th>
+              <th class="text-end">Margen Bruto</th>
+              <th class="text-end retiro-col">Retiro de Utilidad socios</th>
+              <th class="text-end">Margen Neto</th>
+              <th class="text-center">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of proyectosReporte; let i = index" [class.row-alt]="i % 2 === 0">
+              <td>{{ p.empresa }}</td>
+              <td>{{ p.proyecto }}</td>
+              <td class="text-center">{{ p.fechaInicio }}</td>
+              <td class="text-center">{{ p.fechaTermino }}</td>
+              <td class="text-end">{{ formatCurrency(p.montoContratado) }}</td>
+              <td class="text-end">{{ formatCurrency(p.montoFacturado) }}</td>
+              <td class="text-end">{{ formatCurrency(p.montoCobrado) }}</td>
+              <td class="text-end">{{ formatCurrency(p.montoPendienteCobro) }}</td>
+              <td class="text-end">{{ formatCurrency(p.montoErogado) }}</td>
+              <td class="text-end">{{ formatCurrency(p.margenBruto) }}</td>
+              <td class="text-end retiro-cell" [class.has-value]="p.retiroUtilidad > 0">
+                {{ p.retiroUtilidad > 0 ? formatCurrency(p.retiroUtilidad) : '-' }}
+              </td>
+              <td class="text-end">{{ formatCurrency(p.margenNeto) }}</td>
+              <td class="text-center" [class.positive]="p.porcentaje > 0" [class.negative]="p.porcentaje < 0">
+                {{ formatPercent(p.porcentaje) }}
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="4" class="text-end"><strong>TOTAL</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoContratado) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoFacturado) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoCobrado) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoPendienteCobro) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoErogado) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.margenBruto) }}</strong></td>
+              <td class="text-end retiro-total">
+                <strong>{{ totales.retiroUtilidad > 0 ? formatCurrency(totales.retiroUtilidad) : '-' }}</strong>
+              </td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.margenNeto) }}</strong></td>
+              <td class="text-center">
+                <strong>{{ totales.montoCobrado > 0 ? formatPercent((totales.margenNeto / totales.montoCobrado) * 100) : '0%' }}</strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sección de Aportación Socios -->
+    <div class="table-card aportacion-section" *ngIf="aportacionesSocios.length > 0">
+      <h4 class="section-title">APORTACIÓN SOCIOS</h4>
+      <div class="table-responsive">
+        <table class="reporte-table aportacion-table">
+          <thead>
+            <tr>
+              <th>SOCIOS</th>
+              <th class="text-end">APORTACIÓN BANCO</th>
+              <th class="text-end">APORTACIÓN EFECTIVO</th>
+              <th class="text-end">RETORNO DE INVERSIÓN</th>
+              <th class="text-end">TOTAL UTILIDAD</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of aportacionesSocios; let i = index" [class.row-alt]="i % 2 === 0">
+              <td>{{ s.socio }}</td>
+              <td class="text-end">{{ formatCurrency(s.aportacionBanco) }}</td>
+              <td class="text-end">{{ formatCurrency(s.aportacionEfectivo) }}</td>
+              <td class="text-end retorno-cell">{{ formatCurrency(s.retornoInversion) }}</td>
+              <td class="text-end total-cell">{{ formatCurrency(s.totalUtilidad) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong></strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionBanco) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionEfectivo) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.retornoInversion) }}</strong></td>
+              <td class="text-end total-cell"><strong>{{ formatCurrency(totalesAportacion.totalUtilidad) }}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sección de Inversión de Activos -->
+    <div class="table-card inversion-section" *ngIf="inversionActivos.length > 0">
+      <h4 class="section-title">INVERSIÓN DE ACTIVOS</h4>
+      <div class="table-responsive">
+        <table class="reporte-table inversion-table">
+          <thead>
+            <tr>
+              <th>EQUIPOS</th>
+              <th *ngFor="let empresa of empresasColumnas" class="text-end">{{ empresa }}</th>
+              <th class="text-end">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let inv of inversionActivos; let i = index" [class.row-alt]="i % 2 === 0">
+              <td>{{ inv.tipoEquipo }}</td>
+              <td *ngFor="let empresa of empresasColumnas" class="text-end">
+                {{ getInversionValue(inv, empresa) > 0 ? formatCurrency(getInversionValue(inv, empresa)) : '-' }}
+              </td>
+              <td class="text-end total-cell">{{ formatCurrency(inv.total) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong>Total Resultado</strong></td>
+              <td *ngFor="let empresa of empresasColumnas" class="text-end">
+                <strong>{{ formatCurrency(totalesInversion[empresa] || 0) }}</strong>
+              </td>
+              <td class="text-end total-cell">
+                <strong>{{ formatCurrency(granTotalInversion) }}</strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mensaje cuando no hay datos -->
+    <div *ngIf="proyectosReporte.length === 0" class="no-data-message">
+      <i class="bi bi-inbox"></i>
+      <p>No hay datos de proyectos para mostrar</p>
+      <small>Verifique que existan proyectos con ingresos o egresos asociados</small>
+    </div>
+  </div>
+</div>

@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { UsersProfileComponent } from './users-profile.component';
-import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, of, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, toArray } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -74,7 +74,7 @@ export class UsersxcontractsComponent {
   }
 
   notSavedChanges: boolean = false;
-  rowData: any[] = [];
+  rowData: any;
   contracts: { [key: string]: string } = {};
   contractsByIdProvider: any;
   newlyAddedRows: string[] = [];
@@ -85,35 +85,14 @@ export class UsersxcontractsComponent {
   private permissionType: string = 'contract';
 
   obtenerDatos() {
-    const currentIdUser = this.profile().idUser();
-    if (!currentIdUser) {
-      this.rowData = [];
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-      }
-      return;
-    }
-
     forkJoin({
-      usersxcontracts: this.usersxcontractsService.getDataUsersxPermissions(this.permissionType).pipe(
-        catchError((error) => {
-          console.error('Error loading usersxcontracts:', error);
-          return of([]);
-        })
-      ),
-      contracts: this.contractsService.getContracts(this.idBranch).pipe(
-        catchError((error) => {
-          if (error?.status !== 404) {
-            console.error('Error loading contracts:', error);
-          }
-          return of([]);
-        })
-      )
+      usersxcontracts: this.usersxcontractsService.getDataUsersxPermissions(this.permissionType),
+      contracts: this.contractsService.getContracts(this.idBranch)
     }).pipe(
       map(({ usersxcontracts, contracts }) => {
         // Convertimos a array si no lo es
-        const usersxcontractsArray = Array.isArray(usersxcontracts) ? usersxcontracts : Object.values(usersxcontracts || {});
-        const contractsArray = Array.isArray(contracts) ? contracts : Object.values(contracts || {});
+        const usersxcontractsArray = Array.isArray(usersxcontracts) ? usersxcontracts : Object.values(usersxcontracts);
+        const contractsArray = Array.isArray(contracts) ? contracts : Object.values(contracts);
 
         const filteredData = usersxcontractsArray.filter(uxc =>
           contractsArray.some(c => c.idContrato === uxc.idPermission)
@@ -141,54 +120,29 @@ export class UsersxcontractsComponent {
           this.rowData = data.filter((row: any) => row.idUser === currentIdUser);
           this.rowData = this.rowData.map(({ idProvider, ...rest }) => rest);
         }
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Contrato', 'Menu Administracion Usuarios por Contrato',  this.trackingService.getEmail());
       },
       error => {
         console.error('Error:', error);
-        this.rowData = [];
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
       }
     );
   }
 
   obtenerContracts(contract: number) {
     if (this.companyChecked()() == true) {
-      this.contractsService.getContractsByProvider(this.idBranch).subscribe({
-        next: (data: any[]) => {
-          const contractsArray = Array.isArray(data) ? data : [];
-          this.contracts = contractsArray.reduce((acc, dep) => {
-            acc[dep.id] = dep.numberContract + ' - ' + dep.descripSmall;
-            return acc;
-          }, {});
-        },
-        error: (error) => {
-          if (error?.status !== 404) {
-            console.error('Error loading contracts by provider:', error);
-          }
-          this.contracts = {};
-        }
+      this.contractsService.getContractsByProvider(this.idBranch).subscribe((data: any[]) => {
+        this.contracts = data.reduce((acc, dep) => {
+          acc[dep.id] = dep.numberContract + ' - ' + dep.descripSmall;
+          return acc;
+        }, {});
       });
     }
     else {
-      this.contractsService.getContracts(contract).subscribe({
-        next: (data: any[]) => {
-          const contractsArray = Array.isArray(data) ? data : [];
-          this.contracts = contractsArray.reduce((acc, dep) => {
-            acc[dep.idContrato] = dep.numberContract + ' - ' + dep.descripSmall;
-            return acc;
-          }, {});
-        },
-        error: (error) => {
-          if (error?.status !== 404) {
-            console.error('Error loading contracts:', error);
-          }
-          this.contracts = {};
-        }
+      this.contractsService.getContracts(contract).subscribe((data: any[]) => {
+        this.contracts = data.reduce((acc, dep) => {
+          acc[dep.idContrato] = dep.numberContract + ' - ' + dep.descripSmall;
+          return acc;
+        }, {});
       });
     }
   }
@@ -451,9 +405,6 @@ public gridOptions: any = {
     if (!currentIdUser) {
       this.rowData = [];
       this.contracts = {};
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-      }
       return;
     }
 

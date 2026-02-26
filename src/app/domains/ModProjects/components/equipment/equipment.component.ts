@@ -26,12 +26,15 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { TypeEquipmentModalService } from './services/type-equipment-modal.service';
 
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component],
   templateUrl: './equipment.component.html',
+  styleUrls: ['./equipment.component.scss'],
 })
 export class EquipmentComponent implements CanComponentDeactivate {
   idcompany: number = null;
@@ -50,7 +53,10 @@ export class EquipmentComponent implements CanComponentDeactivate {
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
   typeEquipmentCatalog: any[] = [];
+  showTypeEquipmentModal: boolean = false;
+  newTypeEquipment: { description: string } = { description: '' };
 
+  private editableColumnOrder = ['description', 'idTypeEquipment', 'quantity', 'measure', 'costMN', 'priceMN', 'print'];
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -58,6 +64,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
   private trackingService = inject(TrackingService);
   private catalogsService = inject(CatalogsService);
   private equipmentService = inject(EquipmentService);
+  private typeEquipmentModalService = inject(TypeEquipmentModalService);
   private isOpen: boolean = false;
 
   components = {
@@ -70,35 +77,28 @@ export class EquipmentComponent implements CanComponentDeactivate {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
+    enableRowGroup: true,
     flex: 1,
+    cellClassRules: {
+      'editing-cell': (params: any) => params.editing === true
+    },
   };
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
-    
-    // Eliminar siempre estos campos internos
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    
-    // Eliminar SIEMPRE el ID para updates (el servidor no lo necesita)
-    
-    // Mapear campos requeridos por el servidor
-    if (cleanedData.articulo) {
-      cleanedData.material = cleanedData.articulo;
-    } else if (cleanedData.insumo) {
-      cleanedData.material = cleanedData.insumo;
-    } else {
-      cleanedData.material = cleanedData.description || '';
+    // Para filas nuevas, eliminar el id temporal (string) para que el backend lo genere
+    if (typeof cleanedData.id === 'string' && cleanedData.id.startsWith('temp_')) {
+      delete cleanedData.id;
     }
-    
-    
-    // Eliminar campos que no acepta el servidor
-    delete cleanedData.idBranch;
-    delete cleanedData.idCustomer;
-    delete cleanedData.pricePresentations;
-    delete cleanedData.barcode; // Eliminar el campo duplicado incorrecto
-    
-    console.log('Datos limpiados para servidor:', cleanedData);
+    // idBranch: si es 0 o falsy enviar null para no violar FK
+    if (!cleanedData.idBranch) {
+      cleanedData.idBranch = null;
+    }
+    // Trim de campos string
+    if (cleanedData.description) {
+      cleanedData.description = cleanedData.description.trim();
+    }
     return cleanedData;
   }
 
@@ -109,6 +109,14 @@ export class EquipmentComponent implements CanComponentDeactivate {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerUnidades();
+    });
+
+    this.typeEquipmentModalService.modalRequest$.subscribe(() => {
+      this.openTypeEquipmentModal();
+    });
+
+    this.typeEquipmentModalService.saveConfirmed$.subscribe((data) => {
+      this.onTypeEquipmentCreated(data);
     });
   }
   obtenerDatos(){
@@ -126,11 +134,9 @@ export class EquipmentComponent implements CanComponentDeactivate {
     return this.catalogsService.getTypeEquipment(this.idcompany).subscribe(
       (data: any) => {
         this.typeEquipmentCatalog = data;
-        console.log(this.typeEquipmentCatalog)
       },
       (error) => console.error('Error fetching data:', error)
     );
-  
   }
   
 
@@ -163,28 +169,37 @@ export class EquipmentComponent implements CanComponentDeactivate {
         });
       }
     },
-    onCellKeyDown: (params) => {
+    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
+    onCellKeyDown: (params: any) => {
       if (params.event.key === 'Enter') {
-        // Obtener todas las columnas editables
-        const editableColumns = this.colMaster.filter((col) => col.editable);
-        const currentColIndex = editableColumns.findIndex(
-          (col) => col.field === params.column.getColDef().field
-        );
-
-        if (currentColIndex < editableColumns.length - 1) {
-          // Añadir delay de 50ms antes de mover el foco
-          requestAnimationFrame(() => {
-            // Mover a la siguiente columna editable
-            params.api.startEditingCell({
-              rowIndex: params.node.rowIndex,
-              colKey: editableColumns[currentColIndex + 1].field,
-            });
-          }); // Retraso para permitir que termine la edición actual
+        params.event.preventDefault();
+        const currentColId = params.column.getColId();
+        const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+        
+        if (currentIndex !== -1) {
+          const nextIndex = currentIndex + 1;
+          if (nextIndex < this.editableColumnOrder.length) {
+            setTimeout(() => {
+              this.gridApi.startEditingCell({
+                rowIndex: params.node.rowIndex,
+                colKey: this.editableColumnOrder[nextIndex],
+              });
+            }, 50);
+          } else {
+            setTimeout(() => {
+              const nextRowIndex = params.node.rowIndex + 1;
+              if (nextRowIndex < this.rowData.length) {
+                this.gridApi.ensureIndexVisible(nextRowIndex);
+                this.gridApi.startEditingCell({
+                  rowIndex: nextRowIndex,
+                  colKey: this.editableColumnOrder[0],
+                });
+              }
+            }, 50);
+          }
         }
-        params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
     },
-    onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
   };
   onMasterSelectionChanged(event: any) {}
 
@@ -244,10 +259,18 @@ export class EquipmentComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     return [
       {
+        headerName: '#',
+        width: 50,
+        editable: false,
+        suppressMenu: true,
+        valueGetter: (params) => params.node.rowIndex + 1,
+        cellStyle: { textAlign: 'center', fontWeight: 'bold' }
+      },
+      {
         field: 'description',
         headerName: 'Descripción',
         editable: true,
-        width: 250,
+        width: 550,
       },
       /*{
         field: 'date',
@@ -311,35 +334,76 @@ export class EquipmentComponent implements CanComponentDeactivate {
 
       },*/
       {
-      field: 'idTypeEquipment',
-      headerName: 'Tipo de equipo',
-      editable: true,
-      width: 250,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: this.typeEquipmentCatalog ? this.typeEquipmentCatalog.map((item) => item.id) : [],
-      },
-      valueFormatter: (params) => {
-        const foundItem = this.typeEquipmentCatalog?.find(item => item.id === params.value);
-        return foundItem ? foundItem.description : params.value;
-      },
-    
-      // Este valor es el que edita la celda (id)
-      valueGetter: (params) => {
-        return params.data?.idTypeEquipment ?? ''; // id_medida es el valor real
-      },
-    
-      // Cuando el usuario selecciona un description, lo convertimos a id
-      valueParser: (params) => {
-        const foundItem = this.typeEquipmentCatalog?.find(item => item.description === params.newValue);
-        return foundItem ? foundItem.id : params.newValue;
-      }
-    },
-    {
-        field: 'print',
-        headerName: 'Imprimir en ot',
+        field: 'idTypeEquipment',
+        headerName: 'Tipo de equipo',
         editable: true,
-        width: 250,
+        width: 150,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: () => ({
+          options: [
+            ...this.typeEquipmentCatalog.map(t => ({
+              id: t.id,
+              description: t.description,
+              valueAddition: '',
+              valueAddition2: ''
+            })),
+            { id: -998, description: '➕ Nuevo tipo de equipo...', valueAddition: '-998', valueAddition2: '➕ Nuevo tipo de equipo...' }
+          ],
+          specialValues: [-998],
+          onSpecialValue: (_value: any, _params: any) => {
+            this.typeEquipmentModalService.openModal({ idCompany: this.idcompany });
+          }
+        }),
+        cellRenderer: (params: any) => {
+          if (!params.value || params.value === -998) return '';
+          const found = this.typeEquipmentCatalog.find(t => t.id === params.value);
+          return found ? found.description : (params.value || '');
+        },
+      },
+      {
+        field: 'quantity',
+        headerName: 'Cantidad',
+        editable: true,
+        width: 100,
+        type: 'numericColumn',
+      },
+      {
+        field: 'measure',
+        headerName: 'Medida',
+        editable: true,
+        width: 110,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: () => ({
+          options: [
+            { id: 'DIA', description: 'DIA', valueAddition: '', valueAddition2: '' },
+            { id: 'HRS', description: 'HRS', valueAddition: '', valueAddition2: '' },
+            { id: 'MES', description: 'MES', valueAddition: '', valueAddition2: '' },
+            { id: 'SEM', description: 'SEM', valueAddition: '', valueAddition2: '' },
+          ],
+        }),
+        cellRenderer: (params: any) => params.value || '',
+      },
+      {
+        field: 'costMN',
+        headerName: 'Costo MN',
+        editable: true,
+        width: 130,
+        type: 'numericColumn',
+        valueFormatter: (params) => params.value != null ? Number(params.value).toFixed(2) : '0.00',
+      },
+      {
+        field: 'priceMN',
+        headerName: 'Precio MN',
+        editable: true,
+        width: 130,
+        type: 'numericColumn',
+        valueFormatter: (params) => params.value != null ? Number(params.value).toFixed(2) : '0.00',
+      },
+      {
+        field: 'print',
+        headerName: 'Imprimir en OT',
+        editable: true,
+        width: 130,
       },
     ];
   }
@@ -368,9 +432,11 @@ export class EquipmentComponent implements CanComponentDeactivate {
       ventaDLL: 0.00,
       stockMin: 0,
       stockMax: 0,
+      quantity: 1,
+      measure: 'DIA',
+      costMN: 0.00,
+      priceMN: 0.00,
       print: true,
-      typeMaterial: 'CONSUMABLE',
-      vigente: true,
       active: true,
       __isNew: true,
     };
@@ -381,35 +447,31 @@ export class EquipmentComponent implements CanComponentDeactivate {
     this.gridApi.setGridOption('rowData', this.rowData);
 
     setTimeout(() => {
-      const firstRowIndex = 0;
-
-      this.gridApi.ensureIndexVisible(firstRowIndex);
-
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'barCode'
-      });
-    }, 0);// Un pequeño retraso de 50ms 
+      this.gridApi.ensureIndexVisible(0);
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'description' });
+    }, 100);
   
   }
 
   async saveMasterChanges() {
-    const isValid = this.rowData.every(
-      (item) => item.description && item.idTypeEquipment && item.print
-    );
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter((row) => row.__modified && !row.__isNew);
+
+    const rowsToValidate = [...newRows, ...modifiedRows];
+    if (rowsToValidate.length === 0) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar.', 'info');
+      return;
+    }
+
+    const isValid = rowsToValidate.every((item) => item.description?.trim() && item.idTypeEquipment);
     if (!isValid) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar los campos obligatorios antes de guardar.',
+        'Campos obligatorios',
+        'Descripción y Tipo de equipo son obligatorios.',
         'error'
       );
       return;
     }
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
 
     const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -579,6 +641,59 @@ export class EquipmentComponent implements CanComponentDeactivate {
         }
       });
     }, 100);
+  }
+
+  // ==================== MODAL TIPO DE EQUIPO ====================
+
+  openTypeEquipmentModal() {
+    this.newTypeEquipment = { description: '' };
+    this.showTypeEquipmentModal = true;
+  }
+
+  closeTypeEquipmentModal() {
+    this.showTypeEquipmentModal = false;
+    this.newTypeEquipment = { description: '' };
+  }
+
+  saveNewTypeEquipment() {
+    if (!this.newTypeEquipment.description?.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'error');
+      return;
+    }
+
+    const catalogToSave = {
+      idCompany: this.idcompany,
+      description: this.newTypeEquipment.description.trim(),
+      type: 'TYPEEQUIPMENT',
+      active: 1,
+      vigente: true,
+    };
+
+    this.catalogsService.addCatalog(catalogToSave).subscribe({
+      next: (saved: any) => {
+        this.typeEquipmentModalService.confirmSave({ id: saved.id, description: saved.description });
+        this.closeTypeEquipmentModal();
+      },
+      error: (err) => {
+        console.error('Error guardando tipo de equipo:', err);
+        alerts.basicAlert('Error', 'No se pudo guardar el tipo de equipo.', 'error');
+      }
+    });
+  }
+
+  onTypeEquipmentCreated(data: { id: number; description: string }) {
+    // Add immediately to local catalog so cellRenderer can find it right away
+    this.typeEquipmentCatalog = [...this.typeEquipmentCatalog, { id: data.id, description: data.description }];
+
+    const selectedNodes = this.gridApi?.getSelectedNodes();
+    if (selectedNodes && selectedNodes.length > 0) {
+      selectedNodes[0].setDataValue('idTypeEquipment', data.id);
+      this.notSavedChanges = true;
+    }
+    if (this.gridApi) this.gridApi.refreshCells({ columns: ['idTypeEquipment'], force: true });
+
+    // Reload catalog in background
+    this.obtenerUnidades();
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

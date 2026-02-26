@@ -9,9 +9,10 @@ import { lastValueFrom } from 'rxjs';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { MaterialesMaestroComponent } from 'app/domains/Almacenes/components/materiales-maestro/materiales-maestro.component';
 import { SignalsService } from 'app/services/signals.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
-  selector: 'app-detail-cell-renderer-materiales',
+  selector: 'app-detalles-materialexprov',
   standalone: true,
   imports: [AgGridModule, CommonModule],
   template: `<!-- MEJORA: Añadir listeners para evitar que el panel se cierre al pasar el mouse sobre él -->
@@ -44,16 +45,19 @@ import { SignalsService } from 'app/services/signals.service';
     </div>
   `
 })
-export class DetailCellRendererComponentMateriales implements ICellRendererAngularComp {
+export class DetallesMaterialexprovComponent implements ICellRendererAngularComp {
   private materialsService = inject(MaterialsService);
   private modalService = inject(NgbModal);
   private signalsService = inject(SignalsService);
+  private branchsService = inject(BranchsService);
   authService = inject(AuthService);
 
   params: any;
   providerId: number;
   providerName: string;
   idRoot: number | null = null;
+
+  branchMap: Map<number, string> = new Map();
 
   // Material grid properties (Read-only)
   materialRowData: any[] = [];
@@ -115,10 +119,10 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
       editable: false
     },
     {
-      field: 'unidad',
+      field: 'sucursal',
       headerName: 'Sucursal',
       editable: false,
-      width: 100
+      width: 120
     },
     {
       field: 'precio',
@@ -151,15 +155,28 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
     params.api.sizeColumnsToFit();
   }
 
-  async loadMaterialData(onComplete?: () => void) {
+async loadMaterialData(onComplete?: () => void) {
     try {
+      // Cargar branches primero
+      if (this.idRoot) {
+        const branches = await lastValueFrom(
+          this.branchsService.getBranches(this.idRoot)
+        );
+        console.log('📦 Branches cargados:', branches);
+        branches.forEach((b: any) => {
+          this.branchMap.set(b.id, b.name);
+        });
+        console.log('📦 BranchMap:', this.branchMap);
+      }
+
       // Cargar materiales reales desde el endpoint
       const materials = await lastValueFrom(
         this.materialsService.getMaterialsByProvider(this.providerId)
       );
+      console.log('📦 Materials (raw):', materials);
 
       // Mapear los datos del endpoint al formato del grid
-      this.materialRowData = materials.map(m => ({
+      this.materialRowData = materials.map((m: any) => ({
         id: m.id,
         idTabla: m.idProvider,
         idMaterial: m.idMaterial,
@@ -172,7 +189,9 @@ export class DetailCellRendererComponentMateriales implements ICellRendererAngul
         familia: m.familia,
         idSubfamilia: m.idSubfamilia,
         subfamilia: m.subfamilia,
-        unidad: 'Pieza', // TODO: Agregar a la vista cuando esté disponible
+        idSucursal: m.idSucursal,
+        sucursal: m.idSucursal ? (this.branchMap.get(Number(m.idSucursal)) || 'Sucursal ' + m.idSucursal) : '',
+        unidad: 'Pieza',
         precio: m.precio,
         vigente: m.vigente,
         type: 'MATERIAL',

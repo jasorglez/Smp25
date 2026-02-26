@@ -1,5 +1,8 @@
 import Swal, { SweetAlertIcon } from 'sweetalert2';
 
+// Z-index por encima de cualquier modal (el modal usa 99999)
+const SWAL_Z_INDEX = 999999;
+
 export class alerts{
 
 	/*=============================================
@@ -8,7 +11,12 @@ export class alerts{
 
 	static basicAlert(title:string, text:string, icon:SweetAlertIcon){
 
-		return Swal.fire(title, text, icon);
+		return Swal.fire({
+			title,
+			text,
+			icon,
+			customClass: { container: 'swal-over-modal' }
+		});
 
 	}
 
@@ -25,7 +33,8 @@ export class alerts{
 			showCancelButton: true,
 			confirmButtonColor: '#3085d6',
 			cancelButtonColor: '#d33',
-			confirmButtonText: confirmButtonText
+			confirmButtonText: confirmButtonText,
+			customClass: { container: 'swal-over-modal' }
 		})
 
 	}
@@ -35,13 +44,14 @@ export class alerts{
 	=============================================*/
 
 	static inputAlert(title: string, text: string, inputType: 'text' | 'textarea', inputValue: string = '', options: any = {}) {
+		const swalOptions = options.swalOptions || {};
 		return Swal.fire({
 			title: title,
 			text: text,
 			input: inputType,
 			inputValue: inputValue,
 			inputAttributes: options.inputAttributes || {},
-			showCancelButton: options.showCancelButton || true,
+			showCancelButton: options.showCancelButton ?? true,
 			confirmButtonText: options.confirmButtonText || 'Guardar',
 			cancelButtonText: options.cancelButtonText || 'Cancelar',
 			confirmButtonColor: options.confirmButtonColor || '#3085d6',
@@ -51,7 +61,66 @@ export class alerts{
 					return 'Este campo es requerido';
 				}
 				return null;
-			}
+			},
+			customClass: { container: 'swal-over-modal' },
+			...swalOptions
+		});
+	}
+
+	/*=============================================
+	Función para modal de texto largo (fullscreen)
+	=============================================*/
+
+	static largeTextAlert(title: string, text: string, inputValue: string = '', options: any = {}) {
+		const id = options.id || 'swal-large-text';
+		const swalOptions = options.swalOptions || {};
+		const maxLength = options.maxLength ? `maxlength="${options.maxLength}"` : '';
+		const placeholder = options.placeholder ? `placeholder="${options.placeholder}"` : '';
+		const rows = options.rows || 16;
+		const safeValue = String(inputValue ?? '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+
+		return Swal.fire({
+			title,
+			text,
+			html: `
+				<textarea id="${id}" class="swal2-textarea"
+					${maxLength}
+					rows="${rows}"
+					style="min-height: 70vh; width: 100%; font-family: inherit; font-size: 14px; line-height: 1.4; white-space: pre-wrap; resize: vertical;"
+					wrap="soft" spellcheck="true" ${placeholder}>${safeValue}</textarea>
+			`,
+			showCancelButton: options.showCancelButton ?? true,
+			confirmButtonText: options.confirmButtonText || 'Guardar',
+			cancelButtonText: options.cancelButtonText || 'Cancelar',
+			confirmButtonColor: options.confirmButtonColor || '#3085d6',
+			cancelButtonColor: options.cancelButtonColor || '#d33',
+			focusConfirm: false,
+			customClass: { container: 'swal-over-modal' },
+			preConfirm: () => {
+				const el = document.getElementById(id) as HTMLTextAreaElement | null;
+				const value = el ? el.value : '';
+				if (!value && options.required !== false) {
+					Swal.showValidationMessage('Este campo es requerido');
+					return null;
+				}
+				return value;
+			},
+			willOpen: () => {
+				const active = document.activeElement as HTMLElement | null;
+				if (active && typeof active.blur === 'function') active.blur();
+			},
+			didOpen: () => {
+				const el = document.getElementById(id) as HTMLTextAreaElement | null;
+				if (el) {
+					el.focus();
+					el.selectionStart = el.value.length;
+					el.selectionEnd = el.value.length;
+				}
+			},
+			...swalOptions
 		});
 	}
 
@@ -67,6 +136,7 @@ export class alerts{
 			allowEscapeKey: false,
 			allowEnterKey: false,
 			showConfirmButton: false,
+			customClass: { container: 'swal-over-modal' },
 			didOpen: () => {
 				Swal.showLoading();
 			}
@@ -101,6 +171,7 @@ export class alerts{
 			allowEscapeKey: false,
 			allowEnterKey: false,
 			showConfirmButton: false,
+			customClass: { container: 'swal-over-modal' },
 			didOpen: () => {
 				Swal.showLoading();
 			}

@@ -9,15 +9,16 @@ import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 
 @Component({
   selector: 'app-detail-branches-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule],
+  imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent],
   template: `
     <div style="padding: 10px; background-color: #f0f0f0; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-        <strong>ssSucursales de: {{ userName }} ({{companyName}})</strong>
+        <strong>Sucursales de: {{ userName }} ({{companyName}})</strong>
         <div class="d-flex">
           <button
             class="btn btn-primary ms-1"
@@ -56,8 +57,12 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
           [columnDefs]="branchesColumnDefs"
           [rowData]="branchesRowData"
           [gridOptions]="branchesGridOptions"
+          [defaultColDef]="defaultColDef"
+          [components]="components"
+          [detailRowAutoHeight]="true"
           (gridReady)="onBranchesGridReady($event)"
-          (cellValueChanged)="onBranchesCellValueChanged($event)">
+          (cellValueChanged)="onBranchesCellValueChanged($event)"
+          [stopEditingWhenCellsLoseFocus]="true">
         </ag-grid-angular>
       </div>
     </div>
@@ -75,16 +80,24 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   companyId: number;
   companyName: string;
 
-  // Branches grid properties
   branchesRowData: any[] = [];
   hasBranchChanges: boolean = false;
   branchesGridApi: any;
   selectedBranch: any = null;
 
-  // Data for dropdowns
   branches: any[] = [];
 
   private tempIdCounter: number = 0;
+
+  components = {
+    detailPermisosXDeptos: DetailPermisosXDeptosComponent
+  };
+
+  // Evita que AG Grid genere columnas automáticas desde los datos
+  defaultColDef = {
+    suppressMovable: true,
+    filter: false,
+  };
 
   branchesGridOptions: any = {
     headerHeight: 25,
@@ -93,8 +106,13 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     rowSelection: 'single',
     masterDetail: true,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: 'detailWarehousesRenderer',
-    detailRowHeight: 350
+    detailCellRenderer: 'detailPermisosXDeptos',
+    detailRowHeight: 350,
+    suppressAutoSize: true,
+    detailCellRendererParams: {
+      autoHeight: true,
+    },
+    getRowStyle: () => ({ width: '100%' }),
   };
 
   get branchesColumnDefs(): any[] {
@@ -138,7 +156,36 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
           }
           return false;
         }
-      }
+      },
+      {
+        field: 'idRole',
+        headerName: 'Departamento',
+        suppressMovable: true,
+        filter: false,
+        flex: 1,
+        valueFormatter: (params: any) => params.value || '',
+      },
+      {
+        field: 'idPosicion',
+        headerName: 'Posición',
+        suppressMovable: true,
+        filter: false,
+        flex: 1,
+        valueFormatter: (params: any) => params.value || '',
+      },
+      // ✅ Principal DESPUÉS de Posición
+      {
+        field: 'principal',
+        headerName: 'Principal',
+        width: 110,
+        editable: true,
+        cellEditor: 'agCheckboxCellEditor',
+        cellRenderer: 'agCheckboxCellRenderer',
+        valueSetter: (params: any) => {
+          params.data.principal = params.newValue;
+          return true;
+        }
+      },
     ];
   }
 
@@ -157,7 +204,6 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   async loadCatalogs() {
-    // Cargar sucursales de la empresa
     this.branchesService.getBranches(this.companyId).subscribe(
       (data: any) => {
         this.branches = data;
@@ -174,8 +220,6 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   loadBranchesData() {
-    const permissionType = 'branch';
-
     this.branchesService.getBranchesByUserAndCompany(this.userId, this.companyId).subscribe(
       (data: any) => {
         this.branchesRowData = (data.project || []).map((row: any) => ({

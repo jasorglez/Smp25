@@ -11,6 +11,7 @@ import {
 } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 
 import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
@@ -19,6 +20,10 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { AuthService } from 'app/services/auth.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
+import { FormsModule } from '@angular/forms';
 
 interface Bank {
   id: number;
@@ -33,6 +38,7 @@ interface Bank {
     DomainsModule,
     AgGridModule,
     MultiLineEditorComponent,
+    FormsModule,
   ],
   templateUrl: './accountbanks.component.html',
   styleUrl: './accountbanks.component.scss',
@@ -84,8 +90,27 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
   // Inject of new way for Angular 18
   private administrationService = inject(AdministrationService);
+  private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
+
+  // Propiedades para el modal de reporte de saldos
+  showSaldosModal: boolean = false;
+  reportSaldosStartDate: string = '';
+  reportSaldosEndDate: string = '';
+  isGeneratingSaldosReport: boolean = false;
+
+  // Propiedades para el modal de ajuste de saldo
+  showAjusteModal: boolean = false;
+  ajusteDate: string = '';
+  ajusteMonto: number = 0;
+  ajusteDescripcion: string = '';
+  ajusteTipo: string = 'DEPOSITO';
+  isSavingAjuste: boolean = false;
+  saldoActual: number = 0;
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -754,6 +779,327 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     console.log('🔍 CompanyId:', companyId, '| idBussines final:', cleanedData.idBussines);
 
     return cleanedData;
+  }
+
+  // ==================== REPORTE DE SALDOS ====================
+
+  openSaldosModal() {
+    if (!this.selectedRowData) {
+      alerts.basicAlert('Aviso', 'Seleccione una cuenta bancaria primero.', 'warning');
+      return;
+    }
+    if (!this.rowDetails || this.rowDetails.length === 0) {
+      alerts.basicAlert('Aviso', 'La cuenta seleccionada no tiene movimientos registrados.', 'info');
+      return;
+    }
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const firstDay = new Date(prev.getFullYear(), prev.getMonth(), 1);
+    const lastDay  = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+    this.reportSaldosStartDate = this.formatDateSaldos(firstDay);
+    this.reportSaldosEndDate   = this.formatDateSaldos(lastDay);
+    this.showSaldosModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeSaldosModal() {
+    this.showSaldosModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  private formatDateSaldos(date: Date): string {
+    const y = date.getFullYear();
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const d = date.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  formatCurrencySaldos(amount: number): string {
+    return (amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  async generateSaldosReport() {
+    if (!this.reportSaldosStartDate || !this.reportSaldosEndDate) {
+      alerts.basicAlert('Error', 'Por favor seleccione ambas fechas', 'error');
+      return;
+    }
+
+    const filtered = (this.rowDetails || []).filter((item: any) => {
+      if (!item.fecha) return false;
+      const d = new Date(item.fecha);
+      if (isNaN(d.getTime())) return false;
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return ds >= this.reportSaldosStartDate && ds <= this.reportSaldosEndDate;
+    });
+
+    if (filtered.length === 0) {
+      alerts.basicAlert('Sin datos', 'No hay movimientos en el rango de fechas seleccionado', 'info');
+      return;
+    }
+
+    this.isGeneratingSaldosReport = true;
+
+    try {
+      const companyId = parseInt(localStorage.getItem('company') || '0');
+      const bankName = this.banks
+        ? (this.banks.find((b: any) => b.id === this.selectedRowData?.idBanco)?.name || '')
+        : '';
+      const accountName = `${this.selectedRowData?.nameAccount || ''} - ${bankName}`;
+
+      let logoData: string | null = null;
+      try {
+        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(companyId));
+        if (rootData?.picture) {
+          logoData = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        }
+      } catch {}
+
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      pdfMake.vfs = pdfFonts.vfs;
+
+      const period = `Del ${this.reportSaldosStartDate} al ${this.reportSaldosEndDate}`;
+
+      const tableRows: any[] = [[
+        { text: 'NUMERO DOCUMENTO', style: 'th' },
+        { text: 'FECHA',            style: 'th' },
+        { text: 'DESCRIPCION',      style: 'th' },
+        { text: 'TIPO',             style: 'th' },
+        { text: 'DEPOSITO',         style: 'th' },
+        { text: 'GASTO',            style: 'th' },
+        { text: 'SALDO',            style: 'th' },
+      ]];
+
+      let totalDeposito = 0;
+      let totalGasto = 0;
+
+      filtered.forEach((item: any, idx: number) => {
+        const bg = idx % 2 === 0 ? '#eaf4fb' : '#ffffff';
+        const deposito = parseFloat(item.deposito) || 0;
+        const gasto    = parseFloat(item.gasto)    || 0;
+        const saldo    = parseFloat(item.saldo)    || 0;
+        totalDeposito += deposito;
+        totalGasto    += gasto;
+
+        const fechaDisplay = (() => {
+          try {
+            const d = new Date(item.fecha);
+            return isNaN(d.getTime()) ? (item.fecha || '') :
+              `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+          } catch { return item.fecha || ''; }
+        })();
+
+        tableRows.push([
+          { text: item.numeroDocumento || '', style: 'td', fillColor: bg },
+          { text: fechaDisplay, style: 'td', fillColor: bg, alignment: 'center' },
+          { text: item.descripcion || '', style: 'td', fillColor: bg },
+          { text: item.tipo || '', style: 'td', fillColor: bg, alignment: 'center' },
+          { text: deposito > 0 ? `$${this.formatCurrencySaldos(deposito)}` : '', style: 'td', fillColor: bg, alignment: 'right', color: '#008000' },
+          { text: gasto > 0 ? `$${this.formatCurrencySaldos(gasto)}` : '', style: 'td', fillColor: bg, alignment: 'right', color: '#CC0000' },
+          { text: `$${this.formatCurrencySaldos(saldo)}`, style: 'td', fillColor: bg, alignment: 'right', color: saldo >= 0 ? '#000080' : '#CC0000' },
+        ]);
+      });
+
+      tableRows.push([
+        { text: 'TOTAL', colSpan: 4, style: 'totalLabel', alignment: 'right', bold: true, border: [false, true, false, false] },
+        {}, {}, {},
+        { text: `$${this.formatCurrencySaldos(totalDeposito)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#008000' },
+        { text: `$${this.formatCurrencySaldos(totalGasto)}`,    style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#CC0000' },
+        { text: '', border: [false, true, false, false] },
+      ]);
+
+      const docDefinition: any = {
+        pageSize: 'LETTER',
+        pageOrientation: 'landscape',
+        pageMargins: [20, 60, 20, 40],
+        header: (currentPage: number, pageCount: number) => ({
+          columns: [
+            logoData
+              ? { image: logoData, width: 60, margin: [20, 10, 0, 0] }
+              : { text: '', width: 60, margin: [20, 10, 0, 0] },
+            {
+              stack: [
+                { text: 'ESTADO DE CUENTA / REPORTE DE SALDOS', fontSize: 11, bold: true, alignment: 'center' },
+                { text: accountName, fontSize: 9, alignment: 'center', color: '#444' },
+                { text: period, fontSize: 8, alignment: 'center', color: '#666' },
+              ],
+              margin: [0, 10, 0, 0]
+            },
+            {
+              stack: [
+                { text: 'Referencia: EST-CTB', fontSize: 7, alignment: 'right', color: '#666' },
+                { text: 'Código: 09', fontSize: 7, alignment: 'right', color: '#666' },
+                { text: 'Rev: 00', fontSize: 7, alignment: 'right', color: '#666' },
+                { text: `Pág. ${currentPage}/${pageCount}`, fontSize: 7, alignment: 'right', color: '#666' },
+              ],
+              margin: [0, 10, 20, 0]
+            }
+          ]
+        }),
+        content: [{
+          table: {
+            headerRows: 1,
+            widths: [85, 65, '*', 65, 70, 70, 70],
+            body: tableRows,
+          },
+          layout: {
+            hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length) ? 1 : 0.3,
+            vLineWidth: () => 0.3,
+            hLineColor: () => '#aaa',
+            vLineColor: () => '#aaa',
+          }
+        }],
+        styles: {
+          th:         { fontSize: 7, bold: true, color: '#FFFFFF', fillColor: '#1a5276', alignment: 'center', margin: [2, 3, 2, 3] },
+          td:         { fontSize: 7, margin: [2, 2, 2, 2] },
+          totalLabel: { fontSize: 7, margin: [2, 3, 2, 3] },
+          totalValue: { fontSize: 7, margin: [2, 3, 2, 3] },
+        }
+      };
+
+      const pdf = pdfMake.createPdf(docDefinition);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`saldos-${this.selectedRowData?.nameAccount || 'cuenta'}-${this.reportSaldosStartDate}-al-${this.reportSaldosEndDate}.pdf`);
+        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+      }
+      this.closeSaldosModal();
+      this.trackingService.addLog(
+        'AccountBanks',
+        `Reporte de Saldos: ${accountName} - ${this.reportSaldosStartDate} al ${this.reportSaldosEndDate}`,
+        'Cuentas Bancarias - Saldos',
+        this.trackingService.getEmail()
+      );
+    } catch (error) {
+      console.error('Error al generar reporte de saldos:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte PDF', 'error');
+    } finally {
+      this.isGeneratingSaldosReport = false;
+    }
+  }
+
+  // ==================== AJUSTE DE SALDO ====================
+
+  openAjusteModal() {
+    if (!this.selectedRowData) {
+      alerts.basicAlert('Aviso', 'Seleccione una cuenta bancaria primero.', 'warning');
+      return;
+    }
+
+    // Saldo inicial: columna Saldo del grid maestro
+    this.saldoActual = this.selectedRowData.saldo || 0;
+
+    this.ajusteDate = this.formatDateSaldos(new Date());
+    this.ajusteMonto = 0;
+    this.ajusteDescripcion = '';
+    this.ajusteTipo = 'DEPOSITO';
+    this.showAjusteModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  onAjusteDateChange() {
+    if (!this.ajusteDate || !this.rowDetails?.length) return;
+
+    const fechaSel = this.ajusteDate; // 'YYYY-MM-DD'
+
+    // Convertir fecha de cada fila al mismo formato YYYY-MM-DD (igual que el PDF)
+    const toDs = (fecha: any): string => {
+      const d = new Date(fecha);
+      return isNaN(d.getTime()) ? ''
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    // Ordenar por fecha ascendente y quedarse con las que sean <= fecha seleccionada
+    const candidatos = (this.rowDetails as any[])
+      .filter(item => item.fecha && toDs(item.fecha) !== '' && toDs(item.fecha) <= fechaSel)
+      .sort((a, b) => toDs(a.fecha) < toDs(b.fecha) ? -1 : toDs(a.fecha) > toDs(b.fecha) ? 1 : 0);
+
+    if (candidatos.length > 0) {
+      // El último (más reciente hasta esa fecha) tiene el saldo acumulado correcto
+      this.saldoActual = parseFloat(candidatos[candidatos.length - 1].saldo) || 0;
+    } else {
+      // No hay movimientos anteriores a esa fecha
+      this.saldoActual = this.selectedRowData?.saldo || 0;
+    }
+  }
+
+  closeAjusteModal() {
+    this.showAjusteModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveAjuste() {
+    if (!this.ajusteDescripcion.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'error');
+      return;
+    }
+    if (!this.ajusteMonto || this.ajusteMonto <= 0) {
+      alerts.basicAlert('Error', 'El monto debe ser mayor a cero.', 'error');
+      return;
+    }
+    if (!this.ajusteDate) {
+      alerts.basicAlert('Error', 'La fecha es obligatoria.', 'error');
+      return;
+    }
+
+    this.isSavingAjuste = true;
+
+    try {
+      const companyId = parseInt(localStorage.getItem('company') || '0');
+      // Añadir hora para evitar desfase de zona horaria
+      const fechaAjuste = new Date(this.ajusteDate + 'T12:00:00');
+      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const paymentMonth = meses[fechaAjuste.getMonth()];
+
+      const adjustmentData = {
+        idAccount: this.selectedRowData.id,
+        idBusinnes: companyId,
+        idBranch: 0,
+        date: fechaAjuste.toISOString(),
+        idCustomer: 0,
+        idExpend: 0,
+        uuid: 'NA',
+        paymentMonth: paymentMonth,
+        dateStamped: new Date().toISOString(),
+        description: `AJUSTE - ${this.ajusteDescripcion.trim()}`,
+        type: this.ajusteTipo,
+        subtotal: this.ajusteMonto,
+        tax: 0,
+        total: this.ajusteMonto,
+        createdBy: localStorage.getItem('mail') || 'sistema',
+        createdAt: new Date().toISOString(),
+        modifiedBy: null,
+        modifiedAt: new Date().toISOString(),
+        status: 'Pagada',
+        active: true,
+      };
+
+      await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(adjustmentData));
+
+      alerts.basicAlert('Ajuste guardado', 'El ajuste de saldo se ha registrado correctamente.', 'success');
+
+      this.closeAjusteModal();
+
+      // Recargar saldo forzando la recarga
+      if (this.selectedRowData?.id) {
+        this.lastSelectedId = null;
+        this.loadBalanceData(this.selectedRowData.id.toString());
+      }
+
+      this.trackingService.addLog(
+        'AccountBanks',
+        `Ajuste de Saldo: ${this.selectedRowData?.nameAccount} - ${this.ajusteTipo} $${this.ajusteMonto}`,
+        'Cuentas Bancarias - Ajuste Saldo',
+        this.trackingService.getEmail()
+      );
+    } catch (error) {
+      console.error('Error al guardar ajuste:', error);
+      alerts.basicAlert('Error', 'Error al registrar el ajuste de saldo.', 'error');
+    } finally {
+      this.isSavingAjuste = false;
+    }
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

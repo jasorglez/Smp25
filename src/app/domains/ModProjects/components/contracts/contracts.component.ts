@@ -105,15 +105,6 @@ export class ContractsComponent {
       const node = event.node;
       const api = event.api;
 
-      // Handle "Detalle" column click - opens contract details tab
-      if (colId === 'detalle') {
-        this.selectedRowData = event.data;
-        this.idContract = event.data.id;
-        this.signalsService.setIdContract(event.data.id);
-        this.activateDetailsTab();
-        return;
-      }
-
       // Handle "Proyectos" column click - expands master-detail for projects
       if (colId === 'project') {
         // Toggle expansion
@@ -154,18 +145,23 @@ export class ContractsComponent {
     },
     onCellKeyDown: (params) => {
       if (params.event.key === 'Enter') {
-        const editableColumns = this.colMaster.filter((col) => col.editable);
-        const currentColIndex = editableColumns.findIndex(
+        const allColumns = this.colMaster;
+        const currentColIndex = allColumns.findIndex(
           (col) => col.field === params.column.getColDef().field
         );
 
-        if (currentColIndex < editableColumns.length - 1) {
-          requestAnimationFrame(() => {
+        if (currentColIndex < allColumns.length - 1) {
+          setTimeout(() => {
+            const rowNode = params.api.getRowNode(params.node.rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+            }
+            params.api.ensureIndexVisible(params.node.rowIndex);
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
-              colKey: editableColumns[currentColIndex + 1].field,
+              colKey: allColumns[currentColIndex + 1].field,
             });
-          });
+          }, 150);
         }
         params.event.preventDefault();
       }
@@ -243,12 +239,17 @@ export class ContractsComponent {
     {
       field: 'detalle',
       headerName: 'Detalle',
-      minWidth: 80,
-      maxWidth: 80,
+      width: 90,
       editable: false,
       sortable: false,
       filter: false,
       cellStyle: { backgroundColor: '#cfe2ff', cursor: 'pointer', textAlign: 'center' },
+      onCellClicked: (event) => {
+        this.selectedRowData = event.data;
+        this.idContract = event.data.id;
+        this.signalsService.setIdContract(event.data.id);
+        this.activateDetailsTab();
+      },
       cellRenderer: (params) => {
         return `<span style="display:flex; align-items:center; justify-content:center; gap:4px;">
           <i class="bi bi-list-ul" style="color:#0d6efd; font-size:14px;"></i>
@@ -621,12 +622,18 @@ export class ContractsComponent {
     // Encontrar el índice de la nueva fila y abrir en modo edición
     setTimeout(() => {
       const newRowIndex = 0;
+      this.gridApi.forEachNode((node: any) => {
+        if (node.rowIndex === newRowIndex) {
+          node.setSelected(true);
+        }
+      });
+      this.gridApi.ensureIndexVisible(newRowIndex);
       this.gridApi.setFocusedCell(newRowIndex, 'numberContract');
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
         colKey: 'numberContract',
       });
-    }, 50);
+    }, 100);
   }
 
   async saveChanges() {

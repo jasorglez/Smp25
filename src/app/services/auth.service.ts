@@ -1,4 +1,4 @@
-import { effect, inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
@@ -16,6 +16,7 @@ import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
 import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
+import Swal from 'sweetalert2';
 
 interface UserPermissions {
   id: number;
@@ -43,25 +44,128 @@ export class AuthService {
   private auth = inject(Auth);
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
+  private ngZone = inject(NgZone);
 
   idBranch: number;
   isAdvanced: boolean = false;
 
+  // Timers para el manejo de expiración del token
+  private sessionWarningTimer: any = null;
+  private sessionExpireTimer: any = null;
+
+  // Minutos antes de expirar para mostrar la advertencia
+  private readonly WARNING_BEFORE_EXPIRY_MS = 2 * 60 * 1000; // 2 minutos
 
   constructor() {
-      effect(() => {
-        this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-        this.isAdvanced = this.signalsService.getIsAdvanced();
-      });
-    }
+    effect(() => {
+      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.isAdvanced = this.signalsService.getIsAdvanced();
+    });
+  }
 
   login(data: Ilogin) {
-    //Aquí creamos el Token
-    const dataLogin = {
-      email: data.email,
-      password: data.password
-    };
-    return this.http.post(environment.urlSecurity + '/Auth/login', dataLogin)
+    return this.http.post(environment.urlSecurity + '/Auth/login', data);
+  }
+
+  // ─── Inicia los timers de sesión una vez que el token está en localStorage ───
+  startSessionTimers(): void {
+    this.clearSessionTimers();
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const expiry = this.getTokenExpiry(token);
+    if (!expiry) return;
+
+    const now = Date.now();
+    const msUntilExpiry = expiry - now;
+
+    if (msUntilExpiry <= 0) {
+      // Token ya expiró
+      this.logout();
+      return;
+    }
+
+    const msUntilWarning = msUntilExpiry - this.WARNING_BEFORE_EXPIRY_MS;
+
+    if (msUntilWarning > 0) {
+      // Programar advertencia 2 minutos antes de expirar
+      this.sessionWarningTimer = setTimeout(() => {
+        this.ngZone.run(() => this.showSessionWarning(msUntilExpiry));
+      }, msUntilWarning);
+    } else {
+      // Menos de 2 minutos, mostrar advertencia de inmediato
+      this.ngZone.run(() => this.showSessionWarning(msUntilExpiry));
+    }
+
+    // Programar cierre de sesión automático al expirar
+    this.sessionExpireTimer = setTimeout(() => {
+      this.ngZone.run(() => {
+        Swal.close();
+        this.logout();
+      });
+    }, msUntilExpiry);
+  }
+
+  // ─── Muestra alerta de advertencia con cuenta regresiva ───
+  private showSessionWarning(msRemaining: number): void {
+    const secondsRemaining = Math.floor(msRemaining / 1000);
+
+    let timerInterval: any;
+
+    Swal.fire({
+      title: '⏰ Sesión por expirar',
+      html: `Tu sesión cerrará en <strong id="swal-countdown">${secondsRemaining}</strong> segundos.<br><br>¿Deseas continuar trabajando?`,
+      icon: 'warning',
+      showCancelButton: false,
+      confirmButtonText: 'Entendido',
+      confirmButtonColor: '#3085d6',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      timer: msRemaining,
+      timerProgressBar: true,
+      didOpen: () => {
+        const countdownEl = document.getElementById('swal-countdown');
+        let remaining = secondsRemaining;
+        timerInterval = setInterval(() => {
+          remaining--;
+          if (countdownEl) countdownEl.textContent = String(remaining > 0 ? remaining : 0);
+        }, 1000);
+      },
+      willClose: () => {
+        clearInterval(timerInterval);
+      }
+    }).then((result) => {
+      // Si el usuario hizo clic en "Entendido" o el timer se agotó, cerrar sesión
+      this.logout();
+    });
+  }
+
+  // ─── Decodifica el JWT y retorna la fecha de expiración en ms ───
+  private getTokenExpiry(token: string): number | null {
+    try {
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload));
+      if (decoded.exp) {
+        return decoded.exp * 1000; // exp está en segundos, convertir a ms
+      }
+      return null;
+    } catch (e) {
+      console.error('Error decodificando el token:', e);
+      return null;
+    }
+  }
+
+  // ─── Limpia los timers existentes ───
+  clearSessionTimers(): void {
+    if (this.sessionWarningTimer) {
+      clearTimeout(this.sessionWarningTimer);
+      this.sessionWarningTimer = null;
+    }
+    if (this.sessionExpireTimer) {
+      clearTimeout(this.sessionExpireTimer);
+      this.sessionExpireTimer = null;
+    }
   }
 
   async register(email: string, password: string): Promise<User | null> {
@@ -73,10 +177,7 @@ export class AuthService {
       );
 
       if (result.user) {
-        // Enviar verificación de correo electrónico
         await sendEmailVerification(result.user);
-
-        // Verificar si el correo electrónico está verificado
         if (result.user.emailVerified) {
           console.log('El correo electrónico ha sido verificado.');
         } else {
@@ -89,11 +190,12 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Error registrando el usuario:', error);
-      throw error; // Propagate the error
+      throw error;
     }
   }
 
   async logout() {
+    this.clearSessionTimers();
     try {
       this.trackingService.addLog(
         '',
@@ -108,8 +210,8 @@ export class AuthService {
       localStorage.removeItem('branch');
       localStorage.removeItem('mail');
       localStorage.removeItem('sqlToken');
-      localStorage.removeItem('userRoot'); // Limpiar userRoot al cerrar sesión
-      this.signalsService.deleteSignals(); // Borramos todas las signals
+      localStorage.removeItem('userRoot');
+      this.signalsService.deleteSignals();
       this.router.navigateByUrl('/login');
 
       await signOut(this.auth);
@@ -129,35 +231,22 @@ export class AuthService {
 
   async removeUserByEmail(email: string, password: string) {
     try {
-      // Primero, necesitamos obtener el ID token del usuario
-      // Este es el de Firebase, nada que ver con el microservicio
-      // de SQL
       const idToken = await this.getIdToken(email, password);
-
-      // Ahora podemos eliminar la cuenta usando el ID token
       await firstValueFrom(
         this.http.post(`${this.firebaseAuthUrl}:delete?key=${this.apiKey}`, {
           idToken: idToken,
         })
       );
-
       console.log('Usuario eliminado exitosamente.');
     } catch (error) {
       console.error('Error al eliminar el usuario:', error);
-      throw error; // Re-lanza el error para que pueda ser manejado por el componente
+      throw error;
     }
   }
 
-  async updatePassword(
-    email: string,
-    oldPassword: string,
-    newPassword: string
-  ) {
+  async updatePassword(email: string, oldPassword: string, newPassword: string) {
     try {
-      // Inicia sesión con el correo y la contraseña actual
       const idToken = await this.getIdToken(email, oldPassword);
-
-      // Actualiza la contraseña
       await firstValueFrom(
         this.http.post(`${this.firebaseAuthUrl}:update?key=${this.apiKey}`, {
           idToken: idToken,
@@ -165,28 +254,12 @@ export class AuthService {
           returnSecureToken: false,
         })
       );
-
       console.log(`Contraseña actualizada para el correo ${email}`);
     } catch (error) {
       console.error('Error al actualizar la contraseña:', error);
-      throw error; // Re-lanza el error para que pueda ser manejado por el componente
+      throw error;
     }
   }
-
-  // private async getIdToken(): Promise<string | null> {
-  //   try {
-  //     const user = await this.getCurrentUser();
-  //     if (user) {
-  //       const idToken = await user.getIdToken();
-  //       return idToken;
-  //     } else {
-  //       throw new Error('No hay usuario actual');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error al obtener el token de ID:', error);
-  //     return null;
-  //   }
-  // }
 
   private async getIdToken(email: string, password: string) {
     const signInResponse = await firstValueFrom(
@@ -194,7 +267,7 @@ export class AuthService {
         `${this.firebaseAuthUrl}:signInWithPassword?key=${this.apiKey}`,
         {
           email: email,
-          password: password, // Necesitarás la contraseña actual del usuario
+          password: password,
           returnSecureToken: true,
         }
       )
@@ -202,7 +275,7 @@ export class AuthService {
     return signInResponse.idToken;
   }
 
-    // Master Permissions 2
+  // ─── Permisos ───────────────────────────────────────────────────────────────
 
   private userPermissions: any;
 
@@ -211,7 +284,6 @@ export class AuthService {
       { headers: this.trackingService.getHeaders() }
     ).pipe(
       map(response => {
-        // Limpiar datos sensibles antes de usar
         const safeData = sanitizeUserData(response.data);
         return safeData.id;
       }),
@@ -222,35 +294,31 @@ export class AuthService {
       })
     );
   }
+
   fetchUserPermissions(userId: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}`, { headers: this.trackingService.getHeaders() });
   }
+
   fetchUserPermissionsAdvanced(userId: number, idBranch: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guardAdvanced/${userId}/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
-  // Almacena los permisos en el servicio
   setUserPermissions(permissions: any): void {
-     console.log(permissions)
+    console.log(permissions);
     this.userPermissions = permissions;
   }
 
-  // Obtiene los permisos almacenados
   getUserPermissions(): any {
-   
     return this.userPermissions;
   }
 
-  // Verifica si el usuario tiene un permiso maestro
   hasMasterPermission(masterPermissionKey: string): boolean {
     return this.userPermissions?.[masterPermissionKey]?.active === true;
   }
 
-  // Verifica si el usuario tiene un permiso detallado
   hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
     const section = this.userPermissions?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
-
     return section?.active === true && subSection?.active === true;
   }
 
@@ -260,80 +328,69 @@ export class AuthService {
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
     return section?.active === true && subSection?.active === true && subSubSection?.active === true;
   }
+
   getCrudPermission(
-  masterPermissionKey: string,
-  detailedPermissionKey: string,
-  subdetailedPermissionKey: string,
-  menu: string,
-  capa: string,
-  action: 'create' | 'read' | 'update' | 'delete'
-): boolean {
-  const section = this.userPermissions?.[masterPermissionKey];
-  const subSection = section?.children?.[detailedPermissionKey];
-  const subSubSection = subSection?.children?.[subdetailedPermissionKey];
+    masterPermissionKey: string,
+    detailedPermissionKey: string,
+    subdetailedPermissionKey: string,
+    menu: string,
+    capa: string,
+    action: 'create' | 'read' | 'update' | 'delete'
+  ): boolean {
+    const section = this.userPermissions?.[masterPermissionKey];
+    const subSection = section?.children?.[detailedPermissionKey];
+    const subSubSection = subSection?.children?.[subdetailedPermissionKey];
 
-  // Verifica que las tres capas existan y estén activas
-  if (
-    section?.active !== true ||
-    subSection?.active !== true ||
-    subSubSection?.active !== true
-  ) {
-    return false;
+    if (
+      section?.active !== true ||
+      subSection?.active !== true ||
+      subSubSection?.active !== true
+    ) {
+      return false;
+    }
+
+    if (
+      subSubSection?.name !== menu ||
+      subSubSection?.description !== capa
+    ) {
+      return false;
+    }
+
+    const crudMap = {
+      create: subSubSection.crud?.canCreate,
+      read: subSubSection.crud?.canRead,
+      update: subSubSection.crud?.canUpdate,
+      delete: subSubSection.crud?.canDelete
+    };
+
+    return crudMap[action] === true;
   }
 
-  // Verifica que name y description coincidan
-  if (
-    subSubSection?.name !== menu ||
-    subSubSection?.description !== capa
-  ) {
-    return false;
+  getCrudPermissionDetail(
+    masterPermissionKey: string,
+    detailedPermissionKey: string,
+    subdetailedPermissionKey: string,
+    action: 'create' | 'read' | 'update' | 'delete'
+  ): boolean {
+    const section = this.userPermissions?.[masterPermissionKey];
+    const subSection = section?.children?.[detailedPermissionKey];
+    const subSubSection = subSection?.children?.[subdetailedPermissionKey];
+
+    if (
+      section?.active !== true ||
+      subSection?.active !== true ||
+      subSubSection?.active !== true
+    ) {
+      return false;
+    }
+
+    const crudMap = {
+      create: subSubSection.crud?.canCreate,
+      read: subSubSection.crud?.canRead,
+      update: subSubSection.crud?.canUpdate,
+      delete: subSubSection.crud?.canDelete
+    };
+
+    return crudMap[action] === true;
   }
-
-  // Mapeo CRUD
-  const crudMap = {
-    create: subSubSection.crud?.canCreate,
-    read: subSubSection.crud?.canRead,
-    update: subSubSection.crud?.canUpdate,
-    delete: subSubSection.crud?.canDelete
-  };
-
-  return crudMap[action] === true;
-}
-
-getCrudPermissionDetail(
-  masterPermissionKey: string,
-  detailedPermissionKey: string,
-  subdetailedPermissionKey: string,
-  action: 'create' | 'read' | 'update' | 'delete'
-): boolean {
-  const section = this.userPermissions?.[masterPermissionKey];
-  const subSection = section?.children?.[detailedPermissionKey];
-  const subSubSection = subSection?.children?.[subdetailedPermissionKey];
-
-  // Verifica que las tres capas existan y estén activas
-  if (
-    section?.active !== true ||
-    subSection?.active !== true ||
-    subSubSection?.active !== true
-  ) {
-    return false;
-  }
-
-  // Mapeo CRUD
-  const crudMap = {
-    create: subSubSection.crud?.canCreate,
-    read: subSubSection.crud?.canRead,
-    update: subSubSection.crud?.canUpdate,
-    delete: subSubSection.crud?.canDelete
-  };
-
-  return crudMap[action] === true;
-}
-
-
-
-
-
-
-
 }

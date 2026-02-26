@@ -535,6 +535,17 @@ export const routes: Routes = [
             ],
           },
           {
+            path: 'sistema',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/sistema/sistema.component'
+              ).then((s) => s.SistemaComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: {
+              permissions: { master: 'projects', detailed: 'sistema' }
+            },
+          },
+          {
             path: 'ot',
             loadComponent: () =>
               import(
@@ -632,6 +643,20 @@ export const routes: Routes = [
               }
             }
             // canDeactivate: [UnsavedChangesGuard],
+          },
+          {
+            path: 'corporativos',
+            loadComponent: () =>
+              import('./domains/SMP/Components/corporativos/corporativos.component').then(
+                (c) => c.CorporativosComponent
+              ),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Corporativos',
+                category: 'Setup'
+              }
+            }
           },
           {
             path: 'root',
@@ -794,16 +819,91 @@ export const routes: Routes = [
           },
           {
             path: 'dashmodadmon',
+            redirectTo: 'tablero/dashmodadmon',
+            pathMatch: 'full'
+          },
+          {
+            path: 'dashboard-hco',
+            redirectTo: 'tablero/dashboard-hco',
+            pathMatch: 'full'
+          },
+          {
+            path: 'tablero',
             loadComponent: () =>
-              import('./domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
-              ).then((s) => s.DashboarhostComponent),
-            canActivate: [TrackingGuard],
-            data: {
-              tracking: {
-                logMessage: 'Click en Pestaña Dashboard Modulo Administracion',
-                category: 'Administration'
+              import('./domains/ModAdmon/pages/tablero/tablero.component'
+              ).then((t) => t.TableroComponent),
+            children: [
+              {
+                path: 'dashmodadmon',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/components/dashboardmodadmon/dashboarhost/dashboarhost.component'
+                  ).then((s) => s.DashboarhostComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard' },
+                  tracking: {
+                    logMessage: 'Click en Pestaña Dashboard Modulo Administracion',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'dashboard-hco',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/dashboard-hco/dashboard-hco.component'
+                  ).then((d) => d.DashboardHcoComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Dashboard HCO - SIAF',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'reporte-operativo-sin-iva',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/reporte-operativo-sin-iva/reporte-operativo-sin-iva.component'
+                  ).then((r) => r.ReporteOperativoSinIvaComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Reporte Operativo sin IVA',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'reporte-facturacion-anual',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/reporte-facturacion-anual/reporte-facturacion-anual.component'
+                  ).then((r) => r.ReporteFacturacionAnualComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Reporte Facturación Anual',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'compuesto-negocio',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/compuesto-negocio/compuesto-negocio.component'
+                  ).then((r) => r.CompuestoNegocioComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Compuesto Negocio',
+                    category: 'Administration'
+                  }
+                }
               }
-            }
+            ]
           },
 
           {
@@ -841,6 +941,38 @@ export const routes: Routes = [
               },
             ],
           },
+
+          {
+            path: 'transferencias',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/transferencias/transferencias.component'
+              ).then((t) => t.TransferenciasComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Transferencias',
+                category: 'Administration'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard]
+          },
+
+          {
+            path: 'aportaciones',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/aportaciones/aportaciones.component'
+              ).then((m) => m.AportacionesComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Pestaña Aportaciones',
+                category: 'Administration'
+              }
+            }
+          },
+
           {
             path: 'income',
             loadComponent: () =>
@@ -868,6 +1000,23 @@ export const routes: Routes = [
             data: {
               tracking: {
                 logMessage: 'Click en Pestaña Egreso Administracion',
+                category: 'Administration'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard]
+          },
+
+          {
+            path: 'stakeholder-expend',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/stakeholder-expend/stakeholder-expend.component'
+              ).then((s) => s.StakeholderExpendComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'administration', detailed: 'stakeholder-expend' },
+              tracking: {
+                logMessage: 'Click en Pestaña Retiro de Socios',
                 category: 'Administration'
               }
             },

@@ -382,6 +382,15 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    // Limpiar tooltip al hacer scroll
+    setTimeout(() => {
+      const gridElement = (params as any).eGridDiv || document.querySelector('.ag-body-viewport');
+      if (gridElement) {
+        const viewport = gridElement.querySelector?.('.ag-body-viewport') || gridElement;
+        viewport.addEventListener('scroll', () => this.hideNewArticleTooltip());
+      }
+    }, 100);
   }
 
   private _colDefs: ColDef[] = [];
@@ -404,10 +413,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         field: 'recurrent',
         headerName: 'Recurrente',
         width: 120,
-        editable: (params) => {
-          // Solo es editable si el valor NO es 'Nuevo'.
-          return params.data.recurrent !== 'Nuevo';
-        },
+        editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['Recurrente', 'Nuevo']
@@ -612,9 +618,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       {
         field: 'intorext',
-        headerName: 'Tipo',
-        width: 100,
-        editable: true,
+        headerName: 'Proveedor',
+        width: 130,
+        editable: (params) => params.data.recurrent !== 'Nuevo',
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['Externo', 'Interno'] // ✅ CAMBIO 2: Externo primero para que sea el default
@@ -743,7 +749,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       {
         field: 'typePriority',
-        headerName: 'Tipo Prioridad',
+        headerName: 'Prioridad',
         width: 120,
         editable: true,
         cellEditor: 'agSelectCellEditor',
@@ -953,6 +959,26 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     if (newItems.length === 0 && modifiedItems.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      return;
+    }
+
+    // Validar que todos los items tengan artículo asignado
+    const itemsSinArticulo = this.rowData.filter(item =>
+      (item.__isNew || item.__modified) &&
+      !item.article && !item.nameArticle
+    );
+
+    if (itemsSinArticulo.length > 0) {
+      const filas = itemsSinArticulo.map((_, i) => {
+        const idx = this.rowData.indexOf(itemsSinArticulo[i]) + 1;
+        return `Fila ${idx}`;
+      }).join(', ');
+
+      alerts.basicAlert(
+        'Campo obligatorio',
+        `La columna "Artículos" es obligatoria. Por favor, seleccione o registre un artículo en: ${filas}.`,
+        'warning'
+      );
       return;
     }
 
@@ -1330,12 +1356,31 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.hasUnsavedChanges = true;
     this.isAddingNewItem = true;
 
-    // Si el cambio es en la columna 'recurrent' y el valor es 'Nuevo', abrir el modal
-    if (event.colDef.field === 'recurrent' && event.newValue === 'Nuevo') {
-      this.currentRowForNewArticle = event.node;
-      this.originalRecurrentValue = event.oldValue; // Guardar valor original por si cancela
-      this.newArticle = { description: '', descriptionNewArticle: '', urlNewArticle: '', justificationNewArticle: '' }; // Resetear el formulario
-      this.isNewArticleModalVisible = true;
+    // Al cambiar 'recurrent', siempre limpiar artículo y campos relacionados
+    if (event.colDef.field === 'recurrent') {
+      event.data.idSupplie = 0;
+      event.data.materialId = 0;
+      event.data.article = '';
+      event.data.nameArticle = '';
+      event.data.code = '';
+      event.data.numArticle = '';
+      event.data.description = '';
+      event.data.idProvider = 0;
+      event.data.nameProvider = '';
+      event.data.descriptionNewArticle = '';
+      event.data.urlNewArticle = '';
+      event.data.justificationNewArticle = '';
+
+      if (event.newValue === 'Nuevo') {
+        // Forzar Externo para artículos nuevos
+        event.data.intorext = 'Externo';
+      }
+
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['intorext', 'idProvider', 'article', 'numArticle'],
+        force: true
+      });
     }
   }
 
@@ -1384,19 +1429,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   onCellClicked(event: any): void {
     event.node.setSelected(true);
 
-    // Si se hace clic en la columna 'Recurrente' y su valor es 'Nuevo', abrir el modal para editar.
-    if (event.column.getColId() === 'recurrent' && event.data.recurrent === 'Nuevo') {
-      this.currentRowForNewArticle = event.node;
-      // Cargar los datos del artículo temporal guardados previamente en la fila.
-      this.newArticle = {
-        description: event.data.nameArticle || '',
-        descriptionNewArticle: event.data.descriptionNewArticle || '',
-        urlNewArticle: event.data.urlNewArticle || '',
-        justificationNewArticle: event.data.justificationNewArticle || ''
-      };
-      this.isNewArticleModalVisible = true;
-      return;
-    }
+    // Limpiar tooltip al hacer clic en cualquier celda
+    this.hideNewArticleTooltip();
   }
 
   onSelectionChanged(_event: any): void {

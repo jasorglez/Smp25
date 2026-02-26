@@ -219,6 +219,18 @@ export class CatFamSubComponent {
             this.isDoubleClicking = false;
           }, 300);
         }
+      },
+      onColumnPinned: (event: any) => {
+        this.saveColumnState();
+      },
+      onColumnVisible: (event: any) => {
+        this.saveColumnState();
+      },
+      onColumnMoved: (event: any) => {
+        this.saveColumnState();
+      },
+      onColumnResized: (event: any) => {
+        this.saveColumnState();
       }
     };
 
@@ -758,6 +770,43 @@ export class CatFamSubComponent {
   // Grid listo
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    // Cargar estado de columnas desde localStorage
+    this.loadColumnState();
+  }
+
+  // Guardar estado de columnas (pin, orden, visibilidades) en localStorage
+  private saveColumnState() {
+    if (!this.gridApi) return;
+
+    try {
+      const columnState = this.gridApi.getColumnState();
+      const localStorageKey = `catfam_sub_column_state_${this.idRoot}`;
+      localStorage.setItem(localStorageKey, JSON.stringify(columnState));
+      console.log('💾 Estado de columnas guardado:', columnState);
+    } catch (error) {
+      console.error('Error guardando estado de columnas:', error);
+    }
+  }
+
+  // Cargar estado de columnas desde localStorage
+  private loadColumnState() {
+    if (!this.gridApi) return;
+
+    try {
+      const localStorageKey = `catfam_sub_column_state_${this.idRoot}`;
+      const savedState = localStorage.getItem(localStorageKey);
+
+      if (savedState) {
+        const columnState = JSON.parse(savedState);
+        this.gridApi.applyColumnState({
+          state: columnState,
+          applyOrder: true
+        });
+        console.log('📂 Estado de columnas cargado:', columnState);
+      }
+    } catch (error) {
+      console.error('Error cargando estado de columnas:', error);
+    }
   }
 
   // Agregar nuevo elemento según nivel seleccionado - Usar modales
@@ -1079,9 +1128,21 @@ export class CatFamSubComponent {
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newCategory));
       console.log('Respuesta del servidor (nueva categoría):', response);
-      alerts.basicAlert('Éxito', 'Categoría creada correctamente.', 'success');
+      
+      // Guardar el ID seleccionado actualmente para restaurar después
+      const selectedId = this.selectedRowData?.originalId;
+      const selectedNodeLevel = this.selectedNodeLevel;
+      
       this.closeModals();
-      this.loadCatalogData();
+      await this.loadCatalogData();
+      
+      // Mostrar alert Y LUEGO restaurar selección
+      await alerts.basicAlert('Éxito', 'Categoría creada correctamente.', 'success');
+      
+      // Restaurar selección si había una
+      if (selectedId) {
+        this.restoreSelectionAfterReload(selectedId, selectedNodeLevel || 'category');
+      }
     } catch (error: any) {
       console.error('Error al crear categoría:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -1123,9 +1184,21 @@ export class CatFamSubComponent {
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newFamily));
       console.log('Respuesta del servidor (nueva familia):', response);
-      alerts.basicAlert('Éxito', 'Familia creada correctamente.', 'success');
+      
+      // Guardar el ID seleccionado actualmente para restaurar después
+      const selectedId = this.selectedRowData?.originalId;
+      const selectedNodeLevel = this.selectedNodeLevel;
+      
       this.closeModals();
-      this.loadCatalogData();
+      await this.loadCatalogData();
+      
+      // Mostrar alert Y LUEGO restaurar selección
+      await alerts.basicAlert('Éxito', 'Familia creada correctamente.', 'success');
+      
+      // Restaurar selección si había una
+      if (selectedId) {
+        this.restoreSelectionAfterReload(selectedId, selectedNodeLevel || 'family');
+      }
     } catch (error: any) {
       console.error('Error al crear familia:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -1171,9 +1244,21 @@ export class CatFamSubComponent {
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
       console.log('Respuesta del servidor (nueva subfamilia):', response);
-      alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
+      
+      // Guardar el ID seleccionado actualmente para restaurar después
+      const selectedId = this.selectedRowData?.originalId;
+      const selectedNodeLevel = this.selectedNodeLevel;
+      
       this.closeModals();
-      this.loadCatalogData();
+      await this.loadCatalogData();
+      
+      // Mostrar alert Y LUEGO restaurar selección
+      await alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
+      
+      // Restaurar selección si había una
+      if (selectedId) {
+        this.restoreSelectionAfterReload(selectedId, selectedNodeLevel || 'subfamily');
+      }
     } catch (error: any) {
       console.error('Error al crear subfamilia:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -1193,6 +1278,10 @@ export class CatFamSubComponent {
       return;
     }
 
+    // Guardar el ID del registro seleccionado para restaurarlo después
+    const selectedId = this.editingItem.originalId;
+    const selectedNodeLevel = this.editingItem.nodeLevel;
+
     const updatedData = this.cleanDataForServer({
       valueAddition: this.modalForm.valueAddition,
       description: this.modalForm.description,
@@ -1211,13 +1300,46 @@ export class CatFamSubComponent {
       console.log('Actualizando registro ID:', this.editingItem.originalId);
       const response = await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));
       console.log('Respuesta del servidor (actualización):', response);
-      alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
+      
       this.closeModals();
-      this.loadCatalogData();
+      
+      // Recargar datos primero
+      await this.loadCatalogData();
+      
+      // MOSTRAR EL ALERT Y LUEGO RESTAURAR SELECCIÓN
+      await alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
+      
+      // Restaurar selección DESPUÉS de que el alert se cierre
+      this.restoreSelectionAfterReload(selectedId, selectedNodeLevel);
     } catch (error: any) {
       console.error('Error al actualizar:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al actualizar el registro: ${errorMsg}`, 'error');
+    }
+  }
+
+  // Restaurar selección después de recargar datos
+  private restoreSelectionAfterReload(selectedId: any, selectedNodeLevel: string) {
+    if (!selectedId || !this.gridApi) return;
+
+    // Buscar el nodo por ID original
+    let targetNode = null;
+    this.gridApi.forEachNode((node: any) => {
+      if (node.data?.originalId === selectedId) {
+        targetNode = node;
+      }
+    });
+
+    if (targetNode) {
+      // Seleccionar el nodo
+      targetNode.setSelected(true);
+      
+      // Asegurar que sea visible haciendo scroll hacia él
+      this.gridApi.ensureNodeVisible(targetNode, 'middle');
+      
+      console.log('✅ Selección restaurada para:', selectedId, 'nivel:', selectedNodeLevel);
+    } else {
+      console.warn('⚠️ No se encontró el nodo para restaurar selección:', selectedId);
     }
   }
 

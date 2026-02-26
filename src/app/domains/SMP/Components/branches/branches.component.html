@@ -33,10 +33,11 @@
         <div class="row">
           <ag-grid-angular style="width: 100%" [ngStyle]="{ height: gridHeight }"
             class="ag-theme-quartz small-text-ag-grid" [rowData]="masterRowData" [columnDefs]="colMaster"
+            [defaultColDef]="defaultColDef"
             (selectionChanged)="onMasterSelectionChanged($event)" [gridOptions]="gridOptions"
-            (gridReady)="onMasterGridReady($event)" 
+            (gridReady)="onMasterGridReady($event)"
             [rowSelection]="rowSelection"
- 
+            (cellEditingStopped)="onCellEditingStopped($event)"
             [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"
             [pagination]="false" [stopEditingWhenCellsLoseFocus]="true"
             (cellValueChanged)="onMasterCellValueChanged($event)">

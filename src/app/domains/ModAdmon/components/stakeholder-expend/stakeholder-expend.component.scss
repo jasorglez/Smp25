@@ -1,0 +1,135 @@
+// stakeholder-expend.component.scss
+
+.disabled-grid {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+// Estilos para descripciones largas con word-wrap
+.ag-theme-quartz {
+  .ag-cell {
+    &.ag-cell-focus {
+      .description-cell {
+        min-height: 30px;
+        display: flex;
+        align-items: center;
+      }
+    }
+  }
+
+  .description-cell {
+    word-wrap: break-word !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    padding: 4px 2px !important;
+    overflow: visible !important;
+    max-height: none !important;
+    min-height: 25px;
+
+    div {
+      word-wrap: break-word !important;
+      white-space: normal !important;
+      line-height: 1.2 !important;
+      padding: 2px !important;
+      overflow: visible !important;
+      max-height: none !important;
+    }
+  }
+}
+
+// Estilos para el componente
+:host {
+  display: block;
+}
+
+.form-label {
+  font-size: 0.85rem;
+}
+
+// Card de resumen
+.card.bg-light {
+  border: 1px solid #dee2e6;
+
+  .card-body {
+    font-size: 0.85rem;
+  }
+}
+
+// Mejoras en los selectores ng-select
+::ng-deep {
+  .ng-select {
+    font-size: 0.9rem;
+
+    .ng-select-container {
+      min-height: 38px;
+    }
+
+    .ng-option {
+      padding: 8px 12px;
+
+      &.ng-option-marked {
+        background-color: #e3f2fd;
+      }
+    }
+  }
+}
+
+// Botones verticales
+.btn {
+  min-width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  i {
+    font-size: 1.1rem;
+  }
+}
+
+// Badges de estatus
+.badge {
+  font-weight: 500;
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .row.mb-3 {
+    flex-direction: column;
+
+    .col-auto {
+      width: 100%;
+      margin-bottom: 1rem;
+
+      .d-flex.flex-column {
+        flex-direction: row !important;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Estilos del modal
+.modal {
+  &.show {
+    display: block;
+  }
+
+  .modal-header {
+    &.bg-info {
+      background: linear-gradient(135deg, #17a2b8, #138496) !important;
+    }
+  }
+
+  .modal-content {
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+}
+
+.modal-backdrop {
+  &.show {
+    opacity: 0.5;
+  }
+}

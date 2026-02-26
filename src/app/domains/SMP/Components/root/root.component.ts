@@ -11,7 +11,6 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { BranchsService } from 'app/services/branchs.service';
-import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 
 @Component({
   selector: 'app-root',
@@ -32,6 +31,7 @@ export class RootComponent {
 
   notSavedChanges: boolean = false;
   rowData: any[] = [];
+  corporativos: any[] = [];
   estados: { [key: string]: string } = {};
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
@@ -45,6 +45,20 @@ export class RootComponent {
     this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
     this.obtenerEstados();
+    this.obtenerCorporativos();
+  }
+
+  obtenerCorporativos() {
+    this.rootService.getCorporativos().subscribe({
+      next: (data: any) => {
+        this.corporativos = data || [];
+        this.refreshColumnDefs();
+      },
+      error: (error) => {
+        console.error('Error obteniendo corporativos:', error);
+        this.corporativos = [];
+      }
+    });
   }
 
   obtenerEstados() {
@@ -133,26 +147,31 @@ export class RootComponent {
       });
   }
 
-  components = {
-    autocompleteEditor: AutocompleteEditorComponent
-  }
+  // Orden de columnas para navegación con Enter
+  private editableColumnOrder = [
+    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
+    'address', 'city', 'state', 'country', 'rfc', 'cp', 'idCorporativo', 'advanced'
+  ];
+
+  // Flags de validación y navegación
+  private validationFailed: boolean = false;
+  private failedCellInfo: { rowIndex: number; colKey: string } | null = null;
+  private enterPressed: boolean = false;
 
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
-    minWidth: 100
+    minWidth: 100,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        // Forzar cierre del editor para que cellEditingStopped se dispare
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true; // evitar que AG Grid baje de fila
+      }
+      return false;
+    }
   };
-
-
-  // Orden de columnas editables para navegación con Enter (debe coincidir con el orden visual)
-  private editableColumnOrder = [
-    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
-    'address', 'city', 'state', 'country', 'rfc', 'cp', 'advanced'
-  ];
-
-  // Flag para controlar si la validación falló y en qué celda
-  private validationFailed: boolean = false;
-  private failedCellInfo: { rowIndex: number; colKey: string } | null = null;
 
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
@@ -183,14 +202,11 @@ public gridOptions: any = {
   }
 };
 
-  // Mover a la siguiente celda editable con Enter
   onCellEditingStopped(event: any) {
-    const currentColId = event.column.getColId();
-    const currentIndex = this.editableColumnOrder.indexOf(currentColId);
-
-    // Si la validación falló, quedarse en la misma celda
+    // Si validación falló: retener foco en la misma celda
     if (this.validationFailed && this.failedCellInfo) {
       const cellInfo = this.failedCellInfo;
+      this.enterPressed = false;
       setTimeout(() => {
         this.gridApi.startEditingCell({
           rowIndex: cellInfo.rowIndex,
@@ -200,19 +216,22 @@ public gridOptions: any = {
       return;
     }
 
-    // Resetear flags
     this.validationFailed = false;
     this.failedCellInfo = null;
 
-    // Avanzar a la siguiente columna
-    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
-      const nextColId = this.editableColumnOrder[currentIndex + 1];
-      setTimeout(() => {
-        this.gridApi.startEditingCell({
-          rowIndex: event.rowIndex,
-          colKey: nextColId
-        });
-      }, 100);
+    // Solo avanzar si fue Enter (Tab lo maneja AG Grid de forma nativa)
+    if (this.enterPressed) {
+      this.enterPressed = false;
+      const currentColId = event.column.getColId();
+      const currentIndex = this.editableColumnOrder.indexOf(currentColId);
+      if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+        setTimeout(() => {
+          this.gridApi.startEditingCell({
+            rowIndex: event.rowIndex,
+            colKey: this.editableColumnOrder[currentIndex + 1]
+          });
+        }, 100);
+      }
     }
   }
   
@@ -261,13 +280,7 @@ public gridOptions: any = {
         headerName: 'Nombre',
         editable: true,
         flex: 2,
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData.map(e => e.name),
-          filterKey: 'name',
-          placeholder: 'Nombre...',
-          minLength: 1
-        },
+        cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
           const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.name === params.newValue
@@ -279,9 +292,13 @@ public gridOptions: any = {
               'Ya existe una empresa con ese nombre.',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'name' };
             return false;
           }
 
+          this.validationFailed = false;
+          this.failedCellInfo = null;
           params.data[params.colDef.field] = params.newValue;
           return true;
         }
@@ -291,13 +308,7 @@ public gridOptions: any = {
         headerName: 'Nombre Corto',
         editable: true,
         flex: 1,
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData.map(e => e.nameSmall),
-          filterKey: 'nameSmall',
-          placeholder: 'Nombre...',
-          minLength: 1
-        },
+        cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
           if (params.newValue.length > 10) {
             alerts.basicAlert(
@@ -305,6 +316,8 @@ public gridOptions: any = {
               'El nombre corto no puede tener más de 10 caracteres.',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'nameSmall' };
             return false;
           }
 
@@ -318,9 +331,13 @@ public gridOptions: any = {
               'Ya existe una empresa con ese nombre',
               'error'
             );
+            this.validationFailed = true;
+            this.failedCellInfo = { rowIndex: params.node.rowIndex, colKey: 'nameSmall' };
             return false;
           }
 
+          this.validationFailed = false;
+          this.failedCellInfo = null;
           params.data[params.colDef.field] = params.newValue;
           return true;
         }
@@ -451,6 +468,22 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'idCorporativo',
+        headerName: 'Corporativo',
+        editable: true,
+        flex: 1.5,
+        minWidth: 251,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: [0, ...this.corporativos.map(c => c.id)]
+        },
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 0) return '(Ninguno)';
+          const corp = this.corporativos.find(c => c.id === params.value);
+          return corp ? corp.name : '';
+        }
+      },
+      {
         field: 'advanced',
         headerName: 'Permisos avanzados',
         editable: true,
@@ -546,14 +579,15 @@ public gridOptions: any = {
       picture3: '',
       phone: '',
       consortium: 'NO',
-      formatRep: '',
+      formatRep: 'NA',
       city: '',
       advanced: false,
       state: '',
-      country: '',
+      country: 'MEXICO',
       rfc: '',
       cp: '',
       active: 1,
+      idCorporativo: 0,
       __isNew: true,
     };
 
@@ -567,7 +601,7 @@ public gridOptions: any = {
       setTimeout(() => {
         this.gridApi.startEditingCell({
           rowIndex: 0,
-          colKey: this.editableColumnOrder[0]
+          colKey: 'orden'
         });
       }, 100);
     }, 50);

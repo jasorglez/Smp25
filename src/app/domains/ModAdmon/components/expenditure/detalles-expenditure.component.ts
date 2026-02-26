@@ -854,7 +854,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         concepts: validConcepts,
         subtotal: this.subtotal,
         tax: this.iva2,
-        total: this.total
+        total: this.total,
+        idBranch: this.params.data.idBranch ?? null
       };
 
       try {

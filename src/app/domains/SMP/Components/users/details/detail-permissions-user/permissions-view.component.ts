@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RolesService, CrudxDetailedPermission } from 'app/services/roles.service';
@@ -10,25 +10,24 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { TrackingService } from 'app/services/tracking.service';
 import { PermitionsService } from 'app/services/permitions.service';
 
-// --- Interfaces para una mejor definición de tipos ---
+// --- Interfaces ---
 interface CrudPermission {
-  name: string; // Corresponderá a showColumn
+  name: string;
   canRead: boolean;
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  // --- Propiedades añadidas para mantener la referencia a los datos originales ---
   idMasterPermission: number;
   idDetailedPermission: number;
   idShowPermition: number;
   active?: boolean;
-  __original: any; // Guardamos una copia del objeto original para comparar cambios
+  __original: any;
 }
 
 interface SubdetailPermission {
   subdetailedPermissionName: string;
-  principal: CrudPermission | null; // El item 'Principal' que controla la visibilidad
-  children: CrudPermission[]; // Los otros items (Ahorros, Prestamos, etc.)
+  principal: CrudPermission | null;
+  children: CrudPermission[];
 }
 
 interface DetailedPermission {
@@ -46,21 +45,26 @@ interface MasterPermission {
 @Component({
   selector: 'app-permissions-view-by-user',
   standalone: true,
-  imports: [CommonModule, FormsModule], // Importamos FormsModule para usar ngModel en los checkboxes
+  imports: [CommonModule, FormsModule],
   templateUrl: './permissions-view.component.html',
   styleUrls: ['./permissions-view.component.scss']
 })
-export class PermissionsViewByUserComponent implements OnInit {
+export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   private rolesService = inject(RolesService);
   private permitionsService = inject(PermitionsService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
 
+  @Input() idUserInput: number;
+  @Input() idBranchInput: number;
+  @Input() idRoleInput: number;
+  @Input() idPosicionInput: number;
+
   idRole: number;
   idPosicion: number;
   idEmpresa: number;
-   params: any;
+  params: any;
   userId: number;
   userName: string;
   branchId: number;
@@ -68,82 +72,140 @@ export class PermissionsViewByUserComponent implements OnInit {
   idCompany: number;
   rawData: any[] = [];
   notSavedChanges: boolean = false;
-
-
-  // Datos planos originales como los recibes de la API
-  /*rawData = [
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Principal',canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Ahorros', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Empleados",  showColumn: 'Prestamos', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Horarios",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Historico Préstamos",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Empleados", detailedRead: false, subdetailedPermissionName:  "Historico Ahorros",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Nómina",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Nómina", showColumn: 'Horas Extras', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Bonos Historicos",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Recursos Humanos", masterRead: false, detailedPermissionName: "Nómina", detailedRead: false, subdetailedPermissionName:  "Histórico de Nominas Digitales",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Compras delison", masterRead: false, detailedPermissionName: "Proveedores", detailedRead: false, subdetailedPermissionName:  "Proveedores",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-    {masterPermissionName: "Compras delison", masterRead: false, detailedPermissionName: "Requisiciones", detailedRead: false, subdetailedPermissionName:  "Requisiciones",  showColumn: 'Principal', canRead: false, canCreate: false, canUpdate: false, canDelete: false},
-  ];*/
-
-  // Aquí almacenaremos los datos transformados en una estructura jerárquica
   groupedPermissions: MasterPermission[] = [];
+  masterSeleccionado: MasterPermission | null = null;
+  detailSeleccionado: DetailedPermission | null = null;
+  subdetailExpandido: SubdetailPermission | null = null;
+  pasoActual: number = 1;
+  subdetailPaso2: SubdetailPermission | null = null;
 
-  constructor() {
-    // Remove effect as idRole and idPosicion should come from agInit params
+  readonly coloresMaster: string[] = [
+    '#1a1a2e', '#16213e', '#0f3460', '#533483', '#2b2d42', '#1b4332'
+  ];
+
+  // Orden deseado - palabras clave sin acentos para comparación robusta
+  readonly ordenMaster: string[] = [
+    'administracion',
+    'compras',
+    'almacenes',
+    'recursos',
+    'configurac'
+  ];
+
+  // Orden de los details según el menú de navegación
+  readonly ordenDetails: string[] = [
+    'dashboard',
+    'configurac',
+    'banco',
+    'transferenc',
+    'ingreso',
+    'egreso',
+    'cliente',
+    'proveedor',
+    'factura',
+    'cuenta',
+    'catalogo'
+  ];
+
+  constructor() {}
+
+  // Normaliza texto: minúsculas y sin acentos
+  private normalizar(texto: string): string {
+    return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
   ngOnInit(): void {
-    // ngOnInit is called before agInit, so idRole and idPosicion won't be set yet.
-    // Data fetching should happen in agInit for cell renderers.
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
   }
-  agInit(params: ICellRendererParams & { idUser: number, idBranch: number, idRole: number, idPosicion: number }): void {
-      this.params = params;
-      this.userId = params.idUser; // Corrected access
-      this.branchId = params.idBranch; // Corrected access (assuming idBranch is passed as idBranch)
-      this.idRole = params.idRole; // Corrected access
-      this.idPosicion = params.idPosicion; // Corrected access
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (this.idUserInput && this.idRoleInput && this.idPosicionInput) {
+      this.userId = this.idUserInput;
+      this.branchId = this.idBranchInput;
+      this.idRole = this.idRoleInput;
+      this.idPosicion = this.idPosicionInput;
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-      // Fetch data once all necessary parameters are available
       this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
     }
+  }
+
+  agInit(params: ICellRendererParams & { idUser: number, idBranch: number, idRole: number, idPosicion: number }): void {
+    this.params = params;
+    this.userId = params.idUser;
+    this.branchId = params.idBranch;
+    this.idRole = params.idRole;
+    this.idPosicion = params.idPosicion;
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
+  }
 
   obtenerDatos(idCompany: number, idUser: number, idBranch: number, idRole: number, idPosicion: number) {
-     this.permitionsService.getPermitionsSencillo(idCompany, idUser, idBranch, idRole, idPosicion)
-       .subscribe((data: any) => {
-         this.rawData = data;
-         console.log("new data", this.rawData);
-         this.groupedPermissions = this.transformData(this.rawData);
-       });
-    this.groupedPermissions = this.transformData(this.rawData);
-  }
-   modificar(){
-    //if(this.authService.getCrudPermission('setup', 'users','','','', 'create')){
-       this.permitionsService.getPermitionsDetail(this.idEmpresa, this.userId, this.branchId, this.idRole, this.idPosicion)
+    this.permitionsService.getPermitionsSencillo(idCompany, idUser, idBranch, idRole, idPosicion)
       .subscribe((data: any) => {
-        //this.editable = true
+        this.rawData = data;
+        console.log('new data', this.rawData);
+        this.groupedPermissions = this.transformData(this.rawData);
+        this.masterSeleccionado = null;
+        this.detailSeleccionado = null;
+      });
+  }
+
+  modificar() {
+    this.permitionsService.getPermitionsDetail(this.idEmpresa, this.userId, this.branchId, this.idRole, this.idPosicion)
+      .subscribe((data: any) => {
         this.rawData = data;
         this.groupedPermissions = this.transformData(this.rawData);
       });
-    //}else if(this.authService.getCrudPermission('setup', 'users','','','', 'update')){
-       //this.editable = true
-    //}/
-       
   }
 
+  seleccionarMaster(master: MasterPermission) {
+    this.masterSeleccionado = master;
+    this.detailSeleccionado = null;
+  }
 
-  /**
-   * Transforma una lista plana de permisos en una estructura jerárquica.
-   * @param data La lista plana de permisos.
-   * @returns Un array de MasterPermission con datos anidados.
-   */
+  seleccionarDetail(detail: DetailedPermission) {
+    if (this.detailSeleccionado === detail) {
+      this.detailSeleccionado = null;
+      this.subdetailExpandido = null;
+      return;
+    }
+    this.detailSeleccionado = detail;
+    this.subdetailExpandido = null;
+
+    // No forzar valores al seleccionar - respetar los valores existentes
+
+    this.checkForChanges();
+  }
+
+  getColorMaster(index: number): string {
+    return this.coloresMaster[index % this.coloresMaster.length];
+  }
+
+  getIndexMasterSeleccionado(): number {
+    return this.groupedPermissions.indexOf(this.masterSeleccionado);
+  }
+
+  // Verifica si un detail tiene al menos un subdetail con children
+  tieneChildren(detail: DetailedPermission): boolean {
+    return detail.subdetails.some(sd => sd.children && sd.children.length > 0);
+  }
+
+  // Navega al paso 2 mostrando las acciones adicionales del subdetail
+  toggleChildren(subdetail: SubdetailPermission) {
+    this.subdetailPaso2 = subdetail;
+    this.irPaso(2);
+  }
+
+  // Navega entre pasos
+  irPaso(paso: number) {
+    this.pasoActual = paso;
+  }
+
   private transformData(data: any[]): MasterPermission[] {
     const masterMap = new Map<string, MasterPermission>();
     const detailMap = new Map<string, DetailedPermission>();
 
     data.forEach(item => {
-      // Nivel Maestro
       if (!masterMap.has(item.masterPermissionName)) {
         masterMap.set(item.masterPermissionName, {
           masterPermissionName: item.masterPermissionName,
@@ -154,7 +216,6 @@ export class PermissionsViewByUserComponent implements OnInit {
 
       const masterGroup = masterMap.get(item.masterPermissionName)!;
 
-      // Nivel Detallado (usando un mapa para eficiencia)
       const detailKey = `${item.masterPermissionName}|${item.detailedPermissionName}`;
       let detailGroup = detailMap.get(detailKey);
       if (!detailGroup) {
@@ -167,7 +228,6 @@ export class PermissionsViewByUserComponent implements OnInit {
         masterGroup.details.push(detailGroup);
       }
 
-      // Nivel Sub-detallado
       let subdetailGroup = detailGroup.subdetails.find(sd => sd.subdetailedPermissionName === item.subdetailedPermissionName);
       if (!subdetailGroup) {
         subdetailGroup = {
@@ -178,22 +238,19 @@ export class PermissionsViewByUserComponent implements OnInit {
         detailGroup.subdetails.push(subdetailGroup);
       }
 
-      // Crear el objeto de permiso
       const crudItem: CrudPermission = {
         name: item.showColumn,
         canRead: item.canRead,
-        canCreate: item.canCreate,
-        canUpdate: item.canUpdate,
-        canDelete: item.canDelete,
-        // --- Añadimos las propiedades extra que vienen de la API ---
+        canCreate: item.canCreate === false ? false : true,
+        canUpdate: item.canUpdate === false ? false : true,
+        canDelete: item.canDelete === false ? false : true,
         idMasterPermission: item.idMasterPermission,
         idDetailedPermission: item.idDetailedPermission,
         idShowPermition: item.idShowPermition,
         active: item.active,
-        __original: { ...item } // Guardamos una copia del estado original
+        __original: { ...item }
       };
 
-      // Clasificar como 'principal' o 'child'
       if (item.showColumn === 'Principal') {
         subdetailGroup.principal = crudItem;
       } else {
@@ -201,33 +258,69 @@ export class PermissionsViewByUserComponent implements OnInit {
       }
     });
 
-    return Array.from(masterMap.values());
+    // Ordenar según ordenMaster con normalización de acentos
+    const result = Array.from(masterMap.values());
+    result.sort((a, b) => {
+      const nameA = this.normalizar(a.masterPermissionName);
+      const nameB = this.normalizar(b.masterPermissionName);
+
+      const indexA = this.ordenMaster.findIndex(o => nameA.includes(o));
+      const indexB = this.ordenMaster.findIndex(o => nameB.includes(o));
+
+      const posA = indexA === -1 ? 999 : indexA;
+      const posB = indexB === -1 ? 999 : indexB;
+      return posA - posB;
+    });
+
+    // Ordenar details dentro de cada master según ordenDetails
+    result.forEach(master => {
+      master.details.sort((a, b) => {
+        const nameA = this.normalizar(a.detailedPermissionName);
+        const nameB = this.normalizar(b.detailedPermissionName);
+        const indexA = this.ordenDetails.findIndex(o => nameA.includes(o));
+        const indexB = this.ordenDetails.findIndex(o => nameB.includes(o));
+        const posA = indexA === -1 ? 999 : indexA;
+        const posB = indexB === -1 ? 999 : indexB;
+        return posA - posB;
+      });
+    });
+
+    return result;
   }
 
   checkForChanges() {
-      const modifiedPermissions = this.untransformData(this.groupedPermissions);
-      this.notSavedChanges = modifiedPermissions.length > 0;
-    }
-  
-    revertChanges() {
-      // Volvemos a transformar los datos originales para descartar cualquier cambio
-      this.groupedPermissions = this.transformData(this.rawData);
-      // Reseteamos el indicador de cambios
-      this.notSavedChanges = false;
-      //alerts.basicAlert('Cambios revertidos', 'Se han descartado los cambios no guardados.', 'info');
-    }
-  
-    onMasterReadChange(master: MasterPermission) {
-      this.checkForChanges();
-    }
-  
-    onDetailedReadChange(detail: DetailedPermission) {
-      this.checkForChanges();
-    }
-  
-    onCrudChange(permission: CrudPermission) {
-      this.checkForChanges();
-    }
+    const modifiedPermissions = this.untransformData(this.groupedPermissions);
+    this.notSavedChanges = modifiedPermissions.length > 0;
+  }
+
+  revertChanges() {
+    this.groupedPermissions = this.transformData(this.rawData);
+    this.notSavedChanges = false;
+    this.masterSeleccionado = null;
+    this.detailSeleccionado = null;
+    this.subdetailExpandido = null;
+  }
+
+  onMasterReadChange(master: MasterPermission) {
+    this.checkForChanges();
+  }
+
+  onDetailedReadChange(detail: DetailedPermission) {
+    this.checkForChanges();
+  }
+
+  onCrudChange(permission: CrudPermission) {
+    // El switch (canRead) y los checkboxes son independientes
+    // Solo si se apaga el switch se ocultan los checkboxes visualmente (via *ngIf en HTML)
+    // pero sus valores no se modifican desde aquí
+    this.checkForChanges();
+  }
+
+  onSwitchChange(permission: CrudPermission) {
+    // El switch solo controla canRead, no toca canCreate/canUpdate/canDelete
+    this.checkForChanges();
+  }
+
   async saveDetailChanges() {
     const modifiedPermissions = this.untransformData(this.groupedPermissions);
 
@@ -236,16 +329,11 @@ export class PermissionsViewByUserComponent implements OnInit {
       return;
     }
 
-    // Usaremos un Map para agrupar los cambios por una clave única compuesta 
-    // para asegurar que cada sub-permiso se guarde de forma independiente.
     const changesMap = new Map<string, any>();
 
     try {
       for (const perm of modifiedPermissions) {
-        // Creamos una clave única combinando idDetailedPermission y idShowPermition.
         const uniqueKey = `${perm.idDetailedPermission}-${perm.idShowPermition}`;
-
-        // Solo procesamos si no hemos registrado ya un cambio para esta combinación única.
         if (!changesMap.has(uniqueKey)) {
           const payload: CrudxDetailedPermission = {
             idUser: this.userId,
@@ -254,8 +342,6 @@ export class PermissionsViewByUserComponent implements OnInit {
             masterRead: perm.masterRead,
             idDetailedPermission: perm.idDetailedPermission,
             detailedRead: perm.detailedRead,
-            // El subdetailedPermissionName y idShowPermition ya no son relevantes para la actualización
-            // porque la BD solo guarda un registro por idDetailedPermission.
             subdetailedPermissionName: perm.name,
             idShowPermition: perm.idShowPermition,
             idRole: this.idRole,
@@ -270,26 +356,24 @@ export class PermissionsViewByUserComponent implements OnInit {
         }
       }
 
-      // Ahora creamos los observables a partir de los cambios únicos en el mapa
       const saveObservables = Array.from(changesMap.values()).map(payload => {
-        console.log("Enviando payload único:", payload);
-        // Usamos el endpoint de "add" que internamente crea o actualiza.
+        console.log('Enviando payload único:', payload);
         return this.permitionsService.addPermitions(payload);
       });
 
-      // Ejecutamos todas las operaciones de creación y actualización en paralelo
       await lastValueFrom(forkJoin(saveObservables));
 
-      alerts.basicAlert(
-        'Datos Guardados',
-        'Los permisos se han guardado correctamente.',
-        'success'
-      );
+      alerts.basicAlert('Datos Guardados', 'Los permisos se han guardado correctamente.', 'success');
       this.notSavedChanges = false;
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Update/Add Registros en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Update/Add Registros en Detalle de Roles',
+        'Menu Administracion Detalle de Roles',
+        this.trackingService.getEmail()
+      );
 
     } catch (error) {
-      console.error("Error al guardar los permisos:", error);
+      console.error('Error al guardar los permisos:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');
     }
   }
@@ -304,25 +388,11 @@ export class PermissionsViewByUserComponent implements OnInit {
           if (subdetail.principal) allPermissions.push(subdetail.principal);
           allPermissions.push(...subdetail.children);
           allPermissions.forEach(permission => {
-            const original = permission.__original;
-            // Un permiso se considera modificado si sus valores CRUD o los de sus padres (master/detail read) han cambiado.
-            const isModified =
-              original.masterRead !== master.masterRead ||
-              original.detailedRead !== detail.detailedRead ||
-              original.canRead !== permission.canRead ||
-              original.canCreate !== permission.canCreate ||
-              original.canUpdate !== permission.canUpdate ||
-              original.canDelete !== permission.canDelete ||
-              original.active !== permission.active;
-
-            // También consideramos que se debe guardar si tiene algún permiso activo pero no existe en la BD.
-            const hasAnyPermission = master.masterRead || detail.detailedRead || permission.canRead || permission.canCreate || permission.canUpdate || permission.canDelete;
-            const isNewAndHasPermissions = !original.id && hasAnyPermission;
-
-            //if (isModified || isNewAndHasPermissions) {
-              // Añadimos el permiso modificado junto con los valores de sus padres
-              modifiedList.push({ ...permission, masterRead: master.masterRead, detailedRead: detail.detailedRead });
-            //}
+            modifiedList.push({
+              ...permission,
+              masterRead: master.masterRead,
+              detailedRead: detail.detailedRead
+            });
           });
         });
       });
@@ -330,5 +400,4 @@ export class PermissionsViewByUserComponent implements OnInit {
 
     return modifiedList;
   }
-
 }

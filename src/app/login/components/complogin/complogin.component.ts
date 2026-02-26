@@ -31,13 +31,10 @@ import { environment } from '@env/environment';
     RouterModule,
     DomainsModule
   ]
-
 })
 export class ComploginComponent implements OnInit {
 
   environment = environment;
-
-  //idUser      = computed(()=>  this.signalsService.idUser()) ;
 
   hide = true;
   emailcapt   : string = '';
@@ -77,46 +74,61 @@ export class ComploginComponent implements OnInit {
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.randomImage = this.images[Math.floor(Math.random() * this.images.length)];
+    const storedEmail = this.signalsService.getemailChoose();
+    if (storedEmail) {
+      this.emailcapt = storedEmail;
+      const branchAtInit = this.signalsService.getBranchSelectedBySidebar()();
+      const isAdv = this.signalsService.getIsAdvanced();
+      this.auth.getUserId(this.emailcapt).pipe(
+        switchMap(userId => {
+          if (isAdv && branchAtInit != null && branchAtInit !== 0) {
+            return this.auth.fetchUserPermissionsAdvanced(userId, branchAtInit);
+          }
+          return this.auth.fetchUserPermissions(userId);
+        })
+      ).subscribe({
+        next: (permissionsData: any) => {
+          if (permissionsData && permissionsData.permissions) {
+            this.auth.setUserPermissions(permissionsData.permissions);
+          }
+        },
+        error: (err) => {
+          console.error('Error fetching permissions on init:', err);
+        }
+      });
+    }
   }
 
   toggleHide() {
     this.hide = !this.hide;
   }
 
-  // Función Login
   login() {
-    // Validamos que el formulario haya sido enviado
     this.formSubmitted = true;
-
-    // Atrapo la variable para enviarla al servicio
     this.emailcapt = this.flogin.get('emaillogin')?.value ?? '';
     this.trackingService.setEmail(this.emailcapt);
 
     if (this.flogin.invalid) {
       return;
     }
-    // Capturamos la información del formulario en la interfaz
+
     const data: Ilogin = {
       email: this.flogin.get('emaillogin')?.value ?? '',
       password: this.flogin.get('passwordlogin')?.value ?? ''
     };
 
-    // Ejecutamos el servicio del Login
-    //console.log('Datos de Login:', data);
-   // console.log('Email capturado:', this.trackingService.getEmail());
     this.trackingService.addLog('', "Inicio del Sistema", "Origen del Formulario Login", this.emailcapt);
-
-    // Activar spinner
     this.isLoading = true;
 
     this.auth.login(data).subscribe({
       next: (resp: any) => {
+        // ✅ Guardar token e iniciar timers de sesión
         localStorage.setItem('token', resp.data.token);
+        this.auth.startSessionTimers();
+
         this.userService.findEmail(this.emailcapt).subscribe({
           next: (datauser: any) => {
             if (datauser) {
-              // Definición de variables globales
-     
               this.trackingService.setnameUser(datauser.displayName);
               this.trackingService.setpictureUser(datauser.picture);
               this.trackingService.setabranch(datauser.applybranch);
@@ -124,37 +136,47 @@ export class ComploginComponent implements OnInit {
               this.trackingService.setaproject(datauser.applyproject);
               this.trackingService.setId(datauser.id);
               this.signalsService.setidUser(datauser.id);
-              //aqui atrapa la signal, y le doy el valor del email
-              this.signalsService.setemailChoose(this.emailcapt) ;
+              this.signalsService.setemailChoose(this.emailcapt);
+              this.signalsService.setrootChoose(datauser.userRoot);
+              localStorage.setItem('userRoot', datauser.userRoot.toString());
+              localStorage.setItem('mail', this.emailcapt);
+              this.signalsService.setIsAdvanced(!!datauser.advanced);
+              if (datauser.applybranch != null) {
+                this.signalsService.setBranchSelectedBySidebar(datauser.applybranch);
+                this.idBranch = datauser.applybranch;
+              }
 
-               this.signalsService.setrootChoose(datauser.userRoot) ;
-               // Guardar userRoot en localStorage para persistir al recargar
-               localStorage.setItem('userRoot', datauser.userRoot.toString());
+              const userId = datauser.id;
+              const isAdvancedLocal = !!datauser.advanced;
+              const branchIdLocal = datauser.applybranch ?? this.idBranch;
 
-              // Refactorización: Encadenar observables con switchMap
-              this.auth.getUserId(this.emailcapt).pipe(
-                switchMap(userId => {
-                  // Determinar qué llamada de permisos hacer basado en el estado 'advanced' del usuario
-                  const isAdvanced = datauser.advanced;
-                  // Nota: idBranch no está disponible aquí. Si es necesario, debe obtenerse de 'datauser'
-                  // o de una selección previa al login. Asumimos que no es estrictamente necesario para el primer login.
-                   
-                  const permissions$ = this.isAdvanced
-                    ? this.auth.fetchUserPermissionsAdvanced(userId, this.idBranch) // Usar null o un valor por defecto
-                    : this.auth.fetchUserPermissions(userId);
-                  return permissions$;
-                }),
-                tap((permissionsData: any) => {
-                  this.auth.setUserPermissions(permissionsData.permissions);
-                  // El spinner se mantiene hasta que navegue exitosamente
-                  this.router.navigate(['/main']);
-                })
-              ).subscribe({
-                error: (permError) => {
-                  console.error('Error fetching user permissions:', permError);
-                  this.isLoading = false;
-                }
-              });
+              if (isAdvancedLocal && branchIdLocal != null && branchIdLocal !== 0) {
+                this.auth.fetchUserPermissionsAdvanced(userId, branchIdLocal).subscribe({
+                  next: (permissionsData: any) => {
+                    if (permissionsData && permissionsData.permissions) {
+                      this.auth.setUserPermissions(permissionsData.permissions);
+                    }
+                    this.router.navigate(['/main']);
+                  },
+                  error: (permError) => {
+                    console.error('Error fetching advanced permissions:', permError);
+                    this.isLoading = false;
+                  }
+                });
+              } else {
+                this.auth.fetchUserPermissions(userId).subscribe({
+                  next: (permissionsData: any) => {
+                    if (permissionsData && permissionsData.permissions) {
+                      this.auth.setUserPermissions(permissionsData.permissions);
+                    }
+                    this.router.navigate(['/main']);
+                  },
+                  error: (permError) => {
+                    console.error('Error fetching permissions:', permError);
+                    this.isLoading = false;
+                  }
+                });
+              }
             }
           },
           error: (error) => {
@@ -165,20 +187,13 @@ export class ComploginComponent implements OnInit {
       },
       error: (err) => {
         console.log(err);
-        // Desactivar spinner en caso de error
         this.isLoading = false;
         alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
       }
     });
   }
 
-
-//Validamos formulario
-invalidField(field:string){
-
-return functions.invalidField(field, this.flogin, this.formSubmitted);
-
-}
-
-
+  invalidField(field:string){
+    return functions.invalidField(field, this.flogin, this.formSubmitted);
+  }
 }

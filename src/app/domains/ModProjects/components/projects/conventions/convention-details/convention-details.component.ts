@@ -76,24 +76,44 @@ export class conventionDetailsComponent {
     headerHeight: 25,
     rowHeight: 20,
     getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
       }
       return '';
     },
     onMaestroRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
     },
     onMaestroRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
           if (node.id !== event.node.id) {
             node.setSelected(false);
           }
         });
+      }
+    },
+    onCellKeyDown: (params) => {
+      if (params.event.key === 'Enter') {
+        const allColumns = this.maestroColumnDefs;
+        const currentColIndex = allColumns.findIndex(
+          (col) => col.field === params.column.getColDef().field
+        );
+
+        if (currentColIndex < allColumns.length - 1) {
+          setTimeout(() => {
+            const rowNode = params.api.getDisplayedRowAtIndex(params.node.rowIndex);
+            if (rowNode) {
+              rowNode.setSelected(true);
+            }
+            params.api.ensureIndexVisible(params.node.rowIndex);
+            params.api.startEditingCell({
+              rowIndex: params.node.rowIndex,
+              colKey: allColumns[currentColIndex + 1].field,
+            });
+          }, 150);
+        }
+        params.event.preventDefault();
       }
     },
   };
@@ -200,14 +220,16 @@ export class conventionDetailsComponent {
     setTimeout(() => {
       if (this.maestroGridApi) {
         const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
-        rowNode?.setSelected(true);
-
+        if (rowNode) {
+          rowNode.setSelected(true);
+        }
+        this.maestroGridApi.ensureIndexVisible(0);
         this.maestroGridApi.startEditingCell({
           rowIndex: 0,
           colKey: 'documentName',
         });
       }
-    });
+    }, 100);
   }
 
   onMaestroGridReady(params: GridReadyEvent) {

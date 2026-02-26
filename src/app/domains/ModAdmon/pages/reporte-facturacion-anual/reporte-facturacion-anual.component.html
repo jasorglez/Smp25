@@ -1,0 +1,135 @@
+<div class="reporte-container">
+  <!-- Header -->
+  <div class="header-section">
+    <div class="header-left">
+      <h2>REPORTE DE FACTURACIÓN ANUAL</h2>
+      <span class="subtitle">{{ companyName }}</span>
+    </div>
+    <div class="header-center">
+      <div class="filters-section">
+        <div class="filter-group">
+          <label for="anioInicio">Año Inicio:</label>
+          <select id="anioInicio" class="form-select form-select-sm"
+                  [(ngModel)]="anioInicio" (change)="onFilterChange()">
+            <option *ngFor="let anio of aniosDisponibles" [value]="anio">{{ anio }}</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="anioFin">Año Fin:</label>
+          <select id="anioFin" class="form-select form-select-sm"
+                  [(ngModel)]="anioFin" (change)="onFilterChange()">
+            <option *ngFor="let anio of aniosDisponibles" [value]="anio">{{ anio }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="fecha-info">
+        <span><strong>Fecha:</strong> {{ fechaActual }}</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="export-buttons">
+        <button
+          class="btn btn-sm btn-danger"
+          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+          (click)="exportToPdf()">
+          <i class="bi bi-filetype-pdf"></i>
+          {{ isExportingPdf ? 'Exportando...' : 'PDF' }}
+        </button>
+        <button
+          class="btn btn-sm btn-success"
+          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+          (click)="exportToXlsx()">
+          <i class="bi bi-filetype-xlsx"></i>
+          {{ isExportingXlsx ? 'Exportando...' : 'XLSX' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p>Cargando datos del reporte...</p>
+  </div>
+
+  <!-- Contenido principal -->
+  <div *ngIf="!isLoading" class="main-content">
+    <!-- Tabla de Facturación Anual -->
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="reporte-table">
+          <thead>
+            <tr>
+              <th class="text-center">Año</th>
+              <th class="text-end">Monto Total OC</th>
+              <th class="text-end">Monto Total Facturado</th>
+              <th class="text-end">Monto Total Pagado</th>
+              <th class="text-end">Cuentas por Cobrar</th>
+              <th class="text-end">Gastos Totales</th>
+              <th class="text-end">Dif. Pagado vs Gastos</th>
+              <th class="text-end">Retiro Aportación</th>
+              <th class="text-end">Retiro Utilidades</th>
+              <th class="text-end">Retiro Total</th>
+              <th class="text-end">Flujo Actual</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let f of facturacionAnual; let i = index" [class.row-alt]="i % 2 === 0">
+              <td class="text-center anio-cell">{{ f.anio }}</td>
+              <td class="text-end">{{ formatCurrency(f.montoTotalOC) }}</td>
+              <td class="text-end">{{ formatCurrency(f.montoTotalFacturado) }}</td>
+              <td class="text-end">{{ formatCurrency(f.montoTotalPagado) }}</td>
+              <td class="text-end" [class.cuentas-cobrar]="f.cuentasPorCobrar > 0">
+                {{ formatCurrency(f.cuentasPorCobrar) }}
+              </td>
+              <td class="text-end">{{ formatCurrency(f.gastosTotales) }}</td>
+              <td class="text-end" [class.diferencia-positiva]="f.diferenciaPagadoVsGastos >= 0"
+                  [class.diferencia-negativa]="f.diferenciaPagadoVsGastos < 0">
+                {{ formatCurrency(f.diferenciaPagadoVsGastos) }}
+              </td>
+              <td class="text-end retiro-cell">{{ formatCurrency(f.retiroAportacion) }}</td>
+              <td class="text-end retiro-cell">{{ formatCurrency(f.retiroUtilidades) }}</td>
+              <td class="text-end retiro-total-cell">{{ formatCurrency(f.retiroTotal) }}</td>
+              <td class="text-end" [class.flujo-positivo]="f.flujoActual >= 0"
+                  [class.flujo-negativo]="f.flujoActual < 0">
+                {{ formatCurrency(f.flujoActual) }}
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td class="text-center"><strong>TOTAL</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoTotalOC) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoTotalFacturado) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.montoTotalPagado) }}</strong></td>
+              <td class="text-end cuentas-cobrar-total">
+                <strong>{{ formatCurrency(totales.cuentasPorCobrar) }}</strong>
+              </td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.gastosTotales) }}</strong></td>
+              <td class="text-end" [class.diferencia-positiva-total]="totales.diferenciaPagadoVsGastos >= 0"
+                  [class.diferencia-negativa-total]="totales.diferenciaPagadoVsGastos < 0">
+                <strong>{{ formatCurrency(totales.diferenciaPagadoVsGastos) }}</strong>
+              </td>
+              <td class="text-end retiro-total-cell"><strong>{{ formatCurrency(totales.retiroAportacion) }}</strong></td>
+              <td class="text-end retiro-total-cell"><strong>{{ formatCurrency(totales.retiroUtilidades) }}</strong></td>
+              <td class="text-end retiro-total-cell"><strong>{{ formatCurrency(totales.retiroTotal) }}</strong></td>
+              <td class="text-end" [class.flujo-positivo-total]="totales.flujoActual >= 0"
+                  [class.flujo-negativo-total]="totales.flujoActual < 0">
+                <strong>{{ formatCurrency(totales.flujoActual) }}</strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mensaje cuando no hay datos -->
+    <div *ngIf="facturacionAnual.length === 0" class="no-data-message">
+      <i class="bi bi-inbox"></i>
+      <p>No hay datos de facturación para mostrar</p>
+      <small>Verifique que existan ingresos registrados en el período seleccionado</small>
+    </div>
+  </div>
+</div>

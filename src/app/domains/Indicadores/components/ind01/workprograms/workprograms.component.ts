@@ -1,20 +1,21 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, NgZone } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { gantt } from 'dhtmlx-gantt';
-import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { Observable, catchError, finalize, forkJoin, lastValueFrom, map, of } from 'rxjs';
 import { AuxiliarsComponent } from './auxiliars/auxiliars.component';
 import { MaterialsComponent } from './materials/materials.component';
 import { PersonalComponent } from './personal/personal.component';
 import { EquipmentComponent } from './equipment/equipment.component';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
 
 @Component({
   selector: 'app-workprograms',
   standalone: true,
-  imports: [CommonModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent],
+  imports: [CommonModule, FormsModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent],
   templateUrl: './workprograms.component.html',
   styleUrl: './workprograms.component.scss'
 })
@@ -33,6 +34,7 @@ export class WorkprogramsComponent {
   private workprogramsService = inject(WorkprogramsService);
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
+  private ngZone = inject(NgZone);
 
   datosGantt: { data: any; links: any; };
   deletedTasks: Set<number> = new Set();
@@ -42,9 +44,24 @@ export class WorkprogramsComponent {
   typeWorkProgram: string = 'Project';
   measures: any;
   notSavedChanges: boolean = false;
+  isSaving: boolean = false;
   idcompany: number = null;
 
+  showNewFaseModal: boolean = false;
+  newFaseDescription: string = '';
+
+  showNewMedidaModal: boolean = false;
+  newMedidaDescription: string = '';
+
   constructor() {
+    // Exponer funciones globales para los botones "+" dentro del lightbox del gantt (fuera de la zona Angular)
+    (window as any).__openNewFaseModal = () => {
+      this.ngZone.run(() => { this.showNewFaseModal = true; });
+    };
+    (window as any).__openNewMedidaModal = () => {
+      this.ngZone.run(() => { this.showNewMedidaModal = true; });
+    };
+
     effect(() => {
       this.idContract = this.signalsService.getContractSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
@@ -151,7 +168,7 @@ export class WorkprogramsComponent {
       },
       set_value: function (node, value, task, section) {
         const input = node.querySelector('#number_input') as HTMLInputElement;
-        if (input) input.value = value || 0;
+        if (input) input.value = value || 1;
       },
       get_value: function (node, task, section) {
         const input = node.querySelector('#number_input') as HTMLInputElement;
@@ -163,6 +180,60 @@ export class WorkprogramsComponent {
       }
     };
 
+    // Block personalizado: select de Medida + botón "+" para crear nueva medida
+    gantt['form_blocks']['measure_picker'] = {
+      render: function (sns: any) {
+        const optionsHtml = (sns.options || [])
+          .map((o: any) => `<option value="${o.key}">${o.label}</option>`)
+          .join('');
+        return `<div style="height:32px; display:flex; align-items:center; gap:4px;">
+          <select id="measure_picker_select" style="flex:1; font-size:12px; height:28px; border:1px solid #ced4da; border-radius:4px; padding:0 4px;">${optionsHtml}</select>
+          <button type="button" onclick="event.stopPropagation(); window.__openNewMedidaModal();"
+            style="height:28px; width:28px; background:#17a2b8; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:16px; line-height:1; flex-shrink:0;"
+            title="Nueva Medida">+</button>
+        </div>`;
+      },
+      set_value: function (node: any, value: any, task: any, section: any) {
+        const select = node.querySelector('#measure_picker_select') as HTMLSelectElement;
+        if (select && value) select.value = value;
+      },
+      get_value: function (node: any, task: any, section: any) {
+        const select = node.querySelector('#measure_picker_select') as HTMLSelectElement;
+        return select ? select.value : '';
+      },
+      focus: function (node: any) {
+        const select = node.querySelector('#measure_picker_select') as HTMLSelectElement;
+        if (select) select.focus();
+      }
+    };
+
+    // Block personalizado: select de Fase + botón "+" para crear nueva fase
+    gantt['form_blocks']['phase_picker'] = {
+      render: function (sns: any) {
+        const optionsHtml = (sns.options || [])
+          .map((o: any) => `<option value="${o.key}">${o.label}</option>`)
+          .join('');
+        return `<div style="height:32px; display:flex; align-items:center; gap:4px;">
+          <select id="phase_picker_select" style="flex:1; font-size:12px; height:28px; border:1px solid #ced4da; border-radius:4px; padding:0 4px;">${optionsHtml}</select>
+          <button type="button" onclick="event.stopPropagation(); window.__openNewFaseModal();"
+            style="height:28px; width:28px; background:#17a2b8; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:16px; line-height:1; flex-shrink:0;"
+            title="Nueva Fase">+</button>
+        </div>`;
+      },
+      set_value: function (node: any, value: any, task: any, section: any) {
+        const select = node.querySelector('#phase_picker_select') as HTMLSelectElement;
+        if (select && value) select.value = value;
+      },
+      get_value: function (node: any, task: any, section: any) {
+        const select = node.querySelector('#phase_picker_select') as HTMLSelectElement;
+        return select ? select.value : '';
+      },
+      focus: function (node: any) {
+        const select = node.querySelector('#phase_picker_select') as HTMLSelectElement;
+        if (select) select.focus();
+      }
+    };
+
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
       { name: "activity", label: "Actividad", width: 60, template: (task) => `<span style="font-size: 12px;">${task['activity'] || ''}</span>` },
@@ -171,6 +242,11 @@ export class WorkprogramsComponent {
         name: "costMX", label: "<b style='font-size: 13px;'>Costo Mxn</b>", align: "right", width: 100, template: (task) => {
           const cost = task['costMX'] ? `$${task['costMX'].toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '$0.00';
           return `<span style="font-size: 12px;">${cost}</span>`;
+        }
+      },
+      {
+        name: "quantity", label: "<b style='font-size: 13px;'>Cantidad</b>", align: "right", width: 75, template: (task) => {
+          return `<span style="font-size: 12px;">${task['quantity'] ?? 1}</span>`;
         }
       },
       { name: "start_date", label: "<b style='font-size: 12px;'>Fecha de inicio</b>", align: "center", width: 100, template: (task) => `<span style="font-size: 12px;">${task.start_date ? task.start_date.toLocaleDateString('es-ES') : ''}</span>` },
@@ -272,7 +348,7 @@ export class WorkprogramsComponent {
       { name: "color", map_to: "color", type: "color_picker" },
       { name: "costMX", map_to: "costMX", type: "currency_input" },
       { name: "costDLL", map_to: "costDLL", type: "currency_input" },
-      { name: "measure", map_to: "measure", type: "select", options: this.measures },
+      { name: "measure", height: 35, map_to: "measure", type: "measure_picker", options: this.measures },
       { name: "quantity", map_to: "quantity", type: "number_input" },
       {
         name: "criticRoute", map_to: "criticRoute", type: "select", options: [
@@ -280,7 +356,7 @@ export class WorkprogramsComponent {
           { key: "No", label: "No" }
         ]
       },
-      { name: "phase", height: 30, map_to: "phase", type: "select", options: this.phases }
+      { name: "phase", height: 35, map_to: "phase", type: "phase_picker", options: this.phases }
     ];
   }
 
@@ -297,30 +373,44 @@ export class WorkprogramsComponent {
   }
 
   // Funcion para transformar los datos del gantt a los que entiende la API
+  // Límites según modelo C#: criticRoute varchar(2), activity varchar(20),
+  // especification varchar(20), measure varchar(10), phase varchar(30), color varchar(10)
+
+  // Para campos nullable en el backend (string?)
+  private trunc(val: any, max: number): string | null {
+    if (val == null || val === '') return null;
+    return String(val).substring(0, max);
+  }
+
+  // Para campos NOT NULL en el backend (string sin ?)
+  private truncReq(val: any, max: number, def = ''): string {
+    if (val == null || val === '') return def;
+    return String(val).substring(0, max);
+  }
+
   transformTaskForSave(task: any): any {
     return {
-      id: task.idEntry, // Será undefined para tareas nuevas
+      id: task.idEntry,
       idTask: task.id,
-      text: task.text,
-      idContract: this.idContract,
-      idProject: this.idProject,
+      text: task.text || '',                                   // NOT NULL en C#
+      idContract: this.idContract ?? 0,                        // int NOT NULL — puede ser null en modo Project
+      idProject: this.idProject ?? 0,                          // int NOT NULL — puede ser null en modo Contract
       startDate: task.start_date.toISOString(),
       endDate: task.end_date.toISOString(),
-      progress: task.progress,
-      parent: task.parent,
-      color: task.color,
-      measure: task.measure,
-      // Ahora los campos personalizados
-      criticRoute: task.criticRoute,
-      activity: task.activity,
-      typeActivity: "Activity",
-      especification: task.especification,
-      distribution: task.distribution,
-      costMX: task.costMX,
-      costDLL: task.costDLL,
-      quantity: task.quantity,
-      predecesor: task.predecesor,
-      phase: task.phase,
+      progress: task.progress ?? 0,
+      parent: task.parent ?? 0,
+      color: this.trunc(task.color, 10),                       // nullable
+      measure: this.trunc(task.measure, 10),                   // nullable
+      criticRoute: this.truncReq(task.criticRoute, 2, 'No'),   // NOT NULL en C#
+      activity: this.truncReq(task.activity, 20, ''),          // NOT NULL en C#
+      typeActivity: 'Activity',
+      especification: this.trunc(task.especification, 20),     // nullable
+      distribution: task.distribution ?? 0,
+      costMX: task.costMX ?? 0,
+      costDLL: task.costDLL ?? 0,
+      quantity: task.quantity ?? 0,
+      predecesor: task.predecesor ?? 0,
+      phase: this.trunc(task.phase, 30),                       // nullable
       active: 1
     };
   }
@@ -380,8 +470,19 @@ export class WorkprogramsComponent {
 
   // Funcion para guardar los cambios en la API
   save() {
+    if (!this.idProject && !this.idContract) {
+      alerts.basicAlert('Aviso', 'Debes seleccionar un Proyecto o Contrato desde el sidebar antes de guardar.', 'warning');
+      return;
+    }
+
+    if (this.isSaving) {
+      return;
+    }
+
     const tasks = gantt.getTaskByTime();
     const requests: Observable<any>[] = [];
+    const createTasks: any[] = [];
+    const updateRequestsCountRef = { count: 0 };
 
     tasks.forEach(task => {
       if (!this.deletedTasks.has(task['idEntry'])) {
@@ -389,10 +490,12 @@ export class WorkprogramsComponent {
 
         if (task['idEntry'] === undefined) {
           // Nueva tarea
+          createTasks.push(task);
           requests.push(this.workprogramsService.addWorkProgram(transformedTask));
 
         } else {
           // Tarea existente
+          updateRequestsCountRef.count++;
           requests.push(this.workprogramsService.updateWorkProgram(task['idEntry'], transformedTask));
         }
         console.log(transformedTask);
@@ -404,18 +507,32 @@ export class WorkprogramsComponent {
       requests.push(this.workprogramsService.deleteWorkProgram(idEntry));
     });
 
-    forkJoin(requests).subscribe({
+    if (requests.length === 0) {
+      this.notSavedChanges = false;
+      return;
+    }
+
+    this.isSaving = true;
+
+    forkJoin(requests).pipe(
+      finalize(() => this.isSaving = false)
+    ).subscribe({
       next: (results) => {
         alerts.basicAlert('Editar', 'Todas las operaciones completadas con éxito', 'success');
         console.log('Todas las operaciones completadas con éxito', results);
-        // Actualizar idEntry para nuevas tareas
-        let newTaskIndex = 0;
-        tasks.forEach(task => {
-          if (task['idEntry'] === undefined && !this.deletedTasks.has(task['idEntry'])) {
-            task['idEntry'] = results[newTaskIndex].id;
-            newTaskIndex++;
+        // Actualizar idEntry para nuevas tareas usando offset correcto
+        const createStartIndex = updateRequestsCountRef.count;
+        createTasks.forEach((task, index) => {
+          const createResult = results[createStartIndex + index];
+          const createdId = typeof createResult === 'number'
+            ? createResult
+            : createResult?.id ?? createResult?.Id ?? createResult?.data?.id;
+
+          if (createdId !== undefined && createdId !== null) {
+            task['idEntry'] = createdId;
           }
         });
+
         // Limpiar la lista de tareas eliminadas
         this.deletedTasks.clear();
         this.loadDataFromAPI();
@@ -424,8 +541,10 @@ export class WorkprogramsComponent {
         this.notSavedChanges = false;
       },
       error: (error) => {
-        alerts.basicAlert('Error', 'Error al guardar los cambios.', 'error');
+        const detail = error?.error?.message || error?.message || JSON.stringify(error?.error) || 'Sin detalle';
         console.error('Error al guardar los cambios:', error);
+        console.error('Detalle HTTP:', error?.status, detail);
+        alerts.basicAlert('Error', `Error al guardar (${error?.status ?? '?'}): ${detail}`, 'error');
       }
     }
     );
@@ -440,6 +559,22 @@ export class WorkprogramsComponent {
 
     gantt.attachEvent("onAfterTaskDelete", (id, task) => {
       this.updateParentTaskDates(task.parent);
+    });
+
+    // Fechas por defecto para tareas nuevas: inicio hoy, fin hoy +1 día
+    gantt.attachEvent("onBeforeLightbox", (id) => {
+      const task = gantt.getTask(id);
+      if (!task['idEntry']) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const nextYear = new Date(today);
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        task.start_date = today;
+        task.end_date = nextYear;
+        task.duration = gantt.calculateDuration(today, nextYear);
+        gantt.updateTask(id);
+      }
+      return true;
     });
   }
 
@@ -610,5 +745,92 @@ export class WorkprogramsComponent {
 
   zoomToDay() {
     gantt.ext.zoom.setLevel("day");
+  }
+
+  // ── Modal Nueva Medida ──────────────────────────────────────────────────────
+
+  closeNewMedidaModal() {
+    this.showNewMedidaModal = false;
+    this.newMedidaDescription = '';
+  }
+
+  async saveNewMedida() {
+    if (!this.newMedidaDescription.trim()) return;
+
+    try {
+      await lastValueFrom(this.catalogsService.addCatalog({
+        idCompany: this.idcompany,
+        description: this.newMedidaDescription.trim(),
+        valueAddition: 'NA',
+        valueAdditionBit2: false,
+        valueAdditionBit3: false,
+        vigente: true,
+        type: 'MEASURE',
+        active: 1
+      }));
+
+      await this.getMeasures();
+
+      const select = document.querySelector('#measure_picker_select') as HTMLSelectElement;
+      if (select) {
+        select.innerHTML = this.measures
+          .map((m: any) => `<option value="${m.key}">${m.label}</option>`)
+          .join('');
+        select.value = this.newMedidaDescription.trim();
+      }
+
+      const measureSection = (gantt.config.lightbox.sections as any[])?.find(s => s.name === 'measure');
+      if (measureSection) measureSection.options = this.measures;
+
+      this.closeNewMedidaModal();
+    } catch (error) {
+      console.error('Error al crear medida:', error);
+      alerts.basicAlert('Error', 'No se pudo crear la medida', 'error');
+    }
+  }
+
+  // ── Modal Nueva Fase ────────────────────────────────────────────────────────
+
+  closeNewFaseModal() {
+    this.showNewFaseModal = false;
+    this.newFaseDescription = '';
+  }
+
+  async saveNewFase() {
+    if (!this.newFaseDescription.trim()) return;
+
+    try {
+      await lastValueFrom(this.catalogsService.addCatalog({
+        idCompany: this.idcompany,
+        description: this.newFaseDescription.trim(),
+        valueAddition: 'NA',
+        valueAdditionBit2: false,
+        valueAdditionBit3: false,
+        vigente: true,
+        type: 'Fase',
+        active: 1
+      }));
+
+      // Recargar fases
+      await this.getPhases();
+
+      // Actualizar el select dentro del lightbox si está abierto
+      const select = document.querySelector('#phase_picker_select') as HTMLSelectElement;
+      if (select) {
+        select.innerHTML = this.phases
+          .map((p: any) => `<option value="${p.key}">${p.label}</option>`)
+          .join('');
+        select.value = this.newFaseDescription.trim();
+      }
+
+      // Actualizar las opciones en la config del gantt para la próxima vez
+      const phaseSection = (gantt.config.lightbox.sections as any[])?.find(s => s.name === 'phase');
+      if (phaseSection) phaseSection.options = this.phases;
+
+      this.closeNewFaseModal();
+    } catch (error) {
+      console.error('Error al crear fase:', error);
+      alerts.basicAlert('Error', 'No se pudo crear la fase', 'error');
+    }
   }
 }
