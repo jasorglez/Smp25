@@ -19,6 +19,10 @@ export interface FacturacionAnual {
   cuentasPorCobrar: number;
   gastosTotales: number;
   diferenciaPagadoVsGastos: number;
+  retiroAportacion: number;       // Retiro de aportación de socios (type = 'RETIRO')
+  retiroUtilidades: number;       // Retiro de utilidades de socios (type = 'UTILIDADES')
+  retiroTotal: number;            // Suma de ambos retiros
+  flujoActual: number;            // Diferencia Pagado vs Gastos - Retiro Total
 }
 
 @Component({
@@ -62,7 +66,11 @@ export class ReporteFacturacionAnualComponent {
     montoTotalPagado: 0,
     cuentasPorCobrar: 0,
     gastosTotales: 0,
-    diferenciaPagadoVsGastos: 0
+    diferenciaPagadoVsGastos: 0,
+    retiroAportacion: 0,
+    retiroUtilidades: 0,
+    retiroTotal: 0,
+    flujoActual: 0
   };
 
   constructor() {
@@ -115,14 +123,20 @@ export class ReporteFacturacionAnualComponent {
 
       this.companyName = (rootData as any)?.name || (rootData as any)?.nameCompany || 'Empresa';
 
-      // Separar ingresos y egresos
+      // Separar ingresos y egresos (incluye retiros de socios)
       const allData = Array.isArray(incomesData) ? incomesData : [];
       this.ingresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'DEPOSITO');
-      this.egresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
+      // Egresos incluye: GASTO, RETIRO (retiro aportación socios), UTILIDADES (retiro utilidades socios)
+      this.egresos = allData.filter(item => {
+        const tipo = String(item?.type ?? '').toUpperCase();
+        return tipo === 'GASTO' || tipo === 'RETIRO' || tipo === 'UTILIDADES';
+      });
 
       console.log('Datos cargados:', {
         ingresos: this.ingresos.length,
-        egresos: this.egresos.length
+        egresos: this.egresos.length,
+        retiros: allData.filter(item => String(item?.type ?? '').toUpperCase() === 'RETIRO').length,
+        utilidades: allData.filter(item => String(item?.type ?? '').toUpperCase() === 'UTILIDADES').length
       });
 
       this.processData();
@@ -141,6 +155,8 @@ export class ReporteFacturacionAnualComponent {
       montoTotalFacturado: number;
       montoTotalPagado: number;
       gastosTotales: number;
+      retiroAportacion: number;
+      retiroUtilidades: number;
     }>();
 
     // Inicializar años en el rango
@@ -149,7 +165,9 @@ export class ReporteFacturacionAnualComponent {
         montoTotalOC: 0,
         montoTotalFacturado: 0,
         montoTotalPagado: 0,
-        gastosTotales: 0
+        gastosTotales: 0,
+        retiroAportacion: 0,
+        retiroUtilidades: 0
       });
     }
 
@@ -184,7 +202,7 @@ export class ReporteFacturacionAnualComponent {
       }
     });
 
-    // Procesar egresos (gastos)
+    // Procesar egresos (gastos) y retiros de socios
     this.egresos.forEach(egreso => {
       const fechaStr = egreso.date || egreso.dateStamped;
       if (!fechaStr) return;
@@ -197,22 +215,41 @@ export class ReporteFacturacionAnualComponent {
 
       const current = datosPorAnio.get(anio)!;
       const subtotal = Number(egreso.subtotal) || Number(egreso.total) || 0;
+      const tipo = String(egreso.type || '').toUpperCase();
 
-      // Gastos totales: todos los egresos
-      current.gastosTotales += subtotal;
+      // Clasificar por tipo
+      if (tipo === 'RETIRO') {
+        // Retiro de aportación de socios
+        current.retiroAportacion += subtotal;
+      } else if (tipo === 'UTILIDADES') {
+        // Retiro de utilidades de socios
+        current.retiroUtilidades += subtotal;
+      } else {
+        // Gastos totales: otros egresos (tipo GASTO)
+        current.gastosTotales += subtotal;
+      }
     });
 
-    // Convertir a array y calcular cuentas por cobrar y diferencia
+    // Convertir a array y calcular campos derivados
     this.facturacionAnual = Array.from(datosPorAnio.entries())
-      .map(([anio, data]) => ({
-        anio,
-        montoTotalOC: data.montoTotalOC,
-        montoTotalFacturado: data.montoTotalFacturado,
-        montoTotalPagado: data.montoTotalPagado,
-        cuentasPorCobrar: data.montoTotalFacturado - data.montoTotalPagado,
-        gastosTotales: data.gastosTotales,
-        diferenciaPagadoVsGastos: data.montoTotalPagado - data.gastosTotales
-      }))
+      .map(([anio, data]) => {
+        const retiroTotal = data.retiroAportacion + data.retiroUtilidades;
+        const diferenciaPagadoVsGastos = data.montoTotalPagado - data.gastosTotales;
+        const flujoActual = diferenciaPagadoVsGastos - retiroTotal;
+        return {
+          anio,
+          montoTotalOC: data.montoTotalOC,
+          montoTotalFacturado: data.montoTotalFacturado,
+          montoTotalPagado: data.montoTotalPagado,
+          cuentasPorCobrar: data.montoTotalFacturado - data.montoTotalPagado,
+          gastosTotales: data.gastosTotales,
+          diferenciaPagadoVsGastos,
+          retiroAportacion: data.retiroAportacion,
+          retiroUtilidades: data.retiroUtilidades,
+          retiroTotal,
+          flujoActual
+        };
+      })
       .sort((a, b) => a.anio - b.anio);
 
     // Calcular totales
@@ -222,14 +259,22 @@ export class ReporteFacturacionAnualComponent {
       montoTotalPagado: acc.montoTotalPagado + f.montoTotalPagado,
       cuentasPorCobrar: acc.cuentasPorCobrar + f.cuentasPorCobrar,
       gastosTotales: acc.gastosTotales + f.gastosTotales,
-      diferenciaPagadoVsGastos: acc.diferenciaPagadoVsGastos + f.diferenciaPagadoVsGastos
+      diferenciaPagadoVsGastos: acc.diferenciaPagadoVsGastos + f.diferenciaPagadoVsGastos,
+      retiroAportacion: acc.retiroAportacion + f.retiroAportacion,
+      retiroUtilidades: acc.retiroUtilidades + f.retiroUtilidades,
+      retiroTotal: acc.retiroTotal + f.retiroTotal,
+      flujoActual: acc.flujoActual + f.flujoActual
     }), {
       montoTotalOC: 0,
       montoTotalFacturado: 0,
       montoTotalPagado: 0,
       cuentasPorCobrar: 0,
       gastosTotales: 0,
-      diferenciaPagadoVsGastos: 0
+      diferenciaPagadoVsGastos: 0,
+      retiroAportacion: 0,
+      retiroUtilidades: 0,
+      retiroTotal: 0,
+      flujoActual: 0
     });
   }
 
@@ -275,8 +320,8 @@ export class ReporteFacturacionAnualComponent {
 
       const docDefinition: any = {
         pageSize: 'LETTER',
-        pageOrientation: 'portrait',
-        pageMargins: [40, 80, 40, 40],
+        pageOrientation: 'landscape',
+        pageMargins: [20, 80, 20, 40],
         header: () => this.buildPdfHeader(logoBase64),
         footer: (currentPage: number, pageCount: number) => ({
           text: `Página ${currentPage} de ${pageCount}`,
@@ -350,7 +395,7 @@ export class ReporteFacturacionAnualComponent {
     const content: any[] = [];
 
     // Tabla de facturación anual
-    const headers = ['Año', 'Monto OC', 'Facturado', 'Pagado', 'Ctas x Cobrar', 'Gastos', 'Dif. Pagado vs Gastos'];
+    const headers = ['Año', 'Monto OC', 'Facturado', 'Pagado', 'Ctas x Cobrar', 'Gastos', 'Dif. Pag vs Gas', 'Ret. Aport.', 'Ret. Util.', 'Ret. Total', 'Flujo Actual'];
 
     const body: any[] = [
       headers.map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
@@ -364,7 +409,11 @@ export class ReporteFacturacionAnualComponent {
         { text: this.formatCurrencyShort(f.montoTotalPagado), style: 'tableCellMoney' },
         { text: this.formatCurrencyShort(f.cuentasPorCobrar), style: 'tableCellMoney', color: f.cuentasPorCobrar > 0 ? '#dc2626' : '#333' },
         { text: this.formatCurrencyShort(f.gastosTotales), style: 'tableCellMoney' },
-        { text: this.formatCurrencyShort(f.diferenciaPagadoVsGastos), style: 'tableCellMoney', color: f.diferenciaPagadoVsGastos >= 0 ? '#15803d' : '#dc2626' }
+        { text: this.formatCurrencyShort(f.diferenciaPagadoVsGastos), style: 'tableCellMoney', color: f.diferenciaPagadoVsGastos >= 0 ? '#15803d' : '#dc2626' },
+        { text: this.formatCurrencyShort(f.retiroAportacion), style: 'tableCellMoney', color: '#7c3aed' },
+        { text: this.formatCurrencyShort(f.retiroUtilidades), style: 'tableCellMoney', color: '#7c3aed' },
+        { text: this.formatCurrencyShort(f.retiroTotal), style: 'tableCellMoney', color: '#5b21b6', bold: true },
+        { text: this.formatCurrencyShort(f.flujoActual), style: 'tableCellMoney', color: f.flujoActual >= 0 ? '#0369a1' : '#be123c', bold: true }
       ]);
     });
 
@@ -376,13 +425,17 @@ export class ReporteFacturacionAnualComponent {
       { text: this.formatCurrencyShort(this.totales.montoTotalPagado), style: 'totalRow', alignment: 'right' },
       { text: this.formatCurrencyShort(this.totales.cuentasPorCobrar), style: 'totalRow', alignment: 'right', color: '#dc2626' },
       { text: this.formatCurrencyShort(this.totales.gastosTotales), style: 'totalRow', alignment: 'right' },
-      { text: this.formatCurrencyShort(this.totales.diferenciaPagadoVsGastos), style: 'totalRow', alignment: 'right', color: this.totales.diferenciaPagadoVsGastos >= 0 ? '#15803d' : '#dc2626' }
+      { text: this.formatCurrencyShort(this.totales.diferenciaPagadoVsGastos), style: 'totalRow', alignment: 'right', color: this.totales.diferenciaPagadoVsGastos >= 0 ? '#15803d' : '#dc2626' },
+      { text: this.formatCurrencyShort(this.totales.retiroAportacion), style: 'totalRow', alignment: 'right', color: '#7c3aed' },
+      { text: this.formatCurrencyShort(this.totales.retiroUtilidades), style: 'totalRow', alignment: 'right', color: '#7c3aed' },
+      { text: this.formatCurrencyShort(this.totales.retiroTotal), style: 'totalRow', alignment: 'right', color: '#5b21b6' },
+      { text: this.formatCurrencyShort(this.totales.flujoActual), style: 'totalRow', alignment: 'right', color: this.totales.flujoActual >= 0 ? '#0369a1' : '#be123c' }
     ]);
 
     content.push({
       table: {
         headerRows: 1,
-        widths: [35, '*', '*', '*', '*', '*', '*'],
+        widths: [30, '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'],
         body
       },
       layout: {
@@ -408,7 +461,7 @@ export class ReporteFacturacionAnualComponent {
       worksheet.views = [{ showGridLines: false }];
 
       // Título
-      worksheet.mergeCells('A1:G1');
+      worksheet.mergeCells('A1:K1');
       const titleCell = worksheet.getCell('A1');
       titleCell.value = 'REPORTE DE FACTURACIÓN ANUAL';
       titleCell.font = { bold: true, size: 14, color: { argb: 'FF1A365D' } };
@@ -419,7 +472,7 @@ export class ReporteFacturacionAnualComponent {
       worksheet.getCell('A3').value = `Período: ${this.anioInicio} - ${this.anioFin}`;
 
       // Headers
-      const headers = ['Año', 'Monto Total OC', 'Monto Total Facturado', 'Monto Total Pagado', 'Cuentas por Cobrar', 'Gastos Totales', 'Dif. Pagado vs Gastos'];
+      const headers = ['Año', 'Monto Total OC', 'Monto Total Facturado', 'Monto Total Pagado', 'Cuentas por Cobrar', 'Gastos Totales', 'Dif. Pagado vs Gastos', 'Retiro Aportación', 'Retiro Utilidades', 'Retiro Total', 'Flujo Actual'];
       const headerRow = worksheet.getRow(5);
       headers.forEach((header, index) => {
         const cell = headerRow.getCell(index + 1);
@@ -451,6 +504,18 @@ export class ReporteFacturacionAnualComponent {
         row.getCell(7).value = f.diferenciaPagadoVsGastos;
         row.getCell(7).numFmt = '"$"#,##0.00';
         row.getCell(7).font = { color: { argb: f.diferenciaPagadoVsGastos >= 0 ? 'FF15803D' : 'FFDC2626' } };
+        row.getCell(8).value = f.retiroAportacion;
+        row.getCell(8).numFmt = '"$"#,##0.00';
+        row.getCell(8).font = { color: { argb: 'FF7C3AED' } };
+        row.getCell(9).value = f.retiroUtilidades;
+        row.getCell(9).numFmt = '"$"#,##0.00';
+        row.getCell(9).font = { color: { argb: 'FF7C3AED' } };
+        row.getCell(10).value = f.retiroTotal;
+        row.getCell(10).numFmt = '"$"#,##0.00';
+        row.getCell(10).font = { bold: true, color: { argb: 'FF5B21B6' } };
+        row.getCell(11).value = f.flujoActual;
+        row.getCell(11).numFmt = '"$"#,##0.00';
+        row.getCell(11).font = { bold: true, color: { argb: f.flujoActual >= 0 ? 'FF0369A1' : 'FFBE123C' } };
         rowIndex++;
       });
 
@@ -470,10 +535,22 @@ export class ReporteFacturacionAnualComponent {
       totalRow.getCell(6).numFmt = '"$"#,##0.00';
       totalRow.getCell(7).value = this.totales.diferenciaPagadoVsGastos;
       totalRow.getCell(7).numFmt = '"$"#,##0.00';
+      totalRow.getCell(8).value = this.totales.retiroAportacion;
+      totalRow.getCell(8).numFmt = '"$"#,##0.00';
+      totalRow.getCell(8).font = { bold: true, color: { argb: 'FF7C3AED' } };
+      totalRow.getCell(9).value = this.totales.retiroUtilidades;
+      totalRow.getCell(9).numFmt = '"$"#,##0.00';
+      totalRow.getCell(9).font = { bold: true, color: { argb: 'FF7C3AED' } };
+      totalRow.getCell(10).value = this.totales.retiroTotal;
+      totalRow.getCell(10).numFmt = '"$"#,##0.00';
+      totalRow.getCell(10).font = { bold: true, color: { argb: 'FF5B21B6' } };
+      totalRow.getCell(11).value = this.totales.flujoActual;
+      totalRow.getCell(11).numFmt = '"$"#,##0.00';
+      totalRow.getCell(11).font = { bold: true, color: { argb: this.totales.flujoActual >= 0 ? 'FF0369A1' : 'FFBE123C' } };
 
       // Anchos
       worksheet.columns = [
-        { width: 10 }, { width: 18 }, { width: 22 }, { width: 20 }, { width: 20 }, { width: 18 }, { width: 22 }
+        { width: 8 }, { width: 16 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 16 }, { width: 18 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 14 }
       ];
 
       // Generar archivo
