@@ -199,6 +199,29 @@
       color: #dc2626;
       font-weight: 600;
     }
+
+    &.retiro-cell {
+      color: #7c3aed;
+      font-weight: 500;
+    }
+
+    &.retiro-total-cell {
+      color: #7c3aed;
+      font-weight: 600;
+      background-color: #f5f3ff;
+    }
+
+    &.flujo-positivo {
+      color: #0369a1;
+      font-weight: 700;
+      background-color: #e0f2fe;
+    }
+
+    &.flujo-negativo {
+      color: #be123c;
+      font-weight: 700;
+      background-color: #ffe4e6;
+    }
   }
 
   tbody {
@@ -243,6 +266,21 @@
       .diferencia-negativa-total {
         background-color: #fecaca;
         color: #991b1b;
+      }
+
+      .retiro-total-cell {
+        background-color: #ede9fe;
+        color: #5b21b6;
+      }
+
+      .flujo-positivo-total {
+        background-color: #bae6fd;
+        color: #0c4a6e;
+      }
+
+      .flujo-negativo-total {
+        background-color: #fecdd3;
+        color: #881337;
       }
     }
   }

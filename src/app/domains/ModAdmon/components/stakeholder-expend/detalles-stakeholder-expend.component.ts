@@ -382,13 +382,15 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
 
   addConcept() {
     const tempId = `temp_concept_${this.tempIdCounter++}`;
+    // Usar el typeExpense del contexto o del registro padre, con fallback a RETIRO
+    const typeExpense = this.context?.selectedExpenseType || this.params.data?.type || 'RETIRO';
     const newConcept = {
       id: tempId,
       idIncorExp: this.params.data.id,
       dateExpend: this.params.data.date,
       description: '',
       idProject: this.params.data.idProject || null,
-      typeExpense: 'RETIRO',
+      typeExpense: typeExpense,
       quantity: 1,
       price: 0,
       total: 0,

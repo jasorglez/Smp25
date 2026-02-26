@@ -91,6 +91,9 @@ export class StakeholderExpendComponent {
   notSavedChanges: boolean = false;
   selectedExpense: any = null;
 
+  // Tipo de retiro seleccionado: 'RETIRO' (Retiro de Socios) o 'UTILIDADES' (Retiro de Utilidades)
+  selectedExpenseType: 'RETIRO' | 'UTILIDADES' = 'RETIRO';
+
   // Datos
   stakeholders: Stakeholder[] = [];
   corporativos: any[] = [];
@@ -319,6 +322,21 @@ export class StakeholderExpendComponent {
     });
   }
 
+  // Método para cambiar el tipo de retiro
+  onExpenseTypeChange(type: 'RETIRO' | 'UTILIDADES') {
+    if (this.selectedExpenseType !== type) {
+      this.selectedExpenseType = type;
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Cambio a pestaña: ${type === 'RETIRO' ? 'Retiro de Socios' : 'Retiro de Utilidades'}`,
+        'Retiro Socios - Cambio Pestaña',
+        this.trackingService.getEmail()
+      );
+      this.loadStakeholderExpenses();
+      this.updateDetailContext();
+    }
+  }
+
   async loadStakeholderExpenses() {
     if (!this.idAccount) {
       this.expenses = [];
@@ -328,9 +346,9 @@ export class StakeholderExpendComponent {
     return new Promise<void>((resolve) => {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (data) => {
-          // Filtrar por tipo RETIRO y cuenta bancaria
+          // Filtrar por tipo seleccionado (RETIRO o UTILIDADES) y cuenta bancaria
           let filtered = (data || []).filter((item: any) => {
-            return item.type === 'RETIRO' && item.idAccount === this._idAccount;
+            return item.type === this.selectedExpenseType && item.idAccount === this._idAccount;
           });
 
           // Si hay socio seleccionado, filtrar por idCustomer (ID codificado del socio)
@@ -351,11 +369,11 @@ export class StakeholderExpendComponent {
             };
           });
 
-          console.log('✅ Retiros de socios cargados:', this.expenses.length);
+          console.log(`✅ ${this.selectedExpenseType === 'RETIRO' ? 'Retiros de socios' : 'Retiros de utilidades'} cargados:`, this.expenses.length);
           resolve();
         },
         error: (err) => {
-          console.error('Error obteniendo retiros de socios:', err);
+          console.error('Error obteniendo retiros:', err);
           this.expenses = [];
           resolve();
         }
@@ -559,7 +577,7 @@ export class StakeholderExpendComponent {
 
   private updateDetailContext() {
     if (this.gridApi) {
-      console.log('🔄 Actualizando contexto del detalle. Proyectos:', this.projects.length);
+      console.log('🔄 Actualizando contexto del detalle. Proyectos:', this.projects.length, 'Tipo:', this.selectedExpenseType);
       this.gridApi.setGridOption('detailCellRendererParams', {
         getDetailRowData: (params: any) => {
           params.successCallback(params.data.detailData || []);
@@ -572,6 +590,7 @@ export class StakeholderExpendComponent {
           base64EncodeService: this.base64EncodeService,
           administrationService: this.administrationService,
           projects: this.projects,
+          selectedExpenseType: this.selectedExpenseType,
           CONCEPTS: {
             load: (expenditureId: number, callback: (data: any[]) => void) => {
               this.loadConceptsData(expenditureId, callback);
@@ -638,6 +657,7 @@ export class StakeholderExpendComponent {
         base64EncodeService: this.base64EncodeService,
         administrationService: this.administrationService,
         projects: this.projects,
+        selectedExpenseType: this.selectedExpenseType,
         CONCEPTS: {
           load: (expenditureId: number, callback: (data: any[]) => void) => {
             this.loadConceptsData(expenditureId, callback);
@@ -670,9 +690,10 @@ export class StakeholderExpendComponent {
       return;
     }
 
+    const typeLabel = this.selectedExpenseType === 'RETIRO' ? 'Retiro de Socio' : 'Retiro de Utilidades';
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
-      'Creación de un Retiro de Socio',
+      `Creación de ${typeLabel}`,
       'Retiro Socios',
       this.trackingService.getEmail()
     );
@@ -681,6 +702,8 @@ export class StakeholderExpendComponent {
     const selectedStakeholder = this._idStakeholder
       ? this.stakeholders.find(s => s.id === this._idStakeholder)
       : null;
+
+    const descriptionByType = this.selectedExpenseType === 'RETIRO' ? 'RETIRO DE SOCIO' : 'RETIRO DE UTILIDADES';
 
     const newItem = {
       id: tempId,
@@ -692,8 +715,8 @@ export class StakeholderExpendComponent {
       idCustomer: this._idStakeholder, // ID codificado del socio (corporativoId * 10 + partnerNumber)
       stakeholderName: selectedStakeholder?.name || '', // Solo para mostrar en el grid
       idProject: null,
-      description: 'RETIRO DE UTILIDAD',
-      type: 'RETIRO',
+      description: descriptionByType,
+      type: this.selectedExpenseType,
       subtotal: 0,
       tax: 0,
       total: 0,
