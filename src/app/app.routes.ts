@@ -1007,6 +1007,23 @@ export const routes: Routes = [
           },
 
           {
+            path: 'stakeholder-expend',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/stakeholder-expend/stakeholder-expend.component'
+              ).then((s) => s.StakeholderExpendComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'administration', detailed: 'stakeholder-expend' },
+              tracking: {
+                logMessage: 'Click en Pestaña Retiro de Socios',
+                category: 'Administration'
+              }
+            },
+            canDeactivate: [UnsavedChangesGuard]
+          },
+
+          {
             path: 'masterExpenses',
             loadComponent: () =>
               import(
