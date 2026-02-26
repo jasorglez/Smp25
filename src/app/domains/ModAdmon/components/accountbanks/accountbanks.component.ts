@@ -11,6 +11,7 @@ import {
 } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
 import { AdministrationService } from 'app/services/administration.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 
 import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
@@ -89,6 +90,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
   // Inject of new way for Angular 18
   private administrationService = inject(AdministrationService);
+  private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
   private rootService = inject(RootService);
@@ -100,6 +102,15 @@ export class AccountbanksComponent implements CanComponentDeactivate {
   reportSaldosStartDate: string = '';
   reportSaldosEndDate: string = '';
   isGeneratingSaldosReport: boolean = false;
+
+  // Propiedades para el modal de ajuste de saldo
+  showAjusteModal: boolean = false;
+  ajusteDate: string = '';
+  ajusteMonto: number = 0;
+  ajusteDescripcion: string = '';
+  ajusteTipo: string = 'DEPOSITO';
+  isSavingAjuste: boolean = false;
+  saldoActual: number = 0;
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -803,7 +814,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     return `${y}-${m}-${d}`;
   }
 
-  private formatCurrencySaldos(amount: number): string {
+  formatCurrencySaldos(amount: number): string {
     return (amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
@@ -965,6 +976,129 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       alerts.basicAlert('Error', 'Error al generar el reporte PDF', 'error');
     } finally {
       this.isGeneratingSaldosReport = false;
+    }
+  }
+
+  // ==================== AJUSTE DE SALDO ====================
+
+  openAjusteModal() {
+    if (!this.selectedRowData) {
+      alerts.basicAlert('Aviso', 'Seleccione una cuenta bancaria primero.', 'warning');
+      return;
+    }
+
+    // Saldo inicial: columna Saldo del grid maestro
+    this.saldoActual = this.selectedRowData.saldo || 0;
+
+    this.ajusteDate = this.formatDateSaldos(new Date());
+    this.ajusteMonto = 0;
+    this.ajusteDescripcion = '';
+    this.ajusteTipo = 'DEPOSITO';
+    this.showAjusteModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  onAjusteDateChange() {
+    if (!this.ajusteDate || !this.rowDetails?.length) return;
+
+    const fechaSel = this.ajusteDate; // 'YYYY-MM-DD'
+
+    // Convertir fecha de cada fila al mismo formato YYYY-MM-DD (igual que el PDF)
+    const toDs = (fecha: any): string => {
+      const d = new Date(fecha);
+      return isNaN(d.getTime()) ? ''
+        : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    // Ordenar por fecha ascendente y quedarse con las que sean <= fecha seleccionada
+    const candidatos = (this.rowDetails as any[])
+      .filter(item => item.fecha && toDs(item.fecha) !== '' && toDs(item.fecha) <= fechaSel)
+      .sort((a, b) => toDs(a.fecha) < toDs(b.fecha) ? -1 : toDs(a.fecha) > toDs(b.fecha) ? 1 : 0);
+
+    if (candidatos.length > 0) {
+      // El último (más reciente hasta esa fecha) tiene el saldo acumulado correcto
+      this.saldoActual = parseFloat(candidatos[candidatos.length - 1].saldo) || 0;
+    } else {
+      // No hay movimientos anteriores a esa fecha
+      this.saldoActual = this.selectedRowData?.saldo || 0;
+    }
+  }
+
+  closeAjusteModal() {
+    this.showAjusteModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveAjuste() {
+    if (!this.ajusteDescripcion.trim()) {
+      alerts.basicAlert('Error', 'La descripción es obligatoria.', 'error');
+      return;
+    }
+    if (!this.ajusteMonto || this.ajusteMonto <= 0) {
+      alerts.basicAlert('Error', 'El monto debe ser mayor a cero.', 'error');
+      return;
+    }
+    if (!this.ajusteDate) {
+      alerts.basicAlert('Error', 'La fecha es obligatoria.', 'error');
+      return;
+    }
+
+    this.isSavingAjuste = true;
+
+    try {
+      const companyId = parseInt(localStorage.getItem('company') || '0');
+      // Añadir hora para evitar desfase de zona horaria
+      const fechaAjuste = new Date(this.ajusteDate + 'T12:00:00');
+      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const paymentMonth = meses[fechaAjuste.getMonth()];
+
+      const adjustmentData = {
+        idAccount: this.selectedRowData.id,
+        idBusinnes: companyId,
+        idBranch: 0,
+        date: fechaAjuste.toISOString(),
+        idCustomer: 0,
+        idExpend: 0,
+        uuid: 'NA',
+        paymentMonth: paymentMonth,
+        dateStamped: new Date().toISOString(),
+        description: `AJUSTE - ${this.ajusteDescripcion.trim()}`,
+        type: this.ajusteTipo,
+        subtotal: this.ajusteMonto,
+        tax: 0,
+        total: this.ajusteMonto,
+        createdBy: localStorage.getItem('mail') || 'sistema',
+        createdAt: new Date().toISOString(),
+        modifiedBy: null,
+        modifiedAt: new Date().toISOString(),
+        status: 'Pagada',
+        active: true,
+      };
+
+      await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(adjustmentData));
+
+      alerts.basicAlert('Ajuste guardado', 'El ajuste de saldo se ha registrado correctamente.', 'success');
+
+      this.closeAjusteModal();
+
+      // Recargar saldo forzando la recarga
+      if (this.selectedRowData?.id) {
+        this.lastSelectedId = null;
+        this.loadBalanceData(this.selectedRowData.id.toString());
+      }
+
+      this.trackingService.addLog(
+        'AccountBanks',
+        `Ajuste de Saldo: ${this.selectedRowData?.nameAccount} - ${this.ajusteTipo} $${this.ajusteMonto}`,
+        'Cuentas Bancarias - Ajuste Saldo',
+        this.trackingService.getEmail()
+      );
+    } catch (error) {
+      console.error('Error al guardar ajuste:', error);
+      alerts.basicAlert('Error', 'Error al registrar el ajuste de saldo.', 'error');
+    } finally {
+      this.isSavingAjuste = false;
     }
   }
 

@@ -257,7 +257,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   transition: background-color 0.2s ease;
 }
 
-// Nombre del submodulo con ellipsis si es largo
 .submodulo-nombre {
   flex: 1;
   white-space: nowrap;
@@ -266,7 +265,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   margin-right: 8px;
 }
 
-// Contenedor de flecha + switch en la tarjeta
 .submodulo-acciones {
   display: flex;
   align-items: center;
@@ -274,7 +272,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   flex-shrink: 0;
 }
 
-// Flecha indicadora de acciones adicionales
 .submodulo-flecha {
   display: inline-flex;
   align-items: center;
@@ -295,7 +292,6 @@ input:checked + .slider:before { transform: translateX(22px); }
     background-color: rgba(255, 255, 255, 0.28);
   }
 
-  // Cuando el detail está seleccionado, la flecha rota 180°
   &.flecha-activa svg {
     transform: rotate(180deg);
   }
@@ -369,7 +365,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   gap: 6px;
 }
 
-// Nombre con ellipsis + clickeable si tiene children
 .crud-seccion-nombre {
   flex: 1;
   display: flex;
@@ -393,14 +388,12 @@ input:checked + .slider:before { transform: translateX(22px); }
   }
 }
 
-// Contenedor del switch
 .crud-seccion-acciones {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-// Flecha apunta a la derecha, rota 90° al expandir
 .crud-seccion-flecha {
   display: inline-flex;
   align-items: center;
@@ -423,7 +416,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   }
 }
 
-// Switch pequeño para el header de crud-seccion
 .switch-sm {
   width: 34px !important;
   height: 18px !important;
@@ -573,13 +565,14 @@ input:checked + .slider:before { transform: translateX(22px); }
   }
 }
 
+// ✅ Color cambiado a #D4EDDA
 .child-seccion-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 6px 10px;
-  background-color: #3b82f6;
-  color: #ffffff;
+  background-color: #D4EDDA;
+  color: #155724;
   font-weight: 500;
   font-size: 0.82rem;
 }
@@ -647,7 +640,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   }
 }
 
-// Paso activo
 .step-activo {
   .step-circulo {
     background-color: #3b82f6;
@@ -659,7 +651,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   }
 }
 
-// Paso completado
 .step-completado {
   .step-circulo {
     background-color: #10b981;
@@ -744,7 +735,6 @@ input:checked + .slider:before { transform: translateX(22px); }
   padding: 4px 0;
 }
 
-// Grid de children a ancho completo (paso 2)
 .children-secciones-grid--full {
   width: 100%;
 

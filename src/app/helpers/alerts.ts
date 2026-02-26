@@ -1,5 +1,8 @@
 import Swal, { SweetAlertIcon } from 'sweetalert2';
 
+// Z-index por encima de cualquier modal (el modal usa 99999)
+const SWAL_Z_INDEX = 999999;
+
 export class alerts{
 
 	/*=============================================
@@ -8,7 +11,12 @@ export class alerts{
 
 	static basicAlert(title:string, text:string, icon:SweetAlertIcon){
 
-		return Swal.fire(title, text, icon);
+		return Swal.fire({
+			title,
+			text,
+			icon,
+			customClass: { container: 'swal-over-modal' }
+		});
 
 	}
 
@@ -25,7 +33,8 @@ export class alerts{
 			showCancelButton: true,
 			confirmButtonColor: '#3085d6',
 			cancelButtonColor: '#d33',
-			confirmButtonText: confirmButtonText
+			confirmButtonText: confirmButtonText,
+			customClass: { container: 'swal-over-modal' }
 		})
 
 	}
@@ -53,6 +62,7 @@ export class alerts{
 				}
 				return null;
 			},
+			customClass: { container: 'swal-over-modal' },
 			...swalOptions
 		});
 	}
@@ -88,6 +98,7 @@ export class alerts{
 			confirmButtonColor: options.confirmButtonColor || '#3085d6',
 			cancelButtonColor: options.cancelButtonColor || '#d33',
 			focusConfirm: false,
+			customClass: { container: 'swal-over-modal' },
 			preConfirm: () => {
 				const el = document.getElementById(id) as HTMLTextAreaElement | null;
 				const value = el ? el.value : '';
@@ -125,6 +136,7 @@ export class alerts{
 			allowEscapeKey: false,
 			allowEnterKey: false,
 			showConfirmButton: false,
+			customClass: { container: 'swal-over-modal' },
 			didOpen: () => {
 				Swal.showLoading();
 			}
@@ -159,6 +171,7 @@ export class alerts{
 			allowEscapeKey: false,
 			allowEnterKey: false,
 			showConfirmButton: false,
+			customClass: { container: 'swal-over-modal' },
 			didOpen: () => {
 				Swal.showLoading();
 			}

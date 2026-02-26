@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, HostListener, inject, Injectable, OnDestroy } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, Injectable, OnDestroy, ViewChild } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -19,7 +19,7 @@ import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
-import { DetailPermissionsRendererComponent } from './details/detail-permissions-renderer.component';
+import { DetallePermisosXSucursalesComponent } from './details/detallepermisosxsucursales.component';
 import { PermissionsViewByUserComponent } from './details/detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
 
@@ -35,7 +35,7 @@ import { ModalService } from 'app/services/permissions-modal.service';
     FormsModule,
     AgGridModule,
     MatDialogModule,
-    DetailPermissionsRendererComponent,
+    DetallePermisosXSucursalesComponent,
     PermissionsViewByUserComponent,
     ReactiveFormsModule
   ],
@@ -43,6 +43,9 @@ import { ModalService } from 'app/services/permissions-modal.service';
   styleUrl: './users.component.scss',
 })
 export class UsersComponent implements OnDestroy {
+
+  // ✅ Referencia al componente de permisos dentro del modal
+  @ViewChild('permissionsViewRef') permissionsViewRef: PermissionsViewByUserComponent;
 
   idRoot: number;
   gridHeight: string = '80vh';
@@ -140,7 +143,6 @@ export class UsersComponent implements OnDestroy {
       }
     });
 
-    // Suscripción al modal service para abrir el modal desde componentes hijos
     this.modalSubscription = this.modalService.openPermissions$.subscribe(data => {
       this.modalPermissions = {
         idUser: data.idUser,
@@ -166,7 +168,7 @@ export class UsersComponent implements OnDestroy {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
-    detailPermissionsRenderer: DetailPermissionsRendererComponent
+    detailPermissionsRenderer: DetallePermisosXSucursalesComponent
   }
 
   obtenerEmpleados() {
@@ -191,12 +193,10 @@ export class UsersComponent implements OnDestroy {
     const observer = {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
-          console.log('Response USER COMPONENT', response.data);
           this.rowData = response.data.map((item: any) => {
             return { id: item.id, ...item };
           });
           this.rowData = this.rowData.filter(row => row.active !== 0);
-          console.log('RowData USER COMPONENT', this.rowData);
         } else {
           console.error('Respuesta inválida del servidor');
         }
@@ -223,7 +223,6 @@ export class UsersComponent implements OnDestroy {
     this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
         this.departamentos = data.data;
-        console.log('Roles:', this.departamentos);
       },
       (error) => {
         if (error.status == 404) this.departamentos = [];
@@ -234,12 +233,10 @@ export class UsersComponent implements OnDestroy {
 
   getDepartmentName(idDepartament: number): string {
     const department = this.departamentos.find(dept => dept.id === idDepartament);
-    console.log('Department:', department);
     return department ? department.description : 'Departamento no encontrado';
   }
 
   procesoData(userId: number): Observable<any> {
-    console.log('+++++++++++++++++', this.dataEmpleado);
     if (!this.dataEmpleado || !this.dataEmpleado.idBranch) {
       console.warn('No hay datos válidos de empleado o sucursal.');
       return EMPTY;
@@ -258,7 +255,6 @@ export class UsersComponent implements OnDestroy {
     const addDetailedPermissions$ = from(this.getCRUD(this.dataEmpleado.idPosition)).pipe(
       mergeMap(rolesDefinidos => {
         if (!rolesDefinidos || rolesDefinidos.length === 0) {
-          console.warn('No se encontraron permisos definidos para esta posición.');
           return EMPTY;
         }
         const detailObservables = rolesDefinidos.map(permiso => {
@@ -274,7 +270,6 @@ export class UsersComponent implements OnDestroy {
             canDelete: permiso.canDelete,
             active: permiso.active
           };
-          console.log('Agregando permiso:', detailData);
           return this.permitionsService.addPermitionsDetail(detailData);
         });
         return concat(...detailObservables);
@@ -288,14 +283,12 @@ export class UsersComponent implements OnDestroy {
     return new Promise((resolve, reject) => {
       this.rolesService.getCatalogCRUD(idPosicion).subscribe({
         next: (data: any) => {
-          console.log(data);
           resolve(data || []);
         },
         error: (error) => {
           if (error.status === 404) {
             resolve([]);
           } else {
-            console.error('Error fetching posiciones:', error);
             reject(error);
           }
         }
@@ -375,26 +368,12 @@ export class UsersComponent implements OnDestroy {
     }
 
     this._columnDefs = [
-      {
-        field: 'id',
-        headerName: 'ID',
-        hide: true,
-        filter: 'agNumberColumnFilter',
-        width: 80
-      },
-      {
-        field: 'active',
-        hide: true
-      },
+      { field: 'id', headerName: 'ID', hide: true, filter: 'agNumberColumnFilter', width: 80 },
+      { field: 'active', hide: true },
       {
         field: 'displayName',
         headerName: 'Nombre *',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
+        editable: () => true,
         filter: true,
         cellEditor: 'autocompleteEditor',
         flex: 1,
@@ -424,7 +403,6 @@ export class UsersComponent implements OnDestroy {
             this.dataEmpleado = null;
             params.data.idRol = 0;
           }
-          console.log('Empleado encontrado:', this.dataEmpleado);
           params.data[params.colDef.field] = newValue;
           return true;
         }
@@ -434,15 +412,8 @@ export class UsersComponent implements OnDestroy {
         headerName: 'Email *',
         cellEditor: 'agTextCellEditor',
         flex: 1,
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
-        cellEditorParams: {
-          useFormatter: true,
-        },
+        editable: () => true,
+        cellEditorParams: { useFormatter: true },
         valueFormatter: (params) => params.value,
         valueSetter: (params) => {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -467,15 +438,8 @@ export class UsersComponent implements OnDestroy {
         headerName: 'Contraseña *',
         field: 'password',
         flex: 1,
-        cellRenderer: (params: any) => {
-          return `<span>••••••••</span>`;
-        },
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
+        cellRenderer: () => `<span>••••••••</span>`,
+        editable: () => true,
       },
       {
         field: 'idRol',
@@ -487,12 +451,7 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'isRoot',
         headerName: 'Root',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
+        editable: () => true,
         width: 90,
       },
       {
@@ -506,28 +465,41 @@ export class UsersComponent implements OnDestroy {
           setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.accept = 'image/jpeg,image/png';
             input.style.display = 'none';
             document.body.appendChild(input);
-            input.onchange = (event) => {
+            input.onchange = async (event) => {
               const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tipo de archivo
+                if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
+                // Validar tamaño (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
                   alerts.basicAlert('Archivo muy grande', 'La imagen no puede superar 5MB', 'error');
                   document.body.removeChild(input);
                   return;
                 }
-                const reader = new FileReader();
-                reader.onload = () => {
-                  params.data.picture = reader.result as string;
+                try {
+                  // Mostrar indicador de carga
+                  alerts.showLoading('Subiendo imagen', 'Por favor espere mientras se sube la imagen de perfil...');
+                  // Subir imagen a Firebase y obtener la URL
+                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'users/profile');
+                  params.data.picture = url;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
                   this.notSavedChanges = true;
-                };
-                reader.onerror = () => {
-                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
-                };
-                reader.readAsDataURL(file);
+                  // Cerrar loading y mostrar éxito
+                  alerts.closeLoading();
+                  alerts.basicAlert('Imagen subida', 'La imagen de perfil se subió correctamente', 'success');
+                } catch (error) {
+                  console.error('Error al subir imagen:', error);
+                  alerts.closeLoading();
+                  alerts.basicAlert('Error', 'No se pudo subir la imagen a Firebase', 'error');
+                }
               }
               document.body.removeChild(input);
             };
@@ -552,28 +524,41 @@ export class UsersComponent implements OnDestroy {
           setTimeout(() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+            input.accept = 'image/jpeg,image/png';
             input.style.display = 'none';
             document.body.appendChild(input);
-            input.onchange = (event) => {
+            input.onchange = async (event) => {
               const file = (event.target as HTMLInputElement).files?.[0];
               if (file) {
+                // Validar tipo de archivo
+                if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  document.body.removeChild(input);
+                  return;
+                }
+                // Validar tamaño (max 2MB para firma)
                 if (file.size > 2 * 1024 * 1024) {
                   alerts.basicAlert('Archivo muy grande', 'La firma no puede superar 2MB', 'error');
                   document.body.removeChild(input);
                   return;
                 }
-                const reader = new FileReader();
-                reader.onload = () => {
-                  params.data.signature = reader.result as string;
+                try {
+                  // Mostrar indicador de carga
+                  alerts.showLoading('Subiendo firma', 'Por favor espere mientras se sube la firma...');
+                  // Subir firma a Firebase y obtener la URL
+                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'users/signatures');
+                  params.data.signature = url;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
                   this.notSavedChanges = true;
-                };
-                reader.onerror = () => {
-                  alerts.basicAlert('Error', 'No se pudo leer la imagen', 'error');
-                };
-                reader.readAsDataURL(file);
+                  // Cerrar loading y mostrar éxito
+                  alerts.closeLoading();
+                  alerts.basicAlert('Firma subida', 'La firma se subió correctamente', 'success');
+                } catch (error) {
+                  console.error('Error al subir firma:', error);
+                  alerts.closeLoading();
+                  alerts.basicAlert('Error', 'No se pudo subir la firma a Firebase', 'error');
+                }
               }
               document.body.removeChild(input);
             };
@@ -666,12 +651,8 @@ export class UsersComponent implements OnDestroy {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
     setTimeout(() => {
-      const firstRowIndex = 0;
-      this.gridApi.ensureIndexVisible(firstRowIndex);
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'displayName'
-      });
+      this.gridApi.ensureIndexVisible(0);
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'displayName' });
     }, 0);
   }
 
@@ -679,10 +660,7 @@ export class UsersComponent implements OnDestroy {
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    const invalidNewRows = newRows.filter(item =>
-      !item.displayName || !item.email || !item.password
-    );
-
+    const invalidNewRows = newRows.filter(item => !item.displayName || !item.email || !item.password);
     if (invalidNewRows.length > 0) {
       const invalidRow = invalidNewRows[0];
       let missingFields = [];
@@ -693,10 +671,7 @@ export class UsersComponent implements OnDestroy {
       return;
     }
 
-    const invalidModifiedRows = modifiedRows.filter(item =>
-      !item.displayName || !item.email
-    );
-
+    const invalidModifiedRows = modifiedRows.filter(item => !item.displayName || !item.email);
     if (invalidModifiedRows.length > 0) {
       const invalidRow = invalidModifiedRows[0];
       let missingFields = [];
@@ -706,17 +681,9 @@ export class UsersComponent implements OnDestroy {
       return;
     }
 
-    console.log('=== INICIANDO GUARDADO ===');
-    console.log('Nuevos registros:', newRows.length);
-    console.log('Registros modificados:', modifiedRows.length);
-
     try {
       const addUserRequests = newRows.map((row, index) => {
         const cleanedData = this.cleanDataForServer(row);
-        console.log(`[${index}] this Add CleanedData:`, cleanedData);
-        if (!cleanedData.password || cleanedData.password.trim() === '') {
-          console.error(`[${index}] ERROR: El password está vacío o es nulo`);
-        }
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Add Registro en Usuarios',
@@ -725,9 +692,7 @@ export class UsersComponent implements OnDestroy {
         );
         return this.usersService.addUser(cleanedData).pipe(
           tap(response => {
-            console.log(`[${index}] Respuesta directa del addUser:`, response);
             if (response.code !== 200 || !response.data?.id) {
-              console.error(`[${index}] ERROR: Respuesta inválida del servidor:`, response);
               throw new Error(`Error del servidor: ${response.message || 'Respuesta inválida'}`);
             }
           })
@@ -736,7 +701,6 @@ export class UsersComponent implements OnDestroy {
 
       const updateUserRequests = modifiedRows.map(row => {
         const cleanedData = this.cleanDataForServer(row);
-        console.log('Update CleanedData', cleanedData);
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
           'Update Registro en Usuarios',
@@ -746,22 +710,15 @@ export class UsersComponent implements OnDestroy {
         return this.usersService.updateUser(row.id, cleanedData);
       });
 
-      console.log('Ejecutando solicitudes de usuario...');
       const userResponses = await lastValueFrom(
         concat(...addUserRequests, ...updateUserRequests).pipe(toArray())
       );
 
-      console.log('Respuestas de usuario:', userResponses);
-
       const newUserResponses = userResponses.slice(0, newRows.length);
-      console.log('Nuevos usuarios creados:', newUserResponses);
 
-      const permissionRequests = newUserResponses.map((response, index) => {
+      const permissionRequests = newUserResponses.map((response) => {
         const userId = response.data?.id;
-        if (!userId) {
-          console.warn('No se pudo obtener el ID del usuario para:', response);
-          return null;
-        }
+        if (!userId) return null;
 
         const formattedRoot = {
           idUser: userId,
@@ -779,60 +736,34 @@ export class UsersComponent implements OnDestroy {
         } else {
           const branchId = this.signalsService.getBranchSelectedBySidebar()();
           if (branchId > 0) {
-            const formattedBranch = {
+            requests.push(this.usersxrootService.addUserxPermission({
               idUser: userId,
               idPermission: branchId,
               type: 'branch',
               description: 'SIN DESCRIPCION',
               active: 1
-            };
-            console.log('Datos de permiso branch a guardar:', formattedBranch);
-            requests.push(this.usersxrootService.addUserxPermission(formattedBranch));
+            }));
           }
         }
-
-        console.log('Datos de permiso root a guardar:', formattedRoot);
         return requests;
       }).filter(req => req !== null);
 
       if (permissionRequests.length > 0) {
-        console.log('Ejecutando solicitudes de permisos, cantidad:', permissionRequests.length * 2);
-        const permissionResponses = await lastValueFrom(
-          concat(...permissionRequests.flat()).pipe(toArray())
-        );
-        console.log('Respuestas de permisos:', permissionResponses);
-      } else {
-        console.warn('No se crearon solicitudes de permisos');
+        await lastValueFrom(concat(...permissionRequests.flat()).pipe(toArray()));
       }
 
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      setTimeout(() => {
-        this.obtenerDatos();
-        console.log('=== DATOS REFRESCADOS DESPUÉS DE GUARDAR ===');
-      }, 500);
+      setTimeout(() => this.obtenerDatos(), 500);
 
     } catch (error) {
       console.error('Error al guardar usuarios:', error);
       let errorMessage = 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.';
-      if (error?.error?.message) {
-        errorMessage = error.error.message;
-      } else if (error?.error?.errors) {
-        const serverErrors = error.error.errors;
-        if (Array.isArray(serverErrors)) {
-          errorMessage = 'Errores de validación:\n' + serverErrors.join('\n');
-        } else if (typeof serverErrors === 'object') {
-          const errorMessages = Object.values(serverErrors).flat();
-          errorMessage = 'Errores de validación:\n' + errorMessages.join('\n');
-        }
-      } else if (error?.status === 400) {
-        errorMessage = 'Error de validación: Verifique que todos los campos obligatorios estén completos.';
-      } else if (error?.status === 409) {
-        errorMessage = 'Conflicto: El correo electrónico ya está en uso.';
-      } else if (error?.status === 500) {
-        errorMessage = 'Error del servidor: Contacte al administrador.';
-      }
+      if (error?.error?.message) errorMessage = error.error.message;
+      else if (error?.status === 400) errorMessage = 'Error de validación: Verifique que todos los campos obligatorios estén completos.';
+      else if (error?.status === 409) errorMessage = 'Conflicto: El correo electrónico ya está en uso.';
+      else if (error?.status === 500) errorMessage = 'Error del servidor: Contacte al administrador.';
       alerts.basicAlert('Error', errorMessage, 'error');
     }
   }
@@ -852,36 +783,29 @@ export class UsersComponent implements OnDestroy {
       return;
     }
 
-    alerts.confirmAlert(
-      'Eliminar empleado',
-      '¿Está seguro que desea eliminar este usuario?',
-      'warning',
-      'Sí, eliminar'
-    ).then((value) => {
-      if (value.isConfirmed) {
-        console.log('SelectedData', selectedData);
-        selectedData.active = 0;
-        console.log('SelectedData', selectedData);
-        this.usersService.deleteUser(id, selectedData).pipe(
-          catchError((error) => {
-            alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
-            console.error(error);
-            return EMPTY;
-          })
-        ).subscribe(() => {
-          alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
-          this.obtenerDatos();
-          this.trackingService.addLog(
-            this.trackingService.getnameComp(),
-            'Delete Registro en Usuarios',
-            'Menu Administracion Usuarios',
-            this.trackingService.getEmail()
-          );
-          this.notSavedChanges = false;
-          this.selectedRowData = null;
-        });
-      }
-    });
+    alerts.confirmAlert('Eliminar empleado', '¿Está seguro que desea eliminar este usuario?', 'warning', 'Sí, eliminar')
+      .then((value) => {
+        if (value.isConfirmed) {
+          selectedData.active = 0;
+          this.usersService.deleteUser(id, selectedData).pipe(
+            catchError((error) => {
+              alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
+              return EMPTY;
+            })
+          ).subscribe(() => {
+            alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+            this.obtenerDatos();
+            this.trackingService.addLog(
+              this.trackingService.getnameComp(),
+              'Delete Registro en Usuarios',
+              'Menu Administracion Usuarios',
+              this.trackingService.getEmail()
+            );
+            this.notSavedChanges = false;
+            this.selectedRowData = null;
+          });
+        }
+      });
   }
 
   revert() {
@@ -910,44 +834,19 @@ export class UsersComponent implements OnDestroy {
       selectedNode.setExpanded(false);
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Ocultar Permisos',
-        'Menu Administracion Usuarios',
-        this.trackingService.getEmail()
-      );
     } else {
       this.gridApi.forEachNode((node) => {
-        if (node.expanded) {
-          node.setExpanded(false);
-        }
+        if (node.expanded) node.setExpanded(false);
       });
       this.gridApi.setFilterModel(null);
-      const filterModel = {
-        id: {
-          filterType: 'number',
-          type: 'equals',
-          filter: selectedData.id
-        }
-      };
-      this.gridApi.setFilterModel(filterModel);
+      this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: selectedData.id } });
       this.gridApi.onFilterChanged();
-      setTimeout(() => {
-        selectedNode.setExpanded(true);
-      }, 50);
-      this.trackingService.addLog(
-        this.trackingService.getnameComp(),
-        'Mostrar Permisos',
-        'Menu Administracion Usuarios',
-        this.trackingService.getEmail()
-      );
+      setTimeout(() => selectedNode.setExpanded(true), 50);
     }
   }
 
   getRoleColorEmoji(roleId: number): string {
-    const colorEmojis = [
-      '🔵', '🟢', '🔴', '🟡', '🟣', '🟠', '🟦', '🩷', '⚫', '🟦', '⚪', '🟤'
-    ];
+    const colorEmojis = ['🔵', '🟢', '🔴', '🟡', '🟣', '🟠', '🟦', '🩷', '⚫', '🟦', '⚪', '🟤'];
     return colorEmojis[roleId % colorEmojis.length];
   }
 
@@ -961,22 +860,26 @@ export class UsersComponent implements OnDestroy {
     if (!cleanedData.password || cleanedData.password === '') {
       console.warn('El campo password está vacío, esto puede causar el error');
     }
-    if (cleanedData.picture && cleanedData.picture.startsWith('data:')) {
-      // Ya está en base64, mantenerlo
-    } else if (cleanedData.picture === './assets/img/profile.png') {
-      delete cleanedData.picture;
+    // Procesar imágenes - ahora son URLs de Firebase, no base64
+    if (cleanedData.picture === './assets/img/profile.png' || !cleanedData.picture) {
+      delete cleanedData.picture; // No enviar la imagen por defecto
     }
+    // Si es base64 (legacy o error), advertir pero mantener para evitar pérdida de datos
+    if (cleanedData.picture && cleanedData.picture.startsWith('data:')) {
+      console.warn('Se detectó imagen en base64, debería ser URL de Firebase');
+    }
+    if (!cleanedData.signature) {
+      delete cleanedData.signature; // No enviar si está vacío
+    }
+    // Si es base64 (legacy o error), advertir
     if (cleanedData.signature && cleanedData.signature.startsWith('data:')) {
-      // Ya está en base64, mantenerlo
-    } else if (!cleanedData.signature) {
-      delete cleanedData.signature;
+      console.warn('Se detectó firma en base64, debería ser URL de Firebase');
     }
     cleanedData.id_company = Number(cleanedData.id_company) || this.idRoot;
     cleanedData.idRol = Number(cleanedData.idRol) || 0;
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
     cleanedData.active = Number(cleanedData.active) || 1;
-    console.log('Cleaned data para servidor:', cleanedData);
     return cleanedData;
   }
 }
