@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { DailyReportService } from 'app/services/daily-report.service';
 import { LogbookService } from 'app/services/logbook.service';
 import { SignalsService } from 'app/services/signals.service';
+import { ConventionsService } from 'app/services/conventions.service';
 import { alerts } from 'app/helpers/alerts';
 import { IDailyReport } from 'app/interface/idaily-report';
 import { ButtonCellRendererExpenditureComponent } from '../../../ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
@@ -38,8 +39,10 @@ export class SistemaComponent implements OnInit {
   private dailyReportService = inject(DailyReportService);
   private logbookService = inject(LogbookService);
   private signalsService    = inject(SignalsService);
+  private conventionsService = inject(ConventionsService);
 
   public rowData: IDailyReport[]       = [];
+  public conventionsList: any[] = [];
   private originalRowData: IDailyReport[] = [];
   public gridApi!: GridApi;
   public hasUnsavedChanges   = false;
@@ -138,6 +141,20 @@ export class SistemaComponent implements OnInit {
         : '$0.00',
     },
 */    
+    {
+      field: 'idConvention',
+      headerName: 'Convenio',
+      width: 180,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: (params: any) => ({
+        values: this.conventionsList.map((c: any) => c.id)
+      }),
+      valueFormatter: (params) => {
+        const conv = this.conventionsList.find((c: any) => c.id === params.value);
+        return conv ? conv.name || conv.description || conv.title || params.value : params.value;
+      },
+    },
     { field: 'numReporte',       headerName: 'No. Reporte',       width: 200, editable: true },
     { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 180, editable: true },
     { field: 'ubication',        headerName: 'Ubicación',         width: 130, editable: true },
@@ -273,6 +290,9 @@ export class SistemaComponent implements OnInit {
         this.hasUnsavedChanges = false;
         this.selectedRow = null;
         this.loadReports();
+        if (this.gridApi) {
+          this.loadConventions(projectId);
+        }
       }
     });
 
@@ -289,6 +309,21 @@ export class SistemaComponent implements OnInit {
     }
   }
 
+  loadConventions(projectId: number): void {
+    this.conventionsService.getConvention2fields(projectId).subscribe({
+      next: (resp: any) => {
+        this.conventionsList = resp.data || resp || [];
+        if (this.gridApi) {
+          this.gridApi.refreshHeader();
+        }
+      },
+      error: (err) => {
+        console.error('Error cargando convenios:', err);
+        this.conventionsList = [];
+      }
+    });
+  }
+
   onGridReady(event: GridReadyEvent): void {
     this.gridApi = event.api;
     this.gridOptions.context.componentParent = this;
@@ -298,6 +333,10 @@ export class SistemaComponent implements OnInit {
       },
       context: this.gridOptions.context
     });
+    
+    if (this.idProject) {
+      this.loadConventions(this.idProject);
+    }
   }
 
   loadReports(): void {
@@ -332,6 +371,7 @@ export class SistemaComponent implements OnInit {
       endTime: '17:02:00',
       type: 'CORTE',
       description: '',
+      idConvention: null,
       numReporte: '',
       condition: '',
       ubication: '',
@@ -465,7 +505,6 @@ export class SistemaComponent implements OnInit {
 
   private cleanForServer(item: any): any {
     const { __isNew, __modified, detailType, detailData, visible, ...data } = item;
-    console.log('📤 Enviando al servidor:', data);
     return data;
   }
 
