@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.81 (26 Febrero 2026 09:54) - Iris',
+  version: '5.82 (26 Febrero 2026 10:40) - Iris',
 };
 
 

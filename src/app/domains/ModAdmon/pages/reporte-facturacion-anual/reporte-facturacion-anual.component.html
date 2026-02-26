@@ -69,6 +69,10 @@
               <th class="text-end">Cuentas por Cobrar</th>
               <th class="text-end">Gastos Totales</th>
               <th class="text-end">Dif. Pagado vs Gastos</th>
+              <th class="text-end">Retiro Aportación</th>
+              <th class="text-end">Retiro Utilidades</th>
+              <th class="text-end">Retiro Total</th>
+              <th class="text-end">Flujo Actual</th>
             </tr>
           </thead>
           <tbody>
@@ -85,6 +89,13 @@
                   [class.diferencia-negativa]="f.diferenciaPagadoVsGastos < 0">
                 {{ formatCurrency(f.diferenciaPagadoVsGastos) }}
               </td>
+              <td class="text-end retiro-cell">{{ formatCurrency(f.retiroAportacion) }}</td>
+              <td class="text-end retiro-cell">{{ formatCurrency(f.retiroUtilidades) }}</td>
+              <td class="text-end retiro-total-cell">{{ formatCurrency(f.retiroTotal) }}</td>
+              <td class="text-end" [class.flujo-positivo]="f.flujoActual >= 0"
+                  [class.flujo-negativo]="f.flujoActual < 0">
+                {{ formatCurrency(f.flujoActual) }}
+              </td>
             </tr>
           </tbody>
           <tfoot>
@@ -100,6 +111,13 @@
               <td class="text-end" [class.diferencia-positiva-total]="totales.diferenciaPagadoVsGastos >= 0"
                   [class.diferencia-negativa-total]="totales.diferenciaPagadoVsGastos < 0">
                 <strong>{{ formatCurrency(totales.diferenciaPagadoVsGastos) }}</strong>
+              </td>
+              <td class="text-end retiro-total-cell"><strong>{{ formatCurrency(totales.retiroAportacion) }}</strong></td>
+              <td class="text-end retiro-total-cell"><strong>{{ formatCurrency(totales.retiroUtilidades) }}</strong></td>
+              <td class="text-end retiro-total-cell"><strong>{{ formatCurrency(totales.retiroTotal) }}</strong></td>
+              <td class="text-end" [class.flujo-positivo-total]="totales.flujoActual >= 0"
+                  [class.flujo-negativo-total]="totales.flujoActual < 0">
+                <strong>{{ formatCurrency(totales.flujoActual) }}</strong>
               </td>
             </tr>
           </tfoot>
