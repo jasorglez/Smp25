@@ -57,14 +57,44 @@
         <!-- Header -->
         <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #dee2e6;background:#f8f9fa;border-radius:10px 10px 0 0;">
             <strong>Permisos — {{ modalUserName }}</strong>
-            <button class="btn btn-sm btn-outline-secondary" (click)="closePermissionsModal()">
-                <i class="bi bi-x-lg"></i>
-            </button>
+
+            <div style="display:flex;align-items:center;gap:8px;">
+                <!-- Botón Modificar -->
+                <button class="btn btn-sm btn-primary" (click)="permissionsViewRef.modificar()" title="Modificar">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <!-- Botón Guardar -->
+                <button class="btn btn-sm btn-success position-relative"
+                    (click)="permissionsViewRef.saveDetailChanges()"
+                    [disabled]="!permissionsViewRef?.notSavedChanges"
+                    title="Guardar cambios">
+                    <i class="bi bi-floppy"></i>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                        *ngIf="permissionsViewRef?.notSavedChanges">
+                        <span class="visually-hidden">Hay cambios sin guardar</span>
+                    </span>
+                </button>
+                <!-- Botón Revertir -->
+                <button class="btn btn-sm btn-warning"
+                    (click)="permissionsViewRef.revertChanges()"
+                    [disabled]="!permissionsViewRef?.notSavedChanges"
+                    title="Revertir cambios">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <!-- Separador -->
+                <div style="width:1px;height:24px;background:#dee2e6;margin:0 4px;"></div>
+                <!-- Botón Cerrar -->
+                <button class="btn btn-sm btn-outline-secondary" (click)="closePermissionsModal()" title="Cerrar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Body -->
         <div style="overflow-y:auto;padding:16px;flex:1;">
             <app-permissions-view-by-user
+                #permissionsViewRef
                 *ngIf="modalPermissions"
                 [idUserInput]="modalPermissions.idUser"
                 [idBranchInput]="modalPermissions.idBranch"
