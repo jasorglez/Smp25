@@ -66,6 +66,7 @@ export const BITACORA_TEMPLATE = `
     (cellEditingStopped)="onCellEditingStopped($event)"
     (cellClicked)="onCellClicked($event)"
     (cellDoubleClicked)="onCellDoubleClicked($event)"
+    (selectionChanged)="onSelectionChanged($event)"
     style="height: 300px; width: 100%;">
   </ag-grid-angular>
 </div>
@@ -91,12 +92,13 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   protected materialsService   = inject(MaterialsService);
   protected signalsService     = inject(SignalsService);
 
-  protected context: any = null;
+  @Input() context: any = null;
   protected gridApi!: GridApi;
   protected enterPressed = false;
 
   rowData: any[]       = [];
   hasUnsavedChanges    = false;
+  selectedRowData: any = null;
   reportData: any      = null;
   tempIdCounter        = 0;
   posicionesValues: string[] = [];
@@ -212,11 +214,21 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   }
 
   onCellDoubleClicked(event: any): void {
-    // Base implementation - can be overridden by child components
+    console.log('Base onCellDoubleClicked fired:', event.colDef?.field);
   }
 
   onCellClicked(event: any): void {
-    // Base implementation - can be overridden by child components
+    console.log('Base onCellClicked fired:', event.colDef?.field);
+  }
+
+  onSelectionChanged(event: any): void {
+    console.log('Selection changed fired');
+    const selectedRows = this.gridApi?.getSelectedRows();
+    if (selectedRows && selectedRows.length > 0) {
+      this.selectedRowData = selectedRows[0];
+    } else {
+      this.selectedRowData = null;
+    }
   }
 
   // ── CRUD ─────────────────────────────────────────────────────────────────
