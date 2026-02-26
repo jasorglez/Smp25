@@ -19,7 +19,7 @@ import { UsersService } from 'app/services/users.service';
 
 
 @Component({
-  selector: 'app-detail-permissions-renderer',
+  selector: 'app-detalle-permisos-x-sucursales',
   standalone: true,
   imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent, DetailBranchesRendererComponent],
   template: `
@@ -68,7 +68,7 @@ import { UsersService } from 'app/services/users.service';
     </div>
   `
 })
-export class DetailPermissionsRendererComponent implements ICellRendererAngularComp {
+export class DetallePermisosXSucursalesComponent implements ICellRendererAngularComp {
   private signalsService = inject(SignalsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);

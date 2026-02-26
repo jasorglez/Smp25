@@ -19,7 +19,7 @@ import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
-import { DetailPermissionsRendererComponent } from './details/detail-permissions-renderer.component';
+import { DetallePermisosXSucursalesComponent } from './details/detallepermisosxsucursales.component';
 import { PermissionsViewByUserComponent } from './details/detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
 
@@ -35,7 +35,7 @@ import { ModalService } from 'app/services/permissions-modal.service';
     FormsModule,
     AgGridModule,
     MatDialogModule,
-    DetailPermissionsRendererComponent,
+    DetallePermisosXSucursalesComponent,
     PermissionsViewByUserComponent,
     ReactiveFormsModule
   ],
@@ -166,7 +166,7 @@ export class UsersComponent implements OnDestroy {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
-    detailPermissionsRenderer: DetailPermissionsRendererComponent
+    detailPermissionsRenderer: DetallePermisosXSucursalesComponent
   }
 
   obtenerEmpleados() {
