@@ -48,7 +48,6 @@ export class SistemaComponent implements OnInit {
   public hasUnsavedChanges   = false;
   public selectedRow: any    = null;
   private idProject: number  = 0;
-  private idContract: number = 0;
   private idRoot: number    = 0;
   
   externalFilterActive: boolean = false;
@@ -149,18 +148,11 @@ export class SistemaComponent implements OnInit {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => ({
-        values: this.conventionsList.map((c: any) => c.description)
+        values: this.conventionsList.map((c: any) => c.id)
       }),
-      valueGetter: (params: any) => {
-        if (!params.data?.idConvention) return '';
-        const conv = this.conventionsList.find((c: any) => c.id === params.data.idConvention);
-        return conv ? conv.description : '';
-      },
-      valueSetter: (params: any) => {
-        if (!params.newValue) { params.data.idConvention = 0; return true; }
-        const conv = this.conventionsList.find((c: any) => c.description === params.newValue);
-        params.data.idConvention = conv ? conv.id : 0;
-        return true;
+      valueFormatter: (params) => {
+        const conv = this.conventionsList.find((c: any) => c.id === params.value);
+        return conv ? conv.name || conv.description || conv.title || params.value : params.value;
       },
     },
     { field: 'numReporte',       headerName: 'No. Reporte',       width: 200, editable: true },
@@ -287,15 +279,6 @@ export class SistemaComponent implements OnInit {
   ];
 
   constructor() {
-    // Carga convenios cada vez que cambia el contrato seleccionado
-    effect(() => {
-      const contractId = this.signalsService.getContractSelectedBySidebar()();
-      if (contractId) {
-        this.idContract = contractId;
-        this.loadConventions(contractId);
-      }
-    });
-
     // Usa getSidebarProjectId (nunca modificada por ordenes) para evitar
     // que la selección de una OT de otra empresa contamine esta vista.
     effect(() => {
@@ -307,6 +290,9 @@ export class SistemaComponent implements OnInit {
         this.hasUnsavedChanges = false;
         this.selectedRow = null;
         this.loadReports();
+        if (this.gridApi) {
+          this.loadConventions(projectId);
+        }
       }
     });
 
@@ -316,21 +302,19 @@ export class SistemaComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const projectId  = this.signalsService.getSidebarProjectId()();
-    const contractId = this.signalsService.getContractSelectedBySidebar()();
-    if (contractId) this.idContract = contractId;
+    const projectId = this.signalsService.getSidebarProjectId()();
     if (projectId) {
       this.idProject = projectId;
       this.loadReports();
     }
   }
 
-  loadConventions(idContract: number): void {
-    this.conventionsService.getConvention2fields(idContract).subscribe({
+  loadConventions(projectId: number): void {
+    this.conventionsService.getConvention2fields(projectId).subscribe({
       next: (resp: any) => {
         this.conventionsList = resp.data || resp || [];
         if (this.gridApi) {
-          this.gridApi.refreshCells({ columns: ['idConvention'], force: true });
+          this.gridApi.refreshHeader();
         }
       },
       error: (err) => {
@@ -350,8 +334,8 @@ export class SistemaComponent implements OnInit {
       context: this.gridOptions.context
     });
     
-    if (this.idContract) {
-      this.loadConventions(this.idContract);
+    if (this.idProject) {
+      this.loadConventions(this.idProject);
     }
   }
 

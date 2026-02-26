@@ -37,8 +37,8 @@ export class ConventionsService {
     return this.http.get<any>(`${environment.urlSmp}/ConventionDetails?conventionId=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getConvention2fields(idContract: number): Observable<any> {
-    return this.http.get<any>(`${environment.urlSmp}/Convention/2fields/idContract?idContract=${idContract}`, { headers: this.trackingService.getHeaders() });
+  getConvention2fields(id: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlSmp}/Convention?conventionId=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   addConventionDetails(data: any): Observable<any> {
