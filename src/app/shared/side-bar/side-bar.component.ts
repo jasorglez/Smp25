@@ -11,13 +11,14 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { UsersService } from 'app/services/users.service';
 import { SharedModule } from '../shared.module';
+import { FormsModule } from '@angular/forms';
 import { EMPTY, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-side-bar',
   standalone: true,
-  imports: [SharedModule],
+  imports: [SharedModule, FormsModule],
   templateUrl: './side-bar.component.html',
   styleUrl: './side-bar.component.scss',
 })
@@ -200,24 +201,20 @@ error: (error) => {
             name: 'Todas las sucursales',
           });
 
-          if (this.branchData.length > 0) {
-            this.selectedBranchId = this.branchData[0].id;
+          // branchData[0] = "Todas las sucursales" (ID negativo) → seleccionar la primera real (índice 1)
+          const defaultBranch = this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
+          if (defaultBranch) {
+            this.selectedBranchId = String(defaultBranch.id);
 
-            this.signalsService.setBranchSelectedBySidebar(
-              Number(this.selectedBranchId)
-            );
-            this.signalsService.setBranchNameSelectedBySidebar(
-              this.branchData[0].name
-            );
+            this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
+            this.signalsService.setBranchNameSelectedBySidebar(defaultBranch.name);
             this.trackingService.setContract(this.selectedBranchId);
 
-            // Actualizar el DOM del select
             setTimeout(() => {
-              const selectElement = document.getElementById('branchs') as HTMLSelectElement;
-              if (selectElement) selectElement.value = this.selectedBranchId;
-            }, 50);
+              const sel = document.getElementById('branchs') as HTMLSelectElement;
+              if (sel) sel.value = this.selectedBranchId;
+            });
 
-            // Cargar contratos directamente sin depender del evento DOM
             await this.getpermissionxContracts();
           }
         },
@@ -240,7 +237,7 @@ error: (error) => {
             }));
 
             if (this.branchData.length > 0) {
-              this.selectedBranchId = this.branchData[0].id;
+              this.selectedBranchId = String(this.branchData[0].id);
 
               this.signalsService.setBranchSelectedBySidebar(
                 Number(this.selectedBranchId)
@@ -250,13 +247,13 @@ error: (error) => {
               );
               this.trackingService.setContract(this.selectedBranchId);
 
-              // Actualizar el DOM del select
+              // Actualizar DOM después de que *ngFor haya creado las opciones
               setTimeout(() => {
-                const selectElement = document.getElementById('branchs') as HTMLSelectElement;
-                if (selectElement) selectElement.value = this.selectedBranchId;
-              }, 50);
+                const sel = document.getElementById('branchs') as HTMLSelectElement;
+                if (sel) sel.value = this.selectedBranchId;
+              });
 
-              // Cargar contratos directamente sin depender del evento DOM
+              // Cargar contratos en cascada
               await this.getpermissionxContracts();
             }
           },
@@ -320,7 +317,7 @@ error: (error) => {
         if (contract && contract.length > 0) {
           this.contractData = contract;
           // Auto-seleccionar siempre el primer contrato
-          this.selectedContractId = this.contractData[0].contractId;
+          this.selectedContractId = String(this.contractData[0].contractId);
           this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
           this.signalsService.contractSignal(
             Number(this.selectedContractId),
@@ -328,9 +325,9 @@ error: (error) => {
           );
           this.trackingService.setContract(this.selectedContractId);
           setTimeout(() => {
-            const selectElement = document.getElementById('contracts') as HTMLSelectElement;
-            if (selectElement) selectElement.value = this.selectedContractId;
-          }, 50);
+            const sel = document.getElementById('contracts') as HTMLSelectElement;
+            if (sel) sel.value = this.selectedContractId;
+          });
           await this.getpermissionxProjects(Number(this.selectedContractId));
         }
       });
@@ -363,15 +360,15 @@ error: (error) => {
           this.projectData = Object.values(data);
           if (this.projectData.length > 0) {
             // Auto-seleccionar siempre el primer proyecto
-            this.selectedProjectId = this.projectData[0].idProject;
+            this.selectedProjectId = String(this.projectData[0].idProject);
             this.trackingService.setProject(this.selectedProjectId);
             this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
             // Signal exclusiva del sidebar (no la toca ordenes)
             this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
             setTimeout(() => {
-              const selectElement = document.getElementById('project') as HTMLSelectElement;
-              if (selectElement) selectElement.value = this.selectedProjectId;
-            }, 50);
+              const sel = document.getElementById('project') as HTMLSelectElement;
+              if (sel) sel.value = this.selectedProjectId;
+            });
           } else {
             this.selectedProjectId = '';
             this.trackingService.setProject('');

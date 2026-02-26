@@ -1,7 +1,5 @@
 <div class="d-flex flex-column">
 
-
-
   <!-- ======================== -->
   <!-- PASO 1                   -->
   <!-- ======================== -->
@@ -162,25 +160,6 @@
 
     </div>
 
-    <!-- Botones paso 1 -->
-    <div class="d-flex flex-row gap-1 mt-2 justify-content-end">
-      <button type="button" class="btn btn-primary ms-1 me-1 position-relative" (click)="modificar()">
-        <i class="bi bi-pencil"></i>
-      </button>
-      <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
-        <i class="bi bi-floppy"></i>
-        <span
-          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-          *ngIf="notSavedChanges">
-          <span class="visually-hidden">Hay cambios sin guardar</span>
-        </span>
-      </button>
-      <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertChanges()">
-        <i class="bi bi-arrow-clockwise"></i>
-      </button>
-
-    </div>
-
   </div>
 
   <!-- ======================== -->
@@ -188,19 +167,24 @@
   <!-- ======================== -->
   <div *ngIf="pasoActual === 2" class="paso2-wrapper animate-fade-in">
 
-    <!-- Título del paso 2 -->
-    <div *ngIf="subdetailPaso2" class="paso2-header">
-      <div class="paso2-breadcrumb">
-        <span class="paso2-breadcrumb-modulo">{{ masterSeleccionado?.masterPermissionName }}</span>
-        <span class="paso2-breadcrumb-sep">›</span>
-        <span class="paso2-breadcrumb-detail">{{ detailSeleccionado?.detailedPermissionName }}</span>
-        <span class="paso2-breadcrumb-sep">›</span>
-        <span class="paso2-breadcrumb-sub">{{ subdetailPaso2.subdetailedPermissionName }}</span>
+    <!-- Título + Botón Regresar en la misma fila -->
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-3" style="border-bottom: 1px solid #e5e7eb;">
+      <div *ngIf="subdetailPaso2" class="paso2-header" style="margin-bottom:0; padding-bottom:0; border-bottom:none;">
+        <div class="paso2-breadcrumb">
+          <span class="paso2-breadcrumb-modulo">{{ masterSeleccionado?.masterPermissionName }}</span>
+          <span class="paso2-breadcrumb-sep">›</span>
+          <span class="paso2-breadcrumb-detail">{{ detailSeleccionado?.detailedPermissionName }}</span>
+          <span class="paso2-breadcrumb-sep">›</span>
+          <span class="paso2-breadcrumb-sub">{{ subdetailPaso2.subdetailedPermissionName }}</span>
+        </div>
+        <h5 class="paso2-titulo-seccion">
+          <span class="children-bloque-icon">⚙</span>
+          Acciones adicionales — {{ subdetailPaso2.subdetailedPermissionName }}
+        </h5>
       </div>
-      <h5 class="paso2-titulo-seccion">
-        <span class="children-bloque-icon">⚙</span>
-        Acciones adicionales — {{ subdetailPaso2.subdetailedPermissionName }}
-      </h5>
+      <button type="button" class="btn btn-secondary" (click)="irPaso(1)">
+        <i class="bi bi-arrow-left"></i> Regresar
+      </button>
     </div>
 
     <!-- Children del subdetail seleccionado -->
@@ -247,20 +231,6 @@
 
     </div>
 
-    <!-- Botones paso 2 -->
-    <div class="d-flex flex-row gap-1 mt-3 justify-content-end">
-      <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()">
-        <i class="bi bi-floppy"></i>
-        <span
-          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-          *ngIf="notSavedChanges">
-          <span class="visually-hidden">Hay cambios sin guardar</span>
-        </span>
-      </button>
-      <button type="button" class="btn btn-secondary ms-1 me-1" (click)="irPaso(1)">
-        <i class="bi bi-arrow-left"></i> Regresar
-      </button>
-    </div>
 
   </div>
 

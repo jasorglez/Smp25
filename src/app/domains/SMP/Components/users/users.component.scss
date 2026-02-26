@@ -11,8 +11,7 @@
   white-space: pre-line !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
   z-index: 9999 !important;
-  
-  // Arrow del tooltip
+
   &::before {
     content: '';
     position: absolute;
@@ -27,12 +26,10 @@
   }
 }
 
-// Indicador visual en el header
 ::ng-deep .ag-header-cell-text {
   cursor: help;
 }
 
-// Estilos para el grid de usuarios
 .selected-row {
   background-color: #e3f2fd !important;
 }

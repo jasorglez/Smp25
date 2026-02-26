@@ -42,32 +42,32 @@
       (blur)="collapseAfterInteraction()"
       (click)="expandTemporarily()"
       class="form-select mb-2"
-      [value]="selectedBranchId || ''"
+      [value]="selectedBranchId"
       [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('branchs' | translate)) : ''"
       matTooltipPosition="right"
     >
       <option selected disabled value="">{{ "branchs" | translate }}</option>
-      <option *ngFor="let item of branchData" [value]="item.id">
+      <option *ngFor="let item of branchData" [value]="'' + item.id">
         {{ item.name }}
       </option>
     </select>
     <span *ngIf="authService.hasDetailedPermission('principal', 'projects')">
       <span>Select Contracts</span>
 <select
-        id="contract"
+        id="contracts"
         (change)="onContractsSelected($event)"
         (focus)="expandTemporarily()"
         (blur)="collapseAfterInteraction()"
         (click)="expandTemporarily()"
         class="form-select mb-2"
-        [value]="selectedContractId || ''"
+        [value]="selectedContractId"
         [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('contract' | translate)) : ''"
         matTooltipPosition="right"
       >
         <option selected disabled value="">
           {{ "contract" | translate }}
         </option>
-        <option *ngFor="let item of contractData" [value]="item.contractId">
+        <option *ngFor="let item of contractData" [value]="'' + item.contractId">
           {{ item.contract }}
         </option>
       </select>
@@ -80,7 +80,7 @@
         (blur)="collapseAfterInteraction()"
         (click)="expandTemporarily()"
         class="form-select mb-2"
-        [value]="selectedProjectId || ''"
+        [value]="selectedProjectId"
         [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('projects' | translate)) : ''"
         matTooltipPosition="right"
       >
@@ -88,7 +88,7 @@
         <option selected disabled value="">
           {{ "projects" | translate }}
         </option>
-        <option *ngFor="let pj of projectData" [value]="pj.idProject">
+        <option *ngFor="let pj of projectData" [value]="'' + pj.idProject">
           {{ pj.projectName }}
         </option>
       </select>
