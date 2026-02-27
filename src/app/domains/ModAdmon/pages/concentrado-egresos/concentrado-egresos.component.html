@@ -1,0 +1,122 @@
+<div class="reporte-container">
+  <!-- Header -->
+  <div class="header-section">
+    <div class="header-left">
+      <h2>CONCENTRADO DE EGRESOS</h2>
+      <span class="subtitle">{{ companyName }}</span>
+    </div>
+    <div class="header-center">
+      <div class="filters-section">
+        <div class="filter-group">
+          <label for="fechaInicio">Fecha Inicio:</label>
+          <input type="date" id="fechaInicio" class="form-control form-control-sm"
+                 [(ngModel)]="fechaInicio" (change)="onFilterChange()">
+        </div>
+        <div class="filter-group">
+          <label for="fechaFin">Fecha Fin:</label>
+          <input type="date" id="fechaFin" class="form-control form-control-sm"
+                 [(ngModel)]="fechaFin" (change)="onFilterChange()">
+        </div>
+      </div>
+      <div class="fecha-info">
+        <span><strong>Fecha:</strong> {{ fechaActual }}</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="export-buttons">
+        <button
+          class="btn btn-sm btn-danger"
+          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+          (click)="exportToPdf()">
+          <i class="bi bi-filetype-pdf"></i>
+          {{ isExportingPdf ? 'Exportando...' : 'PDF' }}
+        </button>
+        <button
+          class="btn btn-sm btn-success"
+          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+          (click)="exportToXlsx()">
+          <i class="bi bi-filetype-xlsx"></i>
+          {{ isExportingXlsx ? 'Exportando...' : 'XLSX' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p>Cargando datos del reporte...</p>
+  </div>
+
+  <!-- Contenido principal -->
+  <div *ngIf="!isLoading" class="main-content">
+    <!-- Tabla de Concentrado de Egresos -->
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="reporte-table">
+          <thead>
+            <tr>
+              <th class="text-center">Empresa</th>
+              <th class="text-center">Proyecto</th>
+              <th class="text-center">Fecha</th>
+              <th class="text-center">Mes</th>
+              <th class="text-center">Año</th>
+              <th class="text-center">Clasificación</th>
+              <th class="text-center">Subclasificación</th>
+              <th class="text-center">Concepto</th>
+              <th class="text-end">Imp. s/IVA</th>
+              <th class="text-end">IVA</th>
+              <th class="text-end">Otros Imp.</th>
+              <th class="text-end">Imp. Total</th>
+              <th class="text-center"># Factura</th>
+              <th class="text-center">Proveedor</th>
+              <th class="text-center">Observaciones</th>
+              <th class="text-center">Tipo Pago</th>
+              <th class="text-center">Cuenta</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let e of concentradoEgresos; let i = index" [class.row-alt]="i % 2 === 0">
+              <td class="text-center empresa-cell">{{ e.empresa }}</td>
+              <td class="text-center">{{ e.proyecto }}</td>
+              <td class="text-center">{{ e.fecha | date:'dd/MM/yyyy' }}</td>
+              <td class="text-center">{{ e.mes }}</td>
+              <td class="text-center">{{ e.anioEjercicio }}</td>
+              <td class="text-center clasificacion-cell">{{ e.clasificacion }}</td>
+              <td class="text-center">{{ e.subclasificacion }}</td>
+              <td class="text-center concepto-cell">{{ e.concepto }}</td>
+              <td class="text-end">{{ formatCurrency(e.importeSinIva) }}</td>
+              <td class="text-end">{{ formatCurrency(e.iva) }}</td>
+              <td class="text-end otros-imp-cell">{{ e.otrosImpuestos > 0 ? formatCurrency(e.otrosImpuestos) : '' }}</td>
+              <td class="text-end total-cell">{{ formatCurrency(e.importeTotal) }}</td>
+              <td class="text-center factura-cell">{{ e.numeroFactura }}</td>
+              <td class="text-center">{{ e.proveedor }}</td>
+              <td class="text-center observaciones-cell">{{ e.observaciones }}</td>
+              <td class="text-center">{{ e.tipoPago }}</td>
+              <td class="text-center cuenta-cell">{{ e.cuenta }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="8" class="text-end"><strong>TOTAL</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.importeSinIva) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totales.iva) }}</strong></td>
+              <td class="text-end"><strong>{{ totales.otrosImpuestos > 0 ? formatCurrency(totales.otrosImpuestos) : '' }}</strong></td>
+              <td class="text-end total-general"><strong>{{ formatCurrency(totales.importeTotal) }}</strong></td>
+              <td colspan="5"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mensaje cuando no hay datos -->
+    <div *ngIf="concentradoEgresos.length === 0" class="no-data-message">
+      <i class="bi bi-inbox"></i>
+      <p>No hay datos de egresos para mostrar</p>
+      <small>Verifique que existan gastos registrados en el período seleccionado</small>
+    </div>
+  </div>
+</div>

@@ -15,19 +15,33 @@
         </li>
 
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="reporte-operativo-sin-iva" routerLinkActive="active">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="reporte-operativo-sin-iva"
+            routerLinkActive="active">
             <mat-icon>table_view</mat-icon> Reporte Operativo sin IVA
           </a>
         </li>
 
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="reporte-facturacion-anual" routerLinkActive="active">
-            <mat-icon>receipt_long</mat-icon> Facturación Anual
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="reporte-facturacion-anual"
+            routerLinkActive="active">
+            <mat-icon>receipt_long</mat-icon> Resumen por año
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="compuesto-negocio" routerLinkActive="active">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="concentrado-egresos"
+            routerLinkActive="active">
+            <mat-icon>payments</mat-icon> Concentrado de gastos
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="control-facturacion-ingresos"
+            routerLinkActive="active">
+            <mat-icon>request_quote</mat-icon> Concentrado de ingresos
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="compuesto-negocio"
+            routerLinkActive="active">
             <mat-icon>trending_up</mat-icon> Compuesto Negocio
           </a>
         </li>
