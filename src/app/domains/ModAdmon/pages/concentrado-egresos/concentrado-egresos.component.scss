@@ -1,0 +1,364 @@
+// concentrado-egresos.component.scss
+
+:host {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.reporte-container {
+  padding: 15px;
+  background-color: #f4f7fa;
+  min-height: 100vh;
+}
+
+// Header Section
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background-color: #ffffff;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #c0392b;
+
+  .header-left {
+    h2 {
+      margin: 0;
+      color: #c0392b;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+  }
+
+  .header-center {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+
+    .filters-section {
+      display: flex;
+      gap: 15px;
+      align-items: flex-end;
+
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #c0392b;
+          margin-bottom: 0;
+        }
+
+        .form-control {
+          padding: 4px 8px;
+          font-size: 0.85rem;
+          border: 1px solid #cbd5e1;
+          border-radius: 4px;
+          min-width: 140px;
+
+          &:focus {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 0.15rem rgba(231, 76, 60, 0.25);
+            outline: none;
+          }
+        }
+      }
+    }
+
+    .fecha-info {
+      font-size: 0.8rem;
+      color: #334155;
+
+      strong {
+        color: #c0392b;
+      }
+    }
+  }
+
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+
+    .export-buttons {
+      display: flex;
+      gap: 8px;
+
+      .btn {
+        min-width: 80px;
+        font-weight: 600;
+        font-size: 0.8rem;
+      }
+    }
+  }
+}
+
+// Loading
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #64748b;
+
+  p {
+    margin-top: 15px;
+    font-size: 0.9rem;
+  }
+}
+
+// Main Content
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+// Table Card
+.table-card {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 15px;
+  overflow: hidden;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+// Reporte Table
+.reporte-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+
+  th {
+    background-color: #c0392b;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 8px 4px;
+    text-align: left;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+
+    &.text-center {
+      text-align: center;
+    }
+
+    &.text-end {
+      text-align: right;
+    }
+  }
+
+  td {
+    padding: 5px 4px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    vertical-align: middle;
+    font-size: 0.7rem;
+
+    &.text-center {
+      text-align: center;
+    }
+
+    &.text-end {
+      text-align: right;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    &.empresa-cell {
+      font-weight: 500;
+      color: #c0392b;
+    }
+
+    &.clasificacion-cell {
+      font-weight: 500;
+      color: #2c3e50;
+    }
+
+    &.concepto-cell {
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &.observaciones-cell {
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &.factura-cell {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.65rem;
+    }
+
+    &.cuenta-cell {
+      font-size: 0.65rem;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &.otros-imp-cell {
+      color: #7f8c8d;
+    }
+
+    &.total-cell {
+      font-weight: 600;
+      color: #c0392b;
+    }
+  }
+
+  tbody {
+    tr {
+      transition: background-color 0.15s ease;
+
+      &:hover {
+        background-color: #fdf2f2;
+      }
+
+      &.row-alt {
+        background-color: #fef5f5;
+
+        &:hover {
+          background-color: #fce8e8;
+        }
+      }
+    }
+  }
+
+  tfoot {
+    .total-row {
+      background-color: #fadbd8;
+
+      td {
+        border-top: 2px solid #c0392b;
+        border-bottom: none;
+        color: #c0392b;
+        padding: 10px 4px;
+      }
+
+      .total-general {
+        background-color: #f5b7b1;
+        color: #922b21;
+        font-size: 0.85rem;
+      }
+    }
+  }
+}
+
+// No Data Message
+.no-data-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: #94a3b8;
+  background-color: #ffffff;
+  border-radius: 8px;
+
+  i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+  }
+
+  p {
+    font-size: 1rem;
+    margin: 0;
+    color: #64748b;
+  }
+
+  small {
+    font-size: 0.85rem;
+    margin-top: 8px;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .header-section {
+    flex-direction: column;
+    gap: 15px;
+
+    .header-left,
+    .header-center,
+    .header-right {
+      width: 100%;
+      align-items: flex-start;
+    }
+
+    .header-right {
+      flex-direction: row;
+      justify-content: flex-end;
+    }
+  }
+
+  .reporte-table {
+    font-size: 0.65rem;
+
+    th, td {
+      padding: 3px;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .reporte-container {
+    padding: 0;
+    background-color: #ffffff;
+  }
+
+  .header-section {
+    box-shadow: none;
+    border: 1px solid #ccc;
+
+    .export-buttons {
+      display: none;
+    }
+  }
+
+  .table-card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .reporte-table {
+    th {
+      background-color: #c0392b !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .row-alt {
+      background-color: #fef5f5 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .total-row {
+      background-color: #fadbd8 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+}
