@@ -103,6 +103,17 @@ getMasterUpdateTrigger() {
     this.contractSelectedBySidebar.set(id);
   }
 
+  // Convenio vigente del contrato activo (solo lectura para todos excepto módulo Convenios)
+  private conventionVigente = signal<{ id: number; name: string } | null>(null);
+
+  setConventionVigente(data: { id: number; name: string } | null) {
+    this.conventionVigente.set(data);
+  }
+
+  getConventionVigente() {
+    return this.conventionVigente;
+  }
+
   private projectSelectedBySidebar = signal<number | null>(null);
 
   setProjectSelectedBySidebar(id: number) {

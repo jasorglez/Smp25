@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
-import { Observable } from 'rxjs';
+import { Observable, catchError, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -51,5 +51,15 @@ export class ConventionsService {
 
   deleteConventionDetails(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/ConventionDetails/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  /** Retorna el convenio vigente de un contrato desde el endpoint dedicado, o null si no hay ninguno. */
+  getVigenteConvention(idContract: number): Observable<{ id: number; name: string } | null> {
+    return this.http.get<{ id: number; name: string }>(
+      `${environment.urlSmp}/Convention/vigente/${idContract}`,
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(
+      catchError(() => of(null))
+    );
   }
 }

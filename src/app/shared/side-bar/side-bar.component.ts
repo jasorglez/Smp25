@@ -14,6 +14,7 @@ import { SharedModule } from '../shared.module';
 import { FormsModule } from '@angular/forms';
 import { EMPTY, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
+import { ConventionsService } from 'app/services/conventions.service';
 
 @Component({
   selector: 'app-side-bar',
@@ -42,6 +43,7 @@ export class SideBarComponent {
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
   userRoot: number = 0;
+  conventionVigenteNombre: string = '';
 
   usersData: any[];
 
@@ -57,7 +59,8 @@ export class SideBarComponent {
     public contractService: ContractsService,
     public projectService: ProjectsService,
     private userService: UsersService,
-    private signalsService: SignalsService
+    private signalsService: SignalsService,
+    private conventionsService: ConventionsService
   ) {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
@@ -280,6 +283,7 @@ error: (error) => {
       this.signalsService.setProjectSelectedBySidebar(null);
       this.signalsService.setSidebarProjectId(null);
       this.trackingService.setContract(this.selectedContractId);
+      this.loadVigenteConvention(Number(this.selectedContractId));
       await this.getpermissionxProjects(Number(this.selectedContractId));
     }
   }
@@ -324,6 +328,7 @@ error: (error) => {
             this.contractData[0].contract ?? ''
           );
           this.trackingService.setContract(this.selectedContractId);
+          this.loadVigenteConvention(Number(this.selectedContractId));
           setTimeout(() => {
             const sel = document.getElementById('contracts') as HTMLSelectElement;
             if (sel) sel.value = this.selectedContractId;
@@ -539,6 +544,10 @@ error: (error) => {
     this.signalsService.setProjectSelectedBySidebar(null);
     this.signalsService.setSidebarProjectId(null);
     this.trackingService.setProject('');
+
+    // Limpiar convenio vigente
+    this.conventionVigenteNombre = '';
+    this.signalsService.setConventionVigente(null);
     
     // Limpiar los selects en el DOM
     setTimeout(() => {
@@ -552,6 +561,18 @@ error: (error) => {
         projectSelect.value = '';
       }
     }, 50);
+  }
+
+  private loadVigenteConvention(idContract: number) {
+    this.conventionsService.getVigenteConvention(idContract).subscribe(vigente => {
+      if (vigente) {
+        this.conventionVigenteNombre = vigente.name;
+        this.signalsService.setConventionVigente(vigente);
+      } else {
+        this.conventionVigenteNombre = '';
+        this.signalsService.setConventionVigente(null);
+      }
+    });
   }
 
   private loadPermissions() {
