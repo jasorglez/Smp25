@@ -130,10 +130,32 @@
             <button type="button" class="btn btn-info ms-1 me-1" (click)="exportToPDF()" title="Exportar a PDF">
                 <i class="bi bi-file-earmark-pdf"></i>
             </button>
+            <button type="button" class="btn btn-warning ms-1 me-1" (click)="calcularPonderado()"
+                    [disabled]="isCalculating" title="Calcular Ponderado (regla de 3 sobre total)">
+                <span *ngIf="isCalculating" class="spinner-border spinner-border-sm" role="status"></span>
+                <i *ngIf="!isCalculating" class="bi bi-percent"></i>
+            </button>
         </div>
     </div>
     <!-- Diagrama de Gantt a la DERECHA, en la MISMA fila -->
     <div class="col-11">
+        <!-- Barra de progreso al calcular ponderado -->
+        <div *ngIf="isCalculating" class="mb-2">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <small class="text-muted fw-semibold">
+                    <i class="bi bi-percent me-1"></i>Calculando ponderado...
+                </small>
+                <small class="text-primary fw-bold">{{ calcProgress }}%</small>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                     role="progressbar"
+                     [style.width.%]="calcProgress"
+                     [attr.aria-valuenow]="calcProgress"
+                     aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+        </div>
         <div id="gantt_here" style="width: 100%; height: 65vh;"></div>
     </div>
 </div>

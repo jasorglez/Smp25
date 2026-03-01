@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.16 (28 Febrero 2026 20:45) - Iris WP Gantt',
+  version: '6.35 (01 Marzo 2026 04:05) - Iris WP sin gantt.updateTask en padres fix snap-back',
 };
 
 

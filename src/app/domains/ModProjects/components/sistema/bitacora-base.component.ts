@@ -6,6 +6,7 @@ import { DailyReportService }  from 'app/services/daily-report.service';
 import { PosicionesService }   from 'app/services/posiciones.service';
 import { MaterialsService }    from 'app/services/materials.service';
 import { SignalsService }      from 'app/services/signals.service';
+import { TrackingService }     from 'app/services/tracking.service';
 import { alerts }              from 'app/helpers/alerts';
 
 // ── Helpers de fecha ─────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   protected posicionesService  = inject(PosicionesService);
   protected materialsService   = inject(MaterialsService);
   protected signalsService     = inject(SignalsService);
+  protected trackingService    = inject(TrackingService);
 
   @Input() context: any = null;
   protected gridApi!: GridApi;
@@ -267,6 +269,12 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
       }
       alerts.basicAlert('Éxito', 'Guardado correctamente', 'success');
       this.hasUnsavedChanges = false;
+      this.trackingService.addLog(
+        this.trackingService.getCompany(),
+        `Bitácora ${this.typeNoteValue}: ${newItems.length} guardado(s), ${modifiedItems.length} actualizado(s) — Reporte: ${this.reportData?.id}`,
+        `Bitacora-${this.typeNoteValue}`,
+        this.trackingService.getEmail()
+      );
       this.loadData();
     } catch (e: any) {
       console.error('Error al guardar:', e);
@@ -291,8 +299,20 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
     const result = await alerts.confirmAlert('¿Eliminar registro?', 'Esta acción no se puede deshacer', 'warning', 'Eliminar');
     if (!result.isConfirmed) return;
     this.logbookService.deleteDataForOt(row.id).subscribe({
-      next: () => this.loadData(),
-      error: () => alerts.basicAlert('Error', 'No se pudo eliminar', 'error'),
+      next: () => {
+        this.trackingService.addLog(
+          this.trackingService.getCompany(),
+          `Bitácora ${this.typeNoteValue} eliminado ID: ${row.id} — Reporte: ${this.reportData?.id}`,
+          `Bitacora-${this.typeNoteValue}`,
+          this.trackingService.getEmail()
+        );
+        this.loadData();
+      },
+      error: (e: any) => {
+        const msg = e?.error?.message || e?.error?.title || e?.message || 'No se pudo eliminar el registro';
+        alerts.basicAlert('Error al eliminar', msg, 'error');
+        console.error('Error eliminando ID:', row.id, e);
+      },
     });
   }
 

@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-workprograms',
@@ -34,6 +35,7 @@ export class WorkprogramsComponent {
   private workprogramsService = inject(WorkprogramsService);
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
   private ngZone = inject(NgZone);
 
   readonly projectName = this.signalsService.getProjectNameBySidebar();
@@ -52,6 +54,10 @@ export class WorkprogramsComponent {
   idcompany: number = null;
 
   taskCount: number = 0;
+
+  isCalculating: boolean = false;
+  calcProgress: number = 0;
+  private isDragging: boolean = false;
 
   showNewFaseModal: boolean = false;
   newFaseDescription: string = '';
@@ -72,6 +78,9 @@ export class WorkprogramsComponent {
       this.idContract = this.signalsService.getContractSelectedBySidebar()();
       this.idProject  = this.signalsService.getProjectSelectedBySidebar()();
       this.idcompany  = this.signalsService.getRootSelectedBySidebar()();
+      const vigente   = this.signalsService.getConventionVigente()(); // trackear vigente
+      this.idConvention   = vigente?.id   ?? null;
+      this.conventionName = vigente?.name ?? '';
       this.typeWorkProgram = this.idProject == null ? 'Contract' : 'Project';
       this.loadVigenteAndInit();
     });
@@ -79,9 +88,6 @@ export class WorkprogramsComponent {
 
   private async loadVigenteAndInit(): Promise<void> {
     this.taskCount = 0;
-    const vigente = this.signalsService.getConventionVigente()();
-    this.idConvention   = vigente?.id   ?? null;
-    this.conventionName = vigente?.name ?? '';
     await this.initializeWorkprograms();
   }
 
@@ -92,6 +98,19 @@ export class WorkprogramsComponent {
       this.configGantt();
       gantt.init('gantt_here');
       this.configureTaskEvents();
+      // Respaldo: detecta fin de drag por mouseup en el contenedor del gantt
+      // ngZone.run() es obligatorio — los eventos DOM corren fuera de Angular
+      const ganttEl = document.getElementById('gantt_here');
+      if (ganttEl) {
+        ganttEl.addEventListener('mouseup', () => {
+          setTimeout(() => {
+            this.ngZone.run(() => {
+              this.recalcSortorder();
+              this.notSavedChanges = true;
+            });
+          }, 100);
+        });
+      }
       await this.loadDataFromAPI();
     } catch (error) {
       console.error('Error initializing workprograms component:', error);
@@ -123,11 +142,27 @@ export class WorkprogramsComponent {
     gantt.attachEvent("onAfterLinkDelete", () => this.notSavedChanges = true);
 
     gantt.attachEvent("onAfterTaskUpdate", (id, task) => {
-      this.updateParentTaskDates(task.parent);
+      this.scheduleParentUpdate(task.parent);
     });
 
     gantt.attachEvent("onAfterTaskAdd", (id, task) => {
-      this.updateParentTaskDates(task.parent);
+      this.scheduleParentUpdate(task.parent);
+    });
+
+    // Reordenamiento por drag
+    // isDragging bloquea gantt.updateTask() en updateParentPonderado/Total
+    // para que no revierta el orden al actualizar el padre
+    gantt.attachEvent("onRowDragEnd", (id: any, target: any) => {
+      this.ngZone.run(() => {
+        this.recalcSortorder();
+        this.notSavedChanges = true;
+      });
+    });
+    gantt.attachEvent("onAfterTaskDrag", (id: any, mode: string, e: any) => {
+      this.ngZone.run(() => {
+        this.recalcSortorder();
+        this.notSavedChanges = true;
+      });
     });
 
     gantt['form_blocks']['color_picker'] = {
@@ -443,26 +478,42 @@ export class WorkprogramsComponent {
       }
     };
 
+    const lbl = (t: string) => `<span style="font-size:10px;font-weight:600;">${t}</span>`;
+
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
-      { name: "activity", label: "Actividad", width: 60, template: (task) => `<span style="font-size: 12px;">${task['activity'] || ''}</span>` },
-      { name: "text", label: "Nombre de la tarea", tree: true, width: 400, template: (task) => `<span style="font-size: 12px;">${task.text}</span>` },
+      { name: "activity",   label: lbl("Actividad"),       width: 60,  template: (task) => `<span style="font-size:11px;">${task['activity'] || ''}</span>` },
+      { name: "text",       label: lbl("Nombre de la tarea"), tree: true, width: 400, template: (task) => `<span style="font-size:11px;">${task.text}</span>` },
       {
-        name: "costMX", label: "<b style='font-size: 13px;'>Costo Mxn</b>", align: "right", width: 100, template: (task) => {
+        name: "quantity", label: lbl("Cantidad"), align: "right", width: 75, template: (task) => {
+          return `<span style="font-size:11px;">${task['quantity'] ?? 1}</span>`;
+        }
+      },
+      {
+        name: "costMX", label: lbl("Costo Mxn"), align: "right", width: 100, template: (task) => {
           const cost = task['costMX'] ? `$${task['costMX'].toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '$0.00';
-          return `<span style="font-size: 12px;">${cost}</span>`;
+          return `<span style="font-size:11px;">${cost}</span>`;
         }
       },
       {
-        name: "quantity", label: "<b style='font-size: 13px;'>Cantidad</b>", align: "right", width: 75, template: (task) => {
-          return `<span style="font-size: 12px;">${task['quantity'] ?? 1}</span>`;
+        name: "total", label: lbl("Total"), align: "right", width: 110, template: (task) => {
+          const val = task['total'] != null
+            ? Number(task['total'])
+            : (Number(task['quantity'] ?? 0) * Number(task['costMX'] ?? 0));
+          return `<span style="font-size:11px;">$${val.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
         }
       },
-      { name: "start_date", label: "<b style='font-size: 12px;'>Fecha de inicio</b>", align: "center", width: 100, template: (task) => `<span style="font-size: 12px;">${task.start_date ? task.start_date.toLocaleDateString('es-ES') : ''}</span>` },
-      { name: "end_date", label: "<b style='font-size: 12px;'>Fecha de fin</b>", align: "center", width: 100, template: (task) => `<span style="font-size: 12px;">${task.end_date ? task.end_date.toLocaleDateString('es-ES') : ''}</span>` },
       {
-        name: "progress", label: "<b style='font-size: 12px;'>Progreso</b>", align: "center", width: 80, template: (task) => {
-          return `<span style="font-size: 12px;">${Math.round(task.progress * 100)}%</span>`;
+        name: "ponderado", label: lbl("Ponderado"), align: "right", width: 80, template: (task) => {
+          const val = task['ponderado'];
+          return `<span style="font-size:11px;">${val != null ? Number(val).toFixed(3) : '—'}</span>`;
+        }
+      },
+      { name: "start_date", label: lbl("Inicio"),    align: "center", width: 90,  template: (task) => `<span style="font-size:11px;">${task.start_date ? task.start_date.toLocaleDateString('es-ES') : ''}</span>` },
+      { name: "end_date",   label: lbl("Fin"),       align: "center", width: 90,  template: (task) => `<span style="font-size:11px;">${task.end_date   ? task.end_date.toLocaleDateString('es-ES')   : ''}</span>` },
+      {
+        name: "progress", label: lbl("Progreso"), align: "center", width: 70, template: (task) => {
+          return `<span style="font-size:11px;">${Math.round(task.progress * 100)}%</span>`;
         }
       }
     ];
@@ -553,10 +604,10 @@ export class WorkprogramsComponent {
     gantt.config.lightbox.sections = [
       { name: "description", height: 150, map_to: "text", type: "textarea", focus: true },
       { name: "activity_color", height: 47, map_to: "activity", type: "activity_color_row" },
+      { name: "qty_ponderado", height: 47, map_to: "quantity", type: "qty_ponderado_row" },
       { name: "costs", height: 47, map_to: "costMX", type: "costs_row" },
       { name: "time", type: "time", map_to: "auto" },
       { name: "measure_phase", height: 47, map_to: "measure", type: "measure_phase_row", measureOptions: this.measures, phaseOptions: this.phases } as any,
-      { name: "qty_ponderado", height: 47, map_to: "quantity", type: "qty_ponderado_row" },
       { name: "route_type", height: 47, map_to: "criticRoute", type: "route_type_row" }
     ];
   }
@@ -589,13 +640,15 @@ export class WorkprogramsComponent {
   }
 
   transformTaskForSave(task: any): any {
+    // Leer siempre en el momento de guardar para evitar problemas de timing
+    const vigente = this.signalsService.getConventionVigente()();
     return {
       id: task.idEntry,
       idTask: task.id,
       text: task.text || '',                                   // NOT NULL en C#
       idContract: this.idContract ?? 0,                        // int NOT NULL
       idProject: this.idProject ?? 0,                          // int NOT NULL
-      idConvention: this.idConvention,  // convenio vigente del proyecto/contrato actual
+      idConvention: vigente?.id ?? this.idConvention ?? null,  // convenio vigente
       startDate: task.start_date.toISOString(),
       endDate: task.end_date.toISOString(),
       progress: task.progress ?? 0,
@@ -611,10 +664,11 @@ export class WorkprogramsComponent {
       costMX: task.costMX ?? 0,
       costDLL: task.costDLL ?? 0,
       quantity: task.quantity ?? 0,
-      ponderado: task.ponderado ?? null,                       // nullable decimal(5,3)
+      ponderado: this.safePonderado(task.ponderado),             // nullable decimal(8,3) — suma de hijos
       predecesor: task.predecesor ?? 0,
       phase: this.trunc(task.phase, 30),                       // nullable
-      active: 1
+      active: 1,
+      sortorder: task['sortorder'] ?? 0
     };
   }
 
@@ -631,6 +685,8 @@ export class WorkprogramsComponent {
           const transformedData = this.transformData(response);
           gantt.clearAll(); // Limpiar todos los datos existentes
           gantt.parse(transformedData);
+          // Inicializa sortorder en orden árbol visual (necesario si todos vienen en 0 desde BD)
+          setTimeout(() => this.recalcSortorder(), 0);
           return transformedData;
         } else {
           this.taskCount = 0;
@@ -675,7 +731,8 @@ export class WorkprogramsComponent {
       type: item.type,
       ponderado: item.ponderado,
       total: item.total,
-      active: item.active
+      active: item.active,
+      sortorder: item.sortorder ?? 0
     }));
 
     return { data: transformedData };
@@ -686,6 +743,11 @@ export class WorkprogramsComponent {
     if (!this.idProject && !this.idContract) {
       alerts.basicAlert('Aviso', 'Debes seleccionar un Proyecto o Contrato desde el sidebar antes de guardar.', 'warning');
       return;
+    }
+
+    const vigente = this.signalsService.getConventionVigente()();
+    if (!vigente) {
+      alerts.basicAlert('Sin Convenio Vigente', 'No hay un convenio vigente asignado. Las tareas se guardarán sin convenio.', 'warning');
     }
 
     if (this.isSaving) {
@@ -731,6 +793,12 @@ export class WorkprogramsComponent {
     ).subscribe({
       next: (results) => {
         alerts.basicAlert('Editar', 'Todas las operaciones completadas con éxito', 'success');
+        this.trackingService.addLog(
+          this.trackingService.getCompany(),
+          `Work Program guardado: ${createTasks.length} nuevas, ${updateRequestsCountRef.count} actualizadas, ${this.deletedTasks.size} eliminadas — Convenio: ${this.conventionName || 'Sin convenio'} — ${this.projectName()}`,
+          'WorkPrograms',
+          this.trackingService.getEmail()
+        );
         // Actualizar idEntry para nuevas tareas usando offset correcto
         const createStartIndex = updateRequestsCountRef.count;
         createTasks.forEach((task, index) => {
@@ -770,6 +838,8 @@ export class WorkprogramsComponent {
 
     gantt.attachEvent("onAfterTaskDelete", (id, task) => {
       this.updateParentTaskDates(task.parent);
+      this.updateParentPonderado(task.parent);
+      this.updateParentTotal(task.parent);
     });
 
     // Fechas por defecto para tareas nuevas: inicio hoy, fin hoy +1 día
@@ -828,32 +898,163 @@ export class WorkprogramsComponent {
     });
   }
 
+  // Timer para agrupar todos los renders en uno solo tras onAfterTaskUpdate
+  private _renderTimer: any = null;
+
+  scheduleParentUpdate(parentId: string | number) {
+    // Actualiza datos en memoria sin tocar gantt API (previene snap-back)
+    this.updateParentTaskDates(parentId);
+    this.updateParentPonderado(parentId);
+    this.updateParentTotal(parentId);
+    // Un solo gantt.render() al final para refrescar la vista con el orden correcto
+    clearTimeout(this._renderTimer);
+    this._renderTimer = setTimeout(() => gantt.render(), 50);
+  }
+
   updateParentTaskDates(parentId: string | number) {
-    if (parentId != gantt.config.root_id) {
-      const children = gantt.getChildren(parentId);
-      if (children.length > 0) {
-        let minStartDate = new Date(8640000000000000); // Max date
-        let maxEndDate = new Date(-8640000000000000); // Min date
+    if (parentId == gantt.config.root_id) return;
+    const children = gantt.getChildren(parentId);
+    if (children.length === 0) return;
 
-        children.forEach(childId => {
-          const childTask = gantt.getTask(childId);
-          if (childTask.start_date < minStartDate) {
-            minStartDate = new Date(childTask.start_date);
-          }
-          if (childTask.end_date > maxEndDate) {
-            maxEndDate = new Date(childTask.end_date);
-          }
-        });
+    let minStartDate = new Date(8640000000000000);
+    let maxEndDate   = new Date(-8640000000000000);
+    children.forEach(childId => {
+      const c = gantt.getTask(childId);
+      if (c.start_date < minStartDate) minStartDate = new Date(c.start_date);
+      if (c.end_date   > maxEndDate)   maxEndDate   = new Date(c.end_date);
+    });
 
-        const parentTask = gantt.getTask(parentId);
-        parentTask.start_date = minStartDate;
-        parentTask.end_date = maxEndDate;
-        gantt.updateTask(parentId);
+    const parentTask = gantt.getTask(parentId);
+    parentTask.start_date = minStartDate;
+    parentTask.end_date   = maxEndDate;
+    // Sin gantt.updateTask / refreshTask — solo memoria
+    this.updateParentTaskDates(parentTask.parent);
+  }
 
-        // Recursively update higher-level parents
-        this.updateParentTaskDates(parentTask.parent);
-      }
+  // Recalcula sortorder para todos los tasks en orden árbol (depth-first)
+  // Se llama después de cualquier drag-reorder para persistir el nuevo orden
+  private recalcSortorder() {
+    let order = 0;
+    gantt.eachTask(task => {
+      task['sortorder'] = order++;
+    });
+  }
+
+  // Protege ponderado contra overflow de decimal(8,3) antes de enviar al backend
+  private safePonderado(val: any): number | null {
+    if (val == null) return null;
+    const p = Number(val);
+    if (isNaN(p)) return null;
+    return Math.round(Math.min(p, 99999.999) * 1000) / 1000;
+  }
+
+  // Ponderado padre = suma de ponderados de sus hijos (recursivo hacia arriba)
+  updateParentPonderado(parentId: string | number) {
+    if (parentId == gantt.config.root_id) return;
+    const children = gantt.getChildren(parentId);
+    if (children.length === 0) return; // hoja: el usuario lo ingresa manualmente
+
+    let sum = 0;
+    children.forEach(childId => {
+      const child = gantt.getTask(childId);
+      sum += Number(child['ponderado'] ?? 0);
+    });
+
+    const parentTask = gantt.getTask(parentId);
+    parentTask['ponderado'] = Math.round(sum * 1000) / 1000;
+    // Sin gantt.updateTask / refreshTask — solo memoria
+    this.updateParentPonderado(parentTask.parent);
+  }
+
+  // Total padre = suma de totales de sus hijos (recursivo hacia arriba)
+  // Hoja: total = quantity * costMX (calculado en DB); padre: suma de hijos
+  updateParentTotal(parentId: string | number) {
+    if (parentId == gantt.config.root_id) return;
+    const children = gantt.getChildren(parentId);
+    if (children.length === 0) return;
+
+    let sum = 0;
+    children.forEach(childId => {
+      const child = gantt.getTask(childId);
+      const childTotal = child['total'] ?? ((child['quantity'] ?? 0) * (child['costMX'] ?? 0));
+      sum += Number(childTotal);
+    });
+
+    const parentTask = gantt.getTask(parentId);
+    parentTask['total'] = Math.round(sum * 100) / 100;
+    // Sin gantt.updateTask / refreshTask — solo memoria
+    this.updateParentTotal(parentTask.parent);
+  }
+
+  // Calcula ponderado de cada hoja usando regla de 3: (total_hoja / total_grand) * 100
+  // Procesa en lotes para no trabar el hilo principal y mostrar barra de progreso
+  async calcularPonderado() {
+    if (this.isCalculating) return;
+
+    const allTasks = gantt.getTaskByTime();
+    if (!allTasks || allTasks.length === 0) {
+      alerts.basicAlert('Aviso', 'No hay tareas en el programa de trabajo', 'warning');
+      return;
     }
+
+    // Solo hojas (sin hijos)
+    const leafTasks = allTasks.filter(t => gantt.getChildren(t.id).length === 0);
+    if (leafTasks.length === 0) {
+      alerts.basicAlert('Aviso', 'No se encontraron conceptos hoja', 'warning');
+      return;
+    }
+
+    // Gran total = suma de totales de todas las hojas
+    const grandTotal = leafTasks.reduce((sum, t) => {
+      const tot = t['total'] != null ? Number(t['total']) : (Number(t['quantity'] ?? 0) * Number(t['costMX'] ?? 0));
+      return sum + tot;
+    }, 0);
+
+    if (grandTotal === 0) {
+      alerts.basicAlert('Aviso', 'El monto total es 0, no se puede calcular el ponderado', 'warning');
+      return;
+    }
+
+    // Confirmación antes de proceder
+    const confirm = await alerts.confirmAlert(
+      '¿Calcular ponderado?',
+      `Se recalculará el ponderado de ${leafTasks.length} concepto(s) con base en el total del contrato ($${grandTotal.toFixed(2)}). ¿Está seguro?`,
+      'question',
+      'Sí, calcular'
+    );
+    if (!confirm.isConfirmed) return;
+
+    // Inicio de progreso
+    this.isCalculating = true;
+    this.calcProgress = 0;
+    const total = leafTasks.length;
+    const CHUNK = 10; // tareas por lote
+
+    // Pre-calcula los ponderados con 3 decimales y ajusta el último para cerrar en 100.000
+    const ponderados: number[] = leafTasks.map(t => {
+      const tot = t['total'] != null ? Number(t['total']) : (Number(t['quantity'] ?? 0) * Number(t['costMX'] ?? 0));
+      return Math.round((tot / grandTotal) * 100 * 1000) / 1000;
+    });
+    // El último absorbe el residuo para que la suma sea exactamente 100.000
+    const sumaParcialesRaw = ponderados.slice(0, -1).reduce((a, b) => a + b, 0);
+    ponderados[ponderados.length - 1] = Math.round((100 - sumaParcialesRaw) * 1000) / 1000;
+
+    for (let i = 0; i < total; i += CHUNK) {
+      const chunk = leafTasks.slice(i, i + CHUNK);
+      chunk.forEach((t, idx) => {
+        t['ponderado'] = ponderados[i + idx];
+        gantt.updateTask(t.id);
+        this.updateParentPonderado(t.parent);
+      });
+      this.calcProgress = Math.round(((i + chunk.length) / total) * 100);
+      // Cede el hilo al navegador para actualizar la UI
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    this.isCalculating = false;
+    this.calcProgress = 0;
+    this.notSavedChanges = true;
+    alerts.basicAlert('Ponderado calculado', `Total del contrato: $${grandTotal.toFixed(2)} — ${total} conceptos actualizados`, 'success');
   }
 
   async getMeasures() {
