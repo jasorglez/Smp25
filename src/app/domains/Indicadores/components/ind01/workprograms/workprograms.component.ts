@@ -36,16 +36,22 @@ export class WorkprogramsComponent {
   private signalsService = inject(SignalsService);
   private ngZone = inject(NgZone);
 
+  readonly projectName = this.signalsService.getProjectNameBySidebar();
+
   datosGantt: { data: any; links: any; };
   deletedTasks: Set<number> = new Set();
 
   idProject: number = null;
   idContract: number = null;
+  idConvention: number = null;
+  conventionName: string = '';
   typeWorkProgram: string = 'Project';
   measures: any;
   notSavedChanges: boolean = false;
   isSaving: boolean = false;
   idcompany: number = null;
+
+  taskCount: number = 0;
 
   showNewFaseModal: boolean = false;
   newFaseDescription: string = '';
@@ -64,15 +70,19 @@ export class WorkprogramsComponent {
 
     effect(() => {
       this.idContract = this.signalsService.getContractSelectedBySidebar()();
-      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.idcompany = this.signalsService.getRootSelectedBySidebar()();
-      
-      // Si idProject es null, significa que solo se ha elegido Contract en general sin un Project específico
-      // Pero si idProject tiene un valor, significa que se ha elegido un Project
-      this.idProject == null ? this.typeWorkProgram = 'Contract' : this.typeWorkProgram = 'Project';
-      console.log(`Contrato: ${this.idContract}, Proyecto: ${this.idProject}, Tipo Workprogram: ${this.typeWorkProgram}`);
-      this.initializeWorkprograms();
+      this.idProject  = this.signalsService.getProjectSelectedBySidebar()();
+      this.idcompany  = this.signalsService.getRootSelectedBySidebar()();
+      this.typeWorkProgram = this.idProject == null ? 'Contract' : 'Project';
+      this.loadVigenteAndInit();
     });
+  }
+
+  private async loadVigenteAndInit(): Promise<void> {
+    this.taskCount = 0;
+    const vigente = this.signalsService.getConventionVigente()();
+    this.idConvention   = vigente?.id   ?? null;
+    this.conventionName = vigente?.name ?? '';
+    await this.initializeWorkprograms();
   }
 
   private async initializeWorkprograms(): Promise<void> {
@@ -180,6 +190,205 @@ export class WorkprogramsComponent {
       }
     };
 
+    gantt['form_blocks']['total_readonly'] = {
+      render: function (sns) {
+        return `<div style="height:28px;">
+          <input type="text" id="total_display" readonly
+            style="width:100%; height:26px; border:1px solid #ced4da; border-radius:3px; padding:0 6px;
+                   font-size:13px; font-weight:600; color:#0e4491; background:#f1f7ff; cursor:default;">
+        </div>`;
+      },
+      set_value: function (node, value, task, section) {
+        const el = node.querySelector('#total_display') as HTMLInputElement;
+        if (!el) return;
+        const total = task['total'] ?? ((task['quantity'] ?? 0) * (task['costMX'] ?? 0));
+        el.value = total != null ? `$ ${Number(total).toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '$ 0.00';
+      },
+      get_value: function (node, task, section) { return null; },
+      focus: function (node) {}
+    };
+
+    gantt['form_blocks']['activity_color_row'] = {
+      render: function (sns) {
+        return `<div style="display:flex; gap:10px; align-items:flex-end; height:42px;">
+          <div style="flex:2;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Actividad</div>
+            <input type="text" id="activity_input" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-size:12px;" maxlength="20">
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Color</div>
+            <input type="color" id="activity_color_input" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; cursor:pointer;">
+          </div>
+        </div>`;
+      },
+      set_value: function (node, value, task, section) {
+        const act   = node.querySelector('#activity_input')       as HTMLInputElement;
+        const color = node.querySelector('#activity_color_input') as HTMLInputElement;
+        if (act)   act.value   = task['activity'] || '';
+        if (color) color.value = task['color']    || '#ffffff';
+      },
+      get_value: function (node, task, section) {
+        const act   = node.querySelector('#activity_input')       as HTMLInputElement;
+        const color = node.querySelector('#activity_color_input') as HTMLInputElement;
+        task['color'] = color ? color.value : '#ffffff';
+        return act ? act.value : '';
+      },
+      focus: function (node) {
+        const act = node.querySelector('#activity_input') as HTMLInputElement;
+        if (act) act.focus();
+      }
+    };
+
+    gantt['form_blocks']['measure_phase_row'] = {
+      render: function (sns: any) {
+        const measureOpts = (sns.measureOptions || []).map((o: any) => `<option value="${o.key}">${o.label}</option>`).join('');
+        const phaseOpts   = (sns.phaseOptions   || []).map((o: any) => `<option value="${o.key}">${o.label}</option>`).join('');
+        return `<div style="display:flex; gap:10px; align-items:flex-end; height:42px;">
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Unidad de medida</div>
+            <div style="display:flex; gap:4px;">
+              <select id="measure_picker_select" style="flex:1; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-size:12px;">${measureOpts}</select>
+              <button type="button" onclick="event.stopPropagation(); window.__openNewMedidaModal();"
+                style="height:24px; width:24px; background:#17a2b8; color:#fff; border:none; border-radius:3px; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0;" title="Nueva Medida">+</button>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Fase</div>
+            <div style="display:flex; gap:4px;">
+              <select id="phase_picker_select" style="flex:1; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-size:12px;">${phaseOpts}</select>
+              <button type="button" onclick="event.stopPropagation(); window.__openNewFaseModal();"
+                style="height:24px; width:24px; background:#17a2b8; color:#fff; border:none; border-radius:3px; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0;" title="Nueva Fase">+</button>
+            </div>
+          </div>
+        </div>`;
+      },
+      set_value: function (node: any, value: any, task: any, section: any) {
+        const ms = node.querySelector('#measure_picker_select') as HTMLSelectElement;
+        const ps = node.querySelector('#phase_picker_select')   as HTMLSelectElement;
+        if (ms && task['measure']) ms.value = task['measure'];
+        if (ps && task['phase'])   ps.value = task['phase'];
+      },
+      get_value: function (node: any, task: any, section: any) {
+        const ms = node.querySelector('#measure_picker_select') as HTMLSelectElement;
+        const ps = node.querySelector('#phase_picker_select')   as HTMLSelectElement;
+        task['phase'] = ps ? ps.value : '';
+        return ms ? ms.value : '';
+      },
+      focus: function (node: any) {
+        const ms = node.querySelector('#measure_picker_select') as HTMLSelectElement;
+        if (ms) ms.focus();
+      }
+    };
+
+    gantt['form_blocks']['route_type_row'] = {
+      render: function (sns) {
+        return `<div style="display:flex; gap:10px; align-items:flex-end; height:42px;">
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Ruta Crítica</div>
+            <select id="critic_route_select" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-size:12px;">
+              <option value="Si">Sí</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Tipo</div>
+            <select id="type_select" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-size:12px;">
+              <option value="Project">Project</option>
+              <option value="Contract">Contract</option>
+            </select>
+          </div>
+        </div>`;
+      },
+      set_value: function (node, value, task, section) {
+        const rc   = node.querySelector('#critic_route_select') as HTMLSelectElement;
+        const type = node.querySelector('#type_select')         as HTMLSelectElement;
+        if (rc)   rc.value   = task['criticRoute'] || 'No';
+        if (type) type.value = task['type']        || 'Project';
+      },
+      get_value: function (node, task, section) {
+        const rc   = node.querySelector('#critic_route_select') as HTMLSelectElement;
+        const type = node.querySelector('#type_select')         as HTMLSelectElement;
+        task['type'] = type ? type.value : 'Project';
+        return rc ? rc.value : 'No';
+      },
+      focus: function (node) {
+        const rc = node.querySelector('#critic_route_select') as HTMLSelectElement;
+        if (rc) rc.focus();
+      }
+    };
+
+    gantt['form_blocks']['costs_row'] = {
+      render: function (sns) {
+        return `<div style="display:flex; gap:8px; align-items:flex-end; height:42px;">
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">MXN $</div>
+            <input type="number" id="cost_mx" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px;" step="0.01" min="0">
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Total</div>
+            <input type="text" id="cost_total" readonly style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-weight:600; color:#0e4491; background:#f1f7ff; cursor:default;">
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">USD $</div>
+            <input type="number" id="cost_dll" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px;" step="0.01" min="0">
+          </div>
+        </div>`;
+      },
+      set_value: function (node, value, task, section) {
+        const mx    = node.querySelector('#cost_mx')    as HTMLInputElement;
+        const total = node.querySelector('#cost_total') as HTMLInputElement;
+        const dll   = node.querySelector('#cost_dll')   as HTMLInputElement;
+        if (mx)    mx.value    = task['costMX']  ?? 0;
+        if (dll)   dll.value   = task['costDLL'] ?? 0;
+        if (total) {
+          const t = task['total'] ?? ((task['quantity'] ?? 0) * (task['costMX'] ?? 0));
+          total.value = `$ ${Number(t).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+        }
+      },
+      get_value: function (node, task, section) {
+        const mx  = node.querySelector('#cost_mx')  as HTMLInputElement;
+        const dll = node.querySelector('#cost_dll') as HTMLInputElement;
+        task['costDLL'] = dll ? parseFloat(dll.value) || 0 : 0;
+        return mx ? parseFloat(mx.value) || 0 : 0;
+      },
+      focus: function (node) {
+        const mx = node.querySelector('#cost_mx') as HTMLInputElement;
+        if (mx) mx.focus();
+      }
+    };
+
+    gantt['form_blocks']['qty_ponderado_row'] = {
+      render: function (sns) {
+        return `<div style="display:flex; gap:10px; align-items:flex-end; height:42px;">
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Cantidad</div>
+            <input type="number" id="qty_input" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px;" min="0">
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Ponderado (0-1)</div>
+            <input type="number" id="ponderado_input" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px;" step="0.001" min="0" max="1" placeholder="0.000">
+          </div>
+        </div>`;
+      },
+      set_value: function (node, value, task, section) {
+        const qty  = node.querySelector('#qty_input')       as HTMLInputElement;
+        const pond = node.querySelector('#ponderado_input') as HTMLInputElement;
+        if (qty)  qty.value  = task['quantity']  ?? 0;
+        if (pond) pond.value = task['ponderado'] != null ? task['ponderado'] : '';
+      },
+      get_value: function (node, task, section) {
+        const qty  = node.querySelector('#qty_input')       as HTMLInputElement;
+        const pond = node.querySelector('#ponderado_input') as HTMLInputElement;
+        const p = parseFloat(pond?.value);
+        task['ponderado'] = isNaN(p) ? null : p;
+        return qty ? parseFloat(qty.value) || 0 : 0;
+      },
+      focus: function (node) {
+        const qty = node.querySelector('#qty_input') as HTMLInputElement;
+        if (qty) qty.focus();
+      }
+    };
+
     // Block personalizado: select de Medida + botón "+" para crear nueva medida
     gantt['form_blocks']['measure_picker'] = {
       render: function (sns: any) {
@@ -265,13 +474,13 @@ export class WorkprogramsComponent {
     gantt.locale.labels['section_responsable'] = "Responsable";
     gantt.locale.labels['section_priority'] = "Prioridad";
     gantt.locale.labels['section_color'] = "Color";
-    gantt.locale.labels['section_costMX'] = "Costo MXN $";
-    gantt.locale.labels['section_costDLL'] = "Costo DLL $";
-    gantt.locale.labels['section_quantity'] = "Cantidad";
-    gantt.locale.labels['section_criticRoute'] = "Ruta Crítica";
-    gantt.locale.labels['section_measure'] = 'Unidad de medida';
-    gantt.locale.labels['section_activity'] = 'Actividad';
-    gantt.locale.labels['section_phase'] = 'Fase';
+    gantt.locale.labels['section_qty_ponderado'] = "Cantidad / Ponderado";
+    gantt.locale.labels['section_route_type'] = "Ruta Crítica / Tipo";
+    gantt.locale.labels['section_measure_phase']  = 'Unidad / Fase';
+    gantt.locale.labels['section_activity_color'] = 'Actividad / Color';
+    gantt.locale.labels['section_costs'] = 'MXN $ / Total / USD $';
+    gantt.locale.labels['section_type'] = 'Tipo';
+    gantt.locale.labels['section_ponderado'] = 'Ponderado (0-1)';
 
     gantt.plugins({
       export_api: true,
@@ -342,21 +551,13 @@ export class WorkprogramsComponent {
     gantt.ext.zoom.setLevel("month"); // Establecer vista mensual por defecto
 
     gantt.config.lightbox.sections = [
-      { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
-      { name: "activity", map_to: "activity", type: "textarea", height: 30 },
+      { name: "description", height: 150, map_to: "text", type: "textarea", focus: true },
+      { name: "activity_color", height: 47, map_to: "activity", type: "activity_color_row" },
+      { name: "costs", height: 47, map_to: "costMX", type: "costs_row" },
       { name: "time", type: "time", map_to: "auto" },
-      { name: "color", map_to: "color", type: "color_picker" },
-      { name: "costMX", map_to: "costMX", type: "currency_input" },
-      { name: "costDLL", map_to: "costDLL", type: "currency_input" },
-      { name: "measure", height: 35, map_to: "measure", type: "measure_picker", options: this.measures },
-      { name: "quantity", map_to: "quantity", type: "number_input" },
-      {
-        name: "criticRoute", map_to: "criticRoute", type: "select", options: [
-          { key: "Si", label: "Sí" },
-          { key: "No", label: "No" }
-        ]
-      },
-      { name: "phase", height: 35, map_to: "phase", type: "phase_picker", options: this.phases }
+      { name: "measure_phase", height: 47, map_to: "measure", type: "measure_phase_row", measureOptions: this.measures, phaseOptions: this.phases } as any,
+      { name: "qty_ponderado", height: 47, map_to: "quantity", type: "qty_ponderado_row" },
+      { name: "route_type", height: 47, map_to: "criticRoute", type: "route_type_row" }
     ];
   }
 
@@ -368,8 +569,7 @@ export class WorkprogramsComponent {
     this.datosGantt = {
       data: data,
       links: links
-    }
-    console.log(this.datosGantt);
+    };
   }
 
   // Funcion para transformar los datos del gantt a los que entiende la API
@@ -393,8 +593,9 @@ export class WorkprogramsComponent {
       id: task.idEntry,
       idTask: task.id,
       text: task.text || '',                                   // NOT NULL en C#
-      idContract: this.idContract ?? 0,                        // int NOT NULL — puede ser null en modo Project
-      idProject: this.idProject ?? 0,                          // int NOT NULL — puede ser null en modo Contract
+      idContract: this.idContract ?? 0,                        // int NOT NULL
+      idProject: this.idProject ?? 0,                          // int NOT NULL
+      idConvention: this.idConvention,  // convenio vigente del proyecto/contrato actual
       startDate: task.start_date.toISOString(),
       endDate: task.end_date.toISOString(),
       progress: task.progress ?? 0,
@@ -403,12 +604,14 @@ export class WorkprogramsComponent {
       measure: this.trunc(task.measure, 10),                   // nullable
       criticRoute: this.truncReq(task.criticRoute, 2, 'No'),   // NOT NULL en C#
       activity: this.truncReq(task.activity, 20, ''),          // NOT NULL en C#
+      type: this.trunc(task.type, 10),                         // nullable — Project | Contract
       typeActivity: 'Activity',
       especification: this.trunc(task.especification, 20),     // nullable
       distribution: task.distribution ?? 0,
       costMX: task.costMX ?? 0,
       costDLL: task.costDLL ?? 0,
       quantity: task.quantity ?? 0,
+      ponderado: task.ponderado ?? null,                       // nullable decimal(5,3)
       predecesor: task.predecesor ?? 0,
       phase: this.trunc(task.phase, 30),                       // nullable
       active: 1
@@ -418,14 +621,19 @@ export class WorkprogramsComponent {
   // Funcion para cargar los datos de la API
   loadDataFromAPI() {
     const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
-    this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).pipe(
+    const source$ = this.idConvention
+      ? this.workprogramsService.getByConvention(this.idConvention, this.idProject ?? undefined)
+      : this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram);
+    source$.pipe(
       map(response => {
         if (response && response.length > 0) {
+          this.taskCount = response.length;
           const transformedData = this.transformData(response);
           gantt.clearAll(); // Limpiar todos los datos existentes
           gantt.parse(transformedData);
           return transformedData;
         } else {
+          this.taskCount = 0;
           gantt.clearAll(); // Limpiar todos los datos si no hay respuesta
           return { data: [] };
         }
@@ -450,7 +658,7 @@ export class WorkprogramsComponent {
       progress: item.progress,
       parent: item.parent,
       color: item.color,
-      // Ahora los campos personalizados
+      // Campos personalizados
       criticRoute: item.criticRoute,
       activity: item.activity,
       typeActivity: item.typeActivity,
@@ -462,6 +670,11 @@ export class WorkprogramsComponent {
       predecesor: item.predecesor,
       measure: item.measure,
       phase: item.phase,
+      // Campos nuevos
+      idConvention: item.idConvention,
+      type: item.type,
+      ponderado: item.ponderado,
+      total: item.total,
       active: item.active
     }));
 
@@ -498,7 +711,6 @@ export class WorkprogramsComponent {
           updateRequestsCountRef.count++;
           requests.push(this.workprogramsService.updateWorkProgram(task['idEntry'], transformedTask));
         }
-        console.log(transformedTask);
       }
     });
 
@@ -519,7 +731,6 @@ export class WorkprogramsComponent {
     ).subscribe({
       next: (results) => {
         alerts.basicAlert('Editar', 'Todas las operaciones completadas con éxito', 'success');
-        console.log('Todas las operaciones completadas con éxito', results);
         // Actualizar idEntry para nuevas tareas usando offset correcto
         const createStartIndex = updateRequestsCountRef.count;
         createTasks.forEach((task, index) => {
@@ -574,6 +785,13 @@ export class WorkprogramsComponent {
         task.duration = gantt.calculateDuration(today, nextYear);
         gantt.updateTask(id);
       }
+      requestAnimationFrame(() => {
+        const box = document.querySelector('.gantt_cal_light') as HTMLElement;
+        if (box) {
+          box.style.setProperty('width', '700px', 'important');
+          box.style.setProperty('min-width', '700px', 'important');
+        }
+      });
       return true;
     });
   }
@@ -645,9 +863,8 @@ export class WorkprogramsComponent {
         key: measure.description.toString(),
         label: measure.description.toString()
       }));
-      console.log(this.measures);
     } catch (error) {
-      console.error('Error al obtener las medidas:', error);
+      // silencioso
     }
   }
 
@@ -658,9 +875,8 @@ export class WorkprogramsComponent {
         key: phase.description.toString(),
         label: phase.description.toString()
       }));
-      console.log(this.measures);
     } catch (error) {
-      console.error('Error al obtener las fases:', error);
+      // silencioso
     }
   }
 
@@ -779,8 +995,8 @@ export class WorkprogramsComponent {
         select.value = this.newMedidaDescription.trim();
       }
 
-      const measureSection = (gantt.config.lightbox.sections as any[])?.find(s => s.name === 'measure');
-      if (measureSection) measureSection.options = this.measures;
+      const measureSection = (gantt.config.lightbox.sections as any[])?.find(s => s.name === 'measure_phase');
+      if (measureSection) measureSection.measureOptions = this.measures;
 
       this.closeNewMedidaModal();
     } catch (error) {
@@ -824,8 +1040,8 @@ export class WorkprogramsComponent {
       }
 
       // Actualizar las opciones en la config del gantt para la próxima vez
-      const phaseSection = (gantt.config.lightbox.sections as any[])?.find(s => s.name === 'phase');
-      if (phaseSection) phaseSection.options = this.phases;
+      const phaseSection = (gantt.config.lightbox.sections as any[])?.find(s => s.name === 'measure_phase');
+      if (phaseSection) phaseSection.phaseOptions = this.phases;
 
       this.closeNewFaseModal();
     } catch (error) {

@@ -353,6 +353,8 @@ error: (error) => {
       );
       // Signal exclusiva del sidebar (no la toca ordenes)
       this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
+      const found = this.projectData.find(p => String(p.idProject) === this.selectedProjectId);
+      this.signalsService.setProjectNameBySidebar(found?.projectName ?? '');
     }
   }
 
@@ -370,6 +372,7 @@ error: (error) => {
             this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
             // Signal exclusiva del sidebar (no la toca ordenes)
             this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
+            this.signalsService.setProjectNameBySidebar(this.projectData[0].projectName ?? '');
             setTimeout(() => {
               const sel = document.getElementById('project') as HTMLSelectElement;
               if (sel) sel.value = this.selectedProjectId;

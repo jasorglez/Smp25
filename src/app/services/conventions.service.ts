@@ -62,4 +62,14 @@ export class ConventionsService {
       catchError(() => of(null))
     );
   }
+
+  /** Retorna el convenio vigente para Contract o Project. */
+  getVigenteByType(type: string, id: number): Observable<{ id: number; name: string } | null> {
+    return this.http.get<{ id: number; name: string } | null>(
+      `${environment.urlSmp}/Convention/vigente/${type}/${id}`,
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(
+      catchError(() => of(null))
+    );
+  }
 }

@@ -115,10 +115,14 @@ getMasterUpdateTrigger() {
   }
 
   private projectSelectedBySidebar = signal<number | null>(null);
+  private projectNameBySidebar = signal<string>('');
 
   setProjectSelectedBySidebar(id: number) {
     this.projectSelectedBySidebar.set(id);
   }
+
+  setProjectNameBySidebar(name: string) { this.projectNameBySidebar.set(name); }
+  getProjectNameBySidebar() { return this.projectNameBySidebar; }
 
   /** Signal exclusiva del sidebar (nunca modificada por ordenes).
    *  Usada por sistema/reportes-diarios para evitar contaminación cruzada. */
@@ -719,6 +723,7 @@ getMasterUpdateTrigger() {
     this.branchSelectedBySidebar = signal(null);
     this.branchNameSelectedBySidebar = signal(null);
     this.projectSelectedBySidebar = signal(null);
+    this.projectNameBySidebar = signal('');
     this.contractSelectedBySidebar = signal(null);
     this.idCompany = signal(null);
     this.nameCompany = signal(null);

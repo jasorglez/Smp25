@@ -7,6 +7,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { ConventionsService } from 'app/services/conventions.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 import { lastValueFrom, concat, toArray, catchError, EMPTY, throwError, of } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -29,7 +30,9 @@ export class ConventionsComponent {
   @ViewChild('content') content!: TemplateRef<any>;
 
   private conventionsService = inject(ConventionsService);
-  private signalsService = inject(SignalsService);
+  private workprogramsService = inject(WorkprogramsService);
+  public signalsService  = inject(SignalsService);
+  readonly projectName   = this.signalsService.getProjectNameBySidebar();
   private modalService = inject(NgbModal);
   public attachHandlerService = inject(AttachHandlerService);
   private modalServiceTable = inject(ModalService);
@@ -51,21 +54,33 @@ export class ConventionsComponent {
   newlyAddedRows: string[] = [];
   private isOpen: boolean = false;
   showDetailsTab: boolean = false;
+  showWorkProgramTab: boolean = false;
+  workprogramRows: any[] = [];
+  targetConventionId: number | null = null;
+  isCopying: boolean = false;
+  isLoadingWP: boolean = false;
+
 
   constructor() {
     effect(() => {
-      this.idc = this.signalsService.getContractSelectedBySidebar()();
-      this.type = "Contract";
+      this.idc  = this.signalsService.getContractSelectedBySidebar()();
+      this.type = 'Contract';
+      this.resetGridSize();
       if (this.idc) {
         this.obtenerDatos();
       } else {
-        alerts.basicAlert(
-          'Contrato no seleccionado',
-          'Por favor, seleccione un contrato en el panel lateral para ver los convenios.',
-          'warning'
-        );
+        this.rowData = [];
       }
     });
+
+    // Cuando cambia el proyecto en el sidebar y el panel WP está abierto → recargar
+    effect(() => {
+      this.signalsService.getProjectSelectedBySidebar()(); // trackear
+      if (this.showWorkProgramTab && this.idConvention) {
+        this.loadWorkProgramForConvention();
+      }
+    });
+
     this.initForm();
   }
 
@@ -165,22 +180,49 @@ export class ConventionsComponent {
       },
       {
         field: 'detalle',
-        headerName: 'Detalle',
-        width: 90,
+        headerName: 'Det.',
+        width: 55,
         editable: false,
         sortable: false,
         filter: false,
         cellStyle: { backgroundColor: '#cfe2ff', cursor: 'pointer', textAlign: 'center' },
         cellRenderer: DetalleButtonRendererComponent,
         cellRendererParams: {
+          icon: 'bi bi-list-ul',
+          color: '#0d6efd',
+          label: 'Detalle',
           onDetalleClick: (data: any) => {
-            console.log('Detalle clicked:', data);
             this.selectedRowData = data;
             this.idConvention = data.id;
             this.signalsService.setIdConvention(data.id);
             this.adjustGridSize();
             this.showDetailsTab = true;
-            console.log('idConvention:', this.idConvention, 'showDetailsTab:', this.showDetailsTab);
+            this.showWorkProgramTab = false;
+          }
+        }
+      },
+      {
+        field: 'workprogram',
+        headerName: 'WP',
+        width: 55,
+        editable: false,
+        sortable: false,
+        filter: false,
+        cellStyle: { backgroundColor: '#d1e7dd', cursor: 'pointer', textAlign: 'center' },
+        cellRenderer: DetalleButtonRendererComponent,
+        cellRendererParams: {
+          icon: 'bi bi-diagram-3',
+          color: '#198754',
+          label: 'Work Program',
+          onDetalleClick: (data: any) => {
+            this.selectedRowData = data;
+            this.idConvention = data.id;
+            this.signalsService.setIdConvention(data.id);
+            this.adjustGridSize();
+            this.showDetailsTab = false;
+            this.showWorkProgramTab = true;
+            this.workprogramRows = [];
+            this.loadWorkProgramForConvention();
           }
         }
       },
@@ -317,11 +359,7 @@ export class ConventionsComponent {
 
   obtenerDatos() {
     if (!this.idc) {
-      alerts.basicAlert(
-        'Contrato no seleccionado',
-        'Por favor, seleccione un contrato en el panel lateral.',
-        'warning'
-      );
+      this.rowData = [];
       return;
     }
 
@@ -330,7 +368,6 @@ export class ConventionsComponent {
       .pipe(
         catchError((error: HttpErrorResponse) => {
           if (error.status === 404) {
-            console.log('No se encontraron datos para el contrato seleccionado');
             this.rowData = [];
             return of([]);
           }
@@ -655,6 +692,116 @@ export class ConventionsComponent {
     return cleanedData;
   }
 
+  loadWorkProgramForConvention() {
+    if (!this.idConvention) return;
+    this.isLoadingWP = true;
+    const idProject = this.signalsService.getProjectSelectedBySidebar()() ?? undefined;
+    this.workprogramsService.getByConvention(this.idConvention, idProject).subscribe({
+      next: (data) => {
+        this.workprogramRows = this.buildTreePaths(data || []);
+        this.isLoadingWP = false;
+      },
+      error: () => {
+        this.workprogramRows = [];
+        this.isLoadingWP = false;
+        alerts.basicAlert('Error', 'No se pudo cargar el Work Program.', 'error');
+      }
+    });
+  }
+
+  copyWorkProgram() {
+    if (!this.targetConventionId || !this.idConvention) return;
+    if (this.targetConventionId === this.idConvention) {
+      alerts.basicAlert('Copiar Work Program', 'El origen y destino no pueden ser el mismo convenio.', 'warning');
+      return;
+    }
+    const idProject = this.signalsService.getProjectSelectedBySidebar()() ?? undefined;
+    this.isCopying = true;
+    this.workprogramsService.copyFromConvention(this.idConvention, this.targetConventionId, idProject).subscribe({
+      next: (result) => {
+        this.isCopying = false;
+        this.targetConventionId = null;
+        alerts.basicAlert('Work Program copiado', result.message || `${result.copied} tareas copiadas.`, 'success');
+        this.loadWorkProgramForConvention();
+      },
+      error: () => {
+        this.isCopying = false;
+        alerts.basicAlert('Error', 'No se pudo copiar el Work Program.', 'error');
+      }
+    });
+  }
+
+  switchToWorkProgramTab() {
+    this.showWorkProgramTab = true;
+    this.showDetailsTab = false;
+    if (this.workprogramRows.length === 0) {
+      this.loadWorkProgramForConvention();
+    }
+  }
+
+  private buildTreePaths(rows: any[]): any[] {
+    const idMap = new Map<string, any>();
+    rows.forEach(r => idMap.set(String(r.idTask), r));
+
+    const getPath = (row: any): string[] => {
+      const parentId = String(row.parent);
+      if (!parentId || parentId === '0' || !idMap.has(parentId)) {
+        return [String(row.idTask)];
+      }
+      return [...getPath(idMap.get(parentId)), String(row.idTask)];
+    };
+
+    return rows.map((r, i) => ({ ...r, _path: getPath(r), _seq: i + 1 }));
+  }
+
+  public wpGetDataPath = (data: any) => data._path as string[];
+
+  public wpAutoGroupColDef: ColDef = {
+    headerName: 'Act. — Descripción',
+    minWidth: 320,
+    flex: 3,
+    cellRendererParams: { suppressCount: true },
+    valueGetter: (params: any) => {
+      const act = params.data?.activity ? `${params.data.activity}. ` : '';
+      return act + (params.data?.text ?? '');
+    },
+    tooltipValueGetter: (params: any) => params.data?.text ?? '',
+  };
+
+  get wpColDefs(): ColDef[] {
+    const fmt = (v: any) => v != null
+      ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v)
+      : '';
+    const fmtDate = (v: any) => v ? String(v).substring(0, 10) : '';
+
+    return [
+      { field: '_seq', headerName: '#', width: 55, pinned: 'left', sortable: false, filter: false },
+      { field: 'typeActivity', headerName: 'Tipo',   width: 80 },
+      { field: 'startDate', headerName: 'Inicio',    width: 105, valueFormatter: p => fmtDate(p.value) },
+      { field: 'endDate',   headerName: 'Fin',       width: 105, valueFormatter: p => fmtDate(p.value) },
+      { field: 'quantity',  headerName: 'Cant.',     width: 80 },
+      { field: 'measure',   headerName: 'Unidad',    width: 80 },
+      { field: 'costMX',    headerName: 'Costo MXN', width: 130, valueFormatter: p => fmt(p.value) },
+      { field: 'total',     headerName: 'Total',     width: 130, valueFormatter: p => fmt(p.value) },
+      { field: 'ponderado', headerName: 'Pond.',     width: 80 },
+      { field: 'progress',  headerName: 'Avance',    width: 80,  valueFormatter: p => p.value != null ? `${p.value}%` : '' },
+      { field: 'criticRoute', headerName: 'Crítica', width: 80 },
+    ];
+  }
+
+  public wpDefaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    filter: true,
+  };
+
+  public wpGridOptions: any = {
+    treeData: true,
+    groupDefaultExpanded: -1,
+    headerHeight: 25,
+    rowHeight: 20,
+  };
+
   async adjustGridSize() {
     this.gridHeight = '20vh';
   }
@@ -663,9 +810,13 @@ export class ConventionsComponent {
     this.gridHeight = '80vh';
     this.idConvention = null;
     this.showDetailsTab = false;
+    this.showWorkProgramTab = false;
+    this.workprogramRows = [];
+    this.targetConventionId = null;
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     }
   }
+
 }

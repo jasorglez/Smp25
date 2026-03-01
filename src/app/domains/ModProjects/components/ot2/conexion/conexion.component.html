@@ -1,23 +1,77 @@
-<div class="container-fluid">
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">
-            <i class="bi bi-plug"></i> 
-            {{'connection' | translate}}
-          </h3>
+<div class="container-fluid py-2">
+
+  <!-- Cabecera: Convenio vigente + acciones -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="d-flex flex-wrap align-items-center gap-3">
+
+        <!-- Badge convenio vigente -->
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">Convenio vigente:</span>
+          <span *ngIf="vigenteConvention" class="badge bg-success fs-6 px-3 py-2">
+            <i class="bi bi-bookmark-check-fill me-1"></i>{{ vigenteConvention.name }}
+          </span>
+          <span *ngIf="!vigenteConvention" class="badge bg-secondary">Sin convenio vigente</span>
         </div>
-        <div class="card-body">
-          <p>{{'connection_description' | translate}}</p>
-          
-          <!-- Aquí irá el contenido específico de conexión -->
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            Módulo de Conexiones en desarrollo
-          </div>
+
+        <!-- Separador -->
+        <div class="vr d-none d-md-block"></div>
+
+        <!-- Copiar Work Program -->
+        <div class="d-flex align-items-center gap-2">
+          <label class="text-muted small mb-0">Copiar desde:</label>
+          <select class="form-select form-select-sm" style="min-width:220px;"
+                  [(ngModel)]="sourceConventionId" [disabled]="!vigenteConvention || isCopying">
+            <option [ngValue]="null">— Selecciona convenio origen —</option>
+            <option *ngFor="let c of conventions" [value]="c.id">{{ c.name }}</option>
+          </select>
+          <button class="btn btn-sm btn-warning" (click)="copyWorkProgram()"
+                  [disabled]="!sourceConventionId || isCopying">
+            <i class="bi bi-copy me-1"></i>
+            {{ isCopying ? 'Copiando...' : 'Copiar Work Program' }}
+          </button>
         </div>
+
+        <!-- Separador -->
+        <div class="vr d-none d-md-block"></div>
+
+        <!-- Ver Work Program -->
+        <button class="btn btn-sm btn-primary" (click)="loadWorkProgram()"
+                [disabled]="!vigenteConvention || isLoading">
+          <i class="bi bi-diagram-3 me-1"></i>
+          {{ isLoading ? 'Cargando...' : 'Ver Work Program' }}
+        </button>
+
       </div>
     </div>
   </div>
+
+  <!-- Tabla Work Program -->
+  <div *ngIf="workprogramRows.length > 0" class="card">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+      <span class="fw-semibold">
+        <i class="bi bi-table me-1"></i>
+        Programa de Trabajo — {{ vigenteConvention?.name }}
+        <span class="badge bg-primary ms-2">{{ workprogramRows.length }} registros</span>
+      </span>
+    </div>
+    <div class="card-body p-0">
+      <ag-grid-angular
+        class="ag-theme-quartz small-text-ag-grid"
+        style="height: 520px; width: 100%;"
+        [rowData]="workprogramRows"
+        [columnDefs]="colDefs"
+        [defaultColDef]="defaultColDef"
+        (gridReady)="onGridReady($event)">
+      </ag-grid-angular>
+    </div>
+  </div>
+
+  <!-- Placeholder vacío -->
+  <div *ngIf="workprogramRows.length === 0 && !isLoading" class="text-center text-muted py-5">
+    <i class="bi bi-diagram-3 fs-1 d-block mb-2 opacity-25"></i>
+    Presiona <strong>Ver Work Program</strong> para cargar las tareas del convenio vigente,
+    o <strong>Copiar Work Program</strong> para importar desde otro convenio.
+  </div>
+
 </div>

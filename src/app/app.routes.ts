@@ -600,6 +600,13 @@ export const routes: Routes = [
               },
 
               {
+                path: 'conexion',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot2/conexion/conexion.component'
+                  ).then((c) => c.ConexionComponent),
+              },
+              {
                 path: 'details',
                 loadComponent: () =>
                   import(
