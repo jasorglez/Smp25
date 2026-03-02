@@ -600,6 +600,13 @@ export const routes: Routes = [
               },
 
               {
+                path: 'conexion',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot2/conexion/conexion.component'
+                  ).then((c) => c.ConexionComponent),
+              },
+              {
                 path: 'details',
                 loadComponent: () =>
                   import(
@@ -899,6 +906,34 @@ export const routes: Routes = [
                   permissions: { master: 'administration', detailed: 'dashboard-hco' },
                   tracking: {
                     logMessage: 'Click en Compuesto Negocio',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'control-facturacion-ingresos',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/control-facturacion-ingresos/control-facturacion-ingresos.component'
+                  ).then((r) => r.ControlFacturacionIngresosComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Control Facturación e Ingresos',
+                    category: 'Administration'
+                  }
+                }
+              },
+              {
+                path: 'concentrado-egresos',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/concentrado-egresos/concentrado-egresos.component'
+                  ).then((r) => r.ConcentradoEgresosComponent),
+                canActivate: [MasterPermissionsGuard, TrackingGuard],
+                data: {
+                  permissions: { master: 'administration', detailed: 'dashboard-hco' },
+                  tracking: {
+                    logMessage: 'Click en Concentrado de Egresos',
                     category: 'Administration'
                   }
                 }
