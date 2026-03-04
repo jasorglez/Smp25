@@ -40,8 +40,8 @@ export const environment = {
   urlWarehouse: 'https://hco-siaf-api.bi2.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  //urlAdministration: 'https://hco-siaf-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
-  urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://hco-siaf-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
   urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
