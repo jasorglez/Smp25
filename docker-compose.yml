@@ -1,26 +1,26 @@
 name: hco-siaf-frontend
 services:
-  Smp25:
+  hco-siaf-frontend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: smp25-frontend:latest
-    container_name: Smp25-Siaf
+    image: hco-siaf-frontend:latest
+    container_name: hco-siaf-frontend
     restart: unless-stopped
     ports:
       - "8090:80" # Puerto local:contenedor
     networks:
-      - smp25-network
+      - hco-siaf-network
     labels:
-      - "com.smp25.version=2.50.4"
-      - "com.smp25.service=frontend"
+      - "com.hco-siaf.version=2.50.4"
+      - "com.hco-siaf.service=frontend"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost/" ]
+      test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
 
 networks:
-  smp25-network:
+  hco-siaf-network:
     driver: bridge
