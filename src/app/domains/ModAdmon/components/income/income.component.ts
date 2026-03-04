@@ -434,8 +434,10 @@ export class IncomeComponent {
   }
 
   // Column Definitions: Defines the columns to be displayed.
+  private _colMaster: ColDef[] | null = null;
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster) return this._colMaster;
+    this._colMaster = [
       {
         field: 'countItems',
         headerName: 'Items',
@@ -703,8 +705,9 @@ export class IncomeComponent {
         },
       },
 
-    ]
-  };
+    ];
+    return this._colMaster;
+  }
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
