@@ -376,7 +376,7 @@ export class ExpenditureComponent {
         (data: any) => {
           this.providers = (data || []).map((p: any) => ({
             id: p.id,
-            name: p.name || 'Sin nombre'
+            name: p.company || p.nameContact || 'Sin nombre'
           }));
           console.log('✅ Proveedores cargados:', this.providers.length);
           resolve();
@@ -1695,7 +1695,7 @@ export class ExpenditureComponent {
           { text: '$0.00',                                      style: 'td', alignment: 'right'  },
           { text: `$${this.formatCurrencyE(income.total)}`,     style: 'td', alignment: 'right' },
           { text: uuid,                                         style: 'td', alignment: 'center' },
-          { text: '',                                           style: 'td', alignment: 'left'   },
+          { text: this.providers.find(p => p.id === income.idCustomer)?.name || '', style: 'td', alignment: 'left' },
           { text: income.status || '',                          style: 'td', alignment: 'center' },
           { text: cuentaName,                                   style: 'td', alignment: 'left'   },
           { text: income.observations || income.comments || '', style: 'td', alignment: 'left'   },

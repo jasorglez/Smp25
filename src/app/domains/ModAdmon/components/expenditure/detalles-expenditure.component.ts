@@ -1207,8 +1207,14 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
                 [
                   { text: 'FECHA:', style: 'masterLabel' },
                   { text: this.formatDate(this.expenditureData?.date), style: 'masterValue' },
-                  { text: 'DESCRIPCIÓN:', style: 'masterLabel' },
+                  { text: 'CONCEPTO:', style: 'masterLabel' },
                   { text: this.expenditureData?.description || 'Sin descripción', style: 'masterValue' }
+                ],
+                [
+                  { text: 'PROVEEDOR:', style: 'masterLabel' },
+                  { text: this.providers.find(p => p.id === this.expenditureData?.idCustomer)?.name || '', style: 'masterValue', colSpan: 3 },
+                  {},
+                  {}
                 ],
                 [
                   { text: 'TIPO DE GASTO:', style: 'masterLabel' },
