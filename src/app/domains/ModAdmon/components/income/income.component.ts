@@ -173,14 +173,13 @@ export class IncomeComponent {
 
 
   async getBillingManagementInfo() {
-    this.administrationService.getBillingManagementInfo(this.root).subscribe(
-      (data: any) => {
-        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-      },
-      (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
-      }
-    );
+    try {
+      const data: any = await lastValueFrom(this.administrationService.getBillingManagementInfo(this.root));
+      this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
+    } catch (error) {
+      console.error('Error al obtener la información de gestión de facturación:', error);
+      this.prefixAndConsecutive = [];
+    }
   }
 
   private gridApi: GridApi;
@@ -1243,7 +1242,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
 
   openCustomerModal() {
     this.newCustomer = {
-      idBranch: null,
+      idBranch: this.idBranch,
       nameContact: '',
       company: '',
       idTypecop: null
@@ -1254,7 +1253,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   closeCustomerModal() {
     this.showCustomerModal = false;
     this.newCustomer = {
-      idBranch: null,
+      idBranch: this.idBranch,
       nameContact: '',
       company: '',
       idTypecop: null
@@ -1705,7 +1704,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   }
 
   saveNewCustomer() {
-    if (!this.newCustomer.idBranch || !this.newCustomer.nameContact || !this.newCustomer.idTypecop) {
+    if (!this.newCustomer.nameContact || !this.newCustomer.idTypecop) {
       alerts.basicAlert(
         'Nuevo Cliente',
         'Por favor complete todos los campos requeridos.',

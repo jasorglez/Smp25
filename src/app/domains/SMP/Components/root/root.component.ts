@@ -2,8 +2,7 @@ import { Component, HostListener, effect, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { ContractsService } from 'app/services/contracts.service';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { InegiService } from 'app/services/inegi.service';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +10,12 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { FollowprojectsService } from 'app/services/followprojects.service';
+import { ProjectsService } from 'app/services/projects.service';
+import { CustomersService } from 'app/services/customers.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { AdministrationService } from 'app/services/administration.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +31,12 @@ export class RootComponent {
   private inegiService = inject(InegiService);
   private imageHandlerService = inject(ImageHandlerService);
   private branchesService = inject(BranchsService);
+  private followprojectsService = inject(FollowprojectsService);
+  private projectsService = inject(ProjectsService);
+  private customersService = inject(CustomersService);
+  private providersService = inject(ProvidersService);
+  private administrationService = inject(AdministrationService);
+  private catalogsService = inject(CatalogsService);
 
   private signalsService = inject(SignalsService);
 
@@ -619,96 +630,177 @@ public gridOptions: any = {
     }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
+    const modifiedRows = this.rowData.filter((row) => row.__modified && !row.__isNew);
 
-    const addObservables: Promise<any>[] = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.rootService.addRoot(cleanedData));
-    });
-
-    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
-    });
-
-    // Using concat to combine observables and lastValueFrom for async/await
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      // Procesar nuevas empresas una por una para rastrear respuestas
+      for (const row of newRows) {
+        const cleanedData = this.cleanDataForServer(row);
+        const response: any = await lastValueFrom(this.rootService.addRoot(cleanedData));
 
-      for (const response of responses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(
-          (row) => !row.id || row.id.toString().startsWith('temp_')
-        );
-
-        if (response.id && correspondingNewRow) {
-          //console.log(response)
-
+        if (response?.id) {
+          // Asignar permisos al usuario actual
           try {
-            await lastValueFrom(
-              this.branchesService.assignPermissionAfterCreation(
-                this.idUser, //id user
-                response.id,
-                'root'
-              )
-            );
+            await lastValueFrom(this.branchesService.assignPermissionAfterCreation(this.idUser, response.id, 'root'));
           } catch (permError) {
-            console.error('Error asignando permiso:', permError);
-            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-            alerts.basicAlert(
-              'Advertencia',
-              'Se creó la sucursal pero hubo un problema asignando los permisos.',
-              'warning'
-            );
+            console.error('Error asignando permiso root:', permError);
           }
+          try {
+            await lastValueFrom(this.branchesService.assignPermissionAfterCreation(this.idUser, response.id, 'company'));
+          } catch (permError) {
+            console.error('Error asignando permiso company:', permError);
+          }
+
+          // Crear entidades por defecto para la nueva empresa
+          await this.createDefaultEntitiesForRoot(response.id, row.name);
         }
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      for (const response of responses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(row =>
-          !row.id || row.id.toString().startsWith('temp_')
-        );
-
-        if (response.id && correspondingNewRow) {
-
-          try {
-            await lastValueFrom(
-              this.branchesService.assignPermissionAfterCreation(
-                this.idUser, //id user 
-                response.id,
-                'company'
-              )
-            );
-          } catch (permError) {
-            console.error('Error asignando permiso:', permError);
-            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-            alerts.basicAlert(
-              'Advertencia',
-              'Se creó la sucursal pero hubo un problema asignando los permisos.',
-              'warning'
-            );
-          }
-        }
+      // Procesar actualizaciones
+      for (const row of modifiedRows) {
+        const cleanedData = this.cleanDataForServer(row);
+        await lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
       }
+
+      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      this.obtenerDatos();
     } catch (error) {
       console.error(error);
+      alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
+    }
+  }
+
+  private async createDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<void> {
+    const today = new Date().toISOString().substring(0, 10);
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const endDate = nextYear.toISOString().substring(0, 10);
+
+    try {
+      // 1. Sucursal principal
+      const branch: any = await lastValueFrom(this.branchesService.addBranch({
+        idCompany: rootId,
+        name: `${rootName} - Oficina Principal`,
+        active: true
+      }));
+      const branchId = branch?.id || 0;
+
+      // 2. Contrato principal
+      const contract: any = await lastValueFrom(this.followprojectsService.addContract({
+        numberContract: 'CONTRATO-001',
+        description: `${rootName} - Contrato Principal`,
+        descripSmall: 'Contrato Principal',
+        idBranch: branchId,
+        idProvider: 0,
+        dateStar: today,
+        dateEnd: endDate,
+        speciality: 'OTROS',
+        stateContract: 'ACTIVO',
+        amountMx: 0,
+        amountDll: 0,
+        term: 0,
+        consecutive: 1,
+        active: 1
+      }));
+      const contractId = contract?.id || 0;
+
+      // 3. Proyecto principal (ligado al contrato)
+      await lastValueFrom(this.projectsService.addProject({
+        name: `${rootName} - Proyecto Principal`,
+        number: 'PROYECTO-001',
+        description: `Proyecto principal de ${rootName}`,
+        idContrato: contractId,
+        year: new Date().getFullYear(),
+        active: 1
+      }));
+
+      // 4. Catálogo TIPO-CLIENTE "General"
+      const tipoCliente: any = await lastValueFrom(this.catalogsService.addCatalog({
+        description: 'General',
+        active: true,
+        idCompany: rootId,
+        type: 'TIPO-CLIENTE',
+        parentId: null
+      }));
+
+      // 5. Catálogo TIPO-PROVEEDOR "General"
+      const tipoProveedor: any = await lastValueFrom(this.catalogsService.addCatalog({
+        description: 'General',
+        active: true,
+        idCompany: rootId,
+        type: 'TIPO-PROVEEDOR',
+        parentId: null
+      }));
+
+      // 6. Cliente
+      await lastValueFrom(this.customersService.addCustomer({
+        company: rootName.toUpperCase(),
+        nameContact: rootName,
+        idBranch: branchId,
+        idRoot: rootId,
+        idTypecop: tipoCliente?.id || 0,
+        type: 'CUSTOMERS',
+        vigente: true,
+        active: true
+      }));
+
+      // 7. Proveedor
+      await lastValueFrom(this.providersService.addProvider({
+        company: rootName.toUpperCase(),
+        nameContact: rootName,
+        idBranch: branchId,
+        idTypecop: tipoProveedor?.id || 0,
+        type: 'PROVIDERS',
+        vigente: true,
+        active: true
+      }));
+
+      // 8. BillingManagement (prefijo/consecutivo para ingresos)
+      await lastValueFrom(this.administrationService.addBillingManagementInfo({
+        idRoot: rootId,
+        emisorRfc: '',
+        emisorNombre: rootName,
+        emisorCp: '',
+        prefix: 'REC',
+        consecutive: 0,
+        fiscalYear: new Date().getFullYear(),
+        fiscalRegime: null,
+        iIva: 0.16,
+        iIeps: 0,
+        iI3: 0,
+        rIva: 0,
+        rIeps: 0,
+        efirmaPass: '',
+        dateStart: today,
+        dateEnd: endDate,
+        active: true
+      }));
+
+      // 9. Cuenta bancaria
+      await lastValueFrom(this.administrationService.addAccountBanks({
+        idBussines: rootId,
+        numberAccount: '0000000000',
+        nameAccount: 'Cuenta Principal',
+        signAccount: 'sin firma',
+        interbancaria: '',
+        folioCheque: '',
+        folioSinCheque: '',
+        idBanco: null,
+        maskin: '',
+        consecin: 0,
+        maskex: '',
+        consecex: 0,
+        eAplicaFiscal: 'Si'
+      }));
+
+    } catch (error) {
+      console.error('Error creando entidades por defecto:', error);
       alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
+        'Advertencia',
+        'Se creó la empresa pero hubo un problema creando algunas entidades por defecto.',
+        'warning'
       );
     }
   }
