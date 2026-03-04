@@ -121,11 +121,26 @@ export class RequisitionsDelisonComponent implements OnInit {
   private localConsecutivesByBranch: Map<number, number> = new Map();
 
   private _colMaster: ColDef[] = [];
+  private editableColumnOrder = ['idReference', 'requestDate', 'departmentId'];
+  private enterPressed: boolean = false;
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
+  };
 
   ngOnInit() {
     // ✅ Esperar a que los signals se establezcan antes de inicializar
@@ -160,9 +175,12 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   loadBranches() {
-    this.branchsService.getBranches(this.idRoot).subscribe({
-      next: (data: any[]) => {
-        this.branches = data;
+    this.branchsService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe({
+      next: (data: any) => {
+        this.branches = (data.project || []).map((row: any) => ({
+          id: row.idPermission || row.idBranch || row.id,
+          name: row.name || row.description || ''
+        }));
         this.branchesLoaded = true;
 
 
@@ -444,15 +462,16 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'idReference',
         headerName: 'Sucursal',
-        width: 150,
+        width: 220,
         // ✅ Solo editable si está en modo "Todas las sucursales" (idBranch negativo o no definido)
         editable: () => !this.idBranch || this.idBranch < 0,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => {
           return {
             values: this.branches.map(b => b.id),
             valueListGap: 0,
             valueListMaxHeight: 220,
+            cellWidth: 260,
             // Formatear cómo se muestra cada opción en el dropdown
             formatValue: (value: any) => {
               const branch = this.branches.find(b => b.id === value);
@@ -591,15 +610,19 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'requestDate',
         headerName: 'Fecha solicitud',
-        width: 120,
-        editable: () => !!this.idBranch, // Solo editable si hay branch seleccionado
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          return new Date(params.value).toLocaleDateString();
-        },
+        width: 130,
+        editable: () => !!this.idBranch,
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (params: any) =>
+          params.data?.requestDate ? String(params.data.requestDate).substring(0, 10) : '',
         valueSetter: (params: any) => {
           params.data.requestDate = params.newValue;
           return true;
+        },
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
+          const [y, m, d] = String(params.value).split('-');
+          return d && m && y ? `${d}/${m}/${y}` : params.value;
         }
       },
       {
@@ -1104,6 +1127,20 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   onCellValueChanged(event: any): void {
     this.hasUnsavedChanges = true;
+  }
+
+  onCellEditingStopped(event: any): void {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const currentIndex = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[currentIndex + 1]
+        });
+      }, 100);
+    }
   }
 
   addRequisition(): void {

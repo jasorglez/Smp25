@@ -37,12 +37,14 @@
         [columnDefs]="colMaster"
         [rowData]="rowData"
         [gridOptions]="gridOptions"
+        [defaultColDef]="defaultColDef"
         [localeText]="AG_GRID_LOCALE_ES"
         [components]="components"
         (gridReady)="onGridReady($event)"
         (selectionChanged)="onSelectionChanged($event)"
         (cellValueChanged)="onCellValueChanged($event)"
-        (cellClicked)="onCellClicked($event)">
+        (cellClicked)="onCellClicked($event)"
+        (cellEditingStopped)="onCellEditingStopped($event)">
       </ag-grid-angular>
     </div>
   </div>

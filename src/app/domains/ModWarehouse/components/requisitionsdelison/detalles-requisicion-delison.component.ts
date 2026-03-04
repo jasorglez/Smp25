@@ -783,9 +783,20 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         width: 100,
         editable: true,
         cellRenderer: (params: any) => {
+          const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
+
+          // Forzar apagado si es Interno
+          if (isInterno && params.data.pedimiento) {
+            params.data.pedimiento = false;
+          }
+
           const input = document.createElement('input');
           input.type = 'checkbox';
-          input.checked = params.value === true;
+          input.checked = isInterno ? false : params.value === true;
+          input.disabled = isInterno;
+          input.style.cursor = isInterno ? 'not-allowed' : 'pointer';
+          input.style.opacity = isInterno ? '0.4' : '1';
+          input.title = isInterno ? 'No disponible para Proveedor Interno' : '';
 
           input.addEventListener('change', () => {
             params.data.pedimiento = input.checked;
@@ -1103,7 +1114,18 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 2. Validar que todos los items seleccionados sean del mismo tipo (Interno o Externo)
+    // 2. Validar que ningún item seleccionado sea de tipo Interno
+    const internoItems = checkedItems.filter(item => (item.intorext || '').toLowerCase() === 'interno');
+    if (internoItems.length > 0) {
+      alerts.basicAlert(
+        'Proveedor Interno',
+        'Los artículos con Proveedor Interno no pueden incluirse en un pedimento de compra.',
+        'warning'
+      );
+      return;
+    }
+
+    // 3. Validar que todos los items seleccionados sean del mismo tipo (Interno o Externo)
     const tipos = [...new Set(checkedItems.map(item => item.intorext || 'Externo'))];
     if (tipos.length > 1) {
       alerts.basicAlert(

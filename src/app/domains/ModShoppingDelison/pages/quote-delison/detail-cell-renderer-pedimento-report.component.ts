@@ -118,8 +118,10 @@ export class DetailCellRendererPedimentoReportComponent {
         ? await this.base64EncodeService.convertImageToBase64(companyData.picture3)
         : null;
 
-      // Obtener artículos del pedimento (TODOS los artículos)
-      const articulos = this.pedimentoData.articulos || [];
+      // Obtener artículos del pedimento (excluir tipo Interno)
+      const articulos = (this.pedimentoData.articulos || []).filter(
+        (item: any) => (item.tipo || item.intorext || '').toLowerCase() !== 'interno'
+      );
 
       // Generar el PDF
       const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, providerName, articulos);

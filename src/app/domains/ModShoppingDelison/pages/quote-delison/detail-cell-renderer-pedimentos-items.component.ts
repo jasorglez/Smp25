@@ -102,10 +102,12 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
   }
 
   buildRowData() {
-    const articulos = this.params.data.articulos || [];
+    const articulos = (this.params.data.articulos || []).filter(
+      (item: any) => (item.intorext || item.tipo || '').toLowerCase() !== 'interno'
+    );
     console.log('📋 buildRowData - articulos recibidos:', articulos);
 
-    // Mapear todos los items
+    // Mapear todos los items (excluidos los de tipo Interno)
     const mappedItems = articulos.map((item: any, index: number) => {
       return {
         id: item.id,
