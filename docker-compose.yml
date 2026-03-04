@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: smp25-frontend:latest
-    container_name: Smp25-Frontend
+    container_name: Smp25-Siaf
     restart: unless-stopped
     ports:
       - "8090:80" # Puerto local:contenedor
