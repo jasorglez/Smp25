@@ -27,25 +27,26 @@ export const environment = {
   // urlBpi        : 'https://bi2.centralus.cloudapp.azure.com/bpi/api',
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
-
-  urlSecurity: 'https://hco-siaf.bi2.mx/api', // 5003
+  // Quitar el sufijo -api para producción
+  // MUY IMPORTANTE
+  urlSecurity: 'https://hco-siaf-api.bi2.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
-  urlSmp: 'https://hco-siaf.bi2.mx/smp/api', // 5004
+  urlSmp: 'https://hco-siaf-api.bi2.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
 
-  urlBpi: 'https://hco-siaf.bi2.mx/bpi/api', // 5005
+  urlBpi: 'https://hco-siaf-api.bi2.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://hco-siaf.bi2.mx/warehouse/api', // 5007
+  urlWarehouse: 'https://hco-siaf-api.bi2.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  urlAdministration: 'https://hco-siaf.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://hco-siaf-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
   urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlMantenimiento: 'https://hco-siaf.bi2.mx/maintenance/api',
+  urlMantenimiento: 'https://hco-siaf-api.bi2.mx/maintenance/api',
 
   root: 'root@bi2.mx',
 
