@@ -285,8 +285,8 @@ export class IncomeComponent {
         this.customers = data
           .map((item: any) => ({
             id: item.id,
-            description: item.nameContact || item.company || item.name,
-            name: item.nameContact || item.company || item.name,
+            description: item.company || item.nameContact || item.name,
+            name: item.company || item.nameContact || item.name,
             rfc: item.rfc,
             cp: item.cp,
             fiscalRegime: item.fiscalRegime,
@@ -497,7 +497,7 @@ export class IncomeComponent {
 
       { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 130 },
       {
-        field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
+        field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true, hide: true,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
           maxLength: 100,
@@ -633,6 +633,7 @@ export class IncomeComponent {
         field: 'formaPago',
         headerName: 'Forma Pago',
         editable: true,
+        hide: true,
         width: 250,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
@@ -649,6 +650,7 @@ export class IncomeComponent {
         field: 'metodoPago',
         headerName: 'Método Pago',
         editable: true,
+        hide: true,
         width: 280,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
@@ -790,7 +792,7 @@ onSelectionChanged(event: any) {
       idProject      : null,          // Proyecto
       paymentMonth   : '',            // Mes de pago
       oc             : '',            // Orden de Compra
-      date           : new Date().toISOString(),
+      date           : null,
       idCustomer     : 0,
       idExpend       : 0,
       uuid           : "NA",
@@ -838,9 +840,7 @@ onSelectionChanged(event: any) {
 async saveChanges() {
   // Campos requeridos (idProject NO es requerido - puede ir vacío)
   const requiredFields = [
-    { field: 'description',  label: 'Descripción',  check: (v: any) => !!v },
     { field: 'idCustomer',   label: 'Cliente',       check: (v: any) => !!v && v !== 0 },
-    { field: 'date',         label: 'Fecha Pago',    check: (v: any) => !!v },
   ];
 
   for (const item of this.incomes) {
