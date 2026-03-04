@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.39 (04 Marzo 2026 15:50) - Ares Auto-crear BillingManagement al dar de alta empresa',
+  version: '6.49 (04 Marzo 2026 18:10) - Ares  Tracking logs en ensureDefaultEntitiesForRoot',
 };
 
 

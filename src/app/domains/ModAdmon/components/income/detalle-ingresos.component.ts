@@ -309,10 +309,13 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
         headerName: 'Unidad',
         editable: true,
         flex: 2,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.measures.map(m => m.description)
-        }
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({
+          values: ['+ Nueva Unidad', ...this.measures.map(m => m.description)],
+          allowTyping: true,
+          filterList: true,
+          highlightMatch: true,
+        }),
       },
       {
         field: 'price',
@@ -361,6 +364,12 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
   }
 
   onCellValueChanged(event: any) {
+    // Opción especial para crear nueva unidad
+    if (event.colDef.field === 'unit' && event.newValue === '+ Nueva Unidad') {
+      this.createNewMeasureForCell(event);
+      return;
+    }
+
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
 
@@ -378,6 +387,52 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
       }
 
       this.calculateTotals();
+    }
+  }
+
+  private async createNewMeasureForCell(event: any): Promise<void> {
+    // Restaurar valor anterior mientras el usuario escribe
+    event.data.unit = event.oldValue || '';
+    this.gridApi?.applyTransactionAsync({ update: [event.data] });
+
+    const result = await alerts.inputAlert('Nueva Unidad', 'Ingrese el nombre de la nueva unidad de medida:', 'text');
+    if (!result.isConfirmed || !result.value?.trim()) return;
+
+    const description = (result.value as string).trim().toUpperCase();
+    try {
+      await lastValueFrom(this.catalogsService.addCatalog({
+        idCompany: this.idRoot,
+        description,
+        valueAddition: 'NA',
+        valueAdditionBit2: false,
+        valueAdditionBit3: false,
+        vigente: true,
+        type: 'MEASURE',
+        active: 1
+      }));
+
+      // Recargar catálogo y actualizar grid
+      await new Promise<void>((resolve) => {
+        this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe({
+          next: (data: any) => {
+            this.measures = data || [];
+            this.gridApi?.updateGridOptions({ columnDefs: this.colDefs });
+            resolve();
+          },
+          error: () => resolve()
+        });
+      });
+
+      // Asignar el nuevo valor a la celda
+      event.data.unit = description;
+      event.data.__modified = true;
+      this.gridApi?.applyTransactionAsync({ update: [event.data] });
+      this.hasUnsavedChanges = true;
+    } catch (error) {
+      console.error('Error creando nueva unidad:', error);
+      alerts.basicAlert('Error', 'No se pudo crear la nueva unidad.', 'error');
+      event.data.unit = event.oldValue || '';
+      this.gridApi?.applyTransactionAsync({ update: [event.data] });
     }
   }
 
@@ -451,7 +506,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
         subtotal: this.subtotal,
         tax: this.iva2,
         total: this.total,
-        countItems: this.rowData.length
+        countItems: this.rowData.length,
+        idBranch: this.incomeData?.idBranch ?? mainDoc.idBranch
       };
       await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDoc));
 
@@ -502,7 +558,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
           const mainDoc = mainDocResponse[0];
           const updatedDoc = {
             ...mainDoc,
-            countItems: newCount
+            countItems: newCount,
+            idBranch: this.incomeData?.idBranch ?? mainDoc.idBranch
           };
           await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDoc));
 
