@@ -87,6 +87,7 @@ export class ExpenditureComponent {
       await this.loadEmployees();
       await this.loadProviders();
       await this.loadCuentasContables();
+      await this.loadCuentasContablesNivel1();
       await this.loadCuentasContablesNivel2();
       await this.loadCuentasContablesNivel3();
       await this.loadProjects();
@@ -159,6 +160,7 @@ export class ExpenditureComponent {
   employees: any[] = [];
   providers: any[] = [];
   cuentasContables: any[] = [];
+  cuentasContablesNivel1: any[] = [];
   cuentasContablesNivel2: any[] = [];
   cuentasContablesNivel3: any[] = [];
   projects: any[] = [];
@@ -405,6 +407,22 @@ export class ExpenditureComponent {
     });
   }
 
+  async loadCuentasContablesNivel1() {
+    return new Promise<void>((resolve) => {
+      this.cuentasContablesService.getByNivel(this.idRoot, 1).subscribe(
+        (data: any) => {
+          this.cuentasContablesNivel1 = data || [];
+          resolve();
+        },
+        error => {
+          console.error('Error cargando cuentas contables nivel 1:', error);
+          this.cuentasContablesNivel1 = [];
+          resolve();
+        }
+      );
+    });
+  }
+
   async loadCuentasContablesNivel2() {
     return new Promise<void>((resolve) => {
       this.cuentasContablesService.getByNivel(this.idRoot, 2).subscribe(
@@ -607,19 +625,44 @@ export class ExpenditureComponent {
         },
       },
       {
-        field: 'date', headerName: 'Fecha', editable: true, cellDataType: 'date', width: 100,
-        valueFormatter: (params) => this.formatDate(params.value)
+        field: 'anio',
+        headerName: 'Año',
+        editable: true,
+        width: 80,
+        filter: true,
+        cellDataType: 'number',
       },
       {
-        field: 'idExpend', headerName: 'Tipo Gasto', editable: true, width: 220,
+        field: 'ejercicio',
+        headerName: 'Ejercicio',
+        editable: true,
+        width: 100,
+        filter: true,
+      },
+      {
+        field: 'idClasificacion',
+        headerName: 'Clasificación',
+        editable: true,
+        width: 200,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => {
-          return {
-            values: this.cuentasContablesNivel2
-              ? this.cuentasContablesNivel2.map((c) => c.id)
-              : []
-          };
+        cellEditorParams: () => ({
+          values: this.cuentasContablesNivel1.map((c) => c.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const cuenta = this.cuentasContablesNivel1?.find((c) => c.id === params.value);
+          return cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : params.value;
         },
+      },
+      {
+        field: 'idSubclasificacion',
+        headerName: 'Subclasificación',
+        editable: true,
+        width: 220,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.cuentasContablesNivel2.map((c) => c.id)
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
           const cuenta = this.cuentasContablesNivel2?.find((c) => c.id === params.value);
@@ -627,7 +670,7 @@ export class ExpenditureComponent {
         },
       },
       {
-        field: 'description', headerName: 'Descripción', editable: true, width: 200, filter: true,
+        field: 'description', headerName: 'Concepto', editable: true, width: 220, filter: true,
         cellClass: 'description-cell',
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
@@ -657,22 +700,29 @@ export class ExpenditureComponent {
           return `<div class="description-content" style="word-wrap: break-word; white-space: normal; line-height: 1.2; padding: 2px; overflow: visible; max-height: none;">${value}</div>`;
         }
       },
-     
       {
         field: 'subtotal',
-        headerName: 'Subtotal',
+        headerName: 'Importe S/IVA',
         type: 'number',
         editable: false,
-        width: 110,
+        width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
         field: 'tax',
-        headerName: 'Impuestos',
+        headerName: 'IVA',
         type: 'number',
         editable: false,
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'otrosImpuestos',
+        headerName: 'Otros Impuestos',
+        type: 'number',
+        editable: true,
+        width: 130,
+        valueFormatter: params => params.value != null ? params.value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '$0.00'
       },
       {
         field: 'total',
@@ -682,8 +732,45 @@ export class ExpenditureComponent {
         width: 110,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
-
-       {
+      {
+        field: 'idCustomer',
+        headerName: 'Proveedor',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.providers.map((p) => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const prov = this.providers?.find((p) => p.id === params.value);
+          return prov ? prov.name : params.value;
+        },
+      },
+      {
+        field: 'formaPago',
+        headerName: 'Tipo de Pago',
+        editable: true,
+        width: 130,
+        filter: true,
+      },
+      {
+        field: 'idAccount',
+        headerName: 'Cuenta',
+        editable: false,
+        width: 180,
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const acc = this.bankAccounts?.find((a) => a.id === params.value);
+          return acc ? `${acc.nameAccount} - ${acc.bankName}` : params.value;
+        },
+      },
+      {
+        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 110,
+        valueFormatter: (params) => this.formatDate(params.value)
+      },
+      {
         field: 'paymentMonth',
         headerName: 'Mes',
         editable: true,
@@ -700,24 +787,16 @@ export class ExpenditureComponent {
         editable: true,
         width: 180,
         filter: true,
+        hide: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => {
-          return {
-            values: this.projects
-              ? this.projects.map((p) => p.id)
-              : []
-          };
-        },
+        cellEditorParams: () => ({
+          values: this.projects.map((p) => p.id)
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
           const project = this.projects?.find((p) => p.id === params.value);
           return project ? project.name : params.value;
         },
-        tooltipValueGetter: (params) => {
-          if (!params.value) return '';
-          const project = this.projects?.find((p) => p.id === params.value);
-          return project ? project.name : '';
-        }
       },
       {
         field: 'uuid',
@@ -725,10 +804,9 @@ export class ExpenditureComponent {
         editable: true,
         width: 180,
         filter: true,
+        hide: true,
         cellEditor: 'agTextCellEditor',
-        cellEditorParams: {
-          maxLength: 36
-        },
+        cellEditorParams: { maxLength: 36 },
         valueFormatter: (params) => {
           if (!params.value || params.value === 'NA') return 'Sin Timbrar';
           return params.value.length > 15 ? params.value.substring(0, 15) + '...' : params.value;
@@ -740,7 +818,6 @@ export class ExpenditureComponent {
           return { backgroundColor: '#fff3cd', color: '#856404' };
         }
       },
-
       {
         field: 'status',
         headerName: 'Estatus',
@@ -748,12 +825,7 @@ export class ExpenditureComponent {
         width: 100,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: [
-            'Pendiente',
-            'Entregada',
-            'Cancelada',
-            'Pagada'
-          ]
+          values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada']
         }
       }
     ];
@@ -930,11 +1002,17 @@ export class ExpenditureComponent {
       paymentMonth: '',
       idProject: null,
       dateStamped: null,
-      description: "POR COMPROBAR",
+      description: "",
       type: "GASTO",
       subtotal: 0,
       tax: 0,
+      otrosImpuestos: 0,
       total: 0,
+      anio: new Date().getFullYear(),
+      ejercicio: String(new Date().getFullYear()),
+      idClasificacion: null,
+      idSubclasificacion: null,
+      formaPago: '01',
       countItems: 0,
       countitems: 0,
       createdBy: this.currentUser || 'Usuario temporal',
@@ -969,9 +1047,8 @@ export class ExpenditureComponent {
   async saveChanges() {
     // Campos requeridos (idProject NO es requerido - puede ir vacío)
     const requiredFields = [
-      { field: 'description', label: 'Descripción',  check: (v: any) => !!v },
-      { field: 'date',        label: 'Fecha',         check: (v: any) => !!v },
-      { field: 'idExpend',    label: 'Tipo Gasto',    check: (v: any) => !!v && v !== 0 },
+      { field: 'idClasificacion',    label: 'Clasificación',    check: (v: any) => !!v },
+      { field: 'idSubclasificacion', label: 'Subclasificación', check: (v: any) => !!v },
     ];
 
     for (const item of this.incomes) {
