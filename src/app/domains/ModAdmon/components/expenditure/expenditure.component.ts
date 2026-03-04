@@ -305,10 +305,11 @@ export class ExpenditureComponent {
           }) || [];
 
           // Agregar propiedades para master-detail
-          this.incomes = filtered.map(income => {
+          this.incomes = filtered.map((income, index) => {
             const countItems = income.countItems || income.countitems || 0;
             return {
               ...income,
+              _rowNum: index + 1,
               countItems: countItems,
               detailType: null,
               detailData: [],
@@ -547,7 +548,7 @@ export class ExpenditureComponent {
       {
         headerName: '#',
         width: 50,
-        valueGetter: (params) => params.node!.rowIndex! + 1,
+        valueGetter: (params) => params.data?._rowNum,
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
