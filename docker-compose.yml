@@ -1,3 +1,4 @@
+name: hco-siaf-frontend
 services:
   Smp25:
     build:
