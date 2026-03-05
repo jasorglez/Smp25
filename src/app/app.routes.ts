@@ -652,6 +652,21 @@ export const routes: Routes = [
             // canDeactivate: [UnsavedChangesGuard],
           },
           {
+            path: 'login',
+            loadComponent: () =>
+              import(
+                './domains/SMP/Components/login-setup/login-setup.component'
+              ).then((l) => l.LoginSetupComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'users' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Login',
+                category: 'Setup'
+              }
+            }
+          },
+          {
             path: 'corporativos',
             loadComponent: () =>
               import('./domains/SMP/Components/corporativos/corporativos.component').then(

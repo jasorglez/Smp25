@@ -1,394 +1,448 @@
-.login-background {
+// ─── Variables ────────────────────────────────────────────────────────────────
+$bg-dark   : #0b0c14;
+$surface   : rgba(11, 12, 20, 0.72);
+$border    : rgba(255, 255, 255, 0.10);
+$accent    : #6c63ff;
+$accent2   : #48d8e4;
+$text      : #eeeef5;
+$muted     : rgba(238, 238, 245, 0.45);
+$error     : #f0697a;
+$radius    : 14px;
+$ease      : cubic-bezier(0.4, 0, 0.2, 1);
+$transition: 0.25s $ease;
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+// ─── Background con imagen ────────────────────────────────────────────────────
+.login-bg {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #0a0a1a;
+  inset: 0;
+  z-index: 0;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  z-index: 0;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    width: 200%;
-    height: 200%;
-    background:
-      radial-gradient(circle at 20% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 40% 20%, rgba(0, 255, 157, 0.08) 0%, transparent 50%);
-    animation: neonPulse 8s ease-in-out infinite;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 255, 255, 0.03) 2px,
-      rgba(0, 255, 255, 0.03) 4px
-    );
-    animation: scanlines 8s linear infinite;
-  }
+  // animation: kenBurns 22s ease-in-out infinite alternate; ← comentado
 }
 
-@keyframes neonPulse {
-  0%, 100% {
-    opacity: 0.8;
-    transform: translate(-25%, -25%) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-25%, -25%) scale(1.1);
-  }
+@keyframes kenBurns {
+  0%   { transform: scale(1)    translateX(0)    translateY(0); }
+  33%  { transform: scale(1.06) translateX(-1%)  translateY(1%); }
+  66%  { transform: scale(1.04) translateX(1%)   translateY(-1%); }
+  100% { transform: scale(1.08) translateX(-0.5%) translateY(0.5%); }
 }
 
-@keyframes scanlines {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(10px);
-  }
-}
-
-.overlay {
+// Overlay: blur sutil + gradiente oscuro para que el card resalte
+.bg-overlay {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  backdrop-filter: blur(2px);
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  backdrop-filter: blur(2px) saturate(0.85);
+  background: linear-gradient(
+    135deg,
+    rgba(11, 12, 20, 0.78) 0%,
+    rgba(20, 18, 48, 0.65) 50%,
+    rgba(11, 12, 20, 0.80) 100%
+  );
 }
 
-.login-box {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  max-width: 420px;
-  transform: translate(-50%, -50%);
+// ─── Layout wrapper ───────────────────────────────────────────────────────────
+.login-wrapper {
+  position: relative;
   z-index: 1;
-  animation: fadeInUpNeon 0.8s ease-out;
-  filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.3));
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
 }
 
-@keyframes fadeInUpNeon {
-  0% {
+// ─── Card ─────────────────────────────────────────────────────────────────────
+.login-card {
+  width: 100%;
+  max-width: 410px;
+  background: $surface;
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  border: 1px solid $border;
+  border-radius: 22px;
+  padding: 2.5rem 2.1rem 2rem;
+  box-shadow:
+    0 0 0 1px rgba(108, 99, 255, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 32px 80px rgba(0, 0, 0, 0.50),
+    inset 0 1px 0 rgba(255,255,255,0.07);
+  animation: cardIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cardIn {
+  from {
     opacity: 0;
-    transform: translate(-50%, -40%);
-    filter: blur(10px);
+    transform: translateY(30px) scale(0.96);
+    filter: blur(8px);
   }
-  100% {
+  to {
     opacity: 1;
-    transform: translate(-50%, -50%);
+    transform: translateY(0) scale(1);
     filter: blur(0);
   }
 }
 
-.card {
-  backdrop-filter: blur(16px) !important;
-  background: rgba(10, 10, 26, 0.85) !important;
-  border: 2px solid #00ffff !important;
-  box-shadow:
-    0 0 30px rgba(0, 255, 255, 0.3),
-    inset 0 0 20px rgba(0, 255, 255, 0.05) !important;
-  position: relative;
-  overflow: hidden;
+// ─── Logo ─────────────────────────────────────────────────────────────────────
+.login-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.6rem;
 
-  h5 {
-    color: #00ffff !important;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    text-shadow:
-      0 0 10px rgba(0, 255, 255, 0.8),
-      0 0 20px rgba(0, 255, 255, 0.5),
-      0 0 30px rgba(0, 255, 255, 0.3) !important;
+  img {
+    max-width: 170px;
+    width: 100%;
+    filter: drop-shadow(0 4px 20px rgba(108, 99, 255, 0.40))
+            brightness(1.05);
+    transition: filter $transition, transform $transition;
+
+    &:hover {
+      filter: drop-shadow(0 4px 28px rgba(72, 216, 228, 0.55))
+              brightness(1.1);
+      transform: translateY(-3px) scale(1.02);
+    }
   }
 }
 
+// ─── Headings ─────────────────────────────────────────────────────────────────
+.login-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: $text;
+  text-align: center;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.3rem;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+}
 
-// Estilo para el logo con fondo blur
-.logo-with-blur {
-  padding: 1.5rem;
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-  background: rgba(10, 10, 26, 0.6);
-  border: 2px solid #00ffff;
-  box-shadow:
-    0 0 20px rgba(0, 255, 255, 0.5),
-    inset 0 0 15px rgba(0, 255, 255, 0.1);
-  transition: all 0.3s ease;
+.login-subtitle {
+  font-size: 0.82rem;
+  color: $muted;
+  text-align: center;
+  margin-bottom: 1.8rem;
+}
+
+// ─── Form ─────────────────────────────────────────────────────────────────────
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.05rem;
+}
+
+// ─── Field group ──────────────────────────────────────────────────────────────
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+}
+
+.field-label {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: $muted;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  transition: color $transition;
+  padding-left: 0.1rem;
+}
+
+.field-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-icon {
+  position: absolute;
+  left: 0.9rem;
+  color: $muted;
+  font-size: 0.88rem;
+  pointer-events: none;
+  transition: color $transition;
+  z-index: 1;
+}
+
+.field-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: 0.76rem 2.9rem;
+  font-size: 0.88rem;
+  color: $text;
+  outline: none;
+  transition: border-color $transition, box-shadow $transition, background $transition;
+  font-family: inherit;
+
+  &::placeholder {
+    color: rgba(238, 238, 245, 0.2);
+  }
+
+  &:focus {
+    border-color: rgba(108, 99, 255, 0.7);
+    background: rgba(108, 99, 255, 0.08);
+    box-shadow:
+      0 0 0 3px rgba(108, 99, 255, 0.16),
+      0 2px 8px rgba(0, 0, 0, 0.2);
+
+    & ~ .field-icon { color: $accent; }
+  }
+
+  // autofill override
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 40px #13142a inset !important;
+    -webkit-text-fill-color: $text !important;
+    caret-color: $text;
+    border-color: rgba(108, 99, 255, 0.5) !important;
+  }
+}
+
+// El ícono cambia cuando el input está en foco
+.field-input-wrap:focus-within .field-icon {
+  color: $accent;
+}
+
+.field-group:focus-within .field-label {
+  color: rgba(108, 99, 255, 0.9);
+}
+
+// Estado error
+.field-group.field-error {
+  .field-label   { color: $error; }
+  .field-input   {
+    border-color: rgba(240, 105, 122, 0.7);
+    box-shadow: 0 0 0 3px rgba(240, 105, 122, 0.14);
+  }
+  .field-icon    { color: $error; }
+}
+
+.field-error-msg {
+  font-size: 0.74rem;
+  color: $error;
+  padding-left: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  animation: errIn 0.22s $ease both;
+}
+
+@keyframes errIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// Toggle ver/ocultar password
+.toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: $muted;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  line-height: 1;
+  transition: color $transition, transform $transition;
+  z-index: 1;
 
   &:hover {
-    background: rgba(10, 10, 26, 0.8);
-    transform: translateY(-5px);
-    box-shadow:
-      0 0 40px rgba(0, 255, 255, 0.8),
-      0 10px 30px rgba(255, 0, 255, 0.3),
-      inset 0 0 20px rgba(0, 255, 255, 0.2);
-    border-color: #ff00ff;
+    color: $text;
+    transform: scale(1.1);
   }
 }
 
-button.btn-link {
-  color: #00ffff !important;
-  text-decoration: none !important;
-  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5) !important;
-  transition: all 0.3s ease;
-
-  i {
-    filter: drop-shadow(0 0 3px rgba(0, 255, 255, 0.6));
-  }
-}
-
-button.btn-link:hover {
-  color: #ff00ff !important;
-  text-shadow: 0 0 10px rgba(255, 0, 255, 0.8) !important;
-
-  i {
-    filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.8));
-  }
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #00ffff 0%, #00ff9d 100%) !important;
-  border: 2px solid #00ffff !important;
-  color: #0a0a1a !important;
-  font-weight: 700 !important;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  box-shadow:
-    0 0 20px rgba(0, 255, 255, 0.5),
-    inset 0 0 10px rgba(0, 255, 255, 0.2) !important;
-  transition: all 0.3s ease;
+// ─── Submit button ────────────────────────────────────────────────────────────
+.btn-login {
   position: relative;
   overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-  }
+  width: 100%;
+  padding: 0.82rem 1.5rem;
+  margin-top: 0.4rem;
+  border: none;
+  border-radius: $radius;
+  background: linear-gradient(135deg, $accent 0%, $accent2 100%);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: transform $transition, box-shadow $transition, opacity $transition;
+  box-shadow:
+    0 4px 18px rgba(108, 99, 255, 0.40),
+    0 1px 4px rgba(0,0,0,0.3);
 
   &:hover:not(:disabled) {
-    transform: translateY(-3px);
-    background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%) !important;
-    border-color: #ff00ff !important;
-    color: #ffffff !important;
+    transform: translateY(-2px);
     box-shadow:
-      0 0 30px rgba(255, 0, 255, 0.8),
-      0 5px 20px rgba(0, 255, 255, 0.4),
-      inset 0 0 15px rgba(255, 0, 255, 0.3) !important;
+      0 8px 28px rgba(108, 99, 255, 0.55),
+      0 2px 8px rgba(0,0,0,0.25);
+  }
 
-    &::before {
-      width: 300px;
-      height: 300px;
-    }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 2px 10px rgba(108, 99, 255, 0.30);
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.55;
     cursor: not-allowed;
-    filter: grayscale(0.5);
-  }
-
-  i, span {
-    position: relative;
-    z-index: 1;
+    transform: none;
   }
 }
 
-.form-floating {
+.btn-login-inner {
   position: relative;
-  margin-bottom: 1.5rem;
-
-  .form-control {
-    border: 2px solid #00ffff !important;
-    border-radius: 8px !important;
-    background: rgba(0, 255, 255, 0.05) !important;
-    padding: 1rem 1rem;
-    padding-top: 1.625rem;
-    padding-bottom: 0.625rem;
-    color: #00ffff !important;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.1) !important;
-    height: auto;
-    min-height: calc(3.5rem + 2px);
-
-    &::placeholder {
-      color: transparent;
-    }
-
-    &:focus {
-      box-shadow:
-        0 0 20px rgba(0, 255, 255, 0.4),
-        inset 0 0 10px rgba(0, 255, 255, 0.1) !important;
-      border-color: #ff00ff !important;
-      background: rgba(255, 0, 255, 0.08) !important;
-      outline: none !important;
-
-      ~ label {
-        color: #ff00ff !important;
-        opacity: 1;
-        transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
-        text-shadow: 0 0 10px rgba(255, 0, 255, 0.8) !important;
-      }
-    }
-
-    &:not(:placeholder-shown) ~ label {
-      opacity: 1;
-      transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
-      color: #00ffff !important;
-      text-shadow: 0 0 5px rgba(0, 255, 255, 0.6) !important;
-    }
-
-    &.is-invalid {
-      border-color: #ff0055;
-      box-shadow: 0 0 15px rgba(255, 0, 85, 0.5);
-    }
-  }
-
-  > label {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    padding: 1rem 1rem;
-    pointer-events: none;
-    border: 2px solid transparent;
-    transform-origin: 0 0;
-    transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
-    color: rgba(0, 255, 255, 0.7) !important;
-    font-weight: 500;
-  }
-
-  .invalid-feedback {
-    color: #ff0055;
-    text-shadow: 0 0 5px rgba(255, 0, 85, 0.5);
-    font-size: 0.85rem;
-    margin-top: 0.5rem;
-  }
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
-.footer-login {
-  color: #00ffff;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
-  font-weight: 500;
+// Efecto shimmer sobre el botón
+.btn-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 65%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+// Spinner dentro del botón
+.btn-spinner {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid rgba(255, 255, 255, 0.30);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+.login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1.7rem;
+  font-size: 0.76rem;
+  color: $muted;
 
   a {
-    color: #00ff9d;
+    color: rgba(72, 216, 228, 0.85);
     text-decoration: none;
-    transition: all 0.3s ease;
-    text-shadow: 0 0 8px rgba(0, 255, 157, 0.6);
+    font-weight: 600;
+    transition: color $transition;
 
-    &:hover {
-      color: #ff00ff;
-      text-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
-    }
-
-    i {
-      filter: drop-shadow(0 0 3px currentColor);
-    }
+    &:hover { color: #fff; }
   }
+
+  .sep { opacity: 0.30; }
 }
 
-/* Overlay de carga */
+// ─── Loading overlay ──────────────────────────────────────────────────────────
 .loading-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(10, 10, 26, 0.95);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  inset: 0;
   z-index: 9999;
-  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 12, 20, 0.80);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: fadeIn 0.3s $ease both;
 }
 
-.loading-content {
-  text-align: center;
-  padding: 3rem;
-  border-radius: 20px;
-  background: rgba(10, 10, 26, 0.8);
-  border: 2px solid #00ffff;
-  box-shadow:
-    0 0 40px rgba(0, 255, 255, 0.6),
-    0 0 80px rgba(255, 0, 255, 0.4),
-    inset 0 0 20px rgba(0, 255, 255, 0.1);
-  position: relative;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 
-  &::before {
-    content: '';
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 2.5rem 3rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid $border;
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+// Ring spinner tricolor
+.loading-ring {
+  position: relative;
+  width: 50px;
+  height: 50px;
+
+  div {
     position: absolute;
-    inset: -2px;
-    background: linear-gradient(135deg, #00ffff, #ff00ff, #00ff9d, #00ffff);
-    border-radius: 20px;
-    z-index: -1;
-    opacity: 0.3;
-    filter: blur(15px);
-    animation: neonBorderRotate 3s linear infinite;
+    inset: 0;
+    border: 3px solid transparent;
+    border-radius: 50%;
+    animation: ringAnim 1.3s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+
+    &:nth-child(1) { border-top-color: $accent;  animation-delay: -0.48s; }
+    &:nth-child(2) { border-top-color: $accent2; animation-delay: -0.32s; }
+    &:nth-child(3) { border-top-color: #c084fc;  animation-delay: -0.16s; }
+    &:nth-child(4) { border-top-color: $accent;  animation-delay: 0s; }
   }
 }
 
-.loading-content .spinner-border {
-  width: 4rem;
-  height: 4rem;
-  border-width: 0.4em;
-  border-color: #00ffff;
-  border-right-color: transparent;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.8));
-  animation: spin 1s linear infinite;
+@keyframes ringAnim {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.loading-content h5 {
-  margin-bottom: 0.5rem;
+.loading-title {
+  font-size: 0.92rem;
   font-weight: 700;
-  color: #00ffff;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow:
-    0 0 10px rgba(0, 255, 255, 0.8),
-    0 0 20px rgba(0, 255, 255, 0.5);
+  color: $text;
+  letter-spacing: 0.02em;
 }
 
-.loading-content p {
-  margin-bottom: 0;
-  font-size: 0.9rem;
-  color: #00ff9d;
-  text-shadow: 0 0 5px rgba(0, 255, 157, 0.6);
+.loading-sub {
+  font-size: 0.78rem;
+  color: $muted;
+  margin-top: -0.3rem;
 }
 
-/* Animación para el botón con spinner */
-.btn[disabled] {
-  opacity: 0.8;
-  cursor: not-allowed;
+// ─── Responsive ───────────────────────────────────────────────────────────────
+@media (max-width: 480px) {
+  .login-card {
+    padding: 2rem 1.4rem 1.75rem;
+    border-radius: 18px;
+    // En móvil el card ocupa casi todo el ancho
+    max-width: 100%;
+  }
+
+  .login-title { font-size: 1.15rem; }
+  .login-logo img { max-width: 145px; }
 }
 
-.spinner-border-sm {
-  width: 1rem;
-  height: 1rem;
-  border-width: 0.2em;
-  border-color: #0a0a1a;
-  border-right-color: transparent;
-  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+@media (max-width: 360px) {
+  .login-card { padding: 1.75rem 1.1rem 1.5rem; }
 }

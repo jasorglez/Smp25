@@ -29,6 +29,10 @@
                <a class="nav-link green-tab" routerLink="users" routerLinkActive="active"><i
                      class="bi bi-person-bounding-box"></i> {{ 'user' | translate}}</a>
             </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'users')">
+               <a class="nav-link green-tab" routerLink="login" routerLinkActive="active"><i
+                     class="bi bi-box-arrow-in-right"></i> Login</a>
+            </li>
 
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'log')">
                <a class="nav-link green-tab" routerLink="logs" routerLinkActive="active"><i

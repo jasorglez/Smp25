@@ -41,9 +41,12 @@ export class ComploginComponent implements OnInit {
   displayName : string = '' ;
   picture     : string = '' ;
 
-  images      : string[] = [
-    '../../../assets/img/fondo_circuito.webp'
+  /** Imágenes de fondo: por defecto asset; si hay imágenes guardadas en SMP Login, se usan esas. */
+  images: string[] = [
+    '../../../assets/img/login_ver2.webp',
   ];
+
+  private readonly STORAGE_KEY_LOGIN_IMAGES = 'smp_login_images';
 
   private loginService    = inject(LoginService) ;
   private companysService = inject(CompanysService);
@@ -70,10 +73,10 @@ export class ComploginComponent implements OnInit {
 
 
   ngOnInit(): void {
-    
+    this.loadLoginBackgroundImages();
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    this.randomImage = this.images[Math.floor(Math.random() * this.images.length)];
+    this.randomImage = this.getBackgroundImageForToday();
     const storedEmail = this.signalsService.getemailChoose();
     if (storedEmail) {
       this.emailcapt = storedEmail;
@@ -96,6 +99,32 @@ export class ComploginComponent implements OnInit {
           console.error('Error fetching permissions on init:', err);
         }
       });
+    }
+  }
+
+  /** Elige la imagen de fondo: si hay más de una, rota cada 24 h; si hay una, esa. */
+  private getBackgroundImageForToday(): string {
+    if (this.images.length === 0) return '../../../assets/img/login_ver2.webp';
+    if (this.images.length === 1) return this.images[0];
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const dayIndex = Math.floor(Date.now() / msPerDay);
+    const index = dayIndex % this.images.length;
+    return this.images[index];
+  }
+
+  /** Carga las URLs de imágenes guardadas en SMP → Login; si hay alguna, se usan como fondo. */
+  private loadLoginBackgroundImages(): void {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY_LOGIN_IMAGES);
+      if (!stored) return;
+      const data = JSON.parse(stored);
+      const list = Array.isArray(data) ? data : [];
+      const urls = list.map((item: { url?: string }) => item?.url).filter((u: string) => u);
+      if (urls.length > 0) {
+        this.images = urls;
+      }
+    } catch {
+      // Si falla el parse, se mantiene la imagen por defecto
     }
   }
 

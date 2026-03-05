@@ -1,79 +1,105 @@
-<!-- Fondo con overlay -->
-<div class="login-background" [style.backgroundImage]="'url(' + randomImage + ')'">
-	<div class="overlay"></div>
-  </div>
-  
-  <!-- Contenedor del Login -->
-  <div class="login-box">
-	
-	<div class="login-logo text-center mb-4">
-	  <img src="/assets/img/template/bi3.webp" class="img-fluid logo-with-blur" style="max-width: 280px;">
-	</div>
-  
-	<div class="card rounded-4 border-0">
-	  <div class="card-body p-4">
-  
-		<h5 class="text-center mb-4 fw-bold">{{ 'titlelogin' | translate }}</h5>
-  
-		<form [formGroup]="flogin" (ngSubmit)="login()" autocomplete="off">
-		  <!-- Email -->
-		  <div class="form-floating mb-3">
-			<input type="email"
-				   class="form-control"
-				   id="emailInput"
-				   formControlName="emaillogin"
-				   placeholder="Correo Electrónico"
-				   [ngClass]="{'is-invalid': invalidField('emaillogin')}">
-			<label for="emailInput">Correo Electrónico</label>
-			<div class="invalid-feedback">Correo inválido.</div>
-		  </div>
-  
-		  <!-- Password -->
-		  <div class="form-floating position-relative mb-3">
-			<input [type]="hide ? 'password' : 'text'"
-				   id="passwordInput"
-				   formControlName="passwordlogin"
-				   class="form-control pe-5"
-				   placeholder="Contraseña"
-				   autocomplete="current-password"
-				   [ngClass]="{'is-invalid': invalidField('passwordlogin')}">
-			<label for="passwordInput">Contraseña</label>
-  
-			<!-- Toggle button -->
-			<button type="button"
-					class="btn btn-sm btn-link position-absolute top-50 end-0 translate-middle-y me-2"
-					(click)="toggleHide()"
-					tabindex="-1"
-					style="z-index: 5;">
-			  <i class="bi" [ngClass]="{'bi-eye-slash': !hide, 'bi-eye': hide}"></i>
-			</button>
-  
-			<div class="invalid-feedback">Contraseña inválida.</div>
-		  </div>
-  
-		  <!-- Botón de inicio -->
-		  <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm" [disabled]="isLoading">
-			<span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-			<i *ngIf="!isLoading" class="bi bi-box-arrow-in-right me-2"></i>
-			{{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
-		  </button>
-		</form>
-	  </div>
-	</div>
+<!-- ═══════════════════════════════════════════════
+     BACKGROUND — imagen dinámica + overlay
+════════════════════════════════════════════════ -->
+<div class="login-bg" [style.backgroundImage]="'url(' + randomImage + ')'">
+  <div class="bg-overlay"></div>
+</div>
 
-	<div class="text-center mt-3 footer-login">
-		<i class="bi bi-circle-fill me-2" style="font-size: 0.5rem; vertical-align: middle;"></i>
-		<a href="https://bi2.mx" target="_blank">bi2.mx</a> - Versión {{environment.version}}
-	</div>
-  </div>
+<!-- ═══════════════════════════════════════════════
+     LOGIN CARD
+════════════════════════════════════════════════ -->
+<div class="login-wrapper">
+  <div class="login-card">
 
-  <!-- Overlay de carga -->
-  <div *ngIf="isLoading" class="loading-overlay">
-	<div class="loading-content">
-	  <div class="spinner-border text-primary mb-3" role="status">
-		<span class="visually-hidden">Cargando...</span>
-	  </div>
-	  <h5 class="text-white">Iniciando sesión</h5>
-	  <p class="text-white-50">Por favor espere</p>
-	</div>
+    <!-- Logo -->
+    <div class="login-logo">
+      <img src="/assets/img/template/bi3.webp" alt="Logo" />
+    </div>
+
+    <!-- Headings -->
+    <h1 class="login-title">{{ 'titlelogin' | translate }}</h1>
+    <p class="login-subtitle">Ingresa tus credenciales para continuar</p>
+
+    <!-- Formulario -->
+    <form [formGroup]="flogin" (ngSubmit)="login()" autocomplete="off" class="login-form">
+
+      <!-- Email -->
+      <div class="field-group" [class.field-error]="invalidField('emaillogin')">
+        <label class="field-label" for="emailInput">Correo electrónico</label>
+        <div class="field-input-wrap">
+          <i class="bi bi-envelope field-icon"></i>
+          <input
+            type="email"
+            id="emailInput"
+            class="field-input"
+            formControlName="emaillogin"
+            placeholder="correo@empresa.com"
+            autocomplete="email"
+          />
+        </div>
+        <span class="field-error-msg" *ngIf="invalidField('emaillogin')">
+          <i class="bi bi-exclamation-circle"></i> Correo inválido.
+        </span>
+      </div>
+
+      <!-- Contraseña -->
+      <div class="field-group" [class.field-error]="invalidField('passwordlogin')">
+        <label class="field-label" for="passwordInput">Contraseña</label>
+        <div class="field-input-wrap">
+          <i class="bi bi-lock field-icon"></i>
+          <input
+            [type]="hide ? 'password' : 'text'"
+            id="passwordInput"
+            class="field-input"
+            formControlName="passwordlogin"
+            placeholder="••••••••"
+            autocomplete="current-password"
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="toggleHide()"
+            tabindex="-1"
+            [attr.aria-label]="hide ? 'Mostrar contraseña' : 'Ocultar contraseña'">
+            <i class="bi" [ngClass]="hide ? 'bi-eye' : 'bi-eye-slash'"></i>
+          </button>
+        </div>
+        <span class="field-error-msg" *ngIf="invalidField('passwordlogin')">
+          <i class="bi bi-exclamation-circle"></i> Contraseña inválida.
+        </span>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="btn-login" [disabled]="isLoading">
+        <span class="btn-login-inner">
+          <span *ngIf="isLoading" class="btn-spinner"></span>
+          <i *ngIf="!isLoading" class="bi bi-box-arrow-in-right"></i>
+          {{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
+        </span>
+        <div class="btn-shimmer"></div>
+      </button>
+
+    </form>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <a href="https://bi2.mx" target="_blank" rel="noopener">bi2.mx</a>
+      <span class="sep">·</span>
+      <span>v{{ environment.version }}</span>
+    </div>
+
   </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     LOADING OVERLAY
+════════════════════════════════════════════════ -->
+<div class="loading-overlay" *ngIf="isLoading">
+  <div class="loading-card">
+    <div class="loading-ring">
+      <div></div><div></div><div></div><div></div>
+    </div>
+    <p class="loading-title">Iniciando sesión</p>
+    <p class="loading-sub">Por favor espere...</p>
+  </div>
+</div>
