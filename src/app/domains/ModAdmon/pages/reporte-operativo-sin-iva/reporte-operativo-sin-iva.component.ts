@@ -127,9 +127,9 @@ export class ReporteOperativoSinIvaComponent {
     const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
     this.fechaCorte = this.formatDateDisplay(lastMonth);
 
-    // Inicializar filtros de fecha (últimos 12 meses por defecto)
-    const twelveMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 12, 1);
-    this.startDate = this.formatDateForInput(twelveMonthsAgo);
+    // Inicializar filtros de fecha (últimos 24 meses por defecto)
+    const twentyFourMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 24, 1);
+    this.startDate = this.formatDateForInput(twentyFourMonthsAgo);
     this.endDate = this.formatDateForInput(today);
 
     effect(() => {

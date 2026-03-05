@@ -605,6 +605,39 @@ export class ExpenditureComponent {
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
+        field: 'idCustomer',
+        headerName: 'Proveedor',
+        editable: true,
+        hide: false,
+        width: 180,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.providers.map((p) => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const prov = this.providers?.find((p) => p.id === params.value);
+          return prov ? prov.name : params.value;
+        },
+      },
+      {
+        field: 'idProject',
+        headerName: 'Proyecto',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.projects.map((p) => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const project = this.projects?.find((p) => p.id === params.value);
+          return project ? project.name : params.value;
+        },
+      },
+      {
         field: 'numberDocument', headerName: '# Documento', editable: true, filter: true, width: 130
       },
       {
@@ -757,23 +790,6 @@ export class ExpenditureComponent {
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
-        field: 'idCustomer',
-        headerName: 'Proveedor',
-        editable: true,
-        hide: true,
-        width: 180,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.providers.map((p) => p.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const prov = this.providers?.find((p) => p.id === params.value);
-          return prov ? prov.name : params.value;
-        },
-      },
-      {
         field: 'formaPago',
         headerName: 'Tipo de Pago',
         editable: true,
@@ -814,22 +830,6 @@ export class ExpenditureComponent {
         cellEditorParams: {
           values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
         }
-      },
-      {
-        field: 'idProject',
-        headerName: 'Proyecto',
-        editable: true,
-        width: 180,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.projects.map((p) => p.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const project = this.projects?.find((p) => p.id === params.value);
-          return project ? project.name : params.value;
-        },
       },
       {
         field: 'uuid',

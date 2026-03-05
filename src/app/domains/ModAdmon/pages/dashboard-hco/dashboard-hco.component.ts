@@ -687,15 +687,9 @@ export class DashboardHcoComponent {
     let filteredExpenseData = this.filterByDateRange(this.egresosData, false);
     let filteredIncomeData = this.filterByDateRange(this.ingresosData, true);
 
-    // Filtrar por año si está seleccionado
-    if (this.selectedYear) {
-      filteredExpenseData = filteredExpenseData.filter(item => this.getItemDate(item, false)?.getFullYear() === this.selectedYear);
-      filteredIncomeData = filteredIncomeData.filter(item => this.getItemDate(item, true)?.getFullYear() === this.selectedYear);
-    }
-
     // Para KPIs usar datos por endpoint, sin depender del mapeo contable 4xxx/5xxx/6xxx.
     const egresosReales = filteredExpenseData;
-    const ingresosReales = filteredIncomeData;
+    const ingresosReales = filteredIncomeData.filter(i => String(i?.status ?? '').toLowerCase() !== 'cancelada');
 
     console.log(`📊 Datos: ${egresosReales.length} egresos, ${ingresosReales.length} ingresos`);
 

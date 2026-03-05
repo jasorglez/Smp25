@@ -86,11 +86,10 @@ export class ConcentradoEgresosComponent {
     const today = new Date();
     this.fechaActual = this.formatDateDisplay(today);
 
-    const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastDayPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    const twentyFourMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 24, 1);
 
-    this.fechaInicio = this.formatDateForInput(previousMonth);
-    this.fechaFin = this.formatDateForInput(lastDayPrevMonth);
+    this.fechaInicio = this.formatDateForInput(twentyFourMonthsAgo);
+    this.fechaFin = this.formatDateForInput(today);
 
     effect(() => {
       this.rootId = this.signalsService.getRootSelectedBySidebar()();

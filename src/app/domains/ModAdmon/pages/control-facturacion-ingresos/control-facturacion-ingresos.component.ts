@@ -84,11 +84,10 @@ export class ControlFacturacionIngresosComponent {
     const today = new Date();
     this.fechaActual = this.formatDateDisplay(today);
 
-    const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastDayPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    const twentyFourMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 24, 1);
 
-    this.fechaInicio = this.formatDateForInput(previousMonth);
-    this.fechaFin = this.formatDateForInput(lastDayPrevMonth);
+    this.fechaInicio = this.formatDateForInput(twentyFourMonthsAgo);
+    this.fechaFin = this.formatDateForInput(today);
 
     effect(() => {
       this.rootId = this.signalsService.getRootSelectedBySidebar()();
@@ -187,7 +186,7 @@ export class ControlFacturacionIngresosComponent {
 
     // Filtrar por rango de fechas
     const filtered = this.ingresos.filter(ingreso => {
-      const fechaStr = ingreso.dateStamped || ingreso.date;
+      const fechaStr = ingreso.date || ingreso.dateStamped;
       if (!fechaStr) return false;
 
       const fecha = new Date(fechaStr);
@@ -255,8 +254,8 @@ export class ControlFacturacionIngresosComponent {
       return b.fechaFactura.getTime() - a.fechaFactura.getTime();
     });
 
-    // Calcular totales
-    this.totales = this.facturacionIngresos.reduce((acc, f) => ({
+    // Calcular totales (excluir canceladas)
+    this.totales = this.facturacionIngresos.filter(f => f.estatus?.toLowerCase() !== 'cancelada').reduce((acc, f) => ({
       importeFactura: acc.importeFactura + f.importeFactura,
       importeDescuento: acc.importeDescuento + f.importeDescuento,
       subtotal: acc.subtotal + f.subtotal,

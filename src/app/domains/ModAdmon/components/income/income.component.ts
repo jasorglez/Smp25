@@ -69,7 +69,7 @@ export class IncomeComponent {
   }
 
   constructor() {
-    
+
      this.onSelectedRow = this.onSelectedRow.bind(this);
      this.onSelectionChanged = this.onSelectionChanged.bind(this);
 
@@ -101,7 +101,7 @@ export class IncomeComponent {
         setTimeout(() => this.signalsService.resetSignalIncAndExp());
       }
     }, { allowSignalWrites: true }); // Add this option);
-    
+
   };
 
 
@@ -144,11 +144,11 @@ export class IncomeComponent {
   private _idAccount: number; // Variable de respaldo para el setter
 
   // Añadir setter para idAccount con lógica de actualización
-  
+
   set idAccount(value: number) {
     if (this._idAccount !== value) {
       this._idAccount = value;
-    
+
      // Agregar log cuando se selecciona una cuenta
     if (value) {
       const selectedAccount = this.bankAccounts.find(account => account.id === value);
@@ -466,6 +466,62 @@ export class IncomeComponent {
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
+
+       {
+        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: () => ({
+          options: [
+            ...this.customers.map(obj => ({
+              id: obj.id,
+              description: obj.description,
+              valueAddition: obj.id || '',
+              valueAddition2: obj.description || ''
+            })),
+            // Opción especial para agregar nuevo cliente
+            {
+              id: 'NEW_CUSTOMER',
+              description: '➕ Nuevo Registro',
+              valueAddition: 'Agregar nuevo cliente',
+              valueAddition2: 'Clic para crear'
+            }
+          ],
+          // Valores especiales que disparan callback
+          specialValues: ['NEW_CUSTOMER'],
+          // Callback cuando se selecciona un valor especial
+          onSpecialValue: (value: string, params: any) => {
+            if (value === 'NEW_CUSTOMER') {
+              // Guardar referencia al nodo actual para asignar el cliente después
+              this.currentEditingNode = params.node;
+              this.openCustomerModal();
+            }
+          }
+        }),
+        valueFormatter: (params) => {
+          if (params.value === 'NEW_CUSTOMER') return '';
+          const foundItem = this.customers
+            ? this.customers.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+
+      {
+        field: 'idProject',
+        headerName: 'Proyecto',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.projects.map(p => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const foundProject = this.projects.find(p => p.id === params.value);
+          return foundProject ? foundProject.name : params.value;
+        }
+      },
+
       {
         field: 'status',
         headerName: 'Estatus',
@@ -560,61 +616,6 @@ export class IncomeComponent {
         editable: false,filter: true,
         width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-
-       {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
-        cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: () => ({
-          options: [
-            ...this.customers.map(obj => ({
-              id: obj.id,
-              description: obj.description,
-              valueAddition: obj.id || '',
-              valueAddition2: obj.description || ''
-            })),
-            // Opción especial para agregar nuevo cliente
-            {
-              id: 'NEW_CUSTOMER',
-              description: '➕ Nuevo Registro',
-              valueAddition: 'Agregar nuevo cliente',
-              valueAddition2: 'Clic para crear'
-            }
-          ],
-          // Valores especiales que disparan callback
-          specialValues: ['NEW_CUSTOMER'],
-          // Callback cuando se selecciona un valor especial
-          onSpecialValue: (value: string, params: any) => {
-            if (value === 'NEW_CUSTOMER') {
-              // Guardar referencia al nodo actual para asignar el cliente después
-              this.currentEditingNode = params.node;
-              this.openCustomerModal();
-            }
-          }
-        }),
-        valueFormatter: (params) => {
-          if (params.value === 'NEW_CUSTOMER') return '';
-          const foundItem = this.customers
-            ? this.customers.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
-      },
-
-      {
-        field: 'idProject',
-        headerName: 'Proyecto',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.projects.map(p => p.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const foundProject = this.projects.find(p => p.id === params.value);
-          return foundProject ? foundProject.name : params.value;
-        }
       },
 
            {
@@ -906,7 +907,7 @@ async saveChanges() {
   try {
     // PRIMERO: Guardar los registros de income (SIEMPRE)
     await this.saveIncomeRecords(newRows, modifiedRows);
-    
+
     // LUEGO: Actualizar el consecutivo si hay nuevas filas (manejar error específico)
  if (newRows.length > 0) {
   try {
@@ -958,8 +959,8 @@ async saveChanges() {
       const cleanedData = this.cleanDataForServer(row);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        'Save Registro en Ingresos', 
-        'Menu Administracion Ingresos',  
+        'Save Registro en Ingresos',
+        'Menu Administracion Ingresos',
         this.trackingService.getEmail()
       );
       return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
@@ -969,8 +970,8 @@ async saveChanges() {
       const cleanedData = this.cleanDataForServer(row);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        'Update Registro en Ingresos', 
-        'Menu Administracion Ingresos',  
+        'Update Registro en Ingresos',
+        'Menu Administracion Ingresos',
         this.trackingService.getEmail()
       );
       return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
@@ -978,7 +979,7 @@ async saveChanges() {
 
     // Ejecutar todas las operaciones de guardado
     const allObservables = [...addObservables, ...updateObservables];
-    
+
     if (allObservables.length > 0) {
       await lastValueFrom(
         forkJoin(allObservables) // Usar forkJoin para ejecutar todas en paralelo
@@ -994,7 +995,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       consecutive: currentConsecutive
     }
   };
-  
+
   await lastValueFrom(
     this.administrationService.updateBillingManagementConsecutive(
       this.root,
@@ -1006,15 +1007,15 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       }),
       catchError((error) => {
         console.error('Error actualizando consecutivo:', error);
-        
+
         // Log específico para tracking
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
-          `Error actualizando consecutivo: ${error.message}`, 
-          'Menu Administracion Ingresos - Error Consecutivo',  
+          `Error actualizando consecutivo: ${error.message}`,
+          'Menu Administracion Ingresos - Error Consecutivo',
           this.trackingService.getEmail()
         );
-        
+
         throw error; // Re-lanzar el error para manejarlo en saveChanges
       })
     )
