@@ -805,7 +805,6 @@ export class ExpenditureComponent {
         editable: true,
         width: 180,
         filter: true,
-        hide: true,
         cellEditor: 'agTextCellEditor',
         cellEditorParams: { maxLength: 36 },
         valueFormatter: (params) => {
