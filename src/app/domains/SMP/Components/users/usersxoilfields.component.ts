@@ -55,7 +55,7 @@ export class UsersxoilfieldsComponent {
       .getDataUsersxPermissions(this.permissionType)
       .subscribe((data: any) => {
         this.rowData = data.filter((row: any) => row.idUser === this.idUser);
-        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Campo Petrolero', 'Menu Administracion Usuarios por Campo Petrolero',  this.trackingService.getEmail());
+        this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Campo Petrolero/Ubicacion', 'Menu Administracion Usuarios por Campo Petrolero',  this.trackingService.getEmail());
       });
   }
 

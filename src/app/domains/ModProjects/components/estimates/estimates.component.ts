@@ -69,6 +69,8 @@ export class EstimatesComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
+  private editableColumnOrder = ['number', 'typeMoney', 'dateStart', 'dateEnd', 'amountMX', 'amountDLL', 'type', 'comment'];
+  private enterPressed: boolean = false;
   
   // Propiedades simplificadas
   gridHeight: string = '500px';
@@ -82,6 +84,19 @@ export class EstimatesComponent {
   // Conceptos/actividades para dropdown
   activitiesOptions: any[] = [];
   private project = this.signalsService.getProjectSelectedBySidebar()();
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
+  };
 
   obtenerDatos() {
     this.estimatesService
@@ -108,11 +123,28 @@ export class EstimatesComponent {
   }
 
 
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const currentIndex = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[currentIndex + 1]
+        });
+      }, 100);
+    }
+  }
+
   // GridOptions simple para ambas vistas
   get gridOptions(): any {
     return {
       headerHeight: 30,
       rowHeight: 30,
+      rowClassRules: {
+        'new-row-highlight': (params) => !!params.data?.__isNew
+      },
       getRowClass: (params) => {
         if (params.node.isSelected()) {
           return 'selected-row';
@@ -407,18 +439,27 @@ export class EstimatesComponent {
     );
     
     const tempId = `temp_${this.tempIdCounter++}`;
+    const existingNumbers = (this.rowData || [])
+      .map((r: any) => parseInt(r.number, 10))
+      .filter((n: number) => !isNaN(n));
+    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+    const consecutive = String(nextNumber).padStart(3, '0');
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().substring(0, 10);
+    const lastDay  = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().substring(0, 10);
     const newItem = {
       id: tempId,
-      number: '',
+      number: consecutive,
+      idRoot: this.signalsService.getRootSelectedBySidebar()(),
       idContract: this.contract,
       typeMoney: 'MX',
-      dateStart: '',
-      dateEnd: '',
+      dateStart: firstDay,
+      dateEnd: lastDay,
       amountMX: 0,
       amountDLL: 0,
       acumulateMX: 0,
       acumulateDLL: 0,
-      type: '',
+      type: 'NORMAL',
       authorizeUser: localStorage.getItem('mail'),
       comment: '',
       active: true,

@@ -124,6 +124,10 @@ getMasterUpdateTrigger() {
   setProjectNameBySidebar(name: string) { this.projectNameBySidebar.set(name); }
   getProjectNameBySidebar() { return this.projectNameBySidebar; }
 
+  private projectNumberBySidebar = signal<string>('');
+  setProjectNumberBySidebar(number: string) { this.projectNumberBySidebar.set(number ?? ''); }
+  getProjectNumberBySidebar() { return this.projectNumberBySidebar; }
+
   /** Signal exclusiva del sidebar (nunca modificada por ordenes).
    *  Usada por sistema/reportes-diarios para evitar contaminación cruzada. */
   private sidebarProjectId = signal<number | null>(null);

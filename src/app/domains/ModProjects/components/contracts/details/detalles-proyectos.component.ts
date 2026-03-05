@@ -297,7 +297,7 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     },
     {
       field: 'idOilfield',
-      headerName: 'Campo Petrolero',
+      headerName: 'Ubicacion',
       editable: true,
       minWidth: 130,
       cellEditor: 'agSelectCellEditor',

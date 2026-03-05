@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { DailyReportService } from 'app/services/daily-report.service';
+import { ProjectsService } from 'app/services/projects.service';
+import { OilfieldService } from 'app/services/oilfield.service';
 import { LogbookService } from 'app/services/logbook.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ConventionsService } from 'app/services/conventions.service';
@@ -40,6 +42,8 @@ export class SistemaComponent implements OnInit {
   private logbookService = inject(LogbookService);
   private signalsService    = inject(SignalsService);
   private conventionsService = inject(ConventionsService);
+  private projectsService   = inject(ProjectsService);
+  private oilfieldService   = inject(OilfieldService);
 
   public rowData: IDailyReport[]       = [];
   public conventionsList: any[] = [];
@@ -50,6 +54,8 @@ export class SistemaComponent implements OnInit {
   private idProject: number  = 0;
   private idContract: number = 0;
   private idRoot: number    = 0;
+  private oilfields: any[]  = [];
+  private projectOilfieldName: string = '';
   
   externalFilterActive: boolean = false;
   
@@ -164,8 +170,8 @@ export class SistemaComponent implements OnInit {
       },
     },
     { field: 'numReporte',       headerName: 'No. Reporte',       width: 200, editable: true },
-    { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 180, editable: true },
     { field: 'ubication',        headerName: 'Ubicación',         width: 130, editable: true },
+    { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 180, editable: true },
     { field: 'platicasSeguridad',headerName: 'Plática Seguridad', width: 180, editable: true },
  
     {
@@ -307,6 +313,10 @@ export class SistemaComponent implements OnInit {
         this.hasUnsavedChanges = false;
         this.selectedRow = null;
         this.loadReports();
+        this.resolveProjectData(projectId);
+      } else if (!projectId) {
+        this.signalsService.setProjectNumberBySidebar('');
+        this.projectOilfieldName = '';
       }
     });
 
@@ -319,10 +329,35 @@ export class SistemaComponent implements OnInit {
     const projectId  = this.signalsService.getSidebarProjectId()();
     const contractId = this.signalsService.getContractSelectedBySidebar()();
     if (contractId) this.idContract = contractId;
+
+    this.oilfieldService.getOilfields().subscribe({
+      next: (data: any) => {
+        this.oilfields = data || [];
+        if (projectId) this.resolveProjectData(projectId);
+      },
+      error: () => { this.oilfields = []; }
+    });
+
     if (projectId) {
       this.idProject = projectId;
       this.loadReports();
     }
+  }
+
+  private resolveProjectData(projectId: number): void {
+    this.projectsService.getProjectsById(projectId).subscribe({
+      next: (proj: any) => {
+        const num = Array.isArray(proj) ? proj[0]?.number : proj?.number;
+        const idOil = Array.isArray(proj) ? proj[0]?.idOilfield : proj?.idOilfield;
+        this.signalsService.setProjectNumberBySidebar(num ?? '');
+        const oil = this.oilfields.find((o: any) => o.id === idOil);
+        this.projectOilfieldName = oil ? oil.name : '';
+      },
+      error: () => {
+        this.signalsService.setProjectNumberBySidebar('');
+        this.projectOilfieldName = '';
+      }
+    });
   }
 
   loadConventions(idContract: number): void {
@@ -379,6 +414,10 @@ export class SistemaComponent implements OnInit {
       alerts.basicAlert('Aviso', 'Selecciona un Proyecto antes de agregar un reporte', 'warning');
       return;
     }
+    const projectNumber = this.signalsService.getProjectNumberBySidebar()();
+    const consecutive   = (this.rowData.length + 1).toString().padStart(3, '0');
+    const numReporte    = projectNumber ? `${projectNumber}-${consecutive}` : consecutive;
+
     const newRow = {
       idOt: null,
       idProject: this.idProject,
@@ -387,11 +426,11 @@ export class SistemaComponent implements OnInit {
       endTime: '17:02:00',
       type: 'CORTE',
       description: '',
-      idConvention: null,
-      numReporte: '',
-      condition: '',
-      ubication: '',
-      platicasSeguridad: '',
+      idConvention: this.signalsService.getConventionVigente()()?.id ?? null,
+      numReporte,
+      condition: 'Dia Soleado',
+      ubication: this.projectOilfieldName,
+      platicasSeguridad: 'Sin Platicas',
       totalPay: 0,
       close: false,
       paid: true,
@@ -409,7 +448,7 @@ export class SistemaComponent implements OnInit {
     this.hasUnsavedChanges = true;
     setTimeout(() => {
       this.gridApi?.setGridOption('rowData', this.rowData);
-      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'date' });
+      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'numReporte' });
     }, 50);
   }
 

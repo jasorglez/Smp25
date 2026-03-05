@@ -41,7 +41,7 @@ export function noDefaultValueValidator(): ValidatorFn {
     const value = control.value;
     if (value === 'Seleccione un tipo de construcción' ||
       value === 'Seleccione un contrato' ||
-      value === 'Seleccione un campo petrolero' ||
+      value === 'Seleccione Ubicacion' ||
       value === 'Seleccione una clasificación') {
       return { noDefaultValue: true };
     }
@@ -211,10 +211,19 @@ export class ProjectsComponent {
           filterOptions: ['equals'], // Opciones de filtro
         }},
     { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
-    { field: 'number', headerName: 'Proyecto5', width: 150, flex: 2 },
-    { field: 'name', headerName: 'Nombre', width: 100, filter: true, flex: 2 },
+    { field: 'number', headerName: 'Formato Reporte', width: 150, flex: 2 },
+    { field: 'name', headerName: 'Nombre Proyecto', width: 100, filter: true, flex: 2 },
     
     { field: 'year', headerName: 'Año', flex: 1 },
+    {
+      headerName: 'Ubicación',
+      flex: 2,
+      valueGetter: (params: any) => {
+        if (!params.data?.idOilfield || !this.oilfields?.length) return '';
+        const oil = this.oilfields.find((o: any) => o.id === params.data.idOilfield);
+        return oil ? oil.name : '';
+      }
+    },
     { field: 'description', headerName: 'Descripcion', flex: 4 },
     {
       field: 'personal',
@@ -242,6 +251,10 @@ export class ProjectsComponent {
     //Called after the constructor, initializing input properties, and the first call to ngOnChanges.
     this.getProjects();
     this.obtenerCantidadEmpleados();
+    this.oilfieldsService.getOilfields().subscribe({
+      next: (data: any) => { this.oilfields = data; },
+      error: () => { this.oilfields = []; }
+    });
   }
   obtenerCantidadEmpleados(): void {
     this.personalByProyectService.getCantidadPersonal().subscribe(
@@ -282,7 +295,7 @@ export class ProjectsComponent {
       lineRight: new FormControl('NO'),
       budgetManagement: new FormControl('NO'),
       idContrato: new FormControl('Seleccione un contrato', [Validators.required, noDefaultValueValidator()]),
-      idOilfield: new FormControl('Seleccione un campo petrolero', [Validators.required, noDefaultValueValidator()]),
+      idOilfield: new FormControl('Seleccione Ubicacion', [Validators.required, noDefaultValueValidator()]),
       year: new FormControl('2024'),
       diameter: new FormControl('0'),
     }, { validators: dateRangeValidator() });
@@ -590,7 +603,7 @@ export class ProjectsComponent {
       state: formValue.state,
       // Convertir idContrato e idOilfield a números si no son las opciones por defecto
       idContrato: formValue.idContrato !== 'Seleccione un contrato' ? Number(formValue.idContrato) : null,
-      idOilfield: formValue.idOilfield !== 'Seleccione un campo petrolero' ? Number(formValue.idOilfield) : null,
+      idOilfield: formValue.idOilfield !== 'Seleccione Ubicacion' ? Number(formValue.idOilfield) : null,
       priority: Number(formValue.priority)
     };
 
