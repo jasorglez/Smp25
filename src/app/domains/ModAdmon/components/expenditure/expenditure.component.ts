@@ -1371,7 +1371,7 @@ export class ExpenditureComponent {
           node.data.countitems = count;
           this.gridApi.refreshCells({
             rowNodes: [node],
-            columns: ['countItems'],
+            columns: ['countitems'],
             force: true
           });
         }
@@ -1389,10 +1389,18 @@ export class ExpenditureComponent {
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId).subscribe({
       next: (data: any) => {
         console.log(`✅ PADRE: Conceptos recibidos del servidor para ID ${expenditureId}:`, data?.length || 0);
-        if (data && data.length > 0) {
-          console.log('   Primer concepto:', data[0]);
-        }
         successCallback(data);
+        // Sincronizar countitems en memoria y BD si hay discrepancia
+        const count = (data || []).length;
+        const income = this.incomes.find(i => i.id === expenditureId);
+        if (income && income.countitems !== count) {
+          income.countItems = count;
+          income.countitems = count;
+          const cleanDoc = this.cleanDataForServer({ ...income });
+          delete cleanDoc._rowNum;
+          this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, cleanDoc)
+            .subscribe({ error: e => console.error('Error sincronizando countitems:', e) });
+        }
       },
       error: (error) => {
         console.error('❌ PADRE: Error loading concepts para ID', expenditureId, error);
