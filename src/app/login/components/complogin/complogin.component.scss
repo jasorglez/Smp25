@@ -19,6 +19,7 @@ $transition: 0.25s $ease;
   position: fixed;
   inset: 0;
   z-index: 0;
+  background-color: #0b0c14; /* fallback cuando no hay imagen o la API falla */
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;

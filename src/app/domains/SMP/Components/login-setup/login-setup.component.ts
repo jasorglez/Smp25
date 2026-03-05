@@ -3,9 +3,8 @@ import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { LoginSetupService } from 'app/services/login-setup.service';
 import { alerts } from 'app/helpers/alerts';
-
-const STORAGE_KEY = 'smp_login_images';
 
 @Component({
   selector: 'app-login-setup',
@@ -18,6 +17,7 @@ export class LoginSetupComponent {
   @ViewChild('fileInput') fileInput: ElementRef<HTMLInputElement>;
 
   private imageHandlerService = inject(ImageHandlerService);
+  private loginSetupService = inject(LoginSetupService);
 
   rowData: any[] = [];
   originalRowData: any[] = [];
@@ -70,20 +70,33 @@ export class LoginSetupComponent {
   }
 
   loadData(): void {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      const data = stored ? JSON.parse(stored) : [];
-      this.rowData = Array.isArray(data) ? [...data] : [];
-      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-      this.hasUnsavedChanges = false;
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
+    this.loginSetupService.getAll().subscribe({
+      next: (data) => {
+        this.rowData = (data || []).map((item) => ({
+          id: item.id,
+          nombre: item.nombre,
+          url: item.url
+        }));
+        this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+        this.hasUnsavedChanges = false;
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+      },
+      error: (err) => {
+        console.error('Error loading login images:', err);
+        this.rowData = [];
+        this.originalRowData = [];
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+        // No mostrar alerta si no hay imágenes aún (404) o lista vacía — solo en fallos reales del servidor
+        const status = err?.status ?? err?.statusCode;
+        if (status !== 404 && status !== 0) {
+          alerts.basicAlert('Error', 'No se pudieron cargar las imágenes del login.', 'error');
+        }
       }
-    } catch (e) {
-      console.error('Error loading login images:', e);
-      this.rowData = [];
-      this.originalRowData = [];
-    }
+    });
   }
 
   addRow(): void {
@@ -109,28 +122,20 @@ export class LoginSetupComponent {
       return;
     }
 
-    alerts.showLoading('Subiendo imagen', 'Cargando imagen WEBP...');
-    this.imageHandlerService
-      .uploadFileToFirebase(file, 'login/images')
-      .then((url) => {
-        const nombre = file.name.replace(/\.webp$/i, '') || `Imagen ${Date.now()}`;
-        const newRow = {
-          id: `temp_${Date.now()}`,
-          nombre,
-          url,
-          __isNew: true
-        };
-        this.rowData = [...this.rowData, newRow];
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.hasUnsavedChanges = true;
-        alerts.closeLoading();
-        alerts.basicAlert('Imagen cargada', 'La imagen WEBP se subió correctamente. Guarda los cambios para persistir.', 'success');
-      })
-      .catch((err) => {
-        console.error('Error uploading WEBP:', err);
-        alerts.closeLoading();
-        alerts.basicAlert('Error', 'No se pudo subir la imagen. Intenta de nuevo.', 'error');
-      });
+    // Solo mostrar preview local y guardar el File para subirlo al guardar
+    const previewUrl = URL.createObjectURL(file);
+    const nombre = file.name.replace(/\.webp$/i, '') || `Imagen ${Date.now()}`;
+    const newRow: any = {
+      id: `temp_${Date.now()}`,
+      nombre,
+      url: previewUrl,
+      __isNew: true,
+      __localFile: file
+    };
+    this.rowData = [...this.rowData, newRow];
+    this.gridApi.setGridOption('rowData', this.rowData);
+    this.hasUnsavedChanges = true;
+    alerts.basicAlert('Imagen cargada', 'La imagen se ha agregado. Pulsa Guardar para subirla definitivamente.', 'info');
     input.value = '';
   }
 
@@ -148,19 +153,14 @@ export class LoginSetupComponent {
           document.body.removeChild(input);
           return;
         }
-        try {
-          alerts.showLoading('Subiendo imagen', 'Actualizando imagen WEBP...');
-          const url = await this.imageHandlerService.uploadFileToFirebase(file, 'login/images');
-          params.data.url = url;
-          params.data.__modified = true;
-          this.gridApi.refreshCells({ rowNodes: [params.node] });
-          this.hasUnsavedChanges = true;
-          alerts.closeLoading();
-          alerts.basicAlert('Imagen actualizada', 'Se actualizó la imagen correctamente.', 'success');
-        } catch (err) {
-          alerts.closeLoading();
-          alerts.basicAlert('Error', 'No se pudo subir la imagen.', 'error');
-        }
+        // Solo actualizar preview y marcar el File para subirlo al guardar
+        const previewUrl = URL.createObjectURL(file);
+        params.data.url = previewUrl;
+        params.data.__localFile = file;
+        params.data.__modified = true;
+        this.gridApi.refreshCells({ rowNodes: [params.node] });
+        this.hasUnsavedChanges = true;
+        alerts.basicAlert('Imagen actualizada', 'La nueva imagen se mostrará al guardar los cambios.', 'info');
       } else if (file) {
         alerts.basicAlert('Formato no válido', 'Solo se permiten imágenes WEBP.', 'error');
       }
@@ -169,19 +169,47 @@ export class LoginSetupComponent {
     input.click();
   }
 
-  saveChanges(): void {
-    const toStore = this.rowData.map((row) => ({
-      id: row.id,
-      nombre: row.nombre ?? '',
-      url: row.url ?? ''
-    }));
+  async saveChanges(): Promise<void> {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+      alerts.showLoading('Guardando', 'Subiendo imágenes y guardando cambios...');
+
+      // 1) Subir a Firebase las filas que tengan archivo local pendiente
+      for (const row of this.rowData as any[]) {
+        const file: File | undefined = row.__localFile;
+        if (file) {
+          const url = await this.imageHandlerService.uploadFileToFirebase(file, 'login/images');
+          row.url = url;
+          delete row.__localFile;
+        }
+      }
+
+      // 2) Enviar al backend: POST por cada item y DELETE de los que se quitaron
+      const toSend = this.rowData.map((row) => {
+        const id = typeof row.id === 'number' && row.id > 0 ? row.id : 0;
+        return { id, nombre: row.nombre ?? '', url: row.url ?? '' };
+      });
+      const originalIds = (this.originalRowData as any[])
+        .map((r) => r.id)
+        .filter((id: unknown) => typeof id === 'number' && id > 0);
+
+      const saved = await this.loginSetupService.saveAllAsync(toSend, originalIds);
+
+      this.rowData = (saved || []).map((item) => ({
+        id: item.id,
+        nombre: item.nombre,
+        url: item.url
+      }));
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
-      alerts.basicAlert('Guardado', 'Cambios guardados correctamente.', 'success');
-    } catch (e) {
-      alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      alerts.closeLoading();
+      alerts.basicAlert('Guardado', 'Cambios guardados correctamente en el servidor.', 'success');
+    } catch (err) {
+      console.error('Error saving login images:', err);
+      alerts.closeLoading();
+      alerts.basicAlert('Error', 'No se pudieron guardar los cambios en el servidor.', 'error');
     }
   }
 

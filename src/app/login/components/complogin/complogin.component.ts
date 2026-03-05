@@ -11,6 +11,7 @@ import { functions } from '../../../helpers/functions';
 import { LoginService } from '../../../services/login.service';
 import { TrackingService } from '../../../services/tracking.service';
 import { CompanysService } from '../../../services/companys.service';
+import { LoginSetupService } from '../../../services/login-setup.service';
 
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
@@ -41,14 +42,11 @@ export class ComploginComponent implements OnInit {
   displayName : string = '' ;
   picture     : string = '' ;
 
-  /** Imágenes de fondo: por defecto asset; si hay imágenes guardadas en SMP Login, se usan esas. */
-  images: string[] = [
-    '../../../assets/img/login_ver2.webp',
-  ];
-
-  private readonly STORAGE_KEY_LOGIN_IMAGES = 'smp_login_images';
+  /** Imágenes de fondo desde el backend (SMP Login). Si la API falla o no hay imágenes, no se pide asset (evita 404). */
+  images: string[] = [];
 
   private loginService    = inject(LoginService) ;
+  private loginSetupService = inject(LoginSetupService);
   private companysService = inject(CompanysService);
   private trackingService = inject(TrackingService);
   private userService     = inject(UsersService);
@@ -102,9 +100,9 @@ export class ComploginComponent implements OnInit {
     }
   }
 
-  /** Elige la imagen de fondo: si hay más de una, rota cada 24 h; si hay una, esa. */
+  /** Elige la imagen de fondo: si hay más de una, rota cada 24 h; si hay una, esa; si ninguna, vacío (fallback color en CSS). */
   private getBackgroundImageForToday(): string {
-    if (this.images.length === 0) return '../../../assets/img/login_ver2.webp';
+    if (this.images.length === 0) return '';
     if (this.images.length === 1) return this.images[0];
     const msPerDay = 24 * 60 * 60 * 1000;
     const dayIndex = Math.floor(Date.now() / msPerDay);
@@ -112,20 +110,22 @@ export class ComploginComponent implements OnInit {
     return this.images[index];
   }
 
-  /** Carga las URLs de imágenes guardadas en SMP → Login; si hay alguna, se usan como fondo. */
+  /** Carga las URLs de imágenes desde el backend (SMP → Login); si hay alguna, se usan como fondo. */
   private loadLoginBackgroundImages(): void {
-    try {
-      const stored = localStorage.getItem(this.STORAGE_KEY_LOGIN_IMAGES);
-      if (!stored) return;
-      const data = JSON.parse(stored);
-      const list = Array.isArray(data) ? data : [];
-      const urls = list.map((item: { url?: string }) => item?.url).filter((u: string) => u);
-      if (urls.length > 0) {
-        this.images = urls;
+    this.loginSetupService.getLoginImagesPublic().subscribe({
+      next: (list) => {
+        const urls = (list || [])
+          .map((item) => this.loginSetupService.getImageDisplayUrl(item?.url))
+          .filter((u: string) => u);
+        if (urls.length > 0) {
+          this.images = urls;
+          this.randomImage = this.getBackgroundImageForToday();
+        }
+      },
+      error: () => {
+        // Si falla (ej. API no disponible), se mantiene la imagen por defecto
       }
-    } catch {
-      // Si falla el parse, se mantiene la imagen por defecto
-    }
+    });
   }
 
   toggleHide() {

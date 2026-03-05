@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
+import { RootOnlyGuard } from './guards/root-only.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
 import { HistoryPayrollComponent } from './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component';
 import { TrackingGuard } from './guards/tracking.guard';
@@ -657,7 +658,7 @@ export const routes: Routes = [
               import(
                 './domains/SMP/Components/login-setup/login-setup.component'
               ).then((l) => l.LoginSetupComponent),
-            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            canActivate: [RootOnlyGuard, MasterPermissionsGuard, TrackingGuard],
             data: {
               permissions: { master: 'setup', detailed: 'users' },
               tracking: {

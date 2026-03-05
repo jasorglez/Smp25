@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════════════════
      BACKGROUND — imagen dinámica + overlay
 ════════════════════════════════════════════════ -->
-<div class="login-bg" [style.backgroundImage]="'url(' + randomImage + ')'">
+<div class="login-bg" [style.backgroundImage]="randomImage ? ('url(' + randomImage + ')') : null">
   <div class="bg-overlay"></div>
 </div>
 
