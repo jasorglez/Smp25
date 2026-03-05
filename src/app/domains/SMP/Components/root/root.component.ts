@@ -2,8 +2,7 @@ import { Component, HostListener, effect, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { ContractsService } from 'app/services/contracts.service';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { InegiService } from 'app/services/inegi.service';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +10,18 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { FollowprojectsService } from 'app/services/followprojects.service';
+import { ProjectsService } from 'app/services/projects.service';
+import { CustomersService } from 'app/services/customers.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { AdministrationService } from 'app/services/administration.service';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { RolesService } from 'app/services/roles.service';
+import { PosicionesService } from 'app/services/posiciones.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { EquipmentService } from 'app/services/equipment.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +37,18 @@ export class RootComponent {
   private inegiService = inject(InegiService);
   private imageHandlerService = inject(ImageHandlerService);
   private branchesService = inject(BranchsService);
+  private followprojectsService = inject(FollowprojectsService);
+  private projectsService = inject(ProjectsService);
+  private customersService = inject(CustomersService);
+  private providersService = inject(ProvidersService);
+  private administrationService = inject(AdministrationService);
+  private catalogsService = inject(CatalogsService);
+  private cuentasContablesService = inject(CuentasContablesService);
+  private rolesService = inject(RolesService);
+  private posicionesService = inject(PosicionesService);
+  private materialsService = inject(MaterialsService);
+  private equipmentService = inject(EquipmentService);
+  private trackingService = inject(TrackingService);
 
   private signalsService = inject(SignalsService);
 
@@ -619,98 +642,543 @@ public gridOptions: any = {
     }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
+    const modifiedRows = this.rowData.filter((row) => row.__modified && !row.__isNew);
 
-    const addObservables: Promise<any>[] = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.rootService.addRoot(cleanedData));
-    });
-
-    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
-    });
-
-    // Using concat to combine observables and lastValueFrom for async/await
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      // Procesar nuevas empresas una por una para rastrear respuestas
+      for (const row of newRows) {
+        const cleanedData = this.cleanDataForServer(row);
+        const response: any = await lastValueFrom(this.rootService.addRoot(cleanedData));
 
-      for (const response of responses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(
-          (row) => !row.id || row.id.toString().startsWith('temp_')
-        );
-
-        if (response.id && correspondingNewRow) {
-          //console.log(response)
-
+        if (response?.id) {
+          // Asignar permisos al usuario actual
           try {
-            await lastValueFrom(
-              this.branchesService.assignPermissionAfterCreation(
-                this.idUser, //id user
-                response.id,
-                'root'
-              )
-            );
+            await lastValueFrom(this.branchesService.assignPermissionAfterCreation(this.idUser, response.id, 'root'));
           } catch (permError) {
-            console.error('Error asignando permiso:', permError);
-            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-            alerts.basicAlert(
-              'Advertencia',
-              'Se creó la sucursal pero hubo un problema asignando los permisos.',
-              'warning'
-            );
+            console.error('Error asignando permiso root:', permError);
           }
+          try {
+            await lastValueFrom(this.branchesService.assignPermissionAfterCreation(this.idUser, response.id, 'company'));
+          } catch (permError) {
+            console.error('Error asignando permiso company:', permError);
+          }
+
+          // Crear entidades por defecto para la nueva empresa
+          await this.createDefaultEntitiesForRoot(response.id, row.name);
         }
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      for (const response of responses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(row =>
-          !row.id || row.id.toString().startsWith('temp_')
-        );
-
-        if (response.id && correspondingNewRow) {
-
-          try {
-            await lastValueFrom(
-              this.branchesService.assignPermissionAfterCreation(
-                this.idUser, //id user 
-                response.id,
-                'company'
-              )
-            );
-          } catch (permError) {
-            console.error('Error asignando permiso:', permError);
-            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-            alerts.basicAlert(
-              'Advertencia',
-              'Se creó la sucursal pero hubo un problema asignando los permisos.',
-              'warning'
-            );
-          }
-        }
+      // Procesar actualizaciones
+      for (const row of modifiedRows) {
+        const cleanedData = this.cleanDataForServer(row);
+        await lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
+        await this.ensureDefaultEntitiesForRoot(row.id, row.name);
       }
+
+      // Si no hubo filas modificadas pero hay una fila seleccionada existente, ejecutar ensure
+      if (modifiedRows.length === 0 && this.selectedRowData && !this.selectedRowData.__isNew) {
+        await this.ensureDefaultEntitiesForRoot(this.selectedRowData.id, this.selectedRowData.name);
+      }
+
+      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      this.obtenerDatos();
     } catch (error) {
       console.error(error);
+      alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
+    }
+  }
+
+  private logPeriferico(accion: string, empresa: string) {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Auto-crear periferico [${accion}] para empresa "${empresa}"`,
+      'Menu SMP - Empresas - Auto-crear periféricos',
+      this.trackingService.getEmail()
+    );
+  }
+
+  private async createDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<void> {
+    const today = new Date().toISOString().substring(0, 10);
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const endDate = nextYear.toISOString().substring(0, 10);
+
+    try {
+      this.logPeriferico('INICIO crear empresa nueva', rootName);
+
+      // 1. Sucursal principal
+      const branch: any = await lastValueFrom(this.branchesService.addBranch({
+        idCompany: rootId,
+        name: `${rootName} - Oficina Principal`,
+        active: true
+      }));
+      const branchId = branch?.id || 0;
+      this.logPeriferico('1-Sucursal creada', rootName);
+
+      // 2. Contrato principal
+      const contract: any = await lastValueFrom(this.followprojectsService.addContract({
+        numberContract: 'CONTRATO-001',
+        description: `${rootName} - Contrato Principal`,
+        descripSmall: 'Contrato Principal',
+        idBranch: branchId,
+        idProvider: 0,
+        dateStar: today,
+        dateEnd: endDate,
+        speciality: 'OTROS',
+        stateContract: 'ACTIVO',
+        amountMx: 0,
+        amountDll: 0,
+        term: 0,
+        consecutive: 1,
+        active: 1
+      }));
+      const contractId = contract?.id || 0;
+      this.logPeriferico('2-Contrato creado', rootName);
+
+      // 3. Proyecto principal (ligado al contrato)
+      await lastValueFrom(this.projectsService.addProject({
+        name: `${rootName} - Proyecto Principal`,
+        number: 'PROYECTO-001',
+        description: `Proyecto principal de ${rootName}`,
+        idContrato: contractId,
+        year: new Date().getFullYear(),
+        active: 1
+      }));
+      this.logPeriferico('3-Proyecto creado', rootName);
+
+      // 4. Catálogo TIPO-CLIENTE "General"
+      const tipoCliente: any = await lastValueFrom(this.catalogsService.addCatalog({
+        description: 'General',
+        active: true,
+        idCompany: rootId,
+        type: 'TIPO-CLIENTE',
+        parentId: null
+      }));
+      this.logPeriferico('4-TIPO-CLIENTE creado', rootName);
+
+      // 5. Catálogo TIPO-PROVEEDOR "General"
+      const tipoProveedor: any = await lastValueFrom(this.catalogsService.addCatalog({
+        description: 'General',
+        active: true,
+        idCompany: rootId,
+        type: 'TIPO-PROVEEDOR',
+        parentId: null
+      }));
+      this.logPeriferico('5-TIPO-PROVEEDOR creado', rootName);
+
+      // 6. Cliente
+      await lastValueFrom(this.customersService.addCustomer({
+        company: rootName.toUpperCase(),
+        nameContact: rootName,
+        idBranch: branchId,
+        idRoot: rootId,
+        idTypecop: tipoCliente?.id || 0,
+        type: 'CUSTOMERS',
+        vigente: true,
+        active: true
+      }));
+      this.logPeriferico('6-Cliente creado', rootName);
+
+      // 7. Proveedor
+      await lastValueFrom(this.providersService.addProvider({
+        company: rootName.toUpperCase(),
+        nameContact: rootName,
+        idBranch: branchId,
+        idTypecop: tipoProveedor?.id || 0,
+        type: 'PROVIDERS',
+        vigente: true,
+        active: true
+      }));
+      this.logPeriferico('7-Proveedor creado', rootName);
+
+      // 8. BillingManagement (prefijo/consecutivo para ingresos)
+      await lastValueFrom(this.administrationService.addBillingManagementInfo({
+        idRoot: rootId,
+        emisorRfc: '',
+        emisorNombre: rootName,
+        emisorCp: '',
+        prefix: 'REC',
+        consecutive: 0,
+        fiscalYear: new Date().getFullYear(),
+        fiscalRegime: null,
+        iIva: 0.16,
+        iIeps: 0,
+        iI3: 0,
+        rIva: 0,
+        rIeps: 0,
+        efirmaPass: '',
+        dateStart: today,
+        dateEnd: endDate,
+        active: true
+      }));
+
+      // 9. Cuenta bancaria
+      await lastValueFrom(this.administrationService.addAccountBanks({
+        idBussines: rootId,
+        numberAccount: '0000000000',
+        nameAccount: 'Cuenta Principal',
+        signAccount: 'sin firma',
+        interbancaria: '',
+        folioCheque: '',
+        folioSinCheque: '',
+        idBanco: null,
+        maskin: 'REC',
+        consecin: 0,
+        maskex: 'EGR',
+        consecex: 0,
+        eAplicaFiscal: 'Si'
+      }));
+
+      // 8. BillingManagement — log (el bloque ya estaba arriba)
+      this.logPeriferico('8-BillingManagement creado', rootName);
+
+      // 9. Cuenta bancaria — log
+      this.logPeriferico('9-CuentaBancaria creada', rootName);
+
+      // 10. Unidades de medida por defecto (catálogo MEASURE)
+      const defaultMeasures = ['PZA', 'SRV', 'HRS', 'MES', 'KG', 'M'];
+      await Promise.all(defaultMeasures.map(desc =>
+        lastValueFrom(this.catalogsService.addCatalog({
+          idCompany: rootId,
+          description: desc,
+          valueAddition: 'NA',
+          valueAdditionBit2: false,
+          valueAdditionBit3: false,
+          vigente: true,
+          type: 'MEASURE',
+          active: 1
+        }))
+      ));
+      this.logPeriferico('10-Unidades MEASURE creadas (6)', rootName);
+
+      // 11. Cuentas contables por defecto (3 grupos con subcuenta hoja cada uno)
+      const cuentaBase = { idCompany: rootId, activo: true, descripcion: '' };
+
+      const activo: any = await lastValueFrom(this.cuentasContablesService.create({
+        ...cuentaBase, codigo: '1', nombre: 'ACTIVO', nivel: 1, esHoja: false
+      }));
+      await lastValueFrom(this.cuentasContablesService.create({
+        ...cuentaBase, codigo: '1.1', nombre: 'CAJA Y BANCOS', nivel: 2, esHoja: true, idPadre: activo.id
+      }));
+
+      const ingresos: any = await lastValueFrom(this.cuentasContablesService.create({
+        ...cuentaBase, codigo: '4', nombre: 'INGRESOS', nivel: 1, esHoja: false
+      }));
+      await lastValueFrom(this.cuentasContablesService.create({
+        ...cuentaBase, codigo: '4.1', nombre: 'INGRESOS ORDINARIOS', nivel: 2, esHoja: true, idPadre: ingresos.id
+      }));
+
+      const egresos: any = await lastValueFrom(this.cuentasContablesService.create({
+        ...cuentaBase, codigo: '5', nombre: 'EGRESOS', nivel: 1, esHoja: false
+      }));
+      await lastValueFrom(this.cuentasContablesService.create({
+        ...cuentaBase, codigo: '5.1', nombre: 'GASTOS OPERATIVOS', nivel: 2, esHoja: true, idPadre: egresos.id
+      }));
+      this.logPeriferico('11-CuentasContables creadas (6)', rootName);
+
+      // 12. Rol por defecto
+      const rol: any = await lastValueFrom(this.rolesService.addRoles({
+        idCompany: rootId,
+        description: 'ADMINISTRADOR',
+        comment: 'Rol principal',
+        active: true
+      }));
+      this.logPeriferico('12-Rol ADMINISTRADOR creado', rootName);
+
+      // 13. Posición ligada al rol
+      await lastValueFrom(this.posicionesService.addPosition({
+        idCompany: rootId,
+        idRoles: rol?.id || 0,
+        description: 'ADMINISTRADOR',
+        active: true
+      }));
+      this.logPeriferico('13-Posicion ADMINISTRADOR creada', rootName);
+
+      // 14. Materiales por defecto
+      const defaultMaterials = ['Papel Bond', 'Tóner', 'Folder', 'Bolígrafo', 'Cinta Adhesiva'];
+      await Promise.all(defaultMaterials.map(name =>
+        lastValueFrom(this.materialsService.addMaterial({
+          idCompany: rootId, description: name, insumo: '', articulo: '',
+          date: today, idMedida: null, idFamilia: null, idSubfamilia: null,
+          idUbication: null, aplicaResg: false, picture: '',
+          costoMN: 0, costoDLL: 0, ventaMN: 0, ventaDLL: 0,
+          stockMin: 0, stockMax: 0, vigente: true, active: true, typematerial: 'MATERIAL'
+        }))
+      ));
+      this.logPeriferico('14-Materiales creados (5)', rootName);
+
+      // 15. Equipos por defecto
+      const defaultEquipment = ['Computadora', 'Impresora', 'Escritorio', 'Silla de Oficina', 'Teléfono'];
+      await Promise.all(defaultEquipment.map(name =>
+        lastValueFrom(this.equipmentService.addEquipment({
+          idCompany: rootId, description: name, aplicaResg: false,
+          costoMN: 0, costoDLL: 0, ventaMN: 0, ventaDLL: 0,
+          stockMin: 0, stockMax: 0, quantity: 1, measure: 'DIA',
+          costMN: 0, priceMN: 0, print: true, active: true
+        }))
+      ));
+      this.logPeriferico('15-Equipos creados (5)', rootName);
+
+    } catch (error) {
+      console.error('Error creando entidades por defecto:', error);
       alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
+        'Advertencia',
+        'Se creó la empresa pero hubo un problema creando algunas entidades por defecto.',
+        'warning'
       );
     }
+  }
+
+  // Verifica y crea entidades por defecto que faltan en una empresa existente.
+  // Cada paso es independiente: un fallo no detiene los demás.
+  private async ensureDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<void> {
+    const today = new Date().toISOString().substring(0, 10);
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const endDate = nextYear.toISOString().substring(0, 10);
+    const cuentaBase = { idCompany: rootId, activo: true, descripcion: '' };
+
+    // ── 1. Sucursal ──────────────────────────────────────────────────────────
+    let branchId = 0;
+    try {
+      const branches: any[] = await lastValueFrom(this.branchesService.getBranches(rootId)).catch(() => []);
+      if (branches?.length) {
+        branchId = branches[0].id;
+      } else {
+        const branch: any = await lastValueFrom(this.branchesService.addBranch({
+          idCompany: rootId, name: `${rootName} - Oficina Principal`, active: true
+        }));
+        branchId = branch?.id || 0;
+        this.logPeriferico('1-Sucursal creada', rootName);
+      }
+    } catch (e) { console.error('ensure paso 1 (sucursal):', e); }
+
+    // ── 2. Contrato ──────────────────────────────────────────────────────────
+    let contractId = 0;
+    try {
+      const contracts: any[] = await lastValueFrom(this.followprojectsService.getContractsByRoot(rootId)).catch(() => []);
+      if (contracts?.length) {
+        contractId = contracts[0].id;
+      } else {
+        const contract: any = await lastValueFrom(this.followprojectsService.addContract({
+          numberContract: 'CONTRATO-001', description: `${rootName} - Contrato Principal`,
+          descripSmall: 'Contrato Principal', idBranch: branchId, idProvider: 0,
+          dateStar: today, dateEnd: endDate, speciality: 'OTROS', stateContract: 'ACTIVO',
+          amountMx: 0, amountDll: 0, term: 0, consecutive: 1, active: 1
+        }));
+        contractId = contract?.id || 0;
+        this.logPeriferico('2-Contrato creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 2 (contrato):', e); }
+
+    // ── 3. Proyecto ──────────────────────────────────────────────────────────
+    try {
+      if (contractId) {
+        const projects: any = await lastValueFrom(this.projectsService.getProjectListByContract(contractId)).catch(() => []);
+        if (!projects?.length) {
+          await lastValueFrom(this.projectsService.addProject({
+            name: `${rootName} - Proyecto Principal`, number: 'PROYECTO-001',
+            description: `Proyecto principal de ${rootName}`, idContrato: contractId,
+            year: new Date().getFullYear(), active: 1
+          }));
+          this.logPeriferico('3-Proyecto creado', rootName);
+        }
+      }
+    } catch (e) { console.error('ensure paso 3 (proyecto):', e); }
+
+    // ── 4. TIPO-CLIENTE ──────────────────────────────────────────────────────
+    let tipoClienteId = 0;
+    try {
+      const tiposCliente: any[] = await lastValueFrom(this.catalogsService.getCatalogs(rootId, 'TIPO-CLIENTE')).catch(() => []);
+      if (tiposCliente?.length) {
+        tipoClienteId = tiposCliente[0].id;
+      } else {
+        const tc: any = await lastValueFrom(this.catalogsService.addCatalog({
+          description: 'General', active: true, idCompany: rootId, type: 'TIPO-CLIENTE', parentId: null
+        }));
+        tipoClienteId = tc?.id || 0;
+        this.logPeriferico('4-TIPO-CLIENTE creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 4 (tipo-cliente):', e); }
+
+    // ── 5. TIPO-PROVEEDOR ────────────────────────────────────────────────────
+    let tipoProveedorId = 0;
+    try {
+      const tiposProveedor: any[] = await lastValueFrom(this.catalogsService.getCatalogs(rootId, 'TIPO-PROVEEDOR')).catch(() => []);
+      if (tiposProveedor?.length) {
+        tipoProveedorId = tiposProveedor[0].id;
+      } else {
+        const tp: any = await lastValueFrom(this.catalogsService.addCatalog({
+          description: 'General', active: true, idCompany: rootId, type: 'TIPO-PROVEEDOR', parentId: null
+        }));
+        tipoProveedorId = tp?.id || 0;
+        this.logPeriferico('5-TIPO-PROVEEDOR creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 5 (tipo-proveedor):', e); }
+
+    // ── 6. Cliente ───────────────────────────────────────────────────────────
+    try {
+      const customers: any = await lastValueFrom(this.customersService.getCustomers(rootId, 'CUSTOMERS')).catch(() => []);
+      if (!customers?.length) {
+        await lastValueFrom(this.customersService.addCustomer({
+          company: rootName.toUpperCase(), nameContact: rootName, idBranch: branchId,
+          idRoot: rootId, idTypecop: tipoClienteId, type: 'CUSTOMERS', vigente: true, active: true
+        }));
+        this.logPeriferico('6-Cliente creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 6 (cliente):', e); }
+
+    // ── 7. Proveedor ─────────────────────────────────────────────────────────
+    try {
+      const providers: any = await lastValueFrom(this.providersService.getProviders(rootId)).catch(() => []);
+      if (!providers?.length) {
+        await lastValueFrom(this.providersService.addProvider({
+          company: rootName.toUpperCase(), nameContact: rootName, idBranch: branchId,
+          idTypecop: tipoProveedorId, type: 'PROVIDERS', vigente: true, active: true
+        }));
+        this.logPeriferico('7-Proveedor creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 7 (proveedor):', e); }
+
+    // ── 8. BillingManagement ─────────────────────────────────────────────────
+    try {
+      const billing: any = await lastValueFrom(this.administrationService.getBillingManagementInfo(rootId)).catch(() => null);
+      const billingEmpty = !billing || (Array.isArray(billing) ? billing.length === 0 : !billing.id);
+      if (billingEmpty) {
+        await lastValueFrom(this.administrationService.addBillingManagementInfo({
+          idRoot: rootId, emisorRfc: '', emisorNombre: rootName, emisorCp: '',
+          prefix: 'REC', consecutive: 0, fiscalYear: new Date().getFullYear(),
+          fiscalRegime: null, iIva: 0.16, iIeps: 0, iI3: 0, rIva: 0, rIeps: 0,
+          efirmaPass: '', dateStart: today, dateEnd: endDate, active: true
+        }));
+        this.logPeriferico('8-BillingManagement creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 8 (billing):', e); }
+
+    // ── 9. Cuenta bancaria ───────────────────────────────────────────────────
+    try {
+      const accounts: any[] = await lastValueFrom(this.administrationService.getAccountBanks(rootId)).catch(() => []);
+      if (!accounts?.length) {
+        await lastValueFrom(this.administrationService.addAccountBanks({
+          idBussines: rootId, numberAccount: '0000000000', nameAccount: 'Cuenta Principal',
+          signAccount: 'sin firma', interbancaria: '', folioCheque: '', folioSinCheque: '',
+          idBanco: null, maskin: 'REC', consecin: 0, maskex: 'EGR', consecex: 0, eAplicaFiscal: 'Si'
+        }));
+        this.logPeriferico('9-CuentaBancaria creada', rootName);
+      }
+    } catch (e) { console.error('ensure paso 9 (cuenta bancaria):', e); }
+
+    // ── 10. Unidades de medida (MEASURE) ─────────────────────────────────────
+    try {
+      const measures: any[] = await lastValueFrom(this.catalogsService.getCatalogs(rootId, 'MEASURE')).catch(() => []);
+      if (!measures?.length) {
+        await Promise.all(['PZA', 'SRV', 'HRS', 'MES', 'KG', 'M'].map(desc =>
+          lastValueFrom(this.catalogsService.addCatalog({
+            idCompany: rootId, description: desc, valueAddition: 'NA',
+            valueAdditionBit2: false, valueAdditionBit3: false, vigente: true, type: 'MEASURE', active: 1
+          }))
+        ));
+        this.logPeriferico('10-Unidades MEASURE creadas (6)', rootName);
+      }
+    } catch (e) { console.error('ensure paso 10 (MEASURE):', e); }
+
+    // ── 11. Cuentas contables ────────────────────────────────────────────────
+    try {
+      const cuentas: any[] = await lastValueFrom(this.cuentasContablesService.getAll(rootId)).catch(() => []);
+      if (!cuentas?.length) {
+        const activo: any = await lastValueFrom(this.cuentasContablesService.create({
+          ...cuentaBase, codigo: '1', nombre: 'ACTIVO', nivel: 1, esHoja: false
+        }));
+        await lastValueFrom(this.cuentasContablesService.create({
+          ...cuentaBase, codigo: '1.1', nombre: 'CAJA Y BANCOS', nivel: 2, esHoja: true, idPadre: activo.id
+        }));
+        const ingresos: any = await lastValueFrom(this.cuentasContablesService.create({
+          ...cuentaBase, codigo: '4', nombre: 'INGRESOS', nivel: 1, esHoja: false
+        }));
+        await lastValueFrom(this.cuentasContablesService.create({
+          ...cuentaBase, codigo: '4.1', nombre: 'INGRESOS ORDINARIOS', nivel: 2, esHoja: true, idPadre: ingresos.id
+        }));
+        const egresos: any = await lastValueFrom(this.cuentasContablesService.create({
+          ...cuentaBase, codigo: '5', nombre: 'EGRESOS', nivel: 1, esHoja: false
+        }));
+        await lastValueFrom(this.cuentasContablesService.create({
+          ...cuentaBase, codigo: '5.1', nombre: 'GASTOS OPERATIVOS', nivel: 2, esHoja: true, idPadre: egresos.id
+        }));
+        this.logPeriferico('11-CuentasContables creadas (6)', rootName);
+      }
+    } catch (e) { console.error('ensure paso 11 (cuentas contables):', e); }
+
+    // ── 12. Rol por defecto ──────────────────────────────────────────────────
+    let rolId = 0;
+    try {
+      const rolesResp: any = await lastValueFrom(this.rolesService.getRoles(rootId)).catch(() => ({ data: [] }));
+      const roles: any[] = rolesResp?.data || rolesResp || [];
+      if (roles?.length) {
+        rolId = roles[0].id;
+      } else {
+        const rol: any = await lastValueFrom(this.rolesService.addRoles({
+          idCompany: rootId,
+          description: 'ADMINISTRADOR',
+          comment: 'Rol principal',
+          active: true
+        }));
+        rolId = rol?.id || 0;
+        this.logPeriferico('12-Rol ADMINISTRADOR creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 12 (rol):', e); }
+
+    // ── 13. Posición ligada al rol ───────────────────────────────────────────
+    try {
+      if (rolId) {
+        const posiciones: any[] = await lastValueFrom(this.posicionesService.getPositionsByRole(rootId, rolId)).catch(() => []);
+        if (!posiciones?.length) {
+          await lastValueFrom(this.posicionesService.addPosition({
+            idCompany: rootId,
+            idRoles: rolId,
+            description: 'ADMINISTRADOR',
+            active: true
+          }));
+          this.logPeriferico('13-Posicion ADMINISTRADOR creada', rootName);
+        }
+      }
+    } catch (e) { console.error('ensure paso 13 (posición):', e); }
+
+    // ── 14. Materiales ───────────────────────────────────────────────────────
+    try {
+      const materials: any[] = await lastValueFrom(this.materialsService.getMaterials(rootId, 'MATERIAL')).catch(() => []);
+      if (!materials?.length) {
+        const defaultMaterials = ['Papel Bond', 'Tóner', 'Folder', 'Bolígrafo', 'Cinta Adhesiva'];
+        await Promise.all(defaultMaterials.map(name =>
+          lastValueFrom(this.materialsService.addMaterial({
+            idCompany: rootId, description: name, insumo: '', articulo: '',
+            date: new Date().toISOString(), idMedida: null, idFamilia: null, idSubfamilia: null,
+            idUbication: null, aplicaResg: false, picture: '',
+            costoMN: 0, costoDLL: 0, ventaMN: 0, ventaDLL: 0,
+            stockMin: 0, stockMax: 0, vigente: true, active: true, typematerial: 'MATERIAL'
+          }))
+        ));
+        this.logPeriferico('14-Materiales creados (5)', rootName);
+      }
+    } catch (e) { console.error('ensure paso 14 (materiales):', e); }
+
+    // ── 15. Equipos ──────────────────────────────────────────────────────────
+    try {
+      const equipment: any[] = await lastValueFrom(this.equipmentService.getEquipment(rootId)).catch(() => []);
+      if (!equipment?.length) {
+        const defaultEquipment = ['Computadora', 'Impresora', 'Escritorio', 'Silla de Oficina', 'Teléfono'];
+        await Promise.all(defaultEquipment.map(name =>
+          lastValueFrom(this.equipmentService.addEquipment({
+            idCompany: rootId, description: name, aplicaResg: false,
+            costoMN: 0, costoDLL: 0, ventaMN: 0, ventaDLL: 0,
+            stockMin: 0, stockMax: 0, quantity: 1, measure: 'DIA',
+            costMN: 0, priceMN: 0, print: true, active: true
+          }))
+        ));
+        this.logPeriferico('15-Equipos creados (5)', rootName);
+      }
+    } catch (e) { console.error('ensure paso 15 (equipos):', e); }
   }
 
   revert() {

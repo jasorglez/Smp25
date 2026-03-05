@@ -173,14 +173,13 @@ export class IncomeComponent {
 
 
   async getBillingManagementInfo() {
-    this.administrationService.getBillingManagementInfo(this.root).subscribe(
-      (data: any) => {
-        this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
-      },
-      (error) => {
-        console.error('Error al obtener la información de gestión de facturación:', error);
-      }
-    );
+    try {
+      const data: any = await lastValueFrom(this.administrationService.getBillingManagementInfo(this.root));
+      this.prefixAndConsecutive = Array.isArray(data) ? data : [data];
+    } catch (error) {
+      console.error('Error al obtener la información de gestión de facturación:', error);
+      this.prefixAndConsecutive = [];
+    }
   }
 
   private gridApi: GridApi;
@@ -880,23 +879,19 @@ async saveChanges() {
     (row) => row.__modified && !row.__isNew
   );
 
-  // Solo validar configuración si hay nuevas filas que necesitan número de documento
+  // Solo generar números de documento si hay nuevas filas
   let currentConsecutive = 0;
   if (newRows.length > 0) {
-    if (!this.prefixAndConsecutive?.[0]) {
-      alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
-        'error'
-      );
+    if (!selectedAccount) {
+      alerts.basicAlert('Error', 'No se encontró la cuenta bancaria seleccionada', 'error');
       return;
     }
 
-    // Generar números de documento para nuevas filas
-    currentConsecutive = this.prefixAndConsecutive[0].consecutive;
+    // Generar números de documento usando maskin/consecin de la cuenta bancaria
+    currentConsecutive = Number(selectedAccount.consecin) || 0;
     newRows.forEach(row => {
       currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
+      row.numberDocument = `${selectedAccount.maskin}${currentConsecutive.toString().padStart(4, '0')}`;
     });
   }
 
@@ -907,7 +902,7 @@ async saveChanges() {
     // LUEGO: Actualizar el consecutivo si hay nuevas filas (manejar error específico)
  if (newRows.length > 0) {
   try {
-    await this.updateBillingManagement(currentConsecutive);
+    await this.updateAccountBankConsecutive(selectedAccount!, currentConsecutive);
     this.hasConsecutiveError = false;
   } catch (consecutiveError) {
     // Error específico del consecutivo - mostrar alerta pero no revertir todo
@@ -983,36 +978,26 @@ async saveChanges() {
     }
   }
 
-// Método separado para actualizar el billing management (SOLO consecutivo)
-private async updateBillingManagement(currentConsecutive: number): Promise<void> {
-  // CORRECCIÓN: Envolver el consecutive en un objeto "request"
-  const payload = {
-    request: {
-      consecutive: currentConsecutive
-    }
-  };
-  
+// Actualiza consecin en la cuenta bancaria seleccionada
+private async updateAccountBankConsecutive(account: any, newConsecutive: number): Promise<void> {
+  const payload = { ...account, consecin: newConsecutive };
+
   await lastValueFrom(
-    this.administrationService.updateBillingManagementConsecutive(
-      this.root,
-      payload
-    ).pipe(
-      tap((updatedBilling: any) => {
-        // Actualizar el array local con la respuesta completa del servidor
-        this.prefixAndConsecutive = [updatedBilling];
+    this.administrationService.updateAccountBanks(account.id, payload).pipe(
+      tap(() => {
+        // Actualizar localmente para reflejar el nuevo consecutivo
+        const idx = this.bankAccounts.findIndex(a => a.id === account.id);
+        if (idx !== -1) this.bankAccounts[idx].consecin = newConsecutive;
       }),
       catchError((error) => {
-        console.error('Error actualizando consecutivo:', error);
-        
-        // Log específico para tracking
+        console.error('Error actualizando consecin en cuenta bancaria:', error);
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
-          `Error actualizando consecutivo: ${error.message}`, 
-          'Menu Administracion Ingresos - Error Consecutivo',  
+          `Error actualizando consecin: ${error.message}`,
+          'Menu Administracion Ingresos - Error Consecutivo',
           this.trackingService.getEmail()
         );
-        
-        throw error; // Re-lanzar el error para manejarlo en saveChanges
+        throw error;
       })
     )
   );
@@ -1243,7 +1228,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
 
   openCustomerModal() {
     this.newCustomer = {
-      idBranch: null,
+      idBranch: this.idBranch,
       nameContact: '',
       company: '',
       idTypecop: null
@@ -1254,7 +1239,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   closeCustomerModal() {
     this.showCustomerModal = false;
     this.newCustomer = {
-      idBranch: null,
+      idBranch: this.idBranch,
       nameContact: '',
       company: '',
       idTypecop: null
@@ -1705,7 +1690,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   }
 
   saveNewCustomer() {
-    if (!this.newCustomer.idBranch || !this.newCustomer.nameContact || !this.newCustomer.idTypecop) {
+    if (!this.newCustomer.nameContact || !this.newCustomer.idTypecop) {
       alerts.basicAlert(
         'Nuevo Cliente',
         'Por favor complete todos los campos requeridos.',

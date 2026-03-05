@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.35 (04 Marzo 2026 10:15) - Ares Correcion Requisicion Delison',
+  version: '6.49 (04 Marzo 2026 18:10) - Ares  Tracking logs en ensureDefaultEntitiesForRoot',
 };
 
 
