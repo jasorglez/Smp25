@@ -14,16 +14,27 @@ $transition: 0.25s $ease;
 // ─── Reset ────────────────────────────────────────────────────────────────────
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ─── Background con imagen ────────────────────────────────────────────────────
-.login-bg {
+// ─── Background — carrusel crossfade ─────────────────────────────────────────
+.login-bg-carousel {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-color: #0b0c14; /* fallback cuando no hay imagen o la API falla */
+  background-color: #0b0c14; /* fallback cuando no hay imágenes */
+}
+
+.login-bg {
+  position: absolute;
+  inset: 0;
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  // animation: kenBurns 22s ease-in-out infinite alternate; ← comentado
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+  animation: kenBurns 22s ease-in-out infinite alternate;
+
+  &.active {
+    opacity: 1;
+  }
 }
 
 @keyframes kenBurns {
@@ -33,10 +44,11 @@ $transition: 0.25s $ease;
   100% { transform: scale(1.08) translateX(-0.5%) translateY(0.5%); }
 }
 
-// Overlay: blur sutil + gradiente oscuro para que el card resalte
+// Overlay: blur sutil + gradiente oscuro — encima de todas las imágenes
 .bg-overlay {
   position: absolute;
   inset: 0;
+  z-index: 1;
   backdrop-filter: blur(2px) saturate(0.85);
   background: linear-gradient(
     135deg,

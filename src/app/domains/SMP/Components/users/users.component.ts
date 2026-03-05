@@ -22,6 +22,8 @@ import { TrackingService } from 'app/services/tracking.service';
 import { DetallePermisosXSucursalesComponent } from './details/detallepermisosxsucursales.component';
 import { PermissionsViewByUserComponent } from './details/detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
+import { UsersDetailWrapperComponent } from './details/users-detail-wrapper.component';
+import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 
 @Injectable({
   providedIn: 'root',
@@ -37,7 +39,8 @@ import { ModalService } from 'app/services/permissions-modal.service';
     MatDialogModule,
     DetallePermisosXSucursalesComponent,
     PermissionsViewByUserComponent,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    ButtonCellRendererExpenditureComponent
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
@@ -168,7 +171,8 @@ export class UsersComponent implements OnDestroy {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
-    detailPermissionsRenderer: DetallePermisosXSucursalesComponent
+    detailPermissionsRenderer: DetallePermisosXSucursalesComponent,
+    usersDetailWrapper: UsersDetailWrapperComponent
   }
 
   obtenerEmpleados() {
@@ -298,6 +302,7 @@ export class UsersComponent implements OnDestroy {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    this.gridOptions.context.componentParent = this;
     this.gridApi.setGridOption('columnDefs', this.columnDefs);
     const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
     this.gridApi.setColumnsVisible(['idRol'], showSecurity);
@@ -335,11 +340,10 @@ export class UsersComponent implements OnDestroy {
     headerHeight: 30,
     rowHeight: 30,
     masterDetail: true,
-    isRowMaster: (dataItem) => {
-      return true;
-    },
-    detailCellRenderer: 'detailPermissionsRenderer',
+    isRowMaster: () => true,
+    detailCellRenderer: 'usersDetailWrapper',
     detailRowHeight: 1000,
+    context: { componentParent: null },
     rowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -406,6 +410,19 @@ export class UsersComponent implements OnDestroy {
           params.data[params.colDef.field] = newValue;
           return true;
         }
+      },
+      {
+        field: 'countEmpresas',
+        headerName: 'Empresas',
+        width: 120,
+        editable: false,
+        cellRenderer: ButtonCellRendererExpenditureComponent,
+        cellRendererParams: {
+          icon: 'bi bi-building',
+          onClick: (node: any) => this.openEmpresasCascade(node)
+        },
+        valueGetter: (params) => params.data?.countEmpresas ?? 0,
+        cellStyle: { backgroundColor: '#e8eaf6', cursor: 'pointer' }
       },
       {
         field: 'email',
@@ -828,21 +845,53 @@ export class UsersComponent implements OnDestroy {
 
     const selectedNode = selectedNodes[0];
     const selectedData = selectedNode.data;
-    const isCurrentlyExpanded = selectedNode.expanded;
+    const isCurrentlyExpanded = selectedNode.expanded && selectedData.detailType === 'permissions';
 
     if (isCurrentlyExpanded) {
       selectedNode.setExpanded(false);
+      selectedData.detailType = null;
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     } else {
-      this.gridApi.forEachNode((node) => {
-        if (node.expanded) node.setExpanded(false);
-      });
+      this.gridApi.forEachNode((node) => { if (node.expanded) node.setExpanded(false); });
+      selectedData.detailType = 'permissions';
       this.gridApi.setFilterModel(null);
       this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: selectedData.id } });
       this.gridApi.onFilterChanged();
       setTimeout(() => selectedNode.setExpanded(true), 50);
     }
+  }
+
+  openEmpresasCascade(node: any): void {
+    const data = node.data;
+    if (!data) return;
+
+    const isCurrentlyExpanded = node.expanded && data.detailType === 'empresas';
+
+    if (isCurrentlyExpanded) {
+      node.setExpanded(false);
+      data.detailType = null;
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+      return;
+    }
+
+    this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+    data.detailType = 'empresas';
+    this.gridApi.setFilterModel(null);
+    this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: data.id } });
+    this.gridApi.onFilterChanged();
+    setTimeout(() => node.setExpanded(true), 50);
+  }
+
+  updateEmpresasCount(userId: number, count: number): void {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node) => {
+      if (node.data?.id === userId) {
+        node.data.countEmpresas = count;
+        this.gridApi.refreshCells({ rowNodes: [node], columns: ['countEmpresas'], force: true });
+      }
+    });
   }
 
   getRoleColorEmoji(roleId: number): string {

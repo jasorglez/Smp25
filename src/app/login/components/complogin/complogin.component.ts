@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal,  OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -11,7 +11,7 @@ import { functions } from '../../../helpers/functions';
 import { LoginService } from '../../../services/login.service';
 import { TrackingService } from '../../../services/tracking.service';
 import { CompanysService } from '../../../services/companys.service';
-import { LoginSetupService } from '../../../services/login-setup.service';
+import { LoginImageService } from '../../../services/login-image.service';
 
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
@@ -33,7 +33,7 @@ import { environment } from '@env/environment';
     DomainsModule
   ]
 })
-export class ComploginComponent implements OnInit {
+export class ComploginComponent implements OnInit, OnDestroy {
 
   environment = environment;
 
@@ -44,9 +44,11 @@ export class ComploginComponent implements OnInit {
 
   /** Imágenes de fondo desde el backend (SMP Login). Si la API falla o no hay imágenes, no se pide asset (evita 404). */
   images: string[] = [];
+  currentImageIndex: number = 0;
+  private carouselTimer: any = null;
 
   private loginService    = inject(LoginService) ;
-  private loginSetupService = inject(LoginSetupService);
+  private loginSetupService = inject(LoginImageService);
   private companysService = inject(CompanysService);
   private trackingService = inject(TrackingService);
   private userService     = inject(UsersService);
@@ -55,6 +57,7 @@ export class ComploginComponent implements OnInit {
   private router          = inject(Router);
   private signalsService = inject(SignalsService);
 
+  /** @deprecated reemplazado por currentImageIndex + carrusel */
   randomImage : string = '' ;
 
 	public flogin = this.formBuilder.group({
@@ -74,7 +77,6 @@ export class ComploginComponent implements OnInit {
     this.loadLoginBackgroundImages();
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    this.randomImage = this.getBackgroundImageForToday();
     const storedEmail = this.signalsService.getemailChoose();
     if (storedEmail) {
       this.emailcapt = storedEmail;
@@ -100,14 +102,26 @@ export class ComploginComponent implements OnInit {
     }
   }
 
-  /** Elige la imagen de fondo: si hay más de una, rota cada 24 h; si hay una, esa; si ninguna, vacío (fallback color en CSS). */
-  private getBackgroundImageForToday(): string {
-    if (this.images.length === 0) return '';
-    if (this.images.length === 1) return this.images[0];
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const dayIndex = Math.floor(Date.now() / msPerDay);
-    const index = dayIndex % this.images.length;
-    return this.images[index];
+  /** Determina el índice de inicio (avanza secuencialmente, persiste en localStorage). */
+  private getStartingIndex(): number {
+    if (this.images.length === 0) return 0;
+    const lastIndex = parseInt(localStorage.getItem('loginImgIndex') ?? '-1', 10);
+    const nextIndex = (lastIndex + 1) % this.images.length;
+    localStorage.setItem('loginImgIndex', String(nextIndex));
+    return nextIndex;
+  }
+
+  /** Inicia el carrusel cíclico cada 6 segundos con crossfade. */
+  private startCarousel(): void {
+    if (this.carouselTimer) clearInterval(this.carouselTimer);
+    if (this.images.length <= 1) return;
+    this.carouselTimer = setInterval(() => {
+      this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
+    }, 6000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.carouselTimer) clearInterval(this.carouselTimer);
   }
 
   /** Carga las URLs de imágenes desde el backend (SMP → Login); si hay alguna, se usan como fondo. */
@@ -119,11 +133,12 @@ export class ComploginComponent implements OnInit {
           .filter((u: string) => u);
         if (urls.length > 0) {
           this.images = urls;
-          this.randomImage = this.getBackgroundImageForToday();
+          this.currentImageIndex = this.getStartingIndex();
+          this.startCarousel();
         }
       },
       error: () => {
-        // Si falla (ej. API no disponible), se mantiene la imagen por defecto
+        // Si falla (ej. API no disponible), se mantiene el fondo oscuro por defecto
       }
     });
   }

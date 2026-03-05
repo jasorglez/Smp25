@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ImageHandlerService } from 'app/services/image-handler.service';
-import { LoginSetupService } from 'app/services/login-setup.service';
+import { LoginImageService } from 'app/services/login-image.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -17,7 +17,7 @@ export class LoginSetupComponent {
   @ViewChild('fileInput') fileInput: ElementRef<HTMLInputElement>;
 
   private imageHandlerService = inject(ImageHandlerService);
-  private loginSetupService = inject(LoginSetupService);
+  private loginSetupService = inject(LoginImageService);
 
   rowData: any[] = [];
   originalRowData: any[] = [];
@@ -39,6 +39,15 @@ export class LoginSetupComponent {
       hide: true,
       filter: 'agTextColumnFilter',
       width: 80
+    },
+    {
+      headerName: '#',
+      valueGetter: (params: any) => (params.node?.rowIndex ?? 0) + 1,
+      width: 55,
+      minWidth: 55,
+      sortable: false,
+      resizable: false,
+      pinned: 'left' as const
     },
     {
       field: 'nombre',
@@ -122,9 +131,15 @@ export class LoginSetupComponent {
       return;
     }
 
+    const nombre = file.name.replace(/\.webp$/i, '') || `Imagen ${Date.now()}`;
+    if (this.isNombreDuplicado(nombre)) {
+      alerts.basicAlert('Nombre duplicado', `Ya existe una imagen llamada "${nombre}". Renombra el archivo antes de subir.`, 'warning');
+      input.value = '';
+      return;
+    }
+
     // Solo mostrar preview local y guardar el File para subirlo al guardar
     const previewUrl = URL.createObjectURL(file);
-    const nombre = file.name.replace(/\.webp$/i, '') || `Imagen ${Date.now()}`;
     const newRow: any = {
       id: `temp_${Date.now()}`,
       nombre,
@@ -243,7 +258,28 @@ export class LoginSetupComponent {
     this.selectedRowData = nodes.length > 0 ? nodes[0].data : null;
   }
 
-  onCellValueChanged(): void {
+  onCellValueChanged(event: any): void {
+    if (event.colDef.field === 'nombre') {
+      const nuevoNombre = (event.newValue ?? '').trim();
+      if (!nuevoNombre) {
+        event.data.nombre = event.oldValue;
+        this.gridApi.refreshCells({ rowNodes: [event.node] });
+        alerts.basicAlert('Nombre inválido', 'El nombre no puede estar vacío.', 'warning');
+        return;
+      }
+      if (this.isNombreDuplicado(nuevoNombre, event.data.id)) {
+        event.data.nombre = event.oldValue;
+        this.gridApi.refreshCells({ rowNodes: [event.node] });
+        alerts.basicAlert('Nombre duplicado', `Ya existe una imagen llamada "${nuevoNombre}".`, 'warning');
+        return;
+      }
+    }
     this.hasUnsavedChanges = true;
+  }
+
+  private isNombreDuplicado(nombre: string, excludeId?: any): boolean {
+    return this.rowData.some(
+      (row) => row.nombre?.toLowerCase() === nombre.toLowerCase() && row.id !== excludeId
+    );
   }
 }

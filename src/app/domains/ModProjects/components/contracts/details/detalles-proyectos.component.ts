@@ -447,18 +447,22 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     this.hasProjectChanges = true;
   }
 
-  loadProjectData() {
-    this.projectsService.getProjectListByContract(this.contractId).subscribe({
-      next: (data: any) => {
-        this.projectRowData = data || [];
-        if (this.projectGridApi) {
-          this.projectGridApi.setGridOption('rowData', this.projectRowData);
+  loadProjectData(): Promise<void> {
+    return new Promise((resolve) => {
+      this.projectsService.getProjectListByContract(this.contractId).subscribe({
+        next: (data: any) => {
+          this.projectRowData = data || [];
+          if (this.projectGridApi) {
+            this.projectGridApi.setGridOption('rowData', this.projectRowData);
+          }
+          resolve();
+        },
+        error: (error) => {
+          console.error('Error loading projects:', error);
+          this.projectRowData = [];
+          resolve();
         }
-      },
-      error: (error) => {
-        console.error('Error loading projects:', error);
-        this.projectRowData = [];
-      }
+      });
     });
   }
 
@@ -562,10 +566,10 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
 
         this.hasProjectChanges = false;
 
-        // Reload projects
-        this.loadProjectData();
+        // Reload projects — await so projectRowData is fresh before counting
+        await this.loadProjectData();
 
-        // Update project count in parent grid
+        // Update project count in parent grid with fresh data
         await this.updateProjectCountInParent();
       }
     } catch (error) {
@@ -616,10 +620,10 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
           'success'
         );
 
-        this.loadProjectData();
+        await this.loadProjectData();
         this.selectedProject = null;
 
-        // Update project count in parent grid
+        // Update project count in parent grid with fresh data
         await this.updateProjectCountInParent();
       } catch (error) {
         console.error('Error deleting project:', error);
@@ -647,11 +651,8 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
 
   private async updateProjectCountInParent(): Promise<void> {
     try {
-      // Wait for data to update
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Count active projects (exclude temp rows that haven't been saved)
-      const projectCount = this.projectRowData.filter(p => !String(p.id).startsWith('temp_')).length;
+      // projectRowData is already fresh (loadProjectData was awaited before calling this)
+      const projectCount = this.projectRowData.length;
 
       // Update the counter in the parent grid row (visual)
       this.params.data.project = projectCount.toString();

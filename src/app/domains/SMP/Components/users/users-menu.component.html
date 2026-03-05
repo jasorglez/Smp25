@@ -36,82 +36,6 @@
           profile().emailUser() && (showRoot ||
             authService.hasDetailedPermission(
               'users-setup',
-              'contractors'
-            ))
-        "
-      >
-        <a
-          class="nav-link"
-          [class.active]="selectedTab === 'usersxcompanys'"
-          data-toggle="tab"
-          (click)="onUsersSelected('usersxcompanys')"
-          >Contratistas</a
-        >
-      </li>
-
-      <li
-        class="nav-item"
-        *ngIf="
-          profile().emailUser() && (showRoot ||
-            authService.hasDetailedPermission(
-              'users-setup',
-              'contracts'
-            ))
-        "
-      >
-        <a
-          class="nav-link"
-          [class.active]="selectedTab === 'usersxcontracts'"
-          data-toggle="tab"
-          (click)="onUsersSelected('usersxcontracts')"
-          >Contratos</a
-        >
-      </li>
-
-      <li
-        class="nav-item"
-        *ngIf="
-          profile().emailUser() && (showRoot ||
-            authService.hasDetailedPermission(
-              'users-setup',
-              'oilfields'
-            ))
-        "
-      >
-        <a
-          class="nav-link"
-          [class.active]="selectedTab === 'usersxoilfields'"
-          data-toggle="tab"
-          (click)="onUsersSelected('usersxoilfields')"
-          >Campos petroleros</a
-        >
-      </li>
-
-      <li
-        class="nav-item"
-        *ngIf="
-          profile().emailUser() && (showRoot ||
-            authService.hasDetailedPermission(
-              'users-setup',
-              'projects'
-            ))
-        "
-      >
-        <a
-          class="nav-link"
-          [class.active]="selectedTab === 'usersxprojects'"
-          data-toggle="tab"
-          (click)="onUsersSelected('usersxprojects')"
-          >Proyectos</a
-        >
-      </li>
-
-      <li
-        class="nav-item"
-        *ngIf="
-          profile().emailUser() && (showRoot ||
-            authService.hasDetailedPermission(
-              'users-setup',
               'companies'
             ))
         "
@@ -143,6 +67,47 @@
           >Sucursales</a
         >
       </li>
+
+
+            <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'contracts'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxcontracts'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxcontracts')"
+          >Contratos</a
+        >
+      </li>  
+
+
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasDetailedPermission(
+              'users-setup',
+              'projects'
+            ))
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxprojects'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxprojects')"
+          >Proyectos</a
+        >
+      </li>
+
 
         <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"

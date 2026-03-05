@@ -38,7 +38,7 @@
     [defaultColDef]="defaultColDef"
     rowSelection="single"
     (selectionChanged)="onSelectionChanged($event)"
-    (cellValueChanged)="onCellValueChanged()"
+    (cellValueChanged)="onCellValueChanged($event)"
     (gridReady)="onGridReady($event)">
   </ag-grid-angular>
 </div>

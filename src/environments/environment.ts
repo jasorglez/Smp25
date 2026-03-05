@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.67 (05 March 2026 10:00) - Ares Ubication RD',
+  version: '6.77 (05 March 2026 19:10) - Ares consolidate login services into login-image.service',
 };
 
 

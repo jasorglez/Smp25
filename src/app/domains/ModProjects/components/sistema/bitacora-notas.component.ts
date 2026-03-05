@@ -1,10 +1,39 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef } from 'ag-grid-enterprise';
 import { BitacoraBaseComponent, BITACORA_TEMPLATE, BITACORA_STYLES } from './bitacora-base.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { alerts } from 'app/helpers/alerts';
+
+const NOTAS_MODAL_TEMPLATE = `
+<div *ngIf="showTypeNoteModal" class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45);">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-plus-circle me-1"></i> Nuevo Tipo de Nota</h6>
+        <button type="button" class="btn-close btn-close-white" (click)="closeTypeNoteModal()"></button>
+      </div>
+      <div class="modal-body py-3">
+        <label class="form-label fw-semibold">Descripción <span class="text-muted small">(máx. 100 caracteres)</span></label>
+        <input type="text" class="form-control" [(ngModel)]="newTypeNoteName"
+               maxlength="100" placeholder="Ej. Reunión, Incidente..."
+               (keydown.enter)="confirmNewTypeNote()">
+        <div class="text-end mt-1">
+          <small class="text-muted">{{ newTypeNoteName.length }}/100</small>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-secondary btn-sm" (click)="closeTypeNoteModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" (click)="confirmNewTypeNote()" [disabled]="!newTypeNoteName.trim()">
+          <i class="bi bi-check-lg me-1"></i> Agregar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+`;
 
 // DB no tiene title → se mapea a supervisor
 // Al leer: supervisor→title, description→content
@@ -12,8 +41,8 @@ import { alerts } from 'app/helpers/alerts';
 @Component({
   selector: 'app-bitacora-notas',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
-  template: BITACORA_TEMPLATE,
+  imports: [CommonModule, FormsModule, AgGridModule],
+  template: BITACORA_TEMPLATE + NOTAS_MODAL_TEMPLATE,
   styles: BITACORA_STYLES,
 })
 export class BitacoraNotasComponent extends BitacoraBaseComponent {
@@ -29,6 +58,10 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
 
   private catalogService = inject(CatalogsService);
   typeNotesCatalog: any[] = [];
+
+  showTypeNoteModal   = false;
+  newTypeNoteName     = '';
+  private pendingTypeNoteNode: any = null;
 
   constructor() {
     super();
@@ -73,13 +106,16 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
         width: 250,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.typeNotesCatalog?.map((item) => item.description) || [],
+          values: [...(this.typeNotesCatalog?.map((item) => item.description) || []), '+ Agregar Nuevo'],
         }),
         valueFormatter: (params) => {
-          if (!params.value) return '';
+          if (!params.value) return '+ Agregar Nuevo';
           const foundItem = this.typeNotesCatalog?.find(item => item.id == params.value);
           return foundItem ? foundItem.description : params.value;
         },
+        cellStyle: (params: any) => params.value
+          ? {}
+          : { color: '#0d6efd', fontStyle: 'italic', cursor: 'pointer' },
         valueGetter: (params) => {
           if (!params.data?.title) return '';
           const foundItem = this.typeNotesCatalog?.find(item => item.description === params.data.title);
@@ -149,8 +185,38 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
   }
 
   override onCellValueChanged(event: any): void {
+    if (event.colDef.field === 'title' && event.newValue === '+ Agregar Nuevo') {
+      event.data.title = event.oldValue || null;
+      this.gridApi?.refreshCells({ rowNodes: [event.node] });
+      this.pendingTypeNoteNode = event.node;
+      this.showTypeNoteModal = true;
+      return;
+    }
     if (!event.data.__isNew) event.data.__modified = true;
     this.hasUnsavedChanges = true;
+  }
+
+  confirmNewTypeNote(): void {
+    const name = this.newTypeNoteName.trim();
+    if (!name) return;
+    // id: null → cuando valueSetter lo asigne, idResource quedará null (int? válido para el backend)
+    this.typeNotesCatalog = [...this.typeNotesCatalog, { id: null, description: name }];
+    this._colDefs = [];
+    this.gridApi?.setGridOption('columnDefs', this.colDefs);
+    if (this.pendingTypeNoteNode) {
+      this.pendingTypeNoteNode.data.title      = name;
+      this.pendingTypeNoteNode.data.idResource = null;
+      if (!this.pendingTypeNoteNode.data.__isNew) this.pendingTypeNoteNode.data.__modified = true;
+      this.gridApi?.refreshCells({ rowNodes: [this.pendingTypeNoteNode] });
+      this.hasUnsavedChanges = true;
+    }
+    this.closeTypeNoteModal();
+  }
+
+  closeTypeNoteModal(): void {
+    this.showTypeNoteModal   = false;
+    this.newTypeNoteName     = '';
+    this.pendingTypeNoteNode = null;
   }
 
   openDescriptionModal(event: any): void {

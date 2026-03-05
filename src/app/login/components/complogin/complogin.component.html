@@ -1,7 +1,12 @@
 <!-- ═══════════════════════════════════════════════
-     BACKGROUND — imagen dinámica + overlay
+     BACKGROUND — carrusel crossfade + overlay
 ════════════════════════════════════════════════ -->
-<div class="login-bg" [style.backgroundImage]="randomImage ? ('url(' + randomImage + ')') : null">
+<div class="login-bg-carousel">
+  <div class="login-bg"
+       *ngFor="let img of images; let i = index"
+       [class.active]="i === currentImageIndex"
+       [style.backgroundImage]="'url(' + img + ')'">
+  </div>
   <div class="bg-overlay"></div>
 </div>
 

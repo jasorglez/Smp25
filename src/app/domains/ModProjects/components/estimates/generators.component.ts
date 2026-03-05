@@ -40,10 +40,14 @@ export class GeneratorsComponent implements OnChanges {
   notSavedChanges: boolean = false;
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  
+
   treeData: any[] = [];
   selectedRowData: any = null;
   selectedNodeType: 'generator' | 'item' | null = null;
+
+  showFaseModal  = false;
+  newFaseName    = '';
+  private pendingFaseNode: any = null;
   
   viewMode: 'master' | 'detail' = 'master';
   selectedGeneratorForDetail: any = null;
@@ -240,9 +244,9 @@ export class GeneratorsComponent implements OnChanges {
         {
           field: 'fase', headerName: 'Area', editable: true, flex: 1.5,
           cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
-            values: this.fases.map(fase => fase.name || fase.text || fase.fase)
-          }
+          cellEditorParams: () => ({
+            values: [...this.fases.map(fase => fase.name || fase.text || fase.fase), '+ Agregar Nuevo']
+          })
         },
         { field: 'aplicaIsometrico', headerName: 'Aplica Isométrico', editable: true, flex: 1, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
         { field: 'comment', headerName: 'Comentarios', editable: true, flex: 2 },
@@ -304,13 +308,57 @@ export class GeneratorsComponent implements OnChanges {
   }
 
   onCellValueChanged(event: any) {
+    // Detectar selección de "Agregar Nuevo" en el combo de Area
+    if (event.colDef.field === 'fase' && event.newValue === '+ Agregar Nuevo') {
+      event.data.fase = event.oldValue ?? '';
+      this.pendingFaseNode = event.data;
+      this.newFaseName = '';
+      this.showFaseModal = true;
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['fase'], force: true });
+      }
+      return;
+    }
+
     event.data.__modified = true;
     this.notSavedChanges = true;
-    
+
     // Calcular acumulado cuando se selecciona un recurso en items
     if (event.colDef.field === 'idResource' && event.data.nodeType === 'item') {
       this.calculateAccumulate(event);
     }
+  }
+
+  confirmNewFase(): void {
+    const name = this.newFaseName.trim();
+    if (!name) {
+      alerts.basicAlert('Aviso', 'El nombre del área no puede estar vacío.', 'warning');
+      return;
+    }
+    if (name.length > 20) {
+      alerts.basicAlert('Aviso', 'El nombre no puede superar 20 caracteres.', 'warning');
+      return;
+    }
+    // Agregar al catálogo local si no existe
+    if (!this.fases.find(f => (f.name || f.text || f.fase) === name)) {
+      this.fases = [...this.fases, { name }];
+    }
+    // Asignar valor a la fila pendiente
+    if (this.pendingFaseNode) {
+      this.pendingFaseNode.fase = name;
+      this.pendingFaseNode.__modified = true;
+      this.notSavedChanges = true;
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.treeData);
+      }
+    }
+    this.closeFaseModal();
+  }
+
+  closeFaseModal(): void {
+    this.showFaseModal = false;
+    this.newFaseName = '';
+    this.pendingFaseNode = null;
   }
 
   private calculateAccumulate(event: any) {
