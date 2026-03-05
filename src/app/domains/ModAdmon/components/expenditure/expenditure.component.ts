@@ -26,6 +26,7 @@ import { EmployeesService } from 'app/services/employees.service';
 import { CustomersService } from 'app/services/customers.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { ProjectsService } from 'app/services/projects.service';
+import { FacturacionService } from 'app/services/facturacion.service';
 import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-expenditure2.component';
 import { PdfButtonCellRendererExpenditure2Component } from './pdf-button-cell-renderer-expenditure2.component';
 import { DetallesExpenditureComponent } from './detalles-expenditure.component';
@@ -56,8 +57,12 @@ export class ExpenditureComponent {
   private customersService = inject(CustomersService);
   private cuentasContablesService = inject(CuentasContablesService);
   private projectsService = inject(ProjectsService);
+  private facturacionService = inject(FacturacionService);
   authService = inject(AuthService);
   public trackingService = inject(TrackingService);
+
+  // Catálogos SAT
+  formasPago: any[] = [];
 
   public isIncomeMode: boolean = false;
 
@@ -91,6 +96,7 @@ export class ExpenditureComponent {
       await this.loadCuentasContablesNivel2();
       await this.loadCuentasContablesNivel3();
       await this.loadProjects();
+      await this.loadSATCatalogs();
 
       // Refrescar columnas después de cargar datos
       this.refreshColumnDefinitions();
@@ -478,6 +484,23 @@ export class ExpenditureComponent {
     });
   }
 
+  async loadSATCatalogs() {
+    return new Promise<void>((resolve) => {
+      this.facturacionService.getFormaPago2fields().subscribe({
+        next: (data: any) => {
+          this.formasPago = data || [];
+          console.log('✅ Formas de pago cargadas:', this.formasPago.length);
+          resolve();
+        },
+        error: (err) => {
+          console.error('Error cargando formas de pago:', err);
+          this.formasPago = [];
+          resolve();
+        }
+      });
+    });
+  }
+
   private async loadAuthorizers() {
     forkJoin({
       permissions: this.usersxpermissionsService.getDataUsersxPermissions('root'),
@@ -737,6 +760,7 @@ export class ExpenditureComponent {
         field: 'idCustomer',
         headerName: 'Proveedor',
         editable: true,
+        hide: true,
         width: 180,
         filter: true,
         cellEditor: 'agSelectCellEditor',
@@ -753,8 +777,17 @@ export class ExpenditureComponent {
         field: 'formaPago',
         headerName: 'Tipo de Pago',
         editable: true,
-        width: 130,
+        width: 200,
         filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.formasPago.map(fp => fp.formaPagoValue)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const found = this.formasPago.find(fp => fp.formaPagoValue === params.value);
+          return found ? `${found.formaPagoValue} - ${found.descripcion}` : params.value;
+        }
       },
       {
         field: 'idAccount',
@@ -788,7 +821,6 @@ export class ExpenditureComponent {
         editable: true,
         width: 180,
         filter: true,
-        hide: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
           values: this.projects.map((p) => p.id)
