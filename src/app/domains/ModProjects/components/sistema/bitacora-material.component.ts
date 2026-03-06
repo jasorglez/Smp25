@@ -5,6 +5,7 @@ import { ColDef } from 'ag-grid-enterprise';
 import { BitacoraBaseComponent, BITACORA_TEMPLATE, BITACORA_STYLES, DATE_COL } from './bitacora-base.component';
 import { alerts } from 'app/helpers/alerts';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { forkJoin } from 'rxjs';
 
 // DB no tiene campos name/unit/idMaterial → se mapean a description/position/idResource
 // Al leer: description→name, supervisor→description, position→unit, idResource→idMaterial
@@ -29,9 +30,12 @@ export class BitacoraMaterialComponent extends BitacoraBaseComponent {
   ];
 
   protected override onLoadCatalogs(idRoot: number): void {
-    this.materialsService.getMaterials(idRoot, 'CONSUMABLE').subscribe({
-      next: (resp: any[]) => {
-        this.materialesCatalog = resp.filter(m => m.active !== false);
+    forkJoin({
+      consumable: this.materialsService.getMaterials(idRoot, 'CONSUMABLE'),
+      material:   this.materialsService.getMaterials(idRoot, 'MATERIAL'),
+    }).subscribe({
+      next: ({ consumable, material }) => {
+        this.materialesCatalog = [...consumable, ...material].filter(m => m.active !== false);
       },
       error: () => {},
     });
