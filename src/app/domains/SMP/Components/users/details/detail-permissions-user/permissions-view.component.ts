@@ -302,10 +302,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   onMasterReadChange(master: MasterPermission) {
+    if (master.masterRead) {
+      this.seleccionarMaster(master);
+    }
     this.checkForChanges();
   }
 
   onDetailedReadChange(detail: DetailedPermission) {
+    if (detail.detailedRead) {
+      this.seleccionarDetail(detail);
+    }
     this.checkForChanges();
   }
 
