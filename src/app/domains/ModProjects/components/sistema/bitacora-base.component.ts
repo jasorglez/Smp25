@@ -329,7 +329,7 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
     for (const item of items) {
       for (const { field, label } of this.requiredFields) {
         const v = item[field];
-        if (v === null || v === undefined || v === '') return `Falta completar: <b>${label}</b>`;
+        if (v === null || v === undefined || v === '') return `Falta completar: ${label}`;
       }
     }
     return null;

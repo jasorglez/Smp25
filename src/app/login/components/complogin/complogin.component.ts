@@ -69,6 +69,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
   formSubmitted = false;
   isLoading = false;
   idBranch: number;
+  carouselDirection: 'forward' | 'reverse' = 'reverse';
 
   valorcapturado = '' ;
   loginCardPositionClass = 'corner-top-left';
@@ -110,21 +111,24 @@ export class ComploginComponent implements OnInit, OnDestroy {
     this.loginCardPositionClass = positions[randomIndex];
   }
 
-  /** Determina el índice de inicio (avanza secuencialmente, persiste en localStorage). */
+  /** Determina el índice de inicio y persiste en localStorage según la dirección del carrusel. */
   private getStartingIndex(): number {
     if (this.images.length === 0) return 0;
-    const lastIndex = parseInt(localStorage.getItem('loginImgIndex') ?? '-1', 10);
-    const nextIndex = (lastIndex + 1) % this.images.length;
+    const defaultSeed = this.carouselDirection === 'reverse' ? String(this.images.length) : '-1';
+    const lastIndex = parseInt(localStorage.getItem('loginImgIndex') ?? defaultSeed, 10);
+    const step = this.carouselDirection === 'reverse' ? -1 : 1;
+    const nextIndex = (lastIndex + step + this.images.length) % this.images.length;
     localStorage.setItem('loginImgIndex', String(nextIndex));
     return nextIndex;
   }
 
-  /** Inicia el carrusel cíclico cada 6 segundos con crossfade. */
+  /** Inicia el carrusel cíclico cada 6 segundos según la dirección configurada. */
   private startCarousel(): void {
     if (this.carouselTimer) clearInterval(this.carouselTimer);
     if (this.images.length <= 1) return;
+    const step = this.carouselDirection === 'reverse' ? -1 : 1;
     this.carouselTimer = setInterval(() => {
-      this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
+      this.currentImageIndex = (this.currentImageIndex + step + this.images.length) % this.images.length;
     }, 6000);
   }
 

@@ -199,18 +199,27 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
   confirmNewTypeNote(): void {
     const name = this.newTypeNoteName.trim();
     if (!name) return;
-    // id: null → cuando valueSetter lo asigne, idResource quedará null (int? válido para el backend)
-    this.typeNotesCatalog = [...this.typeNotesCatalog, { id: null, description: name }];
-    this._colDefs = [];
-    this.gridApi?.setGridOption('columnDefs', this.colDefs);
-    if (this.pendingTypeNoteNode) {
-      this.pendingTypeNoteNode.data.title      = name;
-      this.pendingTypeNoteNode.data.idResource = null;
-      if (!this.pendingTypeNoteNode.data.__isNew) this.pendingTypeNoteNode.data.__modified = true;
-      this.gridApi?.refreshCells({ rowNodes: [this.pendingTypeNoteNode] });
-      this.hasUnsavedChanges = true;
-    }
-    this.closeTypeNoteModal();
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    const payload = { type: 'TYPENOTE', idCompany: idRoot, description: name };
+    this.catalogService.addCatalog(payload).subscribe({
+      next: (saved: any) => {
+        const newItem = { id: saved.id, description: name };
+        this.typeNotesCatalog = [...this.typeNotesCatalog, newItem];
+        this._colDefs = [];
+        this.gridApi?.setGridOption('columnDefs', this.colDefs);
+        if (this.pendingTypeNoteNode) {
+          this.pendingTypeNoteNode.data.title      = name;
+          this.pendingTypeNoteNode.data.idResource = saved.id;
+          if (!this.pendingTypeNoteNode.data.__isNew) this.pendingTypeNoteNode.data.__modified = true;
+          this.gridApi?.refreshCells({ rowNodes: [this.pendingTypeNoteNode] });
+          this.hasUnsavedChanges = true;
+        }
+        this.closeTypeNoteModal();
+      },
+      error: (err) => {
+        console.error('Error al guardar tipo de nota:', err);
+      }
+    });
   }
 
   closeTypeNoteModal(): void {

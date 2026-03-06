@@ -1,5 +1,4 @@
 import { Component, effect } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
@@ -15,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { EMPTY, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
 import { ConventionsService } from 'app/services/conventions.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-side-bar',
@@ -515,6 +515,20 @@ error: (error) => {
       'Menu Side Bar',
       ''
     );
+  }
+
+  openProjects(event: Event) {
+    if (!this.selectedContractId || Number(this.selectedContractId) <= 0) {
+      event.preventDefault();
+      alerts.basicAlert(
+        'Contrato requerido',
+        'Hey debes de tener siempre un Contrato para una estimacion',
+        'warning'
+      );
+      return;
+    }
+
+    this.SmpSetup();
   }
 
   warehouseproc() {

@@ -273,7 +273,7 @@
           class="nav-link d-flex align-items-center"
           [routerLink]="['/projects']"
           routerLinkActive="active-link"
-          (click)="SmpSetup()"
+          (click)="openProjects($event)"
           [matTooltip]="isSidebarCollapsed ? ('projects' | translate) : ''"
           matTooltipPosition="right"    >
           <mat-icon>grading</mat-icon> <span>{{ "projects" | translate }}</span>

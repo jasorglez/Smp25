@@ -60,6 +60,17 @@ export class GeneratorsComponent implements OnChanges {
   constructor() { }
 
   ngOnInit() {
+    const selectedContract = this.signalsService.getContractSelectedBySidebar()();
+    if (!selectedContract || Number(selectedContract) <= 0) {
+      alerts.basicAlert(
+        'Contrato requerido',
+        'Hey debes de tener siempre un Contrato para una estimacion',
+        'warning'
+      );
+      this.treeData = [];
+      return;
+    }
+
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Acceso a Generadores',

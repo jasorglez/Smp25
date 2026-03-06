@@ -32,11 +32,17 @@ export class EstimatesComponent {
   constructor() {
     effect(() => {
       this.contract = this.signalsService.getContractSelectedBySidebar()();
-      this.obtenerDatos();
+      if (this.validateContractSelected()) {
+        this.obtenerDatos();
+      }
     });
   }
 
   ngOnInit() {
+    if (!this.validateContractSelected()) {
+      return;
+    }
+
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Acceso a Estimaciones',
@@ -69,6 +75,7 @@ export class EstimatesComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private contract = this.signalsService.getContractSelectedBySidebar()();
+  private hasShownContractWarning: boolean = false;
   private editableColumnOrder = ['number', 'typeMoney', 'dateStart', 'dateEnd', 'amountMX', 'amountDLL', 'type', 'comment'];
   private enterPressed: boolean = false;
   
@@ -99,6 +106,11 @@ export class EstimatesComponent {
   };
 
   obtenerDatos() {
+    if (!this.validateContractSelected()) {
+      this.rowData = [];
+      return;
+    }
+
     this.estimatesService
       .getEstimates(this.contract)
       .subscribe((data: any) => {
@@ -108,6 +120,28 @@ export class EstimatesComponent {
         console.error(error); // Manejo de error
         this.rowData = []; // Retornar un array vacío en caso de error
       });
+  }
+
+  private validateContractSelected(): boolean {
+    const contractSelected = this.signalsService.getContractSelectedBySidebar()();
+    const hasValidContract = !!contractSelected && Number(contractSelected) > 0;
+
+    if (hasValidContract) {
+      this.contract = contractSelected;
+      this.hasShownContractWarning = false;
+      return true;
+    }
+
+    if (!this.hasShownContractWarning) {
+      alerts.basicAlert(
+        'Contrato requerido',
+        'Hey debes de tener siempre un Contrato para una estimacion',
+        'warning'
+      );
+      this.hasShownContractWarning = true;
+    }
+
+    return false;
   }
 
   loadActivities() {

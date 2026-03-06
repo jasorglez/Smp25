@@ -728,8 +728,55 @@ export class SistemaComponent implements OnInit {
           return true;
         });
 
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i];
+        const shouldMergeByType = this.shouldMergeOnCopy(typeNote);
+        const itemsToCopy = shouldMergeByType
+          ? this.mergeSourceItemsByType(items, typeNote)
+          : items;
+
+        const destinationItemsMap = new Map<string, any>();
+        if (shouldMergeByType) {
+          const destinationResp: any = await new Promise((res, rej) =>
+            this.logbookService.getInfoByReporte(row.id, typeNote).subscribe({ next: res, error: rej }));
+          if (destinationResp?.success && destinationResp?.data?.length) {
+            for (const existingItem of destinationResp.data) {
+              const key = this.buildCopyKey(existingItem, typeNote);
+              if (key && !destinationItemsMap.has(key)) {
+                destinationItemsMap.set(key, existingItem);
+              }
+            }
+          }
+        }
+
+        for (let i = 0; i < itemsToCopy.length; i++) {
+          const item = itemsToCopy[i];
+
+          if (shouldMergeByType) {
+            const key = this.buildCopyKey(item, typeNote);
+            const existingItem = key ? destinationItemsMap.get(key) : null;
+            if (existingItem?.id) {
+              const payloadUpdate = {
+                idReporte:   row.id,
+                idProject:   row.idProject ?? null,
+                idPadre:     0,
+                typeNote,
+                date:        destDate,
+                orden:       existingItem.orden ?? i + 1,
+                quantity:    this.toQuantityNumber(existingItem.quantity) + this.toQuantityNumber(item.quantity),
+                description: existingItem.description ?? item.description ?? null,
+                supervisor:  item.supervisor ?? existingItem.supervisor ?? null,
+                position:    item.position ?? existingItem.position ?? null,
+                idResource:  existingItem.idResource ?? item.idResource ?? null,
+                imageUrl:    item.imageUrl ?? existingItem.imageUrl ?? null,
+                active:      1,
+              };
+              await new Promise((res, rej) =>
+                this.logbookService.updateDataForOt(existingItem.id, payloadUpdate).subscribe({ next: res, error: rej }));
+              existingItem.quantity = payloadUpdate.quantity;
+              totalCopied++;
+              continue;
+            }
+          }
+
           const payload = {
             idReporte:   row.id,
             idProject:   row.idProject ?? null,
@@ -745,8 +792,19 @@ export class SistemaComponent implements OnInit {
             imageUrl:    item.imageUrl    ?? null,
             active:      1,
           };
-          await new Promise((res, rej) =>
+          const addResp: any = await new Promise((res, rej) =>
             this.logbookService.addDataForOt(payload).subscribe({ next: res, error: rej }));
+
+          if (shouldMergeByType) {
+            const key = this.buildCopyKey(item, typeNote);
+            if (key) {
+              destinationItemsMap.set(key, {
+                ...payload,
+                id: addResp?.id ?? null,
+              });
+            }
+          }
+
           totalCopied++;
         }
       }
@@ -803,5 +861,52 @@ export class SistemaComponent implements OnInit {
     if (!dateStr) return '';
     const [y, m, d] = String(dateStr).substring(0, 10).split('-');
     return d && m && y ? `${d}/${m}/${y}` : dateStr;
+  }
+
+  private shouldMergeOnCopy(typeNote: string): boolean {
+    return typeNote === 'MATERIAL' || typeNote === 'PERSONAL' || typeNote === 'EQUIPMENT';
+  }
+
+  private buildCopyKey(item: any, typeNote: string): string {
+    if (typeNote === 'PERSONAL') {
+      const position = String(item?.position ?? '').trim().toLowerCase();
+      if (position) return `position:${position}`;
+    }
+
+    const idResource = item?.idResource;
+    if (idResource !== null && idResource !== undefined && String(idResource).trim() !== '') {
+      return `id:${idResource}`;
+    }
+
+    const description = String(item?.description ?? '').trim().toLowerCase();
+    return description ? `desc:${description}` : '';
+  }
+
+  private toQuantityNumber(value: any): number {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  private mergeSourceItemsByType(items: any[], typeNote: string): any[] {
+    const grouped = new Map<string, any>();
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const key = this.buildCopyKey(item, typeNote) || `row:${i}`;
+      const existing = grouped.get(key);
+
+      if (!existing) {
+        grouped.set(key, { ...item });
+        continue;
+      }
+
+      existing.quantity = this.toQuantityNumber(existing.quantity) + this.toQuantityNumber(item.quantity);
+      if (!existing.idResource && item.idResource) existing.idResource = item.idResource;
+      if (!existing.description && item.description) existing.description = item.description;
+      if (!existing.position && item.position) existing.position = item.position;
+      if (!existing.supervisor && item.supervisor) existing.supervisor = item.supervisor;
+    }
+
+    return Array.from(grouped.values());
   }
 }
