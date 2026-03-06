@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.00 (05 Marzo 2026 20:44) - Ares PDF Convention Fix',
+  version: '6.00 (05 03 26 22:59) - https://www.youtube.com/@joseangelsoriano3972/videos ',
 };
 
 

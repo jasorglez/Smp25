@@ -71,9 +71,11 @@ export class ComploginComponent implements OnInit, OnDestroy {
   idBranch: number;
 
   valorcapturado = '' ;
+  loginCardPositionClass = 'corner-top-left';
 
 
   ngOnInit(): void {
+    this.setRandomCardPosition();
     this.loadLoginBackgroundImages();
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -100,6 +102,12 @@ export class ComploginComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  private setRandomCardPosition(): void {
+    const positions = ['corner-top-left', 'corner-top-right', 'corner-bottom-left', 'corner-bottom-right'];
+    const randomIndex = Math.floor(Math.random() * positions.length);
+    this.loginCardPositionClass = positions[randomIndex];
   }
 
   /** Determina el índice de inicio (avanza secuencialmente, persiste en localStorage). */

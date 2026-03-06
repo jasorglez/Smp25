@@ -60,17 +60,37 @@ $transition: 0.25s $ease;
 
 // ─── Layout wrapper ───────────────────────────────────────────────────────────
 .login-wrapper {
-  position: relative;
+  position: fixed;
+  inset: 0;
   z-index: 1;
-  min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 1.5rem;
+  pointer-events: none;
+}
+
+.login-wrapper.corner-top-left {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.login-wrapper.corner-top-right {
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.login-wrapper.corner-bottom-left {
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.login-wrapper.corner-bottom-right {
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
 .login-card {
+  pointer-events: auto;
   width: 100%;
   max-width: 410px;
   background: $surface;
@@ -445,6 +465,12 @@ $transition: 0.25s $ease;
 
 // ─── Responsive ───────────────────────────────────────────────────────────────
 @media (max-width: 480px) {
+  .login-wrapper {
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
   .login-card {
     padding: 2rem 1.4rem 1.75rem;
     border-radius: 18px;
