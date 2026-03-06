@@ -8,10 +8,11 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { WarehousesService } from 'app/services/warehouses.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { PermitionsService } from 'app/services/permitions.service';
+import { EmployeesService } from 'app/services/employees.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { AuthService } from 'app/services/auth.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxjs';
 import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
 import { PermissionsViewByUserComponent } from './detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
@@ -75,6 +76,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   private trackingService = inject(TrackingService);
   private rolesService = inject(RolesService);
   private permitionsService = inject(PermitionsService);
+  private employeeService = inject(EmployeesService);
   private modalService = inject(ModalService);
   authService = inject(AuthService);
 
@@ -104,6 +106,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   warehousesMap: { [key: string]: string } = {};
 
   private tempIdCounter: number = 0;
+  empleadoPrincipal: any = null;
 
   warehousesGridOptions: any = {
     headerHeight: 25,
@@ -136,7 +139,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         filter: 'agNumberColumnFilter',
         hide: true,
       },
-      // ✅ Principal ANTES de Departamento
+      // ✅ Principal ANTES de Departamento (selección exclusiva: solo una fila marcada)
       {
         field: 'principal',
         headerName: 'Principal',
@@ -144,8 +147,42 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         editable: true,
         cellEditor: 'agCheckboxCellEditor',
         cellRenderer: 'agCheckboxCellRenderer',
+        valueGetter: (params: any) => {
+          // Si la fila viene con principal del backend, mostrarla marcada
+          if (params.data.principal === true || params.data.principal === 1) return true;
+          if (!this.empleadoPrincipal) return false;
+          return params.data.idRole == this.empleadoPrincipal.idDepto &&
+                 params.data.idPosicion == this.empleadoPrincipal.idPosition;
+        },
         valueSetter: (params: any) => {
-          params.data.principal = params.newValue;
+          const newValue = !!params.newValue;
+          params.data.principal = newValue;
+
+          if (newValue) {
+            if (params.data.idRole == null || params.data.idPosicion == null) {
+              alerts.basicAlert(
+                'Principal',
+                'Debe seleccionar Departamento y Posición en esta fila antes de marcarla como principal.',
+                'warning'
+              );
+              params.data.principal = false;
+              return false;
+            }
+            // Solo actualizar el estado visual (principal es solo visual, no se guarda en backend)
+            this.empleadoPrincipal = {
+              idDepto: params.data.idRole,
+              idPosition: params.data.idPosicion,
+            };
+          } else {
+            this.empleadoPrincipal = null;
+          }
+
+          // Refrescar la columna Principal para que los checkboxes se redibujen
+          setTimeout(() => {
+            if (this.warehousesGridApi) {
+              this.warehousesGridApi.refreshCells({ columns: ['principal'], force: true });
+            }
+          }, 0);
           return true;
         }
       },
@@ -348,12 +385,44 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   }
 
   obternerDatos() {
-    this.permitionsService.getRolYPosicion(this.userId, this.branchId).subscribe(
-      (data: any) => {
-        console.log(data);
-        this.warehousesRowData = data;
-      }
-    );
+    forkJoin({
+      permisos: this.permitionsService.getRolYPosicion(this.userId, this.branchId),
+      empleados: this.employeeService.getEmployees(this.branchId)
+    }).subscribe({
+      next: ({ permisos, empleados }: any) => {
+        const permisosArr = Array.isArray(permisos) ? permisos : [];
+        const empleadosArr = Array.isArray(empleados) ? empleados : [];
+
+        this.warehousesRowData = permisosArr;
+
+        // 1) Si el backend envía una fila con principal === true/1, usarla para marcar el checkbox
+        const rowPrincipal = permisosArr.find((r: any) => r.principal === true || r.principal === 1);
+        if (rowPrincipal && rowPrincipal.idRole != null && rowPrincipal.idPosicion != null) {
+          this.empleadoPrincipal = {
+            idDepto: rowPrincipal.idRole,
+            idPosition: rowPrincipal.idPosicion,
+          };
+        } else {
+          // 2) Fallback: buscar empleado por nombre (soporta idDepto/idRole e idPosition/idPosicion)
+          const emp = empleadosArr.find(
+            (e: any) => (e.name?.toUpperCase() || e.displayName?.toUpperCase()) === this.userName?.toUpperCase()
+          );
+          if (emp && (emp.idDepto != null || emp.idRole != null) && (emp.idPosition != null || emp.idPosicion != null)) {
+            this.empleadoPrincipal = {
+              idDepto: emp.idRole ?? emp.idDepto,
+              idPosition: emp.idPosition ?? emp.idPosicion,
+            };
+          } else {
+            this.empleadoPrincipal = null;
+          }
+        }
+
+        setTimeout(() => {
+          if (this.warehousesGridApi) this.warehousesGridApi.refreshCells({ force: true });
+        }, 100);
+      },
+      error: (err) => console.error('Error cargando datos de departamentos:', err)
+    });
   }
 
   async loadCatalogs() {}
@@ -370,6 +439,10 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   }
 
   onWarehousesCellValueChanged(event: any) {
+    // No marcar como modificado si solo cambió Principal (es solo visual; evitar DELETE+POST innecesario)
+    const colId = event.column?.getColId();
+    if (colId === 'principal') return;
+
     if (!event.data.__isNew) {
       event.data.__modified = true;
     }
@@ -450,8 +523,13 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     });
 
     const updateObservables = modifiedRows.flatMap((row) => {
-      const originalRole = row.__originalIdRole || row.idRole;
-      const originalPosicion = row.__originalIdPosicion || row.idPosicion;
+      const originalRole = row.__originalIdRole ?? row.idRole;
+      const originalPosicion = row.__originalIdPosicion ?? row.idPosicion;
+
+      // Si no cambió realmente Departamento ni Posición, no hacer DELETE+POST (evita 500)
+      if (originalRole === row.idRole && originalPosicion === row.idPosicion) {
+        return [];
+      }
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -465,6 +543,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       );
       const cleanedData = this.cleanDataForServer(row);
       delete cleanedData.posicionesDisponibles;
+      // No enviar id para que el backend cree un registro nuevo (evita duplicate key)
+      delete cleanedData.id;
       const createNew$ = this.permitionsService.addPermitionsDetailBydescription(cleanedData);
 
       return [deleteOld$, createNew$];
@@ -504,7 +584,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
-        this.permitionsService.deleteRoles(this.userId, this.branchId, idRole, idPosicion).pipe(
+        this.permitionsService.deleteRolesBydescription(this.userId, this.branchId, idRole, idPosicion).pipe(
           catchError((error) => {
             alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
             console.error(error);
@@ -532,6 +612,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     delete cleanedData.__modified;
     delete cleanedData.__originalIdRole;
     delete cleanedData.__originalIdPosicion;
+    delete cleanedData.principal;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

@@ -8,7 +8,8 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
+import { EmployeesService } from 'app/services/employees.service';
 import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 
 @Component({
@@ -73,6 +74,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);
   private trackingService = inject(TrackingService);
+  private employeeService = inject(EmployeesService);
 
   params: any;
   userId: number;
@@ -222,7 +224,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   loadBranchesData() {
     this.branchesService.getBranchesByUserAndCompany(this.userId, this.companyId).subscribe(
       (data: any) => {
-        this.branchesRowData = (data.project || []).map((row: any) => ({
+        const rows = (data.project || []).map((row: any) => ({
           ...row,
           idPermission: row.idPermission || row.idBranch || row.id,
           idUser: this.userId,
@@ -236,11 +238,48 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
           this.trackingService.getEmail()
         );
 
-        setTimeout(() => {
-          if (this.branchesGridApi && this.branches.length > 0) {
-            this.branchesGridApi.refreshCells();
+        if (rows.length === 0) {
+          this.branchesRowData = [];
+          return;
+        }
+
+        // Build a map of unique branchId -> employees observable (errors return empty array)
+        const uniqueBranchIds: number[] = [...new Set<number>(rows.map((r: any) => r.idPermission as number))];
+        const employeeRequests: Record<string, any> = {};
+        uniqueBranchIds.forEach((branchId: number) => {
+          employeeRequests[String(branchId)] = this.employeeService.getEmployees(branchId).pipe(
+            catchError(() => of([]))
+          );
+        });
+
+        forkJoin(employeeRequests).subscribe({
+          next: (employeesByBranch: any) => {
+            this.branchesRowData = rows.map((row: any) => {
+              const employees: any[] = Array.isArray(employeesByBranch[String(row.idPermission)])
+                ? employeesByBranch[String(row.idPermission)]
+                : [];
+              const empleado = employees.find(
+                (e: any) => e.name?.toUpperCase() === this.userName?.toUpperCase()
+              );
+              return {
+                ...row,
+                principal: empleado
+                  ? row.idRole == empleado.idDepto && row.idPosicion == empleado.idPosition
+                  : false
+              };
+            });
+
+            setTimeout(() => {
+              if (this.branchesGridApi && this.branches.length > 0) {
+                this.branchesGridApi.refreshCells();
+              }
+            }, 100);
+          },
+          error: (err) => {
+            console.error('Error cargando empleados para sucursales:', err);
+            this.branchesRowData = rows;
           }
-        }, 100);
+        });
       },
       (error) => {
         if (error.status == 404) this.branchesRowData = [];
