@@ -703,7 +703,7 @@ export class SistemaComponent implements OnInit {
     const typeLabels = types.map(t => this.typeLabel(t)).join(', ');
     const result = await alerts.confirmAlert(
       'Copiar del día anterior',
-      `Se copiará <b>${typeLabels}</b> del <b>${this.fmtDateMx(prevReport.date)}</b> al <b>${this.fmtDateMx(row.date)}</b>.\n\nLos registros existentes no se eliminarán.`,
+      `Se copiará ${typeLabels} del ${this.fmtDateMx(prevReport.date)} al ${this.fmtDateMx(row.date)}.\n\nLos registros existentes no se eliminarán.`,
       'question',
       'Copiar'
     );
@@ -719,12 +719,21 @@ export class SistemaComponent implements OnInit {
 
         if (!resp?.success || !resp?.data?.length) continue;
 
-        const items: any[] = resp.data;
+        // Filtrar filas vacías según el tipo
+        const allItems: any[] = resp.data;
+        const items = allItems.filter(item => {
+          if (typeNote === 'PERSONAL')  return !!(item.position?.trim());
+          if (typeNote === 'MATERIAL')  return !!(item.description?.trim());
+          if (typeNote === 'EQUIPMENT') return !!(item.description?.trim());
+          return true;
+        });
+
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           const payload = {
             idReporte:   row.id,
             idProject:   row.idProject ?? null,
+            idPadre:     0,
             typeNote,
             date:        destDate,
             orden:       i + 1,
@@ -734,7 +743,7 @@ export class SistemaComponent implements OnInit {
             position:    item.position    ?? null,
             idResource:  item.idResource  ?? null,
             imageUrl:    item.imageUrl    ?? null,
-            active:      true,
+            active:      1,
           };
           await new Promise((res, rej) =>
             this.logbookService.addDataForOt(payload).subscribe({ next: res, error: rej }));

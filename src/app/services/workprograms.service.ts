@@ -54,8 +54,9 @@ export class WorkprogramsService {
   }
 
 
-  getConceptsHierarchy(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/concepts-hierarchy?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  getConceptsHierarchy(id: number, idConvention?: number | null): Observable<any[]> {
+    const conventionParam = idConvention != null ? `&idConvention=${idConvention}` : '';
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/concepts-hierarchy?idProject=${id}${conventionParam}`, { headers: this.trackingService.getHeaders() });
   }
 
   getConceptsBySubpartida(id: number): Observable<any[]> {

@@ -62,8 +62,9 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
   private loadSubpartidas(): void {
     const idProject = this.reportData?.idProject;
     if (!idProject) return;
-    
-    this.workprogramsService.getConceptsHierarchy(idProject).subscribe({
+    const idConvention = this.reportData?.idConvention ?? null;
+
+    this.workprogramsService.getConceptsHierarchy(idProject, idConvention).subscribe({
       next: (data: any[]) => {
         this.subpartidasMap.clear();
         this.conceptOptions = [];
