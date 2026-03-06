@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.99 (05 Marzo 2026 20:30) - Ares Conceptos Convention+SubpartidaId Fix',
+  version: '6.00 (05 Marzo 2026 20:44) - Ares PDF Convention Fix',
 };
 
 

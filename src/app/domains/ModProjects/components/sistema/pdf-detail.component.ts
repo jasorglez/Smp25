@@ -207,8 +207,9 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       this.loadingMsg = 'Cargando datos del reporte...';
       const safe = async (obs: any) => { try { return await lastValueFrom(obs); } catch { return null; } };
 
-      const report    = this.reportData;
-      const projectId = report?.idProject ?? null;
+      const report       = this.reportData;
+      const projectId    = report?.idProject   ?? null;
+      const idConvention = report?.idConvention ?? null;
 
       const [rootResp, notasR, personalR, materialR, equiposR, fotosR, conceptsR, conceptosBitacoraR, wpFlatR] = await Promise.all([
         safe(this.rootService.getRootbyId(idRoot)),
@@ -217,7 +218,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
         reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'MATERIAL'))  : null,
         reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'EQUIPMENT')) : null,
         reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'Photo'))     : null,
-        projectId  ? safe(this.workprogramsService.getConceptsHierarchy(projectId))    : null,
+        projectId  ? safe(this.workprogramsService.getConceptsHierarchy(projectId, idConvention)) : null,
         reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'CONCEPTO'))  : null,
         projectId  ? safe(this.workprogramsService.getWorkPrograms(projectId, 'Project')) : null,
       ]);
