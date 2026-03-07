@@ -56,5 +56,10 @@ export class PermitionsService {
   }
   deleteRoles(idUser: number, idBranch: number, idRole:number, idPosicion:number): Observable<any> {
     return this.http.delete(`${environment.urlSecurity}/CrudPremissionsDelison/${idUser}/${idBranch}/${idRole}/${idPosicion}`, { headers: this.trackingService.getHeaders() });
- }
+  }
+
+  /** DELETE solo en PermissionBydescription (p. ej. pantalla Departamentos). No requiere registros en CrudPermissions. */
+  deleteRolesBydescription(idUser: number, idBranch: number, idRole: number, idPosicion: number): Observable<any> {
+    return this.http.delete(`${environment.urlSecurity}/CrudPremissionsDelison/bydescription/${idUser}/${idBranch}/${idRole}/${idPosicion}`, { headers: this.trackingService.getHeaders() });
+  }
 }

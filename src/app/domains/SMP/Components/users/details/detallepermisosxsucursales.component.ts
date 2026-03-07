@@ -242,7 +242,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           cellEditor: 'agCheckboxCellEditor',
           cellRenderer: 'agCheckboxCellRenderer',
           valueGetter: (params: any) => {
-            return params.data.advanced !== null && params.data.advanced !== undefined;
+            const sidebarBranchId = this.signalsService.getBranchSelectedBySidebar()();
+            return params.data.idPermission === sidebarBranchId;
           },
           valueSetter: (params: any) => {
             params.data.advanced = params.newValue ? 1 : null;
@@ -337,10 +338,11 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
         (data: any) => {
           console.log('🔴 RAW data.project:', data.project);
 
+          const sidebarBranchId = this.signalsService.getBranchSelectedBySidebar()();
           this.permissionsRowData = (data.project || []).map((row: any) => ({
             ...row,
             idPermission: row.idPermission || row.idBranch || row.id,
-            principal: row.advanced !== null && row.advanced !== undefined
+            principal: (row.idPermission || row.idBranch || row.id) === sidebarBranchId
           }));
 
           console.log('🟢 permissionsRowData mapeado:', this.permissionsRowData);

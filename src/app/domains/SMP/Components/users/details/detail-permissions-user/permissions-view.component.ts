@@ -316,9 +316,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   onCrudChange(permission: CrudPermission) {
-    // El switch (canRead) y los checkboxes son independientes
-    // Solo si se apaga el switch se ocultan los checkboxes visualmente (via *ngIf en HTML)
-    // pero sus valores no se modifican desde aquí
+    // Al activar el switch de una tarjeta gris (submenú): activar tarjeta de arriba + master y marcar Crear/Actualizar/Borrar por defecto
+    if (permission.canRead && this.detailSeleccionado && this.masterSeleccionado) {
+      this.detailSeleccionado.detailedRead = true;
+      this.masterSeleccionado.masterRead = true;
+      permission.canCreate = true;
+      permission.canUpdate = true;
+      permission.canDelete = true;
+    }
     this.checkForChanges();
   }
 
