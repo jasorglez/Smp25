@@ -1,0 +1,91 @@
+<div *ngIf="visible" class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.5); z-index:1055;">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <!-- Header -->
+      <div class="modal-header bg-primary text-white py-2">
+        <div>
+          <h6 class="modal-title mb-0">
+            <i class="bi bi-calculator me-1"></i> Analisis de Precios Unitarios
+          </h6>
+          <small class="opacity-75">{{ taskName }}</small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="close()"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body p-2">
+
+        <!-- Tabs PERSONAL / MATERIAL / EQUIPO -->
+        <ul class="nav nav-tabs mb-2">
+          <li class="nav-item" *ngFor="let t of types">
+            <button class="nav-link" [class.active]="activeType === t.key" (click)="setType(t.key)">
+              <i class="bi" [class]="t.icon"></i> {{ t.label }}
+              <span class="badge bg-secondary ms-1">{{ countByType(t.key) }}</span>
+            </button>
+          </li>
+        </ul>
+
+        <!-- Toolbar -->
+        <div class="d-flex gap-2 mb-2">
+          <button class="btn btn-sm btn-success" (click)="addRow()">
+            <i class="bi bi-plus-lg"></i> Agregar
+          </button>
+          <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges">
+            <i class="bi bi-floppy"></i> Guardar
+            <span *ngIf="hasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+          </button>
+          <button class="btn btn-sm btn-warning" (click)="revertChanges()">
+            <i class="bi bi-arrow-clockwise"></i> Deshacer
+          </button>
+          <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="!selectedRow">
+            <i class="bi bi-trash"></i> Borrar
+          </button>
+
+          <div class="ms-auto d-flex align-items-center gap-3">
+            <div class="text-muted small">
+              Total APU (aplicado):
+              <strong class="text-primary fs-6">{{ appliedTotal | currency:'MXN':'symbol':'1.2-2' }}</strong>
+            </div>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" id="chkApplyAll"
+                     [checked]="allApplied" (change)="toggleApplyAll($event)">
+              <label class="form-check-label small" for="chkApplyAll">Aplicar todos al costo</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid -->
+        <ag-grid-angular
+          class="ag-theme-quartz"
+          style="height:320px; width:100%;"
+          [rowData]="displayRows"
+          [columnDefs]="colDefs"
+          [defaultColDef]="defaultColDef"
+          [rowClassRules]="rowClassRules"
+          (gridReady)="onGridReady($event)"
+          (cellValueChanged)="onCellValueChanged($event)"
+          (selectionChanged)="onSelectionChanged($event)"
+          rowSelection="single"
+          [stopEditingWhenCellsLoseFocus]="true">
+        </ag-grid-angular>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer py-2 justify-content-between">
+        <div class="text-muted small">
+          <i class="bi bi-info-circle me-1"></i>
+          Activa <strong>Aplicar al costo</strong> por fila para actualizar el costo del concepto en el Gantt.
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-secondary" (click)="close()">Cerrar</button>
+          <button class="btn btn-sm btn-success" (click)="applyToConcept()" [disabled]="appliedTotal === 0">
+            <i class="bi bi-check2-circle me-1"></i> Aplicar al Concepto ({{ appliedTotal | currency:'MXN':'symbol':'1.2-2' }})
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

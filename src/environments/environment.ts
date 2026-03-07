@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.00(06/03/26 06:22)-https://www.youtube.com/@joseangelsoriano3972/videos',
+  version: '6.01 (07/03/26 16:22)-https://www.youtube.com/@joseangelsoriano3972/videos',
 };
 
 

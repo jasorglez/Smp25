@@ -75,6 +75,13 @@ export class MaterialsService {
     );
   }
 
+  getMaterialsForApu(id: number) {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Material/for-apu?idCompany=${id}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getMaterialsByNameOrBarcode(
     idCompany: number,
     nameOrBarcode: string

@@ -1,12 +1,14 @@
 import { Component, effect, HostListener, inject, NgZone } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
 import { gantt } from 'dhtmlx-gantt';
 import { Observable, catchError, finalize, forkJoin, lastValueFrom, map, of } from 'rxjs';
 import { AuxiliarsComponent } from './auxiliars/auxiliars.component';
 import { MaterialsComponent } from './materials/materials.component';
 import { PersonalComponent } from './personal/personal.component';
 import { EquipmentComponent } from './equipment/equipment.component';
+import { WorkprogramApuComponent } from './apu/workprogram-apu.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -16,7 +18,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-workprograms',
   standalone: true,
-  imports: [CommonModule, FormsModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent],
+  imports: [CommonModule, FormsModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent, WorkprogramApuComponent],
   templateUrl: './workprograms.component.html',
   styleUrl: './workprograms.component.scss'
 })
@@ -33,6 +35,7 @@ export class WorkprogramsComponent {
   }
 
   private workprogramsService = inject(WorkprogramsService);
+  private apuService          = inject(WorkprogramApuService);
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
@@ -62,6 +65,11 @@ export class WorkprogramsComponent {
   showNewFaseModal: boolean = false;
   newFaseDescription: string = '';
 
+  // APU modal
+  showApuModal    = false;
+  apuIdWorkprogram: number | null = null;
+  apuTaskName     = '';
+
   showNewMedidaModal: boolean = false;
   newMedidaDescription: string = '';
 
@@ -69,6 +77,13 @@ export class WorkprogramsComponent {
     // Exponer funciones globales para los botones "+" dentro del lightbox del gantt (fuera de la zona Angular)
     (window as any).__openNewFaseModal = () => {
       this.ngZone.run(() => { this.showNewFaseModal = true; });
+    };
+    (window as any).__openApuModal = (idEntry: number, taskName: string) => {
+      this.ngZone.run(() => {
+        this.apuIdWorkprogram = idEntry;
+        this.apuTaskName      = taskName;
+        this.showApuModal     = true;
+      });
     };
     (window as any).__openNewMedidaModal = () => {
       this.ngZone.run(() => { this.showNewMedidaModal = true; });
@@ -482,6 +497,14 @@ export class WorkprogramsComponent {
 
     gantt.config.columns = [
       { name: "add", label: "", width: 44 },
+      {
+        name: "apu_btn", label: lbl("APU"), width: 48,
+        template: (task) => {
+          if (!task['idEntry']) return '';
+          return `<button onclick="event.stopPropagation(); window.__openApuModal(${task['idEntry']}, '${(task.text || '').replace(/'/g, "\\'")}')"
+            style="font-size:10px; padding:1px 5px; background:#0d6efd; color:#fff; border:none; border-radius:3px; cursor:pointer;" title="Análisis de Precios Unitarios">$ APU</button>`;
+        }
+      },
       { name: "activity",   label: lbl("Actividad"),       width: 60,  template: (task) => `<span style="font-size:11px;">${task['activity'] || ''}</span>` },
       { name: "text",       label: lbl("Nombre de la tarea"), tree: true, width: 400, template: (task) => `<span style="font-size:11px;">${task.text}</span>` },
       {
@@ -1211,6 +1234,24 @@ export class WorkprogramsComponent {
   closeNewFaseModal() {
     this.showNewFaseModal = false;
     this.newFaseDescription = '';
+  }
+
+  // ── Modal APU ───────────────────────────────────────────────────────────────
+
+  onApuCostUpdated(newCost: number): void {
+    if (!this.apuIdWorkprogram) return;
+    // Actualiza costMX en el registro del Gantt que corresponde al idEntry
+    const tasks = gantt.getTaskByTime();
+    const task = tasks.find(t => t['idEntry'] === this.apuIdWorkprogram);
+    if (task) {
+      task['costMX'] = newCost;
+      gantt.updateTask(task.id);
+      this.scheduleParentUpdate(task.parent);
+      this.notSavedChanges = true;
+    }
+    // Persiste en BD
+    this.workprogramsService.updateWorkProgram(this.apuIdWorkprogram, { costMX: newCost }).subscribe();
+    this.showApuModal = false;
   }
 
   async saveNewFase() {

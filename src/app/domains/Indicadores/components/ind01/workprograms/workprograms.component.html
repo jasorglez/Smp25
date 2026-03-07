@@ -64,6 +64,15 @@
 </div>
 <div class="modal-backdrop fade show" *ngIf="showNewFaseModal" style="z-index: 19999;"></div>
 
+<!-- Modal APU -->
+<app-workprogram-apu
+  [visible]="showApuModal"
+  [idWorkprogram]="apuIdWorkprogram"
+  [taskName]="apuTaskName"
+  (closed)="showApuModal = false"
+  (costUpdated)="onApuCostUpdated($event)">
+</app-workprogram-apu>
+
 <!-- Controles de Zoom -->
 <div class="row mb-3">
     <div class="col text-right d-flex align-items-center justify-content-end gap-3">
