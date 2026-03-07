@@ -851,10 +851,21 @@ export class ExpenditureComponent {
         }
       },
       {
-        field: 'status',
+        field: 'deliveryStatus',
         headerName: 'Estatus',
         editable: true,
-        width: 100,
+        width: 110,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['ENTREGADA', 'PENDIENTE', 'N/A']
+        }
+      },
+      {
+        field: 'status',
+        headerName: 'Estatus de pago',
+        editable: true,
+        width: 120,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada']
@@ -1052,6 +1063,7 @@ export class ExpenditureComponent {
       modifiedBy: null,
       modifiedAt: new Date().toISOString(),
       status: "Pagada",
+      deliveryStatus: "N/A",
       active: true,
       __isNew: true,
       visible: true,
