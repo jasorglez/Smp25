@@ -31,6 +31,8 @@ import { CommonModule } from '@angular/common';
 import { FamilyModalService } from './services/family-modal.service';
 import { SubfamilyModalService } from './services/subfamily-modal.service';
 import { MeasureModalService } from './services/measure-modal.service';
+import { MaterialDetailRendererComponent } from './material-detail-renderer.component';
+import { PdfMaterialsDistributionComponent } from './pdf-materials-distribution.component';
 
 @Component({
   selector: 'custom-group-renderer',
@@ -92,7 +94,7 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
   templateUrl: './materials.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {
@@ -139,6 +141,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private subfamilyModalService = inject(SubfamilyModalService);
   private measureModalService = inject(MeasureModalService);
   private isOpen: boolean = false;
+
+  showPdfReport: boolean = false;
+  showPdfMoneyReport: boolean = false;
+  private savedRowData: any[] | null = null;
 
   // Variables para modal de familia
   showFamilyModal: boolean = false;
@@ -310,11 +316,15 @@ export class MaterialsComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 50,
     rowHeight: 20,
-    groupDefaultExpanded: -1, // -1 significa expandir todos los niveles
+    groupDefaultExpanded: -1,
     suppressDragLeaveHidesColumns: true,
     suppressMakeColumnVisibleAfterUnGroup: true,
     rowBuffer: 20,
-    masterDetail: false, // No master-detail por ahora
+    // Full-width row para distribución
+    isFullWidthRow: (params: any) => !!params.rowNode.data?.__isDistDetail,
+    fullWidthCellRenderer: MaterialDetailRendererComponent,
+    getRowHeight: (params: any) => params.node.data?.__isDistDetail ? 420 : 20,
+    context: { componentParent: this },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -681,7 +691,37 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Código de Barras',
         editable: true,
         width: 150,
+        valueFormatter: (params: any) => (params.value === 'N/A' || params.value === 'n/a') ? '' : (params.value || ''),
       },
+
+      {
+        field: 'quantity',
+        headerName: 'Cantidad',
+        editable: true,
+        width: 90,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        valueParser: (params: any) => Number(params.newValue),
+        valueFormatter: (params: any) => params.value != null ? Number(params.value).toFixed(4) : '0.0000',
+      },
+
+          {
+        headerName: 'Dist.',
+        width: 60,
+        editable: false,
+        cellStyle: { textAlign: 'center', cursor: 'pointer' },
+        cellRenderer: (params: any) => {
+          const isNew = typeof params.data?.id === 'string';
+          return isNew
+            ? `<span style="color:#ccc;font-size:1rem;"><i class="bi bi-calendar3"></i></span>`
+            : `<span title="Distribución" style="color:#0d6efd;font-size:1rem;"><i class="bi bi-calendar3"></i></span>`;
+        },
+        onCellClicked: (params: any) => {
+          if (typeof params.data?.id === 'string') return;
+          this.toggleDetail(params.node);
+        },
+      },
+
       {
         field: 'existencia',
         headerName: 'Existencia',
@@ -715,6 +755,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         editable: true,
         width: 120,
       },
+
       {
         field: 'picture',
         headerName: 'Imagen',
@@ -726,6 +767,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
         width: 80,
       },
+  
     ];
 
     return this._colMaster;
@@ -750,6 +792,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   addMasterRow() {
+    // Si hay una distribución abierta, cerrarla primero
+    if (this.savedRowData) {
+      this.rowData = [...this.savedRowData];
+      this.savedRowData = null;
+      this.gridApi?.setGridOption('rowData', this.rowData);
+    }
     const tempId = `temp_${this.tempIdCounter++}`;
 
     // Obtener familia por defecto y filtrar subfamilias
@@ -777,6 +825,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       typeMaterial: 'CONSUMABLE',
       stockMin: 1,
       stockMax: 30,
+      quantity: 0,
       active: true,
       __isNew: true,
     };
@@ -841,20 +890,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
           (row) => !row.id || row.id.toString().startsWith('temp_')
         );
 
-       /* if (response && response.id && correspondingNewRow) {
-          //console.log(response)
-
-          try {
-          } catch (permError) {
-            console.error('Error asignando permiso:', permError);
-            // Opcional: Mostrar alerta pero no interrumpir el flujo principal
-            alerts.basicAlert(
-              'Advertencia',
-              'Se creó la sucursal pero hubo un problema asignando los permisos.',
-              'warning'
-            );
-          }
-        }*/
       }
 
       // Determinar qué ID vamos a seleccionar después de recargar
@@ -1160,6 +1195,57 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.renderer.removeChild(document.body, this.tooltipElement);
       this.tooltipElement = null;
     }
+  }
+
+  // ==================== CASCADA DISTRIBUCIÓN (full-width row) ====================
+
+  toggleDetail(node: any) {
+    if (!this.gridApi) return;
+
+    // Si ya hay una distribución abierta para esta misma fila → cerrar
+    const existing = this.rowData.find(r => r.__isDistDetail);
+    if (existing && existing.__materialId === node.data.id) {
+      this.collapseDetail();
+      return;
+    }
+
+    // Si hay distribución de otra fila abierta → restaurar primero
+    if (this.savedRowData) {
+      this.rowData = [...this.savedRowData];
+      this.savedRowData = null;
+    }
+
+    this.savedRowData = [...this.rowData];
+
+    const distRow = {
+      __isDistDetail: true,
+      __materialId:   node.data.id,
+      idCompany:      node.data.idCompany ?? this.idcompany,
+      description:    node.data.materialDescription || node.data.description || '',
+      unit:           node.data.unidadDescription || '',
+      quantity:       Number(node.data.quantity || 0),
+      id:             `__dist_${node.data.id}`,
+    };
+
+    const idx = this.rowData.findIndex(r => r.id === node.data.id);
+    this.rowData = [
+      this.rowData[idx],
+      distRow,
+    ];
+    this.gridApi.setGridOption('rowData', this.rowData);
+  }
+
+  collapseDetail() {
+    if (!this.savedRowData || !this.gridApi) return;
+    this.rowData = this.savedRowData;
+    this.savedRowData = null;
+    this.gridApi.setGridOption('rowData', this.rowData);
+  }
+
+  // ==================== PDF REPORTE GENERAL ====================
+
+  togglePdfReport() {
+    this.showPdfReport = !this.showPdfReport;
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

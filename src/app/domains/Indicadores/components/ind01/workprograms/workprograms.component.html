@@ -68,10 +68,44 @@
 <app-workprogram-apu
   [visible]="showApuModal"
   [idWorkprogram]="apuIdWorkprogram"
+  [idContract]="idContract"
   [taskName]="apuTaskName"
   (closed)="showApuModal = false"
   (costUpdated)="onApuCostUpdated($event)">
 </app-workprogram-apu>
+
+<!-- Modal Distribución Mensual (por tarea) -->
+<app-workprogram-distribution
+  [visible]="showDistModal"
+  [idWorkprogram]="distIdWorkprogram"
+  [idCompany]="idcompany"
+  [taskName]="distTaskName"
+  [taskQuantity]="distTaskQuantity"
+  (closed)="showDistModal = false">
+</app-workprogram-distribution>
+
+<!-- Modal Distribución Completa (todas las tareas) -->
+<app-workprogram-distribution-full
+  [visible]="showFullDistModal"
+  [idCompany]="idcompany"
+  [idProject]="idProject"
+  [idContract]="idContract"
+  [idConvention]="idConvention"
+  [typeWorkProgram]="typeWorkProgram"
+  (closed)="showFullDistModal = false">
+</app-workprogram-distribution-full>
+
+<!-- PDF Distribución — abre en nueva pestaña y se destruye solo -->
+<app-pdf-workprogram-distribution
+  *ngIf="showPdfDistReport"
+  [idCompany]="idcompany"
+  [idProject]="idProject"
+  [idContract]="idContract"
+  [idConvention]="idConvention"
+  [typeWorkProgram]="typeWorkProgram"
+  mode="newTab"
+  (closed)="showPdfDistReport = false">
+</app-pdf-workprogram-distribution>
 
 <!-- Controles de Zoom -->
 <div class="row mb-3">
@@ -143,6 +177,14 @@
                     [disabled]="isCalculating" title="Calcular Ponderado (regla de 3 sobre total)">
                 <span *ngIf="isCalculating" class="spinner-border spinner-border-sm" role="status"></span>
                 <i *ngIf="!isCalculating" class="bi bi-percent"></i>
+            </button>
+            <button type="button" class="btn btn-secondary ms-1 me-1" (click)="showPdfDistReport = true"
+                    title="Reporte PDF de Distribución">
+                <i class="bi bi-file-earmark-pdf"></i>
+            </button>
+            <button type="button" class="btn btn-primary ms-1 me-1" (click)="showFullDistModal = true"
+                    title="Distribución completa del programa de trabajo">
+                <i class="bi bi-calendar3-range"></i>
             </button>
         </div>
     </div>

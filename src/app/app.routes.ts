@@ -477,6 +477,20 @@ export const routes: Routes = [
               ).then((c) => c.MaterialsComponent),
           },
           {
+            path: 'herramientas',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/herramientas/herramientas.component'
+              ).then((c) => c.HerramientasComponent),
+          },
+          {
+            path: 'auxiliares',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/auxiliares/auxiliares.component'
+              ).then((c) => c.AuxiliaresComponent),
+          },
+          {
             path: 'equipment',
             loadComponent: () =>
               import(

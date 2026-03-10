@@ -9,6 +9,9 @@ import { MaterialsComponent } from './materials/materials.component';
 import { PersonalComponent } from './personal/personal.component';
 import { EquipmentComponent } from './equipment/equipment.component';
 import { WorkprogramApuComponent } from './apu/workprogram-apu.component';
+import { WorkprogramDistributionComponent } from './distribution/workprogram-distribution.component';
+import { PdfWorkprogramDistributionComponent } from './distribution/pdf-workprogram-distribution.component';
+import { WorkprogramDistributionFullComponent } from './distribution/workprogram-distribution-full.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -18,7 +21,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-workprograms',
   standalone: true,
-  imports: [CommonModule, FormsModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent, WorkprogramApuComponent],
+  imports: [CommonModule, FormsModule, AuxiliarsComponent, EquipmentComponent, MaterialsComponent, PersonalComponent, WorkprogramApuComponent, WorkprogramDistributionComponent, PdfWorkprogramDistributionComponent, WorkprogramDistributionFullComponent],
   templateUrl: './workprograms.component.html',
   styleUrl: './workprograms.component.scss'
 })
@@ -70,6 +73,18 @@ export class WorkprogramsComponent {
   apuIdWorkprogram: number | null = null;
   apuTaskName     = '';
 
+  // Distribución modal
+  showDistModal        = false;
+  distIdWorkprogram: number | null = null;
+  distTaskName         = '';
+  distTaskQuantity     = 0;
+
+  // PDF distribución
+  showPdfDistReport    = false;
+
+  // Distribución completa (todas las tareas)
+  showFullDistModal    = false;
+
   showNewMedidaModal: boolean = false;
   newMedidaDescription: string = '';
 
@@ -87,6 +102,14 @@ export class WorkprogramsComponent {
     };
     (window as any).__openNewMedidaModal = () => {
       this.ngZone.run(() => { this.showNewMedidaModal = true; });
+    };
+    (window as any).__openDistModal = (idEntry: number, taskName: string, taskQuantity: number) => {
+      this.ngZone.run(() => {
+        this.distIdWorkprogram = idEntry;
+        this.distTaskName      = taskName;
+        this.distTaskQuantity  = Number(taskQuantity) || 0;
+        this.showDistModal     = true;
+      });
     };
 
     effect(() => {
@@ -503,6 +526,15 @@ export class WorkprogramsComponent {
           if (!task['idEntry']) return '';
           return `<button onclick="event.stopPropagation(); window.__openApuModal(${task['idEntry']}, '${(task.text || '').replace(/'/g, "\\'")}')"
             style="font-size:10px; padding:1px 5px; background:#0d6efd; color:#fff; border:none; border-radius:3px; cursor:pointer;" title="Análisis de Precios Unitarios">$ APU</button>`;
+        }
+      },
+      {
+        name: "dist_btn", label: lbl("Dist."), width: 46,
+        template: (task) => {
+          if (!task['idEntry']) return '';
+          const qty = Number(task['quantity'] ?? 0);
+          return `<button onclick="event.stopPropagation(); window.__openDistModal(${task['idEntry']}, '${(task.text || '').replace(/'/g, "\\'")}', ${qty})"
+            style="font-size:10px; padding:1px 4px; background:#198754; color:#fff; border:none; border-radius:3px; cursor:pointer;" title="Distribución Mensual">&#128197;</button>`;
         }
       },
       { name: "activity",   label: lbl("Actividad"),       width: 60,  template: (task) => `<span style="font-size:11px;">${task['activity'] || ''}</span>` },

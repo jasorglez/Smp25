@@ -5,9 +5,7 @@
       <!-- Header -->
       <div class="modal-header bg-primary text-white py-2">
         <div>
-          <h6 class="modal-title mb-0">
-            <i class="bi bi-calculator me-1"></i> Analisis de Precios Unitarios
-          </h6>
+          <h6 class="modal-title mb-0"><i class="bi bi-calculator me-1"></i> Analisis de Precios Unitarios</h6>
           <small class="opacity-75">{{ taskName }}</small>
         </div>
         <button type="button" class="btn-close btn-close-white" (click)="close()"></button>
@@ -16,7 +14,7 @@
       <!-- Body -->
       <div class="modal-body p-2">
 
-        <!-- Tabs PERSONAL / MATERIAL / EQUIPO -->
+        <!-- Tabs -->
         <ul class="nav nav-tabs mb-2">
           <li class="nav-item" *ngFor="let t of types">
             <button class="nav-link" [class.active]="activeType === t.key" (click)="setType(t.key)">
@@ -26,62 +24,279 @@
           </li>
         </ul>
 
-        <!-- Toolbar -->
-        <div class="d-flex gap-2 mb-2">
-          <button class="btn btn-sm btn-success" (click)="addRow()">
-            <i class="bi bi-plus-lg"></i> Agregar
-          </button>
-          <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges">
-            <i class="bi bi-floppy"></i> Guardar
-            <span *ngIf="hasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
-          </button>
-          <button class="btn btn-sm btn-warning" (click)="revertChanges()">
-            <i class="bi bi-arrow-clockwise"></i> Deshacer
-          </button>
-          <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="!selectedRow">
-            <i class="bi bi-trash"></i> Borrar
-          </button>
+        <!-- ══ TAB PERSONAL (Cuadrillas) ══════════════════════════════════ -->
+        <ng-container *ngIf="activeType === 'PERSONAL'">
 
-          <div class="ms-auto d-flex align-items-center gap-3">
-            <div class="text-muted small">
-              Total APU (aplicado):
-              <strong class="text-primary fs-6">{{ appliedTotal | currency:'MXN':'symbol':'1.2-2' }}</strong>
+          <!-- Toolbar cuadrillas -->
+          <div class="d-flex gap-2 mb-2 align-items-center">
+            <button class="btn btn-sm btn-success" (click)="addCuadrilla()">
+              <i class="bi bi-plus-lg"></i> Nueva Cuadrilla
+            </button>
+            <button class="btn btn-sm btn-primary position-relative" (click)="saveCuadrillas()" [disabled]="!cuadrillaHasChanges">
+              <i class="bi bi-floppy"></i> Guardar
+              <span *ngIf="cuadrillaHasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+            </button>
+            <button class="btn btn-sm btn-warning" (click)="revertCuadrillas()">
+              <i class="bi bi-arrow-clockwise"></i> Deshacer
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="deleteCuadrilla()" [disabled]="!selectedCuadrilla">
+              <i class="bi bi-trash"></i> Borrar Cuadrilla
+            </button>
+            <span class="ms-auto text-muted small">
+              Total Mano de Obra:
+              <strong class="text-primary fs-6">{{ totalPersonal | currency:'MXN':'symbol':'1.2-2' }}</strong>
+            </span>
+          </div>
+
+          <!-- Lista de cuadrillas -->
+          <table class="table table-sm table-bordered table-hover mb-2">
+            <thead class="table-dark">
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Nombre Cuadrilla</th>
+                <th style="width:110px">Cantidad</th>
+                <th style="width:130px" class="text-end">Subtotal</th>
+                <th style="width:130px" class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="cuadrillas.length === 0">
+                <td colspan="5" class="text-center text-muted py-3">
+                  <i class="bi bi-info-circle me-1"></i> Sin cuadrillas. Haz clic en Nueva Cuadrilla.
+                </td>
+              </tr>
+              <tr *ngFor="let c of cuadrillas; let i = index"
+                  [class.table-warning]="c.__isNew"
+                  [class.table-primary]="selectedCuadrilla === c && !c.__isNew"
+                  style="cursor:pointer" (click)="selectCuadrilla(c)">
+                <td class="text-center align-middle text-muted small">{{ i + 1 }}</td>
+                <td>
+                  <input type="text" class="form-control form-control-sm"
+                         [(ngModel)]="c.name" (ngModelChange)="onCuadrillaChange(c)"
+                         placeholder="Ej: CUADRILLA 1" (click)="$event.stopPropagation()">
+                </td>
+                <td>
+                  <input type="number" class="form-control form-control-sm text-end"
+                         [(ngModel)]="c.cantidad" (ngModelChange)="onCuadrillaChange(c)"
+                         step="0.0001" min="0" (click)="$event.stopPropagation()">
+                </td>
+                <td class="text-end align-middle small">
+                  {{ getCuadrillaSubtotal(c) | currency:'MXN':'symbol':'1.2-2' }}
+                </td>
+                <td class="text-end align-middle fw-bold text-primary">
+                  {{ getCuadrillaTotal(c) | currency:'MXN':'symbol':'1.2-2' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Trabajadores de la cuadrilla seleccionada -->
+          <div *ngIf="selectedCuadrilla">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="fw-bold small text-secondary">
+                <i class="bi bi-people me-1"></i>
+                Trabajadores de: <strong class="text-dark">{{ selectedCuadrilla.name || '(sin nombre)' }}</strong>
+              </span>
+              <button class="btn btn-sm btn-success ms-2" (click)="addCuadrillaItem()">
+                <i class="bi bi-plus-lg"></i> Agregar
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="deleteCuadrillaItem()" [disabled]="!selectedCuadrillaItem">
+                <i class="bi bi-trash"></i> Borrar
+              </button>
             </div>
-            <div class="form-check form-switch mb-0">
-              <input class="form-check-input" type="checkbox" id="chkApplyAll"
-                     [checked]="allApplied" (change)="toggleApplyAll($event)">
-              <label class="form-check-label small" for="chkApplyAll">Aplicar todos al costo</label>
+            <ag-grid-angular
+              class="ag-theme-quartz"
+              style="height:220px; width:100%;"
+              [rowData]="cuadrillaItemRows"
+              [columnDefs]="cuadrillaItemColDefs"
+              [defaultColDef]="defaultColDef"
+              [rowClassRules]="rowClassRules"
+              (gridReady)="onCuadrillaGridReady($event)"
+              (cellValueChanged)="onCuadrillaItemValueChanged($event)"
+              (selectionChanged)="onCuadrillaItemSelectionChanged()"
+              rowSelection="single"
+              [stopEditingWhenCellsLoseFocus]="true">
+            </ag-grid-angular>
+          </div>
+          <div *ngIf="!selectedCuadrilla" class="text-center text-muted py-4">
+            <i class="bi bi-arrow-up-circle me-1"></i> Selecciona o crea una cuadrilla para ver sus trabajadores.
+          </div>
+
+        </ng-container>
+
+        <!-- ══ TAB HERR / MATERIAL / EQUIPO / AUX ════════════════════════ -->
+        <ng-container *ngIf="activeType === 'MATERIAL' || activeType === 'EQUIPO' || activeType === 'HERR' || activeType === 'AUX'">
+
+          <!-- Banner informativo solo para Herramienta -->
+          <div *ngIf="activeType === 'HERR'"
+               class="alert alert-info py-1 px-2 mb-2 small d-flex align-items-center gap-2">
+            <i class="bi bi-tools"></i>
+            Herramienta se calcula como <strong>% de la Mano de Obra</strong>.
+            Base actual: <strong>{{ totalPersonal | currency:'MXN':'symbol':'1.2-2' }}</strong>
+          </div>
+
+          <!-- Banner informativo para Auxiliares -->
+          <div *ngIf="activeType === 'AUX'"
+               class="alert alert-secondary py-1 px-2 mb-2 small d-flex align-items-center gap-2">
+            <i class="bi bi-layers"></i>
+            Auxiliares: sub-APUs o conceptos auxiliares. Ingresa descripción, unidad, cantidad y precio unitario.
+            Activa <strong>Aplicar</strong> para incluir en el Costo Directo.
+          </div>
+
+          <div class="d-flex gap-2 mb-2">
+            <button class="btn btn-sm btn-success" (click)="addRow()">
+              <i class="bi bi-plus-lg"></i> Agregar
+            </button>
+            <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges">
+              <i class="bi bi-floppy"></i> Guardar
+              <span *ngIf="hasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+            </button>
+            <button class="btn btn-sm btn-warning" (click)="revertChanges()">
+              <i class="bi bi-arrow-clockwise"></i> Deshacer
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="!selectedRow">
+              <i class="bi bi-trash"></i> Borrar
+            </button>
+            <div class="ms-auto d-flex align-items-center gap-3">
+              <div class="text-muted small" *ngIf="activeType === 'HERR'">
+                Total Herramienta: <strong class="text-primary fs-6">{{ herramientaTotal | currency:'MXN':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="text-muted small" *ngIf="activeType !== 'HERR'">
+                Costo Directo: <strong class="text-primary fs-6">{{ costoDirecto | currency:'MXN':'symbol':'1.2-2' }}</strong>
+              </div>
+              <div class="form-check form-switch mb-0" *ngIf="activeType !== 'HERR'">
+                <input class="form-check-input" type="checkbox" id="chkApplyAll"
+                       [checked]="allApplied" (change)="toggleApplyAll($event)">
+                <label class="form-check-label small" for="chkApplyAll">Aplicar todos al costo</label>
+              </div>
             </div>
           </div>
-        </div>
+          <ag-grid-angular
+            class="ag-theme-quartz"
+            style="height:320px; width:100%;"
+            [rowData]="displayRows"
+            [columnDefs]="activeType === 'HERR' ? herramientaColDefs : (activeType === 'AUX' ? auxColDefs : colDefs)"
+            [defaultColDef]="defaultColDef"
+            [rowClassRules]="rowClassRules"
+            (gridReady)="onGridReady($event)"
+            (cellValueChanged)="onCellValueChanged($event)"
+            (selectionChanged)="onSelectionChanged()"
+            rowSelection="single"
+            [stopEditingWhenCellsLoseFocus]="true">
+          </ag-grid-angular>
+        </ng-container>
 
-        <!-- Grid -->
-        <ag-grid-angular
-          class="ag-theme-quartz"
-          style="height:320px; width:100%;"
-          [rowData]="displayRows"
-          [columnDefs]="colDefs"
-          [defaultColDef]="defaultColDef"
-          [rowClassRules]="rowClassRules"
-          (gridReady)="onGridReady($event)"
-          (cellValueChanged)="onCellValueChanged($event)"
-          (selectionChanged)="onSelectionChanged($event)"
-          rowSelection="single"
-          [stopEditingWhenCellsLoseFocus]="true">
-        </ag-grid-angular>
+        <!-- ══ TAB FACTORES ═══════════════════════════════════════════════ -->
+        <ng-container *ngIf="activeType === 'FACTORES'">
+          <div class="d-flex gap-2 mb-2">
+            <button class="btn btn-sm btn-success" (click)="addFactor()"><i class="bi bi-plus-lg"></i> Agregar</button>
+            <button class="btn btn-sm btn-primary position-relative" (click)="saveFactors()" [disabled]="!factorHasChanges">
+              <i class="bi bi-floppy"></i> Guardar
+              <span *ngIf="factorHasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+            </button>
+            <button class="btn btn-sm btn-warning" (click)="revertFactors()"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
+            <button class="btn btn-sm btn-danger" (click)="deleteFactor()" [disabled]="!selectedFactor"><i class="bi bi-trash"></i> Borrar</button>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <table class="table table-sm table-bordered table-hover mb-0">
+                <thead class="table-primary">
+                  <tr>
+                    <th style="width:40px">#</th>
+                    <th>Nombre del Factor</th>
+                    <th style="width:120px">Porcentaje (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngIf="factors.length === 0">
+                    <td colspan="3" class="text-center text-muted py-3">
+                      <i class="bi bi-info-circle me-1"></i> Sin factores. Haz clic en Agregar.
+                    </td>
+                  </tr>
+                  <tr *ngFor="let f of factors; let i = index"
+                      [class.table-warning]="f.__isNew"
+                      [class.table-info]="selectedFactor === f && !f.__isNew"
+                      (click)="selectFactor(f)" style="cursor:pointer">
+                    <td class="text-center align-middle text-muted small">{{ i + 1 }}</td>
+                    <td>
+                      <input type="text" class="form-control form-control-sm"
+                             [(ngModel)]="f.name" (ngModelChange)="onFactorChange(f)"
+                             placeholder="Ej: Indirectos" (click)="$event.stopPropagation()">
+                    </td>
+                    <td>
+                      <input type="number" class="form-control form-control-sm text-end"
+                             [(ngModel)]="f.percentage" (ngModelChange)="onFactorChange(f)"
+                             step="0.01" min="0" (click)="$event.stopPropagation()">
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <div class="card border-primary h-100">
+                <div class="card-header bg-primary text-white py-1 small fw-bold">
+                  <i class="bi bi-calculator me-1"></i> Resumen APU
+                </div>
+                <div class="card-body p-2">
+                  <table class="table table-sm mb-0">
+                    <tbody>
+                      <tr class="small text-muted">
+                        <td>Mano de Obra</td><td></td>
+                        <td class="text-end">{{ totalPersonal | currency:'MXN':'symbol':'1.2-2' }}</td>
+                      </tr>
+                      <tr class="small text-muted" *ngIf="herramientaTotal > 0">
+                        <td>Herramienta</td><td></td>
+                        <td class="text-end">{{ herramientaTotal | currency:'MXN':'symbol':'1.2-2' }}</td>
+                      </tr>
+                      <tr class="small text-muted" *ngIf="auxiliaresTotal > 0">
+                        <td>Auxiliares</td><td></td>
+                        <td class="text-end">{{ auxiliaresTotal | currency:'MXN':'symbol':'1.2-2' }}</td>
+                      </tr>
+                      <tr class="fw-bold border-bottom">
+                        <td>Costo Directo</td><td></td>
+                        <td class="text-end text-primary">{{ costoDirecto | currency:'MXN':'symbol':'1.2-2' }}</td>
+                      </tr>
+                      <tr *ngFor="let bd of factorBreakdown" class="text-muted small">
+                        <td>{{ bd.name || '(sin nombre)' }}</td>
+                        <td class="text-center text-nowrap">{{ bd.pct | number:'1.2-4' }}%</td>
+                        <td class="text-end text-nowrap">+ {{ bd.amount | currency:'MXN':'symbol':'1.2-2' }}</td>
+                      </tr>
+                      <tr *ngIf="factors.length === 0">
+                        <td colspan="3" class="text-center text-muted fst-italic small py-2">Agrega factores para calcular</td>
+                      </tr>
+                      <tr class="border-top fw-bold">
+                        <td class="text-success fs-6">Precio Unitario</td><td></td>
+                        <td class="text-end text-success fs-6">{{ precioUnitario | currency:'MXN':'symbol':'1.2-2' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
 
       </div>
 
       <!-- Footer -->
       <div class="modal-footer py-2 justify-content-between">
-        <div class="text-muted small">
-          <i class="bi bi-info-circle me-1"></i>
-          Activa <strong>Aplicar al costo</strong> por fila para actualizar el costo del concepto en el Gantt.
+        <div class="d-flex align-items-center gap-4 flex-wrap">
+          <div class="text-muted small">
+            <i class="bi bi-info-circle me-1"></i> Activa <strong>Aplicar al costo</strong> en Material/Equipo para incluir en el Costo Directo.
+          </div>
+          <div class="d-flex gap-3 small" *ngIf="costoDirecto > 0">
+            <span class="text-muted">Costo Directo: <strong class="text-primary">{{ costoDirecto | currency:'MXN':'symbol':'1.2-2' }}</strong></span>
+            <span *ngIf="factors.length > 0" class="text-muted">
+              &rarr; Precio Unitario: <strong class="text-success">{{ precioUnitario | currency:'MXN':'symbol':'1.2-2' }}</strong>
+            </span>
+          </div>
         </div>
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-secondary" (click)="close()">Cerrar</button>
-          <button class="btn btn-sm btn-success" (click)="applyToConcept()" [disabled]="appliedTotal === 0">
-            <i class="bi bi-check2-circle me-1"></i> Aplicar al Concepto ({{ appliedTotal | currency:'MXN':'symbol':'1.2-2' }})
+          <button class="btn btn-sm btn-success" (click)="applyToConcept()" [disabled]="precioUnitario === 0">
+            <i class="bi bi-check2-circle me-1"></i>
+            Aplicar al Concepto
+            <span class="ms-1">({{ precioUnitario | currency:'MXN':'symbol':'1.2-2' }})</span>
           </button>
         </div>
       </div>

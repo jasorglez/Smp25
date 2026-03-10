@@ -1,0 +1,348 @@
+<div class="d-flex flex-column h-100 p-2 gap-2">
+
+  <!-- ══ PANEL SUPERIOR: Catálogo maestro ══════════════════════════════════ -->
+  <div class="card border-0 shadow-sm" style="flex:0 0 auto">
+    <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+      <span class="fw-semibold text-primary">
+        <i class="bi bi-tools me-1"></i> Catálogo de Auxiliares
+      </span>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-success" (click)="addRow()">
+          <i class="bi bi-plus-lg"></i> Agregar
+        </button>
+        <button class="btn btn-sm btn-primary position-relative" (click)="saveMain()" [disabled]="!hasMainChanges">
+          <i class="bi bi-floppy"></i> Guardar
+          <span *ngIf="hasMainChanges"
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+          </span>
+        </button>
+        <button class="btn btn-sm btn-warning" (click)="revertMain()" [disabled]="!hasMainChanges">
+          <i class="bi bi-arrow-clockwise"></i> Deshacer
+        </button>
+        <button class="btn btn-sm btn-danger" (click)="deleteMain()" [disabled]="!selectedAuxiliar">
+          <i class="bi bi-trash"></i> Borrar
+        </button>
+      </div>
+    </div>
+
+    <div class="card-body p-0">
+      <ag-grid-angular
+        class="ag-theme-quartz"
+        style="height:220px;width:100%"
+        [rowData]="rowData"
+        [columnDefs]="mainColDefs"
+        [defaultColDef]="defaultColDef"
+        [rowClassRules]="rowClassRules"
+        rowSelection="single"
+        (gridReady)="onMainGridReady($event)"
+        (selectionChanged)="onMainSelectionChanged()"
+        (cellValueChanged)="onMainCellValueChanged($event)">
+      </ag-grid-angular>
+    </div>
+  </div>
+
+  <!-- ══ PANEL INFERIOR: Detalle del auxiliar seleccionado ═════════════════ -->
+  <ng-container *ngIf="selectedAuxiliar; else noSelection">
+    <div class="card border-0 shadow-sm flex-fill overflow-auto">
+
+      <div class="card-header bg-light py-2 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold text-secondary">
+          <i class="bi bi-clipboard-data me-1"></i>
+          Componentes de: <strong class="text-dark">{{ selectedAuxiliar.description }}</strong>
+        </span>
+        <button class="btn btn-sm btn-primary" (click)="saveDetalle()" [disabled]="!hasDetailChanges">
+          <i class="bi bi-floppy-fill me-1"></i> Guardar Componentes
+          <span *ngIf="hasDetailChanges" class="badge bg-danger ms-1">
+            <i class="bi bi-asterisk"></i>
+          </span>
+        </button>
+      </div>
+
+      <div class="card-body p-2">
+
+        <!-- ── Checkboxes de activación ─────────────────────────────────── -->
+        <div class="d-flex gap-4 mb-3 px-2 flex-wrap">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="chkPersonal"
+                   [(ngModel)]="selectedAuxiliar.hasPersonal" (change)="onFlagChange()">
+            <label class="form-check-label fw-semibold" for="chkPersonal">
+              <i class="bi bi-people-fill text-success me-1"></i> Cuadrillas (MO)
+            </label>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="chkMaterial"
+                   [(ngModel)]="selectedAuxiliar.hasMaterial" (change)="onFlagChange()">
+            <label class="form-check-label fw-semibold" for="chkMaterial">
+              <i class="bi bi-box-seam text-warning me-1"></i> Material
+            </label>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="chkHerramienta"
+                   [(ngModel)]="selectedAuxiliar.hasHerramienta" (change)="onFlagChange()">
+            <label class="form-check-label fw-semibold" for="chkHerramienta">
+              <i class="bi bi-wrench-adjustable text-info me-1"></i> Herramienta
+            </label>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="chkEquipo"
+                   [(ngModel)]="selectedAuxiliar.hasEquipo" (change)="onFlagChange()">
+            <label class="form-check-label fw-semibold" for="chkEquipo">
+              <i class="bi bi-truck text-danger me-1"></i> Equipo
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Sección CUADRILLAS (MO) ──────────────────────────────────── -->
+        <ng-container *ngIf="selectedAuxiliar.hasPersonal">
+          <div class="border rounded p-2 mb-3 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="mb-0 text-success">
+                <i class="bi bi-people-fill me-1"></i> Cuadrillas de Mano de Obra
+              </h6>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success" (click)="addCuadrilla()">
+                  <i class="bi bi-plus-lg"></i> Cuadrilla
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteCuadrilla()" [disabled]="!selectedCuadrilla">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Lista de cuadrillas (tarjetas seleccionables) -->
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <div *ngFor="let c of cuadrillas"
+                   class="card p-2 cursor-pointer"
+                   [class.border-success]="selectedCuadrilla === c"
+                   [class.border-2]="selectedCuadrilla === c"
+                   style="min-width:180px;cursor:pointer"
+                   (click)="selectCuadrilla(c)">
+                <div class="d-flex align-items-center gap-1 mb-1">
+                  <input type="text" class="form-control form-control-sm fw-semibold"
+                         placeholder="Nombre cuadrilla"
+                         [(ngModel)]="c.name"
+                         (change)="onCuadrillaChange(c)"
+                         (click)="$event.stopPropagation()"
+                         style="font-size:0.78rem">
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                  <small class="text-muted">Cant:</small>
+                  <input type="number" class="form-control form-control-sm text-center"
+                         style="width:56px;font-size:0.78rem"
+                         [(ngModel)]="c.cantidad"
+                         (change)="onCuadrillaChange(c)"
+                         (click)="$event.stopPropagation()"
+                         min="1" step="1">
+                  <small class="text-primary ms-auto">
+                    ${{ getCuadrillaSubtotal(c).toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+                  </small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trabajadores de la cuadrilla seleccionada -->
+            <ng-container *ngIf="selectedCuadrilla">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <small class="text-muted">Trabajadores en: <strong>{{ selectedCuadrilla.name || '(sin nombre)' }}</strong></small>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-sm btn-outline-success" (click)="addCuadrillaItem()">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" (click)="deleteCuadrillaItem()" [disabled]="!selectedCuadrillaItem">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <ag-grid-angular
+                class="ag-theme-quartz"
+                style="height:160px;width:100%"
+                [rowData]="cuadrillaItemRows"
+                [columnDefs]="cuadrillaItemColDefs"
+                [defaultColDef]="defaultColDef"
+                [rowClassRules]="rowClassRules"
+                rowSelection="single"
+                (gridReady)="onCuadrillaGridReady($event)"
+                (selectionChanged)="onCuadrillaItemSelectionChanged()"
+                (cellValueChanged)="onCuadrillaItemValueChanged($event)">
+              </ag-grid-angular>
+            </ng-container>
+
+            <div class="text-end mt-1">
+              <small class="text-muted">Subtotal MO: </small>
+              <strong class="text-success">
+                ${{ totalPersonal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+              </strong>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Sección MATERIAL ──────────────────────────────────────────── -->
+        <ng-container *ngIf="selectedAuxiliar.hasMaterial">
+          <div class="border rounded p-2 mb-3 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <h6 class="mb-0 text-warning">
+                <i class="bi bi-box-seam me-1"></i> Material
+              </h6>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-warning" (click)="addItem('MATERIAL')">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedMaterialRow)" [disabled]="!selectedMaterialRow">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+            <ag-grid-angular
+              class="ag-theme-quartz"
+              style="height:160px;width:100%"
+              [rowData]="materialItems"
+              [columnDefs]="getItemColDefs('MATERIAL')"
+              [defaultColDef]="defaultColDef"
+              [rowClassRules]="rowClassRules"
+              rowSelection="single"
+              (gridReady)="onMaterialGridReady($event)"
+              (selectionChanged)="onMaterialSelectionChanged()"
+              (cellValueChanged)="onItemValueChanged($event)">
+            </ag-grid-angular>
+            <div class="text-end mt-1">
+              <small class="text-muted">Subtotal Material: </small>
+              <strong class="text-warning">
+                ${{ materialTotal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+              </strong>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Sección HERRAMIENTA ───────────────────────────────────────── -->
+        <ng-container *ngIf="selectedAuxiliar.hasHerramienta">
+          <div class="border rounded p-2 mb-3 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <h6 class="mb-0 text-info">
+                <i class="bi bi-wrench-adjustable me-1"></i> Herramienta
+                <small class="text-muted fw-normal">(% de MO)</small>
+              </h6>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-info" (click)="addItem('HERR')">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedHerramientaRow)" [disabled]="!selectedHerramientaRow">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+            <ag-grid-angular
+              class="ag-theme-quartz"
+              style="height:160px;width:100%"
+              [rowData]="herramientaItems"
+              [columnDefs]="herramientaItemColDefs"
+              [defaultColDef]="defaultColDef"
+              [rowClassRules]="rowClassRules"
+              rowSelection="single"
+              (gridReady)="onHerramientaGridReady($event)"
+              (selectionChanged)="onHerramientaSelectionChanged()"
+              (cellValueChanged)="onItemValueChanged($event)">
+            </ag-grid-angular>
+            <div class="text-end mt-1">
+              <small class="text-muted">Subtotal Herramienta: </small>
+              <strong class="text-info">
+                ${{ herramientaTotal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+              </strong>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Sección EQUIPO ────────────────────────────────────────────── -->
+        <ng-container *ngIf="selectedAuxiliar.hasEquipo">
+          <div class="border rounded p-2 mb-3 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <h6 class="mb-0 text-danger">
+                <i class="bi bi-truck me-1"></i> Equipo
+              </h6>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-danger" (click)="addItem('EQUIPO')">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedEquipoRow)" [disabled]="!selectedEquipoRow">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+            <ag-grid-angular
+              class="ag-theme-quartz"
+              style="height:160px;width:100%"
+              [rowData]="equipoItems"
+              [columnDefs]="getItemColDefs('EQUIPO')"
+              [defaultColDef]="defaultColDef"
+              [rowClassRules]="rowClassRules"
+              rowSelection="single"
+              (gridReady)="onEquipoGridReady($event)"
+              (selectionChanged)="onEquipoSelectionChanged()"
+              (cellValueChanged)="onItemValueChanged($event)">
+            </ag-grid-angular>
+            <div class="text-end mt-1">
+              <small class="text-muted">Subtotal Equipo: </small>
+              <strong class="text-danger">
+                ${{ equipoTotal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+              </strong>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Resumen de costos ──────────────────────────────────────────── -->
+        <div class="border rounded p-2 bg-light">
+          <h6 class="text-muted mb-2"><i class="bi bi-calculator me-1"></i> Resumen</h6>
+          <table class="table table-sm table-borderless mb-0">
+            <tbody>
+              <tr *ngIf="selectedAuxiliar.hasPersonal">
+                <td class="text-muted ps-2">Mano de Obra</td>
+                <td class="text-end fw-semibold text-success">
+                  ${{ totalPersonal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+                </td>
+              </tr>
+              <tr *ngIf="selectedAuxiliar.hasMaterial">
+                <td class="text-muted ps-2">Material</td>
+                <td class="text-end fw-semibold text-warning">
+                  ${{ materialTotal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+                </td>
+              </tr>
+              <tr *ngIf="selectedAuxiliar.hasHerramienta">
+                <td class="text-muted ps-2">Herramienta</td>
+                <td class="text-end fw-semibold text-info">
+                  ${{ herramientaTotal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+                </td>
+              </tr>
+              <tr *ngIf="selectedAuxiliar.hasEquipo">
+                <td class="text-muted ps-2">Equipo</td>
+                <td class="text-end fw-semibold text-danger">
+                  ${{ equipoTotal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+                </td>
+              </tr>
+              <tr class="border-top">
+                <td class="fw-bold ps-2">COSTO TOTAL</td>
+                <td class="text-end fw-bold fs-6 text-primary">
+                  ${{ costoTotal.toLocaleString('es-MX', {minimumFractionDigits:2}) }}
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted ps-2 small">Unidad del auxiliar</td>
+                <td class="text-end text-muted small">{{ selectedAuxiliar.unit }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /card-body -->
+    </div><!-- /card detalle -->
+  </ng-container>
+
+  <!-- ── Sin selección ───────────────────────────────────────────────────── -->
+  <ng-template #noSelection>
+    <div class="d-flex align-items-center justify-content-center flex-fill text-muted">
+      <div class="text-center">
+        <i class="bi bi-arrow-up-circle display-4 d-block mb-2 opacity-25"></i>
+        Selecciona un auxiliar para editar sus componentes
+      </div>
+    </div>
+  </ng-template>
+
+</div>

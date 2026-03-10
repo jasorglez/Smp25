@@ -1293,16 +1293,6 @@ export class EgresosPalacioComponent {
       return;
     }
 
-    const hasNegativeTotal = this.incomes.some((item) => item.total < 0);
-    if (hasNegativeTotal) {
-      alerts.basicAlert(
-        'Error de validación',
-        'El total no puede ser negativo.',
-        'error'
-      );
-      return;
-    }
-
     const newRows = this.incomes.filter((row) => row.__isNew);
     const modifiedRows = this.incomes.filter(
       (row) => row.__modified && !row.__isNew

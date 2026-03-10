@@ -10,7 +10,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
+import { catchError, EMPTY, lastValueFrom } from 'rxjs';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import {
@@ -28,11 +28,13 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { TypeEquipmentModalService } from './services/type-equipment-modal.service';
+import { EquipmentDetailRendererComponent } from './equipment-detail-renderer.component';
+import { PdfDistributionComponent } from './pdf-distribution.component';
 
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, EquipmentDetailRendererComponent, PdfDistributionComponent],
   templateUrl: './equipment.component.html',
   styleUrls: ['./equipment.component.scss'],
 })
@@ -53,17 +55,27 @@ export class EquipmentComponent implements CanComponentDeactivate {
   private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
   typeEquipmentCatalog: any[] = [];
+  measureCatalog: any[] = [];
   showTypeEquipmentModal: boolean = false;
+  showMeasureModal: boolean = false;
   newTypeEquipment: { description: string } = { description: '' };
+  newMeasure: { description: string } = { description: '' };
 
   private editableColumnOrder = ['description', 'idTypeEquipment', 'quantity', 'measure', 'costMN', 'priceMN', 'print'];
+  private readonly NEW_MEASURE_OPTION = '__NEW_MEASURE__';
+  private readonly defaultMeasures = ['DIA', 'HRS', 'MES', 'SEM'];
+  private _colMaster: ColDef[] = [];
+
+  showPdfReport: boolean = false;
+  showPdfMoneyReport: boolean = false;
+  private savedRowData: any[] | null = null;
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
-  private signalsService = inject(SignalsService);
-  private trackingService = inject(TrackingService);
-  private catalogsService = inject(CatalogsService);
-  private equipmentService = inject(EquipmentService);
+  private signalsService        = inject(SignalsService);
+  private trackingService       = inject(TrackingService);
+  private catalogsService       = inject(CatalogsService);
+  private equipmentService      = inject(EquipmentService);
   private typeEquipmentModalService = inject(TypeEquipmentModalService);
   private isOpen: boolean = false;
 
@@ -87,6 +99,8 @@ export class EquipmentComponent implements CanComponentDeactivate {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    // totalMN es columna computada en BD — no enviar al servidor
+    delete cleanedData.totalMN;
     // Para filas nuevas, eliminar el id temporal (string) para que el backend lo genere
     if (typeof cleanedData.id === 'string' && cleanedData.id.startsWith('temp_')) {
       delete cleanedData.id;
@@ -94,6 +108,10 @@ export class EquipmentComponent implements CanComponentDeactivate {
     // idBranch: si es 0 o falsy enviar null para no violar FK
     if (!cleanedData.idBranch) {
       cleanedData.idBranch = null;
+    }
+    // quantity como decimal
+    if (cleanedData.quantity != null) {
+      cleanedData.quantity = Number(cleanedData.quantity);
     }
     // Trim de campos string
     if (cleanedData.description) {
@@ -109,6 +127,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerDatos();
       this.obtenerUnidades();
+      this.obtenerMedidas();
     });
 
     this.typeEquipmentModalService.modalRequest$.subscribe(() => {
@@ -119,24 +138,81 @@ export class EquipmentComponent implements CanComponentDeactivate {
       this.onTypeEquipmentCreated(data);
     });
   }
-  obtenerDatos(){
-    return this.equipmentService.getEquipment(this.idcompany).subscribe(
+  obtenerDatos(): void {
+    if (!this.idcompany) return;
+    this.equipmentService.getEquipment(this.idcompany).subscribe(
       (data: any) => {
-        this.rowData = data;
-        console.log(this.rowData)
+        this.savedRowData = null;
+        this.rowData = Array.isArray(data) ? data.sort((a, b) => b.id - a.id) : data;
       },
       (error) => console.error('Error fetching data:', error)
     );
-  
   }
 
-  obtenerUnidades(){
-    return this.catalogsService.getTypeEquipment(this.idcompany).subscribe(
-      (data: any) => {
-        this.typeEquipmentCatalog = data;
-      },
-      (error) => console.error('Error fetching data:', error)
+  obtenerUnidades(): void {
+    if (!this.idcompany) return;
+    this.catalogsService.getTypeEquipment(this.idcompany).subscribe(
+      (data: any) => { this.typeEquipmentCatalog = data; },
+      (error) => console.error('Error fetching typeEquipment:', error)
     );
+  }
+
+  obtenerMedidas(): void {
+    if (!this.idcompany) return;
+    this.catalogsService.getUnits(this.idcompany).subscribe(
+      (data: any) => { this.measureCatalog = Array.isArray(data) ? data : []; },
+      (error) => console.error('Error fetching measures:', error)
+    );
+  }
+
+  private getMeasureOptions() {
+    const catalogDescriptions = this.measureCatalog
+      .map((m: any) => (m?.description || '').toString().trim())
+      .filter((d: string) => !!d);
+
+    const uniqueMeasures = [...new Set([...this.defaultMeasures, ...catalogDescriptions])];
+    return uniqueMeasures.map((description) => ({
+      id: description,
+      description,
+      valueAddition: '',
+      valueAddition2: ''
+    }));
+  }
+
+  private getDefaultTypeEquipmentId(): number | null {
+    if (!Array.isArray(this.typeEquipmentCatalog) || this.typeEquipmentCatalog.length === 0) {
+      return null;
+    }
+    const first = this.typeEquipmentCatalog[0];
+    return this.normalizeCatalogId(first?.id);
+  }
+
+  private getDefaultMeasureValue(): string {
+    const options = this.getMeasureOptions();
+    if (!Array.isArray(options) || options.length === 0) {
+      return 'DIA';
+    }
+    const firstValid = options.find((opt: any) => opt?.id && opt.id !== this.NEW_MEASURE_OPTION);
+    return (firstValid?.id || 'DIA').toString();
+  }
+
+  private normalizeCatalogId(value: any): number | null {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  private resolveCatalogId(payload: any): number | null {
+    const candidates = [payload?.id, payload?.Id, payload?.idCatalog, payload?.catalogId];
+    for (const candidate of candidates) {
+      const normalized = this.normalizeCatalogId(candidate);
+      if (normalized !== null) return normalized;
+    }
+    return null;
+  }
+
+  private resolveCatalogDescription(payload: any, fallback: string = ''): string {
+    const description = payload?.description ?? payload?.Description ?? payload?.name ?? fallback;
+    return (description || '').toString().trim();
   }
   
 
@@ -144,62 +220,30 @@ export class EquipmentComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    groupDefaultExpanded: -1, // -1 significa expandir todos los niveles
+    groupDefaultExpanded: -1,
     suppressDragLeaveHidesColumns: true,
     suppressMakeColumnVisibleAfterUnGroup: true,
     rowBuffer: 20,
+    // Full-width row para distribución (sin masterDetail, sin altura extra)
+    isFullWidthRow: (params: any) => !!params.rowNode.data?.__isDistDetail,
+    fullWidthCellRenderer: EquipmentDetailRendererComponent,
+    getRowHeight: (params: any) => params.node.data?.__isDistDetail ? 420 : 20,
+    context: { componentParent: this },
     getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
+      if (params.node.isSelected()) return 'selected-row';
       return '';
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
       event.node.setSelected(true);
     },
     onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
+          if (node.id !== event.node.id) node.setSelected(false);
         });
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onCellKeyDown: (params: any) => {
-      if (params.event.key === 'Enter') {
-        params.event.preventDefault();
-        const currentColId = params.column.getColId();
-        const currentIndex = this.editableColumnOrder.indexOf(currentColId);
-        
-        if (currentIndex !== -1) {
-          const nextIndex = currentIndex + 1;
-          if (nextIndex < this.editableColumnOrder.length) {
-            setTimeout(() => {
-              this.gridApi.startEditingCell({
-                rowIndex: params.node.rowIndex,
-                colKey: this.editableColumnOrder[nextIndex],
-              });
-            }, 50);
-          } else {
-            setTimeout(() => {
-              const nextRowIndex = params.node.rowIndex + 1;
-              if (nextRowIndex < this.rowData.length) {
-                this.gridApi.ensureIndexVisible(nextRowIndex);
-                this.gridApi.startEditingCell({
-                  rowIndex: nextRowIndex,
-                  colKey: this.editableColumnOrder[0],
-                });
-              }
-            }, 50);
-          }
-        }
-      }
-    },
   };
   onMasterSelectionChanged(event: any) {}
 
@@ -215,18 +259,13 @@ export class EquipmentComponent implements CanComponentDeactivate {
 
   onMasterRowSelected(event: any) {
     this.id = event.data.id;
+    if (event.node.isSelected()) {
+      this.selectedRowData = event.data;
+    }
   }
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
-
-    this.notSavedChanges = true;
-
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-    this.selectedRowData = selectedRowData;
+    this.selectedRowData = event?.data ?? null;
   }
   async activateLoansTab() {
     if (!this.isOpen || this.showSavingsTab) {
@@ -257,7 +296,8 @@ export class EquipmentComponent implements CanComponentDeactivate {
   }
 
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length > 0) return this._colMaster;
+    this._colMaster = [
       {
         headerName: '#',
         width: 50,
@@ -270,7 +310,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
         field: 'description',
         headerName: 'Descripción',
         editable: true,
-        width: 550,
+        width: 750,
       },
       /*{
         field: 'date',
@@ -356,8 +396,10 @@ export class EquipmentComponent implements CanComponentDeactivate {
         }),
         cellRenderer: (params: any) => {
           if (!params.value || params.value === -998) return '';
-          const found = this.typeEquipmentCatalog.find(t => t.id === params.value);
-          return found ? found.description : (params.value || '');
+          const selectedValue = this.normalizeCatalogId(params.value);
+          const found = this.typeEquipmentCatalog.find((t: any) => this.normalizeCatalogId(t?.id) === selectedValue);
+          if (found?.description) return found.description;
+          return params.data?.typeEquipmentDescription || '';
         },
       },
       {
@@ -366,6 +408,11 @@ export class EquipmentComponent implements CanComponentDeactivate {
         editable: true,
         width: 100,
         type: 'numericColumn',
+        valueParser: (params) => {
+          const val = parseFloat(String(params.newValue).replace(',', '.'));
+          return isNaN(val) ? 0 : val;
+        },
+        valueFormatter: (params) => params.value != null ? Number(params.value).toFixed(3) : '0.000',
       },
       {
         field: 'measure',
@@ -375,13 +422,21 @@ export class EquipmentComponent implements CanComponentDeactivate {
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
           options: [
-            { id: 'DIA', description: 'DIA', valueAddition: '', valueAddition2: '' },
-            { id: 'HRS', description: 'HRS', valueAddition: '', valueAddition2: '' },
-            { id: 'MES', description: 'MES', valueAddition: '', valueAddition2: '' },
-            { id: 'SEM', description: 'SEM', valueAddition: '', valueAddition2: '' },
+            ...this.getMeasureOptions(),
+            {
+              id: this.NEW_MEASURE_OPTION,
+              description: '➕ Agregar nueva medida...',
+              valueAddition: this.NEW_MEASURE_OPTION,
+              valueAddition2: '➕ Agregar nueva medida...'
+            }
           ],
+          specialValues: [this.NEW_MEASURE_OPTION],
+          onSpecialValue: (_value: any, _params: any) => {
+            this.openMeasureModal();
+          }
         }),
-        cellRenderer: (params: any) => params.value || '',
+        cellRenderer: (params: any) =>
+          params.value === this.NEW_MEASURE_OPTION ? '' : (params.value || ''),
       },
       {
         field: 'costMN',
@@ -400,12 +455,47 @@ export class EquipmentComponent implements CanComponentDeactivate {
         valueFormatter: (params) => params.value != null ? Number(params.value).toFixed(2) : '0.00',
       },
       {
+        field: 'totalMN',
+        headerName: 'Total',
+        editable: false,
+        width: 130,
+        type: 'numericColumn',
+        valueGetter: (params: any) => {
+          // Usa el valor computado del servidor; si es fila nueva calcula localmente
+          if (params.data?.__isNew) {
+            return Number(params.data?.quantity ?? 0) * Number(params.data?.priceMN ?? 0);
+          }
+          return params.data?.totalMN ?? 0;
+        },
+        valueFormatter: (params) => params.value != null ? Number(params.value).toFixed(2) : '0.00',
+      },
+
+       {
+        headerName: 'Dist.',
+        width: 60,
+        editable: false,
+        cellStyle: { textAlign: 'center', cursor: 'pointer' },
+        cellRenderer: (params: any) => {
+          const isNew = typeof params.data?.id === 'string';
+          return isNew
+            ? `<span style="color:#ccc;font-size:1rem;"><i class="bi bi-calendar3"></i></span>`
+            : `<span title="Distribución" style="color:#0d6efd;font-size:1rem;"><i class="bi bi-calendar3"></i></span>`;
+        },
+        onCellClicked: (params: any) => {
+          if (typeof params.data?.id === 'string') return;
+          this.toggleDetail(params.node);
+        },
+      },
+
+      {
         field: 'print',
         headerName: 'Imprimir en OT',
         editable: true,
         width: 130,
       },
+     
     ];
+    return this._colMaster;
   }
 
   resetGridSize() {
@@ -419,7 +509,15 @@ export class EquipmentComponent implements CanComponentDeactivate {
   }
 
   addMasterRow() {
+  // Si hay una distribución abierta, cerrarla primero para restaurar todos los datos
+  if (this.savedRowData) {
+    this.rowData = [...this.savedRowData];
+    this.savedRowData = null;
+    this.gridApi?.setGridOption('rowData', this.rowData);
+  }
   const tempId = `temp_${this.tempIdCounter++}`;
+    const defaultTypeEquipmentId = this.getDefaultTypeEquipmentId();
+    const defaultMeasure = this.getDefaultMeasureValue();
     const newItem = {
       id: tempId,
       idCompany: this.idcompany,
@@ -432,8 +530,9 @@ export class EquipmentComponent implements CanComponentDeactivate {
       ventaDLL: 0.00,
       stockMin: 0,
       stockMax: 0,
+      idTypeEquipment: defaultTypeEquipmentId,
       quantity: 1,
-      measure: 'DIA',
+      measure: defaultMeasure,
       costMN: 0.00,
       priceMN: 0.00,
       print: true,
@@ -669,9 +768,11 @@ export class EquipmentComponent implements CanComponentDeactivate {
       vigente: true,
     };
 
-    this.catalogsService.addCatalog(catalogToSave).subscribe({
+    this.catalogsService.addCatalogToSmp(catalogToSave).subscribe({
       next: (saved: any) => {
-        this.typeEquipmentModalService.confirmSave({ id: saved.id, description: saved.description });
+        const createdId = this.resolveCatalogId(saved);
+        const createdDescription = this.resolveCatalogDescription(saved, catalogToSave.description);
+        this.typeEquipmentModalService.confirmSave({ id: createdId || 0, description: createdDescription });
         this.closeTypeEquipmentModal();
       },
       error: (err) => {
@@ -682,12 +783,25 @@ export class EquipmentComponent implements CanComponentDeactivate {
   }
 
   onTypeEquipmentCreated(data: { id: number; description: string }) {
-    // Add immediately to local catalog so cellRenderer can find it right away
-    this.typeEquipmentCatalog = [...this.typeEquipmentCatalog, { id: data.id, description: data.description }];
+    const normalizedId = this.normalizeCatalogId(data?.id);
+    const normalizedDescription = (data?.description || '').toString().trim();
+    if (!normalizedDescription) return;
+
+    // Add immediately to local catalog so cellRenderer can find it right away.
+    const existing = this.typeEquipmentCatalog.find(
+      (t: any) =>
+        (normalizedId !== null && this.normalizeCatalogId(t?.id) === normalizedId) ||
+        ((t?.description || '').toString().trim().toUpperCase() === normalizedDescription.toUpperCase())
+    );
+    if (!existing) {
+      this.typeEquipmentCatalog = [...this.typeEquipmentCatalog, { id: normalizedId ?? 0, description: normalizedDescription }];
+    }
 
     const selectedNodes = this.gridApi?.getSelectedNodes();
     if (selectedNodes && selectedNodes.length > 0) {
-      selectedNodes[0].setDataValue('idTypeEquipment', data.id);
+      const idToUse = normalizedId ?? this.normalizeCatalogId(existing?.id) ?? 0;
+      selectedNodes[0].setDataValue('idTypeEquipment', idToUse);
+      selectedNodes[0].setDataValue('typeEquipmentDescription', normalizedDescription);
       this.notSavedChanges = true;
     }
     if (this.gridApi) this.gridApi.refreshCells({ columns: ['idTypeEquipment'], force: true });
@@ -696,9 +810,120 @@ export class EquipmentComponent implements CanComponentDeactivate {
     this.obtenerUnidades();
   }
 
+  // ==================== MODAL MEDIDA ====================
+
+  openMeasureModal() {
+    this.newMeasure = { description: '' };
+    this.showMeasureModal = true;
+  }
+
+  closeMeasureModal() {
+    this.showMeasureModal = false;
+    this.newMeasure = { description: '' };
+  }
+
+  saveNewMeasure() {
+    const description = this.newMeasure.description?.trim();
+    if (!description) {
+      alerts.basicAlert('Error', 'La descripción de la medida es obligatoria.', 'error');
+      return;
+    }
+
+    const catalogToSave = {
+      idCompany: this.idcompany,
+      description: description.toUpperCase(),
+      type: 'MEASURE',
+      active: 1,
+      vigente: true,
+    };
+
+    this.catalogsService.addCatalog(catalogToSave).subscribe({
+      next: (saved: any) => {
+        this.onMeasureCreated({ id: saved?.id, description: saved?.description || catalogToSave.description });
+        this.closeMeasureModal();
+      },
+      error: (err) => {
+        console.error('Error guardando medida:', err);
+        alerts.basicAlert('Error', 'No se pudo guardar la medida.', 'error');
+      }
+    });
+  }
+
+  onMeasureCreated(data: { id?: number; description: string }) {
+    if (!data?.description) return;
+
+    const normalized = data.description.trim().toUpperCase();
+    const exists = this.measureCatalog.some((m: any) => (m?.description || '').toString().trim().toUpperCase() === normalized);
+    if (!exists) {
+      this.measureCatalog = [...this.measureCatalog, { id: data.id || 0, description: normalized }];
+    }
+
+    const selectedNodes = this.gridApi?.getSelectedNodes();
+    if (selectedNodes && selectedNodes.length > 0) {
+      selectedNodes[0].setDataValue('measure', normalized);
+      this.notSavedChanges = true;
+    }
+    if (this.gridApi) this.gridApi.refreshCells({ columns: ['measure'], force: true });
+
+    this.obtenerMedidas();
+  }
+
+  // ==================== CASCADA DISTRIBUCIÓN (full-width row) ====================
+
+  toggleDetail(node: any) {
+    if (!this.gridApi) return;
+
+    // Si ya hay una distribución abierta para esta misma fila → cerrar
+    const existing = this.rowData.find(r => r.__isDistDetail);
+    if (existing && existing.__equipmentId === node.data.id) {
+      this.collapseDetail();
+      return;
+    }
+
+    // Si hay distribución de otra fila abierta → primero restaurar datos
+    if (this.savedRowData) {
+      this.rowData = [...this.savedRowData];
+      this.savedRowData = null;
+    }
+
+    // Guardar estado actual y construir vista: solo fila seleccionada + detalle
+    this.savedRowData = [...this.rowData];
+
+    const distRow = {
+      __isDistDetail: true,
+      __equipmentId: node.data.id,
+      idCompany:     node.data.idCompany ?? this.idcompany,
+      description:   node.data.description,
+      quantity:      node.data.quantity,
+      id:            `__dist_${node.data.id}`,
+    };
+
+    const idx = this.rowData.findIndex(r => r.id === node.data.id);
+    this.rowData = [
+      this.rowData[idx],   // solo la fila seleccionada
+      distRow,             // detalle debajo
+    ];
+    this.gridApi.setGridOption('rowData', this.rowData);
+  }
+
+  collapseDetail() {
+    if (!this.savedRowData || !this.gridApi) return;
+    this.rowData = this.savedRowData;
+    this.savedRowData = null;
+    this.gridApi.setGridOption('rowData', this.rowData);
+  }
+
+  // ==================== PDF REPORTE GENERAL ====================
+
+  togglePdfReport() {
+    this.showPdfReport = !this.showPdfReport;
+  }
+
   // ==================== GUARD ALERT UNSAVED CHANGES ====================
 
   async canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }
+
+

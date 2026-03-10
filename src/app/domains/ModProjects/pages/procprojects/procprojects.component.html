@@ -46,6 +46,20 @@
                 </a>
              </li>
 
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'herramientas')">
+                <a class="nav-link modern-tab" routerLink="herramientas" routerLinkActive="active">
+                  <i class="bi bi-wrench-adjustable"></i>
+                  <span>Herramientas</span>
+                </a>
+             </li>
+
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'auxiliares')">
+                <a class="nav-link modern-tab" routerLink="auxiliares" routerLinkActive="active">
+                  <i class="bi bi-layers"></i>
+                  <span>Auxiliares</span>
+                </a>
+             </li>
+
              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'equipment')">
                 <a class="nav-link modern-tab" routerLink="equipment" routerLinkActive="active">
                   <i class="bi bi-gear-wide-connected"></i>

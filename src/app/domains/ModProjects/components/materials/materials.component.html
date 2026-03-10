@@ -19,6 +19,14 @@
         </button>
         <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="onDelete()"><i class="bi bi-trash"></i>
         </button>
+        <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" (click)="togglePdfReport()"
+                title="Reporte PDF de Distribución (Cantidades)">
+          <i class="bi bi-file-earmark-pdf"></i>
+        </button>
+        <button type="button" class="btn btn-success ms-1 me-1 mb-2" (click)="showPdfMoneyReport = true"
+                title="Reporte PDF Erogaciones ($)">
+          <i class="bi bi-currency-dollar"></i>
+        </button>
       </nav>
 
     <div class="col">
@@ -40,6 +48,24 @@
         [stopEditingWhenCellsLoseFocus]="true"
         >
       </ag-grid-angular>
+      <!-- PDF Cantidades — genera en nueva pestaña y se destruye solo -->
+      <app-pdf-materials-distribution
+        *ngIf="showPdfReport"
+        [idCompany]="idcompany"
+        mode="newTab"
+        reportType="quantity"
+        (closed)="showPdfReport = false">
+      </app-pdf-materials-distribution>
+
+      <!-- PDF Erogaciones ($) — genera en nueva pestaña y se destruye solo -->
+      <app-pdf-materials-distribution
+        *ngIf="showPdfMoneyReport"
+        [idCompany]="idcompany"
+        mode="newTab"
+        reportType="money"
+        (closed)="showPdfMoneyReport = false">
+      </app-pdf-materials-distribution>
+
       </div>
     </div>
   </div>

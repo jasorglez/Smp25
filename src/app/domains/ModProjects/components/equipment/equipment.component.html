@@ -30,6 +30,38 @@
 </div>
 <div class="modal-backdrop fade show" *ngIf="showTypeEquipmentModal" (click)="closeTypeEquipmentModal()"></div>
 
+<!-- Modal: Nueva Medida -->
+<div class="modal fade" [class.show]="showMeasureModal"
+     [style.display]="showMeasureModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-modal="true">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white py-2">
+        <h6 class="modal-title mb-0">
+          <i class="bi bi-plus-circle me-2"></i>Nueva Medida
+        </h6>
+        <button type="button" class="btn-close btn-close-white btn-sm" (click)="closeMeasureModal()"></button>
+      </div>
+      <div class="modal-body py-2">
+        <div class="mb-2">
+          <label class="form-label form-label-sm mb-1">DescripciÃ³n</label>
+          <input type="text" class="form-control form-control-sm"
+                 [(ngModel)]="newMeasure.description"
+                 placeholder="Ej: DIA, HRS, PZA..."
+                 (keyup.enter)="saveNewMeasure()" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer py-1">
+        <button type="button" class="btn btn-sm btn-secondary" (click)="closeMeasureModal()">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-primary" (click)="saveNewMeasure()">
+          <i class="bi bi-floppy me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showMeasureModal" (click)="closeMeasureModal()"></div>
+
 <div class="row p-3">
   <div class="col-12 py-3">
     <!-- Botones y grid principal -->
@@ -49,7 +81,16 @@
         <button type="button" class="btn btn-warning ms-1 me-1 mb-2"  (click)="revertMasterData()">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMasterEntry()"><i class="bi bi-trash"></i>
+        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteMasterEntry()">
+          <i class="bi bi-trash"></i>
+        </button>
+        <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" (click)="togglePdfReport()"
+                title="Reporte PDF de Distribución (Cantidades)">
+          <i class="bi bi-file-earmark-pdf"></i>
+        </button>
+        <button type="button" class="btn btn-success ms-1 me-1 mb-2" (click)="showPdfMoneyReport = true"
+                title="Reporte PDF Erogaciones ($)">
+          <i class="bi bi-currency-dollar"></i>
         </button>
       </nav>
 
@@ -73,6 +114,25 @@
         >
       </ag-grid-angular>
       </div>
+
+      <!-- PDF Cantidades — genera en nueva pestaña y se destruye solo -->
+      <app-pdf-distribution
+        *ngIf="showPdfReport"
+        [idCompany]="idcompany"
+        mode="newTab"
+        reportType="quantity"
+        (closed)="showPdfReport = false">
+      </app-pdf-distribution>
+
+      <!-- PDF Erogaciones ($) — genera en nueva pestaña y se destruye solo -->
+      <app-pdf-distribution
+        *ngIf="showPdfMoneyReport"
+        [idCompany]="idcompany"
+        mode="newTab"
+        reportType="money"
+        (closed)="showPdfMoneyReport = false">
+      </app-pdf-distribution>
+
     </div>
   </div>
 </div>
