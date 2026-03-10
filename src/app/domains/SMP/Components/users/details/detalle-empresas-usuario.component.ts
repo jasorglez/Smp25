@@ -11,6 +11,7 @@ import { RootService } from 'app/services/root.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ContractsService } from 'app/services/contracts.service';
 import { ProjectsService } from 'app/services/projects.service';
+import { WarehousesService } from 'app/services/warehouses.service';
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 
@@ -166,6 +167,164 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
   refresh(): boolean { return false; }
 }
 
+// ─── Detail renderer: almacenes por contrato (sucursal) ────────────────────────
+@Component({
+  selector: 'app-almacenes-detail-renderer',
+  standalone: true,
+  imports: [AgGridModule, CommonModule, FormsModule],
+  template: `
+    <div style="padding:8px;background:#f3e8ff;height:100%;display:flex;flex-direction:column;">
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <strong style="font-size:0.85rem;margin-right:auto;">
+          <i class="bi bi-box-seam me-1"></i> Almacenes — {{ contractName }}
+        </strong>
+        <select
+          class="form-select form-select-sm"
+          style="width:260px;"
+          [(ngModel)]="selectedNewWarehouseId"
+          [disabled]="availableWarehouses.length === 0">
+          <option value="">-- Seleccionar almacén --</option>
+          <option *ngFor="let w of availableWarehouses" [value]="w.id">{{ w.name }}</option>
+        </select>
+        <button
+          class="btn btn-sm btn-primary"
+          (click)="addAlmacen()"
+          [disabled]="!selectedNewWarehouseId || isSaving"
+          title="Agregar almacén">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button
+          class="btn btn-sm btn-danger"
+          (click)="deleteAlmacen()"
+          [disabled]="!selectedRow || isSaving"
+          title="Quitar almacén seleccionado">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+
+      <div style="flex:1;min-height:0;">
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          style="width:100%;height:100%;"
+          [columnDefs]="cols"
+          [rowData]="warehouses"
+          [gridOptions]="gridOptions"
+          rowSelection="single"
+          (gridReady)="onGridReady($event)"
+          (selectionChanged)="onSelectionChanged($event)">
+        </ag-grid-angular>
+      </div>
+
+    </div>
+  `
+})
+export class AlmacenesDetailRendererComponent implements ICellRendererAngularComp {
+  private warehousesService          = inject(WarehousesService);
+  private usersxpermissionsService   = inject(UsersxpermissionsService);
+
+  warehouses: any[] = [];
+  availableWarehouses: any[] = [];
+  selectedNewWarehouseId: string = '';
+  selectedRow: any = null;
+  isSaving = false;
+  contractName: string = '';
+  private userId: number = 0;
+  private branchId: number = 0;
+  private gridApi!: GridApi;
+
+  cols: ColDef[] = [
+    { field: 'id', hide: true },
+    { field: 'idPermission', hide: true },
+    { field: 'name', headerName: 'Almacén', flex: 2 },
+    { field: 'description', headerName: 'Descripción', flex: 1 }
+  ];
+
+  gridOptions: any = { headerHeight: 25, rowHeight: 22, suppressCellFocus: true };
+
+  agInit(params: any): void {
+    this.contractName = params.data?.name ?? '';
+    this.userId       = params.data?.userId;
+    this.branchId     = params.data?.branchId ?? params.data?.idBranch;
+    if (this.userId && this.branchId) {
+      this.loadData();
+    }
+  }
+
+  private loadData(): void {
+    forkJoin({
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('warehouse', this.userId)
+        .pipe(catchError(() => of([]))),
+      allInBranch: this.warehousesService.getSimpleWarehouses(this.branchId)
+        .pipe(catchError(() => of([])))
+    }).subscribe(({ permissions, allInBranch }) => {
+      const permsArr   = Array.isArray(permissions) ? permissions : [];
+      const branchList = Array.isArray(allInBranch) ? allInBranch : [];
+      const branchIds  = new Set(branchList.map((w: any) => w.id));
+
+      const assigned = permsArr.filter((p: any) => branchIds.has(p.idPermission));
+      const assignedIds = new Set(assigned.map((p: any) => p.idPermission));
+
+      this.warehouses = assigned.map((p: any) => {
+        const wh = branchList.find((w: any) => w.id === p.idPermission);
+        return {
+          id: p.id,
+          idPermission: p.idPermission,
+          name: wh?.name ?? `Almacén ${p.idPermission}`,
+          description: wh?.description ?? ''
+        };
+      });
+
+      this.availableWarehouses = branchList.filter((w: any) => !assignedIds.has(w.id));
+      this.selectedNewWarehouseId = '';
+      this.selectedRow = null;
+      if (this.gridApi) this.gridApi.setGridOption('rowData', this.warehouses);
+    });
+  }
+
+  addAlmacen(): void {
+    if (!this.selectedNewWarehouseId || this.isSaving) return;
+    this.isSaving = true;
+    const payload = {
+      idUser:       this.userId,
+      idPermission: +this.selectedNewWarehouseId,
+      type:         'warehouse',
+      description:  null,
+      active:       1
+    };
+    this.usersxpermissionsService.addUserxPermission(payload).subscribe({
+      next:  () => { this.isSaving = false; this.loadData(); },
+      error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo agregar el almacén', 'error'); }
+    });
+  }
+
+  deleteAlmacen(): void {
+    if (!this.selectedRow || this.isSaving) return;
+    alerts.confirmAlert(
+      'Quitar almacén',
+      `¿Quitar <b>${this.selectedRow.name}</b> de este usuario?`,
+      'warning',
+      'Sí, quitar'
+    ).then(result => {
+      if (!result.isConfirmed) return;
+      this.isSaving = true;
+      this.usersxpermissionsService.deleteUserxPermission(this.selectedRow.id).subscribe({
+        next:  () => { this.isSaving = false; this.selectedRow = null; this.loadData(); },
+        error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo quitar el almacén', 'error'); }
+      });
+    });
+  }
+
+  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; }
+
+  onSelectionChanged(event: any): void {
+    const nodes = event.api.getSelectedNodes();
+    this.selectedRow = nodes.length > 0 ? nodes[0].data : null;
+  }
+
+  refresh(): boolean { return false; }
+}
+
 // ─── Detail renderer: contratos por sucursal ──────────────────────────────────
 @Component({
   selector: 'app-contratos-detail-renderer',
@@ -304,6 +463,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
         name:          c.contract,
         descripSmall:  c.descripSmall,
         userId:        this.userId,
+        branchId:      this.branchId,
         countProyectos: 0
       }));
 
@@ -326,9 +486,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
         next: projectData => {
           this.contracts = this.contracts.map(row => ({
             ...row,
-            countProyectos: Array.isArray(projectData[row.contractId])
-              ? projectData[row.contractId].length
-              : 0
+            countProyectos: Array.isArray(projectData[row.contractId]) ? projectData[row.contractId].length : 0
           }));
           if (this.gridApi) this.gridApi.setGridOption('rowData', this.contracts);
         }
@@ -398,7 +556,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
 @Component({
   selector: 'app-sucursales-detail-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule, ContratosDetailRendererComponent, ButtonCellRendererExpenditureComponent],
+  imports: [AgGridModule, CommonModule, FormsModule, ContratosDetailRendererComponent, AlmacenesDetailRendererComponent, ButtonCellRendererExpenditureComponent],
   template: `
     <div style="padding:8px;background:#f0fff4;height:100%;display:flex;flex-direction:column;">
 
@@ -453,6 +611,7 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
   private branchsService           = inject(BranchsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private contractsService         = inject(ContractsService);
+  private warehousesService        = inject(WarehousesService);
 
   branches: any[] = [];
   companyName: string = '';
@@ -466,6 +625,7 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
 
   components = {
     contratosDetail:  ContratosDetailRendererComponent,
+    almacenesDetail:  AlmacenesDetailRendererComponent,
     buttonRenderer:   ButtonCellRendererExpenditureComponent
   };
 
@@ -484,6 +644,19 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
       },
       valueGetter: (params) => params.data?.countContratos ?? 0,
       cellStyle: { backgroundColor: '#fff9c4', cursor: 'pointer' }
+    },
+    {
+      field: 'countAlmacenes',
+      headerName: 'Almacenes',
+      width: 120,
+      editable: false,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        icon: 'bi bi-box-seam',
+        onClick: (node: any) => this.toggleAlmacenes(node)
+      },
+      valueGetter: (params) => params.data?.countAlmacenes ?? 0,
+      cellStyle: { backgroundColor: '#f3e8ff', cursor: 'pointer' }
     }
   ];
 
@@ -493,7 +666,10 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
     suppressCellFocus: true,
     masterDetail: true,
     isRowMaster: () => true,
-    detailCellRenderer: 'contratosDetail',
+    detailCellRendererSelector: (params: any) =>
+      params.data?.expandedPanel === 'almacenes'
+        ? { component: 'almacenesDetail' }
+        : { component: 'contratosDetail' },
     detailRowHeight: 280
   };
 
@@ -517,9 +693,10 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
 
       this.branches = project.map((row: any) => ({
         ...row,
-        userId:        this.userId,
-        idBranch:      row.idPermission ?? row.idBranch ?? row.id,
-        countContratos: 0
+        userId:         this.userId,
+        idBranch:       row.idPermission ?? row.idBranch ?? row.id,
+        countContratos: 0,
+        countAlmacenes: 0
       }));
 
       this.availableBranches   = Array.isArray(available) ? available : [];
@@ -537,14 +714,31 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
           .pipe(catchError(() => of([])));
       });
 
-      forkJoin(contractRequests).subscribe({
-        next: contractData => {
-          this.branches = this.branches.map(row => ({
-            ...row,
-            countContratos: Array.isArray(contractData[row.idBranch])
-              ? contractData[row.idBranch].length
-              : 0
-          }));
+      const warehouseRequests: Record<string, Observable<any>> = {};
+      this.branches.forEach(row => {
+        warehouseRequests[row.idBranch] = forkJoin({
+          permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('warehouse', this.userId).pipe(catchError(() => of([]))),
+          branchWarehouses: this.warehousesService.getSimpleWarehouses(row.idBranch).pipe(catchError(() => of([])))
+        });
+      });
+
+      forkJoin({
+        contracts: forkJoin(contractRequests),
+        warehouses: forkJoin(warehouseRequests)
+      }).subscribe({
+        next: ({ contracts: contractData, warehouses: whData }) => {
+          this.branches = this.branches.map(row => {
+            const wh = whData[row.idBranch] || {};
+            const branchWhIds = new Set((Array.isArray(wh.branchWarehouses) ? wh.branchWarehouses : []).map((w: any) => w.id));
+            const userWhCount = (Array.isArray(wh.permissions) ? wh.permissions : []).filter(
+              (p: any) => branchWhIds.has(p.idPermission)
+            ).length;
+            return {
+              ...row,
+              countContratos: Array.isArray(contractData[row.idBranch]) ? contractData[row.idBranch].length : 0,
+              countAlmacenes: userWhCount
+            };
+          });
           if (this.gridApi) this.gridApi.setGridOption('rowData', this.branches);
         }
       });
@@ -553,6 +747,23 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
 
   toggleContratos(node: any): void {
     const isExpanded = node.expanded;
+    (node.data as any).expandedPanel = 'contratos';
+    this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+
+    if (!isExpanded) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: node.data.id } });
+      this.gridApi.onFilterChanged();
+      setTimeout(() => node.setExpanded(true), 50);
+    } else {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  toggleAlmacenes(node: any): void {
+    const isExpanded = node.expanded;
+    (node.data as any).expandedPanel = 'almacenes';
     this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
 
     if (!isExpanded) {
