@@ -498,6 +498,13 @@ export const routes: Routes = [
               ).then((c) => c.EquipmentComponent),
           },
           {
+            path: 'mano-obra',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/mano-obra/mano-obra.component'
+              ).then((c) => c.ManoObraComponent),
+          },
+          {
             path: 'projects',
             loadComponent: () =>
               import(

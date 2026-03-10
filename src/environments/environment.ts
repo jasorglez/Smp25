@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.21 (09/03/26) - Ares - Add quantity and requestQuantity columns to ModProjects materials',
+  version: '6.24 (09/03/26 21:33) - Ares - Add Mano Obra',
 };
 
 

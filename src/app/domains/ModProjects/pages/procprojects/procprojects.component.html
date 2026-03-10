@@ -66,7 +66,14 @@
                   <span>{{ 'equipment' | translate}}</span>
                 </a>
              </li>
- 
+
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'mano-obra')">
+                <a class="nav-link modern-tab" routerLink="mano-obra" routerLinkActive="active">
+                  <i class="bi bi-person-badge"></i>
+                  <span>Mano de Obra</span>
+                </a>
+             </li>
+
              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'contracts')">
                 <a class="nav-link modern-tab" routerLink="contracts" routerLinkActive="active">
                   <i class="bi bi-file-earmark-text"></i>

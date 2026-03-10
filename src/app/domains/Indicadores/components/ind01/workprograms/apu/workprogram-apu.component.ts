@@ -6,7 +6,7 @@ import { ColDef, GridApi } from 'ag-grid-enterprise';
 import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
 import { WorkprogramApuFactorService } from 'app/services/workprogram-apu-factor.service';
 import { WorkprogramApuCuadrillaService } from 'app/services/workprogram-apu-cuadrilla.service';
-import { PosicionesService } from 'app/services/posiciones.service';
+import { ManoObraService } from 'app/services/mano-obra.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { HerramientaService } from 'app/services/herramienta.service';
@@ -31,7 +31,7 @@ export class WorkprogramApuComponent implements OnChanges {
   private apuService          = inject(WorkprogramApuService);
   private factorService       = inject(WorkprogramApuFactorService);
   private cuadrillaService    = inject(WorkprogramApuCuadrillaService);
-  private posService          = inject(PosicionesService);
+  private manoObraService     = inject(ManoObraService);
   private equipService        = inject(EquipmentService);
   private materialService     = inject(MaterialsService);
   private herramientaService  = inject(HerramientaService);
@@ -377,11 +377,10 @@ export class WorkprogramApuComponent implements OnChanges {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
     if (!idCompany) return;
 
-    this.posService.getPositionsByCompany(idCompany).subscribe({
+    this.manoObraService.getByCompany(idCompany).subscribe({
       next: (data: any[]) => {
         this.catalogPersonal = data
-          .filter((d) => d.active !== false)
-          .map((d) => ({ id: d.Id ?? d.id, description: d.description, unit: 'JORNADA', cost: 0 }));
+          .map((d) => ({ id: d.id, description: d.description, unit: d.unit ?? 'JORNADA', cost: d.unitPrice ?? 0 }));
         this.cuadrillaGridApi?.refreshCells();
       },
     });
