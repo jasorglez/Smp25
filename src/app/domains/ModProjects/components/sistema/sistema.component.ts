@@ -186,6 +186,19 @@ export class SistemaComponent implements OnInit {
     },
 
     // Columnas de Bitácoras como botones
+    {
+      field: 'tiempos',
+      headerName: 'T.Inactivos',
+      width: 130,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'tiempos'),
+      },
+      valueGetter: params => params.data.tiempos || 0,
+      editable: false,
+      cellStyle: { backgroundColor: '#fbe9e7', cursor: 'pointer', textDecoration: 'underline' }
+    },
+
    {
       field: 'conceptos',
       headerName: 'Conceptos',
@@ -434,6 +447,7 @@ export class SistemaComponent implements OnInit {
       totalPay: 0,
       close: false,
       paid: true,
+      tiempos: 0,
       personal: 0,
       fotos: 0,
       videos: 0,
@@ -845,14 +859,15 @@ export class SistemaComponent implements OnInit {
 
   private typeToField(typeNote: string): string | null {
     const map: Record<string, string> = {
-      'PERSONAL':  'personal',
-      'MATERIAL':  'material',
-      'EQUIPMENT': 'equipos',
-      'CONCEPT':   'conceptos',
-      'CONCEPTO':  'conceptos',
-      'NOTE':      'notas',
-      'Photo':     'fotos',
-      'Video':     'videos',
+      'PERSONAL':      'personal',
+      'MATERIAL':      'material',
+      'EQUIPMENT':     'equipos',
+      'CONCEPT':       'conceptos',
+      'CONCEPTO':      'conceptos',
+      'NOTE':          'notas',
+      'Photo':         'fotos',
+      'Video':         'videos',
+      'TIME_INACTIVE': 'tiempos',
     };
     return map[typeNote] ?? null;
   }

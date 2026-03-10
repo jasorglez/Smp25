@@ -28,24 +28,24 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  urlSecurity: 'https://bi2.com.mx/api', // 5003
+  urlSecurity: 'https://ms-pruebas-api.bi2.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
-  urlSmp: 'https://bi2.com.mx/smp/api', // 5004
+  urlSmp: 'https://ms-pruebas-api.bi2.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
 
-  urlBpi: 'https://bi2.com.mx/bpi/api', // 5005
+  urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://bi2.com.mx/warehouse/api', // 5007
+  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  urlAdministration: 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
-  urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
+  urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlMantenimiento: 'https://bi2.com.mx/maintenance/api',
+  urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
 
   root: 'root@bi2.mx',
 
@@ -70,7 +70,8 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.24 (09/03/26 21:33) - Ares - Add Mano Obra',
+
+  version: '6.36 (10 Marzo 2026 11:00) - Ares Bitacora Tiempos Inactivos',
 };
 
 
