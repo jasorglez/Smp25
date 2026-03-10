@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { PdfDetailComponent }        from './pdf-detail.component';
+import { BitacoraTimesInactivosComponent } from './bitacora-tiempos-inactivos.component';
 import { BitacoraPersonalComponent }  from './bitacora-personal.component';
 import { BitacoraMaterialComponent }  from './bitacora-material.component';
 import { BitacoraEquiposComponent }   from './bitacora-equipos.component';
@@ -17,14 +18,16 @@ import { BitacoraNotasComponent }     from './bitacora-notas.component';
   imports: [
     CommonModule,
     PdfDetailComponent,
+    BitacoraTimesInactivosComponent,
     BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
     BitacoraFotosComponent, BitacoraVideosComponent,
     BitacoraConceptosComponent, BitacoraNotasComponent,
   ],
   template: `
 <ng-container [ngSwitch]="detailType">
-  <app-pdf-detail          *ngSwitchCase="'pdf'"       [data]="data" [context]="ctx"></app-pdf-detail>
-  <app-bitacora-personal   *ngSwitchCase="'personal'"  [data]="data" [context]="ctx"></app-bitacora-personal>
+  <app-pdf-detail                  *ngSwitchCase="'pdf'"      [data]="data" [context]="ctx"></app-pdf-detail>
+  <app-bitacora-tiempos-inactivos  *ngSwitchCase="'tiempos'"  [data]="data" [context]="ctx"></app-bitacora-tiempos-inactivos>
+  <app-bitacora-personal           *ngSwitchCase="'personal'" [data]="data" [context]="ctx"></app-bitacora-personal>
   <app-bitacora-material   *ngSwitchCase="'material'"  [data]="data" [context]="ctx"></app-bitacora-material>
   <app-bitacora-equipos    *ngSwitchCase="'equipos'"   [data]="data" [context]="ctx"></app-bitacora-equipos>
   <app-bitacora-fotos      *ngSwitchCase="'fotos'"     [data]="data" [context]="ctx"></app-bitacora-fotos>

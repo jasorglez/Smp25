@@ -131,14 +131,13 @@ export class EquipmentComponent implements CanComponentDeactivate {
   }
 
   obtenerUnidades(){
-    return this.catalogsService.getTypeEquipment(this.idcompany).subscribe(
+    return this.catalogsService.getTypeEquipment(this.idcompany,'TYPEEQUIPMENT').subscribe(
       (data: any) => {
         this.typeEquipmentCatalog = data;
       },
       (error) => console.error('Error fetching data:', error)
     );
   }
-  
 
  
   public gridOptions: any = {
