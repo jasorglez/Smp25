@@ -82,6 +82,7 @@ export class ReporteOperativoSinIvaComponent {
   private proyectos: any[] = [];
   private ingresos: any[] = [];
   private egresos: any[] = [];
+  private retiros: any[] = [];
   private empresas: any[] = [];
   private cuentasContablesNivel2: any[] = [];
   private allRoots: any[] = [];
@@ -192,10 +193,11 @@ export class ReporteOperativoSinIvaComponent {
       this.cuentasContablesNivel2 = Array.isArray(cuentasData) ? cuentasData : [];
       this.allRoots = Array.isArray(allRootsData) ? allRootsData : [];
 
-      // Separar ingresos y egresos
+      // Separar ingresos, egresos y retiros de utilidad de socios
       const allData = Array.isArray(incomesData) ? incomesData : [];
       this.ingresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'DEPOSITO');
       this.egresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
+      this.retiros = allData.filter(item => ['RETIRO', 'UTILIDADES'].includes(String(item?.type ?? '').toUpperCase()));
 
       // Obtener empresas del mismo corporativo
       const idCorporativo = currentRoot?.idCorporativo;
@@ -306,10 +308,20 @@ export class ReporteOperativoSinIvaComponent {
     // Filtrar por rango de fechas
     const ingresosFiltered = this.filterByDateRange(this.ingresos);
     const egresosFiltered = this.filterByDateRange(this.egresos);
+    const retirosFiltered = this.filterByDateRange(this.retiros);
 
-    // Agrupar ingresos y egresos por proyecto
+    // Agrupar ingresos, egresos y retiros por proyecto
     const ingresosPorProyecto = new Map<number, { facturado: number; cobrado: number }>();
     const egresosPorProyecto = new Map<number, number>();
+    const retirosPorProyecto = new Map<number, number>();
+
+    // Procesar retiros de utilidad de socios por proyecto
+    retirosFiltered.forEach(retiro => {
+      const idProyecto = retiro.idProject;
+      if (!idProyecto) return;
+      const monto = Number(retiro.subtotal) || Number(retiro.total) || 0;
+      retirosPorProyecto.set(idProyecto, (retirosPorProyecto.get(idProyecto) || 0) + monto);
+    });
 
     // Procesar ingresos
     ingresosFiltered.forEach(ingreso => {
@@ -363,7 +375,7 @@ export class ReporteOperativoSinIvaComponent {
         const montoCobrado = ingresos.cobrado;
         const montoPendienteCobro = montoFacturado - montoCobrado;
         const margenBruto = montoCobrado - erogado;
-        const retiroUtilidad = 0; // Se puede configurar según reglas de negocio
+        const retiroUtilidad = retirosPorProyecto.get(idProyecto) || 0;
         const margenNeto = margenBruto - retiroUtilidad;
         const porcentaje = montoCobrado > 0 ? (margenNeto / montoCobrado) * 100 : 0;
 
