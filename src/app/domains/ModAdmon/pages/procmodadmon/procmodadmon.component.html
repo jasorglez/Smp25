@@ -4,13 +4,13 @@
       <ul class="nav nav-pills">
 
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashmodadmon" routerLinkActive="active">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="tablero/dashmodadmon" routerLinkActive="active">
             <mat-icon>analytics</mat-icon> {{ 'dashboardBi' | translate }}
           </a>
         </li>
 
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashboard-hco" routerLinkActive="active">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="tablero/dashboard-hco" routerLinkActive="active">
             <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}
           </a>
         </li>
@@ -69,9 +69,9 @@
           </a>
         </li>
 
-        <li class="nav-item">
-          <a class="nav-link" routerLink="providers-st" routerLinkActive="active">
-            <i class="bi bi-people-fill"></i> {{'providers' | translate}}
+        <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'provider')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="providers-st" routerLinkActive="active">
+            <i class="bi bi-people-fill"></i>&nbsp;{{ 'providers' | translate }}
           </a>
         </li>
 

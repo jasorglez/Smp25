@@ -11,7 +11,7 @@ import { environment } from '@env/environment';
   standalone: true,
   imports: [RouterModule, DomainsModule],
   templateUrl: './proccsmp.component.html',
-  styleUrl: './proccsmp.component.scss'
+  styleUrls: ['./proccsmp.component.scss']
 })
 export class ProccsmpComponent {
 

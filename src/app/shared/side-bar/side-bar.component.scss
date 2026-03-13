@@ -1,113 +1,26 @@
-/* Fondo azul para la barra lateral */
+// ================================
+// SIDEBAR MINIMAL + RESPONSIVE
+// ================================
+:host {
+  --sb-bg: #003366;            // azul base actual
+  --sb-bg-2: #002a52;
+  --sb-text: rgba(255, 255, 255, 0.92);
+  --sb-text-muted: rgba(255, 255, 255, 0.72);
+  --sb-hover: rgba(255, 255, 255, 0.10);
+  --sb-active: rgba(255, 255, 255, 0.16);
+  --sb-border: rgba(255, 255, 255, 0.10);
+  --sb-accent: #ffffff;
+  --sb-width: 240px;
+  --sb-width-collapsed: 72px;
+  --sb-radius: 10px;
+}
+
 .sidebarback {
-      background-color: #003366;  /* Fondo azul oscuro */
-      padding: 0;
-      color: #FFFFFF;             /* Texto en blanco para contraste */
-      width: 225px; /* Reducido 10% (de 250px a 225px) */
-      transition: width 0.3s ease;
-      font-size: 0.85rem; /* Letras más pequeñas */
-  }
-
-  /* Logo y textos */
-  .sidebarback,
-  .sidebarback .brand-text {
-      color: #FFFFFF;
-      font-size: 0.85rem; /* Letras más pequeñas */
-  }
-
-  /* Estilos para los íconos y enlaces de navegación */
-  .sidebarback .nav-link {
-      color: #FFFFFF;             /* Color de texto blanco */
-      padding: 8px 12px; /* Reducido de 10px 15px */
-      border-radius: 5px;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      font-size: 0.75rem; /* Letras más pequeñas para los menús */
-  }
-
-  .sidebarback .nav-link i {
-      font-size: 1rem; /* Reducido de 1.2rem a 1rem */
-      color: #87CEFA;             /* Azul claro para íconos */
-      margin-right: 6px; /* Reducido de 8px a 6px */
-      transition: color 0.3s ease;
-  }
-
-  /* Hover para los enlaces */
-  .sidebarback .nav-link:hover {
-      background-color: #005599;  /* Fondo azul más claro */
-      color: #FFFFFF;
-  }
-
-  .sidebarback .nav-link:hover i {
-      color: #FFFFFF;             /* Cambia el ícono a blanco en hover */
-  }
-
-  /* Estilo para el select */
-  .select-side {
-      font-size: 0.85rem;
-      color: #333;
-      background-color: #FFFFFF;
-      border: 1px solid #CCCCCC;
-      border-radius: 4px;
-      padding: 4px;
-      margin-bottom: 5px;        /* Espacio entre selects */
-      transition: border-color 0.3s ease;
-      width: 100%; /* Asegurar que ocupe todo el ancho disponible */
-  }
-
-  .select-side:focus {
-      border-color: #87CEFA;      /* Borde azul claro en foco */
-  }
-
-  /* Estilo para los form-select del sidebar */
-  .sidebarback .form-select {
-      font-size: 0.85rem;
-      padding: 4px 8px;
-      height: auto;
-      min-height: 30px;
-      margin-bottom: 5px !important;
-  }
-
-  .sidebarback .form-select option {
-      font-size: 0.85rem;
-      padding: 3px;
-  }
-
-  /* Reducir padding del contenedor de selects */
-  .sidebarback .overflow-auto {
-      padding: 8px;
-  }
-
-  /* Reducir tamaño de texto general en sidebar */
-  .sidebarback span:not(.visually-hidden) {
-      font-size: 0.85rem;
-  }
-
-  .nav-link i {
-    color: #4CAF50; /* Cambia el color */
-    font-size: 16px; /* Reducido de 20px a 16px */
-    transition: transform 0.2s ease, color 0.2s ease;
-  }
-
-  .nav-link i:hover {
-    color: #3E8E41; /* Color al pasar el mouse */
-    transform: scale(1.2); /* Efecto de zoom */
-  }
-
-  .nav-link i {
-    color: #007BFF; /* Azul principal */
-  }
-  .nav-link i:hover {
-    color: #0056b3; /* Azul oscuro al pasar el mouse */
-  }
-
-  .active-link {
-    background-color: #007bff; /* Color de fondo */
-    color: white !important; /* Color de texto */
-    border-radius: 4px; /* Bordes redondeados */
-
-    mat-icon {
-        color: white !important; /* Color del icono */
-    }
+  background: linear-gradient(180deg, var(--sb-bg) 0%, var(--sb-bg-2) 100%);
+  color: var(--sb-text);
+  padding: 0;
+  width: var(--sb-width);
+  font-size: 0.85rem;
 }
 
 .sidebar {
@@ -115,21 +28,72 @@
   top: 0;
   bottom: 0;
   left: 0;
-  width: 225px; /* Reducido 10% (de 250px a 225px) */
+  width: var(--sb-width);
   z-index: 1030;
-  transition: width 0.3s ease;
   overflow-y: auto;
   overflow-x: hidden;
-  font-size: 0.85rem; /* Letras más pequeñas */
+  transition: width 220ms ease, transform 220ms ease;
+  will-change: width, transform;
+}
+
+// Encabezado/logo
+.sidebar-logo {
+  max-height: 70px;
+  object-fit: contain;
+}
+
+// Links
+.sidebarback .nav-link {
+  color: var(--sb-text);
+  padding: 10px 12px;
+  border-radius: var(--sb-radius);
+  font-size: 0.82rem;
+  gap: 10px;
+  transition: background-color 160ms ease, transform 160ms ease, color 160ms ease;
+}
+
+.sidebarback .nav-link mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--sb-text);
+  opacity: 0.95;
+}
+
+.sidebarback .nav-link:hover {
+  background-color: var(--sb-hover);
+  transform: translateX(2px);
+}
+
+.active-link {
+  background-color: var(--sb-active);
+  color: var(--sb-accent) !important;
+}
+
+.active-link mat-icon {
+  color: var(--sb-accent) !important;
+}
+
+// Selects
+.sidebarback .form-select {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.sidebarback .overflow-auto {
+  padding: 10px;
 }
 
 .collapsed.sidebar {
-  width: 70px;
+  width: var(--sb-width-collapsed);
 }
 
 /* Expansión temporal - mantener mismo ancho que sidebar normal */
 .collapsed.temp-expanded.sidebar {
-  width: 225px;
+  width: var(--sb-width);
 }
 
 /* Modificar selects cuando está colapsado */
@@ -227,21 +191,23 @@
 
 /* Estilo del botón de colapsar */
 .btn-collapse {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.10);
   color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   padding: 8px;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 12px;
 }
 
 .btn-collapse:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
+  background-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
   color: #FFFFFF;
+  transform: translateY(-1px);
 }
 
 .btn-collapse mat-icon {
@@ -269,6 +235,37 @@
   border-radius: 4px;
   background-color: rgba(255, 255, 255, 0.1);
   padding: 4px;
+}
+
+// ================================
+// RESPONSIVE: Drawer en móvil
+// ================================
+@media (max-width: 768px) {
+  .sidebar {
+    width: var(--sb-width);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  // En móvil, "colapsado" = oculto (drawer)
+  .collapsed.sidebar:not(.temp-expanded) {
+    transform: translateX(-105%);
+  }
+
+  // En móvil, si está temporalmente expandido, se muestra
+  .collapsed.temp-expanded.sidebar {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebarback .nav-link,
+  .btn-collapse {
+    transition: none !important;
+  }
+  .sidebarback .nav-link:hover {
+    transform: none !important;
+  }
 }
 
 /* Hacer texto más pequeño cuando está colapsado */

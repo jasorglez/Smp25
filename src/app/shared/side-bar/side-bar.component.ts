@@ -21,7 +21,7 @@ import { ConventionsService } from 'app/services/conventions.service';
   standalone: true,
   imports: [SharedModule, FormsModule],
   templateUrl: './side-bar.component.html',
-  styleUrl: './side-bar.component.scss',
+  styleUrls: ['./side-bar.component.scss'],
 })
 export class SideBarComponent {
   isSidebarCollapsed = false;
