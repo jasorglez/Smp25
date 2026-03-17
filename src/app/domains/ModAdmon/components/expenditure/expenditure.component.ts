@@ -1101,6 +1101,12 @@ export class ExpenditureComponent {
       cleanedData.countitems = cleanedData.countItems;
       delete cleanedData.countItems;
     }
+    // Si no hay conceptos en el detalle, forzar totales a 0
+    if (!cleanedData.countitems || cleanedData.countitems === 0) {
+      cleanedData.subtotal = 0;
+      cleanedData.tax = 0;
+      cleanedData.total = 0;
+    }
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

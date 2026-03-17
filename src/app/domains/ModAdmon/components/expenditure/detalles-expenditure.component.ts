@@ -527,6 +527,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             if (employee) {
               params.data.idExpense = employee.id;
               params.data.selectedEntity = employee.name;
+              if (params.data.__isNew && !params.data.description) {
+                params.data.description = `Salario de ${employee.name}`;
+              }
               return true;
             }
           } else if (type === 'PROVEEDORES') {
@@ -886,6 +889,15 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+
+    // Si cambió la entidad seleccionada y es empleado nuevo, refrescar descripción
+    if (event.colDef.field === 'selectedEntity' && event.data.typeExpense === 'EMPLEADOS') {
+      this.gridApi.refreshCells({
+        rowNodes: [event.node],
+        columns: ['description'],
+        force: true
+      });
+    }
 
     // Si cambió el tipo de gasto, limpiar la entidad seleccionada
     if (event.colDef.field === 'typeExpense') {

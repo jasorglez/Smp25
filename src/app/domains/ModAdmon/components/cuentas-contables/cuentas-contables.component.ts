@@ -189,8 +189,7 @@ export class CuentasContablesComponent implements OnInit {
       {
         headerName: 'Nombre',
         field: 'nombre',
-        flex: 1,
-        minWidth: 200
+        width: 180
       },
       {
         headerName: 'Descripción',
