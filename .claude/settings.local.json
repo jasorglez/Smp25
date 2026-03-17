@@ -117,7 +117,8 @@
       "Bash(grep:*)",
       "Bash(cd:*)",
       "Bash(ls:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(find \"/c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosSmp\" -name \"Timeinactive*\" -o -name \"TimeInactive*\" 2>/dev/null | grep -v bin | grep -v obj)"
     ],
     "deny": [],
     "ask": []

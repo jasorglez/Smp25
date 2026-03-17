@@ -38,7 +38,11 @@
       [rowSelection]="'single'"
       (gridReady)="onGridReady($event)"
       (selectionChanged)="onRowSelected($event)"
-      (cellValueChanged)="onCellValueChanged($event)">
+      (cellValueChanged)="onCellValueChanged($event)"
+      (columnPinned)="saveColState()"
+      (columnMoved)="saveColState()"
+      (columnResized)="saveColState()"
+      (columnVisible)="saveColState()">
     </ag-grid-angular>
   </div>
 </div>

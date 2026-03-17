@@ -170,7 +170,7 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
     const newRow = {
       id: `temp_${this.tempIdCounter++}`,
       idReporte: this.reportData?.id,
-      date: new Date().toISOString().split('T')[0],
+      date: this.reportData?.date ? String(this.reportData.date).substring(0, 10) : new Date().toISOString().split('T')[0],
       title: '',
       content: '',
       idResource: null,

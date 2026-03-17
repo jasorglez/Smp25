@@ -230,6 +230,7 @@ export class BitacoraEquiposComponent extends BitacoraBaseComponent {
     const newRow = {
       id: `temp_${this.tempIdCounter++}`,
       idReporte: this.reportData?.id,
+      date: this.reportData?.date ? String(this.reportData.date).substring(0, 10) : new Date().toISOString().split('T')[0],
       name: '',
       quantity: 1,
       hours: null,

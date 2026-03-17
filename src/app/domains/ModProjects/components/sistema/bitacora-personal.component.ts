@@ -40,6 +40,7 @@ export class BitacoraPersonalComponent extends BitacoraBaseComponent {
     const newRow = {
       id: `temp_${this.tempIdCounter++}`,
       idReporte: this.reportData?.id,
+      date: this.reportData?.date ? String(this.reportData.date).substring(0, 10) : new Date().toISOString().split('T')[0],
       position: '',
       quantity: 1,
       start: null,
@@ -57,8 +58,11 @@ export class BitacoraPersonalComponent extends BitacoraBaseComponent {
 
   override onCellValueChanged(event: any): void {
     if (event.colDef.field === 'quantity') {
-      event.data.quantity = 1;
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['quantity'], force: true });
+      const qty = Number(event.newValue);
+      if (!qty || qty < 1) {
+        event.data.quantity = 1;
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['quantity'], force: true });
+      }
     }
 
     if (event.colDef.field === 'position' && event.newValue) {

@@ -242,12 +242,21 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
+  // Leer siempre del componentParent (referencia viva) para evitar contexto stale
+  private get _employees(): any[] {
+    return this.context?.componentParent?.employees || this.context?.employees || this.employees || [];
+  }
+  private get _providers(): any[] {
+    return this.context?.componentParent?.providers || this.context?.providers || this.providers || [];
+  }
+  private get _cuentasContables(): any[] {
+    return this.context?.componentParent?.cuentasContables || this.context?.cuentasContables || this.cuentasContables || [];
+  }
+  private get _cuentasContablesNivel3(): any[] {
+    return this.context?.componentParent?.cuentasContablesNivel3 || this.context?.cuentasContablesNivel3 || this.cuentasContablesNivel3 || [];
+  }
+
   ngOnInit() {
-    console.log('📊 Datos disponibles en el componente:', {
-      employeesCount: this.employees?.length || 0,
-      providersCount: this.providers?.length || 0,
-      cuentasContablesCount: this.cuentasContables?.length || 0
-    });
   }
 
   async agInit(params: ICellRendererParams): Promise<void> {
@@ -291,13 +300,11 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   loadConceptsData() {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
-      console.log('🔵 DETALLE: Cargando conceptos para egreso ID:', expenditureId);
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
-        console.log(`📊 DETALLE: Conceptos recibidos para ID ${expenditureId}:`, data.length);
         // Obtener datos del contexto
-        const employees = this.context?.employees || this.employees || [];
-        const providers = this.context?.providers || this.providers || [];
-        const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+        const employees = this._employees;
+        const providers = this._providers;
+        const cuentasContables = this._cuentasContables;
 
         this.rowData = data.map(concept => {
           const type = concept.typeExpense?.trim().toUpperCase();
@@ -334,7 +341,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         }
         // Update the count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
-          console.log(`🔄 DETALLE: Actualizando contador en maestro. ID: ${expenditureId}, Count: ${this.rowData.length}`);
           this.context.CONCEPTS.updateCount(expenditureId, this.rowData.length);
         }
         // Recalcular totales
@@ -381,7 +387,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           this.setupManagementInfo = this.setupManagementInfo[0];
         }
       } catch (error) {
-        console.error('Error loading setup management info:', error);
         this.setupManagementInfo = null;
       }
     }
@@ -455,16 +460,17 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         field: 'selectedEntity',
         headerName: 'Empleado/Proveedor/Cuenta',
         width: 240,
+        cellDataType: false,
         editable: (params) => !!params.data?.typeExpense,
         cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: (params: any) => {
           if (!params.data) return { options: [] };
           const type = params.data.typeExpense;
           
-          // Leer siempre del contexto para obtener datos actualizados
-          const employees = this.context?.employees || this.employees || [];
-          const providers = this.context?.providers || this.providers || [];
-          const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+          // Leer siempre del componentParent para obtener datos actualizados
+          const employees = this._employees;
+          const providers = this._providers;
+          const cuentasContables = this._cuentasContables;
 
           let options = [];
           
@@ -506,16 +512,15 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           
           // Si seleccionó "Agregar Proveedor"
           if (params.newValue === -999) {
-            console.log('🟢 Usuario seleccionó "Agregar Proveedor..."');
             this.openProviderModal(this.context?.idRoot || 0);
             params.data.idExpense = params.oldValue || null;
             return false;
           }
           
           // Obtener listas actualizadas
-          const employees = this.context?.employees || this.employees || [];
-          const providers = this.context?.providers || this.providers || [];
-          const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+          const employees = this._employees;
+          const providers = this._providers;
+          const cuentasContables = this._cuentasContables;
 
           if (type === 'EMPLEADOS') {
             const employee = employees.find((e: any) => e.id === params.newValue);
@@ -553,9 +558,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           
           if (!type || !idExpense) return params.data.selectedEntity || '';
 
-          const employees = this.context?.employees || this.employees || [];
-          const providers = this.context?.providers || this.providers || [];
-          const cuentasContables = this.context?.cuentasContables || this.cuentasContables || [];
+          const employees = this._employees;
+          const providers = this._providers;
+          const cuentasContables = this._cuentasContables;
 
           if (type === 'EMPLEADOS') {
             const employee = employees.find((e: any) => e.id === idExpense);
@@ -592,7 +597,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             return params.value;
           }
           const value = params.value || '';
-          console.log('🔍 Rendering description cell:', value, 'typeExpense:', params.data?.typeExpense, 'idExpense:', params.data?.idExpense);
           return `<div class="description-content" style="word-wrap: break-word; white-space: normal; line-height: 1.2; padding: 2px; overflow: visible; max-height: none;">${value}</div>`;
         }
       },
@@ -605,7 +609,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         cellEditorParams: () => {
           // Filtrar cuentas nivel 3 por el padre (idExpend del maestro)
           const idPadre = this.expenditureData?.idExpend;
-          const cuentasNivel3 = this.context?.cuentasContablesNivel3 || this.cuentasContablesNivel3 || [];
+          const cuentasNivel3 = this._cuentasContablesNivel3;
           const filtradas = idPadre
             ? cuentasNivel3.filter((c: any) => c.idPadre === idPadre)
             : cuentasNivel3;
@@ -615,7 +619,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const cuentasNivel3 = this.context?.cuentasContablesNivel3 || this.cuentasContablesNivel3 || [];
+          const cuentasNivel3 = this._cuentasContablesNivel3;
           const cuenta = cuentasNivel3.find((c: any) => c.id === params.value);
           return cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : params.value;
         }
@@ -792,8 +796,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('💾 GUARDANDO CAMBIOS - Sincronizando datos del grid...');
-
     // Sync grid data to rowData array
     const syncedData: any[] = [];
     this.gridApi.forEachNode(node => {
@@ -860,7 +862,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
       try {
         await this.context.CONCEPTS.save(expenditureId, dataToSave);
-        console.log('✅ Guardado exitoso.');
         this.hasUnsavedChanges = false;
 
         // Refresh master grid (detail stays open for user to close manually)
@@ -868,7 +869,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           this.context.componentParent.gridApi.refreshCells({ force: true });
         }
       } catch (error) {
-        console.error('❌ Error al guardar:', error);
       }
     }
   }
@@ -947,8 +947,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // ==================== MÉTODOS PARA EL MODAL DE PROVEEDOR ====================
 
   openProviderModal(idRoot: number) {
-    console.log('🟢 Abriendo modal de proveedor con idRoot:', idRoot);
-    
     // Resetear el formulario del proveedor
     this.newProvider = {
       ...this.newProvider,
@@ -962,13 +960,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       address: ''
     };
     
-    console.log('📋 Formulario de proveedor reseteado:', this.newProvider);
-    
     // Mostrar el modal con un pequeño delay para asegurar que se renderice
     setTimeout(() => {
       this.showProviderModal = true;
       document.body.classList.add('modal-open');
-      console.log('✅ Modal visible:', this.showProviderModal);
     }, 50);
   }
 
@@ -988,7 +983,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('💾 Guardando nuevo proveedor:', this.newProvider);
       const result: any = await lastValueFrom(
         this.customersService.addCustomer(this.newProvider)
       );
@@ -999,21 +993,18 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         'success'
       );
 
-      console.log('✅ Proveedor creado con ID:', result.id);
-
       // Actualizar la lista de proveedores en el contexto
       const newProvider = {
         id: result.id,
         name: this.newProvider.company
       };
 
-      if (this.context?.providers) {
+      // Actualizar la lista viva en componentParent y fallbacks
+      if (this.context?.componentParent?.providers) {
+        this.context.componentParent.providers.push(newProvider);
+      } else if (this.context?.providers) {
         this.context.providers.push(newProvider);
-      } else {
-        this.providers.push(newProvider);
       }
-
-      // También actualizar la lista local
       this.providers.push(newProvider);
 
       this.closeProviderModal();
@@ -1022,7 +1013,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       this.onProviderCreated(newProvider);
 
     } catch (error) {
-      console.error('❌ Error al crear proveedor:', error);
       alerts.basicAlert(
         'Error',
         `Error al crear el proveedor. ${error?.error?.message || error?.message || 'Error desconocido'}`,
@@ -1032,12 +1022,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   }
 
   onProviderCreated(providerData: { id: number; name: string }) {
-    console.log('🔄 Actualizando lista de proveedores con:', providerData);
-
     // Refrescar las columnas para que aparezca el nuevo proveedor en el combo
     this._colDefs = [];
     if (this.gridApi) {
-      console.log('🔧 Refrescando columnDefs del grid...');
       this.gridApi.setGridOption('columnDefs', this.colDefs);
     }
 
@@ -1046,10 +1033,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       const selectedNodes = this.gridApi?.getSelectedNodes();
       if (selectedNodes && selectedNodes.length > 0) {
         const selectedNode = selectedNodes[0];
-        console.log('🎯 Nodo seleccionado:', selectedNode.data);
-        
+
         if (selectedNode.data.typeExpense === 'PROVEEDORES') {
-          console.log('✏️ Actualizando celda con nuevo proveedor:', providerData);
           
           // Actualizar los valores directamente en el nodo
           selectedNode.data.idExpense = providerData.id;
@@ -1070,7 +1055,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             force: true
           });
 
-          console.log('✅ Celda actualizada exitosamente');
         }
       }
     }, 100);
@@ -1082,7 +1066,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     try {
       // Verify required services in context
       if (!this.context?.rootService || !this.context?.base64EncodeService || !this.context?.idRoot) {
-        console.error('Servicios necesarios no disponibles en el contexto');
         this.pdfUrl = null;
         return;
       }
@@ -1401,7 +1384,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       });
 
     } catch (error) {
-      console.error('Error generando el reporte PDF:', error);
       this.pdfUrl = null;
       alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
     }
@@ -1462,7 +1444,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
     } catch (error) {
-      console.error('Error formatting date:', error);
       return '';
     }
   }
@@ -1481,7 +1462,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     }
 
     // Si no existe, buscar en el contexto actualizado
-    const expenses = this.context?.expenses || this.expenses;
+    const expenses = this.context?.componentParent?.expenses || this.context?.expenses || this.expenses;
     if (!this.expenditureData?.idExpend || !expenses || expenses.length === 0) {
       return 'Sin tipo de gasto';
     }

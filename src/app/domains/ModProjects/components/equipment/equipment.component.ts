@@ -151,7 +151,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
 
   obtenerUnidades(): void {
     if (!this.idcompany) return;
-    this.catalogsService.getTypeEquipment(this.idcompany).subscribe(
+    this.catalogsService.getTypeEquipment(this.idcompany, 'TYPEEQUIPMENT').subscribe(
       (data: any) => { this.typeEquipmentCatalog = data; },
       (error) => console.error('Error fetching typeEquipment:', error)
     );

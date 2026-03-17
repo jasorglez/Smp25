@@ -235,10 +235,13 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
 
   // ── CRUD ─────────────────────────────────────────────────────────────────
   addRow(): void {
+    const reportDate = this.reportData?.date
+      ? String(this.reportData.date).substring(0, 10)
+      : new Date().toISOString().split('T')[0];
     const newRow = {
       id: `temp_${this.tempIdCounter++}`,
       idReporte: this.reportData?.id,
-      date: new Date().toISOString().split('T')[0],
+      date: reportDate,
       active: true, __isNew: true, __modified: false,
     };
     this.rowData = [newRow, ...this.rowData];
@@ -347,7 +350,7 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
       idReporte: this.reportData?.id        ?? null,
       idProject: this.reportData?.idProject ?? null,
       typeNote:  this.typeNoteValue,
-      date:      toIsoDate(item.date),
+      date:      toIsoDate(item.date ?? this.reportData?.date),
       orden:     idx >= 0 ? idx + 1 : 1,
       quantity:  this.toNum(item.quantity),
     };

@@ -21,7 +21,7 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
   // ── Abstract members ────────────────────────────────────────────────────────
   readonly bitacoraType   = 'tiempos';
   readonly typeNoteValue  = 'TIME_INACTIVE';
-  readonly editableCols   = ['date', 'idArea', 'idClasification', 'timeStart', 'timeEnd', 'personal', 'cause'];
+  readonly editableCols   = ['idArea', 'idClasification', 'timeStart', 'timeEnd', 'personal', 'cause'];
   readonly requiredFields = [
     { field: 'idArea',     label: 'Área'    },
     { field: 'timeStart',  label: 'Inicio'  },
@@ -43,17 +43,6 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
       {
         headerName: '#', width: 45, pinned: 'left', editable: false,
         valueGetter: (p) => p.node!.rowIndex! + 1,
-      },
-      {
-        field: 'date', headerName: 'Fecha', editable: true, width: 115,
-        cellEditor: 'agDateCellEditor',
-        valueGetter:   (p) => p.data?.date ? String(p.data.date).substring(0, 10) : '',
-        valueSetter:   (p) => { p.data.date = p.newValue; return true; },
-        valueFormatter:(p) => {
-          if (!p.value) return '';
-          const [y, m, d] = String(p.value).split('-');
-          return d && m && y ? `${d}/${m}/${y}` : p.value;
-        },
       },
       {
         field: 'idArea', headerName: 'Área', editable: true, width: 200,
@@ -87,7 +76,7 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
         },
         valueSetter: (p) => {
           if (p.newValue === '➕ Nueva clasificación...') {
-            this.addNewCatalogEntry('CLASIFICACIONES', p);
+            this.addNewCatalogEntry('TIME_CLASIF', p);
             return false;
           }
           const cls = this.clasificacionesCatalog.find((c: any) => c.description === p.newValue);
@@ -130,7 +119,7 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
         this.gridApi?.refreshCells({ force: true });
       },
     });
-    this.catalogsService.getTypeEquipment(idRoot, 'CLASIFICACIONES').subscribe({
+    this.catalogsService.getTypeEquipment(idRoot, 'TIME_CLASIF').subscribe({
       next: (data: any[]) => {
         this.clasificacionesCatalog = data;
         this.gridApi?.refreshCells({ force: true });
@@ -181,6 +170,14 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
       this.gridApi?.setGridOption('rowData', this.rowData);
       this.gridApi?.startEditingCell({ rowIndex: 0, colKey: this.editableCols[0] });
     }, 50);
+  }
+
+  // ── Refresh total al editar campos que lo afectan ────────────────────────────
+  override onCellValueChanged(event: any): void {
+    super.onCellValueChanged(event);
+    if (['personal', 'timeStart', 'timeEnd'].includes(event.column.getColId())) {
+      this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['total'], force: true });
+    }
   }
 
   // ── Guardar ──────────────────────────────────────────────────────────────────
@@ -237,17 +234,24 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
     return {
       idReporte:       this.reportData?.id        ?? null,
       idProject:       this.reportData?.idProject ?? null,
-      date:            item.date ?? new Date().toISOString().split('T')[0],
+      date:            this.reportData?.date ? String(this.reportData.date).substring(0, 10) : new Date().toISOString().split('T')[0],
       idArea:          item.idArea          ?? null,
       idClasification: item.idClasification ?? null,
-      timeStart:       item.timeStart || null,
-      timeEnd:         item.timeEnd   || null,
+      timeStart:       this.toTimeSpan(item.timeStart),
+      timeEnd:         this.toTimeSpan(item.timeEnd),
       personal:        item.personal  ?? 0,
       cause:           item.cause?.trim() || null,
       total:           this.calcTotal(item),
       idProgram:       null,
       active:          true,
     };
+  }
+
+  /** Convierte "HH:mm" → "HH:mm:ss" para que C# TimeSpan pueda deserializarlo */
+  private toTimeSpan(val: string | null | undefined): string | null {
+    if (!val) return null;
+    const s = String(val).trim();
+    return /^\d{2}:\d{2}$/.test(s) ? s + ':00' : s;
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -260,7 +264,7 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
     return Number(((mins / 60) * (data.personal || 1)).toFixed(2));
   }
 
-  private async addNewCatalogEntry(type: 'AREAS' | 'CLASIFICACIONES', params: any): Promise<void> {
+  private async addNewCatalogEntry(type: 'AREAS' | 'TIME_CLASIF', params: any): Promise<void> {
     const label = type === 'AREAS' ? 'Área' : 'Clasificación';
     const { value: description } = await Swal.fire({
       title: `Nueva ${label}`,

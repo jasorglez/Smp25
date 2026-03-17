@@ -388,6 +388,8 @@ export class SistemaComponent implements OnInit {
     });
   }
 
+  private readonly COL_STATE_KEY = 'sistema-col-state';
+
   onGridReady(event: GridReadyEvent): void {
     this.gridApi = event.api;
     this.gridOptions.context.componentParent = this;
@@ -398,9 +400,26 @@ export class SistemaComponent implements OnInit {
       context: this.gridOptions.context
     });
 
+    this.restoreColState();
+
     if (this.idContract) {
       this.loadConventions(this.idContract);
     }
+  }
+
+  saveColState(): void {
+    if (!this.gridApi) return;
+    const state = this.gridApi.getColumnState();
+    localStorage.setItem(this.COL_STATE_KEY, JSON.stringify(state));
+  }
+
+  private restoreColState(): void {
+    const raw = localStorage.getItem(this.COL_STATE_KEY);
+    if (!raw) return;
+    try {
+      const state = JSON.parse(raw);
+      this.gridApi.applyColumnState({ state, applyOrder: true });
+    } catch { /* si está corrupto lo ignoramos */ }
   }
 
   loadReports(): void {

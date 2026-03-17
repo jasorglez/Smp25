@@ -35,11 +35,8 @@ export class SelectDropdownService {
     onSelect: (value: any) => void,
     onCancel: () => void
   ): void {
-    console.log('SelectDropdownService: Opening dropdown');
-
     // Cerrar dropdown anterior si existe (sin limpiar callbacks)
     if (this.dropdownElement) {
-      console.log('SelectDropdownService: Closing previous dropdown');
       this.removeTooltipFromBody();
 
       if (this.documentClickListener) {
@@ -71,7 +68,6 @@ export class SelectDropdownService {
   }
 
   closeDropdown(): void {
-    console.log('SelectDropdownService: Closing dropdown');
     this.removeTooltipFromBody();
 
     if (this.documentClickListener) {
@@ -267,7 +263,6 @@ export class SelectDropdownService {
   }
 
   private selectOption(option: SelectOption): void {
-    console.log('SelectDropdownService: Option selected:', option.description);
     this.selectedValue = option.id;
 
     if (this.onSelectCallback) {
@@ -280,7 +275,6 @@ export class SelectDropdownService {
   private setupDocumentClickListener(): void {
     this.documentClickListener = this.renderer.listen('document', 'mousedown', (event: MouseEvent) => {
       if (this.dropdownElement && !this.dropdownElement.contains(event.target as Node)) {
-        console.log('SelectDropdownService: Click outside, canceling');
         if (this.onCancelCallback) {
           this.onCancelCallback();
         }

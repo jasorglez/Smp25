@@ -187,6 +187,12 @@ export class CuentasContablesComponent implements OnInit {
   setupAgGridTreeColumns(): void {
     this.columnDefsTree = [
       {
+        headerName: 'Nombre',
+        field: 'nombre',
+        flex: 1,
+        minWidth: 200
+      },
+      {
         headerName: 'Descripción',
         field: 'descripcion',
         flex: 1,

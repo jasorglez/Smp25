@@ -25,7 +25,6 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
   conceptOptions: string[] = [];
   
   readonly requiredFields = [
-    { field: 'date', label: 'Fecha' },
     { field: 'descriptionconcept', label: 'Concepto' },
     { field: 'quantity', label: 'Cantidad' },
   ];
@@ -39,7 +38,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
     const newRow = {
       id: `temp_${this.tempIdCounter++}`,
       idReporte: this.reportData?.id,
-      date: this.reportData?.date || new Date().toISOString().split('T')[0],
+      date: this.reportData?.date ? String(this.reportData.date).substring(0, 10) : new Date().toISOString().split('T')[0],
       startTime: '08:00:00',
       endTime: '17:00:00',
       subpartidaId: 0,
