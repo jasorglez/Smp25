@@ -70,10 +70,10 @@ export class CuentasContablesComponent implements OnInit {
 
   // Configuración para vista lista
   public columnDefs: ColDef[] = [];
-  
+
   // Configuración para vista árbol
   public columnDefsTree: ColDef[] = [];
-  
+
   public defaultColDef: ColDef = {
     sortable: true,
     filter: true,
@@ -132,14 +132,14 @@ export class CuentasContablesComponent implements OnInit {
         headerName: 'Nombre',
         field: 'nombre',
         flex: 1,
-        minWidth: 250,
+        minWidth: 150,
         editable: true
       },
       {
         headerName: 'Descripción',
         field: 'descripcion',
-        flex: 1,
-        minWidth: 200,
+        flex: 3,
+        minWidth: 300,
         editable: true,
         valueFormatter: (params) => params.value || '-'
       },
@@ -187,6 +187,12 @@ export class CuentasContablesComponent implements OnInit {
   setupAgGridTreeColumns(): void {
     this.columnDefsTree = [
       {
+        headerName: 'Nombre',
+        field: 'nombre',
+        flex: 1,
+        minWidth: 200
+      },
+      {
         headerName: 'Descripción',
         field: 'descripcion',
         flex: 1,
@@ -220,7 +226,8 @@ export class CuentasContablesComponent implements OnInit {
     // Configuración específica para la columna de agrupación en Tree Data Mode
     this.autoGroupColumnDef = {
       headerName: 'Cuenta Contable',
-      minWidth: 400,
+      minWidth: 250,
+      flex: 2,
       cellRendererParams: {
         suppressCount: true,
         innerRenderer: this.customTreeCellRenderer.bind(this)
@@ -234,15 +241,15 @@ export class CuentasContablesComponent implements OnInit {
   customTreeCellRenderer(params: any) {
     const data = params.data;
     const nivel = data.nivel;
-    
+
     // Iconos según el nivel
-    const iconClass = nivel === 1 ? 'bi-folder-fill text-warning' : 
-                     nivel === 2 ? 'bi-folder text-info' : 
+    const iconClass = nivel === 1 ? 'bi-folder-fill text-warning' :
+                     nivel === 2 ? 'bi-folder text-info' :
                      'bi-file-earmark-text text-success';
-    
+
     // Clases CSS según el nivel para indentación
     const nivelClass = `nivel-${nivel}`;
-    
+
     return `
       <div class="d-flex align-items-center ${nivelClass}">
         <i class="bi ${iconClass} me-2"></i>
@@ -297,7 +304,7 @@ export class CuentasContablesComponent implements OnInit {
 
   loadData(): void {
     this.loading = true;
-    
+
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Cargar Catálogo de Cuentas Contables',
