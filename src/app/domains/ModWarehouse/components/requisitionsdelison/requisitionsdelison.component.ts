@@ -310,6 +310,9 @@ export class RequisitionsDelisonComponent implements OnInit {
         };
       });
 
+      // ✅ Ordenar por ID descendente (más reciente primero)
+      this.fullRowData.sort((a, b) => b.id - a.id);
+
       this.rowData = [...this.fullRowData];
 
 
@@ -374,6 +377,9 @@ export class RequisitionsDelisonComponent implements OnInit {
             idReference: req.idReference
           };
         }) : [];
+
+        // ✅ Ordenar por ID descendente (más reciente primero)
+        this.fullRowData.sort((a, b) => b.id - a.id);
 
         this.rowData = [...this.fullRowData];
 
@@ -882,6 +888,16 @@ export class RequisitionsDelisonComponent implements OnInit {
     }
 
     if (isDetailColumn) {
+      // Bloquear si la fila no está guardada
+      if (event.data.__isNew || event.data.__modified) {
+        alerts.basicAlert(
+          'Guarda primero',
+          'Debes guardar la requisición antes de poder ver su detalle.',
+          'warning'
+        );
+        return;
+      }
+
       const node = event.node;
       const api = event.api;
 

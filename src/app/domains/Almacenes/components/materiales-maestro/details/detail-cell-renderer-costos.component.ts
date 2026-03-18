@@ -7,7 +7,7 @@ import { FamilySubFamily } from 'app/services/familySubFamily.service';
 import { FormulaEditorComponent } from '../formula-editor.component';
 import { Parser } from 'expr-eval';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
-import { DetailCellRendererParametrosComponent } from './detail-cell-renderer-parametros.component';
+import { DetallesParametrosComponent } from './detalles-parametros.component';
 import { alerts } from 'app/helpers/alerts';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { RawMaterialsService } from 'app/services/raw-materials.service';
@@ -17,7 +17,7 @@ import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
   selector: 'app-detail-cell-renderer-costos',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [CommonModule, AgGridModule, FormulaEditorComponent, CurrencyPipe, DetailCellRendererParametrosComponent],
+  imports: [CommonModule, AgGridModule, FormulaEditorComponent, CurrencyPipe, DetallesParametrosComponent],
   template: `
     <!-- El template permanece igual -->
     <div style="padding: 10px; background-color: #e8f5e9; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
@@ -116,7 +116,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
 
   public costosRowData: any[] = [];
   components = {
-      DetailCellRendererParametros: DetailCellRendererParametrosComponent,
+      DetailCellRendererParametros: DetallesParametrosComponent,
     };
   public gridOptions = {
     headerHeight: 25,

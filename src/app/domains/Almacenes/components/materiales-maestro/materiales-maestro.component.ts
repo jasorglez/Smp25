@@ -11,7 +11,7 @@ import { DetailCellRendererSucursalComponent } from './details/detail-cell-rende
 import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { DetallesSucursalesProveedorComponent } from './details/detalles-sucursalesproveedor.component';
-import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
+import { DetallesParametrosComponent } from './details/detalles-parametros.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
@@ -40,7 +40,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
     DetailCellRendererCostosComponent,
     DetailCellRendererSubfamiliaComponent,
     DetallesSucursalesProveedorComponent,
-    DetailCellRendererParametrosComponent,
+    DetallesParametrosComponent,
     DetailCellRendererHistoricoComponent,
     SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent,
@@ -284,7 +284,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererCostos: DetailCellRendererCostosComponent,
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
     detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent,
-    detailCellRendererParametros: DetailCellRendererParametrosComponent,
+    detailCellRendererParametros: DetallesParametrosComponent,
     detailCellRendererHistorico: DetailCellRendererHistoricoComponent
   };
 
@@ -889,6 +889,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           },
           delete: (params: any, callback: () => void) => {
             this.deleteDetailRow(params, callback, 'MATERIAL');
+          },
+          updateCount: (materialId: number, count: number) => {
+            this.updateParametrosCount(materialId, count);
           }
         }
       }
@@ -918,6 +921,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('❌ Error al actualizar subfamilyCount:', error);
+      }
+    });
+  }
+
+  // Método para actualizar el parametros count de un material específico
+  updateParametrosCount(materialId: number, count: number) {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node) => {
+      if (node.data && node.data.id === materialId) {
+        node.data.parametros = count;
+        this.gridApi.refreshCells({ rowNodes: [node], columns: ['parametros'], force: true });
       }
     });
   }

@@ -70,7 +70,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.36 (10 Marzo 2026 11:00) - Ares Bitacora Tiempos Inactivos',
+  version: '3.44 (18 Marzo 2026 11:00) - SMP v2.5 - Angular 18',
 };
 
 

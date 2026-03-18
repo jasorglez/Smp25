@@ -7,10 +7,10 @@ import { alerts } from 'app/helpers/alerts';
 import { ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ParameterByMaterialDescriptionService } from 'app/services/parameterByMaterialDescription.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { concat, firstValueFrom, lastValueFrom, toArray } from 'rxjs';
 
 @Component({
-  selector: 'app-detail-cell-renderer-parametros',
+  selector: 'app-detalles-parametros',
   standalone: true,
   imports: [AgGridModule, CommonModule, SelectWithTooltipEditorV2Component],
   template: `
@@ -65,7 +65,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
     </div>
   `
 })
-export class DetailCellRendererParametrosComponent implements ICellRendererAngularComp {
+export class DetallesParametrosComponent implements ICellRendererAngularComp {
   private parameterByMaterialDescriptionService = inject(ParameterByMaterialDescriptionService);
   params: any;
   materialId: number;
@@ -237,13 +237,10 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 
   agInit(params: any): void {
     this.params = params;
-    this.refreshParametros();
-    console.log('////////////////DetailCellRendererParametrosComponent initialized with params:', params);
     this.materialId = params.data.id;
     this.materialName = params.data.articulo;
     this.parameterVigentes();
     this.parameters();
-    // Load fake data for parámetros
     this.loadParametrosData();
   }
    constructor() {
@@ -294,18 +291,16 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     this.hasParametrosChanges = true;
   }
 
-  loadParametrosData() {
+  loadParametrosData(): Promise<void> {
     return new Promise((resolve) => {
       this.parameterByMaterialDescriptionService.getParameterByMaterialDescription(this.materialId).subscribe(
         (data: any) => {
-            this.parametrosRowData = data;
-          console.log('Datos obtenidos del servidor:', this.parametrosRowData);
-
-          // Calcular y almacenar los valores calculados para cada fila
+          this.parametrosRowData = data;
+          resolve();
         },
         (error) => {
           console.error('Error fetching data:', error);
-          resolve(false);
+          resolve();
         }
       );
     });
@@ -406,8 +401,15 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
           'Datos actualizados',
           'Se han actualizado los datos correctamente.',
           'success'
-        ); 
-         this.refreshParametros() // Esperar a que se actualicen los datos
+        );
+        // Recargar datos y luego actualizar el conteo en el grid maestro
+        this.parameterVigentes();
+        this.parameters();
+        await this.loadParametrosData();
+        this.hasParametrosChanges = false;
+        if (this.params?.context?.MATERIAL?.updateCount) {
+          this.params.context.MATERIAL.updateCount(this.materialId, this.parametrosRowData.length);
+        }
         /*
         // Seleccionar la fila apropiada después de recargar
         if (this.lastEditedRowId) {
@@ -454,7 +456,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
         'warning',
         'Sí, eliminar'
       )
-      .then((result) => {
+      .then(async (result) => {
         if (!result.isConfirmed) return;
 
         // Determinar el id real
@@ -471,29 +473,22 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
         }
 
         // Si la fila existe en servidor, llamamos al servicio para eliminarla
-        this.parameterByMaterialDescriptionService
-          .deleteParameterByMaterialDescription(realId)
-          .pipe(
-            catchError((error) => {
-              alerts.basicAlert(
-                'Eliminar parámetro',
-                'Error al eliminar el parámetro.',
-                'error'
-              );
-              console.error(error);
-              return EMPTY;
-            })
-          )
-          .subscribe(() => {
-            alerts.basicAlert(
-              'Parámetro eliminado',
-              'El parámetro se eliminó correctamente.',
-              'success'
-            );
-            // Recargar datos desde el servidor para mantener consistencia
-            this.refreshParametros();
-            this.selectedParametro.set(null);
-          });
+        try {
+          await firstValueFrom(
+            this.parameterByMaterialDescriptionService.deleteParameterByMaterialDescription(realId)
+          );
+          alerts.basicAlert('Parámetro eliminado', 'El parámetro se eliminó correctamente.', 'success');
+          this.selectedParametro.set(null);
+          this.parameterVigentes();
+          this.parameters();
+          await this.loadParametrosData();
+          if (this.params?.context?.MATERIAL?.updateCount) {
+            this.params.context.MATERIAL.updateCount(this.materialId, this.parametrosRowData.length);
+          }
+        } catch (error) {
+          alerts.basicAlert('Eliminar parámetro', 'Error al eliminar el parámetro.', 'error');
+          console.error(error);
+        }
       });
   }
 }
