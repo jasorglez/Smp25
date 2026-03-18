@@ -647,10 +647,10 @@ export class DashboardHcoComponent {
   }
 
   private loadData(rootId: number): void {
-    // Cargar catálogo de cuentas contables para clasificar tipo de gasto
-    this.cuentasContablesService.getAll(rootId).subscribe(data => {
+    // Cargar catálogo de cuentas contables nivel 2 (subclasificación) - mismo método que expenditure
+    this.cuentasContablesService.getByNivel(rootId, 2).subscribe(data => {
       this.cuentasContablesNivel2 = data || [];
-      console.log('✅ Cuentas contables cargadas:', this.cuentasContablesNivel2.length);
+      console.log('✅ Cuentas contables Nivel 2 cargadas:', this.cuentasContablesNivel2.length);
       this.processAllData();
     });
 
@@ -708,7 +708,10 @@ export class DashboardHcoComponent {
   }
 
   private getIdExpend(item: any): number | null {
+    // Priorizar idSubclasificacion (usado en expenditure) sobre idExpend
     const candidates = [
+      item?.idSubclasificacion,
+      item?.idClasificacion,
       item?.idExpend,
       item?.id_expend,
       item?.idCuentaContable,
@@ -740,6 +743,29 @@ export class DashboardHcoComponent {
   }
 
   private getTipoGasto(item: any): { codigo: string; nombre: string } {
+    // Buscar primero por idSubclasificacion (nivel 2) - usado en expenditure
+    if (item?.idSubclasificacion) {
+      const cuenta = this.cuentasContablesNivel2.find(c => c.id === item.idSubclasificacion);
+      if (cuenta) {
+        return {
+          codigo: String(cuenta.codigo ?? item.idSubclasificacion),
+          nombre: cuenta.nombre || cuenta.descripcion || 'Subclasificación'
+        };
+      }
+    }
+
+    // Luego buscar por idClasificacion (nivel 1)
+    if (item?.idClasificacion) {
+      const cuenta = this.cuentasContablesNivel2.find(c => c.id === item.idClasificacion);
+      if (cuenta) {
+        return {
+          codigo: String(cuenta.codigo ?? item.idClasificacion),
+          nombre: cuenta.nombre || cuenta.descripcion || 'Clasificación'
+        };
+      }
+    }
+
+    // Fallback: buscar por idExpend (campo antiguo)
     const idExpend = this.getIdExpend(item);
     if (idExpend) {
       const cuenta = this.cuentasContablesNivel2.find(c => c.id === idExpend);
