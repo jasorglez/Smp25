@@ -9,3 +9,42 @@
     border: 1px solid rgba(0, 0, 0, 0.125);
     border-radius: 0.375rem; /* 6px */
   }
+
+// Tabs superiores (Dashboard Bi2, Configuración, Bancos, etc.)
+.card-header {
+  background-color: #1f2937 !important;
+  border-bottom: 0 !important;
+}
+
+.card-header .nav.nav-pills {
+  background-color: #1f2937 !important;
+  padding: 6px 8px;
+  border-radius: 10px;
+  gap: 8px;
+}
+
+.nav-pills .nav-link.green-tab {
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border: 0;
+  opacity: 0.92;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.nav-pills .nav-link.green-tab:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  opacity: 1;
+}
+
+.nav-pills .nav-link.green-tab.active {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  opacity: 1;
+}
+
+.nav-pills .nav-link.green-tab.active mat-icon,
+.nav-pills .nav-link.green-tab.active i {
+  color: #1f2937 !important;
+}

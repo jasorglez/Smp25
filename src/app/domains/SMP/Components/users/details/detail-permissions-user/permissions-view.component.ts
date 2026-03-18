@@ -288,9 +288,52 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     return result;
   }
 
+  /** Clave única por permiso para comparar con rawData */
+  private permissionKey(perm: { idDetailedPermission: number; idShowPermition: number }): string {
+    return `${perm.idDetailedPermission}-${perm.idShowPermition}`;
+  }
+
+  /** Construye un mapa del estado original (rawData) para comparar */
+  private buildOriginalStateMap(): Map<string, { masterRead: boolean; detailedRead: boolean; canRead: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean; active: boolean }> {
+    const map = new Map<string, { masterRead: boolean; detailedRead: boolean; canRead: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean; active: boolean }>();
+    this.rawData.forEach((item: any) => {
+      const key = `${item.idDetailedPermission}-${item.idShowPermition}`;
+      map.set(key, {
+        masterRead: !!item.masterRead,
+        detailedRead: !!item.detailedRead,
+        canRead: !!item.canRead,
+        canCreate: item.canCreate !== false,
+        canUpdate: item.canUpdate !== false,
+        canDelete: item.canDelete !== false,
+        active: item.active !== false
+      });
+    });
+    return map;
+  }
+
+  /** Indica si el estado actual difiere del original (rawData) */
+  private hasRealChanges(): boolean {
+    const current = this.untransformData(this.groupedPermissions);
+    const originalMap = this.buildOriginalStateMap();
+    for (const perm of current) {
+      const key = this.permissionKey(perm);
+      const orig = originalMap.get(key);
+      if (!orig) return true; // permiso nuevo
+      if (
+        orig.masterRead !== !!perm.masterRead ||
+        orig.detailedRead !== !!perm.detailedRead ||
+        orig.canRead !== !!perm.canRead ||
+        orig.canCreate !== (perm.canCreate !== false) ||
+        orig.canUpdate !== (perm.canUpdate !== false) ||
+        orig.canDelete !== (perm.canDelete !== false) ||
+        orig.active !== (perm.active !== false)
+      ) return true;
+    }
+    return current.length !== this.rawData.length;
+  }
+
   checkForChanges() {
-    const modifiedPermissions = this.untransformData(this.groupedPermissions);
-    this.notSavedChanges = modifiedPermissions.length > 0;
+    this.notSavedChanges = this.hasRealChanges();
   }
 
   revertChanges() {
@@ -306,14 +349,82 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   onDetailedReadChange(detail: DetailedPermission) {
+    const parentMaster = this.groupedPermissions.find(m => m.details?.includes(detail));
+    if (parentMaster) {
+      if (detail.detailedRead) {
+        parentMaster.masterRead = true;
+      } else {
+        parentMaster.masterRead = false;
+      }
+    }
     this.checkForChanges();
   }
 
   onCrudChange(permission: CrudPermission) {
-    // El switch (canRead) y los checkboxes son independientes
-    // Solo si se apaga el switch se ocultan los checkboxes visualmente (via *ngIf en HTML)
-    // pero sus valores no se modifican desde aquí
+    const { detail, master, subdetail } = this.findDetailAndMasterForPermission(permission);
+    const isChild = subdetail?.principal !== permission && subdetail?.children?.includes(permission);
+
+    if (permission.canRead) {
+      permission.canCreate = true;
+      permission.canUpdate = true;
+      permission.canDelete = true;
+      if (isChild) {
+        if (subdetail?.principal) {
+          subdetail.principal.canRead = true;
+        }
+        if (detail) detail.detailedRead = true;
+        if (master) master.masterRead = true;
+      } else {
+        if (subdetail?.principal && subdetail.principal !== permission) {
+          subdetail.principal.canRead = true;
+          subdetail.principal.canCreate = true;
+          subdetail.principal.canUpdate = true;
+          subdetail.principal.canDelete = true;
+        }
+        if (detail) detail.detailedRead = true;
+        if (master) master.masterRead = true;
+      }
+    } else {
+      permission.canCreate = false;
+      permission.canUpdate = false;
+      permission.canDelete = false;
+      if (isChild) {
+        if (subdetail?.principal) {
+          subdetail.principal.canRead = false;
+        }
+        if (detail) detail.detailedRead = false;
+        if (master) master.masterRead = false;
+      } else {
+        if (subdetail?.principal && subdetail.principal !== permission) {
+          subdetail.principal.canRead = false;
+          subdetail.principal.canCreate = false;
+          subdetail.principal.canUpdate = false;
+          subdetail.principal.canDelete = false;
+        }
+        if (detail) detail.detailedRead = false;
+        if (master) master.masterRead = false;
+      }
+    }
     this.checkForChanges();
+  }
+
+  /** Encuentra el detail, master y subdetail que contienen este CrudPermission (principal o child). */
+  private findDetailAndMasterForPermission(permission: CrudPermission): {
+    detail: DetailedPermission | null;
+    master: MasterPermission | null;
+    subdetail: SubdetailPermission | null;
+  } {
+    for (const m of this.groupedPermissions) {
+      for (const d of m.details || []) {
+        const subdetailPrincipal = d.subdetails?.find(sd => sd.principal === permission);
+        const subdetailChild = d.subdetails?.find(sd => sd.children?.includes(permission));
+        const subdetail = subdetailPrincipal ?? subdetailChild ?? null;
+        if (subdetail) {
+          return { detail: d, master: m, subdetail };
+        }
+      }
+    }
+    return { detail: null, master: null, subdetail: null };
   }
 
   onSwitchChange(permission: CrudPermission) {
@@ -322,45 +433,52 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   async saveDetailChanges() {
-    const modifiedPermissions = this.untransformData(this.groupedPermissions);
+    const currentPermissions = this.untransformData(this.groupedPermissions);
+    const originalMap = this.buildOriginalStateMap();
+    const changesMap = new Map<string, any>();
 
-    if (modifiedPermissions.length === 0) {
+    for (const perm of currentPermissions) {
+      const uniqueKey = this.permissionKey(perm);
+      const orig = originalMap.get(uniqueKey);
+      const changed = !orig ||
+        orig.masterRead !== !!perm.masterRead ||
+        orig.detailedRead !== !!perm.detailedRead ||
+        orig.canRead !== !!perm.canRead ||
+        orig.canCreate !== (perm.canCreate !== false) ||
+        orig.canUpdate !== (perm.canUpdate !== false) ||
+        orig.canDelete !== (perm.canDelete !== false) ||
+        orig.active !== (perm.active !== false);
+      if (changed && !changesMap.has(uniqueKey)) {
+        const payload: CrudxDetailedPermission = {
+          idUser: this.userId,
+          idBranch: this.branchId,
+          idMasterPermission: perm.idMasterPermission,
+          masterRead: perm.masterRead,
+          idDetailedPermission: perm.idDetailedPermission,
+          detailedRead: perm.detailedRead,
+          subdetailedPermissionName: perm.name,
+          idShowPermition: perm.idShowPermition,
+          idRole: this.idRole,
+          idPosicion: this.idPosicion,
+          canCreate: perm.canCreate,
+          canRead: perm.canRead,
+          canUpdate: perm.canUpdate,
+          canDelete: perm.canDelete,
+          active: perm.active ?? true,
+        };
+        changesMap.set(uniqueKey, payload);
+      }
+    }
+
+    if (changesMap.size === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios para guardar.', 'info');
       return;
     }
 
-    const changesMap = new Map<string, any>();
-
     try {
-      for (const perm of modifiedPermissions) {
-        const uniqueKey = `${perm.idDetailedPermission}-${perm.idShowPermition}`;
-        if (!changesMap.has(uniqueKey)) {
-          const payload: CrudxDetailedPermission = {
-            idUser: this.userId,
-            idBranch: this.branchId,
-            idMasterPermission: perm.idMasterPermission,
-            masterRead: perm.masterRead,
-            idDetailedPermission: perm.idDetailedPermission,
-            detailedRead: perm.detailedRead,
-            subdetailedPermissionName: perm.name,
-            idShowPermition: perm.idShowPermition,
-            idRole: this.idRole,
-            idPosicion: this.idPosicion,
-            canCreate: perm.canCreate,
-            canRead: perm.canRead,
-            canUpdate: perm.canUpdate,
-            canDelete: perm.canDelete,
-            active: perm.active ?? true,
-          };
-          changesMap.set(uniqueKey, payload);
-        }
-      }
-
-      const saveObservables = Array.from(changesMap.values()).map(payload => {
-        console.log('Enviando payload único:', payload);
-        return this.permitionsService.addPermitions(payload);
-      });
-
+      const saveObservables = Array.from(changesMap.values()).map(payload =>
+        this.permitionsService.addPermitions(payload)
+      );
       await lastValueFrom(forkJoin(saveObservables));
 
       alerts.basicAlert('Datos Guardados', 'Los permisos se han guardado correctamente.', 'success');
@@ -371,7 +489,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         'Menu Administracion Detalle de Roles',
         this.trackingService.getEmail()
       );
-
+      // Refrescar datos para que rawData y la UI queden alineados
+      this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
     } catch (error) {
       console.error('Error al guardar los permisos:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');

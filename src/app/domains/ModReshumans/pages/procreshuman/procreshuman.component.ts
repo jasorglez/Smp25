@@ -9,7 +9,7 @@ import { SignalsService } from 'app/services/signals.service';
   standalone: true,
   imports: [RouterModule, DomainsModule],
   templateUrl: './procreshuman.component.html',
-  styleUrl: './procreshuman.component.scss',
+  styleUrls: ['./procreshuman.component.scss'],
 })
 export class ProcreshumanComponent {
   authService = inject(AuthService);

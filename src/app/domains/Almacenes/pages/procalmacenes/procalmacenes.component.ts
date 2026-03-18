@@ -12,7 +12,7 @@ import { SignalsService } from 'app/services/signals.service';
   standalone: true,
   imports: [TranslateModule, RouterModule, DomainsModule, SharedModule],
   templateUrl: './procalmacenes.component.html',
-  styleUrl: './procalmacenes.component.scss'
+  styleUrls: ['./procalmacenes.component.scss']
 })
 export class ProcalmacenesComponent {
 
