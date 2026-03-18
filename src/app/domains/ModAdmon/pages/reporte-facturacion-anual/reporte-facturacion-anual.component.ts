@@ -95,7 +95,8 @@ export class ReporteFacturacionAnualComponent {
 
   public onFilterChange(): void {
     if (this.rootId && !this.isLoading) {
-      // Asegurar que año inicio <= año fin
+      this.anioInicio = Number(this.anioInicio);
+      this.anioFin = Number(this.anioFin);
       if (this.anioInicio > this.anioFin) {
         const temp = this.anioInicio;
         this.anioInicio = this.anioFin;
@@ -149,6 +150,9 @@ export class ReporteFacturacionAnualComponent {
   }
 
   private processData(): void {
+    const anioInicio = Number(this.anioInicio);
+    const anioFin = Number(this.anioFin);
+
     // Agrupar ingresos y egresos por año
     const datosPorAnio = new Map<number, {
       montoTotalOC: number;
@@ -160,7 +164,7 @@ export class ReporteFacturacionAnualComponent {
     }>();
 
     // Inicializar años en el rango
-    for (let anio = this.anioInicio; anio <= this.anioFin; anio++) {
+    for (let anio = anioInicio; anio <= anioFin; anio++) {
       datosPorAnio.set(anio, {
         montoTotalOC: 0,
         montoTotalFacturado: 0,
@@ -180,7 +184,7 @@ export class ReporteFacturacionAnualComponent {
       if (isNaN(fecha.getTime())) return;
 
       const anio = fecha.getFullYear();
-      if (anio < this.anioInicio || anio > this.anioFin) return;
+      if (anio < anioInicio || anio > anioFin) return;
 
       const current = datosPorAnio.get(anio)!;
       const subtotal = Number(ingreso.subtotal) || Number(ingreso.total) || 0;
@@ -211,7 +215,7 @@ export class ReporteFacturacionAnualComponent {
       if (isNaN(fecha.getTime())) return;
 
       const anio = fecha.getFullYear();
-      if (anio < this.anioInicio || anio > this.anioFin) return;
+      if (anio < anioInicio || anio > anioFin) return;
 
       const current = datosPorAnio.get(anio)!;
       const subtotal = Number(egreso.subtotal) || Number(egreso.total) || 0;

@@ -9,6 +9,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { CustomersService } from 'app/services/customers.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { AdministrationService } from 'app/services/administration.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
@@ -16,7 +17,7 @@ import { Workbook } from 'exceljs';
 // Interfaz para los datos del reporte
 export interface ConcentradoEgreso {
   id: number;
-  empresa: string;
+  proveedor: string;
   proyecto: string;
   fecha: Date | null;
   mes: string;
@@ -29,8 +30,6 @@ export interface ConcentradoEgreso {
   otrosImpuestos: number;
   importeTotal: number;
   numeroFactura: string;
-  proveedor: string;
-  observaciones: string;
   tipoPago: string;
   cuenta: string;
 }
@@ -51,6 +50,32 @@ export class ConcentradoEgresosComponent {
   private projectsService = inject(ProjectsService);
   private customersService = inject(CustomersService);
   private cuentasContablesService = inject(CuentasContablesService);
+  private administrationService = inject(AdministrationService);
+
+  private readonly SAT_FORMAS_PAGO: Record<string, string> = {
+    '01': 'Efectivo',
+    '02': 'Cheque nominativo',
+    '03': 'Transferencia electrónica',
+    '04': 'Tarjeta de crédito',
+    '05': 'Monedero electrónico',
+    '06': 'Dinero electrónico',
+    '08': 'Vales de despensa',
+    '12': 'Dación en pago',
+    '13': 'Pago por subrogación',
+    '14': 'Pago por consignación',
+    '15': 'Condonación',
+    '17': 'Compensación',
+    '23': 'Novación',
+    '24': 'Confusión',
+    '25': 'Remisión de deuda',
+    '26': 'Prescripción o caducidad',
+    '27': 'A satisfacción del acreedor',
+    '28': 'Tarjeta de débito',
+    '29': 'Tarjeta de servicios',
+    '30': 'Aplicación de anticipos',
+    '31': 'Intermediario pagos',
+    '99': 'Por definir'
+  };
 
   // Estado del componente
   public rootId: number;
@@ -69,6 +94,7 @@ export class ConcentradoEgresosComponent {
   private projects: any[] = [];
   private providers: any[] = [];
   private cuentasContables: any[] = [];
+  private accounts: any[] = [];
 
   // Datos procesados para el reporte
   public concentradoEgresos: ConcentradoEgreso[] = [];
@@ -137,12 +163,13 @@ export class ConcentradoEgresosComponent {
   private async loadAllData(): Promise<void> {
     this.isLoading = true;
     try {
-      const [rootData, expensesData, projectsData, providersData, cuentasData] = await Promise.all([
+      const [rootData, expensesData, projectsData, providersData, cuentasData, accountsData] = await Promise.all([
         lastValueFrom(this.rootService.getRootbyId(this.rootId)),
         lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId)),
         lastValueFrom(this.projectsService.getProjectListByCompany(this.rootId)),
         lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'PROVIDERS')),
-        lastValueFrom(this.cuentasContablesService.getAll(this.rootId))
+        lastValueFrom(this.cuentasContablesService.getAll(this.rootId)),
+        lastValueFrom(this.administrationService.getAccountBanks(this.rootId))
       ]);
 
       this.companyName = (rootData as any)?.name || (rootData as any)?.nameCompany || 'Empresa';
@@ -171,6 +198,13 @@ export class ConcentradoEgresosComponent {
         id: c.id,
         name: c.nombre || c.name || '',
         code: c.codigo || c.code || ''
+      }));
+
+      // Mapear cuentas bancarias
+      const accountsArray = Array.isArray(accountsData) ? accountsData : [];
+      this.accounts = accountsArray.map((a: any) => ({
+        id: a.id,
+        label: a.nameAccount ? `${a.nameAccount} - ${a.bankName}` : (a.number || a.description || '')
       }));
 
       console.log('Datos cargados:', {
@@ -214,11 +248,23 @@ export class ConcentradoEgresosComponent {
       // Obtener proyecto
       const project = this.projects.find(p => p.id === egreso.idProject);
 
-      // Obtener proveedor
-      const provider = this.providers.find(p => p.id === egreso.idProvider);
+      // Obtener proveedor (desde idCustomer, campo usado en expenditure)
+      const provider = this.providers.find(p => p.id === egreso.idCustomer);
 
-      // Obtener cuenta contable
-      const cuenta = this.cuentasContables.find(c => c.id === egreso.idCuentaContable);
+      // Obtener clasificación y subclasificación (desde cuentas contables, como en expenditure)
+      const clasificacionCuenta = this.cuentasContables.find(c => c.id === egreso.idClasificacion);
+      const subclasificacionCuenta = this.cuentasContables.find(c => c.id === egreso.idSubclasificacion);
+
+      // Obtener cuenta bancaria (id_account → Accounts)
+      const accountId = egreso.idAccount ?? egreso.id_account;
+      const account = this.accounts.find(a => a.id === accountId);
+
+      // Tipo de pago: código SAT + nombre
+      const formaPagoCodigo = egreso.formaPago || egreso.forma_pago || '';
+      const formaPagoNombre = this.SAT_FORMAS_PAGO[formaPagoCodigo] || '';
+      const tipoPago = formaPagoCodigo
+        ? (formaPagoNombre ? `${formaPagoCodigo} - ${formaPagoNombre}` : formaPagoCodigo)
+        : '';
 
       // Calcular importes
       const subtotal = Number(egreso.subtotal) || 0;
@@ -228,23 +274,21 @@ export class ConcentradoEgresosComponent {
 
       return {
         id: egreso.id,
-        empresa: this.companyName,
+        proveedor: provider?.name || '',
         proyecto: project?.name || '',
         fecha,
         mes,
         anioEjercicio,
-        clasificacion: egreso.classification || egreso.category || '',
-        subclasificacion: egreso.subClassification || egreso.subcategory || '',
+        clasificacion: clasificacionCuenta ? `${clasificacionCuenta.code} - ${clasificacionCuenta.name}` : '',
+        subclasificacion: subclasificacionCuenta ? `${subclasificacionCuenta.code} - ${subclasificacionCuenta.name}` : '',
         concepto: egreso.concept || egreso.description || '',
         importeSinIva: subtotal,
         iva,
         otrosImpuestos,
         importeTotal: total,
-        numeroFactura: egreso.numberDocument || egreso.invoiceNumber || '',
-        proveedor: provider?.name || egreso.providerName || '',
-        observaciones: egreso.observations || egreso.notes || '',
-        tipoPago: egreso.formaPago || egreso.paymentType || '',
-        cuenta: cuenta ? `${cuenta.code} - ${cuenta.name}` : ''
+        numeroFactura: (egreso.uuid && egreso.uuid !== 'NA') ? egreso.uuid : (egreso.numberDocument || ''),
+        tipoPago,
+        cuenta: account?.label || ''
       };
     }).sort((a, b) => {
       // Ordenar por fecha descendente
@@ -398,9 +442,9 @@ export class ConcentradoEgresosComponent {
   private buildPdfContent(): any[] {
     const content: any[] = [];
 
-    const headers = ['EMPRESA', 'PROYECTO', 'FECHA', 'MES', 'AÑO', 'CLASIF.', 'SUBCLASIF.',
+    const headers = ['PROVEEDOR', 'PROYECTO', 'FECHA', 'MES', 'AÑO', 'CLASIF.', 'SUBCLASIF.',
                      'CONCEPTO', 'IMP. S/IVA', 'IVA', 'OTROS IMP.', 'IMP. TOTAL',
-                     '# FACTURA', 'PROVEEDOR', 'OBSERV.', 'TIPO PAGO', 'CUENTA'];
+                     '# FACTURA', 'TIPO PAGO', 'CUENTA'];
 
     const body: any[] = [
       headers.map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
@@ -408,7 +452,7 @@ export class ConcentradoEgresosComponent {
 
     this.concentradoEgresos.forEach(e => {
       body.push([
-        { text: e.empresa, style: 'tableCell', alignment: 'left' },
+        { text: e.proveedor, style: 'tableCell', alignment: 'left' },
         { text: e.proyecto, style: 'tableCell', alignment: 'left' },
         { text: this.formatDateShort(e.fecha), style: 'tableCell', alignment: 'center' },
         { text: e.mes, style: 'tableCell', alignment: 'center' },
@@ -421,14 +465,12 @@ export class ConcentradoEgresosComponent {
         { text: e.otrosImpuestos > 0 ? this.formatCurrencyShort(e.otrosImpuestos) : '', style: 'tableCellMoney' },
         { text: this.formatCurrencyShort(e.importeTotal), style: 'tableCellMoney', bold: true },
         { text: e.numeroFactura, style: 'tableCell', alignment: 'center' },
-        { text: e.proveedor, style: 'tableCell', alignment: 'left' },
-        { text: e.observaciones, style: 'tableCell', alignment: 'left' },
         { text: e.tipoPago, style: 'tableCell', alignment: 'center' },
         { text: e.cuenta, style: 'tableCell', alignment: 'left' }
       ]);
     });
 
-    // Fila de totales
+    // Fila de totales (15 columnas)
     body.push([
       { text: 'TOTAL', colSpan: 8, style: 'totalRow', alignment: 'right', bold: true },
       {}, {}, {}, {}, {}, {}, {},
@@ -438,15 +480,13 @@ export class ConcentradoEgresosComponent {
       { text: this.formatCurrencyShort(this.totales.importeTotal), style: 'totalRow', alignment: 'right', color: '#dc2626' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
-      { text: '', style: 'totalRow' },
-      { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' }
     ]);
 
     content.push({
       table: {
         headerRows: 1,
-        widths: [45, 45, 35, 35, 25, 40, 45, 60, 42, 35, 35, 45, 40, 50, 55, 35, 55],
+        widths: [55, 40, 35, 35, 25, 40, 45, 60, 42, 35, 35, 45, 40, 35, 55],
         body
       },
       layout: {
@@ -472,7 +512,7 @@ export class ConcentradoEgresosComponent {
       worksheet.views = [{ showGridLines: false }];
 
       // Título
-      worksheet.mergeCells('A1:Q1');
+      worksheet.mergeCells('A1:O1');
       const titleCell = worksheet.getCell('A1');
       titleCell.value = 'CONCENTRADO DE EGRESOS';
       titleCell.font = { bold: true, size: 14, color: { argb: 'FF1A5276' } };
@@ -483,9 +523,9 @@ export class ConcentradoEgresosComponent {
       worksheet.getCell('A3').value = `Período: ${this.fechaInicio} al ${this.fechaFin}`;
 
       // Headers
-      const headers = ['Empresa', 'Proyecto', 'Fecha', 'Mes', 'Año Ejercicio', 'Clasificación', 'Subclasificación',
+      const headers = ['Proveedor', 'Proyecto', 'Fecha', 'Mes', 'Año Ejercicio', 'Clasificación', 'Subclasificación',
                        'Concepto', 'Importe s/IVA', 'IVA', 'Otros Impuestos', 'Importe Total',
-                       '# Factura', 'Proveedor', 'Observaciones', 'Tipo de Pago', 'Cuenta'];
+                       '# Factura', 'Tipo de Pago', 'Cuenta'];
       const headerRow = worksheet.getRow(5);
       headers.forEach((header, index) => {
         const cell = headerRow.getCell(index + 1);
@@ -499,7 +539,7 @@ export class ConcentradoEgresosComponent {
       let rowIndex = 6;
       this.concentradoEgresos.forEach(e => {
         const row = worksheet.getRow(rowIndex);
-        row.getCell(1).value = e.empresa;
+        row.getCell(1).value = e.proveedor;
         row.getCell(2).value = e.proyecto;
         row.getCell(3).value = e.fecha ? this.formatDateShort(e.fecha) : '';
         row.getCell(4).value = e.mes;
@@ -517,10 +557,8 @@ export class ConcentradoEgresosComponent {
         row.getCell(12).numFmt = '"$"#,##0.00';
         row.getCell(12).font = { bold: true };
         row.getCell(13).value = e.numeroFactura;
-        row.getCell(14).value = e.proveedor;
-        row.getCell(15).value = e.observaciones;
-        row.getCell(16).value = e.tipoPago;
-        row.getCell(17).value = e.cuenta;
+        row.getCell(14).value = e.tipoPago;
+        row.getCell(15).value = e.cuenta;
         rowIndex++;
       });
 
@@ -538,11 +576,11 @@ export class ConcentradoEgresosComponent {
       totalRow.getCell(12).numFmt = '"$"#,##0.00';
       totalRow.getCell(12).font = { bold: true, color: { argb: 'FFDC2626' } };
 
-      // Anchos
+      // Anchos (15 columnas)
       worksheet.columns = [
-        { width: 15 }, { width: 18 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 15 }, { width: 18 },
+        { width: 22 }, { width: 18 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 18 }, { width: 22 },
         { width: 25 }, { width: 14 }, { width: 12 }, { width: 14 }, { width: 14 },
-        { width: 15 }, { width: 20 }, { width: 25 }, { width: 12 }, { width: 20 }
+        { width: 15 }, { width: 12 }, { width: 22 }
       ];
 
       // Generar archivo
