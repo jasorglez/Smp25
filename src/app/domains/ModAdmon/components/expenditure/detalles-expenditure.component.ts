@@ -1013,9 +1013,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         this.providers.push(newProvider);
       }
 
-      // También actualizar la lista local
-      this.providers.push(newProvider);
-
       this.closeProviderModal();
 
       // Actualizar el grid para que aparezca el nuevo proveedor

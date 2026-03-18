@@ -5,6 +5,8 @@ import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import html2canvas from 'html2canvas';
@@ -657,12 +659,51 @@ export class DashboardHcoComponent {
     // Cargar ingresos y egresos desde la misma fuente que income/expenditure
     this.incomesAndExpensesService.getIncomesAndExpenses(rootId).subscribe(data => {
       const rows = Array.isArray(data) ? data : [];
-      this.egresosData = rows.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
+      const gastos = rows.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
       this.ingresosData = rows.filter(item => String(item?.type ?? '').toUpperCase() === 'DEPOSITO');
 
-      console.log('✅ Egresos cargados (GASTO):', this.egresosData.length);
+      console.log('✅ Egresos cargados (GASTO):', gastos.length);
       console.log('✅ Ingresos cargados (DEPOSITO):', this.ingresosData.length);
-      this.processAllData();
+
+      // Expandir gastos usando dateExpend de los conceptos (detalles-expenditure)
+      // para que la fecha de clasificación mensual refleje la fecha real del concepto
+      if (gastos.length === 0) {
+        this.egresosData = [];
+        this.processAllData();
+        return;
+      }
+
+      const conceptRequests = gastos.map(gasto =>
+        this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(gasto.id).pipe(
+          map(concepts => ({ gasto, concepts: Array.isArray(concepts) ? concepts : [] })),
+          catchError(() => of({ gasto, concepts: [] }))
+        )
+      );
+
+      forkJoin(conceptRequests).subscribe(results => {
+        const expandedEgresos: any[] = [];
+
+        results.forEach(({ gasto, concepts }) => {
+          const activeConcepts = concepts.filter((c: any) => c?.active !== false && (c?.total ?? 0) !== 0);
+          if (activeConcepts.length === 0) {
+            // Sin conceptos: usar el gasto padre con su fecha original
+            expandedEgresos.push(gasto);
+          } else {
+            // Expandir a nivel de concepto usando dateExpend como fecha
+            activeConcepts.forEach((concept: any) => {
+              expandedEgresos.push({
+                ...gasto,
+                date: concept.dateExpend ?? gasto.date,
+                total: concept.total ?? 0,
+              });
+            });
+          }
+        });
+
+        this.egresosData = expandedEgresos;
+        console.log('✅ Egresos expandidos con fechas de conceptos:', expandedEgresos.length);
+        this.processAllData();
+      });
     });
   }
 
