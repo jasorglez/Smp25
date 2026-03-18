@@ -1048,8 +1048,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
       };
 
-      console.log('📤 POST - Enviando item nuevo al endpoint:', payload);
-
       return firstValueFrom(this.ocAndReqsService.addReqItem(payload));
     });
 
@@ -1087,8 +1085,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
       };
 
-      console.log('📤 PUT - Enviando item modificado al endpoint:', payload);
-
       return firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), payload));
     });
 
@@ -1117,13 +1113,31 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Propagar cambios a todos los pedimentos existentes
         await this.propagateChangesToPedimentos(newItemsData, modifiedItemsData);
 
+        // Actualizar solicit y dateCreate del maestro con el usuario actual y fecha de hoy
+        try {
+          const currentUser = this.signalsService.getDisplayName()();
+          const today = new Date();
+          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+          const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+          await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+            ...maestro,
+            solicit: currentUser,
+            dateCreate: todayStr
+          }));
+
+          // Actualizar el maestro vía contexto (actualiza rowData + refresca celdas del grid padre)
+          if (this.context?.ITEMS?.updateMasterUserAndDate) {
+            this.context.ITEMS.updateMasterUserAndDate(this.requisitionId, currentUser, todayStr);
+          }
+        } catch { /* no bloquear el flujo */ }
+
         alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} artículo(s) exitosamente.`, 'success');
 
         // Recargar datos desde el servidor
         this.loadData();
       })
-      .catch((error) => {
-        console.error('Error al guardar artículos:', error);
+      .catch(() => {
         alerts.basicAlert('Error', 'Ocurrió un error al guardar los artículos', 'error');
       });
   }

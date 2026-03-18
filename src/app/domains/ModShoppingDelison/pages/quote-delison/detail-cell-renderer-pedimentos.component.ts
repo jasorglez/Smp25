@@ -66,7 +66,10 @@ export class DetailCellRendererPedimentosComponent {
     this.rowData = [];
 
     pedimentos.forEach((pedimento: any) => {
-      const fechaPedimento = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
+      const rawFecha = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
+      const fechaPedimento = rawFecha
+        ? (() => { const [y, m, d] = rawFecha.split('-'); return `${d}-${m}-${y}`; })()
+        : '';
 
       // ✅ Usar el número de pedimento secuencial (1, 2, 3, etc.) en lugar del folio
       const numeroPedimento = pedimento.pedimento || 0;
@@ -122,8 +125,9 @@ export class DetailCellRendererPedimentosComponent {
         },
         valueGetter: params => {
           const articulos = params.data.articulos || [];
-          const solicitados = articulos.filter((item: any) => item.pedimento === true).length;
-          const total = articulos.length;
+          const externos = articulos.filter((item: any) => (item.tipo || '').toLowerCase() !== 'interno');
+          const solicitados = externos.filter((item: any) => item.pedimento === true).length;
+          const total = externos.length;
           return `${solicitados}/${total}`;
         },
         editable: false,

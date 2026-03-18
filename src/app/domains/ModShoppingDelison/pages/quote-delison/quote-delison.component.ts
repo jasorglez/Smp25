@@ -46,19 +46,15 @@ export class QuoteDelisonComponent implements OnInit {
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-      console.log('🔄 Cambio detectado en idBranch:', newIdBranch);
 
       // Si cambió el idBranch y es válido, recargar cotizaciones
       if (newIdBranch !== undefined && newIdBranch !== null && newIdBranch !== this.idBranch) {
         this.idBranch = newIdBranch;
-        console.log('✅ Nueva sucursal seleccionada:', this.idBranch);
 
         // ✅ Esperar a que se carguen las sucursales antes de cargar cotizaciones
         if (this.branchesLoaded) {
-          console.log('✅ Sucursales ya cargadas, cargando cotizaciones inmediatamente');
           this.loadQuotes();
         } else {
-          console.log('⏳ Esperando a que se carguen las sucursales...');
         }
       } else if (!newIdBranch && newIdBranch !== 0 && this.isInitialized) {
         // ⚠️ Solo mostrar alerta si ya se inicializó el componente (evita alerta en refresh)
@@ -70,7 +66,6 @@ export class QuoteDelisonComponent implements OnInit {
           this.gridApi.setGridOption('rowData', []);
         }
 
-        console.warn('⚠️ No hay sucursal seleccionada');
         alerts.basicAlert(
           'Sucursal requerida',
           'Por favor, seleccione una sucursal en el sidebar para ver las cotizaciones',
@@ -98,19 +93,15 @@ export class QuoteDelisonComponent implements OnInit {
     setTimeout(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-      console.log('🏢 idRoot:', this.idRoot);
-      console.log('ℹ️ El idBranch se obtendrá desde el effect() cuando esté disponible');
 
       // ✅ Solo cargar si idRoot es válido
       if (this.idRoot) {
         this.loadBranches();
       } else {
-        console.warn('⚠️ idRoot no está disponible todavía, reintentando...');
         // Reintentar después de un delay adicional
         setTimeout(() => {
           this.idRoot = this.signalsService.getRootSelectedBySidebar()();
           if (this.idRoot) {
-            console.log('✅ idRoot obtenido en reintento:', this.idRoot);
             this.loadBranches();
           }
         }, 300);
@@ -118,7 +109,6 @@ export class QuoteDelisonComponent implements OnInit {
 
       // ✅ Marcar como inicializado
       this.isInitialized = true;
-      console.log('✅ Componente marcado como inicializado');
     }, 200);
   }
 
@@ -127,7 +117,6 @@ export class QuoteDelisonComponent implements OnInit {
       next: (data: any[]) => {
         this.branches = data;
         this.branchesLoaded = true;
-        console.log('🏪 Sucursales cargadas:', this.branches.length);
 
         // ✅ Obtener el idBranch actual del signal (puede ser negativo para "Todas las sucursales")
         const currentIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -135,14 +124,11 @@ export class QuoteDelisonComponent implements OnInit {
         // ✅ Si hay un idBranch seleccionado (incluso si es negativo), cargar las cotizaciones ahora
         if (currentIdBranch !== null && currentIdBranch !== undefined) {
           this.idBranch = currentIdBranch;
-          console.log('✅ idBranch inicial detectado:', this.idBranch, '- cargando cotizaciones ahora');
           this.loadQuotes();
         } else {
-          console.log('⏳ No hay idBranch inicial, esperando cambios del sidebar...');
         }
       },
       error: (error) => {
-        console.error('❌ Error al cargar sucursales:', error);
         this.branches = [];
         this.branchesLoaded = true; // Marcar como cargado aunque haya error
       }
@@ -156,7 +142,6 @@ export class QuoteDelisonComponent implements OnInit {
   loadQuotes() {
     // ✅ Validar que idBranch sea válido antes de hacer la petición
     if (this.idBranch === null || this.idBranch === undefined) {
-      console.warn('⚠️ No se puede cargar cotizaciones: idBranch no está definido');
       this.fullRowData = [];
       this.rowData = [];
       return;
@@ -166,10 +151,8 @@ export class QuoteDelisonComponent implements OnInit {
     const isAllBranches = this.idBranch < 0;
 
     if (isAllBranches) {
-      console.log('🌐 Cargando cotizaciones de TODAS las sucursales...');
       this.loadQuotesFromAllBranches();
     } else {
-      console.log('📋 Cargando cotizaciones de una sucursal específica:', this.idBranch);
       this.loadQuotesFromSingleBranch(this.idBranch);
     }
   }
@@ -177,7 +160,6 @@ export class QuoteDelisonComponent implements OnInit {
   private async loadQuotesFromAllBranches() {
     // 🔍 Usar el catálogo de branches que ya está cargado en this.branches
     if (!this.branches || this.branches.length === 0) {
-      console.warn('⚠️ No hay sucursales disponibles en el catálogo');
       this.fullRowData = [];
       this.rowData = [];
       if (this.gridApi) {
@@ -186,7 +168,6 @@ export class QuoteDelisonComponent implements OnInit {
       return;
     }
 
-    console.log('✅ Usando catálogo de', this.branches.length, 'sucursales ya cargadas');
 
     // 🔄 PASO 1: Obtener REQUISICIONES de cada branch (igual que loadQuotesFromSingleBranch)
     const requisitionPromises = this.branches.map(branch => {
@@ -194,11 +175,9 @@ export class QuoteDelisonComponent implements OnInit {
         this.ocAndReqsService.getOcAndReqs('branch', branch.id, 'REQUIS').subscribe({
           next: (data: any) => {
             const requisiciones = Array.isArray(data) ? data : [];
-            console.log(`✅ Branch ${branch.name} (${branch.id}): ${requisiciones.length} requisiciones`);
             resolve(requisiciones);
           },
           error: (error) => {
-            console.error(`❌ Error al cargar requisiciones del branch ${branch.name}:`, error);
             resolve([]);
           }
         });
@@ -208,7 +187,6 @@ export class QuoteDelisonComponent implements OnInit {
     // 🔀 Esperar a que todas las requisiciones se carguen
     const allRequisitions = await Promise.all(requisitionPromises);
     const combinedRequisitions = allRequisitions.flat();
-    console.log(`✅ Total de requisiciones combinadas: ${combinedRequisitions.length}`);
 
     // 🔄 PASO 2: Para cada requisición, cargar sus cotizaciones (igual que loadQuotesFromSingleBranch)
     const requisitionsWithQuotes = await Promise.all(combinedRequisitions.map(async (requisicion: any) => {
@@ -216,7 +194,6 @@ export class QuoteDelisonComponent implements OnInit {
       const branch = this.branches.find(b => b.id === requisicion.idReference);
       const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
-      console.log(`📋 Requisición ${requisicion.id}: idReference=${requisicion.idReference} → Sucursal: ${branchName}`);
 
       // ✅ PASO 2.1: Cargar COTIZACIONES de esta requisición
       let cotizaciones: any[] = [];
@@ -228,9 +205,7 @@ export class QuoteDelisonComponent implements OnInit {
           });
         });
         cotizaciones = Array.isArray(cotizacionesData) ? cotizacionesData : [];
-        console.log(`📦 Requisición ${requisicion.id}: ${cotizaciones.length} cotizaciones cargadas`);
       } catch (error) {
-        console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
       }
 
       // ✅ PASO 2.2: Para cada cotización, cargar sus items
@@ -244,9 +219,7 @@ export class QuoteDelisonComponent implements OnInit {
             });
           });
           items = Array.isArray(itemsData) ? itemsData : [];
-          console.log(`   🔸 Cotización ${cotizacion.id} (Pedimento ${cotizacion.pedimento}): ${items.length} items`);
         } catch (error) {
-          console.error(`   ❌ Error al cargar items de cotización ${cotizacion.id}:`, error);
         }
 
         return {
@@ -288,7 +261,7 @@ export class QuoteDelisonComponent implements OnInit {
           })),
           createdAt: cotizacion.dateCreate
         };
-      }));
+      })).then(arr => arr.sort((a, b) => b.pedimento - a.pedimento));
 
       // ✅ PASO 2.3: Retornar requisición con sus cotizaciones
       return {
@@ -303,9 +276,13 @@ export class QuoteDelisonComponent implements OnInit {
       };
     }));
 
-    this.fullRowData = requisitionsWithQuotes;
+    this.fullRowData = requisitionsWithQuotes.sort((a, b) => {
+      const maxA = a.pedimentos?.length ? Math.max(...a.pedimentos.map((p: any) => p.id || 0)) : -1;
+      const maxB = b.pedimentos?.length ? Math.max(...b.pedimentos.map((p: any) => p.id || 0)) : -1;
+      if (maxB !== maxA) return maxB - maxA;       // primero por id de pedimento más reciente
+      return b.id - a.id;                          // empate: requisición más nueva
+    });
     this.rowData = [...this.fullRowData];
-    console.log('✅ Requisiciones de todas las sucursales cargadas con cotizaciones:', this.fullRowData.length);
 
     // Refrescar el grid
     if (this.gridApi) {
@@ -315,15 +292,10 @@ export class QuoteDelisonComponent implements OnInit {
   }
 
   private async loadQuotesFromSingleBranch(branchId: number) {
-    console.log('📋 Cargando REQUISICIONES desde el servidor...');
-    console.log('   typeReference: branch');
-    console.log('   idReference:', branchId);
-    console.log('   type: REQUIS');
 
     // ✅ PASO 1: Cargar REQUISICIONES de la sucursal
     this.ocAndReqsService.getOcAndReqs('branch', branchId, 'REQUIS').subscribe({
       next: async (data: any) => {
-        console.log('✅ Requisiciones recibidas del servidor:', data);
 
         // Mapear los datos del servidor al formato esperado por el grid
         const requisiciones = Array.isArray(data) ? data : [];
@@ -333,7 +305,6 @@ export class QuoteDelisonComponent implements OnInit {
           const branch = this.branches.find(b => b.id === requisicion.idReference);
           const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
-          console.log(`📋 Requisición ${requisicion.id}: idReference=${requisicion.idReference} → Sucursal: ${branchName}`);
 
           // ✅ PASO 2: Cargar COTIZACIONES de esta requisición
           let cotizaciones: any[] = [];
@@ -345,9 +316,7 @@ export class QuoteDelisonComponent implements OnInit {
               });
             });
             cotizaciones = Array.isArray(cotizacionesData) ? cotizacionesData : [];
-            console.log(`📦 Requisición ${requisicion.id}: ${cotizaciones.length} cotizaciones cargadas`);
           } catch (error) {
-            console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
           }
 
           // ✅ PASO 3: Para cada cotización, cargar sus items
@@ -361,9 +330,7 @@ export class QuoteDelisonComponent implements OnInit {
                 });
               });
               items = Array.isArray(itemsData) ? itemsData : [];
-              console.log(`   🔸 Cotización ${cotizacion.id} (Pedimento ${cotizacion.pedimento}): ${items.length} items`);
             } catch (error) {
-              console.error(`   ❌ Error al cargar items de cotización ${cotizacion.id}:`, error);
             }
 
             return {
@@ -420,10 +387,14 @@ export class QuoteDelisonComponent implements OnInit {
           };
         }));
 
-        this.fullRowData = requisitionsWithQuotes;
+        this.fullRowData = requisitionsWithQuotes.sort((a, b) => {
+      const maxA = a.pedimentos?.length ? Math.max(...a.pedimentos.map((p: any) => p.id || 0)) : -1;
+      const maxB = b.pedimentos?.length ? Math.max(...b.pedimentos.map((p: any) => p.id || 0)) : -1;
+      if (maxB !== maxA) return maxB - maxA;       // primero por id de pedimento más reciente
+      return b.id - a.id;                          // empate: requisición más nueva
+    });
         this.rowData = [...this.fullRowData];
 
-        console.log('✅ Requisiciones cargadas con sus cotizaciones:', this.fullRowData.length);
 
         // Refrescar el grid si ya existe
         if (this.gridApi) {
@@ -432,7 +403,6 @@ export class QuoteDelisonComponent implements OnInit {
         }
       },
       error: (error) => {
-        console.error('❌ Error al cargar requisiciones:', error);
         alerts.basicAlert('Error', 'No se pudieron cargar las requisiciones', 'error');
 
         // En caso de error, inicializar con array vacío
