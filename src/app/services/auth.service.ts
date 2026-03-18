@@ -1,4 +1,4 @@
-import { effect, inject, Injectable, NgZone } from '@angular/core';
+import { effect, inject, Injectable, NgZone, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
@@ -212,6 +212,8 @@ export class AuthService {
       localStorage.removeItem('sqlToken');
       localStorage.removeItem('userRoot');
       this.signalsService.deleteSignals();
+      this.userPermissions.set(null);
+      this.permissionsLoadedForBranch = null;
       this.router.navigateByUrl('/login');
 
       await signOut(this.auth);
@@ -277,7 +279,12 @@ export class AuthService {
 
   // ─── Permisos ───────────────────────────────────────────────────────────────
 
-  private userPermissions: any;
+  private userPermissions = signal<any>(null);
+  private permissionsLoadedForBranch: number | null = null;
+
+  getPermissionsLoadedForBranch(): number | null {
+    return this.permissionsLoadedForBranch;
+  }
 
   getUserId(email: string): Observable<number> {
     return this.http.get<ApiResponse<any>>(`${environment.urlSecurity}/User/email/${email}`,
@@ -303,27 +310,30 @@ export class AuthService {
     return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guardAdvanced/${userId}/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
-  setUserPermissions(permissions: any): void {
+  setUserPermissions(permissions: any, branchId?: number): void {
     console.log(permissions);
-    this.userPermissions = permissions;
+    this.userPermissions.set(permissions);
+    if (branchId !== undefined) {
+      this.permissionsLoadedForBranch = branchId;
+    }
   }
 
   getUserPermissions(): any {
-    return this.userPermissions;
+    return this.userPermissions();
   }
 
   hasMasterPermission(masterPermissionKey: string): boolean {
-    return this.userPermissions?.[masterPermissionKey]?.active === true;
+    return this.userPermissions()?.[masterPermissionKey]?.active === true;
   }
 
   hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     return section?.active === true && subSection?.active === true;
   }
 
   hasSubDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string, subdetailedPermissionKey: string): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
     return section?.active === true && subSection?.active === true && subSubSection?.active === true;
@@ -337,7 +347,7 @@ export class AuthService {
     capa: string,
     action: 'create' | 'read' | 'update' | 'delete'
   ): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
 
@@ -372,7 +382,7 @@ export class AuthService {
     subdetailedPermissionKey: string,
     action: 'create' | 'read' | 'update' | 'delete'
   ): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
 

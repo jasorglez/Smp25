@@ -11,7 +11,7 @@ import { PermitionsService } from 'app/services/permitions.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { AuthService } from 'app/services/auth.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxjs';
 import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
 import { PermissionsViewByUserComponent } from './detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
@@ -418,6 +418,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       return;
     }
 
+    // Ejecutar las llamadas al backend en paralelo para que el guardado sea mucho más rápido.
     const addObservables = newRows.flatMap((row) => {
       const observables = [];
       const cleanedData = this.cleanDataForServer(row);
@@ -471,9 +472,13 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     });
 
     try {
-      await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      const allObservables = [...addObservables, ...updateObservables];
+
+      if (allObservables.length > 0) {
+        // forkJoin dispara todas las peticiones en paralelo y espera a que terminen.
+        await lastValueFrom(forkJoin(allObservables));
+      }
+
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.hasWarehouseChanges = false;
       this.signalsService.setRefresCantidadPermisos(true);

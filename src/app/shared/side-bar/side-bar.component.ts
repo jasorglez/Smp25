@@ -185,10 +185,12 @@ error: (error) => {
   }
 
   async getpermissionxBranchs(idRoot: number) {
-    const hasPermission = this.authService.hasDetailedPermission('principal', 'see-all-branches');
     const isRoot = this.signalsService.getemailChoose() === environment.root;
 
-    if (hasPermission || isRoot) {
+    // Solo el usuario root ve todas las sucursales.
+    // Todos los demás usuarios ven únicamente las sucursales
+    // que tienen registradas en Usersxpermission.
+    if (isRoot) {
 
       this.branchService.getBranches2fields(idRoot).subscribe(
         async (data) => {
@@ -212,6 +214,20 @@ error: (error) => {
             this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
             this.signalsService.setBranchNameSelectedBySidebar(defaultBranch.name);
             this.trackingService.setContract(this.selectedBranchId);
+
+            // Cargar permisos avanzados para la sucursal por defecto inmediatamente
+            const userId = this.trackingService.getId();
+            if (userId) {
+              this.authService.fetchUserPermissionsAdvanced(userId, Number(this.selectedBranchId))
+                .subscribe({
+                  next: (data: any) => {
+                    this.authService.setUserPermissions(data?.permissions ?? {});
+                  },
+                  error: (err) => {
+                    console.error('Error cargando permisos avanzados en sidebar:', err);
+                  }
+                });
+            }
 
             setTimeout(() => {
               const sel = document.getElementById('branchs') as HTMLSelectElement;
@@ -249,6 +265,21 @@ error: (error) => {
                 this.branchData[0].name
               );
               this.trackingService.setContract(this.selectedBranchId);
+
+              // Cargar permisos de la seguridad nueva para esta sucursal (sidebar)
+              const userId = this.trackingService.getId();
+              if (userId) {
+                this.authService
+                  .fetchUserPermissionsAdvanced(userId, Number(this.selectedBranchId))
+                  .subscribe({
+                    next: (data: any) => {
+                      this.authService.setUserPermissions(data?.permissions ?? {});
+                    },
+                    error: (err) => {
+                      console.error('Error cargando permisos avanzados en sidebar:', err);
+                    },
+                  });
+              }
 
               // Actualizar DOM después de que *ngFor haya creado las opciones
               setTimeout(() => {

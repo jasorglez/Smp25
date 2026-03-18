@@ -878,6 +878,7 @@ export class UsersComponent implements OnDestroy {
     cleanedData.id_company = Number(cleanedData.id_company) || this.idRoot;
     cleanedData.idRol = Number(cleanedData.idRol) || 0;
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
+    cleanedData.idTelegram = cleanedData.idTelegram ?? '';
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
     cleanedData.active = Number(cleanedData.active) || 1;
     return cleanedData;
