@@ -4,6 +4,7 @@ import { ICellRendererAngularComp, AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { SignalsService } from 'app/services/signals.service';
 import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 
@@ -69,6 +70,7 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
   private context: any;
   private gridApi!: GridApi;
   private ocAndReqsService = inject(OcAndReqsService);
+  private signalsService = inject(SignalsService);
 
   // Cache para evitar re-renderizado
   private _colDefs: ColDef[] | null = null;
@@ -105,7 +107,6 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
     const articulos = (this.params.data.articulos || []).filter(
       (item: any) => (item.intorext || item.tipo || '').toLowerCase() !== 'interno'
     );
-    console.log('📋 buildRowData - articulos recibidos:', articulos);
 
     // Mapear todos los items (excluidos los de tipo Interno)
     const mappedItems = articulos.map((item: any, index: number) => {
@@ -187,7 +188,6 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
           justificationNewArticle: rawItem.justificationNewArticle || ''
         };
 
-        console.log(`📤 Guardando item ${item.id}: pedimento = ${item.pedimento}`);
         await firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), cotizPayload));
 
         // 2. Actualizar pedimentoNum en la requisición solo si cambió el estado
@@ -206,10 +206,47 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
         this.gridApi.refreshCells({ force: true });
       }
 
+      // Actualizar solicit/createdBy y datecreate con el usuario actual y la fecha de hoy
+      const currentUserName = this.signalsService.getDisplayName()();
+      if (currentUserName && this.cotizacionId) {
+        try {
+          const today = new Date();
+          const y = today.getFullYear();
+          const m = String(today.getMonth() + 1).padStart(2, '0');
+          const d = String(today.getDate()).padStart(2, '0');
+          const todayDb = `${y}-${m}-${d}`;
+          const todayDisplay = `${d}-${m}-${y}`;
+          const cotizacion: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.cotizacionId));
+          await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.cotizacionId, {
+            ...cotizacion,
+            solicit: currentUserName,
+            datecreate: todayDb
+          }));
+          // Actualizar display local
+          this.params.data.creo = currentUserName;
+          this.params.data.createdBy = currentUserName;
+          this.params.data.fechaPedimento = todayDisplay;
+          if (this.params.api && this.params.node) {
+            this.params.api.refreshCells({ rowNodes: [this.params.node], columns: ['creo', 'fechaPedimento'], force: true });
+          }
+        } catch { /* no bloquear el flujo si falla */ }
+      }
+
+      // Sincronizar estado pedimento de vuelta a params.data.articulos
+      this.rowData.forEach(item => {
+        const articuloOriginal = (this.params.data.articulos || []).find((a: any) => a.id === item.id);
+        if (articuloOriginal) {
+          articuloOriginal.pedimento = item.pedimento;
+        }
+      });
+      // Refrescar la celda ARTICULOS del grid padre (pedimentos)
+      if (this.params.api && this.params.node) {
+        this.params.api.refreshCells({ rowNodes: [this.params.node], columns: ['articulos'], force: true });
+      }
+
       alerts.basicAlert('Guardado', `Se guardaron ${changedItems.length} cambio(s) exitosamente.`, 'success');
 
-    } catch (error) {
-      console.error('❌ Error al guardar cambios:', error);
+    } catch {
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios', 'error');
     }
   }
@@ -261,7 +298,6 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
       });
 
       if (!matchingReqItem) {
-        console.warn(`⚠️ No se encontró item "${nameArticle}" en la requisición ${this.requisitionId}`);
         return;
       }
 
@@ -316,14 +352,11 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
         justificationNewArticle: matchingReqItem.justificationNewArticle || ''
       };
 
-      console.log(`📤 Actualizando requisición item ${matchingReqItem.id}: pedimentoNum "${currentPedimentoNum}" → "${newPedimentoNum}"`);
       await firstValueFrom(
         this.ocAndReqsService.updateReqItem(matchingReqItem.id.toString(), updatePayload)
       );
 
-    } catch (error) {
-      console.error('❌ Error al actualizar pedimentoNum en requisición:', error);
-    }
+    } catch { /* silencioso */ }
   }
 
   get colDefs(): ColDef[] {
@@ -355,16 +388,18 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
       {
         field: 'tipo',
         headerName: 'Tipo',
-        width: 130
+        width: 130,
+        hide: true
       },
       {
         field: 'proveedorInterno',
         headerName: 'Proveedor Interno',
+        hide: true,
         width: 200
       },
       {
         field: 'tipoPrioridad',
-        headerName: 'Tipo Prioridad2',
+        headerName: 'Tipo Prioridad',
         width: 150
       },
       {

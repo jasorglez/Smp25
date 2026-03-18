@@ -46,7 +46,7 @@ export class BitacoraEquiposComponent extends BitacoraBaseComponent {
       error: () => {},
     });
 
-    this.catalogsService.getTypeEquipment(idRoot).subscribe({
+    this.catalogsService.getTypeEquipment(idRoot, 'TYPEEQUIPMENT').subscribe({
       next: (resp: any[]) => {
         this.typeEquipmentCatalog = resp.filter(t => t.active !== false);
         console.log('🔧 Tipos de equipo cargados:', this.typeEquipmentCatalog.slice(0, 3));

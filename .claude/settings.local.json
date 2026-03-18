@@ -117,7 +117,17 @@
       "Bash(grep:*)",
       "Bash(cd:*)",
       "Bash(ls:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(find 'C:/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosWarehouse' -type f \\\\\\(-name *.sql -o -name *Migration* -o -name *migration* \\\\\\))",
+      "Bash(find 'C:/Developer/Visual Studio 22/c#/MicroServicios' -type f \\\\\\(-name *.sql -o -name *migration* \\\\\\))",
+      "Bash(find 'C:/Developer/Visual Studio 22/c#/MicroServicios' -type f -name *.sql)",
+      "Bash(find 'C:/Developer/Visual Studio 22/c#/MicroServicios' -type f \\\\\\(-name *.sql -o -name *Script* -o -name *Init* \\\\\\))",
+      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosWarehouse' -type f -name *.sql)",
+      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosWarehouse' -type f \\\\\\(-name *.cs -o -name *.sql \\\\\\))",
+      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosBPI' -type f -name *.cs -o -name *.sql)",
+      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios' -type f \\\\\\(-name *.sql -o -name *init* -o -name *setup* -o -name *seed* \\\\\\))",
+      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosBPI' -type f -name *.cs)",
+      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosWarehouse\\\\Warehouse' -type d -not -path */.git* -not -path */bin/* -not -path */obj/*)"
     ],
     "deny": [],
     "ask": []

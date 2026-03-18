@@ -13,10 +13,23 @@ export class CatalogsService {
 
   constructor() { }
 
+   getCatalogsFromAdmon(idRoot: number, type: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  //lo voy a cambiar a SMP para qe me lo muestreee
+  getTypeEquipment(id: number, type: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Catalog/getCatalogs?idCompany=${id}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addCatalogToSmp(catalog: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlSmp}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
+  }
+
+  //Almacenes
   getCatalogs(idRoot: number, type: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
-
 
   getCatalogsxSubfamily(idRoot, idFamily: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getSubfamily?idCompany=${idRoot}&idFam=${idFamily}`, { headers: this.trackingService.getHeaders() });
@@ -26,14 +39,9 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getCatalogsFromAdmon(idRoot: number, type: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
-  }
-
   getPermissionxprocess(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/process-permissions?idProcces=${id}`, { headers: this.trackingService.getHeaders() });
   }
-
 
   getCatalogsByType(type: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=${type}`, { headers: this.trackingService.getHeaders() });
@@ -49,11 +57,6 @@ export class CatalogsService {
   
   getTypeNote(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=TYPENOTE`, { headers: this.trackingService.getHeaders() });
-  }
-
-  //lo voy a cambiar a SMP para qe me lo muestreee
-  getTypeEquipment(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/Catalog/getCatalogs?idCompany=${id}&type=TYPEEQUIPMENT`, { headers: this.trackingService.getHeaders() });
   }
 
   getPhases(id: number): Observable<any[]> {
@@ -94,9 +97,6 @@ export class CatalogsService {
     return this.http.post<any>(`${environment.urlWarehouse}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
   }
 
-  addCatalogToSmp(catalog: any): Observable<any> {
-    return this.http.post<any>(`${environment.urlSmp}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
-  }
 
   updateCatalog(id: number, catalog: any): Observable<any> {
     return this.http.put<any>(`${environment.urlWarehouse}/Catalog/${id}`, catalog, { headers: this.trackingService.getHeaders() });  
