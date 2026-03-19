@@ -69,9 +69,9 @@
           </a>
         </li>
 
-        <li class="nav-item">
-          <a class="nav-link" routerLink="providers-st" routerLinkActive="active">
-            <i class="bi bi-people-fill"></i> {{'providers' | translate}}
+        <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'providers')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="providers-st" routerLinkActive="active">
+            <mat-icon>people</mat-icon> {{'providers' | translate}}
           </a>
         </li>
 

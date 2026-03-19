@@ -64,7 +64,7 @@
         <table class="reporte-table">
           <thead>
             <tr>
-              <th>Empresa</th>
+              <th>Cliente</th>
               <th>Proyecto</th>
               <th class="text-center">FI</th>
               <th class="text-center">FT</th>
@@ -81,7 +81,7 @@
           </thead>
           <tbody>
             <tr *ngFor="let p of proyectosReporte; let i = index" [class.row-alt]="i % 2 === 0">
-              <td>{{ p.empresa }}</td>
+              <td>{{ p.cliente }}</td>
               <td>{{ p.proyecto }}</td>
               <td class="text-center">{{ p.fechaInicio }}</td>
               <td class="text-center">{{ p.fechaTermino }}</td>

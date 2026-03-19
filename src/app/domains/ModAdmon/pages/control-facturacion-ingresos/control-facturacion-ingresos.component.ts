@@ -16,7 +16,7 @@ import { Workbook } from 'exceljs';
 export interface FacturacionIngreso {
   id: number;
   mes: string;
-  empresa: string;
+  cliente: string;
   proyecto: string;
   fechaFactura: Date | null;
   fechaPago: Date | null;
@@ -159,7 +159,7 @@ export class ControlFacturacionIngresosComponent {
       const customersArray = Array.isArray(customersData) ? customersData : [];
       this.customers = customersArray.map((c: any) => ({
         id: c.id,
-        name: c.nameContact || c.company || c.name || 'Sin nombre'
+        name: c.company || c.nameContact || c.name || 'Sin nombre'
       }));
 
       console.log('Datos cargados:', {
@@ -178,84 +178,99 @@ export class ControlFacturacionIngresosComponent {
   }
 
   private processData(): void {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
     // Filtrar por rango de fechas
     const filtered = this.ingresos.filter(ingreso => {
       const fechaStr = ingreso.date || ingreso.dateStamped;
       if (!fechaStr) return false;
-
       const fecha = new Date(fechaStr);
       if (isNaN(fecha.getTime())) return false;
-
       const fechaFormatted = this.formatDateForInput(fecha);
       return fechaFormatted >= this.fechaInicio && fechaFormatted <= this.fechaFin;
     });
 
-    // Procesar cada ingreso
-    this.facturacionIngresos = filtered.map(ingreso => {
+    // Agrupar por (idCliente, idProyecto)
+    const grupos = new Map<string, {
+      idCliente: number; idProyecto: number;
+      importeFactura: number; importeDescuento: number; subtotal: number; iva: number; total: number;
+      fechaFactura: Date | null; fechaPago: Date | null; count: number;
+      statuses: Set<string>; estatusPagos: Set<string>;
+    }>();
+
+    filtered.forEach(ingreso => {
+      const idCliente = ingreso.idCustomer;
+      const idProyecto = ingreso.idProject;
+      if (!idCliente || !idProyecto) return;
+
+      const key = `${idCliente}_${idProyecto}`;
+      const current = grupos.get(key) || {
+        idCliente, idProyecto,
+        importeFactura: 0, importeDescuento: 0, subtotal: 0, iva: 0, total: 0,
+        fechaFactura: null, fechaPago: null, count: 0,
+        statuses: new Set<string>(), estatusPagos: new Set<string>()
+      };
+
+      current.importeFactura += Number(ingreso.total) || 0;
+      current.subtotal += Number(ingreso.subtotal) || 0;
+      current.iva += Number(ingreso.tax) || 0;
+      current.total += Number(ingreso.total) || 0;
+      current.count += 1;
+      if (ingreso.deliveryStatus) current.statuses.add(ingreso.deliveryStatus);
+      if (ingreso.status) current.estatusPagos.add(ingreso.status);
+
       const fechaFactura = ingreso.dateStamped ? new Date(ingreso.dateStamped) : null;
-      const fechaPago = ingreso.date ? new Date(ingreso.date) : null;
-
-      // Calcular días entre factura y pago
-      let dias: number | null = null;
-      if (fechaFactura && fechaPago) {
-        dias = Math.round((fechaPago.getTime() - fechaFactura.getTime()) / (1000 * 60 * 60 * 24));
-      }
-
-      // Calcular fecha de vencimiento (factura + 30 días)
-      let fechaVencimiento: Date | null = null;
-      let diasVencimiento: number | null = null;
       if (fechaFactura) {
-        fechaVencimiento = new Date(fechaFactura);
-        fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
-        diasVencimiento = Math.round((fechaVencimiento.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (!current.fechaFactura || fechaFactura < current.fechaFactura) current.fechaFactura = fechaFactura;
+      }
+      const fechaPago = ingreso.date ? new Date(ingreso.date) : null;
+      if (fechaPago) {
+        if (!current.fechaPago || fechaPago > current.fechaPago) current.fechaPago = fechaPago;
       }
 
-      // Obtener mes
-      const mes = fechaFactura ? meses[fechaFactura.getMonth()] : (ingreso.paymentMonth || '');
+      grupos.set(key, current);
+    });
 
-      // Obtener proyecto
-      const project = this.projects.find(p => p.id === ingreso.idProject);
+    // Convertir a filas
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    this.facturacionIngresos = [];
+    grupos.forEach(({ idCliente, idProyecto, importeFactura, subtotal, iva, total, fechaFactura, fechaPago, count, statuses, estatusPagos }) => {
+      const customer = this.customers.find(c => c.id === idCliente);
+      const project = this.projects.find(p => p.id === idProyecto);
+      if (!project) return;
 
-      // Obtener factura/UUID
-      const factura = ingreso.uuid && ingreso.uuid !== 'NA'
-        ? ingreso.uuid.substring(0, 12) + '...'
-        : (ingreso.numberDocument || '');
+      const mes = fechaFactura ? meses[fechaFactura.getMonth()] : '';
+      const estatus = [...statuses].join(' / ');
+      const estatusPago = [...estatusPagos].join(' / ');
 
-      return {
-        id: ingreso.id,
+      this.facturacionIngresos.push({
+        id: idProyecto,
         mes,
-        empresa: this.companyName,
+        cliente: customer?.name || '',
         proyecto: project?.name || '',
         fechaFactura,
         fechaPago,
-        factura,
-        oc: ingreso.oc || '',
-        importeFactura: Number(ingreso.total) || 0,
-        importeDescuento: 0, // Campo para notas de crédito/descuentos
-        subtotal: Number(ingreso.subtotal) || 0,
-        iva: Number(ingreso.tax) || 0,
-        total: Number(ingreso.total) || 0,
-        estatus: ingreso.status || '',
-        estatusPago: ingreso.formaPago || '',
-        dias,
-        fechaVencimiento,
-        diasVencimiento
-      };
-    }).sort((a, b) => {
-      // Ordenar por fecha de factura descendente
-      if (!a.fechaFactura) return 1;
-      if (!b.fechaFactura) return -1;
-      return b.fechaFactura.getTime() - a.fechaFactura.getTime();
+        factura: count > 1 ? `${count} facturas` : '1 factura',
+        oc: '',
+        importeFactura,
+        importeDescuento: 0,
+        subtotal,
+        iva,
+        total,
+        estatus,
+        estatusPago,
+        dias: null,
+        fechaVencimiento: null,
+        diasVencimiento: null
+      });
+    });
+
+    this.facturacionIngresos.sort((a, b) => {
+      const cmp = a.cliente.localeCompare(b.cliente);
+      return cmp !== 0 ? cmp : a.proyecto.localeCompare(b.proyecto);
     });
 
     // Calcular totales (excluir canceladas)
-    this.totales = this.facturacionIngresos.filter(f => f.estatus?.toLowerCase() !== 'cancelada').reduce((acc, f) => ({
+    this.totales = this.facturacionIngresos.filter(f => f.estatusPago?.toLowerCase() !== 'cancelada').reduce((acc, f) => ({
       importeFactura: acc.importeFactura + f.importeFactura,
       importeDescuento: acc.importeDescuento + f.importeDescuento,
       subtotal: acc.subtotal + f.subtotal,
@@ -419,7 +434,7 @@ export class ControlFacturacionIngresosComponent {
   private buildPdfContent(): any[] {
     const content: any[] = [];
 
-    const headers = ['MES', 'EMPRESA', 'PROYECTO', 'F. FACTURA', 'F. PAGO', 'FACTURA', 'OC',
+    const headers = ['MES', 'CLIENTE', 'PROYECTO', 'F. FACTURA', 'F. PAGO', 'FACTURA', 'OC',
                      'IMP. FACT.', 'DESC.', 'SUBTOTAL', 'IVA', 'TOTAL', 'ESTATUS', 'EST. PAGO',
                      'DÍAS', 'F. VENC.', 'DÍAS V.'];
 
@@ -428,12 +443,12 @@ export class ControlFacturacionIngresosComponent {
     ];
 
     this.facturacionIngresos.forEach(f => {
-      const diasVencColor = f.estatus?.toLowerCase() === 'pagada' ? '#155724'
+      const diasVencColor = f.estatusPago?.toLowerCase() === 'pagada' ? '#155724'
         : (f.diasVencimiento !== null && f.diasVencimiento < 0) ? '#dc2626' : '#333';
 
       body.push([
         { text: f.mes, style: 'tableCell', alignment: 'center' },
-        { text: f.empresa, style: 'tableCell', alignment: 'left' },
+        { text: f.cliente, style: 'tableCell', alignment: 'left' },
         { text: f.proyecto, style: 'tableCell', alignment: 'left' },
         { text: this.formatDateShort(f.fechaFactura), style: 'tableCell', alignment: 'center' },
         { text: this.formatDateShort(f.fechaPago), style: 'tableCell', alignment: 'center' },
@@ -508,7 +523,7 @@ export class ControlFacturacionIngresosComponent {
       worksheet.getCell('A3').value = `Período: ${this.fechaInicio} al ${this.fechaFin}`;
 
       // Headers
-      const headers = ['Mes', 'Empresa', 'Proyecto', 'Fecha Factura', 'Fecha Pago', 'Factura/NC', 'OC',
+      const headers = ['Mes', 'Cliente', 'Proyecto', 'Fecha Factura', 'Fecha Pago', 'Factura/NC', 'OC',
                        'Importe Factura', 'Importe Desc.', 'Subtotal', 'IVA', 'Total', 'Estatus',
                        'Estatus Pago', 'Días', 'Fecha Venc.', 'Días Venc.'];
       const headerRow = worksheet.getRow(5);
@@ -525,7 +540,7 @@ export class ControlFacturacionIngresosComponent {
       this.facturacionIngresos.forEach(f => {
         const row = worksheet.getRow(rowIndex);
         row.getCell(1).value = f.mes;
-        row.getCell(2).value = f.empresa;
+        row.getCell(2).value = f.cliente;
         row.getCell(3).value = f.proyecto;
         row.getCell(4).value = f.fechaFactura ? this.formatDateShort(f.fechaFactura) : '';
         row.getCell(5).value = f.fechaPago ? this.formatDateShort(f.fechaPago) : '';

@@ -523,18 +523,24 @@ export class IncomeComponent {
       },
 
       {
-        field: 'status',
+        field: 'deliveryStatus',
         headerName: 'Estatus',
         editable: true,
-        width: 105,
+        width: 110,
+        filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: [
-            'Pendiente',
-            'Entregada',
-            'Cancelada',
-            'Pagada'
-          ]
+          values: ['ENTREGADA', 'PENDIENTE', 'N/A']
+        }
+      },
+      {
+        field: 'status',
+        headerName: 'Estatus de pago',
+        editable: true,
+        width: 120,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada']
         }
       },
       {
@@ -634,10 +640,10 @@ export class IncomeComponent {
 
       {
         field: 'formaPago',
-        headerName: 'Forma Pago',
+        headerName: 'Tipo de Pago',
         editable: true,
-        hide: true,
-        width: 250,
+        width: 200,
+        filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
           values: this.formasPago.map(fp => fp.formaPagoValue)

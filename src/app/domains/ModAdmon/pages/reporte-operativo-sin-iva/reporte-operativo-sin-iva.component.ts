@@ -7,6 +7,7 @@ import { ProjectsService } from 'app/services/projects.service';
 import { RootService } from 'app/services/root.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { CustomersService } from 'app/services/customers.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
@@ -15,7 +16,7 @@ import { Workbook } from 'exceljs';
 
 // Interfaz para los datos del reporte de proyectos
 export interface ProyectoReporte {
-  empresa: string;
+  cliente: string;
   proyecto: string;
   idProyecto: number;
   fechaInicio: string;
@@ -64,6 +65,7 @@ export class ReporteOperativoSinIvaComponent {
   private cuentasContablesService = inject(CuentasContablesService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private customersService = inject(CustomersService);
 
   // Estado del componente
   public rootId: number;
@@ -80,6 +82,7 @@ export class ReporteOperativoSinIvaComponent {
 
   // Datos crudos
   private proyectos: any[] = [];
+  private customers: any[] = [];
   private ingresos: any[] = [];
   private egresos: any[] = [];
   private retiros: any[] = [];
@@ -177,19 +180,25 @@ export class ReporteOperativoSinIvaComponent {
     this.isLoading = true;
     try {
       // Cargar datos en paralelo
-      const [rootData, proyectosData, incomesData, empresasData, cuentasData, allRootsData] = await Promise.all([
+      const [rootData, proyectosData, incomesData, empresasData, cuentasData, allRootsData, customersData] = await Promise.all([
         lastValueFrom(this.rootService.getRootbyId(this.rootId)),
         lastValueFrom(this.projectsService.getProjectListByCompany(this.rootId)),
         lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId)),
         lastValueFrom(this.branchsService.getBrancheswoa(this.rootId)),
         lastValueFrom(this.cuentasContablesService.getByNivel(this.rootId, 2)),
-        lastValueFrom(this.rootService.getRoot())
+        lastValueFrom(this.rootService.getRoot()),
+        lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'CUSTOMERS'))
       ]);
 
       const currentRoot = rootData as any;
       this.companyName = currentRoot?.name || currentRoot?.nameCompany || 'Empresa';
       this.proyectos = Array.isArray(proyectosData) ? proyectosData : [];
       this.empresas = Array.isArray(empresasData) ? empresasData : [];
+      const customersArray = Array.isArray(customersData) ? customersData : [];
+      this.customers = customersArray.map((c: any) => ({
+        id: c.id,
+        name: c.company || c.nameContact || c.name || ''
+      }));
       this.cuentasContablesNivel2 = Array.isArray(cuentasData) ? cuentasData : [];
       this.allRoots = Array.isArray(allRootsData) ? allRootsData : [];
 
@@ -310,12 +319,12 @@ export class ReporteOperativoSinIvaComponent {
     const egresosFiltered = this.filterByDateRange(this.egresos);
     const retirosFiltered = this.filterByDateRange(this.retiros);
 
-    // Agrupar ingresos, egresos y retiros por proyecto
-    const ingresosPorProyecto = new Map<number, { facturado: number; cobrado: number }>();
+    // Agrupar por par (idProyecto, idCliente) para desglose completo
+    const ingresosPorClienteProyecto = new Map<string, { facturado: number; cobrado: number; idCliente: number; idProyecto: number }>();
     const egresosPorProyecto = new Map<number, number>();
     const retirosPorProyecto = new Map<number, number>();
 
-    // Procesar retiros de utilidad de socios por proyecto
+    // Procesar retiros por proyecto
     retirosFiltered.forEach(retiro => {
       const idProyecto = retiro.idProject;
       if (!idProyecto) return;
@@ -323,80 +332,71 @@ export class ReporteOperativoSinIvaComponent {
       retirosPorProyecto.set(idProyecto, (retirosPorProyecto.get(idProyecto) || 0) + monto);
     });
 
-    // Procesar ingresos
+    // Procesar ingresos agrupados por (proyecto, cliente)
     ingresosFiltered.forEach(ingreso => {
       const idProyecto = ingreso.idProject;
-      if (!idProyecto) return;
+      const idCliente = ingreso.idCustomer;
+      if (!idProyecto || !idCliente) return;
 
-      const current = ingresosPorProyecto.get(idProyecto) || { facturado: 0, cobrado: 0 };
+      const key = `${idProyecto}_${idCliente}`;
+      const current = ingresosPorClienteProyecto.get(key) || { facturado: 0, cobrado: 0, idCliente, idProyecto };
       const subtotal = Number(ingreso.subtotal) || 0;
 
-      // Facturado: todos los ingresos con fecha de factura
       if (ingreso.dateStamped) {
         current.facturado += subtotal;
       }
-
-      // Cobrado: ingresos con estatus "Pagada"
       if (ingreso.status === 'Pagada') {
         current.cobrado += subtotal;
       }
 
-      ingresosPorProyecto.set(idProyecto, current);
+      ingresosPorClienteProyecto.set(key, current);
     });
 
-    // Procesar egresos
+    // Procesar egresos por proyecto (los gastos son a nivel proyecto, no cliente)
     egresosFiltered.forEach(egreso => {
       const idProyecto = egreso.idProject;
       if (!idProyecto) return;
-
-      const current = egresosPorProyecto.get(idProyecto) || 0;
       const subtotal = Number(egreso.subtotal) || 0;
-      egresosPorProyecto.set(idProyecto, current + subtotal);
+      egresosPorProyecto.set(idProyecto, (egresosPorProyecto.get(idProyecto) || 0) + subtotal);
     });
 
-    // Construir reporte por proyecto
-    this.proyectosReporte = this.proyectos
-      .filter(proyecto => {
-        const idProyecto = proyecto.id;
-        return ingresosPorProyecto.has(idProyecto) || egresosPorProyecto.has(idProyecto);
-      })
-      .map(proyecto => {
-        const idProyecto = proyecto.id;
-        const ingresos = ingresosPorProyecto.get(idProyecto) || { facturado: 0, cobrado: 0 };
-        const erogado = egresosPorProyecto.get(idProyecto) || 0;
+    // Construir una fila por cada par (proyecto, cliente)
+    this.proyectosReporte = [];
+    ingresosPorClienteProyecto.forEach(({ facturado, cobrado, idCliente, idProyecto }) => {
+      const proyecto = this.proyectos.find(p => p.id === idProyecto);
+      if (!proyecto) return;
 
-        // Obtener empresa del proyecto
-        const empresa = this.empresas.find(e => e.id === proyecto.idBranch);
-        const empresaNombre = empresa?.name || this.companyName;
+      const customer = this.customers.find(c => c.id === idCliente);
+      const erogado = egresosPorProyecto.get(idProyecto) || 0;
+      const montoContratado = Number(proyecto.budgetManagement) || facturado;
+      const montoPendienteCobro = facturado - cobrado;
+      const margenBruto = cobrado - erogado;
+      const retiroUtilidad = retirosPorProyecto.get(idProyecto) || 0;
+      const margenNeto = margenBruto - retiroUtilidad;
+      const porcentaje = cobrado > 0 ? (margenNeto / cobrado) * 100 : 0;
 
-        // Calcular métricas
-        const montoContratado = Number(proyecto.budgetManagement) || ingresos.facturado;
-        const montoFacturado = ingresos.facturado;
-        const montoCobrado = ingresos.cobrado;
-        const montoPendienteCobro = montoFacturado - montoCobrado;
-        const margenBruto = montoCobrado - erogado;
-        const retiroUtilidad = retirosPorProyecto.get(idProyecto) || 0;
-        const margenNeto = margenBruto - retiroUtilidad;
-        const porcentaje = montoCobrado > 0 ? (margenNeto / montoCobrado) * 100 : 0;
+      this.proyectosReporte.push({
+        cliente: customer?.name || '',
+        proyecto: proyecto.name || proyecto.number || `Proyecto ${idProyecto}`,
+        idProyecto,
+        fechaInicio: this.formatDate(proyecto.programStart),
+        fechaTermino: this.formatDate(proyecto.programEnd),
+        montoContratado,
+        montoFacturado: facturado,
+        montoCobrado: cobrado,
+        montoPendienteCobro,
+        montoErogado: erogado,
+        margenBruto,
+        retiroUtilidad,
+        margenNeto,
+        porcentaje
+      });
+    });
 
-        return {
-          empresa: empresaNombre,
-          proyecto: proyecto.name || proyecto.number || `Proyecto ${idProyecto}`,
-          idProyecto: idProyecto,
-          fechaInicio: this.formatDate(proyecto.programStart),
-          fechaTermino: this.formatDate(proyecto.programEnd),
-          montoContratado,
-          montoFacturado,
-          montoCobrado,
-          montoPendienteCobro,
-          montoErogado: erogado,
-          margenBruto,
-          retiroUtilidad,
-          margenNeto,
-          porcentaje
-        };
-      })
-      .sort((a, b) => a.empresa.localeCompare(b.empresa));
+    this.proyectosReporte.sort((a, b) => {
+      const cmp = a.cliente.localeCompare(b.cliente);
+      return cmp !== 0 ? cmp : a.proyecto.localeCompare(b.proyecto);
+    });
 
     // Calcular totales
     this.totales = this.proyectosReporte.reduce((acc, p) => ({
@@ -423,7 +423,7 @@ export class ReporteOperativoSinIvaComponent {
   private processInversionActivos(): void {
     // Obtener empresas únicas de los proyectos
     const empresasSet = new Set<string>();
-    this.proyectosReporte.forEach(p => empresasSet.add(p.empresa));
+    this.proyectosReporte.forEach(p => empresasSet.add(p.cliente));
     this.empresasColumnas = Array.from(empresasSet).sort();
 
     // Agrupar egresos por tipo de gasto (cuenta contable nivel 2) y empresa
@@ -732,7 +732,7 @@ export class ReporteOperativoSinIvaComponent {
   private buildProyectosTable(): any {
     // Encabezados abreviados para caber en LETTER
     const headers = [
-      'Empresa', 'Proyecto', 'FI', 'FT', 'Contratado', 'Facturado',
+      'Cliente', 'Proyecto', 'FI', 'FT', 'Contratado', 'Facturado',
       'Cobrado', 'Pend. Cobro', 'Erogado', 'Margen Bruto',
       'Retiro Util.', 'Margen Neto', '%'
     ];
@@ -743,7 +743,7 @@ export class ReporteOperativoSinIvaComponent {
 
     this.proyectosReporte.forEach(p => {
       body.push([
-        { text: p.empresa, style: 'tableCell' },
+        { text: p.cliente, style: 'tableCell' },
         { text: p.proyecto, style: 'tableCell' },
         { text: p.fechaInicio, style: 'tableCell', alignment: 'center' },
         { text: p.fechaTermino, style: 'tableCell', alignment: 'center' },
@@ -907,7 +907,7 @@ export class ReporteOperativoSinIvaComponent {
 
       // Encabezados de la tabla
       const headers = [
-        'Empresa', 'Proyecto', 'FI', 'FT', 'Monto Contratado', 'Monto Facturado',
+        'Cliente', 'Proyecto', 'FI', 'FT', 'Monto Contratado', 'Monto Facturado',
         'Monto Cobrado', 'Monto Pendiente de Cobro', 'Monto Erogado', 'Margen Bruto',
         'Retiro de Utilidad socios', 'Margen Neto', '%'
       ];
@@ -925,7 +925,7 @@ export class ReporteOperativoSinIvaComponent {
       let rowIndex = 6;
       this.proyectosReporte.forEach(p => {
         const row = worksheet.getRow(rowIndex);
-        row.getCell(1).value = p.empresa;
+        row.getCell(1).value = p.cliente;
         row.getCell(2).value = p.proyecto;
         row.getCell(3).value = p.fechaInicio;
         row.getCell(4).value = p.fechaTermino;

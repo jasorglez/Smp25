@@ -127,8 +127,9 @@ export class DashboardHcoComponent {
     // Inicializar fechas por defecto (últimos 24 meses para tener histórico)
     const today = new Date();
     const twentyFourMonthsAgo = new Date(new Date().setMonth(today.getMonth() - 24));
-    this.endDate = today.toISOString().split('T')[0];
-    this.startDate = twentyFourMonthsAgo.toISOString().split('T')[0];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    this.endDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    this.startDate = `${twentyFourMonthsAgo.getFullYear()}-${pad(twentyFourMonthsAgo.getMonth() + 1)}-${pad(twentyFourMonthsAgo.getDate())}`;
 
     // Generar años disponibles para el filtro
     const currentYear = new Date().getFullYear();

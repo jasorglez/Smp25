@@ -59,7 +59,7 @@
           <thead>
             <tr>
               <th class="text-center">Mes</th>
-              <th class="text-center">Empresa</th>
+              <th class="text-center">Cliente</th>
               <th class="text-center">Proyecto</th>
               <th class="text-center">Fecha Factura</th>
               <th class="text-center">Fecha Pago</th>
@@ -80,7 +80,7 @@
           <tbody>
             <tr *ngFor="let f of facturacionIngresos; let i = index" [class.row-alt]="i % 2 === 0">
               <td class="text-center">{{ f.mes }}</td>
-              <td class="text-center empresa-cell">{{ f.empresa }}</td>
+              <td class="text-center empresa-cell">{{ f.cliente }}</td>
               <td class="text-center">{{ f.proyecto }}</td>
               <td class="text-center">{{ f.fechaFactura | date:'dd/MM/yyyy' }}</td>
               <td class="text-center">{{ f.fechaPago | date:'dd/MM/yyyy' }}</td>
@@ -91,11 +91,11 @@
               <td class="text-end">{{ formatCurrency(f.subtotal) }}</td>
               <td class="text-end">{{ formatCurrency(f.iva) }}</td>
               <td class="text-end total-cell">{{ formatCurrency(f.total) }}</td>
-              <td class="text-center" [ngClass]="getStatusClass(f.estatus)">{{ f.estatus }}</td>
-              <td class="text-center">{{ f.estatusPago }}</td>
+              <td class="text-center">{{ f.estatus }}</td>
+              <td class="text-center" [ngClass]="getStatusClass(f.estatusPago)">{{ f.estatusPago }}</td>
               <td class="text-center">{{ f.dias }}</td>
               <td class="text-center">{{ f.fechaVencimiento | date:'dd/MM/yyyy' }}</td>
-              <td class="text-center" [ngClass]="getDiasVencimientoClass(f.diasVencimiento, f.estatus)">
+              <td class="text-center" [ngClass]="getDiasVencimientoClass(f.diasVencimiento, f.estatusPago)">
                 {{ f.diasVencimiento }}
               </td>
             </tr>
