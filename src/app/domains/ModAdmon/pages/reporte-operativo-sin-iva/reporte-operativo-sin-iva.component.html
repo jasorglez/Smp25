@@ -122,44 +122,8 @@
       </div>
     </div>
 
-    <!-- Sección de Aportación Socios -->
-    <div class="table-card aportacion-section" *ngIf="aportacionesSocios.length > 0">
-      <h4 class="section-title">APORTACIÓN SOCIOS</h4>
-      <div class="table-responsive">
-        <table class="reporte-table aportacion-table">
-          <thead>
-            <tr>
-              <th>SOCIOS</th>
-              <th class="text-end">APORTACIÓN BANCO</th>
-              <th class="text-end">APORTACIÓN EFECTIVO</th>
-              <th class="text-end">RETORNO DE INVERSIÓN</th>
-              <th class="text-end">TOTAL UTILIDAD</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let s of aportacionesSocios; let i = index" [class.row-alt]="i % 2 === 0">
-              <td>{{ s.socio }}</td>
-              <td class="text-end">{{ formatCurrency(s.aportacionBanco) }}</td>
-              <td class="text-end">{{ formatCurrency(s.aportacionEfectivo) }}</td>
-              <td class="text-end retorno-cell">{{ formatCurrency(s.retornoInversion) }}</td>
-              <td class="text-end total-cell">{{ formatCurrency(s.totalUtilidad) }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td><strong></strong></td>
-              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionBanco) }}</strong></td>
-              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionEfectivo) }}</strong></td>
-              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.retornoInversion) }}</strong></td>
-              <td class="text-end total-cell"><strong>{{ formatCurrency(totalesAportacion.totalUtilidad) }}</strong></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-
     <!-- Sección de Inversión de Activos -->
-    <div class="table-card inversion-section" *ngIf="inversionActivos.length > 0">
+    <div class="table-card inversion-section">
       <h4 class="section-title">INVERSIÓN DE ACTIVOS</h4>
       <div class="table-responsive">
         <table class="reporte-table inversion-table">
@@ -188,6 +152,42 @@
               <td class="text-end total-cell">
                 <strong>{{ formatCurrency(granTotalInversion) }}</strong>
               </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sección de Aportación Socios -->
+    <div class="table-card aportacion-section">
+      <h4 class="section-title">APORTACIÓN SOCIOS</h4>
+      <div class="table-responsive">
+        <table class="reporte-table aportacion-table">
+          <thead>
+            <tr>
+              <th>SOCIOS</th>
+              <th class="text-end">APORTACIÓN BANCO</th>
+              <th class="text-end">APORTACIÓN EFECTIVO</th>
+              <th class="text-end">RETORNO DE INVERSIÓN</th>
+              <th class="text-end">TOTAL UTILIDAD</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of aportacionesSocios; let i = index" [class.row-alt]="i % 2 === 0">
+              <td>{{ s.socio }}</td>
+              <td class="text-end">{{ formatCurrency(s.aportacionBanco) }}</td>
+              <td class="text-end">{{ formatCurrency(s.aportacionEfectivo) }}</td>
+              <td class="text-end retorno-cell">{{ formatCurrency(s.retornoInversion) }}</td>
+              <td class="text-end total-cell">{{ formatCurrency(s.totalUtilidad) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong></strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionBanco) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionEfectivo) }}</strong></td>
+              <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.retornoInversion) }}</strong></td>
+              <td class="text-end total-cell"><strong>{{ formatCurrency(totalesAportacion.totalUtilidad) }}</strong></td>
             </tr>
           </tfoot>
         </table>

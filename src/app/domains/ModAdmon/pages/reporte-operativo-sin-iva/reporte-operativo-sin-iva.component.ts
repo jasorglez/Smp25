@@ -446,30 +446,33 @@ export class ReporteOperativoSinIvaComponent {
              String(cuenta.nombre || '').toUpperCase().includes('BIBLIOGRAFIA');
     });
 
+    // Mapa idProject → nombre de cliente (via ingresos que tienen idCustomer)
+    const proyectoACliente = new Map<number, string>();
+    this.ingresos.forEach(ing => {
+      if (ing.idProject && ing.idCustomer && !proyectoACliente.has(ing.idProject)) {
+        const customer = this.customers.find(c => c.id === ing.idCustomer);
+        if (customer?.name) proyectoACliente.set(ing.idProject, customer.name);
+      }
+    });
+
     egresosInversion.forEach(egreso => {
       const cuenta = this.cuentasContablesNivel2.find(c => c.id === egreso.idExpend);
       const tipoEquipo = cuenta ? cuenta.nombre : 'SIN CLASIFICAR';
       const subtotal = Number(egreso.subtotal) || 0;
 
-      // Obtener empresa del egreso via proyecto
-      let empresaNombre = this.companyName;
-      if (egreso.idProject) {
-        const proyecto = this.proyectos.find(p => p.id === egreso.idProject);
-        if (proyecto?.idBranch) {
-          const empresa = this.empresas.find(e => e.id === proyecto.idBranch);
-          empresaNombre = empresa?.name || this.companyName;
-        }
-      } else if (egreso.idBranch) {
-        const empresa = this.empresas.find(e => e.id === egreso.idBranch);
-        empresaNombre = empresa?.name || this.companyName;
+      // Obtener cliente: campo directo idCustomer o via idProject
+      let clienteNombre: string | null = null;
+      if (egreso.idCustomer) {
+        const customer = this.customers.find(c => c.id === egreso.idCustomer);
+        clienteNombre = customer?.name || null;
       }
+      if (!clienteNombre && egreso.idProject) {
+        clienteNombre = proyectoACliente.get(egreso.idProject) || null;
+      }
+      if (!clienteNombre) return;
 
-      const current = inversionMap.get(tipoEquipo) || {
-        empresas: {},
-        total: 0
-      };
-
-      current.empresas[empresaNombre] = (current.empresas[empresaNombre] || 0) + subtotal;
+      const current = inversionMap.get(tipoEquipo) || { empresas: {}, total: 0 };
+      current.empresas[clienteNombre] = (current.empresas[clienteNombre] || 0) + subtotal;
       current.total += subtotal;
       inversionMap.set(tipoEquipo, current);
     });
