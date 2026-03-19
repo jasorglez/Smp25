@@ -188,13 +188,10 @@ export class ModalCuentaContableComponent implements OnInit {
       this.trackingService.getEmail()
     );
 
-    // Mapear al formato que espera el backend (active en vez de activo, idPadre null explícito)
     const payload: any = {
       ...this.formData,
-      active: this.formData.activo,
       idPadre: this.formData.idPadre ?? null
     };
-    delete payload.activo;
     if (this.isEdit) {
       payload.id = this.formData.id;
     }

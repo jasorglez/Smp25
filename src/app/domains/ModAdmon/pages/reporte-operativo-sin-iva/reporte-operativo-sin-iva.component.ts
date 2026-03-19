@@ -429,21 +429,12 @@ export class ReporteOperativoSinIvaComponent {
     // Agrupar egresos por tipo de gasto (cuenta contable nivel 2) y empresa
     const inversionMap = new Map<string, { empresas: { [key: string]: number }; total: number }>();
 
-    // Filtrar egresos que corresponden a inversión de activos (cuentas específicas)
-    // Típicamente cuentas que empiezan con ciertos códigos como "1.2" o "ACTIVOS"
+    // Filtrar egresos cuya subclasificación apunta a una cuenta contable con activo = true
     const egresosInversion = this.egresos.filter(egreso => {
-      const cuenta = this.cuentasContablesNivel2.find(c => c.id === egreso.idExpend);
-      if (!cuenta) return false;
-      // Filtrar cuentas de activo fijo o inversión
-      const codigo = String(cuenta.codigo || '');
-      return codigo.startsWith('1.2') ||
-             codigo.startsWith('12') ||
-             String(cuenta.nombre || '').toUpperCase().includes('ACTIVO') ||
-             String(cuenta.nombre || '').toUpperCase().includes('EQUIPO') ||
-             String(cuenta.nombre || '').toUpperCase().includes('VEHICULO') ||
-             String(cuenta.nombre || '').toUpperCase().includes('COMPUTO') ||
-             String(cuenta.nombre || '').toUpperCase().includes('SOFTWARE') ||
-             String(cuenta.nombre || '').toUpperCase().includes('BIBLIOGRAFIA');
+      const idSubclasif = egreso.idSubclasificacion;
+      if (!idSubclasif) return false;
+      const cuenta = this.cuentasContablesNivel2.find(c => c.id === idSubclasif);
+      return cuenta?.activo === true;
     });
 
     // Mapa idProject → nombre de cliente (via ingresos que tienen idCustomer)
@@ -456,7 +447,7 @@ export class ReporteOperativoSinIvaComponent {
     });
 
     egresosInversion.forEach(egreso => {
-      const cuenta = this.cuentasContablesNivel2.find(c => c.id === egreso.idExpend);
+      const cuenta = this.cuentasContablesNivel2.find(c => c.id === egreso.idSubclasificacion);
       const tipoEquipo = cuenta ? cuenta.nombre : 'SIN CLASIFICAR';
       const subtotal = Number(egreso.subtotal) || 0;
 
