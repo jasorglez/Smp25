@@ -34,8 +34,8 @@
                <a class="nav-link green-tab" routerLink="logs" routerLinkActive="active"><i
                      class="bi bi-archive-fill"></i> {{ 'log' | translate}}</a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'roles')">
-               <a class="nav-link green-tab" routerLink="roles" routerLinkActive="active"><i
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'departments')">
+               <a class="nav-link green-tab" routerLink="departments" routerLinkActive="active"><i
                      class="bi bi-building-fill-gear"></i>Departamento</a>
             </li>
             <li class="nav-item" *ngIf="isRoot">
