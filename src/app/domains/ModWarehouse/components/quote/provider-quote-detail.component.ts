@@ -546,197 +546,234 @@ export class ProviderQuoteDetailComponent implements OnInit {
     }
 
     try {
-      // Get company info with logos
-      const rootResponse: any = await lastValueFrom(
-        this.rootService.getRootbyId(this.idRoot)
-      );
+      const HEADER_BLUE = '#2F75B6';
+      const LABEL_BLUE  = '#D9E1F2';
+      const MIN_ROWS    = 10;
 
-      const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
-
-      const logo2Base64 = rootResponse.picture2
-        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture2)
-        : logoBase64;
-
+      // ── Datos de empresa ──────────────────────────────────────────────
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.idRoot));
+      const logoBase64 = rootResponse.picture
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture)
+        : '';
       const watermarkBase64 = rootResponse.picture3
         ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
         : null;
 
-      // Calculate totals
-      const grandTotal = this.rowData.reduce((sum, item) => sum + (item.total || 0), 0);
+      // ── Datos del proveedor ───────────────────────────────────────────
+      let contacto = '';
+      let correo   = '';
+      let telefono = '';
+      if (this.idProvider) {
+        try {
+          const prov: any = await lastValueFrom(this.providersService.getProviderById(this.idProvider));
+          contacto = prov?.namecontact || '';
+          correo   = prov?.email       || '';
+          telefono = prov?.phone || prov?.mobile || '';
+        } catch { /* proveedor no crítico */ }
+      }
 
-      // Provider color for accents
-      const providerColors = ['', '#007bff', '#28a745', '#d4a017'];
-      const accentColor = providerColors[this.providerNumber] || '#6c757d';
+      // ── Folio y fechas del COTIZ ──────────────────────────────────────
+      let cotizFolio    = '';
+      let fechaSolicitud = '';
+      let fechaRequerida = '';
+      if (this.cotizId) {
+        try {
+          const cotizMaster: any = await lastValueFrom(this.ocAndReqsService.getDetailedReq(this.cotizId));
+          cotizFolio     = cotizMaster.folio        || '';
+          fechaSolicitud = this.formatDateShort(cotizMaster.dateCreate  || cotizMaster.datecreate);
+          fechaRequerida = cotizMaster.deliveryTime || this.formatDateShort(cotizMaster.dateSupply || cotizMaster.datesupply);
+        } catch { /* no crítico */ }
+      }
+      if (!fechaSolicitud) fechaSolicitud = this.formatDateShort(new Date().toISOString());
 
-      // Build PDF
+      // ── Unidades de medida ────────────────────────────────────────────
+      let measures: any[] = [];
+      try {
+        measures = await lastValueFrom(this.catalogsService.getMeasures()) as any[];
+      } catch { /* no crítico */ }
+
+      // Enriquecer items con unidad
+      const itemsConUnidad = this.rowData.map((item: any) => {
+        const producto = (this.productos || []).find((p: any) => p.id === item.idSupplie);
+        const measure  = measures.find((m: any) => m.id === (producto?.idMedida || item.idMedida));
+        return { ...item, unit: measure?.description || producto?.measure || '' };
+      });
+
+      // ── Fecha del documento (encabezado) ─────────────────────────────
+      const today = this.formatDateShort(new Date().toISOString());
+
+      // ── Tabla de artículos (mínimo MIN_ROWS filas) ────────────────────
+      const rows = [...itemsConUnidad];
+      while (rows.length < MIN_ROWS) rows.push({ _empty: true });
+
+      const itemsBody: any[] = [
+        [
+          { text: 'No.',                          style: 'tableHeader' },
+          { text: 'Descripción del Bien/Servicio', style: 'tableHeader' },
+          { text: 'Cantidad',                     style: 'tableHeader', alignment: 'center' },
+          { text: 'Unidad',                        style: 'tableHeader', alignment: 'center' },
+          { text: 'Especificaciones',              style: 'tableHeader' },
+          { text: 'Observaciones',                 style: 'tableHeader' }
+        ],
+        ...rows.map((item: any, i: number) => item._empty
+          ? [
+              { text: '', style: 'tableCell' },
+              { text: '', style: 'tableCell' },
+              { text: '', style: 'tableCell' },
+              { text: '', style: 'tableCell' },
+              { text: '', style: 'tableCell' },
+              { text: '', style: 'tableCell' }
+            ]
+          : [
+              { text: (i + 1).toString(), style: 'tableCell', alignment: 'center' },
+              { text: item.productName || '', style: 'tableCell' },
+              { text: item.quantity != null ? item.quantity.toString() : '', style: 'tableCell', alignment: 'center' },
+              { text: item.unit || '', style: 'tableCell', alignment: 'center' },
+              { text: item.comment || '', style: 'tableCell' },
+              { text: '', style: 'tableCell' }
+            ]
+        )
+      ];
+
+      // ── Images dict ───────────────────────────────────────────────────
+      const images: any = {};
+      if (logoBase64)     images['logo']      = logoBase64;
+      if (watermarkBase64) images['watermark'] = watermarkBase64;
+
+      // ── Celda logo (con fallback si no hay imagen) ────────────────────
+      const logoCell = logoBase64
+        ? { image: 'logo', width: 90, rowSpan: 2, alignment: 'center', margin: [0, 4, 0, 4] }
+        : { text: rootResponse?.name || '', rowSpan: 2, bold: true, alignment: 'center', margin: [0, 12, 0, 0] };
+
+      // ── Documento ─────────────────────────────────────────────────────
       const docDefinition: any = {
         pageSize: 'LETTER',
-        pageMargins: [40, 40, 40, 60],
-        background: watermarkBase64 ? [
-          {
-            image: 'watermark',
-            width: 400,
-            opacity: 0.15,
-            absolutePosition: { x: 106, y: 250 }
-          }
-        ] : [],
+        pageMargins: [35, 35, 35, 40],
+        defaultStyle: { fontSize: 9 },
+
+        background: watermarkBase64 ? [{
+          image: 'watermark', width: 400, opacity: 0.12,
+          absolutePosition: { x: 106, y: 220 }
+        }] : [],
+
         content: [
-          // ── Header: logo left | company center | logo2 + title right ──
+          // ── ENCABEZADO ────────────────────────────────────────────────
           {
-            columns: [
-              {
-                image: 'logo',
-                width: 80,
-                alignment: 'left'
-              },
-              {
-                stack: [
-                  { text: rootResponse.name || 'Empresa', style: 'companyName', alignment: 'center' },
-                  { text: rootResponse.email || '', style: 'companyInfo', alignment: 'center' },
-                  { text: rootResponse.web || '', style: 'companyInfo', alignment: 'center' }
-                ],
-                width: '*'
-              },
-              {
-                stack: [
-                  { image: 'logo2', width: 80, alignment: 'right', margin: [0, 0, 0, 5] },
-                  { text: 'COTIZACIÓN DE PROVEEDOR', style: 'documentTitle', alignment: 'right' },
+            table: {
+              widths: [100, '*', 155],
+              body: [
+                [
+                  logoCell,
+                  { text: 'SOLICITUD DE COTIZACIÓN', style: 'mainTitle', alignment: 'center', margin: [0, 8, 0, 8] },
                   {
-                    text: `COTIZ #${this.cotizId || 'N/A'}`,
-                    style: 'documentNumber',
-                    alignment: 'right',
-                    margin: [0, 5, 0, 0]
+                    rowSpan: 2,
+                    stack: [
+                      { text: 'Código: HCO-ADM-FO-043', fontSize: 8, bold: true,  margin: [3, 3, 3, 1] },
+                      { text: 'REF: HCO-ADM-SGC-003',   fontSize: 8, bold: true,  margin: [3, 1, 3, 1] },
+                      { text: `Fecha: ${today}`,          fontSize: 8,             margin: [3, 1, 3, 1] },
+                      { text: 'REV.: 00',                 fontSize: 8,             margin: [3, 1, 3, 3] }
+                    ]
                   }
                 ],
-                width: 150
-              }
-            ],
-            margin: [0, 0, 0, 20]
-          },
-          // ── Separator ──
-          {
-            canvas: [
-              { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1.5, lineColor: accentColor }
-            ],
-            margin: [0, 0, 0, 15]
-          },
-          // ── Master section ──
-          {
-            text: 'DATOS DE LA COTIZACIÓN',
-            style: 'sectionTitle',
-            margin: [0, 0, 0, 10]
-          },
-          {
-            table: {
-              widths: ['18%', '32%', '18%', '32%'],
-              body: [
                 [
-                  { text: 'PROVEEDOR:', style: 'masterLabel' },
-                  { text: this.providerName || `Proveedor ${this.providerNumber}`, style: 'masterValue', bold: true },
-                  { text: 'COTIZ ID:', style: 'masterLabel' },
-                  { text: `${this.cotizId || 'N/A'}`, style: 'masterValue' }
-                ],
-                [
-                  { text: 'REQUISICIÓN:', style: 'masterLabel' },
-                  { text: `${this.quoteData?.folio || this.quoteData?.idReq || 'N/A'}`, style: 'masterValue' },
-                  { text: 'FECHA:', style: 'masterLabel' },
-                  { text: this.formatDate(this.quoteData?.dateCreate), style: 'masterValue' }
-                ],
-                [
-                  { text: 'SOLICITANTE:', style: 'masterLabel' },
-                  { text: this.quoteData?.solicit || 'N/A', style: 'masterValue' },
-                  { text: 'NO. ITEMS:', style: 'masterLabel' },
-                  { text: `${this.rowData.length}`, style: 'masterValue' }
+                  {},
+                  {
+                    text: rootResponse?.name || '',
+                    bold: true, fontSize: 10, alignment: 'center',
+                    fillColor: HEADER_BLUE, color: 'white',
+                    margin: [0, 4, 0, 4]
+                  },
+                  {}
                 ]
               ]
+            },
+            layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#555', vLineColor: () => '#555' },
+            margin: [0, 0, 0, 0]
+          },
+
+          // ── INFO PROVEEDOR ────────────────────────────────────────────
+          {
+            table: {
+              widths: ['18%', '32%', '22%', '28%'],
+              body: [
+                [
+                  { text: 'Proveedor:',         style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: this.providerName || '', style: 'infoValue' },
+                  { text: 'Fecha de Solicitud:', style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: fechaSolicitud,          style: 'infoValue' }
+                ],
+                [
+                  { text: 'Contacto:',          style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: contacto,              style: 'infoValue' },
+                  { text: 'Fecha Requerida:',    style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: fechaRequerida,         style: 'infoValue' }
+                ],
+                [
+                  { text: 'Correo:',            style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: correo,                style: 'infoValue' },
+                  { text: 'Folio:',              style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: cotizFolio,             style: 'infoValue' }
+                ],
+                [
+                  { text: 'Teléfono:',          style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: telefono,              style: 'infoValue' },
+                  { text: 'No. Requisición de\nReferencia:', style: 'infoLabel', fillColor: LABEL_BLUE },
+                  { text: this.quoteData?.folio || '', style: 'infoValue' }
+                ]
+              ]
+            },
+            layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#555', vLineColor: () => '#555' },
+            margin: [0, 0, 0, 0]
+          },
+
+          // ── TABLA DE ARTÍCULOS ────────────────────────────────────────
+          {
+            table: {
+              headerRows: 1,
+              widths: [28, '*', 50, 45, 110, 110],
+              body: itemsBody
             },
             layout: {
+              fillColor: (row: number) => row === 0 ? HEADER_BLUE : null,
               hLineWidth: () => 0.5,
               vLineWidth: () => 0.5,
-              hLineColor: () => '#cccccc',
-              vLineColor: () => '#cccccc',
-              paddingTop: () => 5,
-              paddingBottom: () => 5,
-              paddingLeft: () => 8,
-              paddingRight: () => 8
+              hLineColor: () => '#555',
+              vLineColor: () => '#555'
             },
-            margin: [0, 0, 0, 20]
+            margin: [0, 0, 0, 0]
           },
-          // ── Detail table ──
-          {
-            text: 'DETALLE DE PRODUCTOS',
-            style: 'sectionTitle',
-            margin: [0, 0, 0, 10]
-          },
-          this.generateItemsTable(accentColor),
-          // ── Totals ──
+
+          // ── COMENTARIOS ADICIONALES ───────────────────────────────────
           {
             table: {
-              widths: ['*', '20%', '20%'],
+              widths: ['*'],
               body: [
-                [
-                  { text: '', border: [false, false, false, false] },
-                  { text: 'TOTAL:', style: 'totalLabel', alignment: 'right' },
-                  { text: `$ ${this.formatCurrency(grandTotal)}`, style: 'totalValue', alignment: 'right' }
-                ]
+                [{ text: 'Comentarios adicionales:', style: 'infoLabel', fillColor: LABEL_BLUE }],
+                [{ text: '\n\n\n\n', fontSize: 8 }]
               ]
             },
-            layout: 'noBorders',
-            margin: [0, 10, 0, 30]
-          },
-          // ── Signatures ──
-          {
-            table: {
-              widths: ['50%', '50%'],
-              body: [
-                [
-                  { text: ' ', margin: [0, 40, 0, 0] },
-                  { text: ' ', margin: [0, 40, 0, 0] }
-                ],
-                [
-                  { text: '________________________________', alignment: 'center', border: [false, false, false, false] },
-                  { text: '________________________________', alignment: 'center', border: [false, false, false, false] }
-                ],
-                [
-                  { text: 'ELABORÓ', style: 'signatureLabel', alignment: 'center' },
-                  { text: 'AUTORIZÓ', style: 'signatureLabel', alignment: 'center' }
-                ]
-              ]
-            },
-            layout: 'noBorders',
-            margin: [0, 20, 0, 0]
+            layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => '#555', vLineColor: () => '#555' },
+            margin: [0, 0, 0, 0]
           }
         ],
-        images: watermarkBase64 ? {
-          logo: logoBase64,
-          logo2: logo2Base64,
-          watermark: watermarkBase64
-        } : {
-          logo: logoBase64,
-          logo2: logo2Base64
+
+        styles: {
+          mainTitle:  { fontSize: 15, bold: true },
+          infoLabel:  { bold: true, fontSize: 8, margin: [2, 3, 2, 3] },
+          infoValue:  { fontSize: 8, margin: [2, 3, 2, 3] },
+          tableHeader:{ bold: true, fontSize: 8, color: 'white', fillColor: HEADER_BLUE, margin: [2, 3, 2, 3] },
+          tableCell:  { fontSize: 7, margin: [2, 3, 2, 3] }
         },
+
+        images,
+
         footer: (currentPage: number, pageCount: number) => ({
           columns: [
-            { text: `Cotización Proveedor - ${this.providerName}`, style: 'footerText', alignment: 'left', margin: [40, 0, 0, 0] },
-            { text: `Página ${currentPage} de ${pageCount}`, style: 'footerText', alignment: 'right', margin: [0, 0, 40, 0] }
+            { text: `Solicitud de Cotización - ${this.providerName}`, fontSize: 7, color: '#666', margin: [35, 0, 0, 0] },
+            { text: `Página ${currentPage} de ${pageCount}`,          fontSize: 7, color: '#666', alignment: 'right', margin: [0, 0, 35, 0] }
           ],
-          margin: [0, 20, 0, 0]
-        }),
-        styles: {
-          companyName: { fontSize: 14, bold: true, color: '#333333' },
-          companyInfo: { fontSize: 9, color: '#666666' },
-          documentTitle: { fontSize: 14, bold: true, color: accentColor },
-          documentNumber: { fontSize: 12, bold: true, color: '#333333' },
-          sectionTitle: { fontSize: 11, bold: true, color: accentColor },
-          masterLabel: { fontSize: 9, bold: true, color: '#333333' },
-          masterValue: { fontSize: 9, color: '#000000' },
-          tableHeader: { fontSize: 8, bold: true, fillColor: '#e6e6e6', color: '#000000' },
-          tableCell: { fontSize: 8, color: '#000000' },
-          totalLabel: { fontSize: 10, bold: true, color: '#000000' },
-          totalValue: { fontSize: 10, bold: true, color: accentColor },
-          signatureLabel: { fontSize: 8, italics: true, color: '#666666' },
-          footerText: { fontSize: 7, color: '#999999' }
-        }
+          margin: [0, 15, 0, 0]
+        })
       };
 
       pdfMake.createPdf(docDefinition).open();
@@ -747,49 +784,18 @@ export class ProviderQuoteDetailComponent implements OnInit {
     }
   }
 
-  private generateItemsTable(accentColor: string): any {
-    const tableBody: any[] = [
-      // Header
-      [
-        { text: '#', style: 'tableHeader', alignment: 'center' },
-        { text: 'CÓDIGO', style: 'tableHeader' },
-        { text: 'DESCRIPCIÓN', style: 'tableHeader' },
-        { text: 'CANTIDAD', style: 'tableHeader', alignment: 'center' },
-        { text: 'PRECIO UNIT.', style: 'tableHeader', alignment: 'right' },
-        { text: 'TOTAL', style: 'tableHeader', alignment: 'right' },
-        { text: 'COMENTARIOS', style: 'tableHeader' }
-      ]
-    ];
-
-    this.rowData.forEach((item, index) => {
-      tableBody.push([
-        { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
-        { text: item.productCode || '', style: 'tableCell' },
-        { text: item.productName || '', style: 'tableCell' },
-        { text: (item.quantity || 0).toString(), style: 'tableCell', alignment: 'center' },
-        { text: `$ ${this.formatCurrency(item.price || 0)}`, style: 'tableCell', alignment: 'right' },
-        { text: `$ ${this.formatCurrency(item.total || 0)}`, style: 'tableCell', alignment: 'right', bold: true },
-        { text: item.comment || '', style: 'tableCell' }
-      ]);
-    });
-
-    return {
-      table: {
-        headerRows: 1,
-        widths: ['5%', '10%', '30%', '10%', '13%', '13%', '19%'],
-        body: tableBody
-      },
-      layout: {
-        hLineWidth: () => 0.5,
-        vLineWidth: () => 0.5,
-        hLineColor: (i: number) => i === 1 ? accentColor : '#cccccc',
-        vLineColor: () => '#cccccc',
-        paddingTop: () => 4,
-        paddingBottom: () => 4,
-        paddingLeft: () => 5,
-        paddingRight: () => 5
+  private formatDateShort(value: string | Date | null | undefined): string {
+    if (!value) return '';
+    try {
+      const s = typeof value === 'string' ? value : value.toISOString();
+      if (s.match(/^\d{4}-\d{2}-\d{2}/)) {
+        const [y, m, d] = s.split('T')[0].split('-');
+        return `${d}/${m}/${y}`;
       }
-    };
+      const dt = new Date(s);
+      if (isNaN(dt.getTime())) return '';
+      return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`;
+    } catch { return ''; }
   }
 
   private formatCurrency(value: number): string {
