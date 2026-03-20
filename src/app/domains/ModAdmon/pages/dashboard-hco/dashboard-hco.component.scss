@@ -347,6 +347,31 @@
   }
 }
 
+// Personal KPI header
+.personal-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px 4px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 4px;
+
+  .personal-kpi-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .personal-kpi-total {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #1a365d;
+    line-height: 1;
+  }
+}
+
 // Chart Card
 .chart-card {
   background-color: #ffffff;

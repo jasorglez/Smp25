@@ -5,6 +5,8 @@ import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { PersonalByProyectService } from 'app/services/personalByProyect.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
@@ -92,6 +94,8 @@ export class DashboardHcoComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private cuentasContablesService = inject(CuentasContablesService);
   private signalsService = inject(SignalsService);
+  private personalByProyectService = inject(PersonalByProyectService);
+  private projectsService = inject(ProjectsService);
 
   // Estado del componente
   public rootId: number;
@@ -122,6 +126,12 @@ export class DashboardHcoComponent {
   public pieChartOptions: Partial<PieChartOptions>;
   public lineChartOptions: Partial<LineChartOptions>;
   public barChartOptions: Partial<BarChartOptions>;
+  public personalPieChartOptions: Partial<PieChartOptions>;
+
+  // Datos de personal
+  private cantidadPersonalData: any[] = [];
+  private projectsList: any[] = [];
+  public totalPersonal: number = 0;
 
   constructor() {
     // Inicializar fechas por defecto (últimos 24 meses para tener histórico)
@@ -650,6 +660,17 @@ export class DashboardHcoComponent {
   }
 
   private loadData(rootId: number): void {
+    // Cargar datos de personal por proyecto
+    this.personalByProyectService.getCantidadPersonal().subscribe(data => {
+      this.cantidadPersonalData = Array.isArray(data) ? data : [];
+      this.preparePersonalPieChart();
+    });
+
+    this.projectsService.getProjectListByCompany(rootId).subscribe((data: any) => {
+      this.projectsList = Array.isArray(data) ? data : [];
+      this.preparePersonalPieChart();
+    });
+
     // Cargar catálogo de cuentas contables nivel 2 (subclasificación) - mismo método que expenditure
     this.cuentasContablesService.getByNivel(rootId, 2).subscribe(data => {
       this.cuentasContablesNivel2 = data || [];
@@ -980,6 +1001,32 @@ export class DashboardHcoComponent {
     this.totalesPorAnio = Array.from(totalesPorAnioMap.entries())
       .map(([anio, data]) => ({ anio, ...data }))
       .sort((a, b) => a.anio - b.anio);
+  }
+
+  private preparePersonalPieChart(): void {
+    if (this.cantidadPersonalData.length === 0) {
+      this.totalPersonal = 0;
+      this.personalPieChartOptions = null;
+      return;
+    }
+
+    const conEmpleados = this.cantidadPersonalData.filter(item => (item.count || 0) > 0);
+    this.totalPersonal = this.cantidadPersonalData.reduce((sum, item) => sum + (item.count || 0), 0);
+
+    const labels = conEmpleados.map(item => {
+      const project = this.projectsList.find(p => p.id === item.idProyect);
+      return project ? project.name : `Proyecto ${item.idProyect}`;
+    });
+    const series = conEmpleados.map(item => item.count || 0);
+
+    this.personalPieChartOptions = {
+      series,
+      chart: { type: 'donut', height: 280 },
+      labels,
+      title: { text: 'CANTIDAD DE PERSONAL', align: 'center', style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' } },
+      legend: { position: 'bottom', fontSize: '10px' },
+      colors: ['#1e3a5f', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#7c3aed', '#a78bfa', '#06b6d4']
+    };
   }
 
   private preparePieChart(): void {

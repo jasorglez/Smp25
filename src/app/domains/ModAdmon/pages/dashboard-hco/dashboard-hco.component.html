@@ -166,6 +166,27 @@
 
     <!-- Columna derecha: Gráficas -->
     <div class="charts-column">
+      <!-- KPI + Gráfica: Cantidad de Personal por Proyecto -->
+      <div class="chart-card">
+        <div class="personal-kpi-header">
+          <span class="personal-kpi-label">CANTIDAD DE PERSONAL</span>
+          <span class="personal-kpi-total">{{ totalPersonal }}</span>
+        </div>
+        <apx-chart
+          *ngIf="personalPieChartOptions?.series && personalPieChartOptions.series.length > 0"
+          [series]="personalPieChartOptions.series"
+          [chart]="personalPieChartOptions.chart"
+          [labels]="personalPieChartOptions.labels"
+          [title]="personalPieChartOptions.title"
+          [legend]="personalPieChartOptions.legend"
+          [colors]="personalPieChartOptions.colors"
+        ></apx-chart>
+        <div *ngIf="!personalPieChartOptions?.series || personalPieChartOptions.series.length === 0" class="no-data">
+          <i class="bi bi-people"></i>
+          <span>Sin datos de personal</span>
+        </div>
+      </div>
+
       <!-- Gráfica de pie: Gasto Total Acumulado -->
       <div class="chart-card">
         <apx-chart
