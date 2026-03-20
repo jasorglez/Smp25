@@ -240,7 +240,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           const source = this.posicionesCache[currentRole] ?? this.catalogPosiciones ?? [];
           const filteredPosiciones = source.filter(item => !assignedPositions.includes(item.id));
           return {
-            values: filteredPosiciones.map(item => item.description)
+            values: filteredPosiciones.map(item => item.id)
           };
         },
         valueFormatter: (params) => {
@@ -253,13 +253,10 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           return found ? found.description : params.value;
         },
         valueSetter: (params) => {
-          const selectedDescription = params.newValue;
+          const newPosicionId = params.newValue;
           const currentRoleId = params.data.idRole;
-          const source = this.posicionesCache[currentRoleId] ?? this.catalogPosiciones ?? [];
-          const found = source.find(item => item.description === selectedDescription);
-          const newPosicionId = found?.id;
 
-          if (!newPosicionId || params.data.idPosicion === newPosicionId) return false;
+          if (params.data.idPosicion === newPosicionId) return false;
 
           const duplicateExists = this.warehousesRowData.some(
             (row, index) => row.idRole === currentRoleId && row.idPosicion === newPosicionId && params.node.rowIndex !== index
@@ -494,6 +491,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       );
       const cleanedData = this.cleanDataForServer(row);
       delete cleanedData.posicionesDisponibles;
+      delete cleanedData.id;
       const createNew$ = this.permitionsService.addPermitionsDetailBydescription(cleanedData);
 
       return [deleteOld$, createNew$];
