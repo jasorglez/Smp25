@@ -93,12 +93,14 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   warehousesRowData: any[] = [];
   catalogRoles: any[] = [];
   catalogPosiciones: any[] = [];
+  posicionesCache: { [roleId: number]: any[] } = {};
   rolesDefinidos: any[] = [];
   catalogGeneralPosiciones: any[] = [];
   hasWarehouseChanges: boolean = false;
   warehousesGridApi: any;
   idPosicionSelect: number;
   selectedWarehouse: any = null;
+
 
   warehouses: any[] = [];
   warehousesMap: { [key: string]: string } = {};
@@ -113,6 +115,17 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     onRowClicked: (event) => {
       event.node.setSelected(true);
       this.selectedWarehouse = event.data;
+      if (event.data?.idRole) {
+        const cached = this.posicionesCache[event.data.idRole];
+        if (cached) {
+          this.catalogPosiciones = cached;
+        } else {
+          this.getPoscionesbyRole(event.data.idRole).then(posiciones => {
+            this.catalogPosiciones = posiciones;
+            this.posicionesCache[event.data.idRole] = posiciones;
+          });
+        }
+      }
     },
     rowClass: (params) => {
       if (params.node.isSelected()) {
@@ -224,23 +237,29 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           const assignedPositions = this.warehousesRowData
             .filter(row => row.idRole === currentRole && row !== params.data)
             .map(row => row.idPosicion);
-          const filteredPosiciones = this.catalogPosiciones
-            ? this.catalogPosiciones.filter(item => !assignedPositions.includes(item.id))
-            : [];
+          const source = this.posicionesCache[currentRole] ?? this.catalogPosiciones ?? [];
+          const filteredPosiciones = source.filter(item => !assignedPositions.includes(item.id));
           return {
-            values: filteredPosiciones.map(item => item.id)
+            values: filteredPosiciones.map(item => item.description)
           };
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
+          const allSources = [
+            ...Object.values(this.posicionesCache).flat(),
+            ...(this.catalogGeneralPosiciones ?? [])
+          ];
+          const found = allSources.find(item => item.id === params.value);
           return found ? found.description : params.value;
         },
         valueSetter: (params) => {
-          const newPosicionId = params.newValue;
+          const selectedDescription = params.newValue;
           const currentRoleId = params.data.idRole;
+          const source = this.posicionesCache[currentRoleId] ?? this.catalogPosiciones ?? [];
+          const found = source.find(item => item.description === selectedDescription);
+          const newPosicionId = found?.id;
 
-          if (params.data.idPosicion === newPosicionId) return false;
+          if (!newPosicionId || params.data.idPosicion === newPosicionId) return false;
 
           const duplicateExists = this.warehousesRowData.some(
             (row, index) => row.idRole === currentRoleId && row.idPosicion === newPosicionId && params.node.rowIndex !== index
@@ -349,8 +368,17 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
 
   obternerDatos() {
     this.permitionsService.getRolYPosicion(this.userId, this.branchId).subscribe(
-      (data: any) => {
-        console.log(data);
+      async (data: any) => {
+        const uniqueRoles: number[] = [...new Set<number>(
+          (data as any[]).map((row: any) => row.idRole).filter(Boolean)
+        )];
+        await Promise.all(
+          uniqueRoles.map(roleId =>
+            this.getPoscionesbyRole(roleId).then(pos => {
+              this.posicionesCache[roleId] = pos;
+            })
+          )
+        );
         this.warehousesRowData = data;
       }
     );
