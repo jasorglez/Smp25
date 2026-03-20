@@ -559,6 +559,10 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     }
 
     if (colId === 'Permisos') {
+      if (!this.authService.hasSubDetailedPermission('setup', 'users', 'Sec_Per')) {
+        alerts.basicAlert('Sin acceso', 'No tienes acceso para este apartado', 'warning');
+        return;
+      }
       this.modalService.openPermissions({
         idUser: this.userId,
         idBranch: this.branchId,

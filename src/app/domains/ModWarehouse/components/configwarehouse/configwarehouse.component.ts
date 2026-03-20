@@ -6,7 +6,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 
 import { ColDef, GridApi, GridReadyEvent, RowSelectedEvent } from 'ag-grid-enterprise';
 import { alerts } from '../../../../helpers/alerts';
- 
+
 import { AgGridModule } from 'ag-grid-angular';
 import { Router } from '@angular/router';
 
@@ -33,17 +33,17 @@ export class ConfigwarehouseComponent {
 
     ngOnInit() {
       this.signalsService.setCatalogSelected('WAREHOUSE');
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();      
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.obtenerDatos();
     }
-  
+
     private setupService = inject(SetupService);
     private signalsService = inject(SignalsService);
-  
+
     obtenerDatos() {
       this.setupService.getWarehouses(this.idRoot).subscribe(
         (data: any) => {
-          this.setup = data;                
+          this.setup = data;
         },
         (error) => {
           if (error.status == 404) this.setup = [];

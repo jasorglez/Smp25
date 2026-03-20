@@ -63,6 +63,7 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
     filter: true,
     resizable: true,
     floatingFilter: true,
+    suppressKeyboardEvent: (params) => params.event.key === 'Enter' && params.editing,
   };
 
   public gridOptions: any = {
@@ -93,6 +94,17 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
     onCellValueChanged: (event: any) => {
       event.data.__modified = true;
       this.hasChanges = true;
+    },
+    onCellKeyDown: (event: any) => {
+      if (event.event.key !== 'Enter') return;
+      if (event.api.getEditingCells().length === 0) return;
+      const editableCols = event.api.getColumns().filter((col: any) => col.getColDef().editable === true);
+      const currentIndex = editableCols.findIndex((col: any) => col.getColId() === event.column.getColId());
+      const nextCol = editableCols[currentIndex + 1];
+      event.api.stopEditing(false);
+      if (nextCol) {
+        event.api.startEditingCell({ rowIndex: event.rowIndex, colKey: nextCol.getColId() });
+      }
     },
   };
 

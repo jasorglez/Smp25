@@ -86,6 +86,7 @@ export class UsersxMasterPermissions2Component {
         tap(() => {
           console.log('Permisos actualizados correctamente');
           alerts.basicAlert('Mensaje', 'Se ha cambiado correctamente el permiso.', 'success');
+          this.signalsService.setRefresSecurity(true);
         })
       )
       .subscribe(); // Solo suscribirse sin manejar el resultado aquí

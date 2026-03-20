@@ -2,25 +2,25 @@
   <div class="card">
     <div class="card-header p-2">
       <ul class="nav nav-pills">
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('warehouses', 'materia_prima')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="materia-prima" routerLinkActive="active">
             <i class="bi bi-boxes"></i> Materia Prima
           </a>
         </li>
 
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('warehouses', 'Products')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="producto-terminado" routerLinkActive="active">
             <i class="bi bi-box-seam"></i> Productos Terminados
           </a>
         </li>
 
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('warehouses', 'catalog')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="catalogo" routerLinkActive="active">
             <i class="bi bi-journal-text"></i> Catálogo
           </a>
         </li>
 
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('warehouses', 'setup')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="configuracion" routerLinkActive="active">
             <i class="bi bi-gear-fill"></i> Configuración
           </a>

@@ -9,6 +9,7 @@ import { alerts } from 'app/helpers/alerts';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { TrackingService } from 'app/services/tracking.service';
 import { PermitionsService } from 'app/services/permitions.service';
+import { AuthService } from 'app/services/auth.service';
 
 // --- Interfaces ---
 interface CrudPermission {
@@ -55,6 +56,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
+  private authService = inject(AuthService);
 
   @Input() idUserInput: number;
   @Input() idBranchInput: number;
@@ -139,14 +141,22 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
   }
 
-  obtenerDatos(idCompany: number, idUser: number, idBranch: number, idRole: number, idPosicion: number) {
+  obtenerDatos(idCompany: number, idUser: number, idBranch: number, idRole: number, idPosicion: number, preserveSelection = false) {
+    const prevMaster = preserveSelection ? this.masterSeleccionado?.masterPermissionName : null;
+    const prevDetail = preserveSelection ? this.detailSeleccionado?.detailedPermissionName : null;
     this.permitionsService.getPermitionsSencillo(idCompany, idUser, idBranch, idRole, idPosicion)
       .subscribe((data: any) => {
         this.rawData = data;
-        console.log('new data', this.rawData);
         this.groupedPermissions = this.transformData(this.rawData);
-        this.masterSeleccionado = null;
-        this.detailSeleccionado = null;
+        if (prevMaster) {
+          this.masterSeleccionado = this.groupedPermissions.find(m => m.masterPermissionName === prevMaster) ?? null;
+          if (this.masterSeleccionado && prevDetail) {
+            this.detailSeleccionado = this.masterSeleccionado.details.find(d => d.detailedPermissionName === prevDetail) ?? null;
+          }
+        } else {
+          this.masterSeleccionado = null;
+          this.detailSeleccionado = null;
+        }
       });
   }
 
@@ -475,12 +485,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       return;
     }
 
+    alerts.showLoading('Guardando...', 'Aplicando cambios de permisos');
     try {
       const saveObservables = Array.from(changesMap.values()).map(payload =>
         this.permitionsService.addPermitions(payload)
       );
       await lastValueFrom(forkJoin(saveObservables));
 
+      alerts.closeLoading();
       alerts.basicAlert('Datos Guardados', 'Los permisos se han guardado correctamente.', 'success');
       this.notSavedChanges = false;
       this.trackingService.addLog(
@@ -489,10 +501,17 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         'Menu Administracion Detalle de Roles',
         this.trackingService.getEmail()
       );
-      // Refrescar datos para que rawData y la UI queden alineados
-      this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
+      this.signalsService.setRefresSecurity(true);
+      this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion, true);
+      const loggedUserId = this.trackingService.getId();
+      const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
+      if (loggedUserId && currentBranch) {
+        this.authService.fetchUserPermissionsAdvanced(loggedUserId, currentBranch).subscribe({
+          next: (data: any) => this.authService.setUserPermissions(data?.permissions ?? {}, currentBranch)
+        });
+      }
     } catch (error) {
-      console.error('Error al guardar los permisos:', error);
+      alerts.closeLoading();
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');
     }
   }

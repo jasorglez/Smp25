@@ -23,11 +23,10 @@ export class ProcalmacenesComponent {
   selectedTab: string = '';
 
   constructor() {
-    this.selectedTab = 'materia-prima';
     this.signalsService.setCatalogSelected('WAREHOUSE');
   }
 
-  onTabSelected(tabName: string) {
+onTabSelected(tabName: string) {
     this.selectedTab = tabName;
 
     if (tabName === 'materia-prima') {

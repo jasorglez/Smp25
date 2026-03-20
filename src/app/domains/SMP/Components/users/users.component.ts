@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, HostListener, inject, Injectable, OnDestroy, ViewChild } from '@angular/core';
+import { Component, computed, effect, EventEmitter, HostListener, inject, Injectable, OnDestroy, Output, ViewChild } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -43,12 +43,13 @@ import { ModalService } from 'app/services/permissions-modal.service';
   styleUrl: './users.component.scss',
 })
 export class UsersComponent implements OnDestroy {
+  @Output() userSelectionChange = new EventEmitter<boolean>();
 
   // ✅ Referencia al componente de permisos dentro del modal
   @ViewChild('permissionsViewRef') permissionsViewRef: PermissionsViewByUserComponent;
 
   idRoot: number;
-  gridHeight: string = '80vh';
+  gridHeight: string = '55vh';
   newlyAddedRows: string[] = [];
   entrada: any;
   departamentos: any[] = [];
@@ -583,11 +584,13 @@ export class UsersComponent implements OnDestroy {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.userSelectionChange.emit(true);
       if (!this.isAdvanced) {
         this.enviarSignal();
       }
     } else {
       this.selectedRowData = null;
+      this.userSelectionChange.emit(false);
     }
   }
 

@@ -221,7 +221,10 @@ error: (error) => {
               this.authService.fetchUserPermissionsAdvanced(userId, Number(this.selectedBranchId))
                 .subscribe({
                   next: (data: any) => {
-                    this.authService.setUserPermissions(data?.permissions ?? {});
+                    const perms = data?.permissions;
+                    if (perms && Object.keys(perms).length > 0) {
+                      this.authService.setUserPermissions(perms, Number(this.selectedBranchId));
+                    }
                   },
                   error: (err) => {
                     console.error('Error cargando permisos avanzados en sidebar:', err);
@@ -273,7 +276,10 @@ error: (error) => {
                   .fetchUserPermissionsAdvanced(userId, Number(this.selectedBranchId))
                   .subscribe({
                     next: (data: any) => {
-                      this.authService.setUserPermissions(data?.permissions ?? {});
+                      const perms = data?.permissions;
+                      if (perms && Object.keys(perms).length > 0) {
+                        this.authService.setUserPermissions(perms, Number(this.selectedBranchId));
+                      }
                     },
                     error: (err) => {
                       console.error('Error cargando permisos avanzados en sidebar:', err);

@@ -171,7 +171,6 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'warehouses' } },
         children: [
-          { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
           {
             path: 'materia-prima',
             loadComponent: () =>
@@ -179,7 +178,6 @@ export const routes: Routes = [
                 './domains/Almacenes/pages/materia-prima/materia-prima.component'
               ).then((m) => m.MateriaPrimaComponent),
             children: [
-              { path: '', redirectTo: 'proveedores', pathMatch: 'full' },
               {
                 path: 'proveedores',
                 loadComponent: () =>
@@ -215,7 +213,6 @@ export const routes: Routes = [
               ).then((p) => p.ProductoTerminadoComponent),
             canDeactivate: [UnsavedChangesGuard],
             children: [
-              { path: '', redirectTo: 'catalogo', pathMatch: 'full' },
               {
                 path: 'catalogo',
                 loadComponent: () =>
@@ -248,38 +245,6 @@ export const routes: Routes = [
               import('./domains/SMP/Components/catalogs/catalogs.component')
                 .then((s) => s.CatalogsComponent),
             canDeactivate: [UnsavedChangesGuard],
-            children: [
-              {
-                path: 'MATERIA PRIMA',
-                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
-              },
-              {
-                path: 'COMPRAS',
-                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
-              },
-              {
-                path: 'cat-fam-sub',
-                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
-              },
-              {
-                path: ':section',
-                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
-              },
-              {
-                path: 'materia-prima',
-                loadComponent: () =>
-                  import('./domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component')
-                    .then((m) => m.CatFamSubComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'producto-terminado',
-                loadComponent: () =>
-                  import('./domains/Almacenes/components/producto-terminado/producto-terminado.component')
-                    .then((m) => m.ProductoTerminadoComponent),
-                canDeactivate: [UnsavedChangesGuard],
-              },
-            ],
           },
           {
             path: 'configuracion',
@@ -722,17 +687,28 @@ export const routes: Routes = [
           {
             path: 'departments',
             loadComponent: () =>
-              import('./domains/SMP/Components/rolesDelison/rolesDelison.component').then(
-                (r) => r.RolesDelisonComponent
+              import('./domains/SMP/Components/departamentos/departamentos.component').then(
+                (r) => r.DepartamentosComponent
               ),
             canActivate: [MasterPermissionsGuard, TrackingGuard],
             data: {
               permissions: { master: 'setup', detailed: 'departments' },
               tracking: {
-                logMessage: 'Click en Pestaña Configuración Módulo Roles',
+                logMessage: 'Click en Pestaña Configuración Módulo Departamentos',
                 category: 'Setup'
               }
-            }
+            },
+            children: [
+              { path: '', redirectTo: 'departamentos', pathMatch: 'full' },
+              {
+                path: 'departamentos',
+                loadComponent: () =>
+                  import('./domains/SMP/Components/rolesDelison/rolesDelison.component').then(
+                    (r) => r.RolesDelisonComponent
+                  ),
+              },
+
+            ]
           },
           {
             path: 'branches',

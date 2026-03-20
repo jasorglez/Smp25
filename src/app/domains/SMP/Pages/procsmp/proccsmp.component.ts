@@ -20,20 +20,9 @@ export class ProccsmpComponent {
 
   idRoot: number;
   isRoot: boolean = false;
-  canSeeBranches: boolean = false;
-  canSeeUsers: boolean = false;
 
   ngOnInit() {
-    if (this.signalsService.getemailChoose() === environment.root) {
-      this.isRoot = true;
-    }
-    else {
-      this.isRoot = false;
-    }
-
-    this.canSeeBranches = this.isRoot || this.authService.hasDetailedPermission('setup', 'branches');
-    this.canSeeUsers = this.authService.hasDetailedPermission('setup', 'users');
-
+    this.isRoot = this.signalsService.getemailChoose() === environment.root;
   }
 
 
