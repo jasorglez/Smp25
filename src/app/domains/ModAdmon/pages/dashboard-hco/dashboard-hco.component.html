@@ -204,22 +204,24 @@
         </div>
       </div>
 
-      <!-- Gráfica de barras: Resumen anual -->
+      <!-- Gráfica de pie: Consumo de combustible -->
       <div class="chart-card">
+        <div class="personal-kpi-header">
+          <span class="personal-kpi-label">CONSUMO DE COMBUSTIBLE</span>
+          <span class="personal-kpi-total">{{ totalCombustible | currency:'$':'symbol':'1.2-2' }}</span>
+        </div>
         <apx-chart
-          *ngIf="barChartOptions?.series"
-          [series]="barChartOptions.series"
-          [chart]="barChartOptions.chart"
-          [xaxis]="barChartOptions.xaxis"
-          [yaxis]="barChartOptions.yaxis"
-          [title]="barChartOptions.title"
-          [plotOptions]="barChartOptions.plotOptions"
-          [tooltip]="barChartOptions.tooltip"
-          [dataLabels]="barChartOptions.dataLabels"
+          *ngIf="combustiblePieChartOptions?.series && combustiblePieChartOptions.series.length > 0"
+          [series]="combustiblePieChartOptions.series"
+          [chart]="combustiblePieChartOptions.chart"
+          [labels]="combustiblePieChartOptions.labels"
+          [title]="combustiblePieChartOptions.title"
+          [legend]="combustiblePieChartOptions.legend"
+          [colors]="combustiblePieChartOptions.colors"
         ></apx-chart>
-        <div *ngIf="!barChartOptions?.series" class="no-data">
-          <i class="bi bi-bar-chart"></i>
-          <span>Sin datos para mostrar</span>
+        <div *ngIf="!combustiblePieChartOptions?.series || combustiblePieChartOptions.series.length === 0" class="no-data">
+          <i class="bi bi-fuel-pump"></i>
+          <span>Sin datos de combustible</span>
         </div>
       </div>
     </div>

@@ -16,8 +16,6 @@ import { Workbook } from 'exceljs';
 import {
   ApexAxisChartSeries,
   ApexChart,
-  ApexDataLabels,
-  ApexPlotOptions,
   ApexXAxis,
   ApexTitleSubtitle,
   ApexLegend,
@@ -29,17 +27,6 @@ import {
 } from "ng-apexcharts";
 
 // Tipos para las gráficas
-export type BarChartOptions = {
-  series: ApexAxisChartSeries;
-  chart: ApexChart;
-  xaxis: ApexXAxis;
-  yaxis: ApexYAxis;
-  title: ApexTitleSubtitle;
-  plotOptions: ApexPlotOptions;
-  tooltip: ApexTooltip;
-  dataLabels: ApexDataLabels;
-};
-
 export type LineChartOptions = {
   series: ApexAxisChartSeries;
   chart: ApexChart;
@@ -125,13 +112,16 @@ export class DashboardHcoComponent {
   // Opciones de gráficas
   public pieChartOptions: Partial<PieChartOptions>;
   public lineChartOptions: Partial<LineChartOptions>;
-  public barChartOptions: Partial<BarChartOptions>;
+  public combustiblePieChartOptions: Partial<PieChartOptions>;
   public personalPieChartOptions: Partial<PieChartOptions>;
 
   // Datos de personal
   private cantidadPersonalData: any[] = [];
   private projectsList: any[] = [];
   public totalPersonal: number = 0;
+
+  // Datos de combustible
+  public totalCombustible: number = 0;
 
   constructor() {
     // Inicializar fechas por defecto (últimos 24 meses para tener histórico)
@@ -717,6 +707,7 @@ export class DashboardHcoComponent {
                 ...gasto,
                 date: concept.dateExpend ?? gasto.date,
                 total: concept.total ?? 0,
+                conceptoDescripcion: concept.description ?? '',
               });
             });
           }
@@ -767,7 +758,7 @@ export class DashboardHcoComponent {
     this.prepareFlujoMensual(egresosReales, ingresosReales);
     this.preparePieChart();
     this.prepareLineChart();
-    this.prepareBarChart();
+    this.prepareCombustibleChart(filteredExpenseData);
   }
 
   private getIdExpend(item: any): number | null {
@@ -1010,8 +1001,11 @@ export class DashboardHcoComponent {
       return;
     }
 
-    const conEmpleados = this.cantidadPersonalData.filter(item => (item.count || 0) > 0);
-    this.totalPersonal = this.cantidadPersonalData.reduce((sum, item) => sum + (item.count || 0), 0);
+    // Solo incluir proyectos que pertenezcan al root seleccionado
+    const conEmpleados = this.cantidadPersonalData.filter(item =>
+      (item.count || 0) > 0 && this.projectsList.some(p => p.id === item.idProyect)
+    );
+    this.totalPersonal = conEmpleados.reduce((sum, item) => sum + (item.count || 0), 0);
 
     const labels = conEmpleados.map(item => {
       const project = this.projectsList.find(p => p.id === item.idProyect);
@@ -1098,47 +1092,54 @@ export class DashboardHcoComponent {
     };
   }
 
-  private prepareBarChart(): void {
-    if (this.totalesPorAnio.length === 0) {
-      this.barChartOptions = null;
+  private prepareCombustibleChart(filteredExpenseData: any[]): void {
+    // Identificar cuentas de combustible dinámicamente por nombre o código (56xx)
+    const combustibleIds = new Set(
+      this.cuentasContablesNivel2
+        .filter(c => {
+          const nombre = String(c.nombre ?? c.descripcion ?? '').toUpperCase();
+          const codigo = String(c.codigo ?? '');
+          return nombre.includes('COMBUSTIBLE') || nombre.includes('GASOLINA') ||
+                 nombre.includes('DIESEL') || codigo.startsWith('56');
+        })
+        .map(c => c.id)
+    );
+
+    if (combustibleIds.size === 0) {
+      this.totalCombustible = 0;
+      this.combustiblePieChartOptions = null;
       return;
     }
 
-    const categories = this.totalesPorAnio.map(t => `Total ${t.anio}`);
-    const egresoData = this.totalesPorAnio.map(t => t.egreso);
-    const ingresoData = this.totalesPorAnio.map(t => t.ingreso);
+    const items = filteredExpenseData.filter(item =>
+      combustibleIds.has(item.idSubclasificacion) || combustibleIds.has(item.idClasificacion)
+    );
 
-    this.barChartOptions = {
-      series: [
-        { name: 'Egresos', data: egresoData },
-        { name: 'Ingresos', data: ingresoData }
-      ],
-      chart: { type: 'bar', height: 280, toolbar: { show: false } },
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: '55%',
-          dataLabels: { position: 'top' }
-        }
-      },
-      dataLabels: {
-        enabled: true,
-        formatter: (val) => '$' + ((val as number) / 1000).toFixed(0) + 'K',
-        offsetY: -20,
-        style: { fontSize: '10px', colors: ['#304758'] }
-      },
-      xaxis: { categories: categories },
-      yaxis: {
-        labels: {
-          formatter: (val) => '$' + (val / 1000).toFixed(0) + 'K'
-        }
-      },
-      title: { text: 'RESUMEN ANUAL', align: 'left', style: { fontSize: '14px', fontWeight: 'bold', color: '#1a365d' } },
-      tooltip: {
-        y: {
-          formatter: (val) => `$${val.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`
-        }
-      }
+    if (items.length === 0) {
+      this.totalCombustible = 0;
+      this.combustiblePieChartOptions = null;
+      return;
+    }
+
+    // Agrupar por proyecto
+    const grouped = new Map<string, number>();
+    items.forEach(item => {
+      const project = this.projectsList.find(p => p.id === item.idProject);
+      const label = project ? project.name : (item.idProject ? `Proyecto ${item.idProject}` : 'SIN PROYECTO');
+      grouped.set(label, (grouped.get(label) ?? 0) + this.getMonto(item));
+    });
+
+    const labels = Array.from(grouped.keys());
+    const series = Array.from(grouped.values());
+    this.totalCombustible = series.reduce((sum, v) => sum + v, 0);
+
+    this.combustiblePieChartOptions = {
+      series,
+      chart: { type: 'donut', height: 280 },
+      labels,
+      title: { text: 'CONSUMO DE COMBUSTIBLE', align: 'center', style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' } },
+      legend: { position: 'bottom', fontSize: '10px' },
+      colors: ['#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fde68a', '#92400e', '#78350f', '#451a03'],
     };
   }
 
