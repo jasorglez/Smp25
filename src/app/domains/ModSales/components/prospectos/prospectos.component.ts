@@ -68,8 +68,8 @@ export class ProspectosComponent implements OnInit {
   // ── Grid Options (master-detail) ──────────────────────────────────────────
 
   gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 32,
+    headerHeight: 35,
+    rowHeight: 28,
     suppressDragLeaveHidesColumns: true,
     rowSelection: 'single',
     masterDetail: true,

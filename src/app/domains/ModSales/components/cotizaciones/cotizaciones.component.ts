@@ -91,8 +91,8 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   // ── Grid Options ──────────────────────────────────────────────────────────
 
   gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 32,
+    headerHeight: 35,
+    rowHeight: 28,
     domLayout: 'autoHeight',
     suppressDragLeaveHidesColumns: true,
     rowSelection: 'single',
@@ -130,7 +130,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       cellStyle: { backgroundColor: '#e8f0fb', cursor: 'pointer' },
     },
     {
-      field: 'numCotizacion', headerName: 'No.', width: 90, editable: true,
+      field: 'numCotizacion', headerName: 'No. Docto', width: 130, editable: true,
     },
     {
       field: 'nombreProspecto', headerName: 'Prospecto', flex: 1, editable: true,
