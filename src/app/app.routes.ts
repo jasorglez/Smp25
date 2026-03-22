@@ -1763,9 +1763,9 @@ export const routes: Routes = [
             path: 'ProductFinished',
             loadComponent: () =>
               import(
-                './domains/ModSales/components/productFinished/productFinished.component'
-              ).then((p) => p.ProductFinishedComponent),
-            data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
+                './domains/ModProjects/components/materials/materials.component'
+              ).then((m) => m.MaterialsComponent),
+            data: { type: 'PRODSALES' },
           },
           {
             path: 'prospectos',
