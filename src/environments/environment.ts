@@ -71,7 +71,7 @@ export const environment = {
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
 
-  version: '6.37 (17 Marzo 2026 08:11) - Fix Details-Expenses',
+  version: '6.37 (21 Marzo 2026 21:11)',
 };
 
 

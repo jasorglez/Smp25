@@ -1,0 +1,276 @@
+import { Component, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AgGridModule } from 'ag-grid-angular';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { ProspectosService, Prospecto, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
+import { SignalsService } from 'app/services/signals.service';
+import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
+import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
+import Swal from 'sweetalert2';
+
+@Component({
+  selector: 'app-prospectos',
+  standalone: true,
+  imports: [CommonModule, FormsModule, AgGridModule, DetalleInteraccionesComponent, ButtonCellRendererIncomeComponent],
+  templateUrl: './prospectos.component.html',
+  styleUrl: './prospectos.component.scss',
+})
+export class ProspectosComponent implements OnInit {
+  private svc        = inject(ProspectosService);
+  private signalsSvc = inject(SignalsService);
+
+  gridApi!: GridApi;
+  AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+  rowData:          any[]    = [];
+  originalData:     any[]    = [];
+  selectedItem:     any      = null;
+  hasUnsavedChanges = false;
+  loading           = false;
+
+  get idVendedor()     { return this.signalsSvc.idUser(); }
+  get idCompany()      { return this.signalsSvc.idCompany(); }
+  get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
+
+  // ── Enter-key navigation ─────────────────────────────────────────────────
+  private editableColumnOrder = ['nombre', 'telefono', 'empresa', 'estado'];
+  private enterPressed = false;
+
+  defaultColDef: ColDef = {
+    sortable: true, resizable: true, minWidth: 80,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    },
+  };
+
+  onCellEditingStopped(event: any) {
+    if (!event.data.__isNew) {
+      event.data.__modified = true;
+      this.hasUnsavedChanges = true;
+    }
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const idx = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (idx !== -1 && idx < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableColumnOrder[idx + 1] });
+      }, 100);
+    }
+  }
+
+  // ── Grid Options (master-detail) ──────────────────────────────────────────
+
+  gridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 32,
+    suppressDragLeaveHidesColumns: true,
+    rowSelection: 'single',
+    masterDetail: true,
+    detailRowHeight: 400,
+    isRowMaster: () => true,
+    detailCellRenderer: DetalleInteraccionesComponent,
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+      'row-ganado':        (p: any) => !p.data?.__isNew && p.data?.estado === 'ganado',
+      'row-perdido':       (p: any) => !p.data?.__isNew && p.data?.estado === 'perdido',
+    },
+    onRowClicked: (event: any) => {
+      const colId = event.column?.getColId();
+      if (colId !== 'historial') {
+        this.selectedItem = event.data;
+      }
+    },
+  };
+
+  get colDefs(): ColDef[] {
+    return [
+      {
+        field: 'historial',
+        headerName: 'Historial',
+        width: 105,
+        editable: false,
+        cellRenderer: ButtonCellRendererIncomeComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleCascade(node),
+          icon: 'bi-clock-history',
+          title: 'Ver interacciones',
+        },
+        valueGetter: (params) => params.data?.countInteracciones ?? 0,
+        cellStyle: { backgroundColor: '#e8f0fb', cursor: 'pointer' },
+      },
+      {
+        field: 'estado', headerName: 'Estado', width: 155,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ESTADOS_PROSPECTO.map(e => e.value) },
+        cellRenderer: (p: any) => {
+          const e = ESTADOS_PROSPECTO.find(x => x.value === p.value);
+          return e ? `<span class="badge bg-${e.color}">${e.icon} ${e.label}</span>` : p.value ?? '';
+        },
+      },
+      { field: 'nombre',   headerName: 'Nombre',   flex: 1,   editable: true, filter: true },
+      { field: 'telefono', headerName: 'Teléfono', width: 145, editable: true },
+      { field: 'empresa',  headerName: 'Empresa',  width: 165, editable: true, filter: true },
+      {
+        field: 'fechaUltimaInteraccion',
+        headerName: 'Última Interacción', width: 175, editable: false,
+        cellRenderer: (p: any) => this.formatFecha(p.value),
+      },
+      {
+        field: 'creadoPor', headerName: 'Canal', width: 90, editable: false,
+        cellRenderer: (p: any) => {
+          const icon = p.value === 'telegram' ? '📱' : '🖥️';
+          return `${icon} ${p.value ?? ''}`;
+        },
+      },
+    ];
+  }
+
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
+  }
+
+  // ── Cascada (igual que income) ────────────────────────────────────────────
+
+  toggleCascade(node: any) {
+    const api = this.gridApi;
+    const isExpanded = node.expanded;
+
+    if (isExpanded) {
+      node.setExpanded(false);
+      api.forEachNode((n: any) => n.setRowHeight(undefined));
+      api.onRowHeightChanged();
+    } else {
+      // Colapsar cualquier otro expandido
+      api.forEachNode((n: any) => {
+        if (n.expanded && n.id !== node.id) n.setExpanded(false);
+      });
+      // Ocultar otras filas
+      api.forEachNode((n: any) => {
+        if (n.id !== node.id) n.setRowHeight(0);
+      });
+      api.onRowHeightChanged();
+
+      setTimeout(() => node.setExpanded(true), 0);
+    }
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  ngOnInit() { this.cargarProspectos(); }
+
+  cargarProspectos() {
+    this.loading = true;
+    this.svc.getProspectos(this.idVendedor).subscribe({
+      next: data => {
+        this.rowData = data.map(p => ({
+          ...p,
+          countInteracciones: (p as any).countInteracciones ?? 0,
+          __isNew: false,
+          __modified: false,
+        }));
+        this.originalData = JSON.parse(JSON.stringify(this.rowData));
+        this.hasUnsavedChanges = false;
+        this.loading = false;
+      },
+      error: () => { this.loading = false; },
+    });
+  }
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+
+  add() {
+    const nuevo: any = {
+      nombre: '', telefono: '', empresa: '', estado: 'nuevo',
+      idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
+      chatIdVendedorActual: '', idCompany: this.idCompany,
+      creadoPor: 'web', idVendedorCreador: this.idVendedor,
+      notas: '', idCustomer: null, activo: true,
+      fechaCreacion: null, fechaUltimaInteraccion: null,
+      countInteracciones: 0,
+      __isNew: true, __modified: false,
+    };
+    this.rowData = [nuevo, ...this.rowData];
+    this.hasUnsavedChanges = true;
+    setTimeout(() => {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'nombre' });
+    }, 50);
+  }
+
+  async saveChanges() {
+    const toSave = this.rowData.filter(p => p.__isNew || p.__modified);
+    if (!toSave.length) return;
+
+    const errores: string[] = [];
+    for (const p of toSave) {
+      if (!p.nombre?.trim() || !p.telefono?.trim()) {
+        errores.push(`Sin nombre/teléfono: "${p.nombre || '(vacío)'}"`);
+        continue;
+      }
+      try {
+        if (p.__isNew) {
+          await this.svc.crearProspecto(p);
+        } else {
+          await this.svc.actualizarProspecto(p.id!, {
+            nombre: p.nombre, telefono: p.telefono,
+            empresa: p.empresa, estado: p.estado,
+          });
+        }
+      } catch {
+        errores.push(`Error al guardar: ${p.nombre}`);
+      }
+    }
+
+    if (errores.length) {
+      Swal.fire('Atención', errores.join('\n'), 'warning');
+    } else {
+      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+    }
+  }
+
+  revertChanges() {
+    this.rowData = JSON.parse(JSON.stringify(this.originalData));
+    this.hasUnsavedChanges = false;
+    this.gridApi.setGridOption('rowData', this.rowData);
+  }
+
+  async deleteSelected() {
+    if (!this.selectedItem) return;
+    const res = await Swal.fire({
+      title: '¿Eliminar prospecto?', text: this.selectedItem.nombre,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!res.isConfirmed) return;
+
+    if (this.selectedItem.__isNew) {
+      this.rowData = this.rowData.filter(p => p !== this.selectedItem);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      if (!this.rowData.some(p => p.__isNew || p.__modified)) this.hasUnsavedChanges = false;
+      this.selectedItem = null;
+      return;
+    }
+    try {
+      await this.svc.actualizarProspecto(this.selectedItem.id!, { activo: false } as any);
+      this.selectedItem = null;
+      Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo eliminar.', 'error');
+    }
+  }
+
+  formatFecha(ts: any): string {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+}

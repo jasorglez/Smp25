@@ -30,13 +30,13 @@ export class ButtonCellRendererIncomeComponent implements ICellRendererAngularCo
 
   agInit(params: IButtonCellRendererParams): void {
     this.params = params;
-    this.value = this.params.value || 0;
+    this.value = this.params.value ?? '';
     this.iconClass = this.params.icon || 'bi-list-ul';
   }
 
   refresh(params: IButtonCellRendererParams): boolean {
     this.params = params;
-    this.value = this.params.value || 0;
+    this.value = this.params.value ?? '';
     return true;
   }
 
