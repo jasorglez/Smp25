@@ -45,7 +45,7 @@ export const environment = {
   urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlChatBot: 'https://bi2.com.mx/chatbot/api', // chatBotTelegram — verificar URL de producción
+  urlChatBot: 'https://bi2.com.mx/telegram/api',
   //urlChatBot: 'http://localhost:5232/api',
 
   urlMantenimiento: 'https://bi2.com.mx/maintenance/api',
