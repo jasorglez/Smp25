@@ -156,6 +156,50 @@ export class CotizacionesService {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }) as CotizacionItem);
   }
 
+  async enviarPorCorreo(destinatario: string, cotizacion: Cotizacion, pdfBase64: string, vendedorEmail?: string, cc?: string): Promise<void> {
+    const mailRef = collection(this.firestore, 'mail');
+    await addDoc(mailRef, {
+      to: destinatario,
+      ...(cc          ? { cc }               : {}),
+      ...(vendedorEmail ? { replyTo: vendedorEmail } : {}),
+      message: {
+        subject: `Cotización ${cotizacion.numCotizacion} — ${cotizacion.empresaProspecto || cotizacion.nombreProspecto}`,
+        html: `
+          <p>Estimado: <strong>${cotizacion.empresaProspecto || cotizacion.nombreProspecto}</strong>,</p>
+          <p>Adjuntamos la cotización <strong>${cotizacion.numCotizacion}</strong> solicitada.</p>
+          <p>Cualquier duda estamos a sus órdenes.</p>
+          <br>
+          <p>Atentamente,<br><strong>${cotizacion.nombreVendedor}</strong></p>
+        `,
+        attachments: [{
+          filename: `${cotizacion.numCotizacion}.pdf`,
+          content:  pdfBase64,
+          encoding: 'base64',
+        }],
+      },
+    });
+  }
+
+  // ── Historial de correos ──────────────────────────────────────────────────
+
+  async getEmailHistorial(idCompany: number): Promise<string[]> {
+    const ref  = doc(this.firestore, 'cotizacionesMailHistory', String(idCompany));
+    const snap = await getDoc(ref);
+    return snap.exists() ? ((snap.data()['emails'] ?? []) as string[]) : [];
+  }
+
+  async guardarEmailHistorial(idCompany: number, emails: string[]): Promise<void> {
+    const ref      = doc(this.firestore, 'cotizacionesMailHistory', String(idCompany));
+    const snap     = await getDoc(ref);
+    const existing = snap.exists() ? ((snap.data()['emails'] ?? []) as string[]) : [];
+    const merged   = Array.from(new Set([...existing, ...emails.map(e => e.trim().toLowerCase()).filter(Boolean)])).sort();
+    if (snap.exists()) {
+      await updateDoc(ref, { emails: merged });
+    } else {
+      await setDoc(ref, { emails: merged, idCompany });
+    }
+  }
+
   async guardarItems(cotizacionId: string, items: CotizacionItem[]): Promise<void> {
     const colRef = collection(this.firestore, `${this.COL}/${cotizacionId}/items`);
     const docRef = doc(this.firestore, this.COL, cotizacionId);

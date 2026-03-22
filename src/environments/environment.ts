@@ -45,6 +45,9 @@ export const environment = {
   urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
+  urlChatBot: 'https://bi2.com.mx/chatbot/api', // chatBotTelegram — verificar URL de producción
+  //urlChatBot: 'http://localhost:5232/api',
+
   urlMantenimiento: 'https://bi2.com.mx/maintenance/api',
 
   root: 'root@bi2.mx',
@@ -70,8 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-
-  version: '6.37 (21 Marzo 2026 21:11)',
+  version: '4.90 (22 Marzo 2026)',
 };
 
 

@@ -1781,6 +1781,13 @@ export const routes: Routes = [
                 './domains/ModSales/components/cotizaciones/cotizaciones.component'
               ).then((c) => c.CotizacionesComponent),
           },
+          {
+            path: 'cursos',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/cursos/cursos.component'
+              ).then((c) => c.CursosComponent),
+          },
         ],
       },
       {
@@ -2305,6 +2312,12 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./domains/shared/components/public-doc-viewer/public-doc-viewer.component')
         .then(m => m.PublicDocViewerComponent)
+  },
+  {
+    path: 'registrocursos',
+    loadComponent: () =>
+      import('./public/registro-cursos/registro-cursos.component')
+        .then(m => m.RegistroCursosComponent)
   },
   { path: '**', redirectTo: '' },
 ];
