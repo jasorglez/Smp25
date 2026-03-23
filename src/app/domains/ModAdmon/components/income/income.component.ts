@@ -262,6 +262,7 @@ export class IncomeComponent {
         // Agregar propiedades para master-detail
         this.incomes = filtered.map(income => ({
           ...income,
+          diasPlazo: income.diasPlazo ?? null,
           countItems: income.countItems || 0,
           detailType: null,
           detailData: []
@@ -595,6 +596,63 @@ export class IncomeComponent {
       },
 
       {
+        field: 'diasPlazo',
+        headerName: 'Días Plazo',
+        editable: true,
+        width: 100,
+        type: 'number',
+        valueSetter: (params) => {
+          params.data.diasPlazo = params.newValue != null ? Number(params.newValue) : null;
+          return true;
+        }
+      },
+
+      {
+        headerName: 'Fecha Vencimiento',
+        editable: false,
+        width: 140,
+        valueGetter: (params) => {
+          const ds = params.data?.dateStamped;
+          const dias = params.data?.diasPlazo;
+          if (!ds || dias == null) return null;
+          const fecha = new Date(ds);
+          fecha.setDate(fecha.getDate() + Number(dias));
+          return fecha;
+        },
+        valueFormatter: (params) => this.formatDate(params.value),
+        cellStyle: () => ({ color: '#555' })
+      },
+
+      {
+        headerName: 'Días Vencimiento',
+        editable: false,
+        width: 130,
+        valueGetter: (params) => {
+          const ds = params.data?.dateStamped;
+          const dias = params.data?.diasPlazo;
+          if (!ds || dias == null) return null;
+          const vencimiento = new Date(ds);
+          vencimiento.setDate(vencimiento.getDate() + Number(dias));
+          const hoy = new Date();
+          hoy.setHours(0, 0, 0, 0);
+          vencimiento.setHours(0, 0, 0, 0);
+          return Math.floor((hoy.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24));
+        },
+        cellStyle: (params) => {
+          if (params.value == null) return {};
+          if (params.value > 0) return { color: '#dc2626', fontWeight: 'bold' }; // vencido
+          if (params.value >= -7) return { color: '#d97706', fontWeight: 'bold' }; // próximo a vencer
+          return { color: '#16a34a' }; // vigente
+        },
+        valueFormatter: (params) => {
+          if (params.value == null) return '';
+          if (params.value > 0) return `+${params.value} días (vencido)`;
+          if (params.value === 0) return 'Vence hoy';
+          return `${params.value} días`;
+        }
+      },
+
+      {
         field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 130,
         valueFormatter: (params) => this.formatDate(params.value)
       },
@@ -803,6 +861,7 @@ onSelectionChanged(event: any) {
       paymentMonth   : '',            // Mes de pago
       oc             : '',            // Orden de Compra
       date           : null,
+      diasPlazo      : null,
       idCustomer     : 0,
       idExpend       : 0,
       uuid           : "NA",

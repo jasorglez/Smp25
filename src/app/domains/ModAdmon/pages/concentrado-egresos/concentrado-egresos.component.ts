@@ -18,6 +18,7 @@ import { Workbook } from 'exceljs';
 export interface ConcentradoEgreso {
   id: number;
   proveedor: string;
+  cliente: string;
   proyecto: string;
   fecha: Date | null;
   mes: string;
@@ -93,6 +94,7 @@ export class ConcentradoEgresosComponent {
   private egresos: any[] = [];
   private projects: any[] = [];
   private providers: any[] = [];
+  private clients: any[] = [];
   private cuentasContables: any[] = [];
   private accounts: any[] = [];
 
@@ -163,11 +165,12 @@ export class ConcentradoEgresosComponent {
   private async loadAllData(): Promise<void> {
     this.isLoading = true;
     try {
-      const [rootData, expensesData, projectsData, providersData, cuentasData, accountsData] = await Promise.all([
+      const [rootData, expensesData, projectsData, providersData, clientsData, cuentasData, accountsData] = await Promise.all([
         lastValueFrom(this.rootService.getRootbyId(this.rootId)),
         lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId)),
         lastValueFrom(this.projectsService.getProjectListByCompany(this.rootId)),
         lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'PROVIDERS')),
+        lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'CUSTOMERS')),
         lastValueFrom(this.cuentasContablesService.getAll(this.rootId)),
         lastValueFrom(this.administrationService.getAccountBanks(this.rootId))
       ]);
@@ -190,6 +193,13 @@ export class ConcentradoEgresosComponent {
       this.providers = providersArray.map((c: any) => ({
         id: c.id,
         name: c.nameContact || c.company || c.name || 'Sin nombre'
+      }));
+
+      // Mapear clientes
+      const clientsArray = Array.isArray(clientsData) ? clientsData : [];
+      this.clients = clientsArray.map((c: any) => ({
+        id: c.id,
+        name: c.company || c.nameContact || c.name || 'Sin nombre'
       }));
 
       // Mapear cuentas contables
@@ -251,6 +261,9 @@ export class ConcentradoEgresosComponent {
       // Obtener proveedor (desde idCustomer, campo usado en expenditure)
       const provider = this.providers.find(p => p.id === egreso.idCustomer);
 
+      // Obtener cliente (desde idClient)
+      const client = this.clients.find(c => c.id === egreso.idClient);
+
       // Obtener clasificación y subclasificación (desde cuentas contables, como en expenditure)
       const clasificacionCuenta = this.cuentasContables.find(c => c.id === egreso.idClasificacion);
       const subclasificacionCuenta = this.cuentasContables.find(c => c.id === egreso.idSubclasificacion);
@@ -275,6 +288,7 @@ export class ConcentradoEgresosComponent {
       return {
         id: egreso.id,
         proveedor: provider?.name || '',
+        cliente: client?.name || '',
         proyecto: project?.name || '',
         fecha,
         mes,
@@ -442,7 +456,7 @@ export class ConcentradoEgresosComponent {
   private buildPdfContent(): any[] {
     const content: any[] = [];
 
-    const headers = ['PROVEEDOR', 'PROYECTO', 'FECHA', 'MES', 'AÑO', 'CLASIF.', 'SUBCLASIF.',
+    const headers = ['PROVEEDOR', 'CLIENTE', 'PROYECTO', 'FECHA', 'MES', 'AÑO', 'CLASIF.', 'SUBCLASIF.',
                      'CONCEPTO', 'IMP. S/IVA', 'IVA', 'OTROS IMP.', 'IMP. TOTAL',
                      '# FACTURA', 'TIPO PAGO', 'CUENTA'];
 
@@ -453,6 +467,7 @@ export class ConcentradoEgresosComponent {
     this.concentradoEgresos.forEach(e => {
       body.push([
         { text: e.proveedor, style: 'tableCell', alignment: 'left' },
+        { text: e.cliente, style: 'tableCell', alignment: 'left' },
         { text: e.proyecto, style: 'tableCell', alignment: 'left' },
         { text: this.formatDateShort(e.fecha), style: 'tableCell', alignment: 'center' },
         { text: e.mes, style: 'tableCell', alignment: 'center' },
@@ -472,8 +487,8 @@ export class ConcentradoEgresosComponent {
 
     // Fila de totales (15 columnas)
     body.push([
-      { text: 'TOTAL', colSpan: 8, style: 'totalRow', alignment: 'right', bold: true },
-      {}, {}, {}, {}, {}, {}, {},
+      { text: 'TOTAL', colSpan: 9, style: 'totalRow', alignment: 'right', bold: true },
+      {}, {}, {}, {}, {}, {}, {}, {},
       { text: this.formatCurrencyShort(this.totales.importeSinIva), style: 'totalRow', alignment: 'right' },
       { text: this.formatCurrencyShort(this.totales.iva), style: 'totalRow', alignment: 'right' },
       { text: this.totales.otrosImpuestos > 0 ? this.formatCurrencyShort(this.totales.otrosImpuestos) : '', style: 'totalRow', alignment: 'right' },
@@ -486,7 +501,7 @@ export class ConcentradoEgresosComponent {
     content.push({
       table: {
         headerRows: 1,
-        widths: [55, 40, 35, 35, 25, 40, 45, 60, 42, 35, 35, 45, 40, 35, 55],
+        widths: [50, 45, 40, 30, 28, 22, 38, 42, 55, 38, 30, 30, 40, 38, 30, 50],
         body
       },
       layout: {
@@ -512,7 +527,7 @@ export class ConcentradoEgresosComponent {
       worksheet.views = [{ showGridLines: false }];
 
       // Título
-      worksheet.mergeCells('A1:O1');
+      worksheet.mergeCells('A1:P1');
       const titleCell = worksheet.getCell('A1');
       titleCell.value = 'CONCENTRADO DE EGRESOS';
       titleCell.font = { bold: true, size: 14, color: { argb: 'FF1A5276' } };
@@ -523,7 +538,7 @@ export class ConcentradoEgresosComponent {
       worksheet.getCell('A3').value = `Período: ${this.fechaInicio} al ${this.fechaFin}`;
 
       // Headers
-      const headers = ['Proveedor', 'Proyecto', 'Fecha', 'Mes', 'Año Ejercicio', 'Clasificación', 'Subclasificación',
+      const headers = ['Proveedor', 'Cliente', 'Proyecto', 'Fecha', 'Mes', 'Año Ejercicio', 'Clasificación', 'Subclasificación',
                        'Concepto', 'Importe s/IVA', 'IVA', 'Otros Impuestos', 'Importe Total',
                        '# Factura', 'Tipo de Pago', 'Cuenta'];
       const headerRow = worksheet.getRow(5);
@@ -540,25 +555,26 @@ export class ConcentradoEgresosComponent {
       this.concentradoEgresos.forEach(e => {
         const row = worksheet.getRow(rowIndex);
         row.getCell(1).value = e.proveedor;
-        row.getCell(2).value = e.proyecto;
-        row.getCell(3).value = e.fecha ? this.formatDateShort(e.fecha) : '';
-        row.getCell(4).value = e.mes;
-        row.getCell(5).value = e.anioEjercicio;
-        row.getCell(6).value = e.clasificacion;
-        row.getCell(7).value = e.subclasificacion;
-        row.getCell(8).value = e.concepto;
-        row.getCell(9).value = e.importeSinIva;
-        row.getCell(9).numFmt = '"$"#,##0.00';
-        row.getCell(10).value = e.iva;
+        row.getCell(2).value = e.cliente;
+        row.getCell(3).value = e.proyecto;
+        row.getCell(4).value = e.fecha ? this.formatDateShort(e.fecha) : '';
+        row.getCell(5).value = e.mes;
+        row.getCell(6).value = e.anioEjercicio;
+        row.getCell(7).value = e.clasificacion;
+        row.getCell(8).value = e.subclasificacion;
+        row.getCell(9).value = e.concepto;
+        row.getCell(10).value = e.importeSinIva;
         row.getCell(10).numFmt = '"$"#,##0.00';
-        row.getCell(11).value = e.otrosImpuestos || '';
-        if (e.otrosImpuestos) row.getCell(11).numFmt = '"$"#,##0.00';
-        row.getCell(12).value = e.importeTotal;
-        row.getCell(12).numFmt = '"$"#,##0.00';
-        row.getCell(12).font = { bold: true };
-        row.getCell(13).value = e.numeroFactura;
-        row.getCell(14).value = e.tipoPago;
-        row.getCell(15).value = e.cuenta;
+        row.getCell(11).value = e.iva;
+        row.getCell(11).numFmt = '"$"#,##0.00';
+        row.getCell(12).value = e.otrosImpuestos || '';
+        if (e.otrosImpuestos) row.getCell(12).numFmt = '"$"#,##0.00';
+        row.getCell(13).value = e.importeTotal;
+        row.getCell(13).numFmt = '"$"#,##0.00';
+        row.getCell(13).font = { bold: true };
+        row.getCell(14).value = e.numeroFactura;
+        row.getCell(15).value = e.tipoPago;
+        row.getCell(16).value = e.cuenta;
         rowIndex++;
       });
 
@@ -566,19 +582,19 @@ export class ConcentradoEgresosComponent {
       const totalRow = worksheet.getRow(rowIndex);
       totalRow.getCell(1).value = 'TOTAL';
       totalRow.font = { bold: true };
-      totalRow.getCell(9).value = this.totales.importeSinIva;
-      totalRow.getCell(9).numFmt = '"$"#,##0.00';
-      totalRow.getCell(10).value = this.totales.iva;
+      totalRow.getCell(10).value = this.totales.importeSinIva;
       totalRow.getCell(10).numFmt = '"$"#,##0.00';
-      totalRow.getCell(11).value = this.totales.otrosImpuestos || '';
-      if (this.totales.otrosImpuestos) totalRow.getCell(11).numFmt = '"$"#,##0.00';
-      totalRow.getCell(12).value = this.totales.importeTotal;
-      totalRow.getCell(12).numFmt = '"$"#,##0.00';
-      totalRow.getCell(12).font = { bold: true, color: { argb: 'FFDC2626' } };
+      totalRow.getCell(11).value = this.totales.iva;
+      totalRow.getCell(11).numFmt = '"$"#,##0.00';
+      totalRow.getCell(12).value = this.totales.otrosImpuestos || '';
+      if (this.totales.otrosImpuestos) totalRow.getCell(12).numFmt = '"$"#,##0.00';
+      totalRow.getCell(13).value = this.totales.importeTotal;
+      totalRow.getCell(13).numFmt = '"$"#,##0.00';
+      totalRow.getCell(13).font = { bold: true, color: { argb: 'FFDC2626' } };
 
       // Anchos (15 columnas)
       worksheet.columns = [
-        { width: 22 }, { width: 18 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 18 }, { width: 22 },
+        { width: 22 }, { width: 22 }, { width: 18 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 18 }, { width: 22 },
         { width: 25 }, { width: 14 }, { width: 12 }, { width: 14 }, { width: 14 },
         { width: 15 }, { width: 12 }, { width: 22 }
       ];

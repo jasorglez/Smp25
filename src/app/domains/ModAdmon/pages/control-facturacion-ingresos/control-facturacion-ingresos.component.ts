@@ -29,6 +29,7 @@ export interface FacturacionIngreso {
   total: number;
   estatus: string;
   estatusPago: string;
+  diasPlazo: number | null;
   dias: number | null;
   fechaVencimiento: Date | null;
   diasVencimiento: number | null;
@@ -194,6 +195,7 @@ export class ControlFacturacionIngresosComponent {
       importeFactura: number; importeDescuento: number; subtotal: number; iva: number; total: number;
       fechaFactura: Date | null; fechaPago: Date | null; count: number;
       statuses: Set<string>; estatusPagos: Set<string>;
+      diasPlazo: number | null;
     }>();
 
     filtered.forEach(ingreso => {
@@ -206,9 +208,13 @@ export class ControlFacturacionIngresosComponent {
         idCliente, idProyecto,
         importeFactura: 0, importeDescuento: 0, subtotal: 0, iva: 0, total: 0,
         fechaFactura: null, fechaPago: null, count: 0,
-        statuses: new Set<string>(), estatusPagos: new Set<string>()
+        statuses: new Set<string>(), estatusPagos: new Set<string>(),
+        diasPlazo: null
       };
 
+      if (current.diasPlazo == null && ingreso.diasPlazo != null) {
+        current.diasPlazo = Number(ingreso.diasPlazo);
+      }
       current.importeFactura += Number(ingreso.total) || 0;
       current.subtotal += Number(ingreso.subtotal) || 0;
       current.iva += Number(ingreso.tax) || 0;
@@ -232,8 +238,11 @@ export class ControlFacturacionIngresosComponent {
     // Convertir a filas
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     this.facturacionIngresos = [];
-    grupos.forEach(({ idCliente, idProyecto, importeFactura, subtotal, iva, total, fechaFactura, fechaPago, count, statuses, estatusPagos }) => {
+    grupos.forEach(({ idCliente, idProyecto, importeFactura, subtotal, iva, total, fechaFactura, fechaPago, count, statuses, estatusPagos, diasPlazo }) => {
       const customer = this.customers.find(c => c.id === idCliente);
       const project = this.projects.find(p => p.id === idProyecto);
       if (!project) return;
@@ -241,6 +250,20 @@ export class ControlFacturacionIngresosComponent {
       const mes = fechaFactura ? meses[fechaFactura.getMonth()] : '';
       const estatus = [...statuses].join(' / ');
       const estatusPago = [...estatusPagos].join(' / ');
+
+      const dias = (fechaFactura && fechaPago)
+        ? Math.round((fechaPago.getTime() - fechaFactura.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      let fechaVencimiento: Date | null = null;
+      let diasVencimiento: number | null = null;
+      if (fechaFactura && diasPlazo != null) {
+        fechaVencimiento = new Date(fechaFactura);
+        fechaVencimiento.setDate(fechaVencimiento.getDate() + diasPlazo);
+        const fv = new Date(fechaVencimiento);
+        fv.setHours(0, 0, 0, 0);
+        diasVencimiento = Math.floor((fv.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
 
       this.facturacionIngresos.push({
         id: idProyecto,
@@ -258,9 +281,10 @@ export class ControlFacturacionIngresosComponent {
         total,
         estatus,
         estatusPago,
-        dias: null,
-        fechaVencimiento: null,
-        diasVencimiento: null
+        diasPlazo,
+        dias,
+        fechaVencimiento,
+        diasVencimiento
       });
     });
 
@@ -436,7 +460,7 @@ export class ControlFacturacionIngresosComponent {
 
     const headers = ['MES', 'CLIENTE', 'PROYECTO', 'F. FACTURA', 'F. PAGO', 'FACTURA', 'OC',
                      'IMP. FACT.', 'DESC.', 'SUBTOTAL', 'IVA', 'TOTAL', 'ESTATUS', 'EST. PAGO',
-                     'DÍAS', 'F. VENC.', 'DÍAS V.'];
+                     'DÍAS PLAZO', 'DÍAS', 'F. VENC.', 'DÍAS V.'];
 
     const body: any[] = [
       headers.map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
@@ -461,6 +485,7 @@ export class ControlFacturacionIngresosComponent {
         { text: this.formatCurrencyShort(f.total), style: 'tableCellMoney', bold: true },
         { text: f.estatus, style: 'tableCell', alignment: 'center' },
         { text: f.estatusPago, style: 'tableCell', alignment: 'center' },
+        { text: f.diasPlazo !== null ? f.diasPlazo.toString() : '', style: 'tableCell', alignment: 'center' },
         { text: f.dias !== null ? f.dias.toString() : '', style: 'tableCell', alignment: 'center' },
         { text: this.formatDateShort(f.fechaVencimiento), style: 'tableCell', alignment: 'center' },
         { text: f.diasVencimiento !== null ? f.diasVencimiento.toString() : '', style: 'tableCell', alignment: 'center', color: diasVencColor, bold: f.diasVencimiento !== null && f.diasVencimiento < 0 }
@@ -469,13 +494,14 @@ export class ControlFacturacionIngresosComponent {
 
     // Fila de totales
     body.push([
-      { text: 'TOTAL', colSpan: 7, style: 'totalRow', alignment: 'right', bold: true },
-      {}, {}, {}, {}, {}, {},
+      { text: 'TOTAL', colSpan: 8, style: 'totalRow', alignment: 'right', bold: true },
+      {}, {}, {}, {}, {}, {}, {},
       { text: this.formatCurrencyShort(this.totales.importeFactura), style: 'totalRow', alignment: 'right' },
       { text: this.totales.importeDescuento > 0 ? this.formatCurrencyShort(this.totales.importeDescuento) : '', style: 'totalRow', alignment: 'right' },
       { text: this.formatCurrencyShort(this.totales.subtotal), style: 'totalRow', alignment: 'right' },
       { text: this.formatCurrencyShort(this.totales.iva), style: 'totalRow', alignment: 'right' },
       { text: this.formatCurrencyShort(this.totales.total), style: 'totalRow', alignment: 'right', color: '#dc2626' },
+      { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
@@ -486,7 +512,7 @@ export class ControlFacturacionIngresosComponent {
     content.push({
       table: {
         headerRows: 1,
-        widths: [35, 50, 50, 38, 38, 45, 30, 42, 35, 42, 35, 45, 40, 35, 22, 38, 28],
+        widths: [32, 48, 48, 35, 35, 42, 28, 40, 32, 40, 32, 42, 38, 32, 22, 22, 35, 26],
         body
       },
       layout: {
@@ -512,7 +538,7 @@ export class ControlFacturacionIngresosComponent {
       worksheet.views = [{ showGridLines: false }];
 
       // Título
-      worksheet.mergeCells('A1:Q1');
+      worksheet.mergeCells('A1:R1');
       const titleCell = worksheet.getCell('A1');
       titleCell.value = 'CONTROL DE FACTURACIÓN E INGRESOS';
       titleCell.font = { bold: true, size: 14, color: { argb: 'FF1A5276' } };
@@ -525,7 +551,7 @@ export class ControlFacturacionIngresosComponent {
       // Headers
       const headers = ['Mes', 'Cliente', 'Proyecto', 'Fecha Factura', 'Fecha Pago', 'Factura/NC', 'OC',
                        'Importe Factura', 'Importe Desc.', 'Subtotal', 'IVA', 'Total', 'Estatus',
-                       'Estatus Pago', 'Días', 'Fecha Venc.', 'Días Venc.'];
+                       'Estatus Pago', 'Días Plazo', 'Días', 'Fecha Venc.', 'Días Venc.'];
       const headerRow = worksheet.getRow(5);
       headers.forEach((header, index) => {
         const cell = headerRow.getCell(index + 1);
@@ -559,11 +585,12 @@ export class ControlFacturacionIngresosComponent {
         row.getCell(12).font = { bold: true };
         row.getCell(13).value = f.estatus;
         row.getCell(14).value = f.estatusPago;
-        row.getCell(15).value = f.dias !== null ? f.dias : '';
-        row.getCell(16).value = f.fechaVencimiento ? this.formatDateShort(f.fechaVencimiento) : '';
-        row.getCell(17).value = f.diasVencimiento !== null ? f.diasVencimiento : '';
+        row.getCell(15).value = f.diasPlazo !== null ? f.diasPlazo : '';
+        row.getCell(16).value = f.dias !== null ? f.dias : '';
+        row.getCell(17).value = f.fechaVencimiento ? this.formatDateShort(f.fechaVencimiento) : '';
+        row.getCell(18).value = f.diasVencimiento !== null ? f.diasVencimiento : '';
         if (f.diasVencimiento !== null && f.diasVencimiento < 0) {
-          row.getCell(17).font = { color: { argb: 'FFDC2626' }, bold: true };
+          row.getCell(18).font = { color: { argb: 'FFDC2626' }, bold: true };
         }
         rowIndex++;
       });
@@ -587,7 +614,7 @@ export class ControlFacturacionIngresosComponent {
       worksheet.columns = [
         { width: 10 }, { width: 15 }, { width: 18 }, { width: 12 }, { width: 12 }, { width: 15 }, { width: 10 },
         { width: 14 }, { width: 12 }, { width: 12 }, { width: 10 }, { width: 12 }, { width: 12 },
-        { width: 12 }, { width: 8 }, { width: 12 }, { width: 10 }
+        { width: 12 }, { width: 10 }, { width: 8 }, { width: 12 }, { width: 10 }
       ];
 
       // Generar archivo

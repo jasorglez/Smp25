@@ -96,6 +96,7 @@ export class ExpenditureComponent {
       await this.loadCuentasContablesNivel2();
       await this.loadCuentasContablesNivel3();
       await this.loadProjects();
+      await this.loadClients();
       await this.loadSATCatalogs();
 
       // Refrescar columnas después de cargar datos
@@ -170,6 +171,7 @@ export class ExpenditureComponent {
   cuentasContablesNivel2: any[] = [];
   cuentasContablesNivel3: any[] = [];
   projects: any[] = [];
+  clients: any[] = [];
   users: any[] = [];
 
   id: number;
@@ -315,6 +317,7 @@ export class ExpenditureComponent {
             const countItems = income.countItems || income.countitems || 0;
             return {
               ...income,
+              idClient: income.idClient ?? null,
               _rowNum: index + 1,
               countItems: countItems,
               detailType: null,
@@ -397,6 +400,26 @@ export class ExpenditureComponent {
     });
   }
 
+  async loadClients() {
+    return new Promise<void>((resolve) => {
+      this.customersService.getCustomersByCompany(this.idRoot, 'CUSTOMERS').subscribe(
+        (data: any) => {
+          this.clients = (data || []).map((c: any) => ({
+            id: c.id,
+            name: c.company || c.nameContact || 'Sin nombre'
+          }));
+          console.log('✅ Clientes cargados:', this.clients.length);
+          resolve();
+        },
+        error => {
+          console.error('Error cargando clientes:', error);
+          this.clients = [];
+          resolve();
+        }
+      );
+    });
+  }
+
   async loadCuentasContables() {
     return new Promise<void>((resolve) => {
       this.cuentasContablesService.getHojas(this.idRoot).subscribe(
@@ -470,7 +493,8 @@ export class ExpenditureComponent {
         (data: any) => {
           this.projects = (data || []).map((p: any) => ({
             id: p.id,
-            name: p.name || p.projectName || 'Sin nombre'
+            name: p.name || p.projectName || 'Sin nombre',
+            company: p.company || ''
           }));
           console.log('✅ Proyectos cargados:', this.projects.length);
           resolve();
@@ -635,6 +659,27 @@ export class ExpenditureComponent {
           if (!params.value) return '';
           const project = this.projects?.find((p) => p.id === params.value);
           return project ? project.name : params.value;
+        },
+      },
+      {
+        field: 'idClient',
+        headerName: 'Cliente',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.clients.map((c) => c.id),
+          useFormatter: true,
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const client = this.clients?.find((c) => c.id === params.value);
+          return client ? client.name : params.value;
+        },
+        valueSetter: (params) => {
+          params.data.idClient = params.newValue ? Number(params.newValue) : null;
+          return true;
         },
       },
       {
@@ -1044,6 +1089,7 @@ export class ExpenditureComponent {
       uuid: "NA",
       paymentMonth: '',
       idProject: null,
+      idClient: null,
       dateStamped: null,
       description: "",
       type: "GASTO",
