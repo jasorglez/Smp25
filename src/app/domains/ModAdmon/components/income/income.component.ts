@@ -187,6 +187,7 @@ export class IncomeComponent {
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
+    stopEditingWhenCellsLoseFocus: false,
     headerHeight: 24,
     rowHeight: 24,
     animateRows: true,

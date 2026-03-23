@@ -73,7 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.91 (22 Marzo 2026 07:54) - Cursos IA, Productos/Servicios, fix chatBot URL',
+  version: '4.92 (23 Marzo 2026 08:46) - fix combo unidades/cliente SelectDropdown',
 };
 
 
