@@ -314,6 +314,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
  
   public gridOptions: any = {
+    stopEditingWhenCellsLoseFocus: false,
     headerHeight: 50,
     rowHeight: 20,
     groupDefaultExpanded: -1,

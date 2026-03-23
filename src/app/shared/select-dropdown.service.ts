@@ -213,16 +213,17 @@ export class SelectDropdownService {
       this.renderer.appendChild(textSpan, text);
       this.renderer.appendChild(optionElement, textSpan);
 
-      // Event listeners
+      // Event listeners — selección en mousedown para comprometer el valor
+      // antes de que AG Grid detecte el click fuera de la celda y cancele el edit
       this.renderer.listen(optionElement, 'mousedown', (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        this.selectOption(option);
       });
 
       this.renderer.listen(optionElement, 'click', (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        this.selectOption(option);
       });
 
       this.renderer.listen(optionElement, 'mouseenter', () => {
