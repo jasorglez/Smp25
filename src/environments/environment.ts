@@ -73,7 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.92 (23 Marzo 2026 08:46) - fix combo unidades/cliente SelectDropdown',
+  version: '4.93 (23 Marzo 2026 13:20) - campo reunionUrl en cursos + email',
 };
 
 

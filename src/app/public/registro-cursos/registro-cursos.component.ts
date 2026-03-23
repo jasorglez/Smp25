@@ -5,7 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { CursosService, Curso, COMO_SE_ENTERO_OPCIONES, EXPERIENCIA_OPCIONES } from 'app/services/cursos.service';
 import { Timestamp } from '@angular/fire/firestore';
 
-type Estado = 'cargando' | 'no-encontrado' | 'lleno' | 'formulario' | 'enviado' | 'error';
+type Estado = 'cargando' | 'no-encontrado' | 'lleno' | 'formulario' | 'enviado' | 'duplicado' | 'error';
 
 @Component({
   selector: 'app-registro-cursos',
@@ -34,6 +34,15 @@ type Estado = 'cargando' | 'no-encontrado' | 'lleno' | 'formulario' | 'enviado' 
           <p class="small text-muted mb-0">Cupo completo. Escríbenos para lista de espera.</p>
         </div>
 
+        <!-- DUPLICADO -->
+        <div *ngIf="estado === 'duplicado'" class="rc-state">
+          <i class="bi bi-envelope-check text-warning fs-3"></i>
+          <h6 class="mt-2 mb-1">Ya estás registrado</h6>
+          <p class="small text-muted mb-0">
+            El correo <strong>{{ form.correo }}</strong> ya tiene un registro en este curso.
+          </p>
+        </div>
+
         <!-- ENVIADO -->
         <div *ngIf="estado === 'enviado'" class="rc-state">
           <i class="bi bi-check-circle-fill text-success fs-2"></i>
@@ -48,6 +57,10 @@ type Estado = 'cargando' | 'no-encontrado' | 'lleno' | 'formulario' | 'enviado' 
             <div><i class="bi bi-clock me-1 text-primary"></i>{{ curso.horario }}</div>
             <div><i class="bi bi-tag me-1 text-primary"></i>
               {{ curso.esGratuito ? 'Gratuito' : ('$' + curso.precio + ' ' + curso.moneda) }}
+            </div>
+            <div *ngIf="curso.reunionUrl">
+              <i class="bi bi-camera-video me-1 text-primary"></i>
+              <a [href]="curso.reunionUrl" target="_blank" class="fw-semibold">Unirse a la reunión</a>
             </div>
           </div>
         </div>
@@ -237,6 +250,8 @@ export class RegistroCursosComponent implements OnInit {
         !this.form.comoSeEnteroOpcion || !this.form.experienciaOpcion) return;
     this.enviando = true;
     try {
+      const duplicado = await this.svc.correoYaRegistrado(this.curso!.id!, this.form.correo);
+      if (duplicado) { this.estado = 'duplicado'; this.enviando = false; return; }
       await this.svc.crearRegistro(this.curso!.id!, { ...this.form, idCompany: this.curso!.idCompany });
       await this.svc.enviarConfirmacionAlumno(this.curso!, this.form);
       this.svc.notificarAdminTelegram(this.curso!.telegramChatId, this.curso!, this.form);

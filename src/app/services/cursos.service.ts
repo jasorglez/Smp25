@@ -28,6 +28,7 @@ export interface Curso {
   telegramChatId: string;
   logoUrl: string;
   logo2Url: string;
+  reunionUrl: string;
 }
 
 export interface RegistroCurso {
@@ -97,6 +98,7 @@ export class CursosService {
       telegramChatId: c.telegramChatId ?? '',
       logoUrl:       c.logoUrl       ?? '',
       logo2Url:      c.logo2Url      ?? '',
+      reunionUrl:    c.reunionUrl    ?? '',
     });
     return docRef.id;
   }
@@ -118,12 +120,19 @@ export class CursosService {
     return collectionData(q, { idField: 'id' }) as Observable<RegistroCurso[]>;
   }
 
+  async correoYaRegistrado(cursoId: string, correo: string): Promise<boolean> {
+    const ref  = collection(this.firestore, `${this.COL}/${cursoId}/registros`);
+    const q    = query(ref, where('correo', '==', correo.trim().toLowerCase()));
+    const snap = await getDocs(q);
+    return !snap.empty;
+  }
+
   async crearRegistro(cursoId: string, registro: Partial<RegistroCurso>): Promise<string> {
     const ref    = collection(this.firestore, `${this.COL}/${cursoId}/registros`);
     const docRef = await addDoc(ref, {
       cursoId,
       nombre:               registro.nombre               ?? '',
-      correo:               registro.correo               ?? '',
+      correo:               (registro.correo ?? '').trim().toLowerCase(),
       telefono:             registro.telefono             ?? '',
       comoSeEnteroOpcion:   registro.comoSeEnteroOpcion   ?? '',
       comoSeEnteroTexto:    registro.comoSeEnteroTexto    ?? '',
@@ -170,7 +179,9 @@ export class CursosService {
               <tr><td style="padding:4px 8px"><strong>Duración:</strong></td><td>${curso.diasDuracion} día(s)</td></tr>
               <tr><td style="padding:4px 8px"><strong>Costo:</strong></td>
                   <td>${curso.esGratuito ? '<strong style="color:green">GRATUITO</strong>' : '$' + curso.precio + ' ' + curso.moneda}</td></tr>
+              ${curso.reunionUrl ? `<tr><td style="padding:4px 8px"><strong>Liga de reunión:</strong></td><td><a href="${curso.reunionUrl}" style="color:#003366;word-break:break-all">${curso.reunionUrl}</a></td></tr>` : ''}
             </table>
+            ${curso.reunionUrl ? `<div style="margin-top:20px;text-align:center"><a href="${curso.reunionUrl}" style="background:#003366;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">&#128279; Unirse a la reunión</a></div>` : ''}
             <p style="margin-top:16px">¡Te esperamos! Cualquier duda estamos a tus órdenes.</p>
           </div>
         `,
