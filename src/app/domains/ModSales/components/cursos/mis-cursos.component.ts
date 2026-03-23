@@ -130,6 +130,11 @@ import Swal from 'sweetalert2';
             <input class="form-control form-control-sm" [(ngModel)]="form.telegramChatId" placeholder="-1001234567890">
           </div>
 
+          <div class="col-12">
+            <label class="form-label small fw-semibold mb-1"><i class="bi bi-camera-video me-1"></i>Liga de reunión</label>
+            <input class="form-control form-control-sm" [(ngModel)]="form.reunionUrl" placeholder="https://teams.microsoft.com/meet/... o Zoom/Meet">
+          </div>
+
           <div class="col-12" *ngIf="form.slug">
             <label class="form-label small fw-semibold mb-1 text-success"><i class="bi bi-link-45deg me-1"></i>Link para compartir</label>
             <div class="input-group input-group-sm">
@@ -249,7 +254,7 @@ export class MisCursosComponent implements OnInit {
   formVacio(): Partial<Curso> {
     return { nombre: '', slug: '', descripcion: '', horario: '', diasDuracion: 1,
              esGratuito: true, precio: 0, moneda: 'MXN', cupoMax: 30, activo: true,
-             instructor: '', telegramChatId: '', logoUrl: '', logo2Url: '' };
+             instructor: '', telegramChatId: '', logoUrl: '', logo2Url: '', reunionUrl: '' };
   }
 
   async abrirModal(curso?: Curso) {
