@@ -123,7 +123,13 @@ export class ComploginComponent implements OnInit {
     this.auth.login(data).subscribe({
       next: (resp: any) => {
         // ✅ Guardar token e iniciar timers de sesión
-        localStorage.setItem('token', resp.data.token);
+        const token = resp.data?.token ?? resp.data;
+        if (!token) {
+          alerts.basicAlert('Error', 'Credenciales inválidas', 'error');
+          this.isLoading = false;
+          return;
+        }
+        localStorage.setItem('token', token);
         this.auth.startSessionTimers();
 
         this.userService.findEmail(this.emailcapt).subscribe({
