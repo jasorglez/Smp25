@@ -35,7 +35,7 @@ export class ProspectosComponent implements OnInit {
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['nombre', 'telefono', 'empresa', 'estado'];
+  private editableColumnOrder = ['empresa', 'nombre', 'puesto', 'telefono', 'estado'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -115,9 +115,10 @@ export class ProspectosComponent implements OnInit {
           return e ? `<span class="badge bg-${e.color}">${e.icon} ${e.label}</span>` : p.value ?? '';
         },
       },
-      { field: 'nombre',   headerName: 'Nombre',   flex: 1,   editable: true, filter: true },
+      { field: 'empresa',  headerName: 'Empresa',  width: 180, editable: true, filter: true },
+      { field: 'nombre',   headerName: 'Nombre',   width: 160, editable: true, filter: true },
+      { field: 'puesto',   headerName: 'Puesto',   width: 140, editable: true },
       { field: 'telefono', headerName: 'Teléfono', width: 145, editable: true },
-      { field: 'empresa',  headerName: 'Empresa',  width: 165, editable: true, filter: true },
       {
         field: 'fechaUltimaInteraccion',
         headerName: 'Última Interacción', width: 175, editable: false,
@@ -188,7 +189,7 @@ export class ProspectosComponent implements OnInit {
 
   add() {
     const nuevo: any = {
-      nombre: '', telefono: '', empresa: '', estado: 'nuevo',
+      nombre: '', telefono: '', empresa: '', puesto: '', estado: 'nuevo',
       idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
       chatIdVendedorActual: '', idCompany: this.idCompany,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
@@ -221,7 +222,7 @@ export class ProspectosComponent implements OnInit {
         } else {
           await this.svc.actualizarProspecto(p.id!, {
             nombre: p.nombre, telefono: p.telefono,
-            empresa: p.empresa, estado: p.estado,
+            empresa: p.empresa, puesto: p.puesto, estado: p.estado,
           });
         }
       } catch {

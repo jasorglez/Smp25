@@ -30,6 +30,7 @@ export interface Prospecto {
   fechaCreacion: Timestamp;
   fechaUltimaInteraccion: Timestamp;
   notas: string;
+  puesto: string;
   idCustomer: string | null;
   activo: boolean;
   __isNew?: boolean;
@@ -84,6 +85,7 @@ export class ProspectosService {
       idCompany:            p.idCompany ?? null,
       idVendedorCreador:    p.idVendedorActual ?? 0,
       notas:                  '',
+      puesto:                 p.puesto ?? '',
       idCustomer:             null,
       countInteracciones:     0,
       fechaCreacion:          now,

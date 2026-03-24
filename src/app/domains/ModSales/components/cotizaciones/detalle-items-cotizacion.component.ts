@@ -536,8 +536,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                   logoB64  ? { image: logoB64,  width: 80 } : { text: '', width: 80 },
                   {
                     stack: [
-                      { text: companyName, fontSize: 12, bold: true, color: NAVY, alignment: 'center' },
-                      { text: 'COTIZACIÓN', fontSize: 10, bold: true, color: BLUE, alignment: 'center', margin: [0,2,0,0] },
+                      { text: companyName, fontSize: 11, bold: true, color: NAVY, alignment: 'center' },
+                      { text: 'COTIZACIÓN', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0,2,0,0] },
                     ],
                     margin: [8, 0, 8, 0],
                   },
@@ -550,18 +550,18 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 columns: [
                   {
                     stack: [
-                      { text: `ATN: ${(cot.nombreProspecto ?? '').toUpperCase()}`, fontSize: 9, bold: true, color: NAVY },
-                      { text: `EMPRESA: ${(cot.empresaProspecto ?? '').toUpperCase()}`, fontSize: 9, margin: [0,2,0,0] },
-                      { text: 'DIRECTOR GENERAL', fontSize: 9, color: GRAY, margin: [0,2,0,0] },
+                      { text: `ATN: ${(cot.nombreProspecto ?? '').toUpperCase()}`, fontSize: 8, bold: true, color: NAVY },
+                      { text: `EMPRESA: ${(cot.empresaProspecto ?? '').toUpperCase()}`, fontSize: 8, margin: [0,2,0,0] },
+                      { text: (cot.puestoProspecto ?? '').toUpperCase(), fontSize: 8, color: GRAY, margin: [0,2,0,0] },
                     ],
                   },
                   {
                     stack: [
-                      { text: lugarFecha, fontSize: 8, color: GRAY, alignment: 'right' },
+                      { text: lugarFecha, fontSize: 7, color: GRAY, alignment: 'right' },
                       {
                         text: [
-                          { text: 'No. COTIZACIÓN: ', fontSize: 9, bold: true, color: NAVY },
-                          { text: cot.numCotizacion ?? '', fontSize: 11, bold: true, color: BLUE },
+                          { text: 'No. COTIZACIÓN: ', fontSize: 8, bold: true, color: NAVY },
+                          { text: cot.numCotizacion ?? '', fontSize: 10, bold: true, color: BLUE },
                         ],
                         alignment: 'right', margin: [0, 6, 0, 0],
                       },
@@ -579,30 +579,30 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 { text: 'IMPORTE', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
               ];
               const tableRows = items.map((item, idx) => [
-                { text: item.nombreMaterial ?? '', fontSize: 8, fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: String(item.cantidad ?? ''), fontSize: 8, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: item.unidad ?? '', fontSize: 8, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: `$${Number(item.precio ?? 0).toFixed(2)}`, fontSize: 8, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: `$${Number(item.subtotal ?? 0).toFixed(2)}`, fontSize: 8, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
+                { text: item.nombreMaterial ?? '', fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
+                { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
+                { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
+                { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
+                { text: `$${Number(item.subtotal ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
               ]);
               const totalRow = [
                 { text: '', colSpan: 3, border: [false,false,false,false] }, {}, {},
-                { text: 'TOTAL:', fontSize: 9, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
-                { text: `$${Number(cot.total ?? 0).toFixed(2)}`, fontSize: 9, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
+                { text: 'TOTAL:', fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
+                { text: `$${Number(cot.total ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
               ];
               const tabla: any = {
-                table: { headerRows: 1, widths: ['*', 45, 55, 70, 75], body: [tableHeader, ...tableRows, totalRow] },
+                table: { headerRows: 1, widths: ['*', 28, 35, 55, 58], body: [tableHeader, ...tableRows, totalRow] },
                 layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
                 margin: [0, 0, 0, 10],
               };
               const clausulas = [cfg.clausula1, cfg.clausula2, cfg.clausula3].filter(Boolean);
               const textoInferior: any = {
                 stack: [
-                  { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,5] },
-                  { ul: clausulas.map(c => ({ text: c, fontSize: 7.5, color: GRAY, margin: [0,0,0,3] })), margin: [0,0,0,6] },
-                  { text: cfg.textoAclaracion, fontSize: 7.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-                  { text: cfg.textoDespedida,  fontSize: 7.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-                  { text: cfg.textoIva,        fontSize: 7.5, bold: true, color: NAVY, margin: [0,0,0,70] },
+                  { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 7, bold: true, color: NAVY, margin: [0,0,0,5] },
+                  { ul: clausulas.map(c => ({ text: c, fontSize: 6.5, color: GRAY, margin: [0,0,0,3] })), margin: [0,0,0,6] },
+                  { text: cfg.textoAclaracion, fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
+                  { text: cfg.textoDespedida,  fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
+                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,70] },
                 ],
               };
               const firma: any = {
@@ -611,8 +611,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                   {
                     stack: [
                       { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] },
-                      { text: cot.nombreVendedor ?? '', fontSize: 8, bold: true, alignment: 'center', margin: [0,4,0,0] },
-                      { text: 'VENDEDOR', fontSize: 7, color: GRAY, alignment: 'center', margin: [0,0,0,55] },
+                      { text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] },
+                      { text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0,0,0,55] },
                     ],
                     width: 160,
                   },
@@ -624,9 +624,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                   { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: BLUE }], margin: [0,0,0,4] },
                   {
                     columns: [
-                      { text: rootData?.email ?? '', fontSize: 7, color: GRAY },
-                      { text: rootData?.web   ?? '', fontSize: 7, color: GRAY, alignment: 'center' },
-                      { text: companyName,           fontSize: 7, color: GRAY, alignment: 'right' },
+                      { text: rootData?.email ?? '', fontSize: 6, color: GRAY },
+                      { text: rootData?.web   ?? '', fontSize: 6, color: GRAY, alignment: 'center' },
+                      { text: companyName,           fontSize: 6, color: GRAY, alignment: 'right' },
                     ],
                   },
                 ],
@@ -634,16 +634,16 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               };
               const textoSuperior: any = {
                 stack: [
-                  { text: cfg.textoPrincipal,  fontSize: 8, color: GRAY, alignment: 'justify', margin: [0,0,0,6] },
-                  { text: cfg.textoCompromiso, fontSize: 8, color: GRAY, alignment: 'justify', margin: [0,0,0,10] },
+                  { text: cfg.textoPrincipal,  fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,6] },
+                  { text: cfg.textoCompromiso, fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,10] },
                 ],
               };
               const docDef: any = {
                 pageSize: 'LETTER',
                 pageMargins: [40, 40, 40, 60],
                 footer: () => footerContent,
-                content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 9, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, textoInferior, firma],
-                styles: { thCell: { fontSize: 8, bold: true } },
+                content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, textoInferior, firma],
+                styles: { thCell: { fontSize: 7, bold: true } },
                 defaultStyle: { font: 'Roboto' },
               };
 
@@ -706,8 +706,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           logoB64  ? { image: logoB64,  width: 80 } : { text: '', width: 80 },
           {
             stack: [
-              { text: companyName, fontSize: 12, bold: true, color: NAVY, alignment: 'center' },
-              { text: 'COTIZACIÓN', fontSize: 10, bold: true, color: BLUE, alignment: 'center', margin: [0,2,0,0] },
+              { text: companyName, fontSize: 11, bold: true, color: NAVY, alignment: 'center' },
+              { text: 'COTIZACIÓN', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0,2,0,0] },
             ],
             margin: [8, 0, 8, 0],
           },
@@ -720,18 +720,18 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         columns: [
           {
             stack: [
-              { text: `ATN: ${(cot.nombreProspecto ?? '').toUpperCase()}`, fontSize: 9, bold: true, color: NAVY },
-              { text: `EMPRESA: ${(cot.empresaProspecto ?? '').toUpperCase()}`, fontSize: 9, margin: [0,2,0,0] },
-              { text: 'DIRECTOR GENERAL', fontSize: 9, color: GRAY, margin: [0,2,0,0] },
+              { text: `ATN: ${(cot.nombreProspecto ?? '').toUpperCase()}`, fontSize: 8, bold: true, color: NAVY },
+              { text: `EMPRESA: ${(cot.empresaProspecto ?? '').toUpperCase()}`, fontSize: 8, margin: [0,2,0,0] },
+              { text: (cot.puestoProspecto ?? '').toUpperCase(), fontSize: 8, color: GRAY, margin: [0,2,0,0] },
             ],
           },
           {
             stack: [
-              { text: lugarFecha, fontSize: 8, color: GRAY, alignment: 'right' },
+              { text: lugarFecha, fontSize: 7, color: GRAY, alignment: 'right' },
               {
                 text: [
-                  { text: 'No. COTIZACIÓN: ', fontSize: 9, bold: true, color: NAVY },
-                  { text: cot.numCotizacion ?? '', fontSize: 11, bold: true, color: BLUE },
+                  { text: 'No. COTIZACIÓN: ', fontSize: 8, bold: true, color: NAVY },
+                  { text: cot.numCotizacion ?? '', fontSize: 10, bold: true, color: BLUE },
                 ],
                 alignment: 'right', margin: [0, 6, 0, 0],
               },
@@ -745,8 +745,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       const textoSuperior: any = {
         stack: [
-          { text: cfg.textoPrincipal,  fontSize: 8, color: GRAY, alignment: 'justify', margin: [0,0,0,6] },
-          { text: cfg.textoCompromiso, fontSize: 8, color: GRAY, alignment: 'justify', margin: [0,0,0,10] },
+          { text: cfg.textoPrincipal,  fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,6] },
+          { text: cfg.textoCompromiso, fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,10] },
         ],
       };
 
@@ -759,23 +759,23 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       ];
 
       const tableRows = items.map((item, idx) => [
-        { text: item.nombreMaterial ?? '', fontSize: 8, fillColor: idx % 2 === 1 ? LBLUE : null },
-        { text: String(item.cantidad ?? ''), fontSize: 8, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-        { text: item.unidad ?? '', fontSize: 8, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-        { text: `$${Number(item.precio ?? 0).toFixed(2)}`, fontSize: 8, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
-        { text: `$${Number(item.subtotal ?? 0).toFixed(2)}`, fontSize: 8, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: item.nombreMaterial ?? '', fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: `$${Number(item.subtotal ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
       ]);
 
       const totalRow = [
         { text: '', colSpan: 3, border: [false,false,false,false] }, {}, {},
-        { text: 'TOTAL:', fontSize: 9, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
-        { text: `$${Number(cot.total ?? 0).toFixed(2)}`, fontSize: 9, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
+        { text: 'TOTAL:', fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
+        { text: `$${Number(cot.total ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
       ];
 
       const tabla: any = {
         table: {
           headerRows: 1,
-          widths: ['*', 45, 55, 70, 75],
+          widths: ['*', 28, 35, 55, 58],
           body: [tableHeader, ...tableRows, totalRow],
         },
         layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
@@ -786,14 +786,14 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       const textoInferior: any = {
         stack: [
-          { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,5] },
+          { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 7, bold: true, color: NAVY, margin: [0,0,0,5] },
           {
-            ul: clausulas.map(c => ({ text: c, fontSize: 7.5, color: GRAY, margin: [0,0,0,3] })),
+            ul: clausulas.map(c => ({ text: c, fontSize: 6.5, color: GRAY, margin: [0,0,0,3] })),
             margin: [0,0,0,6],
           },
-          { text: cfg.textoAclaracion, fontSize: 7.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-          { text: cfg.textoDespedida,  fontSize: 7.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-          { text: cfg.textoIva,        fontSize: 7.5, bold: true, color: NAVY, margin: [0,0,0,70] },
+          { text: cfg.textoAclaracion, fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
+          { text: cfg.textoDespedida,  fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
+          { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,70] },
         ],
       };
 
@@ -803,8 +803,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           {
             stack: [
               { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] },
-              { text: cot.nombreVendedor ?? '', fontSize: 8, bold: true, alignment: 'center', margin: [0,4,0,0] },
-              { text: 'VENDEDOR', fontSize: 7, color: GRAY, alignment: 'center', margin: [0, 0, 0, 55] },
+              { text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] },
+              { text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0, 0, 0, 55] },
             ],
             width: 160,
           },
@@ -817,9 +817,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: BLUE }], margin: [0,0,0,4] },
           {
             columns: [
-              { text: rootData?.email ?? '', fontSize: 7, color: GRAY },
-              { text: rootData?.web   ?? '', fontSize: 7, color: GRAY, alignment: 'center' },
-              { text: companyName,           fontSize: 7, color: GRAY, alignment: 'right' },
+              { text: rootData?.email ?? '', fontSize: 6, color: GRAY },
+              { text: rootData?.web   ?? '', fontSize: 6, color: GRAY, alignment: 'center' },
+              { text: companyName,           fontSize: 6, color: GRAY, alignment: 'right' },
             ],
           },
         ],
@@ -830,8 +830,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         pageSize: 'LETTER',
         pageMargins: [40, 40, 40, 60],
         footer: () => footerContent,
-        content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 9, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, textoInferior, firma],
-        styles: { thCell: { fontSize: 8, bold: true } },
+        content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, textoInferior, firma],
+        styles: { thCell: { fontSize: 7, bold: true } },
         defaultStyle: { font: 'Roboto' },
       };
 
