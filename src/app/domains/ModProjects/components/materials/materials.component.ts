@@ -398,16 +398,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
       }
     }
 
-    // Si cambió idMedida, actualizar unidadDescription
-    if (event.column.getColId() === 'idMedida') {
-      const unitId = Number(event.newValue);
-      const unit = this.unitsCatalog.find(u => Number(u.id) === unitId);
-      if (unit) {
-        event.data.unidadDescription = unit.description;
-      }
-      event.data.idMedida = unitId;
-    }
-
     event.data.__modified = true;
     this.notSavedChanges = true;
 
@@ -502,7 +492,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         field: 'idFamilia',
         headerName: 'Familia',
         editable: true,
-        width: 180,
+        width: 120,
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => {
           return {
@@ -558,7 +548,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         field: 'idSubfamilia',
         headerName: 'Subfamilia',
         editable: true,
-        width: 200,
+        width: 120,
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: (params: any) => {
           // Filtrar subfamilias según la familia seleccionada en la fila
@@ -642,50 +632,40 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Unidad',
         editable: true,
         width: 130,
-        valueGetter: (params) => params.data?.idMedida ?? null,
-        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          options: [
-            ...this.unitsCatalog.map(u => ({
-              id: Number(u.id),
-              description: u.description,
-              valueAddition: '',
-              valueAddition2: ''
-            })),
-            {
-              id: -997,
-              description: '➕ Agregar nueva unidad...',
-              valueAddition: '-997',
-              valueAddition2: '➕ Agregar nueva unidad...'
-            }
-          ],
-          specialValues: [-997],
-          onSpecialValue: (_value: any, _params: any) => {
-            this.measureModalService.openModal({ idCompany: this.idcompany });
-          }
+          values: [
+            ...this.unitsCatalog.map((u: any) => u.description),
+            '➕ Agregar nueva unidad...'
+          ]
         }),
-        onCellValueChanged: (event: any) => {
-          if (event.newValue === -997) {
-            event.data.idMedida = event.oldValue || null;
-            this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-            this.measureModalService.openModal({ idCompany: this.idcompany });
-          }
+        valueGetter: (params: any) => {
+          if (!params.data?.idMedida) return '';
+          const unit = this.unitsCatalog.find((u: any) => Number(u.id) === Number(params.data.idMedida));
+          return unit ? unit.description : '';
         },
-        cellRenderer: (params: any) => {
-          if (!params.value || params.value === -997) return '';
-          const unit = this.unitsCatalog.find(u => Number(u.id) === Number(params.value));
-          if (unit) {
-            return unit.description;
+        valueSetter: (params: any) => {
+          if (params.newValue === '➕ Agregar nueva unidad...') {
+            setTimeout(() => this.measureModalService.openModal({ idCompany: this.idcompany }), 0);
+            return false;
           }
-          // Fallback: si no encuentra en catálogo, intentar mostrar el campo measure
-          return params.data?.measure || params.value || '';
+          const unit = this.unitsCatalog.find((u: any) => u.description === params.newValue);
+          if (unit) {
+            params.data.idMedida = Number(unit.id);
+            params.data.unidadDescription = unit.description;
+            return true;
+          }
+          return false;
         },
       },
       {
         field: 'materialDescription',
         headerName: 'Descripción del Material',
         editable: true,
-        width: 250,
+        width: 600,
+        wrapText: true,
+        autoHeight: true,
+        cellStyle: { 'white-space': 'normal', 'line-height': '1.4', 'padding-top': '4px', 'padding-bottom': '4px' },
       },
       {
         field: 'barcode',
