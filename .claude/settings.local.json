@@ -118,7 +118,13 @@
       "Bash(cd:*)",
       "Bash(ls:*)",
       "Bash(git:*)",
-      "Bash(find \"/c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosSmp\" -name \"Timeinactive*\" -o -name \"TimeInactive*\" 2>/dev/null | grep -v bin | grep -v obj)"
+      "Bash(find \"/c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosSmp\" -name \"Timeinactive*\" -o -name \"TimeInactive*\" 2>/dev/null | grep -v bin | grep -v obj)",
+      "Bash(curl.exe -s \"https://bi2.com.mx/chatbot/api/Telegram/ping\")",
+      "Bash(curl.exe -v \"https://bi2.com.mx/chatbot/api/Telegram/ping\" 2>&1)",
+      "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" \"https://bi2.com.mx/api/Telegram/ping\")",
+      "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" \"https://bi2.com.mx/telegram/api/Telegram/ping\")",
+      "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" \"https://bi2.com.mx/bot/api/Telegram/ping\")",
+      "mcp__b2-mssql-warehouses__execute_sql"
     ],
     "deny": [],
     "ask": []

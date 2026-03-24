@@ -73,7 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.95 (23 Marzo 2026 17:30) - bitácora personal: cols Empleado+Asistencia, materials desc ancha',
+  version: '4.96 (24 Marzo 2026 01:04) - PDF bitácora personal con logos y nombre empresa',
 };
 
 
