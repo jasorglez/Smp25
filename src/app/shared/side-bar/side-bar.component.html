@@ -73,10 +73,11 @@
       </select>
 
       <!-- Convenio vigente — solo lectura, informativo -->
-      <div *ngIf="conventionVigenteNombre" class="mb-2 mt-1 px-1">
+      <div *ngIf="conventionVigenteNombre" class="mb-2 mt-1 px-1"
+           matTooltip="Convenio Vigente: {{ conventionVigenteNombre }}"
+           matTooltipPosition="right">
         <small class="badge bg-success w-100 text-truncate d-block text-start py-1"
-               style="font-size: 0.7rem;"
-               [title]="conventionVigenteNombre">
+               style="font-size: 0.7rem;">
           <i class="bi bi-bookmark-check-fill me-1"></i>{{ conventionVigenteNombre }}
         </small>
       </div>
@@ -103,10 +104,11 @@
       </select>
 
       <!-- Presupuesto vigente — solo lectura, informativo -->
-      <div *ngIf="presupuestoVigenteNombre" class="mb-2 mt-1 px-1">
+      <div *ngIf="presupuestoVigenteNombre" class="mb-2 mt-1 px-1"
+           matTooltip="Presupuesto Vigente: {{ presupuestoVigenteNombre }}"
+           matTooltipPosition="right">
         <small class="badge bg-warning text-dark w-100 text-truncate d-block text-start py-1"
-               style="font-size: 0.7rem;"
-               [title]="presupuestoVigenteNombre">
+               style="font-size: 0.7rem;">
           <i class="bi bi-wallet2 me-1"></i>{{ presupuestoVigenteNombre }}
         </small>
       </div>
