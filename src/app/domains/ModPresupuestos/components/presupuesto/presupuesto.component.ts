@@ -151,15 +151,28 @@ export class PresupuestoComponent implements OnInit {
     this.columnDefsLineas = [
       {
         headerName: 'Cuenta',
-        field: 'cuenta_codigo',
-        width: 120,
-        cellClass: 'fw-bold'
-      },
-      {
-        headerName: 'Nombre Cuenta',
-        field: 'cuenta_nombre',
-        flex: 2,
-        minWidth: 200
+        field: 'id_cuenta',
+        width: 300,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.cuentasFlat.filter(c => c.activo).map(c => c.id),
+        }),
+        valueFormatter: (p) => {
+          const c = this.cuentasFlat.find(x => x.id === p.value);
+          return c ? `${c.codigo} — ${c.nombre}` : (p.value ? String(p.value) : '-- Seleccionar --');
+        },
+        onCellValueChanged: (p) => {
+          const c = this.cuentasFlat.find(x => x.id === p.newValue);
+          if (c) {
+            p.data.id_cuenta = c.id;
+            p.data.cuenta_codigo = c.codigo;
+            p.data.cuenta_nombre = c.nombre;
+            p.data.cuenta_nivel = c.nivel;
+          }
+          p.data.__modified = true;
+          this.hasUnsavedLineas = true;
+        }
       },
       {
         headerName: 'Nivel',
@@ -377,7 +390,7 @@ export class PresupuestoComponent implements OnInit {
     };
     this.lineas = [newLinea, ...this.lineas];
     this.hasUnsavedLineas = true;
-    setTimeout(() => this.gridApiLineas?.startEditingCell({ rowIndex: 0, colKey: 'descripcion' }), 100);
+    setTimeout(() => this.gridApiLineas?.startEditingCell({ rowIndex: 0, colKey: 'id_cuenta' }), 100);
   }
 
   async saveLineas(): Promise<void> {
