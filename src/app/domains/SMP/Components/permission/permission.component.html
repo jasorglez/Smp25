@@ -36,6 +36,7 @@
         [defaultColDef]="defaultColDef"
         [gridOptions]="gridOptions"
         (gridReady)="onGridReady($event)"
+        (cellEditingStopped)="onCellEditingStopped($event)"
         (selectionChanged)="onSelectionChanged($event)"
         [rowSelection]="'single'"
       ></ag-grid-angular>

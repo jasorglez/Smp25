@@ -77,7 +77,7 @@
                     <label class="switch switch-sm" *ngIf="subdetail.principal">
                       <input type="checkbox"
                              [(ngModel)]="subdetail.principal.canRead"
-                             (ngModelChange)="onCrudChange(subdetail.principal)">
+                             (ngModelChange)="onPermisoReadCrudChange(subdetail.principal)">
                       <span class="slider round"></span>
                     </label>
                   </div>
@@ -118,7 +118,7 @@
                         <label class="switch" (click)="$event.stopPropagation()">
                           <input type="checkbox"
                                  [(ngModel)]="child.canRead"
-                                 (ngModelChange)="onCrudChange(child)">
+                                 (ngModelChange)="onPermisoReadCrudChange(child)">
                           <span class="slider round"></span>
                         </label>
                       </div>
@@ -200,7 +200,7 @@
             <label class="switch" (click)="$event.stopPropagation()">
               <input type="checkbox"
                      [(ngModel)]="child.canRead"
-                     (ngModelChange)="onCrudChange(child)">
+                     (ngModelChange)="onPermisoReadCrudChange(child)">
               <span class="slider round"></span>
             </label>
           </div>

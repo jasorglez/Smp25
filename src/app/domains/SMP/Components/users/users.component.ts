@@ -412,32 +412,6 @@ export class UsersComponent implements OnDestroy {
         }
       },
       {
-        field: 'countEmpresas',
-        headerName: 'Empresas',
-        width: 120,
-        editable: false,
-        cellRenderer: ButtonCellRendererExpenditureComponent,
-        cellRendererParams: {
-          icon: 'bi bi-building',
-          onClick: (node: any) => this.openEmpresasCascade(node)
-        },
-        valueGetter: (params) => params.data?.countEmpresas ?? 0,
-        cellStyle: { backgroundColor: '#e8eaf6', cursor: 'pointer' }
-      },
-      {
-        field: 'permisosMaestros',
-        headerName: 'Permisos maestros',
-        width: 140,
-        editable: false,
-        cellRenderer: ButtonCellRendererExpenditureComponent,
-        cellRendererParams: {
-          icon: 'bi bi-shield-lock',
-          onClick: (node: any) => this.openPermisosMaestros(node)
-        },
-        valueGetter: (params) => params.data?.countPermisosMaestros ?? 0,
-        cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer' }
-      },
-      {
         field: 'email',
         headerName: 'Email *',
         cellEditor: 'agTextCellEditor',

@@ -23,12 +23,12 @@
         style="width: 100%;"
         [ngStyle]="{'height': gridHeight}"
         class="ag-theme-quartz small-text-ag-grid"
-        [modules]="modules"
-        [rowData]="rowData$ | async"
+        [rowData]="rowData"
         [columnDefs]="colDefs"
         [defaultColDef]="defaultColDef"
         [gridOptions]="gridOptions"
         (gridReady)="onGridReady($event)"
+        (cellEditingStopped)="onCellEditingStopped($event)"
         [rowSelection]="'single'"
       ></ag-grid-angular>
     </div>

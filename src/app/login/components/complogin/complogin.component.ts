@@ -11,7 +11,6 @@ import { functions } from '../../../helpers/functions';
 import { LoginService } from '../../../services/login.service';
 import { TrackingService } from '../../../services/tracking.service';
 import { CompanysService } from '../../../services/companys.service';
-import { LoginImageService } from '../../../services/login-image.service';
 
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
@@ -45,10 +44,8 @@ export class ComploginComponent implements OnInit, OnDestroy {
   /** Imágenes de fondo desde el backend (SMP Login). Si la API falla o no hay imágenes, no se pide asset (evita 404). */
   images: string[] = [];
   currentImageIndex: number = 0;
-  private carouselTimer: any = null;
 
   private loginService    = inject(LoginService) ;
-  private loginSetupService = inject(LoginImageService);
   private companysService = inject(CompanysService);
   private trackingService = inject(TrackingService);
   private userService     = inject(UsersService);
@@ -72,7 +69,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
   carouselDirection: 'forward' | 'reverse' = 'reverse';
 
   valorcapturado = '' ;
-  loginCardPositionClass = 'corner-top-left';
+  loginCardPositionClass = 'center';
 
 
   ngOnInit(): void {
@@ -106,53 +103,15 @@ export class ComploginComponent implements OnInit, OnDestroy {
   }
 
   private setRandomCardPosition(): void {
-    const positions = ['corner-top-left', 'corner-top-right', 'corner-bottom-left', 'corner-bottom-right'];
-    const randomIndex = Math.floor(Math.random() * positions.length);
-    this.loginCardPositionClass = positions[randomIndex];
+    this.loginCardPositionClass = 'center';
   }
 
-  /** Determina el índice de inicio y persiste en localStorage según la dirección del carrusel. */
-  private getStartingIndex(): number {
-    if (this.images.length === 0) return 0;
-    const defaultSeed = this.carouselDirection === 'reverse' ? String(this.images.length) : '-1';
-    const lastIndex = parseInt(localStorage.getItem('loginImgIndex') ?? defaultSeed, 10);
-    const step = this.carouselDirection === 'reverse' ? -1 : 1;
-    const nextIndex = (lastIndex + step + this.images.length) % this.images.length;
-    localStorage.setItem('loginImgIndex', String(nextIndex));
-    return nextIndex;
-  }
+  ngOnDestroy(): void { }
 
-  /** Inicia el carrusel cíclico cada 6 segundos según la dirección configurada. */
-  private startCarousel(): void {
-    if (this.carouselTimer) clearInterval(this.carouselTimer);
-    if (this.images.length <= 1) return;
-    const step = this.carouselDirection === 'reverse' ? -1 : 1;
-    this.carouselTimer = setInterval(() => {
-      this.currentImageIndex = (this.currentImageIndex + step + this.images.length) % this.images.length;
-    }, 6000);
-  }
-
-  ngOnDestroy(): void {
-    if (this.carouselTimer) clearInterval(this.carouselTimer);
-  }
-
-  /** Carga las URLs de imágenes desde el backend (SMP → Login); si hay alguna, se usan como fondo. */
+  /** Fondo estático local — no se usa el API. */
   private loadLoginBackgroundImages(): void {
-    this.loginSetupService.getLoginImagesPublic().subscribe({
-      next: (list) => {
-        const urls = (list || [])
-          .map((item) => this.loginSetupService.getImageDisplayUrl(item?.url))
-          .filter((u: string) => u);
-        if (urls.length > 0) {
-          this.images = urls;
-          this.currentImageIndex = this.getStartingIndex();
-          this.startCarousel();
-        }
-      },
-      error: () => {
-        // Si falla (ej. API no disponible), se mantiene el fondo oscuro por defecto
-      }
-    });
+    this.images = ['/assets/img/fondo_circuito.webp'];
+    this.currentImageIndex = 0;
   }
 
   toggleHide() {
@@ -244,7 +203,11 @@ export class ComploginComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.log(err);
         this.isLoading = false;
-        alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
+        if (err.status === 0) {
+          alerts.basicAlert("Error", "El servidor no está disponible. Por favor, contacta al administrador.", "error");
+        } else {
+          alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
+        }
       }
     });
   }

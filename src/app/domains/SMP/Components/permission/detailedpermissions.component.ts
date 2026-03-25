@@ -39,6 +39,9 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
   public masterId!: number;
   public hasChanges = false;
 
+  private readonly enterNavEditableColumns = ['permissionName', 'identifier', 'comment'];
+  private enterKeyAdvanceNextColumn = false;
+
   public colDefs: ColDef[] = [
     { field: 'id', editable: false,
         width: 70,
@@ -71,6 +74,14 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
     filter: true,
     resizable: true,
     floatingFilter: true,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterKeyAdvanceNextColumn = true;
+        setTimeout(() => this.gridApi?.stopEditing(), 0);
+        return true;
+      }
+      return false;
+    },
   };
 
   public gridOptions: any = {
@@ -200,6 +211,20 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
+  }
+
+  onCellEditingStopped(event: any): void {
+    if (!this.enterKeyAdvanceNextColumn) return;
+    this.enterKeyAdvanceNextColumn = false;
+    const idx = this.enterNavEditableColumns.indexOf(event.column.getColId());
+    if (idx !== -1 && idx < this.enterNavEditableColumns.length - 1) {
+      setTimeout(() => {
+        this.gridApi?.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.enterNavEditableColumns[idx + 1],
+        });
+      }, 0);
+    }
   }
 
   onAdd() {

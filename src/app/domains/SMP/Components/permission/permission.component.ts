@@ -40,6 +40,10 @@ export class PermissionComponent implements OnInit {
   masterNotSavedChanges: boolean = false;
   selectedPermission: any = null;
 
+  /** Columnas editables en orden: Enter pasa a la siguiente. */
+  private readonly enterNavEditableColumns = ['permissionName', 'identifier', 'comment'];
+  private enterKeyAdvanceNextColumn = false;
+
   public colDefs: ColDef[] = [
     {
         field: 'id',
@@ -77,6 +81,14 @@ export class PermissionComponent implements OnInit {
     filter: true,
     resizable: true,
     floatingFilter: true,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterKeyAdvanceNextColumn = true;
+        setTimeout(() => this.gridApi?.stopEditing(), 0);
+        return true;
+      }
+      return false;
+    },
   };
 
   public gridOptions: any = {
@@ -172,6 +184,20 @@ export class PermissionComponent implements OnInit {
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
+  }
+
+  onCellEditingStopped(event: any): void {
+    if (!this.enterKeyAdvanceNextColumn) return;
+    this.enterKeyAdvanceNextColumn = false;
+    const idx = this.enterNavEditableColumns.indexOf(event.column.getColId());
+    if (idx !== -1 && idx < this.enterNavEditableColumns.length - 1) {
+      setTimeout(() => {
+        this.gridApi?.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.enterNavEditableColumns[idx + 1],
+        });
+      }, 0);
+    }
   }
 
   onSelectionChanged(event: any): void {

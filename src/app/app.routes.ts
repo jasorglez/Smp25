@@ -21,6 +21,11 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./pages/welcome/welcome.component').then((m) => m.WelcomeComponent),
+      },
+      {
         path: 'proceswar',
         loadComponent: () =>
           import(

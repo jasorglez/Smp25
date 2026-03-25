@@ -1,4 +1,4 @@
-import { effect, inject, Injectable, NgZone } from '@angular/core';
+import { ApplicationRef, effect, inject, Injectable, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
@@ -11,7 +11,7 @@ import {
   authState,
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { BehaviorSubject, catchError, firstValueFrom, map, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, firstValueFrom, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
@@ -45,6 +45,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
   private ngZone = inject(NgZone);
+  private appRef = inject(ApplicationRef);
 
   idBranch: number;
   isAdvanced: boolean = false;
@@ -301,6 +302,56 @@ export class AuthService {
 
   fetchUserPermissionsAdvanced(userId: number, idBranch: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guardAdvanced/${userId}/${idBranch}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  /**
+   * Vuelve a pedir el árbol de permisos del usuario de la sesión (misma lógica que AppComponent)
+   * y actualiza `userPermissions`. Útil tras cambios en UserSystemPermissions / CRUD sin recargar la página.
+   *
+   * @param options.idBranchOverride Si el modal guardó permisos para otra sucursal que la del sidebar,
+   *        pasar esa sucursal para que `guardAdvanced` coincida con lo guardado (p. ej. Almacenes).
+   */
+  reloadCurrentSessionGuard(options?: { idBranchOverride?: number | null }): Observable<any> {
+    const email = localStorage.getItem('mail');
+    if (!email) {
+      return throwError(() => new Error('Sin email en sesión'));
+    }
+    const isAdvanced = this.signalsService.getIsAdvanced();
+    const sidebarBranch = Number(this.signalsService.getBranchSelectedBySidebar()());
+    const override =
+      options?.idBranchOverride != null ? Number(options.idBranchOverride) : NaN;
+    const idBranch = !Number.isNaN(override) && override > 0 ? override : sidebarBranch;
+
+    return this.getUserId(email).pipe(
+      switchMap((userId) => {
+        if (isAdvanced && idBranch > 0) {
+          return this.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
+            switchMap((data: any) => {
+              const perms = data?.permissions;
+              if (perms && Object.keys(perms).length > 0) {
+                this.setUserPermissions(perms);
+                return of(perms);
+              }
+              return this.fetchUserPermissions(userId).pipe(
+                tap((basicData: any) => this.setUserPermissions(basicData.permissions)),
+                map((basicData: any) => basicData.permissions)
+              );
+            })
+          );
+        }
+        return this.fetchUserPermissions(userId).pipe(
+          tap((data: any) => this.setUserPermissions(data.permissions)),
+          map((data: any) => data.permissions)
+        );
+      }),
+      tap(() => {
+        try {
+          this.appRef.tick();
+        } catch {
+          /* ignorar si no hay árbol de aplicación */
+        }
+      })
+    );
   }
 
   setUserPermissions(permissions: any): void {

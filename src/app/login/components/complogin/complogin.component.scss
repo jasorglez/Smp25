@@ -19,7 +19,10 @@ $transition: 0.25s $ease;
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-color: #0b0c14; /* fallback cuando no hay imágenes */
+  background-color: #0b0c14;
+  background-image: url('/assets/img/fondo_circuito.webp');
+  background-size: cover;
+  background-position: center;
 }
 
 .login-bg {
@@ -30,7 +33,6 @@ $transition: 0.25s $ease;
   background-repeat: no-repeat;
   opacity: 0;
   transition: opacity 1.5s ease-in-out;
-  animation: kenBurns 22s ease-in-out infinite alternate;
 
   &.active {
     opacity: 1;
@@ -52,9 +54,9 @@ $transition: 0.25s $ease;
   backdrop-filter: blur(2px) saturate(0.85);
   background: linear-gradient(
     135deg,
-    rgba(11, 12, 20, 0.78) 0%,
-    rgba(20, 18, 48, 0.65) 50%,
-    rgba(11, 12, 20, 0.80) 100%
+    rgba(11, 12, 20, 0.55) 0%,
+    rgba(20, 18, 48, 0.40) 50%,
+    rgba(11, 12, 20, 0.55) 100%
   );
 }
 
@@ -62,8 +64,10 @@ $transition: 0.25s $ease;
 .login-wrapper {
   position: fixed;
   inset: 0;
-  z-index: 1;
+  z-index: 10;
   display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1.5rem;
   pointer-events: none;
 }
@@ -86,6 +90,11 @@ $transition: 0.25s $ease;
 .login-wrapper.corner-bottom-right {
   align-items: flex-end;
   justify-content: flex-end;
+}
+
+.login-wrapper.center {
+  align-items: center;
+  justify-content: center;
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────

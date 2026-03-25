@@ -1,0 +1,28 @@
+<div class="welcome-container">
+
+  <!-- Partículas decorativas -->
+  <div class="particles">
+    <span *ngFor="let p of [1,2,3,4,5,6,7,8]" class="particle" [attr.data-i]="p"></span>
+  </div>
+
+  <!-- Hero -->
+  <div class="welcome-hero">
+    <div class="welcome-icon animate-pulse">
+      <i class="bi bi-grid-3x3-gap-fill"></i>
+    </div>
+    <h1 class="welcome-greeting animate-slide-up">{{ greeting }},</h1>
+    <h2 class="welcome-name animate-slide-up delay-1">{{ displayName() }}</h2>
+    <p class="welcome-date animate-fade delay-2">
+      <i class="bi bi-calendar3"></i>
+      {{ currentDate | date:"EEEE, d 'de' MMMM yyyy" }}
+    </p>
+  </div>
+
+  <!-- Footer decorativo -->
+  <div class="welcome-footer animate-fade delay-3">
+    <span>Bussines Inteligent</span>
+    <span class="sep">·</span>
+    <span>Sistema de Gestión Empresarial</span>
+  </div>
+
+</div>
