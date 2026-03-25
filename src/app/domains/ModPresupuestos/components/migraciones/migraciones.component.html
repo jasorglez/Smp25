@@ -1,0 +1,135 @@
+<div class="container-fluid p-2">
+
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h6 class="mb-0 fw-bold text-primary">
+      <i class="bi bi-arrow-left-right me-2"></i>Migración entre Cuentas
+    </h6>
+    <div *ngIf="!idProject" class="alert alert-warning py-1 px-3 mb-0 small">
+      <i class="bi bi-exclamation-triangle me-1"></i> Seleccione un proyecto en el menú lateral
+    </div>
+  </div>
+
+  <div *ngIf="idProject">
+    <div *ngIf="loading" class="text-center p-3">
+      <div class="spinner-border text-primary"></div>
+    </div>
+
+    <div *ngIf="!loading && !presupuestoVigente" class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      No hay presupuesto vigente para este proyecto. Cree uno primero en la pestaña "Presupuesto".
+    </div>
+
+    <div class="row g-3" *ngIf="!loading && presupuestoVigente">
+
+      <!-- Formulario de migración -->
+      <div class="col-md-5">
+        <div class="card">
+          <div class="card-header bg-warning text-dark py-2">
+            <span class="fw-semibold">
+              <i class="bi bi-arrow-left-right me-1"></i>
+              Nueva Migración — {{ presupuestoVigente.nombre }}
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info small py-1 px-2 mb-3">
+              <i class="bi bi-info-circle me-1"></i>
+              Cada migración crea una nueva versión del presupuesto automáticamente.
+            </div>
+
+            <form [formGroup]="migracionForm">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Cuenta Origen *</label>
+                <select class="form-select" formControlName="id_cuenta_origen">
+                  <option [value]="null" disabled>Seleccionar cuenta origen...</option>
+                  <option *ngFor="let c of cuentasOptions" [value]="c.id">
+                    {{ c.codigo }} — {{ c.nombre }}
+                  </option>
+                </select>
+                <div class="small text-muted mt-1" *ngIf="migracionForm.value.id_cuenta_origen">
+                  Saldo disponible:
+                  <span [class.text-danger]="getSaldoLinea(migracionForm.value.id_cuenta_origen) <= 0"
+                        [class.text-success]="getSaldoLinea(migracionForm.value.id_cuenta_origen) > 0"
+                        class="fw-bold">
+                    {{ formatCurrency(getSaldoLinea(migracionForm.value.id_cuenta_origen)) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Cuenta Destino *</label>
+                <select class="form-select" formControlName="id_cuenta_destino">
+                  <option [value]="null" disabled>Seleccionar cuenta destino...</option>
+                  <option *ngFor="let c of cuentasOptions" [value]="c.id">
+                    {{ c.codigo }} — {{ c.nombre }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Monto a Transferir *</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" formControlName="monto_transferido"
+                         min="0" step="1000" placeholder="0.00">
+                  <span class="input-group-text">MXN</span>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Motivo de la Migración *</label>
+                <textarea class="form-control" formControlName="motivo" rows="2"
+                          placeholder="Describa el motivo de la transferencia..."></textarea>
+              </div>
+
+              <button class="btn btn-warning w-100" (click)="ejecutarMigracion()" [disabled]="procesando">
+                <span *ngIf="procesando" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!procesando" class="bi bi-arrow-left-right me-1"></i>
+                {{ procesando ? 'Procesando...' : 'Ejecutar Migración' }}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Saldos actuales por cuenta -->
+        <div class="card mt-3">
+          <div class="card-header py-2">
+            <span class="fw-semibold small">Saldos por Cuenta ({{ presupuestoVigente.nombre }})</span>
+          </div>
+          <div class="list-group list-group-flush" style="max-height:30vh; overflow-y:auto">
+            <div class="list-group-item py-1 px-2 small" *ngFor="let l of lineasVigentes">
+              <div class="d-flex justify-content-between">
+                <span>{{ l.cuenta_codigo }} — {{ l.cuenta_nombre }}</span>
+                <span [class.text-success]="(l.saldo_disponible??0)>0"
+                      [class.text-danger]="(l.saldo_disponible??0)<0"
+                      class="fw-bold">
+                  {{ formatCurrency(l.saldo_disponible ?? 0) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial de migraciones -->
+      <div class="col-md-7">
+        <div class="card h-100">
+          <div class="card-header py-2">
+            <span class="fw-semibold small">Historial de Migraciones</span>
+          </div>
+          <div class="card-body p-0" style="height: 70vh;">
+            <ag-grid-angular
+              class="ag-theme-quartz w-100 h-100"
+              [rowData]="migraciones"
+              [columnDefs]="columnDefsMigraciones"
+              [defaultColDef]="defaultColDef"
+              [localeText]="AG_GRID_LOCALE_ES"
+              [animateRows]="true"
+              (gridReady)="onGridReady($event)"
+            ></ag-grid-angular>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

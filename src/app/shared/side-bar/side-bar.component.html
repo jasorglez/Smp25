@@ -280,6 +280,18 @@
        </a>
       </li>
 
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('presupuestos')">
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/presupuestos']"
+          routerLinkActive="active-link"
+          [matTooltip]="isSidebarCollapsed ? 'Presupuestos' : ''"
+          matTooltipPosition="right"
+        >
+          <mat-icon>account_balance_wallet</mat-icon> <span>Presupuestos</span>
+        </a>
+      </li>
+
       <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')">
 <a
           class="nav-link d-flex align-items-center"
