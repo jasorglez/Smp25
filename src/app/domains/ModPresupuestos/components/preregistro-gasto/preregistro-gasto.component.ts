@@ -50,7 +50,7 @@ export class PreregistroGastoComponent implements OnInit {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: () => ({
-        values: this.cuentasFlat.filter(c => c.esHoja && c.activo).map(c => c.id),
+        values: this.cuentasFlat.map(c => c.id),
       }),
       valueFormatter: (p) => {
         const c = this.cuentasFlat.find(x => x.id === p.value);

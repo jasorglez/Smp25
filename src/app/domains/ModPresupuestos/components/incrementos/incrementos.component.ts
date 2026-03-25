@@ -132,7 +132,7 @@ export class IncrementosComponent implements OnInit {
   }
 
   get cuentasOptions(): ICuentaContable[] {
-    return this.cuentasFlat.filter(c => c.activo);
+    return this.cuentasFlat;
   }
 
   async solicitarIncremento(): Promise<void> {
