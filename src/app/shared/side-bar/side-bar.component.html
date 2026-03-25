@@ -82,7 +82,7 @@
       </div>
 
       <span>Select Projects</span>
-<select
+      <select
         id="project"
         (change)="onProjectSelected($event)"
         (focus)="expandTemporarily()"
@@ -101,6 +101,16 @@
           {{ pj.projectName }}
         </option>
       </select>
+
+      <!-- Presupuesto vigente — solo lectura, informativo -->
+      <div *ngIf="presupuestoVigenteNombre" class="mb-2 mt-1 px-1">
+        <small class="badge bg-warning text-dark w-100 text-truncate d-block text-start py-1"
+               style="font-size: 0.7rem;"
+               [title]="presupuestoVigenteNombre">
+          <i class="bi bi-wallet2 me-1"></i>{{ presupuestoVigenteNombre }}
+        </small>
+      </div>
+
     </span>
 
     <ul class="nav flex-column">
