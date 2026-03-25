@@ -290,6 +290,49 @@
   }
 }
 
+// Flujo Bancario Section
+.flujo-section {
+  .section-title {
+    color: #155e75;
+    border-bottom-color: #155e75;
+  }
+
+  .flujo-tables {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+
+  .flujo-table-wrapper {
+    flex: 1;
+    min-width: 280px;
+    max-width: 480px;
+  }
+
+  .flujo-subtitle {
+    color: #0e7490;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .flujo-table {
+    min-width: unset;
+    width: 100%;
+
+    th {
+      background-color: #0e7490;
+      min-width: 80px;
+
+      &:first-child {
+        min-width: 160px;
+      }
+    }
+  }
+}
+
 // Aportacion Socios Table specifics
 .aportacion-section {
   .section-title {

@@ -10,6 +10,7 @@ import { CuentasContablesService } from 'app/services/cuentas-contables.service'
 import { CustomersService } from 'app/services/customers.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AdministrationService } from 'app/services/administration.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
@@ -49,6 +50,13 @@ export interface AportacionSocio {
   totalUtilidad: number;
 }
 
+// Interfaz para flujo de cuentas bancarias
+export interface FlujoItem {
+  concepto: string;
+  importeCorte: number;
+  importeActual: number;
+}
+
 @Component({
   selector: 'app-reporte-operativo-sin-iva',
   standalone: true,
@@ -66,6 +74,7 @@ export class ReporteOperativoSinIvaComponent {
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
   private customersService = inject(CustomersService);
+  private administrationService = inject(AdministrationService);
 
   // Estado del componente
   public rootId: number;
@@ -92,6 +101,13 @@ export class ReporteOperativoSinIvaComponent {
   private empresasCorporativo: any[] = [];
   private transferenciasRecibidas: any[] = [];
   private transferenciasEnviadas: any[] = [];
+  private cuentasBancarias: any[] = [];
+
+  // Flujo de cuentas bancarias
+  public flujoData: FlujoItem[] = [];
+  public totalFlujoCorte: number = 0;
+  public totalFlujoActual: number = 0;
+  public fechaFlujoActual: string = '';
 
   // Datos procesados para el reporte
   public proyectosReporte: ProyectoReporte[] = [];
@@ -216,8 +232,19 @@ export class ReporteOperativoSinIvaComponent {
         this.empresasCorporativo = [];
       }
 
-      // Cargar transferencias del corporativo (para aportación de socios)
-      await this.loadTransferenciasCorporativo();
+      // Cargar cuentas bancarias (manejo independiente por posible 404)
+      try {
+        const cuentasBancariasData: any = await lastValueFrom(this.administrationService.getAccountBanks(this.rootId));
+        this.cuentasBancarias = Array.isArray(cuentasBancariasData) ? cuentasBancariasData : [];
+      } catch {
+        this.cuentasBancarias = [];
+      }
+
+      // Cargar transferencias corporativo y flujo bancario en paralelo
+      await Promise.all([
+        this.loadTransferenciasCorporativo(),
+        this.processFlujoData()
+      ]);
 
       console.log('Datos cargados:', {
         proyectos: this.proyectos.length,
@@ -289,6 +316,47 @@ export class ReporteOperativoSinIvaComponent {
         // Ignorar errores de empresas individuales
       }
     }
+  }
+
+  private async processFlujoData(): Promise<void> {
+    if (this.cuentasBancarias.length === 0) {
+      this.flujoData = [];
+      this.totalFlujoCorte = 0;
+      this.totalFlujoActual = 0;
+      return;
+    }
+
+    const today = new Date();
+    const firstDayCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const day8CurrentMonth = new Date(today.getFullYear(), today.getMonth(), 8);
+    const lastDayCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const firstDayStr = this.formatDateForInput(firstDayCurrentMonth);
+    const day8Str = this.formatDateForInput(day8CurrentMonth);
+    const endStr = this.formatDateForInput(lastDayCurrentMonth);
+
+    const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    this.fechaFlujoActual = `07-${months[today.getMonth()]}`;
+
+    const results = await Promise.all(this.cuentasBancarias.map(async (cuenta) => {
+      try {
+        const [resCorte, resActual] = await Promise.all([
+          lastValueFrom(this.administrationService.getSaldoEIngresosMes(cuenta.id, firstDayStr, endStr)),
+          lastValueFrom(this.administrationService.getSaldoEIngresosMes(cuenta.id, day8Str, endStr))
+        ]);
+        return {
+          concepto: cuenta.nameAccount || '',
+          importeCorte: (resCorte as any)?.data?.saldoInicial ?? 0,
+          importeActual: (resActual as any)?.data?.saldoInicial ?? 0
+        };
+      } catch {
+        return { concepto: cuenta.nameAccount || '', importeCorte: 0, importeActual: 0 };
+      }
+    }));
+
+    this.flujoData = results.sort((a, b) => a.concepto.localeCompare(b.concepto));
+    this.totalFlujoCorte = this.flujoData.reduce((sum, f) => sum + f.importeCorte, 0);
+    this.totalFlujoActual = this.flujoData.reduce((sum, f) => sum + f.importeActual, 0);
   }
 
   private processData(): void {
@@ -708,6 +776,12 @@ export class ReporteOperativoSinIvaComponent {
     const proyectosTable = this.buildProyectosTable();
     content.push(proyectosTable);
 
+    // Sección de Flujo Bancario
+    if (this.flujoData.length > 0) {
+      content.push({ text: 'FLUJO DE CUENTAS BANCARIAS', style: 'sectionTitle' });
+      content.push(this.buildFlujoTable());
+    }
+
     // Sección de Aportación de Socios
     if (this.aportacionesSocios.length > 0) {
       content.push({ text: 'APORTACIÓN SOCIOS', style: 'sectionTitle' });
@@ -783,6 +857,51 @@ export class ReporteOperativoSinIvaComponent {
         vLineColor: () => '#ccc',
         fillColor: (rowIndex: number) => rowIndex === 0 ? '#1a365d' : (rowIndex % 2 === 0 ? '#f8fafc' : null)
       }
+    };
+  }
+
+  private buildFlujoTable(): any {
+    const buildSingleFlujo = (titulo: string, getImporte: (f: FlujoItem) => number, total: number) => {
+      const body: any[] = [
+        [
+          { text: titulo, style: 'tableHeader', alignment: 'center', colSpan: 2, fillColor: '#155e75' },
+          {}
+        ],
+        [
+          { text: 'CONCEPTO', style: 'tableHeader', alignment: 'center', fillColor: '#0e7490' },
+          { text: 'IMPORTE', style: 'tableHeader', alignment: 'center', fillColor: '#0e7490' }
+        ]
+      ];
+
+      this.flujoData.forEach((f, i) => {
+        body.push([
+          { text: f.concepto, style: 'tableCell', fillColor: i % 2 === 0 ? '#f0f9ff' : null },
+          { text: this.formatCurrencyShort(getImporte(f)), style: 'tableCellMoney', fillColor: i % 2 === 0 ? '#f0f9ff' : null }
+        ]);
+      });
+
+      body.push([
+        { text: 'TOTAL', style: 'totalRow', bold: true, fillColor: '#e2e8f0' },
+        { text: this.formatCurrencyShort(total), style: 'totalRow', alignment: 'right', bold: true, fillColor: '#e2e8f0' }
+      ]);
+
+      return {
+        table: { headerRows: 2, widths: ['*', 80], body },
+        layout: {
+          hLineWidth: (i: number, node: any) => (i <= 2 || i === node.table.body.length) ? 1 : 0.3,
+          vLineWidth: () => 0.3,
+          hLineColor: () => '#aaa',
+          vLineColor: () => '#ccc'
+        }
+      };
+    };
+
+    return {
+      columns: [
+        buildSingleFlujo('FLUJO AL CORTE', (f) => f.importeCorte, this.totalFlujoCorte),
+        { width: 20, text: '' },
+        buildSingleFlujo(`FLUJO ACTUAL ${this.fechaFlujoActual}`, (f) => f.importeActual, this.totalFlujoActual)
+      ]
     };
   }
 
@@ -973,6 +1092,49 @@ export class ReporteOperativoSinIvaComponent {
         { width: 15 }, { width: 15 }, { width: 15 }, { width: 18 },
         { width: 15 }, { width: 15 }, { width: 18 }, { width: 15 }, { width: 8 }
       ];
+
+      // Hoja de Flujo Bancario
+      if (this.flujoData.length > 0) {
+        const flujoSheet = workbook.addWorksheet('Flujo Bancario');
+        flujoSheet.views = [{ showGridLines: false }];
+
+        // Encabezados
+        flujoSheet.mergeCells('A1:C1');
+        const flujoTitle = flujoSheet.getCell('A1');
+        flujoTitle.value = 'FLUJO DE CUENTAS BANCARIAS';
+        flujoTitle.font = { bold: true, size: 12, color: { argb: 'FF155E75' } };
+        flujoTitle.alignment = { horizontal: 'center' };
+
+        const flujoHeaders = flujoSheet.getRow(2);
+        ['CONCEPTO', 'FLUJO AL CORTE', `FLUJO ACTUAL ${this.fechaFlujoActual}`].forEach((h, i) => {
+          const cell = flujoHeaders.getCell(i + 1);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7490' } };
+          cell.alignment = { horizontal: 'center' };
+        });
+
+        let flujoRow = 3;
+        this.flujoData.forEach(f => {
+          const row = flujoSheet.getRow(flujoRow);
+          row.getCell(1).value = f.concepto;
+          row.getCell(2).value = f.importeCorte;
+          row.getCell(2).numFmt = '"$"#,##0.00';
+          row.getCell(3).value = f.importeActual;
+          row.getCell(3).numFmt = '"$"#,##0.00';
+          flujoRow++;
+        });
+
+        const flujoTotalRow = flujoSheet.getRow(flujoRow);
+        flujoTotalRow.getCell(1).value = 'TOTAL';
+        flujoTotalRow.font = { bold: true };
+        flujoTotalRow.getCell(2).value = this.totalFlujoCorte;
+        flujoTotalRow.getCell(2).numFmt = '"$"#,##0.00';
+        flujoTotalRow.getCell(3).value = this.totalFlujoActual;
+        flujoTotalRow.getCell(3).numFmt = '"$"#,##0.00';
+
+        flujoSheet.columns = [{ width: 45 }, { width: 18 }, { width: 18 }];
+      }
 
       // Generar archivo
       const buffer = await workbook.xlsx.writeBuffer();

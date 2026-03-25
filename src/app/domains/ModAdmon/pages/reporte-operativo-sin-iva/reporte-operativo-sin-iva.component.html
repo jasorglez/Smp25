@@ -122,6 +122,65 @@
       </div>
     </div>
 
+    <!-- Sección de Flujo Bancario -->
+    <div class="table-card flujo-section" *ngIf="flujoData.length > 0">
+      <h4 class="section-title">FLUJO DE CUENTAS BANCARIAS</h4>
+      <div class="flujo-tables">
+        <!-- Flujo al corte -->
+        <div class="flujo-table-wrapper">
+          <h5 class="flujo-subtitle">FLUJO AL CORTE</h5>
+          <table class="reporte-table flujo-table">
+            <thead>
+              <tr>
+                <th>CONCEPTO</th>
+                <th class="text-end">IMPORTE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of flujoData; let i = index" [class.row-alt]="i % 2 === 0">
+                <td>{{ f.concepto }}</td>
+                <td class="text-end" [class.positive]="f.importeCorte > 0" [class.negative]="f.importeCorte < 0">
+                  {{ formatCurrency(f.importeCorte) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td class="text-end total-cell"><strong>{{ formatCurrency(totalFlujoCorte) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <!-- Flujo actual -->
+        <div class="flujo-table-wrapper">
+          <h5 class="flujo-subtitle">FLUJO ACTUAL {{ fechaFlujoActual }}</h5>
+          <table class="reporte-table flujo-table">
+            <thead>
+              <tr>
+                <th>CONCEPTO</th>
+                <th class="text-end">IMPORTE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of flujoData; let i = index" [class.row-alt]="i % 2 === 0">
+                <td>{{ f.concepto }}</td>
+                <td class="text-end" [class.positive]="f.importeActual > 0" [class.negative]="f.importeActual < 0">
+                  {{ formatCurrency(f.importeActual) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td class="text-end total-cell"><strong>{{ formatCurrency(totalFlujoActual) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Sección de Inversión de Activos -->
     <div class="table-card inversion-section">
       <h4 class="section-title">INVERSIÓN DE ACTIVOS</h4>
