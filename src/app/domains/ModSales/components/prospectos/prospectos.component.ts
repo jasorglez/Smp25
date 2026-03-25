@@ -35,7 +35,7 @@ export class ProspectosComponent implements OnInit {
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['empresa', 'nombre', 'puesto', 'telefono', 'estado'];
+  private editableColumnOrder = ['empresa', 'nombre', 'puesto', 'telefono', 'domicilio', 'estado'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -119,6 +119,7 @@ export class ProspectosComponent implements OnInit {
       { field: 'nombre',   headerName: 'Nombre',   width: 160, editable: true, filter: true },
       { field: 'puesto',   headerName: 'Puesto',   width: 140, editable: true },
       { field: 'telefono', headerName: 'Teléfono', width: 145, editable: true },
+      { field: 'domicilio', headerName: 'Domicilio', width: 220, editable: true, filter: true },
       {
         field: 'fechaUltimaInteraccion',
         headerName: 'Última Interacción', width: 175, editable: false,
@@ -173,6 +174,7 @@ export class ProspectosComponent implements OnInit {
       next: data => {
         this.rowData = data.map(p => ({
           ...p,
+          domicilio: (p as any).domicilio ?? '',
           countInteracciones: (p as any).countInteracciones ?? 0,
           __isNew: false,
           __modified: false,
@@ -189,7 +191,7 @@ export class ProspectosComponent implements OnInit {
 
   add() {
     const nuevo: any = {
-      nombre: '', telefono: '', empresa: '', puesto: '', estado: 'nuevo',
+      nombre: '', telefono: '', empresa: '', puesto: '', domicilio: '', estado: 'nuevo',
       idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
       chatIdVendedorActual: '', idCompany: this.idCompany,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
@@ -222,7 +224,7 @@ export class ProspectosComponent implements OnInit {
         } else {
           await this.svc.actualizarProspecto(p.id!, {
             nombre: p.nombre, telefono: p.telefono,
-            empresa: p.empresa, puesto: p.puesto, estado: p.estado,
+            empresa: p.empresa, puesto: p.puesto, domicilio: p.domicilio, estado: p.estado,
           });
         }
       } catch {

@@ -259,22 +259,7 @@ export class ConventionsComponent {
         cellEditor: 'agCheckboxCellEditor',
         width: 120,
         onCellValueChanged: (params: any) => {
-          if (params.newValue === true) {
-            this.rowData.forEach((row: any) => {
-              if (row !== params.data && row.vigente === true) {
-                row.vigente = false;
-              }
-            });
-            const rowNodes: any[] = [];
-            this.gridApi.forEachNode((node: any) => {
-              if (node) rowNodes.push(node);
-            });
-            this.gridApi.refreshCells({
-              rowNodes: rowNodes,
-              columns: ['vigente'],
-              force: true
-            });
-          }
+          this.handleVigenteChange(params.data, params.newValue === true);
         }
       },
       {
@@ -380,6 +365,7 @@ export class ConventionsComponent {
             ...row,
             vigente: row.vigente === 1 || row.vigente === true || row.vigente === '1' || row.vigente === 'true'
           }));
+          this.enforceSingleVigente(false);
         } else {
           this.rowData = data;
         }
@@ -613,6 +599,8 @@ export class ConventionsComponent {
   }
 
   async saveChanges() {
+    this.enforceSingleVigente(true);
+
     const isValid = this.rowData.every((item) =>
       item.name && item.description && item.start && item.end);
     if (!isValid) {
@@ -690,6 +678,76 @@ export class ConventionsComponent {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  private handleVigenteChange(selectedRow: any, isChecked: boolean): void {
+    if (!selectedRow) {
+      return;
+    }
+
+    selectedRow.vigente = isChecked;
+
+    if (!isChecked) {
+      this.markRowAsModified(selectedRow);
+      return;
+    }
+
+    this.rowData.forEach((row: any) => {
+      if (row !== selectedRow && row.vigente === true) {
+        row.vigente = false;
+        this.markRowAsModified(row);
+      }
+    });
+
+    this.markRowAsModified(selectedRow);
+    this.refreshVigenteColumn();
+  }
+
+  private enforceSingleVigente(markDirty: boolean): void {
+    if (!Array.isArray(this.rowData) || this.rowData.length === 0) {
+      return;
+    }
+
+    let activeFound = false;
+    this.rowData.forEach((row: any) => {
+      if (row.vigente === true) {
+        if (!activeFound) {
+          activeFound = true;
+          return;
+        }
+
+        row.vigente = false;
+        if (markDirty) {
+          this.markRowAsModified(row);
+        }
+      }
+    });
+
+    this.refreshVigenteColumn();
+  }
+
+  private markRowAsModified(row: any): void {
+    row.__modified = true;
+    this.notSavedChanges = true;
+  }
+
+  private refreshVigenteColumn(): void {
+    if (!this.gridApi) {
+      return;
+    }
+
+    const rowNodes: any[] = [];
+    this.gridApi.forEachNode((node: any) => {
+      if (node) {
+        rowNodes.push(node);
+      }
+    });
+
+    this.gridApi.refreshCells({
+      rowNodes,
+      columns: ['vigente'],
+      force: true
+    });
   }
 
   loadWorkProgramForConvention() {

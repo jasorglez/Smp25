@@ -20,6 +20,7 @@ export interface Prospecto {
   nombre: string;
   telefono: string;
   empresa: string;
+  domicilio: string;
   estado: string;
   idVendedorActual: number;
   nombreVendedorActual: string;
@@ -46,6 +47,10 @@ export interface Interaccion {
   nombreVendedor: string;
   resultado: string;
   creadoPor: string;
+}
+
+export interface NuevaInteraccionPayload extends Omit<Interaccion, 'id' | 'fecha' | 'creadoPor'> {
+  fecha?: Date | string | null;
 }
 
 export const ESTADOS_PROSPECTO = [
@@ -76,6 +81,7 @@ export class ProspectosService {
       nombre:               p.nombre ?? '',
       telefono:             p.telefono ?? '',
       empresa:              p.empresa ?? '',
+      domicilio:            p.domicilio ?? '',
       estado:               'nuevo',
       activo:               true,
       creadoPor:            'web',
@@ -114,15 +120,27 @@ export class ProspectosService {
     });
   }
 
-  async registrarInteraccion(prospectoId: string, i: Omit<Interaccion, 'id' | 'fecha' | 'creadoPor'>): Promise<void> {
-    const now = Timestamp.now();
+  async registrarInteraccion(prospectoId: string, i: NuevaInteraccionPayload): Promise<void> {
+    const fechaInteraccion = i.fecha ? Timestamp.fromDate(new Date(i.fecha)) : Timestamp.now();
+    const { fecha, ...data } = i;
     await addDoc(collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`), {
-      ...i, fecha: now, creadoPor: 'web',
+      ...data, fecha: fechaInteraccion, creadoPor: 'web',
     });
     await updateDoc(doc(this.firestore, this.COL, prospectoId), {
-      fechaUltimaInteraccion: now,
+      fechaUltimaInteraccion: fechaInteraccion,
       countInteracciones: increment(1),
     });
+  }
+
+  async actualizarInteraccion(prospectoId: string, interaccionId: string, campos: Partial<Interaccion> & { fecha?: Date | string | null }): Promise<void> {
+    const docRef = doc(this.firestore, `${this.COL}/${prospectoId}/interacciones`, interaccionId);
+    const data: any = { ...campos };
+
+    if (data.fecha) {
+      data.fecha = Timestamp.fromDate(new Date(data.fecha));
+    }
+
+    await updateDoc(docRef, data);
   }
 
   async getInteracciones(prospectoId: string): Promise<Interaccion[]> {
