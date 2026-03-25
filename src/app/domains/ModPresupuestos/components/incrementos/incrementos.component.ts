@@ -43,6 +43,12 @@ export class IncrementosComponent implements OnInit {
   solicitudForm!: FormGroup;
   private gridApi!: GridApi;
 
+  public getRowStyle = (p: any) => {
+    if (p.data?.estado === 'pendiente') return { background: '#fff3cd' };
+    if (p.data?.estado === 'rechazado') return { background: '#f8d7da' };
+    return {};
+  };
+
   public defaultColDef: ColDef = { sortable: true, filter: true, resizable: true };
 
   public columnDefs: ColDef[] = [

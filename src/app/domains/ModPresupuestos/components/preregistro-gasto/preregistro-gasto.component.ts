@@ -37,7 +37,7 @@ export class PreregistroGastoComponent implements OnInit {
   rowData: IPreregistroGasto[] = [];
   selectedRow: IPreregistroGasto | null = null;
   cuentasFlat: ICuentaContable[] = [];
-  private gridApi!: GridApi;
+  public gridApi!: GridApi;
   private tempCounter = 0;
 
   public defaultColDef: ColDef = { sortable: true, filter: true, resizable: true };

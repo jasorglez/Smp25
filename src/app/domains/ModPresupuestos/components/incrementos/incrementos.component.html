@@ -94,7 +94,7 @@
               [localeText]="AG_GRID_LOCALE_ES"
               [rowSelection]="'single'"
               [animateRows]="true"
-              [getRowStyle]="(p) => p.data?.estado === 'pendiente' ? { background: '#fff3cd' } : p.data?.estado === 'rechazado' ? { background: '#f8d7da' } : {}"
+              [getRowStyle]="getRowStyle"
               (gridReady)="onGridReady($event)"
               (selectionChanged)="onSelectionChanged($event)"
             ></ag-grid-angular>
