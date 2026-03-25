@@ -73,7 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '4.98 (25 Marzo 2026) - Presupuestos: fix permisos BD, JsonPropertyName, selector cuentas líneas',
+  version: '4.99 (25 Marzo 2026) - Presupuestos: fix permisos BD, JsonPropertyName, selector cuentas líneas',
 };
 
 
