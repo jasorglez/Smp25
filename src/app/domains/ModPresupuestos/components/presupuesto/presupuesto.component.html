@@ -1,0 +1,210 @@
+<div class="container-fluid p-2">
+
+  <!-- Header con proyecto seleccionado -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h6 class="mb-0 fw-bold text-primary">
+      <i class="bi bi-wallet2 me-2"></i>Presupuesto por Proyecto
+      <span class="text-muted fw-normal ms-2" *ngIf="idProject">(Proyecto #{{ idProject }})</span>
+    </h6>
+    <div *ngIf="!idProject" class="alert alert-warning py-1 px-3 mb-0 small">
+      <i class="bi bi-exclamation-triangle me-1"></i> Seleccione un proyecto en el menú lateral
+    </div>
+  </div>
+
+  <div class="row g-2" *ngIf="idProject">
+
+    <!-- Panel izquierdo: versiones del presupuesto -->
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header py-1 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold small">Versiones del Presupuesto</span>
+          <button class="btn btn-sm btn-success" (click)="openNuevoPresupuesto(modalPresupuesto)">
+            <i class="bi bi-plus-lg"></i> Nuevo
+          </button>
+        </div>
+        <div class="card-body p-0">
+          <div *ngIf="loading" class="text-center p-3">
+            <div class="spinner-border spinner-border-sm text-primary"></div>
+          </div>
+
+          <!-- Lista de versiones como cards -->
+          <div class="list-group list-group-flush" *ngIf="!loading">
+            <button
+              *ngFor="let p of presupuestos"
+              type="button"
+              class="list-group-item list-group-item-action py-2 px-3"
+              [class.active]="selectedPresupuesto?.id === p.id"
+              (click)="selectPresupuesto(p)"
+            >
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <span class="fw-bold">{{ p.nombre }}</span>
+                  <span class="badge bg-success ms-1" *ngIf="p.vigente">Vigente</span>
+                  <span class="badge bg-secondary ms-1" *ngIf="!p.vigente">Histórico</span>
+                  <div class="small text-muted">{{ p.motivo }}</div>
+                  <div class="small">
+                    <i class="bi bi-calendar3 me-1"></i>
+                    {{ p.fecha_inicio | date:'dd/MM/yyyy' }} — {{ p.fecha_fin | date:'dd/MM/yyyy' }}
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="fw-bold text-success small">{{ formatCurrency(p.monto_total ?? 0) }}</div>
+                  <button
+                    *ngIf="!p.vigente"
+                    class="btn btn-xs btn-outline-success mt-1"
+                    style="font-size:0.7rem;padding:1px 5px"
+                    (click)="setVigente(p); $event.stopPropagation()"
+                  >
+                    Activar
+                  </button>
+                </div>
+              </div>
+            </button>
+
+            <div class="text-center text-muted p-3 small" *ngIf="!presupuestos.length">
+              <i class="bi bi-inbox fs-4 d-block mb-1"></i>
+              No hay presupuestos registrados
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel derecho: líneas del presupuesto seleccionado -->
+    <div class="col-md-8">
+      <div class="card h-100" *ngIf="selectedPresupuesto; else sinSeleccion">
+        <div class="card-header py-1 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold small">
+            Detalle — {{ selectedPresupuesto.nombre }}
+            <span class="text-muted fw-normal">({{ formatCurrency(montoTotalLineas) }} total)</span>
+          </span>
+          <div class="d-flex gap-1" *ngIf="selectedPresupuesto.vigente">
+            <button class="btn btn-sm btn-success" (click)="addLinea()">
+              <i class="bi bi-plus-lg"></i> Línea
+            </button>
+            <button class="btn btn-sm btn-primary position-relative" (click)="saveLineas()" [disabled]="!hasUnsavedLineas">
+              <i class="bi bi-floppy"></i> Guardar
+              <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
+                    *ngIf="hasUnsavedLineas"></span>
+            </button>
+            <button class="btn btn-sm btn-warning" (click)="loadLineas(selectedPresupuesto.id)">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="deleteLinea()" [disabled]="!selectedLinea">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid de líneas -->
+        <div class="card-body p-0" [style.height]="showMeses ? '35vh' : '60vh'">
+          <div *ngIf="loadingLineas" class="text-center p-3">
+            <div class="spinner-border spinner-border-sm text-primary"></div>
+          </div>
+          <ag-grid-angular
+            *ngIf="!loadingLineas"
+            class="ag-theme-quartz w-100 h-100"
+            [rowData]="lineas"
+            [columnDefs]="columnDefsLineas"
+            [defaultColDef]="defaultColDef"
+            [localeText]="AG_GRID_LOCALE_ES"
+            [rowSelection]="'single'"
+            [animateRows]="true"
+            (gridReady)="onGridLineasReady($event)"
+            (selectionChanged)="onSeleccionarLinea($event)"
+            (cellValueChanged)="onCellValueChangedLinea($event)"
+          ></ag-grid-angular>
+        </div>
+
+        <!-- Panel de distribución mensual -->
+        <div class="card-footer p-2" *ngIf="showMeses && selectedLinea">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-semibold small">
+              <i class="bi bi-calendar3 me-1"></i>
+              Distribución Mensual — {{ selectedLinea.cuenta_nombre }}
+            </span>
+            <div class="d-flex gap-1">
+              <span class="small text-muted">Total meses: {{ formatCurrency(getTotalMeses()) }}</span>
+              <button class="btn btn-sm btn-primary ms-2" (click)="saveMeses()">
+                <i class="bi bi-floppy"></i> Guardar meses
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" (click)="showMeses = false">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+          <div class="row g-1">
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2" *ngFor="let m of mesesLinea">
+              <div class="card p-1" [class.border-primary]="m.seleccionado" style="font-size:0.75rem">
+                <div class="form-check mb-1">
+                  <input class="form-check-input" type="checkbox" [id]="'mes_'+m.mes"
+                         [(ngModel)]="m.seleccionado" (change)="toggleMes(m)">
+                  <label class="form-check-label fw-semibold" [for]="'mes_'+m.mes">
+                    {{ MESES[m.mes-1]?.nombre }}
+                  </label>
+                </div>
+                <input *ngIf="m.seleccionado" type="number" class="form-control form-control-sm"
+                       [(ngModel)]="m.monto" placeholder="$0.00" min="0" step="1000">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #sinSeleccion>
+        <div class="card h-100 d-flex align-items-center justify-content-center text-muted">
+          <i class="bi bi-hand-index fs-2 d-block mb-2"></i>
+          <span>Seleccione un presupuesto para ver su detalle</span>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo Presupuesto -->
+<ng-template #modalPresupuesto let-modal>
+  <div class="modal-header bg-primary text-white">
+    <h5 class="modal-title"><i class="bi bi-wallet2 me-2"></i>Nuevo Presupuesto</h5>
+    <button type="button" class="btn-close btn-close-white" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body">
+    <form [formGroup]="presupuestoForm">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Revisión *</label>
+          <input type="text" class="form-control" formControlName="nombre" placeholder="Rev.0">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Motivo *</label>
+          <input type="text" class="form-control" formControlName="motivo" placeholder="Presupuesto inicial">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Fecha Inicio *</label>
+          <input type="date" class="form-control" formControlName="fecha_inicio">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Fecha Fin *</label>
+          <input type="date" class="form-control" formControlName="fecha_fin">
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" formControlName="vigente" id="chkVigente">
+            <label class="form-check-label" for="chkVigente">
+              Establecer como versión vigente (desactiva la anterior)
+            </label>
+          </div>
+        </div>
+      </div>
+    </form>
+    <div class="alert alert-info mt-3 small">
+      <i class="bi bi-info-circle me-1"></i>
+      Después de crear el presupuesto podrá agregar las líneas por cuenta/subcuenta.
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" (click)="modal.dismiss()">Cancelar</button>
+    <button class="btn btn-primary" (click)="guardarPresupuesto(modal)">
+      <i class="bi bi-floppy me-1"></i> Crear Presupuesto
+    </button>
+  </div>
+</ng-template>

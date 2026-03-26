@@ -1,0 +1,107 @@
+<div class="container-fluid p-2">
+
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h6 class="mb-0 fw-bold text-primary">
+      <i class="bi bi-graph-up-arrow me-2"></i>Solicitudes de Incremento
+    </h6>
+    <div *ngIf="!idProject" class="alert alert-warning py-1 px-3 mb-0 small">
+      <i class="bi bi-exclamation-triangle me-1"></i> Seleccione un proyecto en el menú lateral
+    </div>
+  </div>
+
+  <div *ngIf="idProject">
+    <div *ngIf="loading" class="text-center p-3"><div class="spinner-border text-primary"></div></div>
+
+    <div *ngIf="!loading && !presupuestoVigente" class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      No hay presupuesto vigente. Cree uno primero en la pestaña "Presupuesto".
+    </div>
+
+    <div class="row g-3" *ngIf="!loading && presupuestoVigente">
+
+      <!-- Formulario de solicitud -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header bg-danger text-white py-2">
+            <span class="fw-semibold">
+              <i class="bi bi-graph-up-arrow me-1"></i>
+              Nueva Solicitud — {{ presupuestoVigente.nombre }}
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-warning small py-1 px-2 mb-3">
+              <i class="bi bi-envelope me-1"></i>
+              Al solicitar, se notificará automáticamente a Dirección General por correo.
+            </div>
+
+            <form [formGroup]="solicitudForm">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Cuenta *</label>
+                <select class="form-select" formControlName="id_cuenta">
+                  <option [value]="null" disabled>Seleccionar cuenta...</option>
+                  <option *ngFor="let c of cuentasOptions" [value]="c.id">
+                    {{ c.codigo }} — {{ c.nombre }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Monto Solicitado *</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" formControlName="monto_solicitado"
+                         min="0" step="1000" placeholder="0.00">
+                  <span class="input-group-text">MXN</span>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Justificación *</label>
+                <textarea class="form-control" formControlName="motivo" rows="3"
+                          placeholder="Justifique el incremento solicitado..."></textarea>
+              </div>
+
+              <button class="btn btn-danger w-100" (click)="solicitarIncremento()" [disabled]="procesando">
+                <span *ngIf="procesando" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!procesando" class="bi bi-send me-1"></i>
+                {{ procesando ? 'Enviando...' : 'Solicitar Incremento' }}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial de solicitudes + acciones de autorización -->
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small">Historial de Solicitudes</span>
+            <div class="d-flex gap-1" *ngIf="selectedRow?.estado === 'pendiente'">
+              <button class="btn btn-sm btn-success" (click)="autorizar()">
+                <i class="bi bi-check-circle me-1"></i> Autorizar
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="rechazar()">
+                <i class="bi bi-x-circle me-1"></i> Rechazar
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0" style="height: 65vh;">
+            <ag-grid-angular
+              class="ag-theme-quartz w-100 h-100"
+              [rowData]="incrementos"
+              [columnDefs]="columnDefs"
+              [defaultColDef]="defaultColDef"
+              [localeText]="AG_GRID_LOCALE_ES"
+              [rowSelection]="'single'"
+              [animateRows]="true"
+              [getRowStyle]="getRowStyle"
+              (gridReady)="onGridReady($event)"
+              (selectionChanged)="onSelectionChanged($event)"
+            ></ag-grid-angular>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

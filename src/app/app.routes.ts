@@ -2241,6 +2241,54 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'presupuestos',
+        loadComponent: () =>
+          import(
+            './domains/ModPresupuestos/pages/procpresupuestos/procpresupuestos.component'
+          ).then((s) => s.ProcpresupuestosComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'presupuestos' } },
+        children: [
+          { path: '', redirectTo: 'presupuesto', pathMatch: 'full' },
+          ...SharedModule.getRoutes(),
+          {
+            path: 'presupuesto',
+            loadComponent: () =>
+              import(
+                './domains/ModPresupuestos/components/presupuesto/presupuesto.component'
+              ).then((c) => c.PresupuestoComponent),
+          },
+          {
+            path: 'preregistro',
+            loadComponent: () =>
+              import(
+                './domains/ModPresupuestos/components/preregistro-gasto/preregistro-gasto.component'
+              ).then((c) => c.PreregistroGastoComponent),
+          },
+          {
+            path: 'migraciones',
+            loadComponent: () =>
+              import(
+                './domains/ModPresupuestos/components/migraciones/migraciones.component'
+              ).then((c) => c.MigracionesComponent),
+          },
+          {
+            path: 'incrementos',
+            loadComponent: () =>
+              import(
+                './domains/ModPresupuestos/components/incrementos/incrementos.component'
+              ).then((c) => c.IncrementosComponent),
+          },
+          {
+            path: 'reporte',
+            loadComponent: () =>
+              import(
+                './domains/ModPresupuestos/components/reporte-desempeno/reporte-desempeno.component'
+              ).then((c) => c.ReporteDesempenoComponent),
+          },
+        ],
+      },
+      {
         path: 'unauthorized',
         loadComponent: () =>
           import('./shared/unauthorized/unauthorized.component').then(
