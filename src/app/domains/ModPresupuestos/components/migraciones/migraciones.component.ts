@@ -133,7 +133,7 @@ export class MigracionesComponent implements OnInit {
   }
 
   get cuentasOptions(): ICuentaContable[] {
-    return this.cuentasFlat.filter(c => c.activo);
+    return this.cuentasFlat;
   }
 
   getSaldoLinea(idCuenta: number): number {
