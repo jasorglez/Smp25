@@ -22,6 +22,7 @@ export class ProspectosComponent implements OnInit {
   private svc        = inject(ProspectosService);
   private signalsSvc = inject(SignalsService);
   private usersSvc   = inject(UsersService);
+  private _colDefs: ColDef[] = [];
 
   constructor() {
     effect(() => {
@@ -108,7 +109,9 @@ export class ProspectosComponent implements OnInit {
   };
 
   get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs.length > 0) return this._colDefs;
+
+    this._colDefs = [
       {
         field: 'historial',
         headerName: 'Historial',
@@ -162,6 +165,8 @@ export class ProspectosComponent implements OnInit {
         },
       },
     ];
+
+    return this._colDefs;
   }
 
   onGridReady(params: GridReadyEvent) {

@@ -12,7 +12,7 @@ import {
   Timestamp,
   getDocs,
 } from '@angular/fire/firestore';
-import { Observable } from 'rxjs';
+import { Observable, from, switchMap } from 'rxjs';
 
 export interface Prospecto {
   id?: string;
@@ -33,6 +33,7 @@ export interface Prospecto {
   puesto: string;
   idCustomer: string | null;
   activo: boolean;
+  countInteracciones?: number;
   __isNew?: boolean;
   __modified?: boolean;
 }
@@ -70,7 +71,9 @@ export class ProspectosService {
   getProspectos(idVendedor: number): Observable<Prospecto[]> {
     const ref = collection(this.firestore, this.COL);
     const q = query(ref, where('idVendedorActual', '==', idVendedor));
-    return collectionData(q, { idField: 'id' }) as Observable<Prospecto[]>;
+    return (collectionData(q, { idField: 'id' }) as Observable<Prospecto[]>).pipe(
+      switchMap((prospectos) => from(this.syncProspectosWithInteracciones(prospectos))),
+    );
   }
 
   async crearProspecto(p: Partial<Prospecto>): Promise<string> {
@@ -119,16 +122,24 @@ export class ProspectosService {
     });
   }
 
-  async registrarInteraccion(prospectoId: string, i: NuevaInteraccionPayload): Promise<void> {
+  async registrarInteraccion(prospectoId: string, i: NuevaInteraccionPayload): Promise<{ saved: boolean; synced: boolean }> {
     const fechaInteraccion = i.fecha ? Timestamp.fromDate(new Date(i.fecha)) : Timestamp.now();
     const { fecha, ...data } = i;
+
     await addDoc(collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`), {
       ...data, fecha: fechaInteraccion, creadoPor: 'web',
     });
-    await updateDoc(doc(this.firestore, this.COL, prospectoId), {
-      fechaUltimaInteraccion: fechaInteraccion,
-      countInteracciones: increment(1),
-    });
+
+    try {
+      await updateDoc(doc(this.firestore, this.COL, prospectoId), {
+        fechaUltimaInteraccion: fechaInteraccion,
+        countInteracciones: increment(1),
+      });
+      return { saved: true, synced: true };
+    } catch (error) {
+      console.warn('Interaccion guardada, pero no se pudo sincronizar el prospecto padre.', error);
+      return { saved: true, synced: false };
+    }
   }
 
   async actualizarInteraccion(prospectoId: string, interaccionId: string, campos: Partial<Interaccion> & { fecha?: Date | string | null }): Promise<void> {
@@ -151,5 +162,57 @@ export class ProspectosService {
         const bTime = (b.fecha as any)?.seconds ?? (b.fecha as any)?.toDate?.().getTime() / 1000 ?? 0;
         return bTime - aTime;
       });
+  }
+
+  private async syncProspectosWithInteracciones(prospectos: Prospecto[]): Promise<Prospecto[]> {
+    return Promise.all(
+      prospectos.map(async (prospecto) => {
+        if (!prospecto.id) {
+          return {
+            ...prospecto,
+            countInteracciones: (prospecto as any).countInteracciones ?? 0,
+          } as Prospecto;
+        }
+
+        const interacciones = await this.getInteracciones(prospecto.id);
+        const countInteracciones = interacciones.length;
+        const fechaUltimaInteraccion = interacciones[0]?.fecha ?? prospecto.fechaUltimaInteraccion;
+
+        await this.syncProspectoStatsIfNeeded(prospecto.id, prospecto, countInteracciones, fechaUltimaInteraccion);
+
+        return {
+          ...prospecto,
+          countInteracciones,
+          fechaUltimaInteraccion,
+        } as Prospecto;
+      }),
+    );
+  }
+
+  private async syncProspectoStatsIfNeeded(
+    prospectoId: string,
+    prospecto: Prospecto,
+    countInteracciones: number,
+    fechaUltimaInteraccion: Timestamp,
+  ): Promise<void> {
+    const currentCount = prospecto.countInteracciones ?? 0;
+    const currentFecha = this.getTimestampMillis(prospecto.fechaUltimaInteraccion);
+    const realFecha = this.getTimestampMillis(fechaUltimaInteraccion);
+
+    if (currentCount === countInteracciones && currentFecha === realFecha) {
+      return;
+    }
+
+    await updateDoc(doc(this.firestore, this.COL, prospectoId), {
+      countInteracciones,
+      fechaUltimaInteraccion,
+    });
+  }
+
+  private getTimestampMillis(value: any): number {
+    if (!value) return 0;
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    return new Date(value).getTime();
   }
 }

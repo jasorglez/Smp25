@@ -1,9 +1,13 @@
 {
   "permissions": {
+    "additionalDirectories": [
+      "C:\\Developer\\Visual Studio 22\\c#\\MicroServicios"
+    ],
     "allow": [
       "Bash(sqlcmd:*)",
       "Read(//c/Developer/Angular/angular18/**)",
-      "Read(//c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosWarehouse/**)",
+      "Read(//c/Developer/Visual Studio 22/c#/MicroServicios/**)",
+      "Edit(C:\\Developer\\Visual Studio 22\\c#\\MicroServicios\\**)",
       "Bash(npm run build:*)",
       "WebSearch",
       "WebFetch(domain:time.is)",
@@ -124,10 +128,17 @@
       "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" \"https://bi2.com.mx/api/Telegram/ping\")",
       "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" \"https://bi2.com.mx/telegram/api/Telegram/ping\")",
       "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" \"https://bi2.com.mx/bot/api/Telegram/ping\")",
-      "mcp__b2-mssql-warehouses__execute_sql"
+      "mcp__b2-mssql-warehouses__execute_sql",
+      "mcp__b2-mssql-administration__execute_sql",
+      "Bash(dotnet build:*)",
+      "mcp__b2-mssql-smp__execute_sql",
+      "mcp__b2-mssql-security__execute_sql",
+      "WebFetch(domain:bi2.com.mx)",
+      "Skill(update-config)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [

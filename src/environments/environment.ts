@@ -73,7 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.03 (26 Marzo 2026) - Prospectos: fix getInteracciones sin orderBy Firestore',
+  version: '5.04 (26 Marzo 2026) - Prospectos: historial recalculado desde interacciones reales',
 };
 
 
