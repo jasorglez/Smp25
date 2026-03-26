@@ -30,6 +30,18 @@
 
     <!-- Grid principal -->
     <main class="col">
+
+      <!-- Selector de vendedor -->
+      <div class="mb-2 d-flex align-items-center gap-2">
+        <label class="form-label mb-0 text-nowrap small fw-semibold">
+          <i class="bi bi-person-badge"></i> Vendedor:
+        </label>
+        <select class="form-select form-select-sm" style="max-width:280px"
+                [(ngModel)]="vendedorSeleccionado" (change)="onVendedorChange()">
+          <option *ngFor="let v of vendedores" [value]="v.id">{{ v.displayName }}</option>
+        </select>
+      </div>
+
       <div class="text-center py-4" *ngIf="loading">
         <div class="spinner-border spinner-border-sm text-primary"></div>
         <span class="ms-2 text-muted small">Cargando prospectos...</span>

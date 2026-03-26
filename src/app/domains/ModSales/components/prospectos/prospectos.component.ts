@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ProspectosService, Prospecto, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
+import { UsersService } from 'app/services/users.service';
 import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import Swal from 'sweetalert2';
@@ -20,6 +21,7 @@ import Swal from 'sweetalert2';
 export class ProspectosComponent implements OnInit {
   private svc        = inject(ProspectosService);
   private signalsSvc = inject(SignalsService);
+  private usersSvc   = inject(UsersService);
 
   gridApi!: GridApi;
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -29,6 +31,9 @@ export class ProspectosComponent implements OnInit {
   selectedItem:     any      = null;
   hasUnsavedChanges = false;
   loading           = false;
+
+  vendedores: { id: number; displayName: string }[] = [];
+  vendedorSeleccionado: number = 0;
 
   get idVendedor()     { return this.signalsSvc.idUser(); }
   get idCompany()      { return this.signalsSvc.idCompany(); }
@@ -166,11 +171,23 @@ export class ProspectosComponent implements OnInit {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-  ngOnInit() { this.cargarProspectos(); }
+  ngOnInit() {
+    this.vendedorSeleccionado = this.idVendedor;
+    this.usersSvc.get2fieldsUsers(this.idCompany).subscribe({
+      next: (data: any[]) => {
+        this.vendedores = data.map(u => ({ id: u.id, displayName: u.displayName ?? u.DisplayName ?? '' }));
+      },
+    });
+    this.cargarProspectos();
+  }
+
+  onVendedorChange() {
+    this.cargarProspectos();
+  }
 
   cargarProspectos() {
     this.loading = true;
-    this.svc.getProspectos(this.idVendedor).subscribe({
+    this.svc.getProspectos(this.vendedorSeleccionado || this.idVendedor).subscribe({
       next: data => {
         this.rowData = data.map(p => ({
           ...p,
@@ -190,9 +207,11 @@ export class ProspectosComponent implements OnInit {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   add() {
+    const vendId   = this.vendedorSeleccionado || this.idVendedor;
+    const vendNombre = this.vendedores.find(v => v.id === vendId)?.displayName ?? this.nombreVendedor;
     const nuevo: any = {
       nombre: '', telefono: '', empresa: '', puesto: '', domicilio: '', estado: 'nuevo',
-      idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
+      idVendedorActual: vendId, nombreVendedorActual: vendNombre,
       chatIdVendedorActual: '', idCompany: this.idCompany,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,

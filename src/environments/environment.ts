@@ -73,7 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.00 (25 Marzo 2026) - Presupuestos: fix cuentas combo migraciones/incrementos',
+  version: '5.01 (26 Marzo 2026) - Prospectos: combo vendedor, bot fix SessionJson + idCompany query',
 };
 
 
