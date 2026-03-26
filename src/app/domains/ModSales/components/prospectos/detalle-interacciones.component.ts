@@ -109,6 +109,7 @@ import Swal from 'sweetalert2';
 export class DetalleInteraccionesComponent implements OnInit {
   private svc        = inject(ProspectosService);
   private signalsSvc = inject(SignalsService);
+  private _colDefs: ColDef[] = [];
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -182,7 +183,9 @@ export class DetalleInteraccionesComponent implements OnInit {
   ];
 
   get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs.length > 0) return this._colDefs;
+
+    this._colDefs = [
       {
         field: 'fecha', headerName: 'Fecha', width: 165,
         cellRenderer: (p: any) => this.formatFecha(p.value),
@@ -212,6 +215,8 @@ export class DetalleInteraccionesComponent implements OnInit {
       { field: 'nombreVendedor', headerName: 'Por', width: 130 },
       { field: 'creadoPor', headerName: 'Canal', width: 90 },
     ];
+
+    return this._colDefs;
   }
 
   onGridReady(e: GridReadyEvent) { this.gridApi = e.api; }
@@ -225,8 +230,21 @@ export class DetalleInteraccionesComponent implements OnInit {
   }
 
   private updateCountInParent() {
-    if (this.params?.node) {
-      this.params.node.setDataValue('countInteracciones', this.rowData.length);
+    const parentNode = this.params?.node?.parent;
+    const parentData = parentNode?.data;
+
+    if (parentData) {
+      parentData.countInteracciones = this.rowData.length;
+      this.params.api?.refreshCells({
+        rowNodes: [parentNode],
+        columns: ['historial'],
+        force: true,
+      });
+      return;
+    }
+
+    if (this.prospecto) {
+      this.prospecto.countInteracciones = this.rowData.length;
     }
   }
 
@@ -249,7 +267,7 @@ export class DetalleInteraccionesComponent implements OnInit {
       return;
     }
     try {
-      await this.svc.registrarInteraccion(this.prospecto.id, {
+      const result = await this.svc.registrarInteraccion(this.prospecto.id, {
         tipo:           this.intTipo,
         descripcion:    this.intDescripcion.trim(),
         fecha:          this.intFecha,
@@ -261,7 +279,12 @@ export class DetalleInteraccionesComponent implements OnInit {
       this.intFecha = this.getCurrentDateTimeLocal();
       this.showForm = false;
       await this.cargarInteracciones();  // ya llama updateCountInParent()
-      Swal.fire({ icon: 'success', title: 'Registrada', timer: 1000, showConfirmButton: false });
+      Swal.fire({
+        icon: result.synced ? 'success' : 'warning',
+        title: result.synced ? 'Registrada' : 'Registrada con sincronizacion pendiente',
+        timer: 1400,
+        showConfirmButton: false,
+      });
     } catch {
       Swal.fire('Error', 'No se pudo registrar.', 'error');
     }
@@ -271,9 +294,15 @@ export class DetalleInteraccionesComponent implements OnInit {
     try {
       await this.svc.cambiarEstado(this.prospecto.id, nuevoEstado, this.idVendedor, this.nombreVendedor);
       this.prospecto.estado = nuevoEstado;
-      // Actualizar la fila del maestro
-      if (this.params?.node) {
-        this.params.node.setDataValue('estado', nuevoEstado);
+      const parentNode = this.params?.node?.parent;
+
+      if (parentNode?.data) {
+        parentNode.data.estado = nuevoEstado;
+        this.params.api?.refreshCells({
+          rowNodes: [parentNode],
+          columns: ['estado', 'historial', 'fechaUltimaInteraccion'],
+          force: true,
+        });
       }
       await this.cargarInteracciones();
     } catch {
