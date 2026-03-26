@@ -6,7 +6,6 @@ import {
   collectionData,
   query,
   where,
-  orderBy,
   doc,
   updateDoc,
   increment,
@@ -144,11 +143,13 @@ export class ProspectosService {
   }
 
   async getInteracciones(prospectoId: string): Promise<Interaccion[]> {
-    const q = query(
-      collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`),
-      orderBy('fecha', 'desc')
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Interaccion);
+    const snap = await getDocs(collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }) as Interaccion)
+      .sort((a, b) => {
+        const aTime = (a.fecha as any)?.seconds ?? (a.fecha as any)?.toDate?.().getTime() / 1000 ?? 0;
+        const bTime = (b.fecha as any)?.seconds ?? (b.fecha as any)?.toDate?.().getTime() / 1000 ?? 0;
+        return bTime - aTime;
+      });
   }
 }
