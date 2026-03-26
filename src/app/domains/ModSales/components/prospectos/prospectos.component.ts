@@ -33,14 +33,13 @@ export class ProspectosComponent implements OnInit {
   loading           = false;
 
   vendedores: { id: number; displayName: string }[] = [];
-  vendedorSeleccionado: number = 0;
 
   get idVendedor()     { return this.signalsSvc.idUser(); }
   get idCompany()      { return this.signalsSvc.idCompany(); }
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['empresa', 'nombre', 'puesto', 'telefono', 'domicilio', 'estado'];
+  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'domicilio', 'estado'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -120,6 +119,17 @@ export class ProspectosComponent implements OnInit {
           return e ? `<span class="badge bg-${e.color}">${e.icon} ${e.label}</span>` : p.value ?? '';
         },
       },
+      {
+        field: 'nombreVendedorActual', headerName: 'Vendedor', width: 185, editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.vendedores.map(v => v.displayName) }),
+        valueSetter: (params: any) => {
+          params.data.nombreVendedorActual = params.newValue;
+          const found = this.vendedores.find(v => v.displayName === params.newValue);
+          if (found) params.data.idVendedorActual = found.id;
+          return true;
+        },
+      },
       { field: 'empresa',  headerName: 'Empresa',  width: 180, editable: true, filter: true },
       { field: 'nombre',   headerName: 'Nombre',   width: 160, editable: true, filter: true },
       { field: 'puesto',   headerName: 'Puesto',   width: 140, editable: true },
@@ -172,7 +182,6 @@ export class ProspectosComponent implements OnInit {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit() {
-    this.vendedorSeleccionado = this.idVendedor;
     this.usersSvc.get2fieldsUsers(this.idCompany).subscribe({
       next: (data: any[]) => {
         this.vendedores = data.map(u => ({ id: u.id, displayName: u.displayName ?? u.DisplayName ?? '' }));
@@ -181,13 +190,9 @@ export class ProspectosComponent implements OnInit {
     this.cargarProspectos();
   }
 
-  onVendedorChange() {
-    this.cargarProspectos();
-  }
-
   cargarProspectos() {
     this.loading = true;
-    this.svc.getProspectos(this.vendedorSeleccionado || this.idVendedor).subscribe({
+    this.svc.getProspectos(this.idVendedor).subscribe({
       next: data => {
         this.rowData = data.map(p => ({
           ...p,
@@ -207,11 +212,9 @@ export class ProspectosComponent implements OnInit {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   add() {
-    const vendId   = this.vendedorSeleccionado || this.idVendedor;
-    const vendNombre = this.vendedores.find(v => v.id === vendId)?.displayName ?? this.nombreVendedor;
     const nuevo: any = {
       nombre: '', telefono: '', empresa: '', puesto: '', domicilio: '', estado: 'nuevo',
-      idVendedorActual: vendId, nombreVendedorActual: vendNombre,
+      idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
       chatIdVendedorActual: '', idCompany: this.idCompany,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
@@ -244,6 +247,8 @@ export class ProspectosComponent implements OnInit {
           await this.svc.actualizarProspecto(p.id!, {
             nombre: p.nombre, telefono: p.telefono,
             empresa: p.empresa, puesto: p.puesto, domicilio: p.domicilio, estado: p.estado,
+            idVendedorActual: p.idVendedorActual,
+            nombreVendedorActual: p.nombreVendedorActual,
           });
         }
       } catch {
