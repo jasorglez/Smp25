@@ -1,10 +1,14 @@
-<section class="col-12 mt-2">
-  <div class="row">
+<section class="sales-mod-shell">
+  <header class="sales-mod-head sales-mod-reveal">
+    <h2 class="sales-mod-title">Vendedores</h2>
+    <p class="sales-mod-subtitle">
+      Gestiona prospectos, estados y seguimiento. Usa la barra de acciones para agregar, guardar o revertir cambios.
+    </p>
+  </header>
 
-    <!-- Botonera lateral izquierda -->
-    <div class="col-auto">
-      <div class="d-flex flex-column gap-1">
-
+  <div class="sales-mod-body">
+    <aside class="sales-mod-aside sales-mod-reveal-delay">
+      <div class="sales-mod-aside-inner">
         <button type="button" class="btn btn-success" (click)="add()" [disabled]="!gridApi" title="Agregar prospecto">
           <i class="bi bi-plus-lg"></i>
         </button>
@@ -24,30 +28,27 @@
         <button type="button" class="btn btn-danger" (click)="deleteSelected()" [disabled]="!selectedItem" title="Eliminar prospecto">
           <i class="bi bi-trash"></i>
         </button>
-
       </div>
-    </div>
+    </aside>
 
-    <!-- Grid principal -->
-    <main class="col">
-      <div class="text-center py-4" *ngIf="loading">
+    <main class="sales-mod-main sales-mod-reveal-delay-2">
+      <div class="text-center py-5" *ngIf="loading">
         <div class="spinner-border spinner-border-sm text-primary"></div>
         <span class="ms-2 text-muted small">Cargando prospectos...</span>
       </div>
 
-      <ag-grid-angular
-        *ngIf="!loading"
-        class="ag-theme-quartz small-text-ag-grid"
-        style="width:100%; height:75vh"
-        [rowData]="rowData"
-        [columnDefs]="colDefs"
-        [defaultColDef]="defaultColDef"
-        [gridOptions]="gridOptions"
-        [localeText]="AG_GRID_LOCALE_ES"
-        (gridReady)="onGridReady($event)"
-        (cellEditingStopped)="onCellEditingStopped($event)">
-      </ag-grid-angular>
+      <div class="sales-mod-card p-2" *ngIf="!loading">
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid sales-mod-ag"
+          [rowData]="rowData"
+          [columnDefs]="colDefs"
+          [defaultColDef]="defaultColDef"
+          [gridOptions]="gridOptions"
+          [localeText]="AG_GRID_LOCALE_ES"
+          (gridReady)="onGridReady($event)"
+          (cellEditingStopped)="onCellEditingStopped($event)">
+        </ag-grid-angular>
+      </div>
     </main>
-
   </div>
 </section>

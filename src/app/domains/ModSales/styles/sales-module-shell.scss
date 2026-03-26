@@ -1,0 +1,139 @@
+/* Shell reutilizable para módulo Ventas / Punto de venta (sub-apartados) */
+.sales-mod-shell {
+  --sm-bg: #f6f8fb;
+  --sm-card: #ffffff;
+  --sm-text: #0f172a;
+  --sm-muted: #64748b;
+  --sm-line: rgba(15, 23, 42, 0.08);
+  --sm-primary: #0d6efd;
+  --sm-radius: 14px;
+  display: block;
+  padding: 0.75rem 0 0.5rem;
+  background: radial-gradient(900px 420px at 50% -10%, #e7f1ff 0%, transparent 55%), var(--sm-bg);
+  border-radius: 12px;
+}
+
+@keyframes sales-mod-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sales-mod-reveal { animation: sales-mod-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.sales-mod-reveal-delay { animation: sales-mod-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both; }
+.sales-mod-reveal-delay-2 { animation: sales-mod-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sales-mod-reveal, .sales-mod-reveal-delay, .sales-mod-reveal-delay-2 {
+    animation: none;
+  }
+}
+
+.sales-mod-head {
+  padding: 0.25rem 0.25rem 0.9rem;
+}
+
+.sales-mod-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--sm-text);
+}
+
+.sales-mod-subtitle {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--sm-muted);
+  max-width: 52rem;
+  line-height: 1.45;
+}
+
+.sales-mod-body {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.sales-mod-aside {
+  flex: 0 0 auto;
+}
+
+.sales-mod-aside-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  background: var(--sm-card);
+  border: 1px solid var(--sm-line);
+  border-radius: var(--sm-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.sales-mod-aside-inner .btn {
+  border-radius: 10px;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.sales-mod-aside-inner .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+}
+
+.sales-mod-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sales-mod-card {
+  background: var(--sm-card);
+  border: 1px solid var(--sm-line);
+  border-radius: var(--sm-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 36px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.sales-mod-ag {
+  width: 100%;
+  height: clamp(52vh, 70vh, 78vh);
+  border-radius:  var(--sm-radius);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* Placeholder para rutas aún sin UI (products, caja, etc.) */
+.sales-mod-placeholder {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: var(--sm-card);
+  border: 1px solid var(--sm-line);
+  border-radius: var(--sm-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 36px rgba(15, 23, 42, 0.08);
+}
+
+.sales-mod-placeholder .sales-mod-placeholder-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(13, 110, 253, 0.1);
+  color: var(--sm-primary);
+  font-size: 1.5rem;
+}
+
+.sales-mod-placeholder h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--sm-text);
+}
+
+.sales-mod-placeholder p {
+  margin: 0 auto;
+  max-width: 28rem;
+  font-size: 0.875rem;
+  color: var(--sm-muted);
+  line-height: 1.55;
+}

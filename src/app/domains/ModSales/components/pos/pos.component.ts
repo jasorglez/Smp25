@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, DestroyRef, effect, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -25,6 +27,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { CustomersService } from 'app/services/customers.service';
+import { CustomersComponent } from 'app/domains/ModAdmon/components/customers/customers.component';
 
 @Component({
   selector: 'app-pos',
@@ -35,6 +38,7 @@ import { CustomersService } from 'app/services/customers.service';
     AgGridModule,
     SearchableSelectComponent,
     NgSelectModule,
+    CustomersComponent,
   ],
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.scss',
@@ -45,6 +49,11 @@ export class PosComponent {
   private signalsService = inject(SignalsService);
   private materialsService = inject(MaterialsService);
   private customerService = inject(CustomersService);
+  private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
+
+  /** Sub-apartado desde ?view= en la ruta `pos` (documentos | clientes | ticket | nueva). */
+  posView: 'nueva' | 'documentos' | 'clientes' | 'ticket' = 'nueva';
 
   // products
   productInput$ = new Subject<string>();
@@ -86,6 +95,14 @@ export class PosComponent {
   private _totalGeneral: number = 0;
 
   constructor() {
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((q) => {
+        const raw = (q.get('view') ?? 'nueva').toLowerCase();
+        const allowed = new Set(['nueva', 'documentos', 'clientes', 'ticket']);
+        this.posView = (allowed.has(raw) ? raw : 'nueva') as typeof this.posView;
+      });
+
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idCustomer = this.signalsService.getIdCustomerFromPOS()();
@@ -119,6 +136,40 @@ export class PosComponent {
   ngOnInit() {
     this.getCustomers();
     this.getProducts();
+  }
+
+  get posSectionTitle(): string {
+    switch (this.posView) {
+      case 'documentos':
+        return 'Documentos';
+      case 'clientes':
+        return 'Clientes';
+      case 'ticket':
+        return 'Imprimir ticket';
+      default:
+        return 'Punto de venta';
+    }
+  }
+
+  get posSectionSubtitle(): string {
+    switch (this.posView) {
+      case 'documentos':
+        return 'Consulta documentos y movimientos ligados a la venta actual.';
+      case 'clientes':
+        return 'Mismo catálogo que Administración: alta, edición y facturación electrónica.';
+      case 'ticket':
+        return 'Revisa el total y genera el ticket cuando esté listo.';
+      default:
+        return 'Selecciona un cliente, agrega productos y genera el ticket.';
+    }
+  }
+
+  get showProductSearch(): boolean {
+    return this.posView !== 'clientes';
+  }
+
+  get leftCardTitle(): string {
+    return this.showProductSearch ? 'Cliente y producto' : 'Cliente';
   }
 
   onProductSelect(product: any) {

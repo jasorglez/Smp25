@@ -58,7 +58,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss'],
 })
-export class CustomersComponent implements CanComponentDeactivate {s
+export class CustomersComponent implements CanComponentDeactivate {
   private customerService = inject(CustomersService);
    private modalServiceTable = inject(ModalService);
    private signalsService = inject(SignalsService);
