@@ -14,6 +14,10 @@ import { FormsModule } from '@angular/forms';
 import { EMPTY, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
 import { ConventionsService } from 'app/services/conventions.service';
+<<<<<<< HEAD
+=======
+import { PresupuestoService } from 'app/services/presupuesto.service';
+>>>>>>> 0d68c1b33ddbccd2e1d752a445226f56be9d94ae
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -44,6 +48,7 @@ export class SideBarComponent {
   selectedPlatformId: number = 0;
   userRoot: number = 0;
   conventionVigenteNombre: string = '';
+  presupuestoVigenteNombre: string = '';
 
   usersData: any[];
 
@@ -60,7 +65,12 @@ export class SideBarComponent {
     public projectService: ProjectsService,
     private userService: UsersService,
     private signalsService: SignalsService,
+<<<<<<< HEAD
     private conventionsService: ConventionsService
+=======
+    private conventionsService: ConventionsService,
+    private presupuestoService: PresupuestoService
+>>>>>>> 0d68c1b33ddbccd2e1d752a445226f56be9d94ae
   ) {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
@@ -355,6 +365,7 @@ error: (error) => {
       this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
       const found = this.projectData.find(p => String(p.idProject) === this.selectedProjectId);
       this.signalsService.setProjectNameBySidebar(found?.projectName ?? '');
+      this.loadVigentePresupuesto(Number(this.selectedRoot), Number(this.selectedProjectId));
     }
   }
 
@@ -373,6 +384,7 @@ error: (error) => {
             // Signal exclusiva del sidebar (no la toca ordenes)
             this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
             this.signalsService.setProjectNameBySidebar(this.projectData[0].projectName ?? '');
+            this.loadVigentePresupuesto(Number(this.selectedRoot), Number(this.selectedProjectId));
             setTimeout(() => {
               const sel = document.getElementById('project') as HTMLSelectElement;
               if (sel) sel.value = this.selectedProjectId;
@@ -565,6 +577,9 @@ error: (error) => {
     // Limpiar convenio vigente
     this.conventionVigenteNombre = '';
     this.signalsService.setConventionVigente(null);
+
+    // Limpiar presupuesto vigente
+    this.presupuestoVigenteNombre = '';
     
     // Limpiar los selects en el DOM
     setTimeout(() => {
@@ -589,6 +604,14 @@ error: (error) => {
         this.conventionVigenteNombre = '';
         this.signalsService.setConventionVigente(null);
       }
+    });
+  }
+
+  private loadVigentePresupuesto(idCompany: number, idProject: number) {
+    if (!idCompany || !idProject) { this.presupuestoVigenteNombre = ''; return; }
+    this.presupuestoService.getVigente(idCompany, idProject).subscribe({
+      next: (p) => { this.presupuestoVigenteNombre = p ? p.nombre : ''; },
+      error: () => { this.presupuestoVigenteNombre = ''; }
     });
   }
 

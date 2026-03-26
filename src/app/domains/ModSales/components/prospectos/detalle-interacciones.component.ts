@@ -66,7 +66,10 @@ import Swal from 'sweetalert2';
               <option value="negativo">Negativo</option>
             </select>
           </div>
-          <div class="col-md-5">
+          <div class="col-md-3">
+            <input class="form-control form-control-sm" type="datetime-local" [(ngModel)]="intFecha" />
+          </div>
+          <div class="col-md-4">
             <input class="form-control form-control-sm" [(ngModel)]="intDescripcion"
                    placeholder="Descripción de la interacción..." />
           </div>
@@ -116,6 +119,7 @@ export class DetalleInteraccionesComponent implements OnInit {
   showForm       = false;
   intTipo        = 'contacto';
   intResultado   = 'neutral';
+  intFecha       = this.getCurrentDateTimeLocal();
   intDescripcion = '';
 
   estados          = ESTADOS_PROSPECTO;
@@ -139,13 +143,33 @@ export class DetalleInteraccionesComponent implements OnInit {
 
   defaultColDef: ColDef = { sortable: true, resizable: true };
 
-  colDefs: ColDef[] = [
+  legacyColDefs: ColDef[] = [
     {
       field: 'fecha', headerName: 'Fecha', width: 165,
       cellRenderer: (p: any) => this.formatFecha(p.value),
+      cellStyle: { cursor: 'pointer', backgroundColor: '#fff8e1' },
+      tooltipValueGetter: () => 'Doble clic para editar fecha',
+      onCellDoubleClicked: (p: any) => this.editarFechaInteraccion(p.data),
     },
-    { field: 'tipo',        headerName: 'Tipo',        width: 110 },
+    {
+      field: 'tipo', headerName: 'Tipo', width: 110,
+      cellStyle: { cursor: 'pointer', backgroundColor: '#eefaf0' },
+      tooltipValueGetter: () => 'Doble clic para editar tipo',
+      onCellDoubleClicked: (p: any) => this.editarTipoInteraccion(p.data),
+    },
     { field: 'descripcion', headerName: 'Descripción', flex: 1    },
+    {
+      field: 'descripcion', headerName: 'DescripciÃ³n', flex: 1,
+      cellStyle: { cursor: 'pointer', backgroundColor: '#eef4ff' },
+      tooltipValueGetter: () => 'Doble clic para editar descripciÃ³n',
+      onCellDoubleClicked: (p: any) => this.editarDescripcionInteraccion(p.data),
+    },
+    {
+      field: 'descripcion', headerName: 'Descripcion', flex: 1,
+      cellStyle: { cursor: 'pointer', backgroundColor: '#eef4ff' },
+      tooltipValueGetter: () => 'Doble clic para editar descripcion',
+      onCellDoubleClicked: (p: any) => this.editarDescripcionInteraccion(p.data),
+    },
     {
       field: 'resultado', headerName: 'Resultado', width: 110,
       cellRenderer: (p: any) => {
@@ -156,6 +180,39 @@ export class DetalleInteraccionesComponent implements OnInit {
     { field: 'nombreVendedor', headerName: 'Por', width: 130 },
     { field: 'creadoPor',      headerName: 'Canal', width: 90 },
   ];
+
+  get colDefs(): ColDef[] {
+    return [
+      {
+        field: 'fecha', headerName: 'Fecha', width: 165,
+        cellRenderer: (p: any) => this.formatFecha(p.value),
+        cellStyle: { cursor: 'pointer', backgroundColor: '#fff8e1' },
+        tooltipValueGetter: () => 'Doble clic para editar fecha',
+        onCellDoubleClicked: (p: any) => this.editarFechaInteraccion(p.data),
+      },
+      {
+        field: 'tipo', headerName: 'Tipo', width: 110,
+        cellStyle: { cursor: 'pointer', backgroundColor: '#eefaf0' },
+        tooltipValueGetter: () => 'Doble clic para editar tipo',
+        onCellDoubleClicked: (p: any) => this.editarTipoInteraccion(p.data),
+      },
+      {
+        field: 'descripcion', headerName: 'Descripcion', flex: 1,
+        cellStyle: { cursor: 'pointer', backgroundColor: '#eef4ff' },
+        tooltipValueGetter: () => 'Doble clic para editar descripcion',
+        onCellDoubleClicked: (p: any) => this.editarDescripcionInteraccion(p.data),
+      },
+      {
+        field: 'resultado', headerName: 'Resultado', width: 110,
+        cellRenderer: (p: any) => {
+          const color = p.value === 'positivo' ? 'success' : p.value === 'negativo' ? 'danger' : 'secondary';
+          return `<span class="badge bg-${color}">${p.value}</span>`;
+        },
+      },
+      { field: 'nombreVendedor', headerName: 'Por', width: 130 },
+      { field: 'creadoPor', headerName: 'Canal', width: 90 },
+    ];
+  }
 
   onGridReady(e: GridReadyEvent) { this.gridApi = e.api; }
 
@@ -195,11 +252,14 @@ export class DetalleInteraccionesComponent implements OnInit {
       await this.svc.registrarInteraccion(this.prospecto.id, {
         tipo:           this.intTipo,
         descripcion:    this.intDescripcion.trim(),
+        fecha:          this.intFecha,
         idVendedor:     this.idVendedor,
         nombreVendedor: this.nombreVendedor,
         resultado:      this.intResultado,
       });
-      this.intDescripcion = ''; this.showForm = false;
+      this.intDescripcion = '';
+      this.intFecha = this.getCurrentDateTimeLocal();
+      this.showForm = false;
       await this.cargarInteracciones();  // ya llama updateCountInParent()
       Swal.fire({ icon: 'success', title: 'Registrada', timer: 1000, showConfirmButton: false });
     } catch {
@@ -221,11 +281,109 @@ export class DetalleInteraccionesComponent implements OnInit {
     }
   }
 
+  async editarFechaInteraccion(interaccion: any) {
+    if (!this.prospecto?.id || !interaccion?.id) return;
+
+    const { value: nuevaFecha } = await Swal.fire({
+      title: 'Editar fecha',
+      input: 'datetime-local',
+      inputValue: this.formatDateTimeLocal(interaccion.fecha),
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => !value ? 'Selecciona una fecha y hora.' : null,
+    });
+
+    if (!nuevaFecha) return;
+
+    try {
+      await this.svc.actualizarInteraccion(this.prospecto.id, interaccion.id, { fecha: nuevaFecha });
+      interaccion.fecha = new Date(nuevaFecha);
+      this.rowData = [...this.rowData];
+      this.gridApi.setGridOption('rowData', this.rowData);
+      Swal.fire({ icon: 'success', title: 'Fecha actualizada', timer: 1000, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo actualizar la fecha.', 'error');
+    }
+  }
+
+  async editarTipoInteraccion(interaccion: any) {
+    if (!this.prospecto?.id || !interaccion?.id) return;
+
+    const opciones = this.tiposInteraccion.reduce((acc: Record<string, string>, tipo) => {
+      acc[tipo] = tipo;
+      return acc;
+    }, {});
+
+    const { value: nuevoTipo } = await Swal.fire({
+      title: 'Editar tipo',
+      input: 'select',
+      inputOptions: opciones,
+      inputValue: interaccion.tipo ?? this.tiposInteraccion[0],
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => !value ? 'Selecciona un tipo.' : null,
+    });
+
+    if (!nuevoTipo) return;
+
+    try {
+      await this.svc.actualizarInteraccion(this.prospecto.id, interaccion.id, { tipo: nuevoTipo });
+      interaccion.tipo = nuevoTipo;
+      this.rowData = [...this.rowData];
+      this.gridApi.setGridOption('rowData', this.rowData);
+      Swal.fire({ icon: 'success', title: 'Tipo actualizado', timer: 1000, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo actualizar el tipo.', 'error');
+    }
+  }
+
+  async editarDescripcionInteraccion(interaccion: any) {
+    if (!this.prospecto?.id || !interaccion?.id) return;
+
+    const { value: nuevaDescripcion } = await Swal.fire({
+      title: 'Editar descripcion',
+      input: 'text',
+      inputValue: interaccion.descripcion ?? '',
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => !value?.trim() ? 'Escribe una descripcion.' : null,
+    });
+
+    if (!nuevaDescripcion?.trim()) return;
+
+    try {
+      const descripcion = nuevaDescripcion.trim();
+      await this.svc.actualizarInteraccion(this.prospecto.id, interaccion.id, { descripcion });
+      interaccion.descripcion = descripcion;
+      this.rowData = [...this.rowData];
+      this.gridApi.setGridOption('rowData', this.rowData);
+      Swal.fire({ icon: 'success', title: 'Descripcion actualizada', timer: 1000, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo actualizar la descripcion.', 'error');
+    }
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   estadoColor(val: string) { return ESTADOS_PROSPECTO.find(e => e.value === val)?.color ?? 'secondary'; }
   estadoLabel(val: string) { return ESTADOS_PROSPECTO.find(e => e.value === val)?.label ?? val; }
   estadoIcon(val: string)  { return ESTADOS_PROSPECTO.find(e => e.value === val)?.icon  ?? '•'; }
+
+  private getCurrentDateTimeLocal(): string {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 16);
+  }
+
+  private formatDateTimeLocal(ts: any): string {
+    if (!ts) return this.getCurrentDateTimeLocal();
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    const offset = date.getTimezoneOffset();
+    return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
+  }
 
   formatFecha(ts: any): string {
     if (!ts) return '';

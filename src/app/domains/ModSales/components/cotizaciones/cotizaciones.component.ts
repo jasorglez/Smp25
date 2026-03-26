@@ -10,7 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { DetalleItemsCotizacionComponent } from './detalle-items-cotizacion.component';
 import { ConfigCotizacionesComponent } from './config-cotizaciones.component';
-import { Subscription } from 'rxjs';
+import { combineLatest, Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -142,6 +142,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
           params.data.nombreProspecto  = p.nombre;
           params.data.idProspecto      = p.id ?? '';
           params.data.empresaProspecto = (p as any).empresa ?? '';
+          params.data.puestoProspecto  = (p as any).puesto  ?? '';
         } else {
           params.data.nombreProspecto = params.newValue;
         }
@@ -213,15 +214,25 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       this.config = cfg;
       this.actualizarContextoDetalle();
     });
-    this.prospectosSvc.getProspectos(this.idVendedor).subscribe(data => {
-      this.prospectos = data;
-    });
-    this.sub = this.svc.getCotizaciones(this.idVendedor).subscribe({
-      next: data => {
+    this.sub = combineLatest([
+      this.prospectosSvc.getProspectos(this.idVendedor),
+      this.svc.getCotizaciones(this.idVendedor),
+    ]).subscribe({
+      next: ([prospectos, data]) => {
+        this.prospectos = prospectos;
         this.rowData = data
           .filter(c => (c as any).activo !== false)
           .sort((a: any, b: any) => (b.fecha?.toMillis?.() ?? 0) - (a.fecha?.toMillis?.() ?? 0))
-          .map(c => ({ ...c, countItems: (c as any).countItems ?? 0, total: (c as any).total ?? 0, __isNew: false, __modified: false }));
+          .map(c => {
+            const p = prospectos.find(x => x.id === (c as any).idProspecto);
+            return {
+              ...c,
+              puestoProspecto: (c as any).puestoProspecto || p?.puesto || '',
+              countItems: (c as any).countItems ?? 0,
+              total: (c as any).total ?? 0,
+              __isNew: false, __modified: false,
+            };
+          });
         this.originalData = JSON.parse(JSON.stringify(this.rowData));
         this.hasUnsavedChanges = false;
         this.loading = false;
@@ -239,6 +250,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       idProspecto:     '',
       nombreProspecto: '',
       empresaProspecto: '',
+      puestoProspecto:  '',
       lugar:           this.config.lugarDefault ?? '',
       idVendedor:      this.idVendedor,
       nombreVendedor:  this.nombreVendedor,

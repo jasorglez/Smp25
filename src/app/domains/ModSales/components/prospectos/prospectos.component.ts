@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ProspectosService, Prospecto, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
+import { UsersService } from 'app/services/users.service';
 import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import Swal from 'sweetalert2';
@@ -20,6 +21,21 @@ import Swal from 'sweetalert2';
 export class ProspectosComponent implements OnInit {
   private svc        = inject(ProspectosService);
   private signalsSvc = inject(SignalsService);
+  private usersSvc   = inject(UsersService);
+
+  constructor() {
+    effect(() => {
+      const idRoot = this.signalsSvc.getRootSelectedBySidebar()();
+      if (idRoot) {
+        this.usersSvc.get2fieldsUsers(idRoot).subscribe({
+          next: (res: any) => {
+            const data: any[] = res?.data ?? res ?? [];
+            this.vendedores = data.map((u: any) => ({ id: u.id, displayName: u.displayName ?? u.DisplayName ?? '' }));
+          },
+        });
+      }
+    });
+  }
 
   gridApi!: GridApi;
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -30,12 +46,14 @@ export class ProspectosComponent implements OnInit {
   hasUnsavedChanges = false;
   loading           = false;
 
+  vendedores: { id: number; displayName: string }[] = [];
+
   get idVendedor()     { return this.signalsSvc.idUser(); }
-  get idCompany()      { return this.signalsSvc.idCompany(); }
+  get idRoot()         { return this.signalsSvc.getRootSelectedBySidebar()(); }
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['nombre', 'telefono', 'empresa', 'estado'];
+  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'domicilio', 'estado'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -115,9 +133,22 @@ export class ProspectosComponent implements OnInit {
           return e ? `<span class="badge bg-${e.color}">${e.icon} ${e.label}</span>` : p.value ?? '';
         },
       },
-      { field: 'nombre',   headerName: 'Nombre',   flex: 1,   editable: true, filter: true },
+      {
+        field: 'nombreVendedorActual', headerName: 'Vendedor', width: 185, editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.vendedores.map(v => v.displayName) }),
+        valueSetter: (params: any) => {
+          params.data.nombreVendedorActual = params.newValue;
+          const found = this.vendedores.find(v => v.displayName === params.newValue);
+          if (found) params.data.idVendedorActual = found.id;
+          return true;
+        },
+      },
+      { field: 'empresa',  headerName: 'Empresa',  width: 180, editable: true, filter: true },
+      { field: 'nombre',   headerName: 'Nombre',   width: 160, editable: true, filter: true },
+      { field: 'puesto',   headerName: 'Puesto',   width: 140, editable: true },
       { field: 'telefono', headerName: 'Teléfono', width: 145, editable: true },
-      { field: 'empresa',  headerName: 'Empresa',  width: 165, editable: true, filter: true },
+      { field: 'domicilio', headerName: 'Domicilio', width: 220, editable: true, filter: true },
       {
         field: 'fechaUltimaInteraccion',
         headerName: 'Última Interacción', width: 175, editable: false,
@@ -164,7 +195,9 @@ export class ProspectosComponent implements OnInit {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-  ngOnInit() { this.cargarProspectos(); }
+  ngOnInit() {
+    this.cargarProspectos();
+  }
 
   cargarProspectos() {
     this.loading = true;
@@ -172,6 +205,7 @@ export class ProspectosComponent implements OnInit {
       next: data => {
         this.rowData = data.map(p => ({
           ...p,
+          domicilio: (p as any).domicilio ?? '',
           countInteracciones: (p as any).countInteracciones ?? 0,
           __isNew: false,
           __modified: false,
@@ -188,9 +222,9 @@ export class ProspectosComponent implements OnInit {
 
   add() {
     const nuevo: any = {
-      nombre: '', telefono: '', empresa: '', estado: 'nuevo',
+      nombre: '', telefono: '', empresa: '', puesto: '', domicilio: '', estado: 'nuevo',
       idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
-      chatIdVendedorActual: '', idCompany: this.idCompany,
+      chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
       fechaCreacion: null, fechaUltimaInteraccion: null,
@@ -221,7 +255,9 @@ export class ProspectosComponent implements OnInit {
         } else {
           await this.svc.actualizarProspecto(p.id!, {
             nombre: p.nombre, telefono: p.telefono,
-            empresa: p.empresa, estado: p.estado,
+            empresa: p.empresa, puesto: p.puesto, domicilio: p.domicilio, estado: p.estado,
+            idVendedorActual: p.idVendedorActual,
+            nombreVendedorActual: p.nombreVendedorActual,
           });
         }
       } catch {

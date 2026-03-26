@@ -6,7 +6,6 @@ import {
   collectionData,
   query,
   where,
-  orderBy,
   doc,
   updateDoc,
   increment,
@@ -20,6 +19,7 @@ export interface Prospecto {
   nombre: string;
   telefono: string;
   empresa: string;
+  domicilio: string;
   estado: string;
   idVendedorActual: number;
   nombreVendedorActual: string;
@@ -30,6 +30,7 @@ export interface Prospecto {
   fechaCreacion: Timestamp;
   fechaUltimaInteraccion: Timestamp;
   notas: string;
+  puesto: string;
   idCustomer: string | null;
   activo: boolean;
   __isNew?: boolean;
@@ -45,6 +46,10 @@ export interface Interaccion {
   nombreVendedor: string;
   resultado: string;
   creadoPor: string;
+}
+
+export interface NuevaInteraccionPayload extends Omit<Interaccion, 'id' | 'fecha' | 'creadoPor'> {
+  fecha?: Date | string | null;
 }
 
 export const ESTADOS_PROSPECTO = [
@@ -75,6 +80,7 @@ export class ProspectosService {
       nombre:               p.nombre ?? '',
       telefono:             p.telefono ?? '',
       empresa:              p.empresa ?? '',
+      domicilio:            p.domicilio ?? '',
       estado:               'nuevo',
       activo:               true,
       creadoPor:            'web',
@@ -84,6 +90,7 @@ export class ProspectosService {
       idCompany:            p.idCompany ?? null,
       idVendedorCreador:    p.idVendedorActual ?? 0,
       notas:                  '',
+      puesto:                 p.puesto ?? '',
       idCustomer:             null,
       countInteracciones:     0,
       fechaCreacion:          now,
@@ -112,23 +119,37 @@ export class ProspectosService {
     });
   }
 
-  async registrarInteraccion(prospectoId: string, i: Omit<Interaccion, 'id' | 'fecha' | 'creadoPor'>): Promise<void> {
-    const now = Timestamp.now();
+  async registrarInteraccion(prospectoId: string, i: NuevaInteraccionPayload): Promise<void> {
+    const fechaInteraccion = i.fecha ? Timestamp.fromDate(new Date(i.fecha)) : Timestamp.now();
+    const { fecha, ...data } = i;
     await addDoc(collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`), {
-      ...i, fecha: now, creadoPor: 'web',
+      ...data, fecha: fechaInteraccion, creadoPor: 'web',
     });
     await updateDoc(doc(this.firestore, this.COL, prospectoId), {
-      fechaUltimaInteraccion: now,
+      fechaUltimaInteraccion: fechaInteraccion,
       countInteracciones: increment(1),
     });
   }
 
+  async actualizarInteraccion(prospectoId: string, interaccionId: string, campos: Partial<Interaccion> & { fecha?: Date | string | null }): Promise<void> {
+    const docRef = doc(this.firestore, `${this.COL}/${prospectoId}/interacciones`, interaccionId);
+    const data: any = { ...campos };
+
+    if (data.fecha) {
+      data.fecha = Timestamp.fromDate(new Date(data.fecha));
+    }
+
+    await updateDoc(docRef, data);
+  }
+
   async getInteracciones(prospectoId: string): Promise<Interaccion[]> {
-    const q = query(
-      collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`),
-      orderBy('fecha', 'desc')
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Interaccion);
+    const snap = await getDocs(collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }) as Interaccion)
+      .sort((a, b) => {
+        const aTime = (a.fecha as any)?.seconds ?? (a.fecha as any)?.toDate?.().getTime() / 1000 ?? 0;
+        const bTime = (b.fecha as any)?.seconds ?? (b.fecha as any)?.toDate?.().getTime() / 1000 ?? 0;
+        return bTime - aTime;
+      });
   }
 }
