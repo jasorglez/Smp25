@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -23,6 +23,20 @@ export class ProspectosComponent implements OnInit {
   private signalsSvc = inject(SignalsService);
   private usersSvc   = inject(UsersService);
 
+  constructor() {
+    effect(() => {
+      const idRoot = this.signalsSvc.getRootSelectedBySidebar()();
+      if (idRoot) {
+        this.usersSvc.get2fieldsUsers(idRoot).subscribe({
+          next: (res: any) => {
+            const data: any[] = res?.data ?? res ?? [];
+            this.vendedores = data.map((u: any) => ({ id: u.id, displayName: u.displayName ?? u.DisplayName ?? '' }));
+          },
+        });
+      }
+    });
+  }
+
   gridApi!: GridApi;
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -35,7 +49,7 @@ export class ProspectosComponent implements OnInit {
   vendedores: { id: number; displayName: string }[] = [];
 
   get idVendedor()     { return this.signalsSvc.idUser(); }
-  get idCompany()      { return this.signalsSvc.idCompany(); }
+  get idRoot()         { return this.signalsSvc.getRootSelectedBySidebar()(); }
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
@@ -182,11 +196,6 @@ export class ProspectosComponent implements OnInit {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit() {
-    this.usersSvc.get2fieldsUsers(this.idCompany).subscribe({
-      next: (data: any[]) => {
-        this.vendedores = data.map(u => ({ id: u.id, displayName: u.displayName ?? u.DisplayName ?? '' }));
-      },
-    });
     this.cargarProspectos();
   }
 
@@ -215,7 +224,7 @@ export class ProspectosComponent implements OnInit {
     const nuevo: any = {
       nombre: '', telefono: '', empresa: '', puesto: '', domicilio: '', estado: 'nuevo',
       idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
-      chatIdVendedorActual: '', idCompany: this.idCompany,
+      chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
       fechaCreacion: null, fechaUltimaInteraccion: null,

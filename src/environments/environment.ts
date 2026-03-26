@@ -73,7 +73,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '5.01 (26 Marzo 2026) - Prospectos: combo vendedor, bot fix SessionJson + idCompany query',
+  version: '5.01 (26 Marzo 2026) - Prospectos: fix combo vendedor desempaca data.data del API',
 };
 
 
