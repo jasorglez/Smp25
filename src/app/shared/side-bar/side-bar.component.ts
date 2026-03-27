@@ -1,5 +1,4 @@
 import { Component, effect } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
@@ -14,6 +13,9 @@ import { SharedModule } from '../shared.module';
 import { FormsModule } from '@angular/forms';
 import { EMPTY, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
+import { ConventionsService } from 'app/services/conventions.service';
+import { PresupuestoService } from 'app/services/presupuesto.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-side-bar',
@@ -42,6 +44,8 @@ export class SideBarComponent {
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
   userRoot: number = 0;
+  conventionVigenteNombre: string = '';
+  presupuestoVigenteNombre: string = '';
 
   usersData: any[];
 
@@ -57,7 +61,9 @@ export class SideBarComponent {
     public contractService: ContractsService,
     public projectService: ProjectsService,
     private userService: UsersService,
-    private signalsService: SignalsService
+    private signalsService: SignalsService,
+    private conventionsService: ConventionsService,
+    private presupuestoService: PresupuestoService
   ) {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
@@ -280,6 +286,7 @@ error: (error) => {
       this.signalsService.setProjectSelectedBySidebar(null);
       this.signalsService.setSidebarProjectId(null);
       this.trackingService.setContract(this.selectedContractId);
+      this.loadVigenteConvention(Number(this.selectedContractId));
       await this.getpermissionxProjects(Number(this.selectedContractId));
     }
   }
@@ -324,6 +331,7 @@ error: (error) => {
             this.contractData[0].contract ?? ''
           );
           this.trackingService.setContract(this.selectedContractId);
+          this.loadVigenteConvention(Number(this.selectedContractId));
           setTimeout(() => {
             const sel = document.getElementById('contracts') as HTMLSelectElement;
             if (sel) sel.value = this.selectedContractId;
@@ -348,6 +356,9 @@ error: (error) => {
       );
       // Signal exclusiva del sidebar (no la toca ordenes)
       this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
+      const found = this.projectData.find(p => String(p.idProject) === this.selectedProjectId);
+      this.signalsService.setProjectNameBySidebar(found?.projectName ?? '');
+      this.loadVigentePresupuesto(Number(this.selectedRoot), Number(this.selectedProjectId));
     }
   }
 
@@ -365,6 +376,8 @@ error: (error) => {
             this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
             // Signal exclusiva del sidebar (no la toca ordenes)
             this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
+            this.signalsService.setProjectNameBySidebar(this.projectData[0].projectName ?? '');
+            this.loadVigentePresupuesto(Number(this.selectedRoot), Number(this.selectedProjectId));
             setTimeout(() => {
               const sel = document.getElementById('project') as HTMLSelectElement;
               if (sel) sel.value = this.selectedProjectId;
@@ -509,6 +522,20 @@ error: (error) => {
     );
   }
 
+  openProjects(event: Event) {
+    if (!this.selectedContractId || Number(this.selectedContractId) <= 0) {
+      event.preventDefault();
+      alerts.basicAlert(
+        'Contrato requerido',
+        'Hey debes de tener siempre un Contrato para una estimacion',
+        'warning'
+      );
+      return;
+    }
+
+    this.SmpSetup();
+  }
+
   warehouseproc() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -539,6 +566,13 @@ error: (error) => {
     this.signalsService.setProjectSelectedBySidebar(null);
     this.signalsService.setSidebarProjectId(null);
     this.trackingService.setProject('');
+
+    // Limpiar convenio vigente
+    this.conventionVigenteNombre = '';
+    this.signalsService.setConventionVigente(null);
+
+    // Limpiar presupuesto vigente
+    this.presupuestoVigenteNombre = '';
     
     // Limpiar los selects en el DOM
     setTimeout(() => {
@@ -552,6 +586,26 @@ error: (error) => {
         projectSelect.value = '';
       }
     }, 50);
+  }
+
+  private loadVigenteConvention(idContract: number) {
+    this.conventionsService.getVigenteConvention(idContract).subscribe(vigente => {
+      if (vigente) {
+        this.conventionVigenteNombre = vigente.name;
+        this.signalsService.setConventionVigente(vigente);
+      } else {
+        this.conventionVigenteNombre = '';
+        this.signalsService.setConventionVigente(null);
+      }
+    });
+  }
+
+  private loadVigentePresupuesto(idCompany: number, idProject: number) {
+    if (!idCompany || !idProject) { this.presupuestoVigenteNombre = ''; return; }
+    this.presupuestoService.getVigente(idCompany, idProject).subscribe({
+      next: (p) => { this.presupuestoVigenteNombre = p ? p.nombre : ''; },
+      error: () => { this.presupuestoVigenteNombre = ''; }
+    });
   }
 
   private loadPermissions() {
