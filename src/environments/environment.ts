@@ -28,8 +28,8 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  urlSecurity: 'https://bi2.com.mx/api', // 5003
-  //urlSecurity     : 'http://localhost:5260/api',
+  //urlSecurity: 'https://bi2.com.mx/api', // 5003
+  urlSecurity     : 'http://localhost:5260/api',
 
   urlSmp: 'https://bi2.com.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
@@ -72,6 +72,13 @@ export const environment = {
   deleteFiles: 'http://localhost/sistemas-angular/marketplace/src/assets/img/delete.php?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
+
+  mercadoPago: {
+    // Produccion (ACTIVO)
+    //publicKey: 'APP_USR-973e19ca-fa24-4983-8858-6562d5b40f9f', //Produccion
+    // Pruebas (descomenta esta linea y comenta la de Produccion para cambiar manualmente)
+    publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
+  },
 
   version: '5.04 (26 Marzo 2026) - Prospectos: historial recalculado desde interacciones reales',
 };

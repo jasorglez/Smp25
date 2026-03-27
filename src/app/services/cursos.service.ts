@@ -60,6 +60,61 @@ export class CursosService {
   private http      = inject(HttpClient);
   private readonly COL = 'cursos';
 
+  // ── Mercado Pago (curso de pago) ─────────────────────────────────────────
+
+  private mercadoPagoBaseUrl(): string {
+    // urlSecurity ya trae /api (ver environment.ts).
+    return `${environment.urlSecurity}/MercadoPago`;
+  }
+
+  crearMercadoPagoPreference(params: {
+    externalReference: string;
+    courseSlug: string;
+    title?: string;
+    amount: number;
+    currency: string;
+  }): Observable<{ init_point: string; preference_id: string }> {
+    return this.http.post<{ init_point: string; preference_id: string }>(
+      `${this.mercadoPagoBaseUrl()}/create-preference`,
+      {
+        externalReference: params.externalReference,
+        courseSlug: params.courseSlug,
+        title: params.title,
+        amount: params.amount,
+        currency: params.currency,
+      }
+    );
+  }
+
+  verificarMercadoPagoPayment(paymentId: string): Observable<{ payment_id: string; status: string }> {
+    return this.http.get<{ payment_id: string; status: string }>(
+      `${this.mercadoPagoBaseUrl()}/verify`,
+      { params: { payment_id: paymentId } }
+    );
+  }
+
+  procesarMercadoPagoPago(payload: {
+    transaction_amount: number;
+    token: string;
+    description?: string;
+    installments: number;
+    payment_method_id: string;
+    issuer_id?: string;
+    external_reference?: string;
+    payer: {
+      email: string;
+      identification?: {
+        type?: string;
+        number?: string;
+      };
+    };
+  }): Observable<{ payment_id: string; status: string; status_detail?: string }> {
+    return this.http.post<{ payment_id: string; status: string; status_detail?: string }>(
+      `${this.mercadoPagoBaseUrl()}/process-payment`,
+      payload
+    );
+  }
+
   // ── Cursos ────────────────────────────────────────────────────────────────
 
   getCursos(idCompany: number): Observable<Curso[]> {

@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { CursosService, Curso, COMO_SE_ENTERO_OPCIONES, EXPERIENCIA_OPCIONES } from 'app/services/cursos.service';
 import { Timestamp } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '@env/environment';
 
 type Estado = 'cargando' | 'no-encontrado' | 'lleno' | 'formulario' | 'enviado' | 'duplicado' | 'error';
 
@@ -109,131 +111,27 @@ type PasoRegistro = 1 | 2;
             <div class="rc-step-label"><span class="rc-step-dot">1</span> Pago</div>
 
             <div class="rc-mp-top">
-              <span class="rc-mp-pill">Demo</span>
-              <span class="rc-mp-name">mercado pago</span>
+              <span class="rc-mp-pill">Cobro real</span>
+              <span class="rc-mp-name">Mercado Pago</span>
             </div>
 
             <div class="rc-mp-card">
               <div class="rc-mp-card-inner">
                 <div class="rc-mp-summary">
                   <p class="rc-mp-note">
-                    <i class="bi bi-info-circle"></i>
-                    Maqueta sin cobro real. Después podrás completar tus datos.
+                    <i class="bi bi-lock"></i>
+                    Cobro en esta misma página con Mercado Pago.
                   </p>
                   <div class="rc-mp-totalbox">
                     <span class="rc-mp-total-label">Total</span>
                     <span class="rc-mp-total-val">{{ precioFormateado() }}</span>
                   </div>
                 </div>
-                <div class="rc-mp-paycol">
-                  <div class="rc-mp-payrow">
-                    <div
-                      class="rc-cc-scene"
-                      [class.rc-cc-scene--flip]="tarjetaVolteada"
-                      aria-hidden="true"
-                    >
-                      <div class="rc-cc-pivot">
-                        <div class="rc-cc-face rc-cc-front">
-                          <div class="rc-cc-waves" aria-hidden="true"></div>
-                          <div class="rc-cc-chip" aria-hidden="true"></div>
-                          <div class="rc-cc-contactless" aria-hidden="true"><i class="bi bi-wifi"></i></div>
-                          <div class="rc-cc-number">{{ tarjetaNumeroDisplayFrente() }}</div>
-                          <div class="rc-cc-bottom">
-                            <div class="rc-cc-holder">
-                              <span class="rc-cc-lab">Titular</span>
-                              <span class="rc-cc-val">{{ tarjetaTitularDisplay() }}</span>
-                            </div>
-                            <div class="rc-cc-exp">
-                              <span class="rc-cc-lab">Vence</span>
-                              <span class="rc-cc-val">{{ mockPago.vence || 'MM/AA' }}</span>
-                            </div>
-                            <div class="rc-cc-brand" aria-hidden="true">
-                              <span class="rc-cc-brand-circle rc-cc-brand-circle--r"></span>
-                              <span class="rc-cc-brand-circle rc-cc-brand-circle--o"></span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="rc-cc-face rc-cc-back">
-                          <div class="rc-cc-waves rc-cc-waves--back" aria-hidden="true"></div>
-                          <div class="rc-cc-stripe"></div>
-                          <div class="rc-cc-sign">
-                            <div class="rc-cc-sign-lines"></div>
-                            <div class="rc-cc-cvv-box">
-                              <span class="rc-cc-cvv-val">{{ tarjetaCvvDisplayReverso() }}</span>
-                            </div>
-                          </div>
-                          <p class="rc-cc-back-hint">CVV</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="rc-mp-fields">
-                      <label class="rc-label">Número de tarjeta <span class="rc-label-muted">(demo)</span></label>
-                      <input
-                        class="rc-input"
-                        type="text"
-                        inputmode="numeric"
-                        autocomplete="off"
-                        [ngModel]="numeroTarjetaMaskedInput()"
-                        (ngModelChange)="onNumeroTarjetaChange($event)"
-                        (focus)="setTarjetaCara('frente')"
-                        placeholder="0000 0000 0000 0000"
-                        maxlength="19"
-                      >
-                      <label class="rc-label rc-label--mt">Nombre del titular</label>
-                      <input
-                        class="rc-input"
-                        type="text"
-                        autocomplete="off"
-                        [(ngModel)]="mockPago.titular"
-                        (focus)="setTarjetaCara('frente')"
-                        placeholder="Como en la tarjeta"
-                      >
-                      <p class="rc-mp-field-hint">Como aparece en la tarjeta</p>
-                      <div class="rc-mp-row">
-                        <div>
-                          <label class="rc-label">Vencimiento</label>
-                          <input
-                            class="rc-input"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="off"
-                            [ngModel]="mockPago.vence"
-                            (ngModelChange)="onVenceChange($event)"
-                            (focus)="setTarjetaCara('frente')"
-                            placeholder="MM/AA"
-                            maxlength="5"
-                          >
-                        </div>
-                        <div>
-                          <label class="rc-label">CVV</label>
-                          <input
-                            id="mockTarjetaCvv"
-                            class="rc-input"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="off"
-                            [ngModel]="mockPago.cvv"
-                            (ngModelChange)="onCvvChange($event)"
-                            (focus)="setTarjetaCara('reverso')"
-                            (blur)="onCvvBlur()"
-                            placeholder="000"
-                            maxlength="4"
-                          >
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    class="rc-btn rc-btn--mp"
-                    (click)="simularPagoYAvanzar()"
-                    (focus)="setTarjetaCara('frente')"
-                    [disabled]="enviando"
-                  >
-                    <span *ngIf="enviando" class="rc-spinner"></span>
-                    <span>{{ enviando ? 'Procesando…' : 'Pagar ' + precioFormateado() }}</span>
-                  </button>
+                <div class="rc-mp-realpay">
+                  <div id="rc-mp-payment-brick"></div>
+                  <p class="rc-mp-privacy-footnote" style="margin-top: 0.6rem; font-size: 0.8rem; color: var(--rc-muted);">
+                    Tus datos de pago se procesan de forma segura con Mercado Pago.
+                  </p>
                 </div>
               </div>
             </div>
@@ -539,6 +437,38 @@ type PasoRegistro = 1 | 2;
       display: flex;
       flex-direction: column;
       gap: 1rem;
+    }
+    .rc-mp-layout {
+      display: grid;
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (min-width: 992px) {
+      .rc-mp-layout {
+        grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+        gap: 1.25rem 1.5rem;
+      }
+    }
+    .rc-mp-preview-col {
+      background: #fff;
+      border: 1px solid var(--rc-line);
+      border-radius: 10px;
+      padding: 0.85rem;
+    }
+    .rc-mp-preview-title {
+      margin: 0 0 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--rc-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .rc-mp-preview-note {
+      margin: 0.75rem 0 0;
+    }
+    .rc-mp-realpay {
+      margin-top: 0.2rem;
+      min-width: 0;
     }
     @media (min-width: 768px) {
       .rc-mp-card-inner {
@@ -967,8 +897,17 @@ export class RegistroCursosComponent implements OnInit {
   enviando  = false;
   submitted = false;
   pasoRegistro: PasoRegistro = 1;
-  /** Solo para cursos de pago: true después de la maqueta “Pagar (demo)”. */
+  /** Solo para cursos de pago: true después de un pago aprobado en Mercado Pago. */
   pagoSimuladoOk = false;
+
+  // Datos que Mercado Pago regresa en la URL de retorno.
+  private mpReturnStatus: string | null = null;
+  private mpReturnExternalReference: string | null = null;
+  private mpReturnPaymentId: string | null = null;
+  private mpExpectedIntentId: string | null = null;
+  private mpBrickController: any = null;
+  private mpBrickContainerId = 'rc-mp-payment-brick';
+  private mpSdkLoading = false;
 
   /** Maqueta: datos de tarjeta solo en pantalla (no se envían). */
   mockPago = { numero: '', titular: '', vence: '', cvv: '' };
@@ -987,6 +926,13 @@ export class RegistroCursosComponent implements OnInit {
   ngOnInit() {
     const slug = this.route.snapshot.queryParamMap.get('c') ?? '';
     if (!slug) { this.estado = 'no-encontrado'; return; }
+
+    // Estos campos vienen del redirect de Mercado Pago.
+    this.mpReturnStatus = this.route.snapshot.queryParamMap.get('status');
+    this.mpReturnExternalReference = this.route.snapshot.queryParamMap.get('external_reference');
+    this.mpReturnPaymentId = this.route.snapshot.queryParamMap.get('payment_id');
+    this.mpExpectedIntentId = sessionStorage.getItem('mp_intent_id');
+
     this.cargarCurso(slug);
   }
 
@@ -1072,16 +1018,195 @@ export class RegistroCursosComponent implements OnInit {
       this.pagoSimuladoOk = false;
       this.resetMockTarjeta();
       this.estado = 'formulario';
+      await this.aplicarResultadoMercadoPagoSiAplica();
+      await this.inicializarPagoEmbebidoSiAplica();
     } catch { this.estado = 'no-encontrado'; }
   }
 
-  /** Maqueta: avanza al formulario (no guarda aún). */
+  private async inicializarPagoEmbebidoSiAplica(): Promise<void> {
+    if (!this.curso || !this.esCursoDePago() || this.pasoRegistro !== 1) return;
+
+    const publicKey = (environment as any)?.mercadoPago?.publicKey;
+    if (!publicKey || String(publicKey).includes('<PEGAR_')) {
+      console.error('Falta configurar environment.mercadoPago.publicKey');
+      return;
+    }
+
+    try {
+      await this.ensureMercadoPagoSdkLoaded();
+
+      const MercadoPagoCtor = (window as any).MercadoPago;
+      if (!MercadoPagoCtor) {
+        throw new Error('SDK Mercado Pago no disponible en window');
+      }
+
+      if (this.mpBrickController?.unmount) {
+        try { this.mpBrickController.unmount(); } catch {}
+      }
+
+      const container = document.getElementById(this.mpBrickContainerId);
+      if (!container) return;
+      container.innerHTML = '';
+
+      const mp = new MercadoPagoCtor(publicKey, { locale: 'es-MX' });
+      const bricksBuilder = mp.bricks();
+      const intentId = crypto.randomUUID();
+      sessionStorage.setItem('mp_intent_id', intentId);
+      const initEmail = (this.form.correo || '').trim();
+
+      this.mpBrickController = await bricksBuilder.create('cardPayment', this.mpBrickContainerId, {
+        initialization: {
+          amount: Number(this.curso.precio || 0),
+          payer: {
+            email: initEmail || undefined,
+          },
+        },
+        customization: {
+          paymentMethods: {
+            maxInstallments: 12,
+          },
+        },
+        callbacks: {
+          onReady: () => {},
+          onSubmit: async ({ formData }: any) => {
+            const payerEmail = (formData?.payer?.email || this.form.correo || '').trim();
+            if (!payerEmail) {
+              throw new Error('Correo requerido para procesar el pago');
+            }
+            const payload = {
+              transaction_amount: Number(this.curso?.precio || 0),
+              token: formData?.token,
+              description: this.curso?.nombre ?? 'Curso',
+              installments: Number(formData?.installments || 1),
+              payment_method_id: formData?.payment_method_id,
+              issuer_id: formData?.issuer_id,
+              external_reference: intentId,
+              payer: {
+                email: payerEmail,
+                identification: formData?.payer?.identification
+                  ? {
+                      type: formData.payer.identification.type,
+                      number: formData.payer.identification.number,
+                    }
+                  : undefined,
+              },
+            };
+
+            const result = await firstValueFrom(this.svc.procesarMercadoPagoPago(payload));
+            if (result?.status === 'approved' || result?.status === 'in_process') {
+              if (!this.form.correo) this.form.correo = payerEmail;
+              this.pagoSimuladoOk = true;
+              this.pasoRegistro = 2;
+              sessionStorage.removeItem('mp_intent_id');
+              if (this.mpBrickController?.unmount) {
+                try { this.mpBrickController.unmount(); } catch {}
+              }
+              return result;
+            }
+            throw new Error(`Pago no aprobado (${result?.status ?? 'desconocido'})`);
+          },
+          onError: (error: any) => {
+            console.error('Error en Payment Brick Mercado Pago', error, JSON.stringify(error));
+          },
+        },
+      });
+    } catch (e) {
+      console.error('No se pudo inicializar el pago embebido de Mercado Pago', e);
+    }
+  }
+
+  private async ensureMercadoPagoSdkLoaded(): Promise<void> {
+    if ((window as any).MercadoPago) return;
+    if (this.mpSdkLoading) {
+      await new Promise((r) => setTimeout(r, 300));
+      if ((window as any).MercadoPago) return;
+    }
+
+    this.mpSdkLoading = true;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const existing = document.querySelector('script[data-mp-sdk="true"]') as HTMLScriptElement | null;
+        if (existing) {
+          if ((window as any).MercadoPago) return resolve();
+          existing.addEventListener('load', () => resolve(), { once: true });
+          existing.addEventListener('error', () => reject(new Error('Error cargando SDK Mercado Pago')), { once: true });
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://sdk.mercadopago.com/js/v2';
+        script.async = true;
+        script.defer = true;
+        script.setAttribute('data-mp-sdk', 'true');
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('No se pudo cargar SDK Mercado Pago'));
+        document.body.appendChild(script);
+      });
+    } finally {
+      this.mpSdkLoading = false;
+    }
+  }
+
+  private async aplicarResultadoMercadoPagoSiAplica(): Promise<void> {
+    if (!this.curso) return;
+    if (!this.esCursoDePago()) return;
+
+    if (this.mpReturnStatus !== 'approved') return;
+    if (!this.mpReturnPaymentId) return;
+
+    // Si todavía tenemos un intent esperado y no coincide, lo ignoramos.
+    if (this.mpExpectedIntentId &&
+        this.mpReturnExternalReference &&
+        this.mpReturnExternalReference !== this.mpExpectedIntentId) {
+      return;
+    }
+
+    try {
+      this.enviando = true;
+      const verificacion = await firstValueFrom(
+        this.svc.verificarMercadoPagoPayment(this.mpReturnPaymentId)
+      );
+
+      if (verificacion?.status === 'approved') {
+        this.pagoSimuladoOk = true;
+        this.pasoRegistro = 2;
+        sessionStorage.removeItem('mp_intent_id');
+      }
+    } catch (e) {
+      console.error('Error verificando pago Mercado Pago', e);
+    } finally {
+      this.enviando = false;
+    }
+  }
+
+  /** Fallback para flujo previo por preferencia (se mantiene por compatibilidad). */
   async simularPagoYAvanzar() {
+    if (!this.curso) return;
+    if (!this.esCursoDePago()) return;
+
+    const slug = this.route.snapshot.queryParamMap.get('c') ?? this.curso.slug;
+    if (!slug) return;
+
+    const intentId = crypto.randomUUID();
+    sessionStorage.setItem('mp_intent_id', intentId);
+
     this.enviando = true;
     try {
-      await new Promise((r) => setTimeout(r, 450));
-      this.pagoSimuladoOk = true;
-      this.pasoRegistro = 2;
+      const resp = await firstValueFrom(
+        this.svc.crearMercadoPagoPreference({
+          externalReference: intentId,
+          courseSlug: slug,
+          title: this.curso.nombre,
+          amount: this.curso.precio,
+          currency: (this.curso.moneda ?? 'MXN').toUpperCase(),
+        })
+      );
+
+      // Redirección fuera del SPA (Mercado Pago captura los datos de pago).
+      window.location.href = resp.init_point;
+    } catch (e) {
+      console.error('Error creando preferencia Mercado Pago', e);
+      this.estado = 'error';
     } finally {
       this.enviando = false;
     }
@@ -1092,6 +1217,7 @@ export class RegistroCursosComponent implements OnInit {
     this.pagoSimuladoOk = false;
     this.submitted = false;
     this.resetMockTarjeta();
+    setTimeout(() => this.inicializarPagoEmbebidoSiAplica());
   }
 
   /** Valida formulario y persiste (tras pago simulado si aplica). */
@@ -1119,7 +1245,17 @@ export class RegistroCursosComponent implements OnInit {
     try {
       const duplicado = await this.svc.correoYaRegistrado(this.curso!.id!, this.form.correo);
       if (duplicado) { this.estado = 'duplicado'; this.enviando = false; return; }
-      await this.svc.crearRegistro(this.curso!.id!, { ...this.form, idCompany: this.curso!.idCompany });
+
+      const registroId = await this.svc.crearRegistro(this.curso!.id!, {
+        ...this.form,
+        idCompany: this.curso!.idCompany,
+      });
+
+      // Si el curso requiere pago y Mercado Pago lo aprobó, marcamos el registro como pagado.
+      if (this.esCursoDePago() && this.pagoSimuladoOk) {
+        await this.svc.marcarPagado(this.curso!.id!, registroId, true);
+      }
+
       await this.svc.enviarConfirmacionAlumno(this.curso!, this.form);
       this.svc.notificarAdminTelegram(this.curso!.telegramChatId, this.curso!, this.form);
       this.estado = 'enviado';

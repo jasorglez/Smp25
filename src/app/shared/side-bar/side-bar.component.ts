@@ -14,10 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { EMPTY, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
 import { ConventionsService } from 'app/services/conventions.service';
-<<<<<<< HEAD
-=======
 import { PresupuestoService } from 'app/services/presupuesto.service';
->>>>>>> 0d68c1b33ddbccd2e1d752a445226f56be9d94ae
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -65,12 +62,8 @@ export class SideBarComponent {
     public projectService: ProjectsService,
     private userService: UsersService,
     private signalsService: SignalsService,
-<<<<<<< HEAD
-    private conventionsService: ConventionsService
-=======
     private conventionsService: ConventionsService,
     private presupuestoService: PresupuestoService
->>>>>>> 0d68c1b33ddbccd2e1d752a445226f56be9d94ae
   ) {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
