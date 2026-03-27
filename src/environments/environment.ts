@@ -71,7 +71,7 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.00 (23 Marzo 2026 17:00) - Iris',
+  version: '6.00 (27 Marzo 2026 13:00) - Lilac',
 
 
 };
