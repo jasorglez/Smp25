@@ -23,7 +23,29 @@ import { AuthService } from 'app/services/auth.service';
     UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent,
     UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent,
     UsersxMasterPermissions2Component, UsersXStoresComponent, UsersXCashRegistersComponent],
-  templateUrl: './users-menu.component.html'
+  templateUrl: './users-menu.component.html',
+  styles: [`
+    .nav-pills .nav-link:hover,
+    .nav-pills .nav-link:focus {
+      color: #6c757d !important;
+    }
+
+    .nav-pills .nav-link.active,
+    .nav-pills .show > .nav-link {
+      background-color: #6b7280 !important;
+      border-color: #6b7280 !important;
+      color: #ffffff !important;
+    }
+
+    .nav-pills .nav-link.active:hover,
+    .nav-pills .nav-link.active:focus,
+    .nav-pills .show > .nav-link:hover,
+    .nav-pills .show > .nav-link:focus {
+      color: #ffffff !important;
+      background-color: #6b7280 !important;
+      border-color: #6b7280 !important;
+    }
+  `]
 })
 export class UsersMenuComponent {
   private trackingService = inject(TrackingService);

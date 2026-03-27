@@ -66,19 +66,19 @@
                 <!-- Botón Guardar -->
                 <button class="btn btn-sm btn-success position-relative"
                     (click)="permissionsViewRef.saveDetailChanges()"
-                    [disabled]="!permissionsViewRef?.notSavedChanges"
+                    [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"
                     title="Guardar cambios">
                     <i class="bi bi-floppy"></i>
                     <span
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                        *ngIf="permissionsViewRef?.notSavedChanges">
+                        *ngIf="(permissionsViewRef?.notSavedChanges ?? false)">
                         <span class="visually-hidden">Hay cambios sin guardar</span>
                     </span>
                 </button>
                 <!-- Botón Revertir -->
                 <button class="btn btn-sm btn-warning"
                     (click)="permissionsViewRef.revertChanges()"
-                    [disabled]="!permissionsViewRef?.notSavedChanges"
+                    [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"
                     title="Revertir cambios">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>

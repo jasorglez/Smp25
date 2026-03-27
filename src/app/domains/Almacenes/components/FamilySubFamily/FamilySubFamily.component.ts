@@ -59,7 +59,7 @@ export class FamilySubFamilyComponent {
   },
 
     detailRowHeight: 1000,
-    rowClass: (params) => {
+    getRowClass: (params: any) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';

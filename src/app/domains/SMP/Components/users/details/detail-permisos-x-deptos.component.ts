@@ -117,7 +117,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       event.node.setSelected(true);
       this.selectedWarehouse = event.data;
     },
-    rowClass: (params) => {
+    getRowClass: (params: any) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }

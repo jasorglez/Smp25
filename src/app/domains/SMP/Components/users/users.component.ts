@@ -136,13 +136,19 @@ export class UsersComponent implements OnDestroy {
         const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
         this.gridApi.setColumnsVisible(['idRol'], showSecurity);
       }
-      this.obtenerDatos();
-      this.getRoles();
-      this.verification();
-      this.obtenerEmpleados();
-      if (this.signalsService.getRefresSecurity()()) {
+
+      // Evita llamadas con idRoot null/undefined (provoca 400 con id=null / idCompany=null)
+      if (typeof this.idRoot === 'number' && this.idRoot > 0) {
         this.obtenerDatos();
-        this.signalsService.setRefresSecurity(false);
+        this.getRoles();
+        this.obtenerEmpleados();
+      }
+      this.verification();
+      if (this.signalsService.getRefresSecurity()()) {
+        if (typeof this.idRoot === 'number' && this.idRoot > 0) {
+          this.obtenerDatos();
+          this.signalsService.setRefresSecurity(false);
+        }
       }
     });
 
@@ -194,6 +200,10 @@ export class UsersComponent implements OnDestroy {
   }
 
   obtenerDatos() {
+    if (this.signalsService.getemailChoose() !== environment.root && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+      // Todavía no hay compañía/root seleccionado; evita request con id=null
+      return;
+    }
     const observer = {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
@@ -224,6 +234,11 @@ export class UsersComponent implements OnDestroy {
   }
 
   getRoles() {
+    if (!(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+      // Evita request con idCompany=null
+      this.departamentos = [];
+      return;
+    }
     this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
         this.departamentos = data.data;
@@ -344,7 +359,7 @@ export class UsersComponent implements OnDestroy {
     detailCellRenderer: 'usersDetailWrapper',
     detailRowHeight: 1000,
     context: { componentParent: null },
-    rowClass: (params) => {
+    getRowClass: (params: any) => {
       if (params.node.isSelected()) {
         return 'selected-row';
       }

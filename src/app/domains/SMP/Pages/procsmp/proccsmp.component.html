@@ -13,7 +13,7 @@
             </li>
 
             <li class="nav-item" *ngIf="canSeeBranches || isRoot">
-               <a class="nav-link green-tab" routerLink="branches" routerLinkActive="active"><i
+               <a class="nav-link green-tab setup-dark-tab" routerLink="branches" routerLinkActive="active"><i
                      class="bi bi-building-fill-gear"></i> {{ 'branchs' | translate}}</a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'stores')">
@@ -26,7 +26,7 @@
             </li>
 
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'users')">
-               <a class="nav-link green-tab" routerLink="users" routerLinkActive="active"><i
+               <a class="nav-link green-tab setup-dark-tab" routerLink="users" routerLinkActive="active"><i
                      class="bi bi-person-bounding-box"></i> {{ 'user' | translate}}</a>
             </li>
             <li class="nav-item" *ngIf="isRoot">
@@ -39,7 +39,7 @@
                      class="bi bi-archive-fill"></i> {{ 'log' | translate}}</a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'roles')">
-               <a class="nav-link green-tab" routerLink="roles" routerLinkActive="active"><i
+               <a class="nav-link green-tab setup-dark-tab" routerLink="roles" routerLinkActive="active"><i
                      class="bi bi-building-fill-gear"></i>Departamento</a>
             </li>
             <li class="nav-item" *ngIf="isRoot">

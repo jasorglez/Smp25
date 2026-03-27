@@ -1,1 +1,20 @@
 @import '../../../../../assets/css/ag-grid-theme-builder.css';
+
+.setup-dark-tab.active {
+  background-color: #1f2937 !important;
+  border-color: #1f2937 !important;
+  color: #ffffff !important;
+}
+
+/* Evita el azul por defecto de Bootstrap al pasar el cursor */
+.setup-dark-tab:hover,
+.setup-dark-tab:focus {
+  color: #6c757d !important;
+}
+
+.setup-dark-tab.active:hover,
+.setup-dark-tab.active:focus {
+  color: #ffffff !important;
+  background-color: #1f2937 !important;
+  border-color: #1f2937 !important;
+}
