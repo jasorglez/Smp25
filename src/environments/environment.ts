@@ -75,7 +75,7 @@ export const environment = {
 
   mercadoPago: {
     // Produccion (ACTIVO)
-     publicKey: 'APP_USR-973e19ca-fa24-4983-8858-6562d5b40f9f', //Produccion
+     publicKey: 'APP_USR-ffba3d82-7423-4dbc-9012-4ca0571dae19', //Produccion
     // Pruebas (descomenta esta linea y comenta la de Produccion para cambiar manualmente)
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
