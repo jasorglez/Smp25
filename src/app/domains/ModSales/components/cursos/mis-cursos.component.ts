@@ -137,11 +137,11 @@ import Swal from 'sweetalert2';
 
           <div class="col-12" *ngIf="form.slug">
             <label class="form-label small fw-semibold mb-1 text-success"><i class="bi bi-link-45deg me-1"></i>Link para compartir</label>
-            <div class="input-group input-group-sm">
-              <input class="form-control form-control-sm bg-light" readonly [value]="getLinkCompartir(form.slug)">
-              <button class="btn btn-outline-success btn-sm" (click)="copiarLink(form.slug)" title="Copiar">
-                <i class="bi bi-clipboard"></i>
-              </button>
+            <div>
+              <a [href]="getLinkCompartir(form.slug)" target="_blank" rel="noopener noreferrer"
+                 class="small d-inline-block text-break border rounded px-2 py-1 bg-light mw-100">
+                {{ getLinkCompartir(form.slug) }}
+              </a>
             </div>
           </div>
 
@@ -222,9 +222,8 @@ export class MisCursosComponent implements OnInit {
         : '<span class="badge bg-secondary">Inactivo</span>',
     },
     {
-      field: 'link', headerName: '', width: 50, sortable: false,
-      cellRenderer: () => `<button class="btn btn-xs btn-sm btn-outline-success py-0 px-1"><i class="bi bi-clipboard"></i></button>`,
-      onCellClicked: (p: any) => { if (p.data?.slug) this.copiarLink(p.data.slug); },
+      field: 'link', headerName: 'Enlace', flex: 1, minWidth: 160, maxWidth: 320, sortable: false,
+      cellRenderer: (p: any) => this.renderCeldaLinkRegistro(p),
     },
   ];
 
@@ -325,9 +324,13 @@ export class MisCursosComponent implements OnInit {
 
   getLinkCompartir(slug: string) { return `${window.location.origin}/registrocursos?c=${slug}`; }
 
-  copiarLink(slug: string) {
-    navigator.clipboard.writeText(this.getLinkCompartir(slug));
-    Swal.fire({ icon: 'success', title: 'Link copiado', timer: 1200, showConfirmButton: false });
+  /** Enlace HTML para la grilla: abre en nueva pestaña y no altera la selección de fila. */
+  renderCeldaLinkRegistro(p: any): string {
+    const slug = p.data?.slug as string | undefined;
+    if (!slug) return '';
+    const url = this.getLinkCompartir(slug);
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="small text-truncate d-inline-block align-middle" style="max-width:100%" title="${esc(url)}" onclick="event.stopPropagation()">${esc(url)}</a>`;
   }
 
   private tsToInput(ts: Timestamp): string {
