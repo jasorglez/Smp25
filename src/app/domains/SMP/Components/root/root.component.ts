@@ -672,8 +672,14 @@ public gridOptions: any = {
             console.error('Error asignando permiso company:', permError);
           }
 
-          // Crear entidades por defecto para la nueva empresa
-          await this.createDefaultEntitiesForRoot(response.id, row.name);
+          // Crear entidades por defecto y asignar branch + contract al usuario
+          const { branchId, contractId } = await this.createDefaultEntitiesForRoot(response.id, row.name);
+          if (branchId) {
+            try { await lastValueFrom(this.branchesService.assignPermissionAfterCreation(this.idUser, branchId, 'branch')); } catch (e) { console.error('Error asignando branch:', e); }
+          }
+          if (contractId) {
+            try { await lastValueFrom(this.branchesService.assignPermissionAfterCreation(this.idUser, contractId, 'contract')); } catch (e) { console.error('Error asignando contract:', e); }
+          }
         }
       }
 
@@ -722,12 +728,14 @@ public gridOptions: any = {
     setTimeout(() => { this.creatingPeripherals = false; }, 800);
   }
 
-  private async createDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<void> {
+  private async createDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<{ branchId: number; contractId: number }> {
     const today = new Date().toISOString().substring(0, 10);
     const nextYear = new Date();
     nextYear.setFullYear(nextYear.getFullYear() + 1);
     const endDate = nextYear.toISOString().substring(0, 10);
 
+    let branchId   = 0;
+    let contractId = 0;
     this.startPeripheralProgress(16);
     try {
       this.logPeriferico('INICIO crear empresa nueva', rootName);
@@ -739,7 +747,7 @@ public gridOptions: any = {
         description: `${rootName.substring(0, 38)} - Oficina`,
         active: true
       }));
-      const branchId = branch?.id || 0;
+      branchId = branch?.id || 0;
       this.logPeriferico('1-Sucursal creada', rootName);
 
       // 2. Contrato principal
@@ -759,7 +767,7 @@ public gridOptions: any = {
         consecutive: 1,
         active: 1
       }));
-      const contractId = contract?.id || 0;
+      contractId = contract?.id || 0;
       this.logPeriferico('2-Contrato creado', rootName);
 
       // 3. Convenio principal (vigente=true, ligado al contrato)
@@ -999,6 +1007,7 @@ public gridOptions: any = {
     } finally {
       this.endPeripheralProgress();
     }
+    return { branchId, contractId };
   }
 
   // Verifica y crea entidades por defecto que faltan en una empresa existente.
