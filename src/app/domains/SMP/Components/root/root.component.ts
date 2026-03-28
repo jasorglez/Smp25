@@ -681,12 +681,6 @@ public gridOptions: any = {
       for (const row of modifiedRows) {
         const cleanedData = this.cleanDataForServer(row);
         await lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
-        await this.ensureDefaultEntitiesForRoot(row.id, row.name);
-      }
-
-      // Si no hubo filas modificadas pero hay una fila seleccionada existente, ejecutar ensure
-      if (modifiedRows.length === 0 && this.selectedRowData && !this.selectedRowData.__isNew) {
-        await this.ensureDefaultEntitiesForRoot(this.selectedRowData.id, this.selectedRowData.name);
       }
 
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');

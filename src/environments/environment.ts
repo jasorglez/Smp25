@@ -80,7 +80,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.04 (27 Marzo 2026) - Pay for Card',
+  version: '5.05 (28 Marzo 2026 12:59) - Onboarding completo: contrato+proyecto+permisos',
 };
 
 
