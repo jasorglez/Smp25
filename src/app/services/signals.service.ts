@@ -203,6 +203,20 @@ getMasterUpdateTrigger() {
     return this.branchSelectedBySidebar;
   }
 
+  /* Licencia */
+  private licenseStatus       = signal<'active' | 'trial' | 'expired'>('trial');
+  private licenseDaysRemaining = signal<number>(15);
+
+  setLicenseStatus(status: 'active' | 'trial' | 'expired') {
+    this.licenseStatus.set(status);
+  }
+  getLicenseStatus() { return this.licenseStatus; }
+
+  setLicenseDaysRemaining(days: number) {
+    this.licenseDaysRemaining.set(days);
+  }
+  getLicenseDaysRemaining() { return this.licenseDaysRemaining; }
+
   /* Aquí se definen las signals para el setup de Users */
 
   profile = {

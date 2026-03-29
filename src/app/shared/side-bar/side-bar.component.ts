@@ -146,6 +146,7 @@ error: (error) => {
       //    this.getpermissionxContracts(parseInt(this.selectedRoot));
       this.getpermissionxBranchs(parseInt(this.selectedRoot));
       this.getHeadersCompanys(this.selectedRoot);
+      this.loadLicenseInfo(parseInt(this.selectedRoot));
     }
   }
 
@@ -164,6 +165,7 @@ error: (error) => {
           this.signalsService.setCompanyNameSmall(this.rootData[0].nameSmall || this.rootData[0].name);
           this.trackingService.setCompany(this.selectedRoot);
           this.getHeadersCompanys(this.selectedRoot);
+          this.loadLicenseInfo(parseInt(this.selectedRoot));
           // Llamar a getpermissionxContracts con el primer elemento
           //   this.getpermissionxContracts(parseInt(this.selectedRoot));
           this.getpermissionxBranchs(parseInt(this.selectedRoot));
@@ -405,6 +407,15 @@ error: (error) => {
       this.trackingService.setPictureComp3(datacom.picture3);
       //this.trackingService.setformatrepint(datacom.formatrep);
       // alert('Format:'+ datacom.formatrep);
+    });
+  }
+
+  loadLicenseInfo(idRoot: number) {
+    this.rootService.getRootbyId(idRoot).subscribe((data: any) => {
+      const status = data?.licenseStatus ?? 'trial';
+      const days   = data?.daysRemaining ?? data?.licenseDays ?? 15;
+      this.signalsService.setLicenseStatus(status);
+      this.signalsService.setLicenseDaysRemaining(days);
     });
   }
 

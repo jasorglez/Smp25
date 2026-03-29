@@ -19,6 +19,9 @@ export class MainPageComponent implements OnInit {
   private initialBranchId: number;
   isSidebarCollapsed: boolean = false;
 
+  licenseStatus   = this.signalsService.getLicenseStatus();
+  licenseDays     = this.signalsService.getLicenseDaysRemaining();
+
   constructor() {
     effect(() => {
       const newBranchId = this.signalsService.getBranchSelectedBySidebar()();

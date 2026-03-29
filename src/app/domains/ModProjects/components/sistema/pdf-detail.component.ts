@@ -196,6 +196,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   // ── Generación del PDF ─────────────────────────────────────────────────────
   private async generatePdf(): Promise<void> {
     this.isLoading = true;
+    const isExpired = this.signalsService.getLicenseStatus()() === 'expired';
 
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -721,6 +722,16 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
             ],
           };
         },
+
+        watermark: isExpired ? {
+          text: 'SIN LICENCIA',
+          color: '#c0392b',
+          opacity: 0.18,
+          bold: true,
+          italics: false,
+          fontSize: 60,
+          angle: -45,
+        } : undefined,
 
         background: wmB64 ? [{
           image: 'wm', width: 380, opacity: 0.05,
