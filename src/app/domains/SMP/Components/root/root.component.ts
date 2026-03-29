@@ -523,6 +523,63 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'licenseStart',
+        headerName: 'Inicio Licencia',
+        editable: true,
+        width: 140,
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (p) => p.data?.licenseStart ? String(p.data.licenseStart).substring(0, 10) : '',
+        valueSetter: (p) => { p.data.licenseStart = p.newValue; return true; },
+        valueFormatter: (p) => {
+          if (!p.value) return '';
+          const [y, m, d] = String(p.value).split('-');
+          return d && m && y ? `${d}/${m}/${y}` : p.value;
+        },
+      },
+      {
+        field: 'licenseDays',
+        headerName: 'Días Licencia',
+        editable: true,
+        width: 130,
+        cellDataType: 'number',
+        cellStyle: { textAlign: 'right' },
+      },
+      {
+        field: 'licenseType',
+        headerName: 'Tipo Licencia',
+        editable: true,
+        width: 130,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ['trial', 'paid', 'suspended'] },
+        cellStyle: (p) => {
+          if (p.value === 'paid')      return { color: '#155724', fontWeight: 'bold' };
+          if (p.value === 'suspended') return { color: '#721c24', fontWeight: 'bold' };
+          return { color: '#856404' };
+        },
+      },
+      {
+        field: 'licenseStatus',
+        headerName: 'Estado',
+        editable: false,
+        width: 110,
+        cellStyle: (p) => {
+          if (p.value === 'active')   return { color: '#155724', fontWeight: 'bold' };
+          if (p.value === 'expired')  return { color: '#721c24', fontWeight: 'bold' };
+          return { color: '#856404' };
+        },
+      },
+      {
+        field: 'daysRemaining',
+        headerName: 'Días Rest.',
+        editable: false,
+        width: 100,
+        cellStyle: (p) => {
+          if (p.value <= 0)  return { color: '#721c24', fontWeight: 'bold' };
+          if (p.value <= 5)  return { color: '#856404', fontWeight: 'bold' };
+          return {};
+        },
+      },
+      {
         field: 'picture',
         headerName: 'Foto Root',
         cellEditor: 'agTextCellEditor',
@@ -620,6 +677,9 @@ public gridOptions: any = {
       cp: '',
       active: 1,
       idCorporativo: 0,
+      licenseStart: new Date().toISOString().substring(0, 10),
+      licenseDays: 15,
+      licenseType: 'trial',
       __isNew: true,
     };
 

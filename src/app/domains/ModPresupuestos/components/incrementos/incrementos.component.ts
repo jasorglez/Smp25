@@ -41,7 +41,7 @@ export class IncrementosComponent implements OnInit {
   selectedRow: IPresupuestoIncremento | null = null;
 
   solicitudForm!: FormGroup;
-  private gridApi!: GridApi;
+  public gridApi!: GridApi;
 
   public getRowStyle = (p: any) => {
     if (p.data?.estado === 'pendiente') return { background: '#fff3cd' };
