@@ -6,6 +6,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfWorkerService } from 'app/services/pdf-worker.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
@@ -48,6 +49,7 @@ export class ControlFacturacionIngresosComponent {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private pdfWorkerService = inject(PdfWorkerService);
   private projectsService = inject(ProjectsService);
   private customersService = inject(CustomersService);
 
@@ -350,10 +352,6 @@ export class ControlFacturacionIngresosComponent {
     this.isExportingPdf = true;
 
     try {
-      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
-      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
-
       // Obtener logo
       const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.rootId));
       let logoBase64: string | null = null;
@@ -384,13 +382,7 @@ export class ControlFacturacionIngresosComponent {
         pageSize: 'TABLOID',
         pageOrientation: 'landscape',
         pageMargins: [15, 60, 15, 30],
-        header: () => this.buildPdfHeader(logoBase64, periodText),
-        footer: (currentPage: number, pageCount: number) => ({
-          text: `Página ${currentPage} de ${pageCount}`,
-          alignment: 'center',
-          fontSize: 7,
-          margin: [0, 5, 0, 0]
-        }),
+        header: this.buildPdfHeader(logoBase64, periodText),
         content,
         styles: {
           tableHeader: { fontSize: 6, bold: true, color: '#FFFFFF', fillColor: '#1a5276' },
@@ -402,13 +394,9 @@ export class ControlFacturacionIngresosComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`control-facturacion-ingresos-${this.fechaInicio}-al-${this.fechaFin}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      const footerTemplate = { text: 'Página {cp} de {pc}', alignment: 'center', fontSize: 7, margin: [0, 5, 0, 0] };
+      const fileName = `control-facturacion-ingresos-${this.fechaInicio}-al-${this.fechaFin}.pdf`;
+      await this.pdfWorkerService.generateAndDownload(docDefinition, fileName, footerTemplate);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -492,10 +480,10 @@ export class ControlFacturacionIngresosComponent {
       ]);
     });
 
-    // Fila de totales
+    // Fila de totales (18 columnas: colSpan 7 + 6 placeholders + 5 money + 6 trailing)
     body.push([
-      { text: 'TOTAL', colSpan: 8, style: 'totalRow', alignment: 'right', bold: true },
-      {}, {}, {}, {}, {}, {}, {},
+      { text: 'TOTAL', colSpan: 7, style: 'totalRow', alignment: 'right', bold: true },
+      {}, {}, {}, {}, {}, {},
       { text: this.formatCurrencyShort(this.totales.importeFactura), style: 'totalRow', alignment: 'right' },
       { text: this.totales.importeDescuento > 0 ? this.formatCurrencyShort(this.totales.importeDescuento) : '', style: 'totalRow', alignment: 'right' },
       { text: this.formatCurrencyShort(this.totales.subtotal), style: 'totalRow', alignment: 'right' },
@@ -515,13 +503,7 @@ export class ControlFacturacionIngresosComponent {
         widths: [32, 48, 48, 35, 35, 42, 28, 40, 32, 40, 32, 42, 38, 32, 22, 22, 35, 26],
         body
       },
-      layout: {
-        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
-        vLineWidth: () => 0.3,
-        hLineColor: () => '#aaa',
-        vLineColor: () => '#ccc',
-        fillColor: (rowIndex: number) => rowIndex === 0 ? '#1a5276' : (rowIndex % 2 === 0 ? '#eaf4fb' : null)
-      }
+      layout: 'siafStripeTeal'
     });
 
     return content;

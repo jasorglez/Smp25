@@ -6,6 +6,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfWorkerService } from 'app/services/pdf-worker.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
@@ -38,6 +39,7 @@ export class ReporteFacturacionAnualComponent {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private pdfWorkerService = inject(PdfWorkerService);
 
   // Estado del componente
   public rootId: number;
@@ -305,10 +307,6 @@ export class ReporteFacturacionAnualComponent {
     this.isExportingPdf = true;
 
     try {
-      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
-      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
-
       // Obtener logo
       const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.rootId));
       let logoBase64: string | null = null;
@@ -326,13 +324,7 @@ export class ReporteFacturacionAnualComponent {
         pageSize: 'TABLOID',
         pageOrientation: 'landscape',
         pageMargins: [20, 80, 20, 40],
-        header: () => this.buildPdfHeader(logoBase64),
-        footer: (currentPage: number, pageCount: number) => ({
-          text: `Página ${currentPage} de ${pageCount}`,
-          alignment: 'center',
-          fontSize: 8,
-          margin: [0, 10, 0, 0]
-        }),
+        header: this.buildPdfHeader(logoBase64),
         content,
         styles: {
           tableHeader: { fontSize: 9, bold: true, color: '#FFFFFF', fillColor: '#1a365d' },
@@ -344,13 +336,9 @@ export class ReporteFacturacionAnualComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`reporte-facturacion-anual-${new Date().toISOString().split('T')[0]}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      const footerTemplate = { text: 'Página {cp} de {pc}', alignment: 'center', fontSize: 8, margin: [0, 10, 0, 0] };
+      const fileName = `reporte-facturacion-anual-${new Date().toISOString().split('T')[0]}.pdf`;
+      await this.pdfWorkerService.generateAndDownload(docDefinition, fileName, footerTemplate);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -442,13 +430,7 @@ export class ReporteFacturacionAnualComponent {
         widths: [30, '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'],
         body
       },
-      layout: {
-        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
-        vLineWidth: () => 0.3,
-        hLineColor: () => '#aaa',
-        vLineColor: () => '#ccc',
-        fillColor: (rowIndex: number) => rowIndex === 0 ? '#1a365d' : (rowIndex % 2 === 0 ? '#f8fafc' : null)
-      }
+      layout: 'siafStripe'
     });
 
     return content;

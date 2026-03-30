@@ -1,4 +1,4 @@
-<div #dashboardExportRef class="dashboard-hco-container">
+<div class="dashboard-hco-container">
   <!-- Header con filtros -->
   <div class="header-section">
     <div class="header-title">
@@ -172,7 +172,7 @@
           <span class="personal-kpi-label">CANTIDAD DE PERSONAL</span>
           <span class="personal-kpi-total">{{ totalPersonal }}</span>
         </div>
-        <apx-chart
+        <apx-chart #personalChartRef
           *ngIf="personalPieChartOptions?.series && personalPieChartOptions.series.length > 0"
           [series]="personalPieChartOptions.series"
           [chart]="personalPieChartOptions.chart"
@@ -189,7 +189,7 @@
 
       <!-- Gráfica de pie: Gasto Total Acumulado -->
       <div class="chart-card">
-        <apx-chart
+        <apx-chart #pieChartRef
           *ngIf="pieChartOptions?.series && pieChartOptions.series.length > 0"
           [series]="pieChartOptions.series"
           [chart]="pieChartOptions.chart"
@@ -210,7 +210,7 @@
           <span class="personal-kpi-label">CONSUMO DE COMBUSTIBLE</span>
           <span class="personal-kpi-total">{{ totalCombustible | currency:'$':'symbol':'1.2-2' }}</span>
         </div>
-        <apx-chart
+        <apx-chart #combustibleChartRef
           *ngIf="combustiblePieChartOptions?.series && combustiblePieChartOptions.series.length > 0"
           [series]="combustiblePieChartOptions.series"
           [chart]="combustiblePieChartOptions.chart"
@@ -229,7 +229,7 @@
 
   <!-- Gráfica de líneas: Comportamiento del negocio (full width) -->
   <div class="chart-card full-width">
-    <apx-chart
+    <apx-chart #lineChartRef
       *ngIf="lineChartOptions?.series"
       [series]="lineChartOptions.series"
       [chart]="lineChartOptions.chart"

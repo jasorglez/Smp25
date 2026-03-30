@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
+import { Component, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
@@ -10,9 +10,9 @@ import { ProjectsService } from 'app/services/projects.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
-import { NgApexchartsModule } from 'ng-apexcharts';
-import html2canvas from 'html2canvas';
+import { NgApexchartsModule, ChartComponent } from 'ng-apexcharts';
 import { Workbook } from 'exceljs';
+import { PdfWorkerService } from 'app/services/pdf-worker.service';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -76,7 +76,12 @@ export interface FlujoMensual {
   styleUrl: './dashboard-hco.component.scss'
 })
 export class DashboardHcoComponent {
-  @ViewChild('dashboardExportRef') private dashboardExportRef?: ElementRef<HTMLElement>;
+  @ViewChild('personalChartRef') private personalChartRef?: ChartComponent;
+  @ViewChild('pieChartRef') private pieChartRef?: ChartComponent;
+  @ViewChild('combustibleChartRef') private combustibleChartRef?: ChartComponent;
+  @ViewChild('lineChartRef') private lineChartRef?: ChartComponent;
+
+  private pdfWorkerService = inject(PdfWorkerService);
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private cuentasContablesService = inject(CuentasContablesService);
@@ -155,10 +160,10 @@ export class DashboardHcoComponent {
 
     try {
       const [pieChart, barChart, combustibleChart, lineChart] = await Promise.all([
-        this.captureElementAsBase64('.charts-column .chart-card:nth-child(1)'),
-        this.captureElementAsBase64('.charts-column .chart-card:nth-child(2)'),
-        this.captureElementAsBase64('.charts-column .chart-card:nth-child(3)'),
-        this.captureElementAsBase64('.chart-card.full-width')
+        this.captureChartAsBase64(this.personalChartRef),
+        this.captureChartAsBase64(this.pieChartRef),
+        this.captureChartAsBase64(this.combustibleChartRef),
+        this.captureChartAsBase64(this.lineChartRef)
       ]);
 
       const content = this.buildStructuredPdfContent({
@@ -167,10 +172,6 @@ export class DashboardHcoComponent {
         combustibleChart,
         lineChart
       });
-
-      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
-      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
       const documentDefinition = {
         pageSize: 'TABLOID',
@@ -191,7 +192,7 @@ export class DashboardHcoComponent {
         },
       };
 
-      (pdfMake as any).createPdf(documentDefinition).download(this.getExportFileName('pdf'));
+      await this.pdfWorkerService.generateAndDownload(documentDefinition, this.getExportFileName('pdf'));
     } catch (error) {
       console.error('Error exportando dashboard a PDF:', error);
       alerts.basicAlert('Error', 'No fue posible exportar el dashboard a PDF.', 'error');
@@ -216,14 +217,7 @@ export class DashboardHcoComponent {
           this.buildPdfKpiCell('MARGEN', `${this.margenPorcentaje.toFixed(1)}%`, '#7C3AED')
         ]]
       },
-      layout: {
-        hLineColor: () => '#E2E8F0',
-        vLineColor: () => '#E2E8F0',
-        paddingLeft: () => 6,
-        paddingRight: () => 6,
-        paddingTop: () => 8,
-        paddingBottom: () => 8
-      },
+      layout: 'siafKpi',
       margin: [0, 8, 0, 12]
     };
 
@@ -595,10 +589,10 @@ export class DashboardHcoComponent {
 
   private async addDashboardChartsToWorksheet(workbook: Workbook, worksheet: any, endRow: number): Promise<void> {
     const [pieChart, barChart, combustibleChart, lineChart] = await Promise.all([
-      this.captureElementAsBase64('.charts-column .chart-card:nth-child(1)'),
-      this.captureElementAsBase64('.charts-column .chart-card:nth-child(2)'),
-      this.captureElementAsBase64('.charts-column .chart-card:nth-child(3)'),
-      this.captureElementAsBase64('.chart-card.full-width')
+      this.captureChartAsBase64(this.personalChartRef),
+      this.captureChartAsBase64(this.pieChartRef),
+      this.captureChartAsBase64(this.combustibleChartRef),
+      this.captureChartAsBase64(this.lineChartRef)
     ]);
 
     if (pieChart) {
@@ -634,15 +628,24 @@ export class DashboardHcoComponent {
     }
   }
 
-  private async captureElementAsBase64(selector: string): Promise<string | null> {
-    const rootElement = this.dashboardExportRef?.nativeElement;
-    if (!rootElement) return null;
+  private async captureChartAsBase64(chartRef: ChartComponent | undefined): Promise<string | null> {
+    if (!chartRef) return null;
+    try {
+      const result = await (chartRef as any).dataURI();
+      return result?.imgURI ?? null;
+    } catch {
+      return null;
+    }
+  }
 
-    const element = rootElement.querySelector(selector) as HTMLElement | null;
+  // Método legacy mantenido por compatibilidad — no se usa en exportaciones
+  private async captureElementAsBase64_legacy(selector: string): Promise<string | null> {
+    const element = document.querySelector(selector) as HTMLElement | null;
     if (!element) return null;
 
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const { default: html2canvas } = await import('html2canvas');
     const canvas = await html2canvas(element, {
       backgroundColor: '#ffffff',
       scale,
