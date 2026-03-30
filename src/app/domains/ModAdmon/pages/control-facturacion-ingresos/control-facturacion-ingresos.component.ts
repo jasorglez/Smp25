@@ -381,7 +381,7 @@ export class ControlFacturacionIngresosComponent {
       }
 
       const docDefinition: any = {
-        pageSize: 'LETTER',
+        pageSize: 'TABLOID',
         pageOrientation: 'landscape',
         pageMargins: [15, 60, 15, 30],
         header: () => this.buildPdfHeader(logoBase64, periodText),

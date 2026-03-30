@@ -379,7 +379,7 @@ export class ConcentradoEgresosComponent {
       }
 
       const docDefinition: any = {
-        pageSize: 'LEGAL',
+        pageSize: 'TABLOID',
         pageOrientation: 'landscape',
         pageMargins: [15, 60, 15, 30],
         header: () => this.buildPdfHeader(logoBase64, periodText),

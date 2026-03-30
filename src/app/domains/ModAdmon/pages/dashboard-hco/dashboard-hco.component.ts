@@ -154,15 +154,17 @@ export class DashboardHcoComponent {
     this.isExportingPdf = true;
 
     try {
-      const [pieChart, barChart, lineChart] = await Promise.all([
+      const [pieChart, barChart, combustibleChart, lineChart] = await Promise.all([
         this.captureElementAsBase64('.charts-column .chart-card:nth-child(1)'),
         this.captureElementAsBase64('.charts-column .chart-card:nth-child(2)'),
+        this.captureElementAsBase64('.charts-column .chart-card:nth-child(3)'),
         this.captureElementAsBase64('.chart-card.full-width')
       ]);
 
       const content = this.buildStructuredPdfContent({
         pieChart,
         barChart,
+        combustibleChart,
         lineChart
       });
 
@@ -171,7 +173,7 @@ export class DashboardHcoComponent {
       (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
       const documentDefinition = {
-        pageSize: 'LETTER',
+        pageSize: 'TABLOID',
         pageOrientation: 'landscape',
         pageMargins: [20, 20, 20, 20],
         content,
@@ -201,6 +203,7 @@ export class DashboardHcoComponent {
   private buildStructuredPdfContent(images: {
     pieChart: string | null;
     barChart: string | null;
+    combustibleChart: string | null;
     lineChart: string | null;
   }): any[] {
     const kpiTable = {
@@ -232,6 +235,10 @@ export class DashboardHcoComponent {
     if (images.barChart) {
       rightColumnCharts.push({ text: 'RESUMEN ANUAL', style: 'sectionTitle' });
       rightColumnCharts.push({ image: images.barChart, width: 285, margin: [0, 0, 0, 10] });
+    }
+    if (images.combustibleChart) {
+      rightColumnCharts.push({ text: 'CONSUMO DE COMBUSTIBLE', style: 'sectionTitle' });
+      rightColumnCharts.push({ image: images.combustibleChart, width: 285, margin: [0, 0, 0, 10] });
     }
     if (rightColumnCharts.length === 0) {
       rightColumnCharts.push({ text: 'Sin graficas para mostrar', style: 'tableCell' });
@@ -587,9 +594,10 @@ export class DashboardHcoComponent {
   }
 
   private async addDashboardChartsToWorksheet(workbook: Workbook, worksheet: any, endRow: number): Promise<void> {
-    const [pieChart, barChart, lineChart] = await Promise.all([
+    const [pieChart, barChart, combustibleChart, lineChart] = await Promise.all([
       this.captureElementAsBase64('.charts-column .chart-card:nth-child(1)'),
       this.captureElementAsBase64('.charts-column .chart-card:nth-child(2)'),
+      this.captureElementAsBase64('.charts-column .chart-card:nth-child(3)'),
       this.captureElementAsBase64('.chart-card.full-width')
     ]);
 
@@ -605,6 +613,14 @@ export class DashboardHcoComponent {
       const imageId = workbook.addImage({ base64: barChart, extension: 'png' });
       worksheet.addImage(imageId, {
         tl: { col: 5, row: 24 },
+        ext: { width: 500, height: 250 }
+      });
+    }
+
+    if (combustibleChart) {
+      const imageId = workbook.addImage({ base64: combustibleChart, extension: 'png' });
+      worksheet.addImage(imageId, {
+        tl: { col: 5, row: 41 },
         ext: { width: 500, height: 250 }
       });
     }

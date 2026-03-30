@@ -323,7 +323,7 @@ export class ReporteFacturacionAnualComponent {
       const content = this.buildPdfContent();
 
       const docDefinition: any = {
-        pageSize: 'LETTER',
+        pageSize: 'TABLOID',
         pageOrientation: 'landscape',
         pageMargins: [20, 80, 20, 40],
         header: () => this.buildPdfHeader(logoBase64),

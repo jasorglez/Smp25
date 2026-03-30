@@ -694,7 +694,7 @@ export class ReporteOperativoSinIvaComponent {
       const content = this.buildPdfContent();
 
       const docDefinition: any = {
-        pageSize: 'LETTER',
+        pageSize: 'TABLOID',
         pageOrientation: 'landscape',
         pageMargins: [15, 60, 15, 30],
         header: () => this.buildPdfHeader(logoBase64),
@@ -847,7 +847,7 @@ export class ReporteOperativoSinIvaComponent {
     return {
       table: {
         headerRows: 1,
-        widths: [50, 55, 38, 38, 52, 52, 52, 52, 52, 52, 48, 52, 22],
+        widths: [97, 107, 74, 74, 101, 101, 101, 101, 101, 101, 93, 101, 43],
         body
       },
       layout: {
