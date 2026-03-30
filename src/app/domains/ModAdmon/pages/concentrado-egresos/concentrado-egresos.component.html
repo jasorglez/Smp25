@@ -58,8 +58,6 @@
         <table class="reporte-table">
           <thead>
             <tr>
-              <th class="text-center">Proveedor</th>
-              <th class="text-center">Cliente</th>
               <th class="text-center">Proyecto</th>
               <th class="text-center">Fecha</th>
               <th class="text-center">Mes</th>
@@ -72,14 +70,14 @@
               <th class="text-end">Otros Imp.</th>
               <th class="text-end">Imp. Total</th>
               <th class="text-center"># Factura</th>
+              <th class="text-center">Proveedor</th>
               <th class="text-center">Tipo Pago</th>
               <th class="text-center">Cuenta</th>
+              <th class="text-center">Cliente</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let e of concentradoEgresos; let i = index" [class.row-alt]="i % 2 === 0">
-              <td class="text-center">{{ e.proveedor }}</td>
-              <td class="text-center">{{ e.cliente }}</td>
               <td class="text-center">{{ e.proyecto }}</td>
               <td class="text-center">{{ e.fecha | date:'dd/MM/yyyy' }}</td>
               <td class="text-center">{{ e.mes }}</td>
@@ -92,18 +90,20 @@
               <td class="text-end otros-imp-cell">{{ e.otrosImpuestos > 0 ? formatCurrency(e.otrosImpuestos) : '' }}</td>
               <td class="text-end total-cell">{{ formatCurrency(e.importeTotal) }}</td>
               <td class="text-center factura-cell">{{ e.numeroFactura }}</td>
+              <td class="text-center">{{ e.proveedor }}</td>
               <td class="text-center">{{ e.tipoPago }}</td>
               <td class="text-center cuenta-cell">{{ e.cuenta }}</td>
+              <td class="text-center">{{ e.cliente }}</td>
             </tr>
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="9" class="text-end"><strong>TOTAL</strong></td>
+              <td colspan="7" class="text-end"><strong>TOTAL</strong></td>
               <td class="text-end"><strong>{{ formatCurrency(totales.importeSinIva) }}</strong></td>
               <td class="text-end"><strong>{{ formatCurrency(totales.iva) }}</strong></td>
               <td class="text-end"><strong>{{ totales.otrosImpuestos > 0 ? formatCurrency(totales.otrosImpuestos) : '' }}</strong></td>
               <td class="text-end total-general"><strong>{{ formatCurrency(totales.importeTotal) }}</strong></td>
-              <td colspan="3"></td>
+              <td colspan="5"></td>
             </tr>
           </tfoot>
         </table>

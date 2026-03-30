@@ -220,9 +220,7 @@ export class IncomeComponent {
       return null;
     },
     onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda, excepto en las columnas de cascada
-      const colId = event.column.getColId();
-      if (colId !== 'pdfReport' && colId !== 'countItems') {
+      if (event.column && event.column.getColId() !== 'pdfReport') {
         event.node.setSelected(true);
       }
     },
@@ -468,43 +466,32 @@ export class IncomeComponent {
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
 
-       {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
-        cellEditor: SelectWithTooltipEditorV2Component,
+      {
+        field: 'paymentMonth',
+        headerName: 'Mes',
+        editable: true,
+        width: 110,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        }
+      },
+
+      {
+        field: 'idBranch',
+        headerName: 'Sucursal',
+        editable: true,
+        width: 140,
+        cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          options: [
-            ...this.customers.map(obj => ({
-              id: obj.id,
-              description: obj.description,
-              valueAddition: obj.id || '',
-              valueAddition2: obj.description || ''
-            })),
-            // Opción especial para agregar nuevo cliente
-            {
-              id: 'NEW_CUSTOMER',
-              description: '➕ Nuevo Registro',
-              valueAddition: 'Agregar nuevo cliente',
-              valueAddition2: 'Clic para crear'
-            }
-          ],
-          // Valores especiales que disparan callback
-          specialValues: ['NEW_CUSTOMER'],
-          // Callback cuando se selecciona un valor especial
-          onSpecialValue: (value: string, params: any) => {
-            if (value === 'NEW_CUSTOMER') {
-              // Guardar referencia al nodo actual para asignar el cliente después
-              this.currentEditingNode = params.node;
-              this.openCustomerModal();
-            }
-          }
+          values: this.branches.map(b => b.id)
         }),
         valueFormatter: (params) => {
-          if (params.value === 'NEW_CUSTOMER') return '';
-          const foundItem = this.customers
-            ? this.customers.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
+          if (!params.value) return '';
+          const foundBranch = this.branches.find(b => b.id === params.value);
+          return foundBranch ? foundBranch.name : params.value;
+        }
       },
 
       {
@@ -521,6 +508,66 @@ export class IncomeComponent {
           const foundProject = this.projects.find(p => p.id === params.value);
           return foundProject ? foundProject.name : params.value;
         }
+      },
+
+      {
+        field: 'dateStamped', headerName: 'Fecha Factura', editable: true, cellDataType: 'date', width: 130,
+        valueFormatter: (params) => this.formatDate(params.value)
+      },
+
+      {
+        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 130,
+        valueFormatter: (params) => this.formatDate(params.value)
+      },
+
+      {
+        field: 'uuid',
+        headerName: 'Num Factura/UUID',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 36
+        },
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
+          return params.value.substring(0, 15) + '...';
+        },
+        cellStyle: (params) => {
+          if (params.value && params.value !== 'NA') {
+            return { backgroundColor: '#d4edda', color: '#155724' };
+          }
+          return { backgroundColor: '#fff3cd', color: '#856404' };
+        }
+      },
+
+      { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
+
+      {
+        field: 'subtotal',
+        headerName: 'Subtotal',
+        type: 'number',
+        editable: false,
+        width: 120,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'tax',
+        headerName: 'Impuestos',
+        type: 'number',
+        editable: false,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      {
+        field: 'total',
+        headerName: 'Total',
+        type: 'number',
+        editable: false,
+        filter: true,
+        width: 120,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
 
       {
@@ -543,56 +590,6 @@ export class IncomeComponent {
         cellEditorParams: {
           values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada']
         }
-      },
-      {
-        field: 'idBranch',
-        headerName: 'Sucursal',
-        editable: true,
-        width: 140,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.branches.map(b => b.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const foundBranch = this.branches.find(b => b.id === params.value);
-          return foundBranch ? foundBranch.name : params.value;
-        }
-      },
-
-      { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 130 },
-      {
-        field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true, hide: true,
-        cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
-          return params.value;
-        }
-      },
-
-      {
-        field: 'dateStamped', headerName: 'Fecha Factura', editable: true, cellDataType: 'date', width: 130,
-        valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
@@ -640,9 +637,9 @@ export class IncomeComponent {
         },
         cellStyle: (params) => {
           if (params.value == null) return {};
-          if (params.value > 0) return { color: '#dc2626', fontWeight: 'bold' }; // vencido
-          if (params.value >= -7) return { color: '#d97706', fontWeight: 'bold' }; // próximo a vencer
-          return { color: '#16a34a' }; // vigente
+          if (params.value > 0) return { color: '#dc2626', fontWeight: 'bold' };
+          if (params.value >= -7) return { color: '#d97706', fontWeight: 'bold' };
+          return { color: '#16a34a' };
         },
         valueFormatter: (params) => {
           if (params.value == null) return '';
@@ -653,48 +650,70 @@ export class IncomeComponent {
       },
 
       {
-        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 130,
-        valueFormatter: (params) => this.formatDate(params.value)
+        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: () => ({
+          options: [
+            ...this.customers.map(obj => ({
+              id: obj.id,
+              description: obj.description,
+              valueAddition: obj.id || '',
+              valueAddition2: obj.description || ''
+            })),
+            {
+              id: 'NEW_CUSTOMER',
+              description: '➕ Nuevo Registro',
+              valueAddition: 'Agregar nuevo cliente',
+              valueAddition2: 'Clic para crear'
+            }
+          ],
+          specialValues: ['NEW_CUSTOMER'],
+          onSpecialValue: (value: string, params: any) => {
+            if (value === 'NEW_CUSTOMER') {
+              this.currentEditingNode = params.node;
+              this.openCustomerModal();
+            }
+          }
+        }),
+        valueFormatter: (params) => {
+          if (params.value === 'NEW_CUSTOMER') return '';
+          const foundItem = this.customers
+            ? this.customers.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
       },
 
-      {
-        field: 'subtotal',
-        headerName: 'Subtotal',
-        type: 'number',
-        editable: false,
-        width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'tax',
-        headerName: 'Impuestos',
-        type: 'number',
-        editable: false,
-        width: 100,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'total',
-        headerName: 'Total',
-        type: 'number',
-        editable: false,filter: true,
-        width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
+      { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 130 },
 
-           {
-        field: 'paymentMonth',
-        headerName: 'Mes',
-        editable: true,
-        width: 110,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
+      {
+        field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true, hide: true,
+        cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
-          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+          maxLength: 100,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+          if (!event.node.group) {
+            this.modalServiceTable.showModal({
+              params: event,
+              value: event.value,
+            });
+          }
+        },
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) {
+            return params.value;
+          }
+          return params.value;
         }
       },
-
-      { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
 
       {
         field: 'formaPago',
@@ -729,29 +748,6 @@ export class IncomeComponent {
           return found ? `${found.metodoPagoValue} - ${found.descripcion}` : params.value;
         }
       },
-
-      {
-        field: 'uuid',
-        headerName: 'Num Factura/UUID',
-        editable: true,
-        width: 180,
-        filter: true,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: {
-          maxLength: 36
-        },
-        valueFormatter: (params) => {
-          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
-          return params.value.substring(0, 15) + '...';
-        },
-        cellStyle: (params) => {
-          if (params.value && params.value !== 'NA') {
-            return { backgroundColor: '#d4edda', color: '#155724' }; // Verde si está timbrado
-          }
-          return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo si no está timbrado
-        }
-      },
-
 
       {
         field: 'idExpend',
@@ -1164,6 +1160,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   // ==================== METODOS PARA CASCADAS ====================
 
   toggleCascade(node: any) {
+    node.setSelected(true);
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'concepts';
 

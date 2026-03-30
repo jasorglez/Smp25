@@ -629,63 +629,6 @@ export class ExpenditureComponent {
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
-        field: 'idCustomer',
-        headerName: 'Proveedor',
-        editable: true,
-        hide: false,
-        width: 180,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.providers.map((p) => p.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const prov = this.providers?.find((p) => p.id === params.value);
-          return prov ? prov.name : params.value;
-        },
-      },
-      {
-        field: 'idProject',
-        headerName: 'Proyecto',
-        editable: true,
-        width: 180,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.projects.map((p) => p.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const project = this.projects?.find((p) => p.id === params.value);
-          return project ? project.name : params.value;
-        },
-      },
-      {
-        field: 'idClient',
-        headerName: 'Cliente',
-        editable: true,
-        width: 180,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.clients.map((c) => c.id),
-          useFormatter: true,
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const client = this.clients?.find((c) => c.id === params.value);
-          return client ? client.name : params.value;
-        },
-        valueSetter: (params) => {
-          params.data.idClient = params.newValue ? Number(params.newValue) : null;
-          return true;
-        },
-      },
-      {
-        field: 'numberDocument', headerName: '# Documento', editable: true, filter: true, width: 130
-      },
-      {
         field: 'idBranch',
         headerName: 'Nombre sucursal',
         headerClass: 'required-header',
@@ -725,6 +668,37 @@ export class ExpenditureComponent {
           params.data.idBranch = params.newValue;
           return true;
         },
+      },
+      {
+        field: 'idProject',
+        headerName: 'Proyecto',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.projects.map((p) => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const project = this.projects?.find((p) => p.id === params.value);
+          return project ? project.name : params.value;
+        },
+      },
+      {
+        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 110,
+        valueFormatter: (params) => this.formatDate(params.value)
+      },
+      {
+        field: 'paymentMonth',
+        headerName: 'Mes',
+        editable: true,
+        width: 110,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        }
       },
       {
         field: 'anio',
@@ -835,6 +809,42 @@ export class ExpenditureComponent {
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
+        field: 'uuid',
+        headerName: 'Num Factura/UUID',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: { maxLength: 36 },
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
+          return params.value.length > 15 ? params.value.substring(0, 15) + '...' : params.value;
+        },
+        cellStyle: (params) => {
+          if (params.value && params.value !== 'NA') {
+            return { backgroundColor: '#d4edda', color: '#155724' };
+          }
+          return { backgroundColor: '#fff3cd', color: '#856404' };
+        }
+      },
+      {
+        field: 'idCustomer',
+        headerName: 'Proveedor',
+        editable: true,
+        hide: false,
+        width: 180,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.providers.map((p) => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const prov = this.providers?.find((p) => p.id === params.value);
+          return prov ? prov.name : params.value;
+        },
+      },
+      {
         field: 'formaPago',
         headerName: 'Tipo de Pago',
         editable: true,
@@ -862,38 +872,28 @@ export class ExpenditureComponent {
         },
       },
       {
-        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 110,
-        valueFormatter: (params) => this.formatDate(params.value)
-      },
-      {
-        field: 'paymentMonth',
-        headerName: 'Mes',
-        editable: true,
-        width: 110,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-        }
-      },
-      {
-        field: 'uuid',
-        headerName: 'Num Factura/UUID',
+        field: 'idClient',
+        headerName: 'Cliente',
         editable: true,
         width: 180,
         filter: true,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: { maxLength: 36 },
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.clients.map((c) => c.id),
+          useFormatter: true,
+        }),
         valueFormatter: (params) => {
-          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
-          return params.value.length > 15 ? params.value.substring(0, 15) + '...' : params.value;
+          if (!params.value) return '';
+          const client = this.clients?.find((c) => c.id === params.value);
+          return client ? client.name : params.value;
         },
-        cellStyle: (params) => {
-          if (params.value && params.value !== 'NA') {
-            return { backgroundColor: '#d4edda', color: '#155724' };
-          }
-          return { backgroundColor: '#fff3cd', color: '#856404' };
-        }
+        valueSetter: (params) => {
+          params.data.idClient = params.newValue ? Number(params.newValue) : null;
+          return true;
+        },
+      },
+      {
+        field: 'numberDocument', headerName: '# Documento', editable: true, filter: true, width: 130
       },
       {
         field: 'deliveryStatus',
