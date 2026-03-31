@@ -1,8 +1,5 @@
 {
   "permissions": {
-    "additionalDirectories": [
-      "C:\\Developer\\Visual Studio 22\\c#\\MicroServicios"
-    ],
     "allow": [
       "Bash(sqlcmd:*)",
       "Read(//c/Developer/Angular/angular18/**)",
@@ -134,11 +131,17 @@
       "mcp__b2-mssql-smp__execute_sql",
       "mcp__b2-mssql-security__execute_sql",
       "WebFetch(domain:bi2.com.mx)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "WebFetch(domain:www.bi2.mx)",
+      "mcp__b2-mssql-security__get_table_schema",
+      "mcp__b2-mssql-smp__get_table_schema"
     ],
     "deny": [],
     "ask": [],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\Developer\\Visual Studio 22\\c#\\MicroServicios"
+    ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
