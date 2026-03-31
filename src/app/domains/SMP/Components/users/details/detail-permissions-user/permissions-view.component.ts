@@ -1,9 +1,10 @@
-import { Component, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RolesService, CrudxDetailedPermission } from 'app/services/roles.service';
 import { SignalsService } from 'app/services/signals.service';
 import { forkJoin, lastValueFrom, Observable } from 'rxjs';
+import { take } from 'rxjs/operators';
 import { TimeService } from 'app/services/time.service';
 import { alerts } from 'app/helpers/alerts';
 import { ICellRendererParams } from 'ag-grid-enterprise';
@@ -44,6 +45,8 @@ interface MasterPermission {
   details: DetailedPermission[];
 }
 
+type PermissionsScope = 'userSystem' | 'position';
+
 @Component({
   selector: 'app-permissions-view-by-user',
   standalone: true,
@@ -75,6 +78,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   @Input() idBranchInput: number;
   @Input() idRoleInput: number;
   @Input() idPosicionInput: number;
+  /** 'userSystem' (default): sincroniza con Permisos maestros / UserSystemPermissions. 'position': permisos por posición (opción B). */
+  @Input() scopeInput: 'userSystem' | 'position' = 'userSystem';
 
   idRole: number;
   idPosicion: number;
@@ -122,7 +127,32 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     'catalogo'
   ];
 
-  constructor() {}
+  constructor() {
+    effect(() => {
+      this.signalsService.guardRefreshTick();
+      if (this.scopeInput === 'position') {
+        return;
+      }
+      const uid = this.userId;
+      if (uid == null || Number.isNaN(Number(uid)) || Number(uid) <= 0) {
+        return;
+      }
+      this.systemPermissionsService
+        .getUserPermissions(Number(uid))
+        .pipe(take(1))
+        .subscribe({
+          next: (userSys: any) => {
+            const list = userSys ?? [];
+            this.userSystemPermissionIds = list.map((p: any) => p.permissionId);
+            this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
+            this.syncReadFlagsFromUserSystemPermissions();
+            this.syncMasterLeftSwitchesFromUserSys();
+            this.notSavedChanges = false;
+          },
+          error: (err) => console.error('Resync UserSystem (Permisos maestros ↔ modal)', err),
+        });
+    });
+  }
 
   // Normaliza texto: minúsculas y sin acentos
   private normalizar(texto: string): string {
@@ -196,6 +226,40 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     return Number(row.id);
   }
 
+  /**
+   * Si el nombre del detalle en CRUD no alinea con el del catálogo, localiza la fila por palabra clave
+   * (sucursal / departamento / usuario) para el mismo id que Permisos maestros / UserSystemPermissions.
+   */
+  private resolveConfiguracionEdgeCatalogId(master: MasterPermission, detail: DetailedPermission): number | null {
+    const catalogMaster = this.getMasterCatalogEntry(master.masterPermissionName);
+    if (!catalogMaster) {
+      return null;
+    }
+    const dn = this.normalizar(detail.detailedPermissionName || '');
+    const list = catalogMaster.detailedPermissions || [];
+    const pickRow = (key: string) =>
+      list.find((d: any) => this.normalizar(d?.permissionName ?? '').includes(key));
+    if (dn.includes('sucursal')) {
+      const row = pickRow('sucursal');
+      if (row?.id != null && row.id !== '') {
+        return Number(row.id);
+      }
+    }
+    if (dn.includes('departamento')) {
+      const row = pickRow('departamento');
+      if (row?.id != null && row.id !== '') {
+        return Number(row.id);
+      }
+    }
+    if (dn.includes('usuario')) {
+      const row = pickRow('usuario');
+      if (row?.id != null && row.id !== '') {
+        return Number(row.id);
+      }
+    }
+    return null;
+  }
+
   private findMasterContainingDetail(detail: DetailedPermission): MasterPermission | null {
     for (const m of this.groupedPermissions) {
       if (m.details.some((d) => d === detail)) {
@@ -203,6 +267,99 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       }
     }
     return null;
+  }
+
+  /**
+   * Varios bloques CRUD con fila "Principal" bajo el mismo detalle (p. ej. Usuarios: Security, Departamento, Permisos).
+   * En ese caso cada switch debe usar solo su idDetailedPermission, no el id de catálogo del detalle completo.
+   */
+  private detailHasMultiplePrincipalSections(detail: DetailedPermission): boolean {
+    return detail.subdetails.filter((sd) => sd.principal != null).length >= 2;
+  }
+
+  private normalizeDetailedId(raw: any): number | null {
+    if (raw == null || raw === '') {
+      return null;
+    }
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** Fila CRUD `showColumn` para el switch de sección; el API puede usar otro casing. */
+  private isPrincipalShowColumn(showColumn: unknown): boolean {
+    return this.normalizar(String(showColumn ?? '')) === 'principal';
+  }
+
+  /** En modo por posición: los switches master/detail reflejan el estado de CRUD (canRead). */
+  private recomputeReadsFromCrud(): void {
+    for (const master of this.groupedPermissions) {
+      let anyDetailOn = false;
+      for (const detail of master.details) {
+        const perms: CrudPermission[] = [];
+        for (const sd of detail.subdetails) {
+          if (sd.principal) perms.push(sd.principal);
+          perms.push(...sd.children);
+        }
+        const anyOn = perms.some((p) => p.canRead === true);
+        detail.detailedRead = anyOn;
+        if (anyOn) {
+          anyDetailOn = true;
+        }
+      }
+      master.masterRead = anyDetailOn;
+    }
+  }
+
+  /**
+   * Mantiene en UserSystem el id canónico del detalle (tarjeta Usuarios) solo si algún Principal tiene lectura en CRUD.
+   */
+  private reconcileCanonicalUserSystemForMultiPrincipalDetail(detail: DetailedPermission): void {
+    const canonical = this.getDetailedPermissionIdForDetail(detail);
+    if (canonical == null) {
+      this.syncMasterLeftSwitchesFromUserSys();
+      this.checkForChanges();
+      return;
+    }
+    const anyPrincipalRead = detail.subdetails.some((sd) => sd.principal?.canRead === true);
+    const next = [...this.userSystemPermissionIds];
+    const idx = next.indexOf(canonical);
+    if (anyPrincipalRead && idx === -1) {
+      next.push(canonical);
+    } else if (!anyPrincipalRead && idx !== -1) {
+      next.splice(idx, 1);
+    }
+    this.userSystemPermissionIds = next;
+    this.syncReadFlagsFromUserSystemPermissions();
+    this.syncMasterLeftSwitchesFromUserSys();
+    this.checkForChanges();
+  }
+
+  /** Tras sync de lectura: si lectura off → CRUD off; si on → CRUD on (mismo criterio que el cascade previo). */
+  private syncPrincipalCrudFromReadForDetail(detail: DetailedPermission): void {
+    for (const sd of detail.subdetails) {
+      if (sd.principal) {
+        if (!sd.principal.canRead) {
+          sd.principal.canCreate = false;
+          sd.principal.canUpdate = false;
+          sd.principal.canDelete = false;
+        } else {
+          sd.principal.canCreate = true;
+          sd.principal.canUpdate = true;
+          sd.principal.canDelete = true;
+        }
+      }
+      for (const child of sd.children) {
+        if (!child.canRead) {
+          child.canCreate = false;
+          child.canUpdate = false;
+          child.canDelete = false;
+        } else {
+          child.canCreate = true;
+          child.canUpdate = true;
+          child.canDelete = true;
+        }
+      }
+    }
   }
 
   /**
@@ -252,6 +409,22 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   /**
+   * Módulo "Almacenes": en Permisos maestros el primer switch "Almacenes" es el permiso
+   * homónimo (un id en UserSystemPermissions), no el agregado de todas las tarjetas.
+   */
+  private isAlmacenesMaster(master: MasterPermission): boolean {
+    return this.normalizar(master.masterPermissionName || '').includes('almacen');
+  }
+
+  /** Si el maestro Almacenes tiene permiso homónimo en catálogo, no aplicar poda de todo el módulo en sync. */
+  private isAlmacenesHomonymLeftSwitchMode(master: MasterPermission): boolean {
+    return (
+      this.isAlmacenesMaster(master) &&
+      this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName) != null
+    );
+  }
+
+  /**
    * Tarjetas del panel derecho que deben mantener sincronizado el switch maestro "Configuración":
    * Sucursales, Usuarios, Departamentos (mismos nombres que en Permisos maestros).
    */
@@ -261,6 +434,144 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       return false;
     }
     return n.includes('sucursal') || n.includes('departamento') || n.includes('usuario');
+  }
+
+  /** Tarjeta "Usuarios" dentro de Configuración (no Departamentos ni Sucursales de primer nivel). */
+  private isUsuariosConfigDetail(master: MasterPermission, detail: DetailedPermission): boolean {
+    if (!this.isConfiguracionMaster(master)) {
+      return false;
+    }
+    const n = this.normalizar(detail.detailedPermissionName || '');
+    return n.includes('usuario') && !n.includes('sucursal') && !n.includes('departamento');
+  }
+
+  /**
+   * Tarjetas bajo Configuración › Usuarios cuyo permiso UserSystem es el del acordeón
+   * Permisos maestros › Setup Usuarios (mismo `detail.id` que en el catálogo API).
+   */
+  private isEmpresasOrSucursalesSetupSubdetail(sd: SubdetailPermission): boolean {
+    const sn = this.normalizar(sd.subdetailedPermissionName || '');
+    const permisosSinMaestros =
+      (sn === 'permisos' || sn === 'permissions') && !sn.includes('maestro');
+    return (
+      sn === 'empresas' ||
+      sn === 'sucursales' ||
+      sn === 'empresa' ||
+      sn === 'sucursal' ||
+      sn === 'almacenes' ||
+      sn === 'almacen' ||
+      sn === 'warehouses' ||
+      sn === 'warehouse' ||
+      sn.includes('warehouse') ||
+      sn === 'security' ||
+      sn.includes('security') ||
+      sn.includes('seguridad') ||
+      sn === 'departamento' ||
+      sn === 'department' ||
+      sn.includes('departamento') ||
+      sn.includes('department') ||
+      permisosSinMaestros
+    );
+  }
+
+  /** Maestro del catálogo API: Setup Usuarios / `users-setup` (Permisos maestros). */
+  private findSetupUsuariosCatalogMaster(): any | null {
+    if (!Array.isArray(this.masterPermissionsCatalog)) {
+      return null;
+    }
+    return (
+      this.masterPermissionsCatalog.find((m) => {
+        const n = this.normalizar(m?.permissionName ?? '');
+        const idf = String(m?.identifier ?? m?.Identifier ?? '').toLowerCase();
+        return idf === 'users-setup' || (n.includes('setup') && n.includes('usuario'));
+      }) ?? null
+    );
+  }
+
+  /**
+   * Id en UserSystemPermissions para un ítem del acordeón Setup Usuarios
+   * (mismo `detail.id` que Permisos maestros).
+   */
+  private getCatalogDetailedIdFromSetupUsuariosPermission(detailedName: string): number | null {
+    const master = this.findSetupUsuariosCatalogMaster();
+    if (!master) {
+      return null;
+    }
+    const dn = this.normalizar(detailedName || '');
+    const list = master.detailedPermissions || [];
+    let row = list.find((d: any) => this.normalizar(d?.permissionName ?? '') === dn);
+    if (!row) {
+      row = list.find((d: any) => {
+        const idf = String(d?.identifier ?? d?.Identifier ?? '').toLowerCase();
+        return idf !== '' && idf === dn;
+      });
+    }
+    if (!row) {
+      row = list.find((d: any) => {
+        const n = this.normalizar(d?.permissionName ?? '');
+        return n.length >= 3 && dn.length >= 3 && (n.includes(dn) || dn.includes(n));
+      });
+    }
+    // CRUD del modal puede traer "warehouses" / "Warehouse"; en catálogo suele ser "Almacenes" + identifier warehouses
+    if (
+      !row &&
+      (dn === 'warehouses' || dn === 'warehouse' || dn.includes('warehouse'))
+    ) {
+      row = list.find((d: any) => {
+        const idf = String(d?.identifier ?? d?.Identifier ?? '').toLowerCase();
+        const n = this.normalizar(d?.permissionName ?? '');
+        return idf === 'warehouses' || n.includes('almacen');
+      });
+    }
+    if (!row && (dn === 'security' || dn.includes('security') || dn.includes('seguridad'))) {
+      row = list.find((d: any) => {
+        const idf = String(d?.identifier ?? d?.Identifier ?? '').toLowerCase();
+        const n = this.normalizar(d?.permissionName ?? '');
+        return idf === 'security' || n.includes('security');
+      });
+    }
+    if (
+      !row &&
+      (dn === 'department' || dn === 'departamento' || dn.includes('departamento'))
+    ) {
+      row = list.find((d: any) => {
+        const idf = String(d?.identifier ?? d?.Identifier ?? '').toLowerCase();
+        return idf === 'department' || idf === 'departamento';
+      });
+    }
+    if (!row && (dn === 'permissions' || dn === 'permisos')) {
+      row = list.find((d: any) => {
+        const idf = String(d?.identifier ?? d?.Identifier ?? '').toLowerCase();
+        const n = this.normalizar(d?.permissionName ?? '');
+        return (
+          idf === 'permissions' ||
+          (n === 'permisos' && !n.includes('maestro'))
+        );
+      });
+    }
+    if (row?.id == null || row.id === '') {
+      return null;
+    }
+    return Number(row.id);
+  }
+
+  private collectSetupUsuarioEmpresaSucursalIds(): number[] {
+    const out: number[] = [];
+    const labels = [
+      'Empresas',
+      'Sucursales',
+      'Almacenes',
+      'Security',
+      'Departamento',
+      'Permisos',
+    ] as const;
+    for (const label of labels) {
+      const id = this.getCatalogDetailedIdFromSetupUsuariosPermission(label);
+      if (id != null) {
+        out.push(id);
+      }
+    }
+    return out;
   }
 
   /** ¿Algún detalle pertinente encendido para pintar el switch izquierdo del maestro? */
@@ -276,8 +587,15 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     return master.details.some((d) => d.detailedRead === true);
   }
 
-  /** IDs UserSystem a quitar cuando las 3 tarjetas de Configuración están apagadas (+ permiso homónimo "Configuración" si existe). */
-  private collectConfiguracionEdgeAndHomonymIds(master: MasterPermission): Set<number> {
+  /**
+   * IDs UserSystem al afectar todo el módulo Configuración.
+   * `includeSetupUsuarioSubIds`: al apagar el módulo completo, quitar también Empresas/Sucursales
+   * del acordeón Setup Usuarios (mismos que en Permisos maestros).
+   */
+  private collectConfiguracionEdgeAndHomonymIds(
+    master: MasterPermission,
+    options?: { includeSetupUsuarioSubIds?: boolean }
+  ): Set<number> {
     const ids = new Set<number>();
     for (const detail of master.details) {
       if (this.isConfiguracionEdgeCardDetail(detail)) {
@@ -290,6 +608,11 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     const homonym = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
     if (homonym != null) {
       ids.add(homonym);
+    }
+    if (options?.includeSetupUsuarioSubIds) {
+      for (const id of this.collectSetupUsuarioEmpresaSucursalIds()) {
+        ids.add(id);
+      }
     }
     return ids;
   }
@@ -319,18 +642,36 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   /**
    * Switch izquierdo: si hay rejilla, refleja "¿algún submódulo encendido?".
    * Si todos los del lado derecho están apagados → maestro apagado y se limpian ids/CRUD del módulo.
+   * Almacenes (solo modal, homónimo): si todas las tarjetas derechas están apagadas, apagar el switch izquierdo
+   * y quitar el permiso homónimo sin podar el resto del módulo con el branch genérico.
    * Si no hay filas de rejilla, usa el catálogo (acordeón Permisos maestros).
    */
   private syncMasterLeftSwitchesFromUserSys(): void {
     let pruned = false;
     for (const master of this.groupedPermissions) {
       if (master.details?.length) {
+        if (this.isAlmacenesHomonymLeftSwitchMode(master)) {
+          const hid = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName)!;
+          const allRightOff = master.details.every((d) => !d.detailedRead);
+          if (allRightOff) {
+            master.masterRead = false;
+            const beforeLen = this.userSystemPermissionIds.length;
+            this.userSystemPermissionIds = this.userSystemPermissionIds.filter((id) => id !== hid);
+            if (this.userSystemPermissionIds.length !== beforeLen) {
+              pruned = true;
+            }
+          } else {
+            master.masterRead = this.userSystemPermissionIds.includes(hid);
+          }
+          continue;
+        }
+
         const anyDetailOn = this.anyDetailReadOnForMasterLeftSwitch(master);
         master.masterRead = anyDetailOn;
         if (!anyDetailOn) {
           const beforeLen = this.userSystemPermissionIds.length;
           const toRemove = this.isConfiguracionMaster(master)
-            ? this.collectConfiguracionEdgeAndHomonymIds(master)
+            ? this.collectConfiguracionEdgeAndHomonymIds(master, { includeSetupUsuarioSubIds: true })
             : this.collectDetailedPermissionIdsForMaster(master);
           this.userSystemPermissionIds = this.userSystemPermissionIds.filter((id) => !toRemove.has(id));
           if (this.userSystemPermissionIds.length !== beforeLen) {
@@ -368,6 +709,25 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     );
   }
 
+  /** Mismo usuario que la sesión (perfil o signal) para refrescar menú / guard sin F5. */
+  private isEditingSessionUser(): boolean {
+    const rowUser = Number(this.userId);
+    if (Number.isNaN(rowUser) || rowUser <= 0) {
+      return false;
+    }
+    const profileId = this.signalsService.profile.idUser();
+    const fromProfile =
+      profileId != null && profileId !== 0 ? Number(profileId) : Number.NaN;
+    const fromSignal = Number(this.signalsService.idUser());
+    const sessionId =
+      !Number.isNaN(fromProfile) && fromProfile > 0
+        ? fromProfile
+        : !Number.isNaN(fromSignal) && fromSignal > 0
+          ? fromSignal
+          : Number.NaN;
+    return !Number.isNaN(sessionId) && rowUser === sessionId;
+  }
+
   ngOnInit(): void {
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
   }
@@ -393,25 +753,64 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
   }
 
-  obtenerDatos(idCompany: number, idUser: number, idBranch: number, idRole: number, idPosicion: number) {
+  obtenerDatos(
+    idCompany: number,
+    idUser: number,
+    idBranch: number,
+    idRole: number,
+    idPosicion: number,
+    options?: { preserveUiSelection?: boolean; onComplete?: () => void }
+  ) {
+    const preserve = options?.preserveUiSelection === true;
+    const savedMasterName = preserve ? this.masterSeleccionado?.masterPermissionName : undefined;
+    const savedDetailName = preserve ? this.detailSeleccionado?.detailedPermissionName : undefined;
+
+    const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
     forkJoin({
       crud: this.permitionsService.getPermitionsSencillo(idCompany, idUser, idBranch, idRole, idPosicion),
-      userSys: this.systemPermissionsService.getUserPermissions(idUser),
-      catalog: this.systemPermissionsService.getMasterPermissions(idCompany),
+      userSys:
+        scope === 'userSystem'
+          ? this.systemPermissionsService.getUserPermissions(idUser)
+          : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
+      catalog:
+        scope === 'userSystem'
+          ? this.systemPermissionsService.getMasterPermissions(idCompany)
+          : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
     }).subscribe({
-      next: ({ crud, userSys, catalog }) => {
+      next: ({ crud, userSys, catalog }: any) => {
         this.rawData = crud;
         console.log('new data', this.rawData);
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
         this.userSystemPermissionIds = (userSys ?? []).map((p: any) => p.permissionId);
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.groupedPermissions = this.transformData(this.rawData);
-        this.syncReadFlagsFromUserSystemPermissions();
-        this.syncMasterLeftSwitchesFromUserSys();
+        if (scope === 'userSystem') {
+          this.syncReadFlagsFromUserSystemPermissions();
+          this.syncMasterLeftSwitchesFromUserSys();
+        } else {
+          this.recomputeReadsFromCrud();
+        }
         this.captureMasterReadBaseline();
-        this.masterSeleccionado = null;
-        this.detailSeleccionado = null;
+
+        if (preserve && savedMasterName) {
+          const m = this.groupedPermissions.find((x) => x.masterPermissionName === savedMasterName);
+          if (m) {
+            this.masterSeleccionado = m;
+            this.detailSeleccionado =
+              savedDetailName != null && savedDetailName !== ''
+                ? m.details.find((d) => d.detailedPermissionName === savedDetailName) ?? null
+                : null;
+          } else {
+            this.masterSeleccionado = null;
+            this.detailSeleccionado = null;
+          }
+        } else {
+          this.masterSeleccionado = null;
+          this.detailSeleccionado = null;
+        }
+
         this.notSavedChanges = false;
+        options?.onComplete?.();
       },
       error: (err) => console.error(err),
     });
@@ -419,19 +818,30 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
   modificar() {
     const idCo = this.idEmpresa ?? this.idCompany;
+    const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
     forkJoin({
       crud: this.permitionsService.getPermitionsDetail(this.idEmpresa, this.userId, this.branchId, this.idRole, this.idPosicion),
-      userSys: this.systemPermissionsService.getUserPermissions(this.userId),
-      catalog: this.systemPermissionsService.getMasterPermissions(idCo),
+      userSys:
+        scope === 'userSystem'
+          ? this.systemPermissionsService.getUserPermissions(this.userId)
+          : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
+      catalog:
+        scope === 'userSystem'
+          ? this.systemPermissionsService.getMasterPermissions(idCo)
+          : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
     }).subscribe({
-      next: ({ crud, userSys, catalog }) => {
+      next: ({ crud, userSys, catalog }: any) => {
         this.rawData = crud;
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
         this.userSystemPermissionIds = (userSys ?? []).map((p: any) => p.permissionId);
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.groupedPermissions = this.transformData(this.rawData);
-        this.syncReadFlagsFromUserSystemPermissions();
-        this.syncMasterLeftSwitchesFromUserSys();
+        if (scope === 'userSystem') {
+          this.syncReadFlagsFromUserSystemPermissions();
+          this.syncMasterLeftSwitchesFromUserSys();
+        } else {
+          this.recomputeReadsFromCrud();
+        }
         this.captureMasterReadBaseline();
         this.notSavedChanges = false;
       },
@@ -460,7 +870,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   private applyMasterOffCascade(master: MasterPermission): void {
     master.masterRead = false;
     const toRemove = this.isConfiguracionMaster(master)
-      ? this.collectConfiguracionEdgeAndHomonymIds(master)
+      ? this.collectConfiguracionEdgeAndHomonymIds(master, { includeSetupUsuarioSubIds: true })
       : this.collectDetailedPermissionIdsForMaster(master);
     this.userSystemPermissionIds = this.userSystemPermissionIds.filter((id) => !toRemove.has(id));
 
@@ -504,6 +914,11 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           continue;
         }
         detail.detailedRead = true;
+        // Usuarios con Security / Departamento / Permisos: no encender todos los switches al subir el maestro;
+        // cada uno sigue su id en UserSystemPermissions (sync abajo).
+        if (this.detailHasMultiplePrincipalSections(detail)) {
+          continue;
+        }
         for (const sd of detail.subdetails) {
           if (sd.principal) {
             sd.principal.canRead = true;
@@ -517,6 +932,15 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
             child.canUpdate = true;
             child.canDelete = true;
           }
+        }
+      }
+      for (const detail of master.details) {
+        if (!this.isConfiguracionEdgeCardDetail(detail)) {
+          continue;
+        }
+        if (this.detailHasMultiplePrincipalSections(detail)) {
+          this.syncReadFlagsForSingleDetail(detail);
+          this.syncPrincipalCrudFromReadForDetail(detail);
         }
       }
     } else {
@@ -547,10 +971,13 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   private getDetailedPermissionIdForDetail(detail: DetailedPermission): number | null {
     const master = this.findMasterContainingDetail(detail);
     if (master) {
-      const fromCatalog = this.getCatalogDetailedIdForDetailName(
+      let fromCatalog = this.getCatalogDetailedIdForDetailName(
         master.masterPermissionName,
         detail.detailedPermissionName
       );
+      if (fromCatalog == null && this.isConfiguracionMaster(master) && this.isConfiguracionEdgeCardDetail(detail)) {
+        fromCatalog = this.resolveConfiguracionEdgeCatalogId(master, detail);
+      }
       if (fromCatalog != null) {
         return fromCatalog;
       }
@@ -568,28 +995,87 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     return null;
   }
 
+  /** Una fila del panel derecho + sus subdetalles CRUD, alineada con UserSystemPermissions. */
+  private syncReadFlagsForSingleDetail(detail: DetailedPermission): void {
+    const canonical = this.getDetailedPermissionIdForDetail(detail);
+    const multiPrincipal = this.detailHasMultiplePrincipalSections(detail);
+
+    if (canonical != null) {
+      if (multiPrincipal) {
+        // UserSystem solo tiene el permiso detallado padre; cada switch Principal vive en CRUD.
+        const anyPrincipalRead = detail.subdetails.some((sd) => sd.principal?.canRead === true);
+        detail.detailedRead =
+          anyPrincipalRead || this.userSystemPermissionIds.includes(canonical);
+      } else {
+        detail.detailedRead = this.userSystemPermissionIds.includes(canonical);
+      }
+    }
+    for (const sd of detail.subdetails) {
+      if (sd.principal) {
+        if (multiPrincipal) {
+          // Id en UserSystem: mismo criterio que Permisos maestros › Setup Usuarios para Empresas/Sucursales.
+          let pid = this.normalizeDetailedId(sd.principal.idDetailedPermission);
+          const m = this.findMasterContainingDetail(detail);
+          if (
+            m &&
+            this.isUsuariosConfigDetail(m, detail) &&
+            this.isEmpresasOrSucursalesSetupSubdetail(sd)
+          ) {
+            const sid = this.getCatalogDetailedIdFromSetupUsuariosPermission(sd.subdetailedPermissionName);
+            if (sid != null) {
+              pid = sid;
+            }
+          }
+          if (pid != null && pid !== canonical) {
+            sd.principal.canRead = this.userSystemPermissionIds.includes(pid);
+          }
+        } else {
+          const pid = this.normalizeDetailedId(sd.principal.idDetailedPermission);
+          const pidUse = canonical != null ? canonical : pid;
+          if (pidUse != null) {
+            sd.principal.canRead = this.userSystemPermissionIds.includes(pidUse);
+          }
+        }
+      }
+      // Hijos: normalmente se sincronizan salvo bajo principal en multiPrincipal (antes quedaban solo en CRUD).
+      // Configuración › Usuarios › Acciones adicionales: Security / Departamento / Permisos usan los mismos ids
+      // que Permisos maestros (Setup Usuarios), y deben reflejar `userSystemPermissionIds`.
+      if (!(multiPrincipal && sd.principal != null)) {
+        for (const child of sd.children) {
+          const cid = this.normalizeDetailedId(child.idDetailedPermission);
+          if (cid != null) {
+            child.canRead = this.userSystemPermissionIds.includes(cid);
+          }
+        }
+      } else {
+        const mKids = this.findMasterContainingDetail(detail);
+        if (mKids && this.isUsuariosConfigDetail(mKids, detail)) {
+          for (const child of sd.children) {
+            const setupId = this.getCatalogDetailedIdFromSetupUsuariosPermission(child.name);
+            if (setupId != null) {
+              const on = this.userSystemPermissionIds.includes(setupId);
+              child.canRead = on;
+              if (!on) {
+                child.canCreate = false;
+                child.canUpdate = false;
+                child.canDelete = false;
+              } else {
+                child.canCreate = true;
+                child.canUpdate = true;
+                child.canDelete = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   /** Alinea lectura (rejilla + cada Principal/hijo por su idDetailedPermission) con UserSystemPermissions. */
   private syncReadFlagsFromUserSystemPermissions(): void {
     for (const master of this.groupedPermissions) {
       for (const detail of master.details) {
-        const canonical = this.getDetailedPermissionIdForDetail(detail);
-        if (canonical != null) {
-          detail.detailedRead = this.userSystemPermissionIds.includes(canonical);
-        }
-        for (const sd of detail.subdetails) {
-          if (sd.principal) {
-            const pid =
-              canonical != null ? canonical : sd.principal.idDetailedPermission;
-            if (pid != null) {
-              sd.principal.canRead = this.userSystemPermissionIds.includes(pid);
-            }
-          }
-          for (const child of sd.children) {
-            if (child.idDetailedPermission != null) {
-              child.canRead = this.userSystemPermissionIds.includes(child.idDetailedPermission);
-            }
-          }
-        }
+        this.syncReadFlagsForSingleDetail(detail);
       }
     }
   }
@@ -650,6 +1136,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
               continue;
             }
             if (
+              p.canRead !== !!o.canRead ||
               p.canCreate !== !!o.canCreate ||
               p.canUpdate !== !!o.canUpdate ||
               p.canDelete !== !!o.canDelete
@@ -680,19 +1167,69 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
   /** Switch de lectura en panel CRUD (Principal / hijos): misma API que Permisos maestros. */
   onPermisoReadCrudChange(permission: CrudPermission): void {
+    if ((this.scopeInput ?? 'userSystem') === 'position') {
+      this.propagarActivacionCrudTrasLectura(permission);
+      this.recomputeReadsFromCrud();
+      this.checkForChanges();
+      return;
+    }
     const master = this.masterSeleccionado;
     const detail = this.detailSeleccionado;
-    let id: number | null = permission.idDetailedPermission;
-    // Solo la fila "Principal" del detalle corresponde al mismo id que el switch del acordeón;
-    // los hijos mantienen su propio idDetailedPermission.
-    if (permission.name === 'Principal' && master && detail) {
-      const catalogId = this.getCatalogDetailedIdForDetailName(
-        master.masterPermissionName,
-        detail.detailedPermissionName
-      );
-      if (catalogId != null) {
-        id = catalogId;
+    let id: number | null = this.normalizeDetailedId(permission.idDetailedPermission);
+    // Una sola sección Principal: el switch alinea con UserSystem vía id canónico del detalle.
+    // Varias (Security / Departamento / Permisos): UserSystem solo tiene el padre; cada switch es solo CRUD + reconcile.
+    if (this.isPrincipalShowColumn(permission.name) && master && detail) {
+      if (this.detailHasMultiplePrincipalSections(detail)) {
+        this.propagarActivacionCrudTrasLectura(permission);
+        const canonical = this.getDetailedPermissionIdForDetail(detail);
+        const sub = detail.subdetails.find((s) => s.principal === permission) ?? null;
+        let userSysId = this.normalizeDetailedId(permission.idDetailedPermission);
+        if (
+          this.isUsuariosConfigDetail(master, detail) &&
+          sub &&
+          this.isEmpresasOrSucursalesSetupSubdetail(sub)
+        ) {
+          const setupId = this.getCatalogDetailedIdFromSetupUsuariosPermission(sub.subdetailedPermissionName);
+          if (setupId != null) {
+            userSysId = setupId;
+          }
+        }
+        if (userSysId != null && userSysId !== canonical) {
+          this.applyUserSystemPermissionLocal(userSysId, permission.canRead, () =>
+            this.reconcileCanonicalUserSystemForMultiPrincipalDetail(detail)
+          );
+        } else {
+          this.reconcileCanonicalUserSystemForMultiPrincipalDetail(detail);
+        }
+        return;
       }
+      const canonical = this.getDetailedPermissionIdForDetail(detail);
+      if (canonical != null) {
+        id = canonical;
+      }
+    }
+    // Hijos bajo principal en sección multiPrincipal: por defecto solo CRUD local.
+    // Excepción Configuración › Usuarios: hijos alineados con Setup Usuarios actualizan `userSystemPermissionIds`
+    // en memoria; el PUT y mensaje de guardado ocurren solo al pulsar Guardar.
+    const parentSubdetail = detail?.subdetails.find((sd) => sd.children.includes(permission));
+    if (detail && this.detailHasMultiplePrincipalSections(detail) && parentSubdetail?.principal != null) {
+      const masterCtx = this.masterSeleccionado;
+      if (
+        masterCtx &&
+        this.isUsuariosConfigDetail(masterCtx, detail) &&
+        parentSubdetail.children.includes(permission)
+      ) {
+        const setupUsuariosId = this.getCatalogDetailedIdFromSetupUsuariosPermission(permission.name);
+        if (setupUsuariosId != null) {
+          this.applyUserSystemPermissionLocal(setupUsuariosId, permission.canRead, () =>
+            this.propagarActivacionCrudTrasLectura(permission)
+          );
+          return;
+        }
+      }
+      this.propagarActivacionCrudTrasLectura(permission);
+      this.checkForChanges();
+      return;
     }
     if (id != null) {
       this.applyUserSystemPermissionLocal(id, permission.canRead, () =>
@@ -734,6 +1271,26 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   // Verifica si un detail tiene al menos un subdetail con children
   tieneChildren(detail: DetailedPermission): boolean {
     return detail.subdetails.some(sd => sd.children && sd.children.length > 0);
+  }
+
+  /**
+   * Visibilidad del panel CRUD del detalle seleccionado. Además de `detailedRead`, Almacenes en modo homónimo
+   * puede tener el switch maestro y el id en UserSystem activos mientras el detalle aún no marca lectura.
+   */
+  mostrarPanelCrudParaDetalleSeleccionado(): boolean {
+    const detail = this.detailSeleccionado;
+    const master = this.masterSeleccionado;
+    if (!detail || !master || !master.masterRead) {
+      return false;
+    }
+    if (detail.detailedRead) {
+      return true;
+    }
+    if (!this.isAlmacenesHomonymLeftSwitchMode(master)) {
+      return false;
+    }
+    const hid = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
+    return hid != null && this.userSystemPermissionIds.includes(hid);
   }
 
   // Navega al paso 2 mostrando las acciones adicionales del subdetail
@@ -797,7 +1354,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         __original: { ...item }
       };
 
-      if (item.showColumn === 'Principal') {
+      if (this.isPrincipalShowColumn(item.showColumn)) {
         subdetailGroup.principal = crudItem;
       } else {
         subdetailGroup.children.push(crudItem);
@@ -835,8 +1392,12 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   checkForChanges() {
+    const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
+    // En modo "position" NO debe tocar permisos maestros (UserSystemPermissions).
+    // Solo consideramos cambios de CRUD.
     this.notSavedChanges =
-      this.areUserSystemPermissionsDirty() || this.hasNonUserSysCrudDirty();
+      (scope === 'userSystem' ? this.areUserSystemPermissionsDirty() : false) ||
+      this.hasNonUserSysCrudDirty();
   }
 
   revertChanges() {
@@ -848,11 +1409,61 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.notSavedChanges = false;
     this.masterSeleccionado = null;
     this.detailSeleccionado = null;
-    this.subdetailExpandido = null;
   }
 
   onMasterReadChange(master: MasterPermission) {
+    // En modo por posición, los switches del sidebar izquierdo NO deben sincronizarse con permisos maestros.
+    // Solo afectan el CRUD local.
+    if ((this.scopeInput ?? 'userSystem') === 'position') {
+      if (master.masterRead) {
+        // Encender: activa lectura + CRUD (C/U/D) en todos los permisos del master
+        for (const detail of master.details) {
+          detail.detailedRead = true;
+          for (const sd of detail.subdetails) {
+            if (sd.principal) {
+              sd.principal.canRead = true;
+              sd.principal.canCreate = true;
+              sd.principal.canUpdate = true;
+              sd.principal.canDelete = true;
+            }
+            for (const child of sd.children) {
+              child.canRead = true;
+              child.canCreate = true;
+              child.canUpdate = true;
+              child.canDelete = true;
+            }
+          }
+        }
+      } else {
+        // Apagar: limpia lectura + CRUD
+        for (const detail of master.details) {
+          detail.detailedRead = false;
+        }
+        this.zeroCrudReadsForMaster(master);
+      }
+      this.recomputeReadsFromCrud();
+      this.checkForChanges();
+      return;
+    }
+
     const masterToggleId = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
+    // Almacenes (homónimo): al encender el maestro izquierdo, encender todas las tarjetas del panel derecho
+    // y los ids de usuario; al apagar, solo el homónimo (comportamiento previo).
+    if (this.isAlmacenesHomonymLeftSwitchMode(master)) {
+      if (master.masterRead) {
+        this.applyMasterOnCascade(master);
+        if (masterToggleId != null && !this.userSystemPermissionIds.includes(masterToggleId)) {
+          this.userSystemPermissionIds = [...this.userSystemPermissionIds, masterToggleId];
+        }
+        this.syncReadFlagsFromUserSystemPermissions();
+        this.syncMasterLeftSwitchesFromUserSys();
+        this.seleccionarMaster(master);
+      } else {
+        this.applyUserSystemPermissionLocal(masterToggleId!, master.masterRead);
+      }
+      this.checkForChanges();
+      return;
+    }
     // Configuración se gobierna por las tarjetas Sucursales / Usuarios / Departamentos (no solo el homónimo).
     if (masterToggleId != null && !this.isConfiguracionMaster(master)) {
       this.applyUserSystemPermissionLocal(masterToggleId, master.masterRead, () => {
@@ -873,6 +1484,83 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   onDetailedReadChange(detail: DetailedPermission) {
+    // En modo por posición, el switch de detalle solo gobierna CRUD (no UserSystem).
+    if ((this.scopeInput ?? 'userSystem') === 'position') {
+      if (!detail.detailedRead) {
+        for (const sd of detail.subdetails) {
+          if (sd.principal) {
+            sd.principal.canRead = false;
+            sd.principal.canCreate = false;
+            sd.principal.canUpdate = false;
+            sd.principal.canDelete = false;
+          }
+          for (const child of sd.children) {
+            child.canRead = false;
+            child.canCreate = false;
+            child.canUpdate = false;
+            child.canDelete = false;
+          }
+        }
+      } else {
+        for (const sd of detail.subdetails) {
+          if (sd.principal) {
+            sd.principal.canRead = true;
+            sd.principal.canCreate = true;
+            sd.principal.canUpdate = true;
+            sd.principal.canDelete = true;
+          }
+          for (const child of sd.children) {
+            child.canRead = true;
+            child.canCreate = true;
+            child.canUpdate = true;
+            child.canDelete = true;
+          }
+        }
+      }
+      this.recomputeReadsFromCrud();
+      this.checkForChanges();
+      return;
+    }
+
+    const master = this.findMasterContainingDetail(detail);
+    if (master && this.detailHasMultiplePrincipalSections(detail)) {
+      if (detail.detailedRead) {
+        const canonical = this.getDetailedPermissionIdForDetail(detail);
+        if (canonical != null && !this.userSystemPermissionIds.includes(canonical)) {
+          this.userSystemPermissionIds = [...this.userSystemPermissionIds, canonical];
+        }
+        this.seleccionarDetail(detail);
+      } else {
+        for (const sd of detail.subdetails) {
+          if (sd.principal) {
+            sd.principal.canRead = false;
+            sd.principal.canCreate = false;
+            sd.principal.canUpdate = false;
+            sd.principal.canDelete = false;
+          }
+        }
+        if (master && this.isUsuariosConfigDetail(master, detail)) {
+          for (const sd of detail.subdetails) {
+            if (!this.isEmpresasOrSucursalesSetupSubdetail(sd)) {
+              continue;
+            }
+            const sid = this.getCatalogDetailedIdFromSetupUsuariosPermission(sd.subdetailedPermissionName);
+            if (sid != null) {
+              const idx = this.userSystemPermissionIds.indexOf(sid);
+              if (idx !== -1) {
+                this.userSystemPermissionIds.splice(idx, 1);
+              }
+            }
+          }
+        }
+        this.reconcileCanonicalUserSystemForMultiPrincipalDetail(detail);
+      }
+      this.syncReadFlagsFromUserSystemPermissions();
+      this.syncMasterLeftSwitchesFromUserSys();
+      this.checkForChanges();
+      return;
+    }
+
     const id = this.getDetailedPermissionIdForDetail(detail);
     if (id == null) {
       if (detail.detailedRead) {
@@ -906,7 +1594,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   async saveDetailChanges() {
-    const userSysDirty = this.areUserSystemPermissionsDirty();
+    const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
+    const userSysDirty = scope === 'userSystem' ? this.areUserSystemPermissionsDirty() : false;
     const crudDirty = this.hasNonUserSysCrudDirty();
 
     if (!userSysDirty && !crudDirty) {
@@ -967,6 +1656,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           'Menu Administracion Permisos Maestros',
           this.trackingService.getEmail()
         );
+        // Solo en modo UserSystem: esto hace que el menú/guards se re-sincronicen.
+        this.signalsService.bumpGuardRefreshTick();
       }
 
       if (crudDirty) {
@@ -978,14 +1669,27 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         );
       }
 
-      // Menú lateral: misma sucursal que el modal (guardAdvanced) + tick para refrescar *ngIf
-      if (Number(this.userId) === Number(this.signalsService.idUser())) {
-        try {
-          await lastValueFrom(
-            this.authService.reloadCurrentSessionGuard({ idBranchOverride: this.branchId })
-          );
-        } catch (err) {
-          console.error('Error al actualizar permisos del menú lateral tras guardar', err);
+      // IMPORTANTE:
+      // - En modo "position" este modal NO debe restringir ni refrescar permisos de sesión/menú.
+      // - Solo guarda la configuración en BD.
+      if (scope === 'userSystem') {
+        const sameSessionUser = this.isEditingSessionUser();
+        // Menú Setup (pestañas Sucursales, Empresas, etc.): siempre que UserSystem cambió, usar guard/{userId}
+        // (guard básico). guardAdvanced lee CrudPermissions y no refleja updateUserPermissions correctamente.
+        if (sameSessionUser) {
+          try {
+            await lastValueFrom(
+              this.authService.reloadCurrentSessionGuard({
+                idBranchOverride: this.branchId,
+                ...(userSysDirty ? { preferUserSystemGuard: true as const } : {}),
+              })
+            );
+          } catch (err) {
+            console.error(
+              'Error al actualizar permisos del menú lateral tras guardar',
+              err
+            );
+          }
         }
       }
 
@@ -995,8 +1699,10 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.captureMasterReadBaseline();
       }
 
-      if (crudDirty) {
-        this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
+      if (crudDirty || userSysDirty) {
+        this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion, {
+          preserveUiSelection: true,
+        });
       }
     } catch (error) {
       alerts.closeLoading();

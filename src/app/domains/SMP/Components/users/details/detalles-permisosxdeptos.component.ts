@@ -12,10 +12,11 @@ import { EmployeesService } from 'app/services/employees.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { AuthService } from 'app/services/auth.service';
-import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
 import { PermissionsViewByUserComponent } from './detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-detail-permisos-x-deptos',
@@ -202,9 +203,17 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           };
         },
         valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.catalogRoles?.find(item => item.id === params.value);
-          return found ? found.description : params.value;
+          const raw = params.value;
+          if (raw == null || raw === '') return '';
+          const id = Number(raw);
+          const found = this.catalogRoles?.find(item => Number(item.id) === id);
+          // Preferir descripción del catálogo; si no existe, intenta nombres ya embebidos o muestra el ID.
+          return (
+            found?.description ??
+            params.data?.departmentName ??
+            params.data?.roleName ??
+            (Number.isFinite(id) ? `ID: ${id}` : String(raw))
+          );
         },
         valueSetter: (params) => {
           const newDeptId = params.newValue;
@@ -260,9 +269,16 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           };
         },
         valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
-          return found ? found.description : params.value;
+          const raw = params.value;
+          if (raw == null || raw === '') return '';
+          const id = Number(raw);
+          const found = this.catalogGeneralPosiciones?.find(item => Number(item.id) === id);
+          return (
+            found?.description ??
+            params.data?.positionName ??
+            params.data?.posicionName ??
+            (Number.isFinite(id) ? `ID: ${id}` : String(raw))
+          );
         },
         valueSetter: (params) => {
           const newPosicionId = params.newValue;
@@ -296,10 +312,15 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       {
         field: 'Permisos',
         headerName: 'Permisos',
-        cellStyle: { backgroundColor: '#d4edda' },
+        cellStyle: (p: any) => ({
+          backgroundColor: this.canOpenVerPermisosModal() ? '#d4edda' : '#e9ecef',
+        }),
         cellRenderer: () => {
+          if (!this.canOpenVerPermisosModal()) {
+            return `<span class="text-muted" style="cursor: not-allowed;" title="Sin permiso (Setup Usuarios › Permisos)">—</span>`;
+          }
           return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;
-        }
+        },
       },
     ];
 
@@ -379,27 +400,55 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
 
   obternerDatos() {
     forkJoin({
-      permisos: this.permitionsService.getRolYPosicion(this.userId, this.branchId),
-      empleados: this.employeeService.getEmployees(this.branchId)
+      permisos: this.permitionsService.getRolYPosicion(this.userId, this.branchId).pipe(
+        catchError(() => of([]))
+      ),
+      empleados: this.employeeService.getEmployees(this.branchId).pipe(
+        catchError(() => of([]))
+      ),
     }).subscribe({
       next: ({ permisos, empleados }: any) => {
-        const permisosArr = Array.isArray(permisos) ? permisos : [];
+        // El backend puede devolver arreglo directo o un wrapper { data/project/... }.
+        const permisosArr =
+          Array.isArray(permisos)
+            ? permisos
+            : Array.isArray(permisos?.data)
+              ? permisos.data
+              : Array.isArray(permisos?.project)
+                ? permisos.project
+                : Array.isArray(permisos?.permissions)
+                  ? permisos.permissions
+                  : [];
         const empleadosArr = Array.isArray(empleados) ? empleados : [];
 
-        this.warehousesRowData = permisosArr;
+        const emp = empleadosArr.find(
+          (e: any) => (e.name?.toUpperCase() || e.displayName?.toUpperCase()) === this.userName?.toUpperCase()
+        );
 
-        const rowPrincipal = permisosArr.find((r: any) => r.principal === true || r.principal === 1);
+        // Si no hay filas en CrudPermissions, pre-poblar con el registro del empleado
+        if (permisosArr.length === 0 && emp && (emp.idRole != null || emp.idDepto != null)) {
+          const tempId = `temp_${this.tempIdCounter++}`;
+          this.warehousesRowData = [{
+            id: tempId,
+            idUser: this.userId,
+            idBranch: this.branchId,
+            idRole: emp.idRole ?? emp.idDepto,
+            idPosicion: emp.idPosition ?? emp.idPosicion,
+            principal: true,
+            __isNew: true
+          }];
+          this.hasWarehouseChanges = true;
+        } else {
+          this.warehousesRowData = permisosArr;
+        }
+
+        const rowPrincipal = this.warehousesRowData.find((r: any) => r.principal === true || r.principal === 1);
         if (rowPrincipal && rowPrincipal.idRole != null && rowPrincipal.idPosicion != null) {
           this.empleadoPrincipal = { idDepto: rowPrincipal.idRole, idPosition: rowPrincipal.idPosicion };
+        } else if (emp && (emp.idDepto != null || emp.idRole != null) && (emp.idPosition != null || emp.idPosicion != null)) {
+          this.empleadoPrincipal = { idDepto: emp.idRole ?? emp.idDepto, idPosition: emp.idPosition ?? emp.idPosicion };
         } else {
-          const emp = empleadosArr.find(
-            (e: any) => (e.name?.toUpperCase() || e.displayName?.toUpperCase()) === this.userName?.toUpperCase()
-          );
-          if (emp && (emp.idDepto != null || emp.idRole != null) && (emp.idPosition != null || emp.idPosicion != null)) {
-            this.empleadoPrincipal = { idDepto: emp.idRole ?? emp.idDepto, idPosition: emp.idPosition ?? emp.idPosicion };
-          } else {
-            this.empleadoPrincipal = null;
-          }
+          this.empleadoPrincipal = null;
         }
 
         setTimeout(() => {
@@ -618,8 +667,12 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     }
 
     if (colId === 'Permisos') {
-      if (!this.authService.hasSubDetailedPermission('setup', 'users', 'Sec_Per')) {
-        alerts.basicAlert('Sin acceso', 'No tienes acceso para este apartado', 'warning');
+      if (!this.canOpenVerPermisosModal()) {
+        alerts.basicAlert(
+          'Sin acceso',
+          'No tienes el permiso «Permisos» en Setup Usuarios (Permisos maestros).',
+          'info'
+        );
         return;
       }
       this.modalService.openPermissions({
@@ -628,7 +681,17 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         idRole: event.data.idRole,
         idPosicion: event.data.idPosicion,
         userName: this.userName,
+        scope: 'position',
       });
     }
+  }
+
+  /** Mismo switch que «Permisos» bajo Setup Usuarios en Permisos maestros (`identifier`: permissions). */
+  private canOpenVerPermisosModal(): boolean {
+    const email = this.signalsService.getemailChoose();
+    if (email === environment.root) {
+      return true;
+    }
+    return this.authService.hasDetailedPermission('users-setup', 'permissions');
   }
 }

@@ -1,37 +1,36 @@
-<div class="row">
-    <div class="col mb-2">
-        <img [src]="profile.profilePicUser()" alt="Imagen de perfil de {{profile.nameUser()}}"
-            class="img-fluid rounded" style="width:100%;">
-    </div>
-</div>
-<div class="row">
-    <div class="col">
-        <p><strong>Nombre</strong></p>
-        <p>{{profile.nameUser()}}</p>
-    </div>
-</div>
-<div class="row">
-    <div class="col">
-        <p><strong>Correo electrónico</strong></p>
-        <p>{{profile.emailUser()}}</p>
-    </div>
-</div>
+<div class="up-root">
+  <div class="up-avatar-wrap">
+    <img
+      [src]="displayPic"
+      (error)="onImgError()"
+      [alt]="'Foto de ' + (profile.nameUser() || 'usuario')"
+      class="up-avatar img-fluid" />
+  </div>
 
-<div class="row">
-    <div class="col">
-        <p><strong>Rol</strong></p>
-        <p>{{profile.organizationUser()}}</p>
-    </div>
-</div>
-<div class="row" *ngIf="nameCompany != null">
-    <div class="col">
-        <p><strong>Proveedor seleccionado</strong></p>
-        <p>{{nameCompany}}</p>
-    </div>
-</div>
-<div class="row" *ngIf="nameContract != null">
-    <div class="col">
-        <p><strong>Contrato seleccionado</strong></p>
-        <p>{{nameContract}}</p>
-    </div>
+  <div class="up-field">
+    <span class="up-label">Nombre</span>
+    <p class="up-value mb-0">{{ profile.nameUser() }}</p>
+  </div>
+
+  <div class="up-field">
+    <span class="up-label">Correo electrónico</span>
+    <p class="up-value mb-0">{{ profile.emailUser() }}</p>
+  </div>
+
+  <div class="up-field">
+    <span class="up-label">Rol</span>
+    <p class="up-value mb-0" [class.up-value--accent]="!isOrganizationPlaceholder">
+      {{ profile.organizationUser() }}
+    </p>
+  </div>
+
+  <div class="up-field" *ngIf="nameCompany != null">
+    <span class="up-label">Proveedor seleccionado</span>
+    <p class="up-value mb-0">{{ nameCompany }}</p>
+  </div>
+
+  <div class="up-field" *ngIf="nameContract != null">
+    <span class="up-label">Contrato seleccionado</span>
+    <p class="up-value mb-0">{{ nameContract }}</p>
+  </div>
 </div>

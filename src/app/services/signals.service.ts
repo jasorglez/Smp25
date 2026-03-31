@@ -11,6 +11,16 @@ export class SignalsService {
 
   /* Aquí se definen las signals para el sidebar */
 
+  /**
+   * Tras refrescar el árbol de permisos (guard / UserSystem), incrementar para que las vistas
+   * que usan `authService.hasDetailedPermission` en *ngIf vuelvan a evaluarse sin F5.
+   */
+  readonly guardRefreshTick = signal(0);
+
+  bumpGuardRefreshTick(): void {
+    this.guardRefreshTick.update((n) => n + 1);
+  }
+
   // ✅ CORRECCIÓN: Signal para actualizar el maestro
   private masterUpdateTrigger = signal<any>(null);
 

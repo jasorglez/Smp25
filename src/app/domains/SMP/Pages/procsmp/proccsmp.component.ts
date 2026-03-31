@@ -17,11 +17,11 @@ export class ProccsmpComponent {
 
   private signalsService = inject(SignalsService);
   authService = inject(AuthService);
+  /** Lectura en plantilla para reevaluar *ngIf tras reloadCurrentSessionGuard / bumpGuardRefreshTick. */
+  readonly guardUiTick = this.signalsService.guardRefreshTick;
 
   idRoot: number;
   isRoot: boolean = false;
-  canSeeBranches: boolean = false;
-  canSeeUsers: boolean = false;
 
   ngOnInit() {
     if (this.signalsService.getemailChoose() === environment.root) {
@@ -30,10 +30,6 @@ export class ProccsmpComponent {
     else {
       this.isRoot = false;
     }
-
-    this.canSeeBranches = this.isRoot || this.authService.hasDetailedPermission('setup', 'branches');
-    this.canSeeUsers = this.authService.hasDetailedPermission('setup', 'users');
-
   }
 
 

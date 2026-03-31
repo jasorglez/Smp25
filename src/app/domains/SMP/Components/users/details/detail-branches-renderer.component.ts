@@ -11,6 +11,10 @@ import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 import { EmployeesService } from 'app/services/employees.service';
 import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
+import { AuthService } from 'app/services/auth.service';
+import { environment } from '@env/environment';
+import { PermitionsService } from 'app/services/permitions.service';
+import { RolesService } from 'app/services/roles.service';
 
 @Component({
   selector: 'app-detail-branches-renderer',
@@ -24,13 +28,13 @@ import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.compo
           <button
             class="btn btn-primary ms-1"
             (click)="addBranch()"
-            [disabled]="!branchesGridApi">
+            [disabled]="!branchesGridApi || !canInteractSucursalesSegundoNivel()">
             <i class="bi bi-plus-lg"></i>
           </button>
           <button
             class="btn btn-success ms-1 position-relative"
             (click)="saveBranches()"
-            [disabled]="!hasBranchChanges">
+            [disabled]="!hasBranchChanges || !canInteractSucursalesSegundoNivel()">
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -41,12 +45,13 @@ import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.compo
           <button
             class="btn btn-danger ms-1"
             (click)="deleteSelectedBranch()"
-            [disabled]="!selectedBranch">
+            [disabled]="!selectedBranch || !canInteractSucursalesSegundoNivel()">
             <i class="bi bi-trash"></i>
           </button>
           <button
             class="btn btn-info ms-1"
-            (click)="toggleWarehouses()">
+            (click)="toggleWarehouses()"
+            [disabled]="!canInteractSucursalesSegundoNivel()">
             <i class="bi bi-shield-lock"></i>
           </button>
         </div>
@@ -75,6 +80,12 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   private branchesService = inject(BranchsService);
   private trackingService = inject(TrackingService);
   private employeeService = inject(EmployeesService);
+  private authService = inject(AuthService);
+  private permitionsService = inject(PermitionsService);
+  private rolesService = inject(RolesService);
+
+  /** Venía del maestro: si el usuario editado tiene «Departamento» en UserSystem (Permisos maestros). */
+  private getDepartmentAllowed: (() => boolean) | undefined;
 
   params: any;
   userId: number;
@@ -88,6 +99,8 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   selectedBranch: any = null;
 
   branches: any[] = [];
+  catalogRoles: any[] = [];
+  catalogGeneralPosiciones: any[] = [];
 
   private tempIdCounter: number = 0;
 
@@ -107,14 +120,24 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
     masterDetail: true,
-    isRowMaster: (dataItem: any) => true,
+    isRowMaster: () => this.canInteractSucursalesSegundoNivel(),
     detailCellRenderer: 'detailPermisosXDeptos',
     detailRowHeight: 350,
     suppressAutoSize: true,
     detailCellRendererParams: {
       autoHeight: true,
     },
-    getRowStyle: () => ({ width: '100%' }),
+    getRowStyle: () => {
+      if (!this.canInteractSucursalesSegundoNivel()) {
+        return {
+          width: '100%',
+          opacity: 0.65,
+          cursor: 'not-allowed',
+          pointerEvents: 'none' as const,
+        };
+      }
+      return { width: '100%' };
+    },
   };
 
   get branchesColumnDefs(): any[] {
@@ -129,7 +152,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
       {
         field: 'name',
         headerName: 'Sucursal',
-        editable: true,
+        editable: () => this.canInteractSucursalesSegundoNivel(),
         suppressMovable: true,
         filter: false,
         flex: 1,
@@ -165,7 +188,13 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         suppressMovable: true,
         filter: false,
         flex: 1,
-        valueFormatter: (params: any) => params.value || '',
+        valueFormatter: (params: any) => {
+          const raw = params.value;
+          if (raw == null || raw === '' || Number(raw) === 0) return '';
+          const id = Number(raw);
+          const found = this.catalogRoles?.find((r: any) => Number(r.id) === id);
+          return found?.description ?? (Number.isFinite(id) ? `ID: ${id}` : String(raw));
+        },
       },
       {
         field: 'idPosicion',
@@ -173,14 +202,20 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         suppressMovable: true,
         filter: false,
         flex: 1,
-        valueFormatter: (params: any) => params.value || '',
+        valueFormatter: (params: any) => {
+          const raw = params.value;
+          if (raw == null || raw === '' || Number(raw) === 0) return '';
+          const id = Number(raw);
+          const found = this.catalogGeneralPosiciones?.find((p: any) => Number(p.id) === id);
+          return found?.description ?? (Number.isFinite(id) ? `ID: ${id}` : String(raw));
+        },
       },
       // ✅ Principal DESPUÉS de Posición
       {
         field: 'principal',
         headerName: 'Principal',
         width: 110,
-        editable: true,
+        editable: () => this.canInteractSucursalesSegundoNivel(),
         cellEditor: 'agCheckboxCellEditor',
         cellRenderer: 'agCheckboxCellRenderer',
         valueSetter: (params: any) => {
@@ -193,6 +228,8 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
+    this.getDepartmentAllowed = (params as unknown as { getDepartmentAllowed?: () => boolean })
+      .getDepartmentAllowed;
     this.userId = params.data.idUser;
     this.userName = params.data.userName || '';
     this.companyId = params.data.idPermission;
@@ -206,6 +243,26 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   async loadCatalogs() {
+    // Catálogos para renderizar descripciones (igual que “Sucursal” -> nombre)
+    this.rolesService.getCatalogRoles(this.companyId).subscribe({
+      next: (data: any) => {
+        this.catalogRoles = Array.isArray(data) ? data : [];
+        this.branchesGridApi?.refreshCells({ force: true });
+      },
+      error: () => {
+        this.catalogRoles = [];
+      },
+    });
+    this.rolesService.getGeneralPosicion(this.companyId).subscribe({
+      next: (data: any) => {
+        this.catalogGeneralPosiciones = Array.isArray(data) ? data : [];
+        this.branchesGridApi?.refreshCells({ force: true });
+      },
+      error: () => {
+        this.catalogGeneralPosiciones = [];
+      },
+    });
+
     this.branchesService.getBranches(this.companyId).subscribe(
       (data: any) => {
         this.branches = data;
@@ -226,7 +283,15 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
       (data: any) => {
         const rows = (data.project || []).map((row: any) => ({
           ...row,
-          idPermission: row.idPermission || row.idBranch || row.id,
+          // idPermission aquí DEBE ser el id real de la sucursal.
+          // No usar fallback row.id porque normalmente es el id interno del registro Usersxpermission
+          // y rompe las consultas a permisos por sucursal (deptos/posiciones).
+          idPermission:
+            row.idPermission ??
+            row.IdPermission ??
+            row.idBranch ??
+            row.IdBranch ??
+            null,
           idUser: this.userId,
           userName: this.userName
         }));
@@ -243,17 +308,21 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
           return;
         }
 
-        // Build a map of unique branchId -> employees observable (errors return empty array)
+        // Build maps: branchId -> employees + permisos(roles/posiciones) (errors return empty array)
         const uniqueBranchIds: number[] = [...new Set<number>(rows.map((r: any) => r.idPermission as number))];
         const employeeRequests: Record<string, any> = {};
+        const permisosRequests: Record<string, any> = {};
         uniqueBranchIds.forEach((branchId: number) => {
           employeeRequests[String(branchId)] = this.employeeService.getEmployees(branchId).pipe(
             catchError(() => of([]))
           );
+          permisosRequests[String(branchId)] = this.permitionsService.getRolYPosicion(this.userId, branchId).pipe(
+            catchError(() => of([]))
+          );
         });
 
-        forkJoin(employeeRequests).subscribe({
-          next: (employeesByBranch: any) => {
+        forkJoin({ employeesByBranch: forkJoin(employeeRequests), permisosByBranch: forkJoin(permisosRequests) }).subscribe({
+          next: ({ employeesByBranch, permisosByBranch }: any) => {
             this.branchesRowData = rows.map((row: any) => {
               const employees: any[] = Array.isArray(employeesByBranch[String(row.idPermission)])
                 ? employeesByBranch[String(row.idPermission)]
@@ -261,11 +330,48 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
               const empleado = employees.find(
                 (e: any) => e.name?.toUpperCase() === this.userName?.toUpperCase()
               );
+
+              const permisosRaw: any[] = Array.isArray(permisosByBranch[String(row.idPermission)])
+                ? permisosByBranch[String(row.idPermission)]
+                : [];
+              const permisos: any[] = permisosRaw.map((p: any) => ({
+                ...p,
+                idRole:
+                  p?.idRole ??
+                  p?.IdRole ??
+                  p?.idDepto ??
+                  p?.IdDepto ??
+                  null,
+                idPosicion:
+                  p?.idPosicion ??
+                  p?.IdPosicion ??
+                  p?.idPosition ??
+                  p?.IdPosition ??
+                  null,
+                principal:
+                  p?.principal ??
+                  p?.Principal ??
+                  p?.isPrincipal ??
+                  p?.IsPrincipal ??
+                  false,
+              }));
+              const principalPerm =
+                permisos.find((p: any) => p?.principal === true || p?.principal === 1) ?? null;
+              const anyPerm = permisos.length > 0 ? permisos[0] : null;
+              const idRoleReal = Number(principalPerm?.idRole ?? anyPerm?.idRole ?? 0) || 0;
+              const idPosicionReal = Number(principalPerm?.idPosicion ?? anyPerm?.idPosicion ?? 0) || 0;
+
               return {
                 ...row,
-                principal: empleado
-                  ? row.idRole == empleado.idDepto && row.idPosicion == empleado.idPosition
-                  : false
+                // Si no hay permisos por depto/posición en esta sucursal, debe mostrarse 0 (no 1).
+                idRole: permisos.length > 0 ? idRoleReal : 0,
+                idPosicion: permisos.length > 0 ? idPosicionReal : 0,
+                // Principal: prioridad a lo guardado en permisos; fallback al match con empleado si existe.
+                principal: principalPerm
+                  ? true
+                  : empleado
+                    ? idRoleReal == (empleado.idDepto ?? empleado.idRole) && idPosicionReal == (empleado.idPosition ?? empleado.idPosicion)
+                    : false
               };
             });
 
@@ -306,6 +412,14 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   addBranch() {
+    if (!this.canInteractSucursalesSegundoNivel()) {
+      alerts.basicAlert(
+        'Sin acceso',
+        'Se requiere «Departamento» y «Security» activos en Setup Usuarios (Permisos maestros) para este usuario, y permisos equivalentes en tu sesión.',
+        'info'
+      );
+      return;
+    }
     if (!this.branchesGridApi) {
       console.error('Branches grid API not ready');
       return;
@@ -343,6 +457,14 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   async saveBranches() {
+    if (!this.canInteractSucursalesSegundoNivel()) {
+      alerts.basicAlert(
+        'Sin acceso',
+        'Se requiere «Departamento» y «Security» activos en Setup Usuarios (Permisos maestros) para este usuario, y permisos equivalentes en tu sesión.',
+        'info'
+      );
+      return;
+    }
     const isValid = this.branchesRowData.every((item) => item.idPermission);
 
     if (!isValid) {
@@ -387,6 +509,14 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   deleteSelectedBranch() {
+    if (!this.canInteractSucursalesSegundoNivel()) {
+      alerts.basicAlert(
+        'Sin acceso',
+        'Se requiere «Departamento» y «Security» activos en Setup Usuarios (Permisos maestros) para este usuario, y permisos equivalentes en tu sesión.',
+        'info'
+      );
+      return;
+    }
     if (!this.selectedBranch) {
       return;
     }
@@ -413,6 +543,14 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   }
 
   toggleWarehouses() {
+    if (!this.canInteractSucursalesSegundoNivel()) {
+      alerts.basicAlert(
+        'Sin acceso',
+        'Se requiere «Departamento» y «Security» activos en Setup Usuarios (Permisos maestros) para este usuario, y permisos equivalentes en tu sesión.',
+        'info'
+      );
+      return;
+    }
     const selectedNodes = this.branchesGridApi.getSelectedNodes();
 
     if (selectedNodes.length === 0) {
@@ -449,6 +587,24 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         selectedNode.setExpanded(true);
       }, 50);
     }
+  }
+
+  /**
+   * Operador (o root) + el usuario editado debe tener el id UserSystem de «Departamento» activo
+   * (mismo switch que en Permisos maestros › Setup Usuarios).
+   */
+  canInteractSucursalesSegundoNivel(): boolean {
+    const email = this.signalsService.getemailChoose();
+    if (email === environment.root) {
+      return true;
+    }
+    if (!this.authService.hasUsersMenuDepartmentAccess()) {
+      return false;
+    }
+    if (!this.authService.hasUsersMenuSecurityAccess()) {
+      return false;
+    }
+    return this.getDepartmentAllowed?.() ?? false;
   }
 
   private cleanDataForServer(data: any): any {

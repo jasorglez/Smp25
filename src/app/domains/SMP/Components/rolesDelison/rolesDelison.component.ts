@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, computed, effect, HostListener, inject, Injectable } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, Injectable, ViewChild } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -22,6 +22,9 @@ import { PosicionDelisonComponent } from './posicionDelison/posicionDelison.comp
 import { TrackingService } from 'app/services/tracking.service';
 import { AuthService } from 'app/services/auth.service';
 import { PosicionesService } from 'app/services/posiciones.service';
+import { ModalService, PermissionsModalData } from 'app/services/permissions-modal.service';
+import { Subscription } from 'rxjs';
+import { PermissionsViewByUserComponent } from '../users/details/detail-permissions-user/permissions-view.component';
 
 @Injectable({
   providedIn: 'root',
@@ -37,13 +40,16 @@ import { PosicionesService } from 'app/services/posiciones.service';
     AgGridModule,
     MatDialogModule,
     RolesDetailedDelisonComponent,
-    PosicionDelisonComponent
+    PosicionDelisonComponent,
+    PermissionsViewByUserComponent
   ],
   providers: [CurrencyPipe],
   templateUrl: './rolesDelison.component.html',
   styleUrl: './rolesDelison.component.scss',
 })
 export class RolesDelisonComponent {
+
+  @ViewChild('permissionsViewRef') permissionsViewRef?: PermissionsViewByUserComponent;
 
   idRoot: number;
   gridHeight: string = '80vh';
@@ -75,6 +81,13 @@ export class RolesDelisonComponent {
   private trackingService = inject(TrackingService);
   private posicionesService = inject(PosicionesService);
   authService = inject(AuthService);
+  private modalService = inject(ModalService);
+
+  // --- Modal host (permiso por posición) ---
+  showPermissionsModal: boolean = false;
+  modalUserName: string = '';
+  modalPermissions: { idUser: number; idBranch: number; idRole: number; idPosicion: number; scope?: 'userSystem' | 'position' } | null = null;
+  private modalSubscription?: Subscription;
 
   profile = computed(() => this.signalsService.profile);
 
@@ -103,6 +116,24 @@ export class RolesDelisonComponent {
       // Esto evita el error "cannot get grid to draw rows when it is in the middle of drawing rows".
       setTimeout(() => this.obtenerDatos(), 0);
     })
+
+    this.modalSubscription = this.modalService.openPermissions$.subscribe((data: PermissionsModalData) => {
+      this.modalPermissions = {
+        idUser: data.idUser,
+        idBranch: data.idBranch,
+        idRole: data.idRole,
+        idPosicion: data.idPosicion,
+        scope: data.scope,
+      };
+      this.modalUserName = data.userName;
+      this.showPermissionsModal = true;
+    });
+  }
+
+  closePermissionsModal() {
+    this.showPermissionsModal = false;
+    this.modalPermissions = null;
+    this.modalUserName = '';
   }
 
   components = {

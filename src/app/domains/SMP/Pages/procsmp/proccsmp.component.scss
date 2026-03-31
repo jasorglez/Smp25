@@ -1,20 +1,49 @@
 @import '../../../../../assets/css/ag-grid-theme-builder.css';
 
-.setup-dark-tab.active {
+.nav-pills .nav-link {
+  border-radius: 14px; /* redondeo tipo tu captura */
+  padding: 0.65rem 1.05rem;
+  margin: 0 6px;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.18s var(--mp-ease, ease),
+    color 0.18s var(--mp-ease, ease),
+    border-color 0.18s var(--mp-ease, ease);
+}
+
+.nav-pills .nav-link.green-tab {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #6b7280 !important;
+}
+
+.nav-pills .nav-link.setup-dark-tab {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #6b7280 !important;
+}
+
+.nav-pills .nav-link.setup-dark-tab.active {
   background-color: #1f2937 !important;
-  border-color: #1f2937 !important;
+  border-color: transparent !important;
   color: #ffffff !important;
+  box-shadow: none !important;
 }
 
 /* Evita el azul por defecto de Bootstrap al pasar el cursor */
+.nav-pills .nav-link.green-tab:hover,
 .setup-dark-tab:hover,
 .setup-dark-tab:focus {
   color: #6c757d !important;
+}
+
+.nav-pills .nav-link.green-tab:hover {
+  border-color: transparent !important;
 }
 
 .setup-dark-tab.active:hover,
 .setup-dark-tab.active:focus {
   color: #ffffff !important;
   background-color: #1f2937 !important;
-  border-color: #1f2937 !important;
+  border-color: transparent !important;
 }

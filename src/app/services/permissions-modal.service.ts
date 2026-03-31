@@ -7,6 +7,8 @@ export interface PermissionsModalData {
   idRole: number;
   idPosicion: number;
   userName: string;
+  /** 'userSystem' = permisos maestros / UserSystemPermissions; 'position' = permisos por posición */
+  scope?: 'userSystem' | 'position';
 }
 
 @Injectable({ providedIn: 'root' })

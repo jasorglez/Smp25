@@ -1,292 +1,313 @@
-/* Fondo azul para la barra lateral */
-.sidebarback {
-      background-color: #003366;  /* Fondo azul oscuro */
-      padding: 0;
-      color: #FFFFFF;             /* Texto en blanco para contraste */
-      width: 225px; /* Reducido 10% (de 250px a 225px) */
-      transition: width 0.3s ease;
-      font-size: 0.85rem; /* Letras más pequeñas */
-  }
+// ─── Variables ───────────────────────────────────────────────────────────────
+$sidebar-bg:        #003366;
+$sidebar-width:     220px;
+$sidebar-collapsed: 64px;
+$transition:        0.35s cubic-bezier(0.4, 0, 0.2, 1);
+$active-color:      #5aabff;
 
-  /* Logo y textos */
-  .sidebarback,
-  .sidebarback .brand-text {
-      color: #FFFFFF;
-      font-size: 0.85rem; /* Letras más pequeñas */
-  }
-
-  /* Estilos para los íconos y enlaces de navegación */
-  .sidebarback .nav-link {
-      color: #FFFFFF;             /* Color de texto blanco */
-      padding: 8px 12px; /* Reducido de 10px 15px */
-      border-radius: 5px;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      font-size: 0.75rem; /* Letras más pequeñas para los menús */
-  }
-
-  .sidebarback .nav-link i {
-      font-size: 1rem; /* Reducido de 1.2rem a 1rem */
-      color: #87CEFA;             /* Azul claro para íconos */
-      margin-right: 6px; /* Reducido de 8px a 6px */
-      transition: color 0.3s ease;
-  }
-
-  /* Hover para los enlaces */
-  .sidebarback .nav-link:hover {
-      background-color: #005599;  /* Fondo azul más claro */
-      color: #FFFFFF;
-  }
-
-  .sidebarback .nav-link:hover i {
-      color: #FFFFFF;             /* Cambia el ícono a blanco en hover */
-  }
-
-  /* Estilo para el select */
-  .select-side {
-      font-size: 0.85rem;
-      color: #333;
-      background-color: #FFFFFF;
-      border: 1px solid #CCCCCC;
-      border-radius: 4px;
-      padding: 4px;
-      margin-bottom: 5px;        /* Espacio entre selects */
-      transition: border-color 0.3s ease;
-      width: 100%; /* Asegurar que ocupe todo el ancho disponible */
-  }
-
-  .select-side:focus {
-      border-color: #87CEFA;      /* Borde azul claro en foco */
-  }
-
-  /* Estilo para los form-select del sidebar */
-  .sidebarback .form-select {
-      font-size: 0.85rem;
-      padding: 4px 8px;
-      height: auto;
-      min-height: 30px;
-      margin-bottom: 5px !important;
-  }
-
-  .sidebarback .form-select option {
-      font-size: 0.85rem;
-      padding: 3px;
-  }
-
-  /* Reducir padding del contenedor de selects */
-  .sidebarback .overflow-auto {
-      padding: 8px;
-  }
-
-  /* Reducir tamaño de texto general en sidebar */
-  .sidebarback span:not(.visually-hidden) {
-      font-size: 0.85rem;
-  }
-
-  .nav-link i {
-    color: #4CAF50; /* Cambia el color */
-    font-size: 16px; /* Reducido de 20px a 16px */
-    transition: transform 0.2s ease, color 0.2s ease;
-  }
-
-  .nav-link i:hover {
-    color: #3E8E41; /* Color al pasar el mouse */
-    transform: scale(1.2); /* Efecto de zoom */
-  }
-
-  .nav-link i {
-    color: #007BFF; /* Azul principal */
-  }
-  .nav-link i:hover {
-    color: #0056b3; /* Azul oscuro al pasar el mouse */
-  }
-
-  .active-link {
-    background-color: #007bff; /* Color de fondo */
-    color: white !important; /* Color de texto */
-    border-radius: 4px; /* Bordes redondeados */
-
-    mat-icon {
-        color: white !important; /* Color del icono */
-    }
-}
-
+// ─── Base ────────────────────────────────────────────────────────────────────
 .sidebar {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 225px; /* Reducido 10% (de 250px a 225px) */
+  top: 0; bottom: 0; left: 0;
   z-index: 1030;
-  transition: width 0.3s ease;
   overflow-y: auto;
   overflow-x: hidden;
-  font-size: 0.85rem; /* Letras más pequeñas */
+  width: $sidebar-width;
+  transition: width $transition;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 
-.collapsed.sidebar {
-  width: 70px;
+.sidebarback {
+  background-color: $sidebar-bg;
+  color: #fff;
+  font-size: 0.82rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
 }
 
-/* Expansión temporal - mantener mismo ancho que sidebar normal */
-.collapsed.temp-expanded.sidebar {
-  width: 225px;
+// ─── Collapsed / Temp-expanded ───────────────────────────────────────────────
+.collapsed.sidebar           { width: $sidebar-collapsed; }
+.collapsed.temp-expanded.sidebar { width: $sidebar-width; }
+
+// ─── Logo ────────────────────────────────────────────────────────────────────
+.sidebar-logo {
+  max-height: 80px;
+  width: auto;
+  object-fit: contain;
 }
 
-/* Modificar selects cuando está colapsado */
-.collapsed:not(.temp-expanded) .form-select {
-  width: 50px !important;
-  height: 35px !important;
-  padding: 2px !important;
-  font-size: 10px !important;
-  margin: 2px auto !important;
-  appearance: none;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: transparent;
-  cursor: pointer;
-  border-radius: 4px;
-  display: block !important;
-}
+.collapsed .sidebar-logo { display: none; }
 
-/* Mostrar ícono de dropdown cuando está colapsado */
-.collapsed:not(.temp-expanded) .form-select {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 16 16'%3e%3cpath d='m7.247 11.14 2.096-2.096a.5.5 0 0 1 .708.708L7.653 12.146a.5.5 0 0 1-.708 0L4.646 9.757a.5.5 0 0 1 .708-.708l2.096 2.096z'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 2px center;
-  background-size: 12px;
-  padding-right: 20px !important;
-}
-
-/* Ocultar texto de opciones cuando está colapsado */
-.collapsed:not(.temp-expanded) .form-select option {
-  display: none;
-}
-
-/* Mostrar selects normalmente cuando está temporalmente expandido */
-.temp-expanded .form-select {
-  width: 100% !important;
-  height: auto !important;
-  padding: 4px 8px !important;
-  font-size: 0.85rem !important;
-  margin: 0 0 5px 0 !important;
-  background: white;
-  color: #333;
-  border: 1px solid #CCCCCC;
-  appearance: menulist;
-}
-
-/* Ocultar etiquetas de selects cuando está colapsado */
-.collapsed:not(.temp-expanded) .overflow-auto > span > span {
-  display: none !important;
-}
-
-/* Mostrar etiquetas cuando está temporalmente expandido */
-.temp-expanded .overflow-auto > span > span {
-  display: inline !important;
-}
-
-/* Ocultar completamente los textos cuando está colapsado */
-.collapsed:not(.temp-expanded) .nav-link span {
-  display: none !important;
-}
-
-/* Mostrar textos cuando está temporalmente expandido */
-.temp-expanded .nav-link span {
-  display: inline !important;
-}
-
-/* Centrar contenido cuando está colapsado */
-.collapsed:not(.temp-expanded) .nav-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 2px;
-  text-align: center;
-}
-
-.collapsed:not(.temp-expanded) .nav-link mat-icon {
-  margin-right: 0;
-  margin-bottom: 2px;
-}
-
-/* Restaurar diseño normal cuando está temporalmente expandido */
-.temp-expanded .nav-link {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.temp-expanded .nav-link mat-icon {
-  margin-right: 6px;
-  margin-bottom: 0;
-}
-
-/* Estilo del botón de colapsar */
-.btn-collapse {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 8px;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-collapse:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #FFFFFF;
-}
-
-.btn-collapse mat-icon {
-  color: #FFFFFF;
-  font-size: 16px; /* Reducido de 20px a 16px */
-}
-
-/* Logo cuando está colapsado */
-.collapsed .sidebar-logo {
-  display: none;
-}
-
-/* Logo pequeño en la parte inferior cuando está colapsado */
 .collapsed-logo-container {
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 4px;
+  padding: 2px 0;
 }
 
 .collapsed-logo {
-  width: 55px;
-  height: 55px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  padding: 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px;
 }
 
-/* Hacer texto más pequeño cuando está colapsado */
-.collapsed .nav-link mat-icon {
-  font-size: 14px; /* Reducido de 18px a 14px */
+// ─── Header border ───────────────────────────────────────────────────────────
+.sidebarback .border-bottom {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.sidebarback .border-top {
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.collapsed .brand-text,
-.collapsed .fw-bold {
+// ─── Selects ─────────────────────────────────────────────────────────────────
+.sidebarback .form-select {
   font-size: 0.8rem;
+  padding: 5px 10px;
+  min-height: 32px;
+  margin-bottom: 6px !important;
+  background-color: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 8px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+
+  &:focus {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: none;
+    color: #fff;
+    outline: none;
+  }
+
+  option {
+    background-color: #003366;
+    color: #fff;
+  }
 }
 
-/* Ocultar texto del botón de colapsar cuando está colapsado */
-.collapsed:not(.temp-expanded) .btn-collapse span {
+// Colapsado: ocultar selects completamente
+.collapsed:not(.temp-expanded) .form-select {
   display: none !important;
 }
 
-/* Mostrar texto del botón cuando está temporalmente expandido */
-.temp-expanded .btn-collapse span {
-  display: inline !important;
+// Expandido temporalmente: select normal
+.temp-expanded .form-select {
+  width: 100% !important;
+  height: auto !important;
+  padding: 5px 10px !important;
+  font-size: 0.8rem !important;
+  margin: 0 0 6px 0 !important;
+  color: #fff !important;
+  appearance: menulist;
 }
+
+// Etiquetas de select cuando colapsado
+.collapsed:not(.temp-expanded) .overflow-auto > span > span { display: none !important; }
+.temp-expanded .overflow-auto > span > span                  { display: inline !important; }
+
+// ─── Scrollbar del contenido ──────────────────────────────────────────────────
+.sidebarback .overflow-auto {
+  padding: 10px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+
+  &::-webkit-scrollbar       { width: 3px; }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+  }
+}
+
+// ─── Nav links ───────────────────────────────────────────────────────────────
+.sidebarback .nav-link {
+  color: rgba(255, 255, 255, 0.75);
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  border-left: 3px solid transparent;
+  transition:
+    background-color $transition,
+    color $transition,
+    border-color $transition;
+
+  mat-icon {
+    font-size: 19px;
+    width: 19px;
+    height: 19px;
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+    transition: color $transition, transform 0.2s ease;
+  }
+
+  span {
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+    color: #fff;
+    border-left-color: rgba(255, 255, 255, 0.2);
+
+    mat-icon {
+      color: #fff;
+      transform: scale(1.12);
+    }
+  }
+}
+
+// ─── Active link ─────────────────────────────────────────────────────────────
+.active-link {
+  background-color: rgba(90, 171, 255, 0.15) !important;
+  color: #fff !important;
+  border-left-color: $active-color !important;
+  font-weight: 500 !important;
+
+  mat-icon {
+    color: $active-color !important;
+  }
+}
+
+// ─── Nav colapsado ───────────────────────────────────────────────────────────
+.collapsed:not(.temp-expanded) .overflow-auto {
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.collapsed:not(.temp-expanded) .nav {
+  width: 100%;
+}
+
+.collapsed:not(.temp-expanded) .nav-item {
+  width: 100%;
+}
+
+.collapsed:not(.temp-expanded) .nav-link {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+  gap: 0;
+  border-left: none !important;
+  border-radius: 10px;
+  width: 100%;
+  min-height: 44px;
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    color: rgba(255, 255, 255, 0.82);
+    margin: 0;
+    flex-shrink: 0;
+    line-height: 22px;
+  }
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    mat-icon {
+      color: #fff;
+      transform: scale(1.15);
+    }
+  }
+
+  span { display: none !important; }
+}
+
+.collapsed:not(.temp-expanded) .active-link {
+  background-color: rgba(90, 171, 255, 0.18) !important;
+  mat-icon { color: $active-color !important; }
+}
+
+// Nav expandido temporalmente
+.temp-expanded .nav-link {
+  flex-direction: row;
+  align-items: center;
+  padding: 9px 12px;
+  gap: 10px;
+
+  span    { display: inline !important; }
+  mat-icon { font-size: 19px; width: 19px; height: 19px; }
+}
+
+// Separador antes del Salir
+.nav-item:last-child {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+// ─── Footer del sidebar ───────────────────────────────────────────────────────
+.sidebar-footer {
+  padding: 8px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+// ─── Botón Contraer ──────────────────────────────────────────────────────────
+// ─── Botón Contraer (expandido) ───────────────────────────────────────────────
+.btn-collapse {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+  }
+
+  mat-icon {
+    color: #fff;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
+}
+
+// ─── Botón Contraer (colapsado) ───────────────────────────────────────────────
+.collapsed:not(.temp-expanded) .btn-collapse {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    color: #fff;
+  }
+
+  span { display: none; }
+}
+
+.temp-expanded .btn-collapse span { display: inline; }

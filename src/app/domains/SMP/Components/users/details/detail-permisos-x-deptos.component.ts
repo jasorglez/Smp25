@@ -16,6 +16,7 @@ import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxj
 import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
 import { PermissionsViewByUserComponent } from './detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-detail-permisos-x-deptos',
@@ -212,9 +213,16 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           };
         },
         valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.catalogRoles?.find(item => item.id === params.value);
-          return found ? found.description : params.value;
+          const raw = params.value;
+          if (raw == null || raw === '') return '';
+          const id = Number(raw);
+          const found = this.catalogRoles?.find(item => Number(item.id) === id);
+          return (
+            found?.description ??
+            params.data?.departmentName ??
+            params.data?.roleName ??
+            (Number.isFinite(id) ? `ID: ${id}` : String(raw))
+          );
         },
         valueSetter: (params) => {
           const newDeptId = params.newValue;
@@ -269,9 +277,16 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           };
         },
         valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.catalogGeneralPosiciones?.find(item => item.id === params.value);
-          return found ? found.description : params.value;
+          const raw = params.value;
+          if (raw == null || raw === '') return '';
+          const id = Number(raw);
+          const found = this.catalogGeneralPosiciones?.find(item => Number(item.id) === id);
+          return (
+            found?.description ??
+            params.data?.positionName ??
+            params.data?.posicionName ??
+            (Number.isFinite(id) ? `ID: ${id}` : String(raw))
+          );
         },
         valueSetter: (params) => {
           const newPosicionId = params.newValue;
@@ -303,10 +318,15 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       {
         field: 'Permisos',
         headerName: 'Permisos',
-        cellStyle: { backgroundColor: '#d4edda' },
+        cellStyle: (p: any) => ({
+          backgroundColor: this.canOpenVerPermisosModal() ? '#d4edda' : '#e9ecef',
+        }),
         cellRenderer: () => {
+          if (!this.canOpenVerPermisosModal()) {
+            return `<span class="text-muted" style="cursor: not-allowed;" title="Sin permiso (Setup Usuarios › Permisos)">—</span>`;
+          }
           return `<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Permisos</span>`;
-        }
+        },
       },
     ];
 
@@ -390,13 +410,56 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       empleados: this.employeeService.getEmployees(this.branchId)
     }).subscribe({
       next: ({ permisos, empleados }: any) => {
-        const permisosArr = Array.isArray(permisos) ? permisos : [];
+        const permisosArr =
+          Array.isArray(permisos)
+            ? permisos
+            : Array.isArray(permisos?.data)
+              ? permisos.data
+              : Array.isArray(permisos?.project)
+                ? permisos.project
+                : Array.isArray(permisos?.permissions)
+                  ? permisos.permissions
+                  : [];
         const empleadosArr = Array.isArray(empleados) ? empleados : [];
 
-        this.warehousesRowData = permisosArr;
+        // Normalizar nombres de campos que varían por backend (camelCase/PascalCase)
+        // para que el grid SIEMPRE tenga idRole/idPosicion y pueda formatear con catálogos.
+        this.warehousesRowData = (permisosArr || []).map((r: any) => {
+          const idRole =
+            r?.idRole ??
+            r?.IdRole ??
+            r?.idDepto ??
+            r?.IdDepto ??
+            r?.idDepartament ??
+            r?.IdDepartament ??
+            null;
+          const idPosicion =
+            r?.idPosicion ??
+            r?.IdPosicion ??
+            r?.idPosition ??
+            r?.IdPosition ??
+            r?.id_position ??
+            r?.Id_position ??
+            null;
+          const principal =
+            r?.principal ??
+            r?.Principal ??
+            r?.isPrincipal ??
+            r?.IsPrincipal ??
+            false;
+
+          return {
+            ...r,
+            idRole,
+            idPosicion,
+            principal,
+          };
+        });
 
         // 1) Si el backend envía una fila con principal === true/1, usarla para marcar el checkbox
-        const rowPrincipal = permisosArr.find((r: any) => r.principal === true || r.principal === 1);
+        const rowPrincipal = this.warehousesRowData.find(
+          (r: any) => r?.principal === true || r?.principal === 1
+        );
         if (rowPrincipal && rowPrincipal.idRole != null && rowPrincipal.idPosicion != null) {
           this.empleadoPrincipal = {
             idDepto: rowPrincipal.idRole,
@@ -414,6 +477,26 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             };
           } else {
             this.empleadoPrincipal = null;
+          }
+
+          // Si NO hay filas en permisos por depto/posición, pero el empleado sí tiene depto/posición,
+          // crear una fila "virtual" (solo lectura) para que se muestre lo mismo que en Empleados.
+          if (
+            (!this.warehousesRowData || this.warehousesRowData.length === 0) &&
+            this.empleadoPrincipal?.idDepto != null &&
+            this.empleadoPrincipal?.idPosition != null
+          ) {
+            this.warehousesRowData = [
+              {
+                id: 'from_employee',
+                idUser: this.userId,
+                idBranch: this.branchId,
+                idRole: this.empleadoPrincipal.idDepto,
+                idPosicion: this.empleadoPrincipal.idPosition,
+                principal: true,
+                __readOnly: true,
+              },
+            ];
           }
         }
 
@@ -635,13 +718,31 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     }
 
     if (colId === 'Permisos') {
+      if (!this.canOpenVerPermisosModal()) {
+        alerts.basicAlert(
+          'Sin acceso',
+          'No tienes el permiso «Permisos» en Setup Usuarios (Permisos maestros).',
+          'info'
+        );
+        return;
+      }
       this.modalService.openPermissions({
         idUser: this.userId,
         idBranch: this.branchId,
         idRole: event.data.idRole,
         idPosicion: event.data.idPosicion,
         userName: this.userName,
+        scope: 'position',
       });
     }
+  }
+
+  /** Mismo switch que «Permisos» bajo Setup Usuarios en Permisos maestros (`identifier`: permissions). */
+  private canOpenVerPermisosModal(): boolean {
+    const email = this.signalsService.getemailChoose();
+    if (email === environment.root) {
+      return true;
+    }
+    return this.authService.hasDetailedPermission('users-setup', 'permissions');
   }
 }

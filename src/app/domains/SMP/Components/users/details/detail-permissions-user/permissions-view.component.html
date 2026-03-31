@@ -31,6 +31,7 @@
             <h4 class="titulo-seleccionado">{{ masterSeleccionado.masterPermissionName }}</h4>
           </div>
 
+          <ng-container *ngIf="masterSeleccionado.masterRead">
           <div class="submodulos-grid">
             <div *ngFor="let detail of masterSeleccionado.details"
                  class="submodulo-item"
@@ -47,7 +48,7 @@
           </div>
 
           <!-- CRUD del submodulo seleccionado -->
-          <div *ngIf="detailSeleccionado" class="crud-panel animate-slide-down">
+          <div *ngIf="mostrarPanelCrudParaDetalleSeleccionado()" class="crud-panel animate-slide-down">
             <div class="crud-panel-titulo">
               <span class="crud-panel-dot"></span>
               {{ detailSeleccionado.detailedPermissionName }}
@@ -150,6 +151,7 @@
             </div>
 
           </div>
+          </ng-container>
 
         </div>
         <p *ngIf="!masterSeleccionado" class="texto-placeholder">

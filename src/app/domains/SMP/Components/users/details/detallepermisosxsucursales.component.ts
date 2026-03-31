@@ -9,13 +9,14 @@ import { BranchsService } from 'app/services/branchs.service';
 import { RootService } from 'app/services/root.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, concatMap } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, of, toArray, concatMap } from 'rxjs';
 import { environment } from '@env/environment';
 import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 import { DetailBranchesRendererComponent } from './detail-branches-renderer.component';
 import { AuthService } from 'app/services/auth.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { UsersService } from 'app/services/users.service';
+import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 
 
 @Component({
@@ -23,47 +24,59 @@ import { UsersService } from 'app/services/users.service';
   standalone: true,
   imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent, DetailBranchesRendererComponent],
   template: `
-    <div style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;">
-      <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-        <strong>{{ isRootUser ? 'Empresas' : 'Sucursales' }} de: {{ userName }}</strong>
-        <div class="d-flex">
-          <button
-            class="btn btn-primary ms-1"
-            (click)="addPermission()"
-            [disabled]="!permissionsGridApi">
-            <i class="bi bi-plus-lg"></i>
-          </button>
-          <button
-            class="btn btn-success ms-1 position-relative"
-            (click)="savePermissions()"
-            [disabled]="!hasPermissionChanges">
-            <i class="bi bi-floppy"></i>
-            <span
-              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-              *ngIf="hasPermissionChanges">
-              <span class="visually-hidden">Hay cambios sin guardar</span>
-            </span>
-          </button>
-          <button
-            class="btn btn-danger ms-1"
-            (click)="deleteSelectedPermission()"
-            [disabled]="!selectedPermission">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
+    <div style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column; position: relative;">
+      <div
+        *ngIf="sessionSecurityAllowed !== true"
+        style="position: absolute; inset: 0; z-index: 2; background: rgba(255,255,255,0.94); display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px;">
+        <span class="small">
+          No tienes el permiso <strong>Security</strong> en Setup Usuarios para gestionar empresas y sucursales.
+        </span>
       </div>
-      <div style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0;">
-        <ag-grid-angular
-          class="ag-theme-quartz small-text-ag-grid"
-          style="width: 100%; height: 100%;"
-          [columnDefs]="permissionsColumnDefs"
-          [rowData]="permissionsRowData"
-          [gridOptions]="permissionsGridOptions"
-          [components]="components"
-          (gridReady)="onPermissionsGridReady($event)"
-          (cellValueChanged)="onPermissionsCellValueChanged($event)"
-          [stopEditingWhenCellsLoseFocus]="true">
-        </ag-grid-angular>
+      <div
+        [style.pointer-events]="sessionSecurityAllowed === true ? 'auto' : 'none'"
+        [style.opacity]="sessionSecurityAllowed === true ? 1 : 0.55"
+        style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <strong>{{ isRootUser ? 'Empresas' : 'Sucursales' }} de: {{ userName }}</strong>
+          <div class="d-flex">
+            <button                      
+              class="btn btn-primary ms-1"
+              (click)="addPermission()"
+              [disabled]="!permissionsGridApi || sessionSecurityAllowed !== true">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button
+              class="btn btn-success ms-1 position-relative"
+              (click)="savePermissions()"
+              [disabled]="!hasPermissionChanges || sessionSecurityAllowed !== true">
+              <i class="bi bi-floppy"></i>
+              <span
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                *ngIf="hasPermissionChanges">
+                <span class="visually-hidden">Hay cambios sin guardar</span>
+              </span>
+            </button>
+            <button
+              class="btn btn-danger ms-1"
+              (click)="deleteSelectedPermission()"
+              [disabled]="!selectedPermission || sessionSecurityAllowed !== true">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0;">
+          <ag-grid-angular
+            class="ag-theme-quartz small-text-ag-grid"
+            style="width: 100%; height: 100%;"
+            [columnDefs]="permissionsColumnDefs"
+            [rowData]="permissionsRowData"
+            [gridOptions]="permissionsGridOptions"
+            [components]="components"
+            (gridReady)="onPermissionsGridReady($event)"
+            (cellValueChanged)="onPermissionsCellValueChanged($event)"
+            [stopEditingWhenCellsLoseFocus]="true">
+          </ag-grid-angular>
+        </div>
       </div>
     </div>
   `
@@ -98,6 +111,20 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
 
   private tempIdCounter: number = 0;
 
+  private masterPermissions2Service = inject(MasterPermissions2Service);
+
+  /**
+   * Ids UserSystem del permiso detallado «Departamento» bajo Setup Usuarios para `userId`
+   * (mismo criterio que la pestaña Permisos maestros).
+   */
+  editedUserDepartmentAllowed: boolean | null = null;
+
+  /** Switch «Security» en Setup Usuarios (Permisos maestros) para `userId`. */
+  editedUserSecurityAllowed: boolean | null = null;
+
+  /** Permiso Security del usuario logueado (sesión). */
+  sessionSecurityAllowed: boolean = false;
+
   components = {
     detailPermisosXDeptos: DetailPermisosXDeptosComponent,
     detailBranchesRenderer: DetailBranchesRendererComponent
@@ -109,13 +136,18 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
     masterDetail: true,
-    isRowMaster: (dataItem: any) => true,
+    // El master-detail interno depende de que el usuario de sesión pueda gestionar Security/Deptos,
+    // no de los switches del usuario editado.
+    isRowMaster: () => this.sessionSecurityAllowed === true,
     detailCellRendererSelector: (params: any) => {
       if (this.isRootUser) {
         return { component: 'detailBranchesRenderer' };
       } else {
         return { component: 'detailPermisosXDeptos' };
       }
+    },
+    detailCellRendererParams: {
+      getDepartmentAllowed: () => this.sessionSecurityAllowed === true,
     },
     detailRowHeight: 21000
   };
@@ -155,6 +187,9 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           },
           valueParser: (params: any) => params.newValue,
           editable: (params) => {
+            if (this.sessionSecurityAllowed !== true) {
+              return false;
+            }
             if (params.data.__isNew) return true;
             return true;
           },
@@ -174,6 +209,9 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           field: 'name',
           headerName: 'Sucursal',
           editable: (params) => {
+            if (this.sessionSecurityAllowed !== true) {
+              return false;
+            }
             if (params.data.__isNew) return true;
             return true;
           },
@@ -222,7 +260,10 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
             const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
             return found ? found.departmentCount ?? 0 : 0;
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: (params: any) =>
+            this.sessionSecurityAllowed === true
+              ? { backgroundColor: '#d4edda', cursor: 'pointer' }
+              : { backgroundColor: '#e2e3e5', cursor: 'not-allowed', opacity: 0.85 },
           onCellClicked: this.toggleBranches.bind(this)
         },
         {
@@ -238,7 +279,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           field: 'principal',
           headerName: 'Principal',
           width: 110,
-          editable: true,
+          editable: () => this.sessionSecurityAllowed === true,
           cellEditor: 'agCheckboxCellEditor',
           cellRenderer: 'agCheckboxCellRenderer',
           valueGetter: (params: any) => {
@@ -269,6 +310,15 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
         this.loadCatalogs();
         this.getInfoByUser();
         this.signalsService.setRefresCantidadPermisos(false);
+        if (this.userId > 0 && this.idRoot > 0) {
+          this.refreshEditedUserSetupFlags();
+        }
+      }
+    });
+    effect(() => {
+      this.signalsService.guardRefreshTick();
+      if (this.userId > 0 && this.idRoot > 0) {
+        this.refreshEditedUserSetupFlags();
       }
     });
   }
@@ -282,18 +332,49 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
 
     const userEmail = this.signalsService.getemailChoose();
     this.showRoot = userEmail === environment.root;
+    this.sessionSecurityAllowed =
+      this.showRoot || this.authService.hasUsersMenuSecurityAccess();
 
-    const hasCompaniesPermission = this.authService.hasDetailedPermission('users-setup', 'companies');
-    const hasBranchesPermission = this.authService.hasDetailedPermission('users-setup', 'branches');
+    const hasCompaniesPermission =
+      this.authService.hasDetailedPermission('setup', 'companies') ||
+      this.authService.hasDetailedPermission('users-setup', 'companies');
+    const hasBranchesPermission =
+      this.authService.hasDetailedPermission('setup', 'branches') ||
+      this.authService.hasDetailedPermission('users-setup', 'branches');
 
     this.isRootUser = false;
     this.canSeeBranches = this.showRoot || hasBranchesPermission;
 
     this.loadCatalogs();
+    this.refreshEditedUserSetupFlags();
   }
 
   refresh(): boolean {
     return false;
+  }
+
+  private refreshEditedUserSetupFlags(): void {
+    if (!this.userId || !this.idRoot) {
+      return;
+    }
+    this.masterPermissions2Service
+      .getSetupUsuarioDepartmentAndSecurityFlags(this.userId, this.idRoot)
+      .subscribe((flags) => {
+        this.editedUserDepartmentAllowed = flags.department;
+        this.editedUserSecurityAllowed = flags.security;
+        queueMicrotask(() => {
+          if (this.permissionsGridApi) {
+            if (this.editedUserDepartmentAllowed !== true || this.editedUserSecurityAllowed !== true) {
+              this.permissionsGridApi.forEachNode((node: any) => {
+                if (node.expanded) {
+                  node.setExpanded(false);
+                }
+              });
+            }
+            this.permissionsGridApi.refreshCells({ force: true });
+          }
+        });
+      });
   }
 
   async loadCatalogs() {
@@ -341,8 +422,23 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           const sidebarBranchId = this.signalsService.getBranchSelectedBySidebar()();
           this.permissionsRowData = (data.project || []).map((row: any) => ({
             ...row,
-            idPermission: row.idPermission || row.idBranch || row.id,
-            principal: (row.idPermission || row.idBranch || row.id) === sidebarBranchId
+            // idPermission aquí DEBE ser el id real de la sucursal.
+            // No usar fallback row.id porque normalmente es el id interno del registro Usersxpermission.
+            idPermission:
+              row.idPermission ??
+              row.IdPermission ??
+              row.idBranch ??
+              row.IdBranch ??
+              null,
+            principal:
+              (row.idPermission ??
+                row.IdPermission ??
+                row.idBranch ??
+                row.IdBranch ??
+                null) === sidebarBranchId,
+            // Pasar userId y userName al detail renderer de departamentos
+            idUser: row.idUser ?? this.userId,
+            userName: row.userName ?? this.userName,
           }));
 
           console.log('🟢 permissionsRowData mapeado:', this.permissionsRowData);
@@ -528,6 +624,25 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
   }
 
   toggleBranches() {
+    if (this.signalsService.getemailChoose() !== environment.root) {
+      if (!this.authService.hasUsersMenuDepartmentAccess()) {
+        alerts.basicAlert(
+          'Sin acceso',
+          'No tienes permiso para gestionar departamentos en Setup Usuarios.',
+          'info'
+        );
+        return;
+      }
+      if (!this.authService.hasUsersMenuSecurityAccess()) {
+        alerts.basicAlert(
+          'Sin acceso',
+          'No tienes permiso «Security» en Setup Usuarios.',
+          'info'
+        );
+        return;
+      }
+    }
+
     const selectedNodes = this.permissionsGridApi.getSelectedNodes();
 
     if (selectedNodes.length === 0) {

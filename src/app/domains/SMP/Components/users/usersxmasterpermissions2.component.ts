@@ -8,17 +8,15 @@ import { SignalsService } from 'app/services/signals.service';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 import { tap } from 'rxjs/operators';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-usersxmasterpermissions2',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxmasterpermissions2.component.html',
-  styles: [
-    `.small-text {
-      font-size: 12px;
-    }`
-  ]
+  styleUrl: './usersxmasterpermissions2.component.scss',
 })
 
 export class UsersxMasterPermissions2Component {
@@ -30,6 +28,7 @@ export class UsersxMasterPermissions2Component {
   private permissionService = inject(MasterPermissions2Service);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private authService = inject(AuthService);
   
   profile = computed(() => this.signalsService.profile);
 
@@ -41,6 +40,7 @@ export class UsersxMasterPermissions2Component {
     effect(() => {
       this.selectedUserId = Number(this.signalsService.profile.idUser());
       this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
+      this.signalsService.guardRefreshTick(); // Recargar cuando el modal guarda permisos del mismo usuario
       this.loadPermissions();
     });
   }
@@ -83,11 +83,19 @@ export class UsersxMasterPermissions2Component {
     this.permissionService
       .updateUserPermissions(this.selectedUserId, this.userPermissions)
       .pipe(
-        tap(() => {
+        tap(async () => {
           console.log('Permisos actualizados correctamente');
           alerts.basicAlert('Mensaje', 'Se ha cambiado correctamente el permiso.', 'success');
+          // Refrescar el menú lateral (pestañas Sucursales, Empresas, etc.) usando el guard básico
+          try {
+            await lastValueFrom(
+              this.authService.reloadCurrentSessionGuard({ preferUserSystemGuard: true })
+            );
+          } catch (err) {
+            console.error('Error al refrescar permisos del menú tras Permisos Maestros', err);
+          }
         })
       )
-      .subscribe(); // Solo suscribirse sin manejar el resultado aquí
+      .subscribe();
   }
 }

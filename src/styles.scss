@@ -150,3 +150,61 @@ body {
 .swal-over-modal {
   z-index: 9999999 !important;
 }
+
+/* Material tooltips por encima del sidebar (z-index: 1030) */
+.cdk-overlay-container {
+  z-index: 1100 !important;
+}
+
+/* Pills activos (gris oscuro) para menú de Almacén/Compras */
+app-procwareh .nav.nav-pills .nav-link.green-tab.active,
+app-procwareh .nav.nav-pills .nav-link.active,
+.mp-dark-pills .nav-link.green-tab.active,
+.mp-dark-pills .nav-link.active {
+  background: #1f2937 !important;
+  background-color: #1f2937 !important;
+  background-image: none !important;
+  border-color: #1f2937 !important;
+  color: #ffffff !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* AdminLTE también aplica a .show > .nav-link */
+app-procwareh .nav.nav-pills .show > .nav-link,
+.mp-dark-pills .show > .nav-link {
+  background: #1f2937 !important;
+  background-color: #1f2937 !important;
+  background-image: none !important;
+  border-color: #1f2937 !important;
+  color: #ffffff !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Evitar que hover no-activo se pinte azul */
+app-procwareh .nav.nav-pills .nav-link.green-tab:not(.active):hover,
+app-procwareh .nav.nav-pills .nav-link:not(.active):hover,
+.mp-dark-pills .nav-link.green-tab:not(.active):hover,
+.mp-dark-pills .nav-link:not(.active):hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  color: #374151 !important;
+}
+
+app-procwareh .nav.nav-pills .nav-link.green-tab.active .bi,
+app-procwareh .nav.nav-pills .nav-link.active .bi,
+app-procwareh .nav.nav-pills .nav-link.green-tab.active mat-icon,
+app-procwareh .nav.nav-pills .nav-link.active mat-icon,
+app-procwareh .nav.nav-pills .nav-link.green-tab.active i,
+app-procwareh .nav.nav-pills .nav-link.active i,
+.mp-dark-pills .nav-link.green-tab.active .bi,
+.mp-dark-pills .nav-link.active .bi,
+.mp-dark-pills .nav-link.green-tab.active mat-icon,
+.mp-dark-pills .nav-link.active mat-icon,
+.mp-dark-pills .nav-link.green-tab.active i,
+.mp-dark-pills .nav-link.active i {
+  color: #ffffff !important;
+}

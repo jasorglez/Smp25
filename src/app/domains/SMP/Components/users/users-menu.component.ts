@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject } from '@angular/core';
 import { TrackingService } from 'app/services/tracking.service';
 import { UsersComponent } from './users.component';
 import { UsersxoilfieldsComponent } from './usersxoilfields.component';
@@ -51,6 +51,8 @@ export class UsersMenuComponent {
   private trackingService = inject(TrackingService);
   private signalsService  = inject(SignalsService);
   authService = inject(AuthService);
+  /** Lectura en plantilla para que *ngIf que dependen del guard se actualicen al bump. */
+  readonly guardUiTick = this.signalsService.guardRefreshTick;
   
   showRoot : boolean = false ;
   
@@ -67,8 +69,21 @@ export class UsersMenuComponent {
   }*/
 
   constructor() {
-            
+    effect(() => {
+      this.guardUiTick();
+      if (this.selectedTab === 'usersxwarehouses' && !this.canShowWarehousesTab()) {
+        this.selectedTab = 'users';
+      }
+    });
     this.onUsersSelected('users');
+  }
+
+  /** Coherente con *ngIf de la pestaña Almacenes (Permisos maestros / guard). */
+  private canShowWarehousesTab(): boolean {
+    if (!this.profile().emailUser()) {
+      return false;
+    }
+    return this.showRoot || this.authService.hasUsersMenuWarehousesAccess();
   }
  
   ngOnInit() {       
@@ -84,6 +99,9 @@ export class UsersMenuComponent {
   selectedTab: string;
 
   onUsersSelected(tabName: string) {
+    if (tabName === 'usersxwarehouses' && !this.canShowWarehousesTab()) {
+      tabName = 'users';
+    }
     this.selectedTab = tabName;
     switch (tabName) {
       case 'users':

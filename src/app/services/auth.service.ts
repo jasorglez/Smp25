@@ -310,11 +310,35 @@ export class AuthService {
    *
    * @param options.idBranchOverride Si el modal guardó permisos para otra sucursal que la del sidebar,
    *        pasar esa sucursal para que `guardAdvanced` coincida con lo guardado (p. ej. Almacenes).
+   * @param options.preferUserSystemGuard Si es true, usa solo `guard/{userId}` (tabla UserSystem / Permisos maestros).
+   *        Útil tras guardar desde el modal solo `updateUserPermissions`: `guardAdvanced` sigue leyendo CrudPermissions
+   *        y no refleja el cambio hasta F5; el menú (p. ej. pestaña Sucursales) debe alinearse con UserSystem.
    */
-  reloadCurrentSessionGuard(options?: { idBranchOverride?: number | null }): Observable<any> {
+  reloadCurrentSessionGuard(options?: {
+    idBranchOverride?: number | null;
+    preferUserSystemGuard?: boolean;
+  }): Observable<any> {
     const email = localStorage.getItem('mail');
     if (!email) {
       return throwError(() => new Error('Sin email en sesión'));
+    }
+    if (options?.preferUserSystemGuard === true) {
+      return this.getUserId(email).pipe(
+        switchMap((userId) =>
+          this.fetchUserPermissions(userId).pipe(
+            tap((data: any) => this.setUserPermissions(data.permissions)),
+            map((data: any) => data.permissions)
+          )
+        ),
+        tap(() => {
+          this.signalsService.bumpGuardRefreshTick();
+          try {
+            this.appRef.tick();
+          } catch {
+            /* ignorar si no hay árbol de aplicación */
+          }
+        })
+      );
     }
     const isAdvanced = this.signalsService.getIsAdvanced();
     const sidebarBranch = Number(this.signalsService.getBranchSelectedBySidebar()());
@@ -345,6 +369,7 @@ export class AuthService {
         );
       }),
       tap(() => {
+        this.signalsService.bumpGuardRefreshTick();
         try {
           this.appRef.tick();
         } catch {
@@ -371,6 +396,124 @@ export class AuthService {
     const section = this.userPermissions?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     return section?.active === true && subSection?.active === true;
+  }
+
+  /**
+   * Pestaña "Almacenes" en Setup usuarios: el permiso activado en el modal (Setup Usuarios › Almacenes)
+   * puede llegar al guard como `warehouses`, `almacenes` u otro identificador bajo `users-setup`
+   * o un maestro cuyo identificador combine setup + usuario.
+   */
+  hasUsersMenuWarehousesAccess(): boolean {
+    if (this.hasDetailedPermission('users-setup', 'warehouses')) {
+      return true;
+    }
+    if (this.hasDetailedPermission('users-setup', 'almacenes')) {
+      return true;
+    }
+    const perms = this.userPermissions;
+    if (!perms || typeof perms !== 'object') {
+      return false;
+    }
+    for (const [masterKey, masterRaw] of Object.entries(perms)) {
+      const mk = String(masterKey).toLowerCase();
+      const isSetupUsersMaster =
+        mk === 'users-setup' || (mk.includes('setup') && mk.includes('usuario'));
+      if (!isSetupUsersMaster) {
+        continue;
+      }
+      const master = masterRaw as Record<string, unknown>;
+      const masterChildren = master['children'];
+      if (master?.['active'] !== true || !masterChildren || typeof masterChildren !== 'object') {
+        continue;
+      }
+      for (const [detKey, detRaw] of Object.entries(masterChildren as Record<string, unknown>)) {
+        const dk = String(detKey).toLowerCase();
+        if (!dk.includes('almacen') && !dk.includes('warehouse')) {
+          continue;
+        }
+        if ((detRaw as { active?: boolean })?.active === true) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Operador puede gestionar el árbol empresa › sucursales › departamentos cuando su sesión
+   * tiene el detalle «Departamento» bajo Setup Usuarios (claves `department` / `departamento` u homólogos en el guard).
+   */
+  hasUsersMenuDepartmentAccess(): boolean {
+    if (this.hasDetailedPermission('users-setup', 'department')) {
+      return true;
+    }
+    if (this.hasDetailedPermission('users-setup', 'departamento')) {
+      return true;
+    }
+    const perms = this.userPermissions;
+    if (!perms || typeof perms !== 'object') {
+      return false;
+    }
+    for (const [masterKey, masterRaw] of Object.entries(perms)) {
+      const mk = String(masterKey).toLowerCase();
+      const isSetupUsersMaster =
+        mk === 'users-setup' || (mk.includes('setup') && mk.includes('usuario'));
+      if (!isSetupUsersMaster) {
+        continue;
+      }
+      const master = masterRaw as Record<string, unknown>;
+      const masterChildren = master['children'];
+      if (master?.['active'] !== true || !masterChildren || typeof masterChildren !== 'object') {
+        continue;
+      }
+      for (const [detKey, detRaw] of Object.entries(masterChildren as Record<string, unknown>)) {
+        const dk = String(detKey).toLowerCase();
+        if (
+          dk.includes('department') ||
+          dk.includes('departamento')
+        ) {
+          if ((detRaw as { active?: boolean })?.active === true) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Operador: detalle «Security» bajo Setup Usuarios (UserSystem / guard).
+   */
+  hasUsersMenuSecurityAccess(): boolean {
+    if (this.hasDetailedPermission('users-setup', 'security')) {
+      return true;
+    }
+    const perms = this.userPermissions;
+    if (!perms || typeof perms !== 'object') {
+      return false;
+    }
+    for (const [masterKey, masterRaw] of Object.entries(perms)) {
+      const mk = String(masterKey).toLowerCase();
+      const isSetupUsersMaster =
+        mk === 'users-setup' || (mk.includes('setup') && mk.includes('usuario'));
+      if (!isSetupUsersMaster) {
+        continue;
+      }
+      const master = masterRaw as Record<string, unknown>;
+      const masterChildren = master['children'];
+      if (master?.['active'] !== true || !masterChildren || typeof masterChildren !== 'object') {
+        continue;
+      }
+      for (const [detKey, detRaw] of Object.entries(masterChildren as Record<string, unknown>)) {
+        const dk = String(detKey).toLowerCase();
+        if (dk.includes('security') || dk.includes('seguridad')) {
+          if ((detRaw as { active?: boolean })?.active === true) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   hasSubDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string, subdetailedPermissionKey: string): boolean {

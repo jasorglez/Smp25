@@ -10,13 +10,14 @@ import { forkJoin, lastValueFrom } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
 import { RolesDetailedDelisonComponent } from '../rolesDelison-detailed/rolesDelison-detailed.component';
-import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-view.component';
+import { PermissionsViewByUserComponent } from '../../users/details/detail-permissions-user/permissions-view.component';
+import { ModalService } from 'app/services/permissions-modal.service';
 
 @Component({
   selector: 'app-posicion-delison',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule,RolesDetailedDelisonComponent, PermissionsViewComponent ],
+  imports: [AgGridModule, CommonModule, RolesDetailedDelisonComponent, PermissionsViewByUserComponent],
   styles: [`
     ::ng-deep .ag-cell-inline-editing {
       background-color: #fff3cd !important;
@@ -46,12 +47,80 @@ import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-v
     ::ng-deep .ag-select-list {
       background-color: #fff !important;
     }
+
+    /* Modal (reusa look del modal de Users) */
+    .permissions-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+
+    .permissions-modal {
+      background: #fff;
+      border-radius: 12px;
+      width: 96vw;
+      max-width: 1600px;
+      height: 96vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .permissions-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #f8fafc;
+      border-radius: 12px 12px 0 0;
+      flex-shrink: 0;
+    }
+
+    .modal-title-text {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #1e3a5f;
+    }
+
+    .modal-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .action-btn-sm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      cursor: pointer;
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
+    }
+
+    .permissions-modal-body {
+      overflow-y: auto;
+      padding: 16px;
+      flex: 1;
+      min-height: 0;
+    }
   `],
   template: `
     <!-- Contenedor principal con Flexbox -->
     <div #container tabindex="-1" style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; outline: none;">
       <!-- Contenedor del Grid de Posiciones -->
-      <div [style.flex]="permisos ? '0 1 25%' : '1 1 100%'" style="display: flex; flex-direction: column; transition: flex 0.3s ease-in-out;" *ngIf="roleId">
+      <div style="display: flex; flex-direction: column; flex: 1; min-height: 0;" *ngIf="roleId">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Posiciones para el Rol: {{ roleName }}</strong>
           <div>
@@ -93,11 +162,7 @@ import { PermissionsViewComponent } from '../rolesDelison-detailed/permissions-v
           (cellEditingStopped)="onCellEditingStopped($event)">
         </ag-grid-angular>
       </div>
-      <div *ngIf="permisos" style="flex: 1 1 75%; overflow-y: auto; margin-top: 10px;">
-        <app-permissions-view></app-permissions-view>
-      </div>
     </div>
-
 
   `
 })
@@ -115,7 +180,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   selectedPosicion: any = null;
   idUser: number = null;
   isAdvanced: boolean = false;
-  permisos: boolean = false;
+
+  private modalService = inject(ModalService);
   
   private editableColumnOrder = ['description'];
   private enterPressed = false;
@@ -187,41 +253,26 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     // Reaccionar al clic en la columna 'permisos'
     if (colId === 'permisos') {
       const selectedData = event.data;
-      const node = event.node;
-      const api = event.api;
-      const detailType = 'posiciones';
-      console.log(selectedData);
-      
-      if (node.expanded) {
-        node.setExpanded(false);
-        api.setFilterModel(null);
-        api.onFilterChanged();
-        this.permisos = false;
-        // Dar tiempo al DOM para actualizarse y luego ajustar el grid
-        // No es necesario redimensionar columnas al colapsar
-      } else {
-        // Colapsar cualquier otra fila que esté expandida para evitar múltiples detalles abiertos.
-        api.forEachNode(otherNode => {
-          if (otherNode.expanded && otherNode.id !== node.id) {
-            otherNode.setExpanded(false);
-          }
-        });
+      const idBranch = Number(this.signalsService.getBranchSelectedBySidebar()());
+      const idRole = Number(selectedData?.idRoles);
+      const idPosicion = Number(selectedData?.id);
+      const idUser = Number(this.idUser);
 
-        // Si se hace clic en una celda diferente (o la fila está cerrada)...
-        // ...se establece el nuevo tipo de detalle y se expande la fila.
-
-        // Aplicar filtro por ID para enfocar la fila actual y ocultar las demás.
-        api.setFilterModel({ id: { type: 'equals', filter: event.data.id } });
-        api.onFilterChanged();
-
-        // Asignar el tipo de detalle y expandir.
-        event.data.detailType = detailType;
-        node.setExpanded(true);
-        this.signalsService.setIdRole(selectedData.idRoles);
-        this.signalsService.setIdPosicion(selectedData.id);
-        this.permisos = true;
-        // No es necesario redimensionar columnas al expandir
+      if (!idUser || !idBranch || !idRole || !idPosicion) {
+        alerts.basicAlert('Permisos', 'Faltan datos para abrir permisos (usuario/sucursal/rol/posición).', 'warning');
+        return;
       }
+
+      this.signalsService.setIdRole(idRole);
+      this.signalsService.setIdPosicion(idPosicion);
+      this.modalService.openPermissions({
+        idUser,
+        idBranch,
+        idRole,
+        idPosicion,
+        userName: `${this.roleName} — ${selectedData?.description ?? 'Posición'}`,
+        scope: 'position',
+      });
     }
   }
   agInit(params: ICellRendererParams): void {

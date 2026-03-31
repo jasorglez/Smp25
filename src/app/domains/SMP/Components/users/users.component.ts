@@ -5,7 +5,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { catchError, concat, EMPTY, lastValueFrom, of, toArray, tap, Observable, from, mergeMap, Subscription } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray, tap, Observable, from, mergeMap, Subscription } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -24,6 +25,7 @@ import { PermissionsViewByUserComponent } from './details/detail-permissions-use
 import { ModalService } from 'app/services/permissions-modal.service';
 import { UsersDetailWrapperComponent } from './details/users-detail-wrapper.component';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
+import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 
 @Injectable({
   providedIn: 'root',
@@ -51,7 +53,7 @@ export class UsersComponent implements OnDestroy {
   @ViewChild('permissionsViewRef') permissionsViewRef: PermissionsViewByUserComponent;
 
   idRoot: number;
-  gridHeight: string = '80vh';
+  gridHeight: string = '100%';
   newlyAddedRows: string[] = [];
   entrada: any;
   departamentos: any[] = [];
@@ -74,7 +76,7 @@ export class UsersComponent implements OnDestroy {
   // --- Modal ---
   showPermissionsModal: boolean = false;
   modalUserName: string = '';
-  modalPermissions: { idUser: number, idBranch: number, idRole: number, idPosicion: number } | null = null;
+  modalPermissions: { idUser: number, idBranch: number, idRole: number, idPosicion: number, scope?: 'userSystem' | 'position' } | null = null;
   private modalSubscription: Subscription;
 
   private gridApi: GridApi;
@@ -94,9 +96,22 @@ export class UsersComponent implements OnDestroy {
   private employeeService     = inject(EmployeesService);
   private permitionsService   = inject(PermitionsService);
   private modalService        = inject(ModalService);
+  private masterPermissions2Service = inject(MasterPermissions2Service);
   authService                 = inject(AuthService);
 
+  /** UserSystem › Setup Usuarios (Departamento / Security) por fila de usuario. */
+  private userSetupFlagsById = new Map<number, { department: boolean; security: boolean }>();
+
   profile = computed(() => this.signalsService.profile);
+
+  /** Si el usuario logueado tiene el switch "Security" encendido, puede dar clic en la columna Security. */
+  private sessionSecurityEnabled(): boolean {
+    // Root (super usuario) no debe verse restringido por este switch.
+    if (this.signalsService.getemailChoose() === environment.root) {
+      return true;
+    }
+    return this.authService.hasUsersMenuSecurityAccess();
+  }
 
   enviarSignal() {
     const departmentName = this.getDepartmentName(this.selectedRowData.idDepartament);
@@ -152,12 +167,20 @@ export class UsersComponent implements OnDestroy {
       }
     });
 
+    effect(() => {
+      this.signalsService.guardRefreshTick();
+      if (typeof this.idRoot === 'number' && this.idRoot > 0 && this.rowData?.length) {
+        this.refreshUserSetupFlagsCache();
+      }
+    });
+
     this.modalSubscription = this.modalService.openPermissions$.subscribe(data => {
       this.modalPermissions = {
         idUser: data.idUser,
         idBranch: data.idBranch,
         idRole: data.idRole,
         idPosicion: data.idPosicion,
+        scope: data.scope,
       };
       this.modalUserName = data.userName;
       this.showPermissionsModal = true;
@@ -211,6 +234,7 @@ export class UsersComponent implements OnDestroy {
             return { id: item.id, ...item };
           });
           this.rowData = this.rowData.filter(row => row.active !== 0);
+          this.refreshUserSetupFlagsCache();
         } else {
           console.error('Respuesta inválida del servidor');
         }
@@ -464,8 +488,21 @@ export class UsersComponent implements OnDestroy {
         field: 'idRol',
         headerName: 'Security',
         hide: !this.isAdvanced && this.idUser !== 42,
-        cellStyle: { backgroundColor: '#d4edda' },
-        onCellClicked: this.togglePermissions.bind(this)
+        cellStyle: (params: any) => {
+          const sessionOk = this.sessionSecurityEnabled();
+          if (!sessionOk) {
+            return { backgroundColor: '#e2e3e5', cursor: 'not-allowed', opacity: 0.85 };
+          }
+          if (!(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+            return { backgroundColor: '#d4edda', cursor: 'pointer' };
+          }
+          const ok = this.userSetupFlagsById.get(params.data?.id)?.security === true;
+          // El color indica el estado del usuario de la fila, pero el clic depende del usuario logueado (sessionOk).
+          return ok
+            ? { backgroundColor: '#d4edda', cursor: 'pointer' }
+            : { backgroundColor: '#e2e3e5', cursor: 'pointer' };
+        },
+        onCellClicked: (params: any) => this.onSecurityColumnClicked(params),
       },
       {
         field: 'isRoot',
@@ -838,6 +875,52 @@ export class UsersComponent implements OnDestroy {
     );
   }
 
+  onSecurityColumnClicked(params: any): void {
+    if (!params?.api || !params?.node) {
+      return;
+    }
+    if (this.signalsService.getemailChoose() !== environment.root) {
+      if (!this.authService.hasUsersMenuSecurityAccess()) {
+        alerts.basicAlert(
+          'Sin acceso',
+          'No tienes el permiso «Security» en Setup Usuarios.',
+          'info'
+        );
+        return;
+      }
+    }
+    params.api.deselectAll();
+    params.node.setSelected(true);
+    this.togglePermissions();
+  }
+
+  private refreshUserSetupFlagsCache(): void {
+    if (!(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+      this.userSetupFlagsById.clear();
+      this.gridApi?.refreshCells({ force: true });
+      return;
+    }
+    const rows = (this.rowData || []).filter((r: any) => r?.id > 0);
+    if (rows.length === 0) {
+      this.userSetupFlagsById.clear();
+      this.gridApi?.refreshCells({ force: true });
+      return;
+    }
+    const requests = rows.map((r: any) =>
+      this.masterPermissions2Service.getSetupUsuarioDepartmentAndSecurityFlags(r.id, this.idRoot).pipe(
+        map((flags) => ({ id: r.id as number, flags })),
+        catchError(() => of({ id: r.id as number, flags: { department: false, security: false } }))
+      )
+    );
+    forkJoin(requests).subscribe((results) => {
+      this.userSetupFlagsById.clear();
+      for (const { id, flags } of results) {
+        this.userSetupFlagsById.set(id, flags);
+      }
+      this.gridApi?.refreshCells({ force: true });
+    });
+  }
+
   togglePermissions() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
@@ -848,6 +931,19 @@ export class UsersComponent implements OnDestroy {
     const selectedNode = selectedNodes[0];
     const selectedData = selectedNode.data;
     const isCurrentlyExpanded = selectedNode.expanded && selectedData.detailType === 'permissions';
+
+    if (!isCurrentlyExpanded) {
+      if (this.signalsService.getemailChoose() !== environment.root) {
+        if (!this.authService.hasUsersMenuSecurityAccess()) {
+          alerts.basicAlert(
+            'Sin acceso',
+            'No tienes el permiso «Security» en Setup Usuarios.',
+            'info'
+          );
+          return;
+        }
+      }
+    }
 
     if (isCurrentlyExpanded) {
       selectedNode.setExpanded(false);

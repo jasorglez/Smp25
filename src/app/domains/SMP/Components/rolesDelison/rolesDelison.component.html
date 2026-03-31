@@ -33,3 +33,47 @@
     </div>
 
 </div>
+
+<!-- Modal de Permisos (host a nivel del módulo para evitar clipping del AG Grid) -->
+<div *ngIf="showPermissionsModal" class="permissions-overlay" (click)="closePermissionsModal()">
+  <div class="permissions-modal" (click)="$event.stopPropagation()">
+    <div class="permissions-modal-header">
+      <strong class="modal-title-text">Permisos — {{ modalUserName }}</strong>
+      <div class="modal-header-actions">
+        <button class="action-btn-sm edit"
+          (click)="permissionsViewRef?.modificar()"
+          title="Modificar">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="action-btn-sm save position-relative"
+          (click)="permissionsViewRef?.saveDetailChanges()"
+          [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"
+          title="Guardar">
+          <i class="bi bi-floppy"></i>
+          <span class="unsaved-dot" *ngIf="permissionsViewRef?.notSavedChanges"></span>
+        </button>
+        <button class="action-btn-sm revert"
+          (click)="permissionsViewRef?.revertChanges()"
+          [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"
+          title="Refrescar">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <div class="modal-divider"></div>
+        <button class="action-btn-sm close-btn" (click)="closePermissionsModal()" title="Cerrar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+    <div class="permissions-modal-body">
+      <app-permissions-view-by-user
+        *ngIf="modalPermissions"
+        #permissionsViewRef
+        [idUserInput]="modalPermissions.idUser"
+        [idBranchInput]="modalPermissions.idBranch"
+        [idRoleInput]="modalPermissions.idRole"
+        [idPosicionInput]="modalPermissions.idPosicion"
+        [scopeInput]="modalPermissions.scope ?? 'position'">
+      </app-permissions-view-by-user>
+    </div>
+  </div>
+</div>

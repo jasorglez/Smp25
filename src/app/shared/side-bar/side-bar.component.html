@@ -27,8 +27,7 @@
       [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('company' | translate)) : ''"
       matTooltipPosition="right"
     >
-      >
-      <option selected value="" disabled>{{ "company" | translate }}</option>
+        <option selected value="" disabled>{{ "company" | translate }}</option>
       <option *ngFor="let item of rootData" [value]="item.id">
         {{ item.name }}
       </option>
@@ -309,7 +308,7 @@
   </div>
 
   <!-- Botón de colapsar en la parte inferior -->
-  <div class="p-2 border-top">
+  <div class="sidebar-footer border-top">
     <!-- Logo pequeño cuando está colapsado -->
     <div *ngIf="isSidebarCollapsed && !isTemporarilyExpanded" class="collapsed-logo-container mb-2">
       <img
@@ -319,13 +318,13 @@
       />
     </div>
     <button
-      class="btn btn-collapse w-100"
+      class="btn btn-collapse"
       (click)="toggleSidebar()"
       [matTooltip]="isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'"
       matTooltipPosition="right"
     >
-      <mat-icon>{{ isSidebarCollapsed ? "chevron_right" : "chevron_left" }}</mat-icon>
-      <span *ngIf="!isSidebarCollapsed" class="ms-2">Contraer</span>
+      <mat-icon>{{ (isSidebarCollapsed && !isTemporarilyExpanded) ? "chevron_right" : "chevron_left" }}</mat-icon>
+      <span *ngIf="!isSidebarCollapsed || isTemporarilyExpanded" class="ms-2">Contraer</span>
     </button>
   </div>
 </aside>

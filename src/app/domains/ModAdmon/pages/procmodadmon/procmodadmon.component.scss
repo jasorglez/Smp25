@@ -9,3 +9,52 @@
     border: 1px solid rgba(0, 0, 0, 0.125);
     border-radius: 0.375rem; /* 6px */
   }
+
+/* Menú superior/secundario de Administración (Cuentas Contables / Catálogos / etc.) */
+.nav-pills .nav-link.green-tab {
+  border-radius: 14px !important; /* look pill */
+  padding: 0.65rem 1.05rem !important;
+  margin: 0 6px !important;
+  border: 1px solid transparent !important;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+  background-color: transparent;
+}
+
+.nav-pills .nav-link.green-tab:not(.active) {
+  color: #6b7280 !important;
+}
+
+.nav-pills .nav-link.green-tab.active {
+  border-radius: 14px !important;
+  background-color: #1f2937 !important;
+  border-color: #1f2937 !important;
+  padding: 0.65rem 1.05rem !important;
+  margin: 0 6px !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.nav-pills .nav-link.green-tab.active mat-icon,
+.nav-pills .nav-link.green-tab.active i {
+  color: #ffffff !important;
+}
+
+/* Fallback: por si algún tab activo no trae green-tab */
+.nav-pills .nav-link.active {
+  border-radius: 14px !important; /* igual a green-tab */
+  padding: 0.65rem 1.05rem !important;
+  margin: 0 6px !important;
+  border: 1px solid #1f2937 !important;
+  background-color: #1f2937 !important;
+  border-color: #1f2937 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.nav-pills .nav-link.active mat-icon,
+.nav-pills .nav-link.active i {
+  color: #ffffff !important;
+}

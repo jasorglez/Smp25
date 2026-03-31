@@ -1,5 +1,6 @@
 <div class="container-fluid mt-3">
   <div class="col-12">
+    <span class="visually-hidden" aria-hidden="true">{{ guardUiTick() }}</span>
     <ul class="nav nav-pills">
       <li class="nav-item">
         <a
@@ -53,10 +54,7 @@
         class="nav-item"
         *ngIf="
           profile().emailUser() && (showRoot ||
-            authService.hasDetailedPermission(
-              'users-setup',
-              'branches'
-            ))
+            authService.hasDetailedPermission('users-setup', 'branches'))
         "
       >
         <a
@@ -109,9 +107,20 @@
       </li>
 
 
-        <li class="nav-item" *ngIf="profile().emailUser()">
-        <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"
-          (click)="onUsersSelected('usersxwarehouses')">Almacenes</a>
+      <li
+        class="nav-item"
+        *ngIf="
+          profile().emailUser() && (showRoot ||
+            authService.hasUsersMenuWarehousesAccess())
+        "
+      >
+        <a
+          class="nav-link"
+          [class.active]="selectedTab === 'usersxwarehouses'"
+          data-toggle="tab"
+          (click)="onUsersSelected('usersxwarehouses')"
+          >Almacenes</a
+        >
       </li> 
 
       <!--  <li class="nav-item" *ngIf="profile().emailUser()">
@@ -170,7 +179,10 @@
     <div
       class="tab-pane"
       [class.active]="selectedTab === 'usersxwarehouses'"
-      *ngIf="selectedTab === 'usersxwarehouses'"
+      *ngIf="
+        selectedTab === 'usersxwarehouses' &&
+        (showRoot || authService.hasUsersMenuWarehousesAccess())
+      "
     >
       <app-usersxwarehouses></app-usersxwarehouses>
     </div>
