@@ -86,7 +86,7 @@ export class RolesDelisonComponent {
   // --- Modal host (permiso por posición) ---
   showPermissionsModal: boolean = false;
   modalUserName: string = '';
-  modalPermissions: { idUser: number; idBranch: number; idRole: number; idPosicion: number; scope?: 'userSystem' | 'position' } | null = null;
+  modalPermissions: { idUser: number | string; idBranch: number; idRole: number; idPosicion: number; scope?: 'userSystem' | 'position'; seedFromRolePosition?: boolean; roleTemplateOnly?: boolean } | null = null;
   private modalSubscription?: Subscription;
 
   profile = computed(() => this.signalsService.profile);
@@ -124,8 +124,10 @@ export class RolesDelisonComponent {
         idRole: data.idRole,
         idPosicion: data.idPosicion,
         scope: data.scope,
+        seedFromRolePosition: data.seedFromRolePosition,
+        roleTemplateOnly: data.roleTemplateOnly,
       };
-      this.modalUserName = data.userName;
+      this.modalUserName = data.modalTitleDetail ?? data.userName;
       this.showPermissionsModal = true;
     });
   }
@@ -162,11 +164,21 @@ export class RolesDelisonComponent {
   }
 
 
+  /** Orden alfabético por nombre de departamento (español, ignora mayúsculas y acentos en la comparación). */
+  private sortDepartamentosPorNombre(rows: any[]): any[] {
+    if (!Array.isArray(rows)) return [];
+    return [...rows].sort((a, b) =>
+      String(a?.description ?? '')
+        .localeCompare(String(b?.description ?? ''), 'es', { sensitivity: 'base', numeric: true })
+    );
+  }
+
   obtenerDatos() {
 
     this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
-        this.rowData = data.data;
+        const raw = data?.data ?? data ?? [];
+        this.rowData = this.sortDepartamentosPorNombre(Array.isArray(raw) ? raw : []);
         console.log('Roles:', this.rowData);
       },
       (error) => {

@@ -89,6 +89,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   params: any;
   userId: number;
   userName: string;
+  userEmail: string;
   branchId: number;
   branchName: string;
   idCompany: number;
@@ -140,52 +141,24 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         filter: 'agNumberColumnFilter',
         hide: true,
       },
-      // ✅ Principal ANTES de Departamento (selección exclusiva: solo una fila marcada)
+      // ✅ Principal ANTES de Departamento (solo lectura; mismo aspecto que sucursales)
       {
         field: 'principal',
         headerName: 'Principal',
         width: 110,
-        editable: true,
-        cellEditor: 'agCheckboxCellEditor',
-        cellRenderer: 'agCheckboxCellRenderer',
+        editable: false,
         valueGetter: (params: any) => {
-          // Si la fila viene con principal del backend, mostrarla marcada
           if (params.data.principal === true || params.data.principal === 1) return true;
           if (!this.empleadoPrincipal) return false;
           return params.data.idRole == this.empleadoPrincipal.idDepto &&
                  params.data.idPosicion == this.empleadoPrincipal.idPosition;
         },
-        valueSetter: (params: any) => {
-          const newValue = !!params.newValue;
-          params.data.principal = newValue;
-
-          if (newValue) {
-            if (params.data.idRole == null || params.data.idPosicion == null) {
-              alerts.basicAlert(
-                'Principal',
-                'Debe seleccionar Departamento y Posición en esta fila antes de marcarla como principal.',
-                'warning'
-              );
-              params.data.principal = false;
-              return false;
-            }
-            // Solo actualizar el estado visual (principal es solo visual, no se guarda en backend)
-            this.empleadoPrincipal = {
-              idDepto: params.data.idRole,
-              idPosition: params.data.idPosicion,
-            };
-          } else {
-            this.empleadoPrincipal = null;
-          }
-
-          // Refrescar la columna Principal para que los checkboxes se redibujen
-          setTimeout(() => {
-            if (this.warehousesGridApi) {
-              this.warehousesGridApi.refreshCells({ columns: ['principal'], force: true });
-            }
-          }, 0);
-          return true;
-        }
+        cellRenderer: (params: any) => {
+          const checked = !!params.value;
+          return checked
+            ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
+            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+        },
       },
       {
         field: 'idRole',
@@ -337,6 +310,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.params = params;
     this.userId = params.data.idUser;
     this.userName = params.data.userName || '';
+    this.userEmail = params.data.userEmail || '';
     this.branchId = params.data.idPermission;
     this.branchName = params.data.name || '';
     this.idCompany = this.signalsService.getRootSelectedBySidebar()();
@@ -466,14 +440,52 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             idPosition: rowPrincipal.idPosicion,
           };
         } else {
-          // 2) Fallback: buscar empleado por nombre (soporta idDepto/idRole e idPosition/idPosicion)
-          const emp = empleadosArr.find(
-            (e: any) => (e.name?.toUpperCase() || e.displayName?.toUpperCase()) === this.userName?.toUpperCase()
-          );
-          if (emp && (emp.idDepto != null || emp.idRole != null) && (emp.idPosition != null || emp.idPosicion != null)) {
+          const normalize = (s: any) =>
+            String(s ?? '')
+              .toUpperCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+          // 2) Fallback robusto: buscar empleado por email primero; si no, por nombre normalizado.
+          const userEmailNorm = normalize(this.userEmail);
+          const userNameNorm = normalize(this.userName);
+
+          const emp =
+            (userEmailNorm
+              ? empleadosArr.find((e: any) => normalize(e.email) === userEmailNorm)
+              : null) ??
+            (userNameNorm
+              ? empleadosArr.find((e: any) => {
+                  const n = normalize(e.name ?? e.displayName);
+                  return n === userNameNorm || (n && userNameNorm && n.includes(userNameNorm));
+                })
+              : null);
+
+          const empDepto =
+            emp?.idRole ??
+            emp?.IdRole ??
+            emp?.idDepto ??
+            emp?.IdDepto ??
+            emp?.idDepartament ??
+            emp?.IdDepartament ??
+            emp?.id_departament ??
+            emp?.Id_departament ??
+            null;
+          const empPos =
+            emp?.idPosition ??
+            emp?.IdPosition ??
+            emp?.idPosicion ??
+            emp?.IdPosicion ??
+            emp?.id_position ??
+            emp?.Id_position ??
+            null;
+
+          if (emp && empDepto != null && empPos != null) {
             this.empleadoPrincipal = {
-              idDepto: emp.idRole ?? emp.idDepto,
-              idPosition: emp.idPosition ?? emp.idPosicion,
+              idDepto: empDepto,
+              idPosition: empPos,
             };
           } else {
             this.empleadoPrincipal = null;
@@ -732,9 +744,20 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         idRole: event.data.idRole,
         idPosicion: event.data.idPosicion,
         userName: this.userName,
-        scope: 'position',
+        modalTitleDetail: this.buildPermissionsModalTitle(event.data.idPosicion),
+        seedFromRolePosition: true,
+        scope: 'userSystem',
       });
     }
+  }
+
+  /** Título del modal: nombre del usuario y posición (no departamento ni sucursal). */
+  private buildPermissionsModalTitle(idPosicion: number): string {
+    const pid = Number(idPosicion);
+    const pos = this.catalogGeneralPosiciones?.find((p: any) => Number(p.id) === pid);
+    const p = pos?.description ?? `Posición ${pid}`;
+    const u = (this.userName ?? '').trim() || 'Usuario';
+    return `${u} — ${p}`;
   }
 
   /** Mismo switch que «Permisos» bajo Setup Usuarios en Permisos maestros (`identifier`: permissions). */

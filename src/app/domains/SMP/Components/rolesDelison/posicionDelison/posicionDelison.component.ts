@@ -272,6 +272,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
         idPosicion,
         userName: `${this.roleName} — ${selectedData?.description ?? 'Posición'}`,
         scope: 'position',
+        roleTemplateOnly: true,
       });
     }
   }

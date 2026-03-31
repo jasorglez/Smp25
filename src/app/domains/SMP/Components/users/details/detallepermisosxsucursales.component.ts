@@ -9,7 +9,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { RootService } from 'app/services/root.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, of, toArray, concatMap } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray, concatMap } from 'rxjs';
 import { environment } from '@env/environment';
 import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 import { DetailBranchesRendererComponent } from './detail-branches-renderer.component';
@@ -17,6 +17,7 @@ import { AuthService } from 'app/services/auth.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { UsersService } from 'app/services/users.service';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
+import { RolesService } from 'app/services/roles.service';
 
 
 @Component({
@@ -89,15 +90,21 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
   private usersService = inject(UsersService);
   private trackingService = inject(TrackingService);
   private permitionsService = inject(PermitionsService);
+  private rolesService = inject(RolesService);
   authService = inject(AuthService);
 
   params: any;
   userId: number;
   userName: string;
+  userEmail: string;
   isRootUser: boolean = false;
   showRoot: boolean = false;
   canSeeBranches: boolean = false;
   permiso: any[] = [];
+  /** Mapa branchId -> { idRole, idPosicion } para mostrar Dept/Pos por sucursal. */
+  private deptPosByBranchId = new Map<number, { idRole: number; idPosicion: number }>();
+  catalogRoles: any[] = [];
+  catalogGeneralPosiciones: any[] = [];
 
   permissionsRowData: any[] = [];
   hasPermissionChanges: boolean = false;
@@ -257,8 +264,17 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           field: 'department',
           headerName: 'Departamento',
           valueFormatter: (params) => {
+            // Mantener el contador como antes
             const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
             return found ? found.departmentCount ?? 0 : 0;
+          },
+          tooltipValueGetter: (params: any) => {
+            // Mostrar el nombre real (rol) como tooltip
+            const branchId = Number(params.data?.idPermission);
+            const ids = this.deptPosByBranchId.get(branchId);
+            if (!ids?.idRole) return '';
+            const found = this.catalogRoles?.find((r: any) => Number(r.id) === Number(ids.idRole));
+            return found?.description ?? '';
           },
           cellStyle: (params: any) =>
             this.sessionSecurityAllowed === true
@@ -270,8 +286,17 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           field: 'position',
           headerName: 'Posición',
           valueFormatter: (params) => {
+            // Mantener el contador como antes
             const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
             return found ? found.positionCount ?? 0 : 0;
+          },
+          tooltipValueGetter: (params: any) => {
+            // Mostrar el nombre real (posición) como tooltip
+            const branchId = Number(params.data?.idPermission);
+            const ids = this.deptPosByBranchId.get(branchId);
+            if (!ids?.idPosicion) return '';
+            const found = this.catalogGeneralPosiciones?.find((p: any) => Number(p.id) === Number(ids.idPosicion));
+            return found?.description ?? '';
           }
         },
         // ✅ Principal DESPUÉS de Posición
@@ -279,18 +304,17 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           field: 'principal',
           headerName: 'Principal',
           width: 110,
-          editable: () => this.sessionSecurityAllowed === true,
-          cellEditor: 'agCheckboxCellEditor',
-          cellRenderer: 'agCheckboxCellRenderer',
+          editable: false,
           valueGetter: (params: any) => {
             const sidebarBranchId = this.signalsService.getBranchSelectedBySidebar()();
             return params.data.idPermission === sidebarBranchId;
           },
-          valueSetter: (params: any) => {
-            params.data.advanced = params.newValue ? 1 : null;
-            params.data.principal = params.newValue;
-            return true;
-          }
+          cellRenderer: (params: any) => {
+            const checked = !!params.value;
+            return checked
+              ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
+              : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+          },
         },
       ];
     }
@@ -327,6 +351,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     this.params = params;
     this.userId = params.data.id;
     this.userName = params.data.displayName || params.data.email;
+    this.userEmail = params.data.email || '';
     this.getInfoByUser();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
@@ -387,6 +412,28 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
         this.loadPermissionsData();
       });
     } else {
+      // Catálogos para mostrar descripciones en Dept/Pos
+      if (typeof this.idRoot === 'number' && this.idRoot > 0) {
+        this.rolesService.getCatalogRoles(this.idRoot).subscribe({
+          next: (data: any) => {
+            this.catalogRoles = Array.isArray(data) ? data : [];
+            this.permissionsGridApi?.refreshCells({ force: true });
+          },
+          error: () => {
+            this.catalogRoles = [];
+          },
+        });
+        this.rolesService.getGeneralPosicion(this.idRoot).subscribe({
+          next: (data: any) => {
+            this.catalogGeneralPosiciones = Array.isArray(data) ? data : [];
+            this.permissionsGridApi?.refreshCells({ force: true });
+          },
+          error: () => {
+            this.catalogGeneralPosiciones = [];
+          },
+        });
+      }
+
       this.branchesService.getBranches(this.idRoot).subscribe(
         (data: any) => {
           this.allBranches = data;
@@ -420,28 +467,56 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           console.log('🔴 RAW data.project:', data.project);
 
           const sidebarBranchId = this.signalsService.getBranchSelectedBySidebar()();
-          this.permissionsRowData = (data.project || []).map((row: any) => ({
-            ...row,
-            // idPermission aquí DEBE ser el id real de la sucursal.
-            // No usar fallback row.id porque normalmente es el id interno del registro Usersxpermission.
-            idPermission:
+          this.permissionsRowData = (data.project || []).map((row: any) => {
+            // Deducción segura de branchId:
+            // 1) preferir idPermission/idBranch
+            // 2) si no viene, usar row.id SOLO si existe en el catálogo de sucursales (allBranches)
+            // 3) si hay name, buscar por nombre en el catálogo.
+            const direct =
               row.idPermission ??
               row.IdPermission ??
               row.idBranch ??
               row.IdBranch ??
-              null,
-            principal:
-              (row.idPermission ??
-                row.IdPermission ??
-                row.idBranch ??
-                row.IdBranch ??
-                null) === sidebarBranchId,
-            // Pasar userId y userName al detail renderer de departamentos
-            idUser: row.idUser ?? this.userId,
-            userName: row.userName ?? this.userName,
-          }));
+              null;
+
+            let inferred: number | null = null;
+            const maybeRowId = Number(row.id ?? row.Id ?? row.internalId ?? row.InternalId);
+            if (!direct && Number.isFinite(maybeRowId) && maybeRowId > 0) {
+              const existsInCatalog = (this.allBranches || []).some(
+                (b: any) => Number(b.id) === maybeRowId
+              );
+              if (existsInCatalog) {
+                inferred = maybeRowId;
+              }
+            }
+            if (!direct && inferred == null && row.name && (this.allBranches || []).length > 0) {
+              const foundByName = this.allBranches.find(
+                (b: any) =>
+                  String(b.name ?? '').toUpperCase().trim() ===
+                  String(row.name ?? '').toUpperCase().trim()
+              );
+              if (foundByName?.id != null) {
+                inferred = Number(foundByName.id);
+              }
+            }
+
+            const branchId = Number(direct ?? inferred ?? 0) || null;
+
+            return {
+              ...row,
+              idPermission: branchId,
+              principal: branchId != null && branchId === sidebarBranchId,
+              // Pasar userId y userName al detail renderer de departamentos
+              idUser: row.idUser ?? this.userId,
+              userName: row.userName ?? this.userName,
+              userEmail: row.userEmail ?? this.userEmail,
+            };
+          });
 
           console.log('🟢 permissionsRowData mapeado:', this.permissionsRowData);
+
+          // Cargar depto/posición por sucursal para pintar columnas Departamento/Posición.
+          this.loadDeptPosForBranches();
 
           if (this.allBranches.length > 0) {
             const assignedIds = this.permissionsRowData.map((p: any) => p.idPermission);
@@ -470,6 +545,63 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
         }
       );
     }
+  }
+
+  private loadDeptPosForBranches(): void {
+    const ids = (this.permissionsRowData || [])
+      .map((r: any) => Number(r?.idPermission))
+      .filter((n: number) => Number.isFinite(n) && n > 0);
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) {
+      this.deptPosByBranchId.clear();
+      this.permissionsGridApi?.refreshCells({ force: true });
+      return;
+    }
+
+    const requests: Record<string, any> = {};
+    for (const bid of unique) {
+      requests[String(bid)] = this.permitionsService.getRolYPosicion(this.userId, bid).pipe(
+        catchError(() => of([]))
+      );
+    }
+
+    forkJoin(requests).subscribe({
+      next: (resp: any) => {
+        this.deptPosByBranchId.clear();
+        for (const [bidStr, raw] of Object.entries(resp || {})) {
+          const bid = Number(bidStr);
+          const arr: any[] = Array.isArray(raw)
+            ? raw
+            : Array.isArray((raw as any)?.data)
+              ? (raw as any).data
+              : Array.isArray((raw as any)?.project)
+                ? (raw as any).project
+                : Array.isArray((raw as any)?.permissions)
+                  ? (raw as any).permissions
+                  : [];
+          const normalized = arr.map((p: any) => ({
+            ...p,
+            idRole:
+              p?.idRole ?? p?.IdRole ?? p?.idDepto ?? p?.IdDepto ?? p?.idDepartament ?? p?.IdDepartament ?? null,
+            idPosicion:
+              p?.idPosicion ?? p?.IdPosicion ?? p?.idPosition ?? p?.IdPosition ?? p?.id_position ?? p?.Id_position ?? null,
+            principal:
+              p?.principal ?? p?.Principal ?? p?.isPrincipal ?? p?.IsPrincipal ?? false,
+          }));
+          const principal = normalized.find((p: any) => p.principal === true || p.principal === 1) ?? normalized[0];
+          const idRole = Number(principal?.idRole ?? 0) || 0;
+          const idPosicion = Number(principal?.idPosicion ?? 0) || 0;
+          if (idRole > 0 || idPosicion > 0) {
+            this.deptPosByBranchId.set(bid, { idRole, idPosicion });
+          }
+        }
+        this.permissionsGridApi?.refreshCells({ force: true });
+      },
+      error: () => {
+        this.deptPosByBranchId.clear();
+        this.permissionsGridApi?.refreshCells({ force: true });
+      },
+    });
   }
 
   onPermissionsGridReady(params: any) {

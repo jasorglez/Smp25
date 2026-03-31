@@ -1,10 +1,10 @@
 import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RolesService, CrudxDetailedPermission } from 'app/services/roles.service';
+import { RolesService, CrudxDetailedPermission, RolesxDetailedPermission } from 'app/services/roles.service';
 import { SignalsService } from 'app/services/signals.service';
-import { forkJoin, lastValueFrom, Observable } from 'rxjs';
-import { take } from 'rxjs/operators';
+import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
+import { take, map, catchError, switchMap } from 'rxjs/operators';
 import { TimeService } from 'app/services/time.service';
 import { alerts } from 'app/helpers/alerts';
 import { ICellRendererParams } from 'ag-grid-enterprise';
@@ -74,18 +74,22 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   /** Línea base de switches maestros izquierdos tras cargar/ revertir (evita “sucio” falso). */
   private masterReadBaselineByName = new Map<string, boolean>();
 
-  @Input() idUserInput: number;
+  @Input() idUserInput: number | string;
   @Input() idBranchInput: number;
   @Input() idRoleInput: number;
   @Input() idPosicionInput: number;
   /** 'userSystem' (default): sincroniza con Permisos maestros / UserSystemPermissions. 'position': permisos por posición (opción B). */
   @Input() scopeInput: 'userSystem' | 'position' = 'userSystem';
+  /** Si true (y scopeInput === 'userSystem'), precarga permisos base desde la plantilla rol+posición. */
+  @Input() seedFromRolePosInput: boolean = false;
+  /** Catálogo rol+posición (Departamento › Ver permisos): solo `RolesxDetailedPermission`, nunca Crud por usuario. */
+  @Input() roleTemplateOnlyInput: boolean = false;
 
   idRole: number;
   idPosicion: number;
   idEmpresa: number;
   params: any;
-  userId: number;
+  userId: number | string;
   userName: string;
   branchId: number;
   branchName: string;
@@ -161,6 +165,97 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       .trim()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /** Usuario aún no persistido (`temp_*`) o sin id numérico válido. */
+  private isTransientUserId(idUser: unknown): boolean {
+    if (idUser == null) return true;
+    if (typeof idUser === 'string') {
+      const s = idUser.trim();
+      if (s === '') return true;
+      return s.startsWith('temp_');
+    }
+    const n = Number(idUser);
+    return !Number.isFinite(n) || n <= 0;
+  }
+
+  private normalizeCrudArray(data: unknown): any[] {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object') {
+      const o = data as Record<string, unknown>;
+      if (Array.isArray(o['data'])) return o['data'] as any[];
+      if (Array.isArray(o['project'])) return o['project'] as any[];
+      if (Array.isArray(o['permissions'])) return o['permissions'] as any[];
+    }
+    return [];
+  }
+
+  /**
+   * Filas para `transformData`: permisos ya guardados del usuario, o plantilla por rol+posición
+   * (`RolesxDetailedPermissionsSummary`) cuando el usuario es nuevo o aún no tiene Crud asignado.
+   */
+  private getCrudRowsForModal$(
+    scope: PermissionsScope,
+    idCompany: number,
+    idUser: number | string,
+    idBranch: number,
+    idRole: number,
+    idPosicion: number,
+    seedFromRolePos: boolean,
+    roleTemplateOnly: boolean
+  ): Observable<any[]> {
+    if (roleTemplateOnly) {
+      return this.rolesService.getPermissionsByRoles(idCompany, idRole, idPosicion).pipe(
+        map((raw) => this.normalizeCrudArray(raw)),
+        catchError(() => of([]))
+      );
+    }
+
+    const transient = this.isTransientUserId(idUser);
+    const userNumeric = Number(idUser);
+
+    if (scope !== 'position') {
+      if (transient) {
+        return of([]);
+      }
+      const base$ = this.permitionsService
+        .getPermitionsSencillo(idCompany, userNumeric, idBranch, idRole, idPosicion)
+        .pipe(map((raw) => this.normalizeCrudArray(raw)), catchError(() => of([])));
+      // Solo cuando el modal se abrió desde Dept/Pos para precargar al usuario: fallback a plantilla rol+posición.
+      if (!seedFromRolePos) {
+        return base$;
+      }
+      return base$.pipe(
+        switchMap((rows) => {
+          if (rows.length > 0) return of(rows);
+          return this.rolesService.getPermissionsByRoles(idCompany, idRole, idPosicion).pipe(
+            map((raw) => this.normalizeCrudArray(raw)),
+            catchError(() => of([]))
+          );
+        })
+      );
+    }
+
+    if (transient) {
+      return this.rolesService.getPermissionsByRoles(idCompany, idRole, idPosicion).pipe(
+        map((raw) => this.normalizeCrudArray(raw)),
+        catchError(() => of([]))
+      );
+    }
+
+    return this.permitionsService.getPermitionsSencillo(idCompany, userNumeric, idBranch, idRole, idPosicion).pipe(
+      map((raw) => this.normalizeCrudArray(raw)),
+      catchError(() => of([])),
+      switchMap((rows) => {
+        if (rows.length > 0) {
+          return of(rows);
+        }
+        return this.rolesService.getPermissionsByRoles(idCompany, idRole, idPosicion).pipe(
+          map((raw) => this.normalizeCrudArray(raw)),
+          catchError(() => of([]))
+        );
+      })
+    );
   }
 
   /** Bloque de catálogo para un permiso maestro (misma lista que el acordeón Permisos maestros). */
@@ -733,14 +828,20 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (this.idUserInput && this.idRoleInput && this.idPosicionInput) {
-      this.userId = this.idUserInput;
-      this.branchId = this.idBranchInput;
-      this.idRole = this.idRoleInput;
-      this.idPosicion = this.idPosicionInput;
-      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-      this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
+    const idRole = Number(this.idRoleInput);
+    const idPosicion = Number(this.idPosicionInput);
+    if (!Number.isFinite(idRole) || !Number.isFinite(idPosicion) || idRole <= 0 || idPosicion <= 0) {
+      return;
     }
+    if (this.idUserInput === undefined || this.idUserInput === null) {
+      return;
+    }
+    this.userId = this.idUserInput;
+    this.branchId = this.idBranchInput;
+    this.idRole = idRole;
+    this.idPosicion = idPosicion;
+    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
   }
 
   agInit(params: ICellRendererParams & { idUser: number, idBranch: number, idRole: number, idPosicion: number }): void {
@@ -755,7 +856,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
   obtenerDatos(
     idCompany: number,
-    idUser: number,
+    idUser: number | string,
     idBranch: number,
     idRole: number,
     idPosicion: number,
@@ -766,12 +867,20 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     const savedDetailName = preserve ? this.detailSeleccionado?.detailedPermissionName : undefined;
 
     const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
+    const seedFromRolePos = this.seedFromRolePosInput === true;
+    const roleTemplateOnly = this.roleTemplateOnlyInput === true;
+    const userSysNumeric = Number(idUser);
+    const userSys$ =
+      scope === 'userSystem' && !this.isTransientUserId(idUser) && Number.isFinite(userSysNumeric) && userSysNumeric > 0
+        ? this.systemPermissionsService.getUserPermissions(userSysNumeric)
+        : new Observable<any[]>((sub) => {
+            sub.next([]);
+            sub.complete();
+          });
+
     forkJoin({
-      crud: this.permitionsService.getPermitionsSencillo(idCompany, idUser, idBranch, idRole, idPosicion),
-      userSys:
-        scope === 'userSystem'
-          ? this.systemPermissionsService.getUserPermissions(idUser)
-          : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
+      crud: this.getCrudRowsForModal$(scope, idCompany, idUser, idBranch, idRole, idPosicion, seedFromRolePos, roleTemplateOnly),
+      userSys: userSys$,
       catalog:
         scope === 'userSystem'
           ? this.systemPermissionsService.getMasterPermissions(idCompany)
@@ -782,6 +891,29 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         console.log('new data', this.rawData);
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
         this.userSystemPermissionIds = (userSys ?? []).map((p: any) => p.permissionId);
+        // Precarga desde rol+posición: solo si el usuario aún no tiene permisos maestros asignados.
+        if (scope === 'userSystem' && seedFromRolePos && this.userSystemPermissionIds.length === 0) {
+          const seed = new Set<number>();
+          for (const r of Array.isArray(crud) ? crud : []) {
+            const id = this.normalizeDetailedId((r as any)?.idDetailedPermission ?? (r as any)?.IdDetailedPermission);
+            if (id == null) continue;
+            const anyOn =
+              !!(r as any)?.detailedRead ||
+              !!(r as any)?.DetailedRead ||
+              !!(r as any)?.masterRead ||
+              !!(r as any)?.MasterRead ||
+              !!(r as any)?.canRead ||
+              !!(r as any)?.CanRead ||
+              !!(r as any)?.canCreate ||
+              !!(r as any)?.CanCreate ||
+              !!(r as any)?.canUpdate ||
+              !!(r as any)?.CanUpdate ||
+              !!(r as any)?.canDelete ||
+              !!(r as any)?.CanDelete;
+            if (anyOn) seed.add(id);
+          }
+          this.userSystemPermissionIds = [...seed];
+        }
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.groupedPermissions = this.transformData(this.rawData);
         if (scope === 'userSystem') {
@@ -819,11 +951,41 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   modificar() {
     const idCo = this.idEmpresa ?? this.idCompany;
     const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
+    const transient = this.isTransientUserId(this.userId);
+    const userSysNumeric = Number(this.userId);
+    const roleTemplateOnly = this.roleTemplateOnlyInput === true;
+    const crudReload$ =
+      roleTemplateOnly
+        ? this.rolesService.getPermissionsByRoles(idCo, this.idRole, this.idPosicion).pipe(
+            map((raw) => this.normalizeCrudArray(raw)),
+            catchError(() => of([]))
+          )
+        : scope === 'position' && transient
+        ? this.rolesService.getPermissionsByRoles(idCo, this.idRole, this.idPosicion).pipe(
+            map((raw) => this.normalizeCrudArray(raw)),
+            catchError(() => of([]))
+          )
+        : transient
+          ? of([])
+          : this.permitionsService.getPermitionsDetail(idCo, Number(this.userId), this.branchId, this.idRole, this.idPosicion).pipe(
+              map((raw) => this.normalizeCrudArray(raw)),
+              catchError(() => of([])),
+              switchMap((rows) => {
+                if (rows.length > 0 || scope !== 'position') {
+                  return of(rows);
+                }
+                return this.rolesService.getPermissionsByRoles(idCo, this.idRole, this.idPosicion).pipe(
+                  map((raw) => this.normalizeCrudArray(raw)),
+                  catchError(() => of([]))
+                );
+              })
+            );
+
     forkJoin({
-      crud: this.permitionsService.getPermitionsDetail(this.idEmpresa, this.userId, this.branchId, this.idRole, this.idPosicion),
+      crud: crudReload$,
       userSys:
-        scope === 'userSystem'
-          ? this.systemPermissionsService.getUserPermissions(this.userId)
+        scope === 'userSystem' && !transient && Number.isFinite(userSysNumeric) && userSysNumeric > 0
+          ? this.systemPermissionsService.getUserPermissions(userSysNumeric)
           : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
       catalog:
         scope === 'userSystem'
@@ -1134,6 +1296,12 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
             const o = p.__original;
             if (!o) {
               continue;
+            }
+            if (o['detailedRead'] !== undefined && !!o['detailedRead'] !== !!detail.detailedRead) {
+              return true;
+            }
+            if (o['active'] !== undefined && p.active !== o['active']) {
+              return true;
             }
             if (
               p.canRead !== !!o.canRead ||
@@ -1459,7 +1627,9 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.syncMasterLeftSwitchesFromUserSys();
         this.seleccionarMaster(master);
       } else {
-        this.applyUserSystemPermissionLocal(masterToggleId!, master.masterRead);
+        // Antes solo se quitaba el id homónimo; las tarjetas del panel derecho seguían encendidas.
+        this.applyMasterOffCascade(master);
+        this.syncMasterLeftSwitchesFromUserSys();
       }
       this.checkForChanges();
       return;
@@ -1595,6 +1765,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
   async saveDetailChanges() {
     const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
+    const roleTemplateOnly = this.roleTemplateOnlyInput === true;
+    if (!roleTemplateOnly && this.isTransientUserId(this.userId)) {
+      alerts.basicAlert(
+        'Usuario pendiente de guardar',
+        'Guarda primero el usuario en la tabla principal; después podrás persistir los permisos por departamento y posición.',
+        'info'
+      );
+      return;
+    }
+    const persistedUserId = Number(this.userId);
     const userSysDirty = scope === 'userSystem' ? this.areUserSystemPermissionsDirty() : false;
     const crudDirty = this.hasNonUserSysCrudDirty();
 
@@ -1607,39 +1787,71 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
     if (userSysDirty) {
       requests.push(
-        this.systemPermissionsService.updateUserPermissions(this.userId, [...this.userSystemPermissionIds])
+        this.systemPermissionsService.updateUserPermissions(persistedUserId, [...this.userSystemPermissionIds])
       );
     }
 
     if (crudDirty) {
-      const modifiedPermissions = this.untransformData(this.groupedPermissions);
-      const changesMap = new Map<string, any>();
-      for (const perm of modifiedPermissions) {
-        const uniqueKey = `${perm.idDetailedPermission}-${perm.idShowPermition}`;
-        if (!changesMap.has(uniqueKey)) {
-          const payload: CrudxDetailedPermission = {
-            idUser: this.userId,
-            idBranch: this.branchId,
-            idMasterPermission: perm.idMasterPermission,
-            masterRead: perm.masterRead,
-            idDetailedPermission: perm.idDetailedPermission,
-            detailedRead: perm.detailedRead,
-            subdetailedPermissionName: perm.name,
-            idShowPermition: perm.idShowPermition,
-            idRole: this.idRole,
-            idPosicion: this.idPosicion,
-            canCreate: perm.canCreate,
-            canRead: perm.canRead,
-            canUpdate: perm.canUpdate,
-            canDelete: perm.canDelete,
-            active: perm.active ?? true,
-          };
-          changesMap.set(uniqueKey, payload);
+      if (roleTemplateOnly) {
+        const modifiedPermissions = this.untransformTemplateDirtyOnly(this.groupedPermissions);
+        if (modifiedPermissions.length === 0) {
+          alerts.basicAlert('Sin cambios', 'No hay cambios para guardar.', 'info');
+          return;
         }
-      }
-      for (const payload of changesMap.values()) {
-        console.log('Enviando payload único:', payload);
-        requests.push(this.permitionsService.addPermitions(payload));
+        const changesMap = new Map<string, RolesxDetailedPermission>();
+        for (const perm of modifiedPermissions) {
+          const uniqueKey = `${perm.idDetailedPermission}-${perm.idShowPermition}`;
+          if (!changesMap.has(uniqueKey)) {
+            changesMap.set(uniqueKey, {
+              idMasterPermission: perm.idMasterPermission,
+              masterRead: perm.masterRead,
+              idDetailedPermission: perm.idDetailedPermission,
+              detailedRead: perm.detailedRead,
+              subdetailedPermissionName: perm.name,
+              idShowPermition: perm.idShowPermition,
+              idRole: this.idRole,
+              idPosicion: this.idPosicion,
+              canCreate: perm.canCreate,
+              canRead: perm.canRead,
+              canUpdate: perm.canUpdate,
+              canDelete: perm.canDelete,
+              active: perm.active ?? true,
+            });
+          }
+        }
+        for (const payload of changesMap.values()) {
+          requests.push(this.rolesService.addDetailedPermissionsxRoles(payload));
+        }
+      } else {
+        const modifiedPermissions = this.untransformData(this.groupedPermissions);
+        const changesMap = new Map<string, any>();
+        for (const perm of modifiedPermissions) {
+          const uniqueKey = `${perm.idDetailedPermission}-${perm.idShowPermition}`;
+          if (!changesMap.has(uniqueKey)) {
+            const payload: CrudxDetailedPermission = {
+              idUser: persistedUserId,
+              idBranch: this.branchId,
+              idMasterPermission: perm.idMasterPermission,
+              masterRead: perm.masterRead,
+              idDetailedPermission: perm.idDetailedPermission,
+              detailedRead: perm.detailedRead,
+              subdetailedPermissionName: perm.name,
+              idShowPermition: perm.idShowPermition,
+              idRole: this.idRole,
+              idPosicion: this.idPosicion,
+              canCreate: perm.canCreate,
+              canRead: perm.canRead,
+              canUpdate: perm.canUpdate,
+              canDelete: perm.canDelete,
+              active: perm.active ?? true,
+            };
+            changesMap.set(uniqueKey, payload);
+          }
+        }
+        for (const payload of changesMap.values()) {
+          console.log('Enviando payload único:', payload);
+          requests.push(this.permitionsService.addPermitions(payload));
+        }
       }
     }
 
@@ -1663,7 +1875,9 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       if (crudDirty) {
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
-          'Update/Add Registros en Detalle de Roles',
+          roleTemplateOnly
+            ? 'Update plantilla RolesxDetailedPermission (modal Departamento)'
+            : 'Update/Add Registros en Detalle de Roles',
           'Menu Administracion Detalle de Roles',
           this.trackingService.getEmail()
         );
@@ -1731,6 +1945,48 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       });
     });
 
+    return modifiedList;
+  }
+
+  /** Igual que `rolesDelison-detailed`: solo filas realmente distintas del `__original` (plantilla por rol/posición). */
+  private untransformTemplateDirtyOnly(data: MasterPermission[]): any[] {
+    const modifiedList: any[] = [];
+    data.forEach((master) => {
+      master.details.forEach((detail) => {
+        detail.subdetails.forEach((subdetail) => {
+          const allPermissions: CrudPermission[] = [];
+          if (subdetail.principal) allPermissions.push(subdetail.principal);
+          allPermissions.push(...subdetail.children);
+          allPermissions.forEach((permission) => {
+            const original = permission.__original;
+            const isModified =
+              original &&
+              (original.masterRead !== master.masterRead ||
+                original.detailedRead !== detail.detailedRead ||
+                original.canRead !== permission.canRead ||
+                original.canCreate !== permission.canCreate ||
+                original.canUpdate !== permission.canUpdate ||
+                original.canDelete !== permission.canDelete ||
+                original.active !== permission.active);
+            const hasAnyPermission =
+              master.masterRead ||
+              detail.detailedRead ||
+              permission.canRead ||
+              permission.canCreate ||
+              permission.canUpdate ||
+              permission.canDelete;
+            const isNewAndHasPermissions = original && !original.id && hasAnyPermission;
+            if (isModified || isNewAndHasPermissions) {
+              modifiedList.push({
+                ...permission,
+                masterRead: master.masterRead,
+                detailedRead: detail.detailedRead,
+              });
+            }
+          });
+        });
+      });
+    });
     return modifiedList;
   }
 }

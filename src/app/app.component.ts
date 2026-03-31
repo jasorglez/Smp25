@@ -1,5 +1,5 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import {AuthService} from "./services/auth.service";
 import { SignalsService } from './services/signals.service';
 
@@ -16,6 +16,7 @@ export class AppComponent implements OnInit {
 
   private authService = inject(AuthService);
   private signalsService = inject(SignalsService);
+  private router = inject(Router);
 
   constructor() {
     effect(() => {
@@ -31,7 +32,11 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
-    // ngOnInit puede permanecer vacío o usarse para otra lógica inicial que no dependa de estos signals.
+    const token = localStorage.getItem('token');
+    const path = this.router.url.split('?')[0] || '';
+    if (token && path !== '/login') {
+      this.authService.startSessionTimers();
+    }
   }
 
   private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {

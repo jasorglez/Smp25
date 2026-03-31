@@ -76,7 +76,7 @@ export class UsersComponent implements OnDestroy {
   // --- Modal ---
   showPermissionsModal: boolean = false;
   modalUserName: string = '';
-  modalPermissions: { idUser: number, idBranch: number, idRole: number, idPosicion: number, scope?: 'userSystem' | 'position' } | null = null;
+  modalPermissions: { idUser: number | string, idBranch: number, idRole: number, idPosicion: number, scope?: 'userSystem' | 'position', seedFromRolePosition?: boolean, roleTemplateOnly?: boolean } | null = null;
   private modalSubscription: Subscription;
 
   private gridApi: GridApi;
@@ -181,8 +181,10 @@ export class UsersComponent implements OnDestroy {
         idRole: data.idRole,
         idPosicion: data.idPosicion,
         scope: data.scope,
+        seedFromRolePosition: data.seedFromRolePosition,
+        roleTemplateOnly: data.roleTemplateOnly,
       };
-      this.modalUserName = data.userName;
+      this.modalUserName = data.modalTitleDetail ?? data.userName;
       this.showPermissionsModal = true;
     });
   }

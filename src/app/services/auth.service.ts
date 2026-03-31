@@ -57,6 +57,14 @@ export class AuthService {
   // Minutos antes de expirar para mostrar la advertencia
   private readonly WARNING_BEFORE_EXPIRY_MS = 2 * 60 * 1000; // 2 minutos
 
+  /** Cierre por inactividad (sin eventos de usuario en el documento). */
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+  private readonly ACTIVITY_THROTTLE_MS = 800;
+  private lastActivityThrottleAt = 0;
+  private idleListenersAttached = false;
+  private readonly onIdleActivity = (): void => this.recordUserActivity();
+
   constructor() {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -74,6 +82,8 @@ export class AuthService {
 
     const token = localStorage.getItem('token');
     if (!token) return;
+
+    this.startIdleWatch();
 
     const expiry = this.getTokenExpiry(token);
     if (!expiry) return;
@@ -106,6 +116,87 @@ export class AuthService {
         this.logout();
       });
     }, msUntilExpiry);
+  }
+
+  /**
+   * Reinicia el temporizador de inactividad. Cualquier actividad (teclado, clic, scroll táctil)
+   * mantiene la sesión viva indefinidamente mientras haya interacción antes de los 5 minutos.
+   */
+  startIdleWatch(): void {
+    this.stopIdleWatch();
+    if (!localStorage.getItem('token')) {
+      return;
+    }
+    this.attachIdleListeners();
+    this.scheduleIdleTimeout();
+  }
+
+  private attachIdleListeners(): void {
+    if (this.idleListenersAttached || typeof document === 'undefined') {
+      return;
+    }
+    const opts: AddEventListenerOptions = { capture: true, passive: true };
+    const optsNonPassive: AddEventListenerOptions = { capture: true, passive: false };
+    document.addEventListener('keydown', this.onIdleActivity, optsNonPassive);
+    document.addEventListener('mousedown', this.onIdleActivity, opts);
+    document.addEventListener('touchstart', this.onIdleActivity, opts);
+    document.addEventListener('click', this.onIdleActivity, opts);
+    document.addEventListener('scroll', this.onIdleActivity, opts);
+    document.addEventListener('wheel', this.onIdleActivity, opts);
+    this.idleListenersAttached = true;
+  }
+
+  private stopIdleWatch(): void {
+    if (typeof document !== 'undefined' && this.idleListenersAttached) {
+      document.removeEventListener('keydown', this.onIdleActivity, { capture: true } as any);
+      document.removeEventListener('mousedown', this.onIdleActivity, { capture: true } as any);
+      document.removeEventListener('touchstart', this.onIdleActivity, { capture: true } as any);
+      document.removeEventListener('click', this.onIdleActivity, { capture: true } as any);
+      document.removeEventListener('scroll', this.onIdleActivity, { capture: true } as any);
+      document.removeEventListener('wheel', this.onIdleActivity, { capture: true } as any);
+      this.idleListenersAttached = false;
+    }
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+  }
+
+  private recordUserActivity(): void {
+    if (!localStorage.getItem('token')) {
+      return;
+    }
+    const now = Date.now();
+    if (now - this.lastActivityThrottleAt < this.ACTIVITY_THROTTLE_MS) {
+      return;
+    }
+    this.lastActivityThrottleAt = now;
+    this.scheduleIdleTimeout();
+  }
+
+  private scheduleIdleTimeout(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = null;
+      this.ngZone.run(() => this.onIdleTimeout());
+    }, this.IDLE_TIMEOUT_MS);
+  }
+
+  private onIdleTimeout(): void {
+    if (!localStorage.getItem('token')) {
+      this.stopIdleWatch();
+      return;
+    }
+    Swal.close();
+    try {
+      sessionStorage.setItem('idleLogoutNotice', '1');
+    } catch {
+      /* ignorar quota / modo privado */
+    }
+    void this.logout();
   }
 
   // ─── Muestra alerta de advertencia con cuenta regresiva ───
@@ -197,6 +288,7 @@ export class AuthService {
 
   async logout() {
     this.clearSessionTimers();
+    this.stopIdleWatch();
     try {
       this.trackingService.addLog(
         '',

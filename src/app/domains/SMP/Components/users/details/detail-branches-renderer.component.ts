@@ -215,13 +215,14 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         field: 'principal',
         headerName: 'Principal',
         width: 110,
-        editable: () => this.canInteractSucursalesSegundoNivel(),
-        cellEditor: 'agCheckboxCellEditor',
-        cellRenderer: 'agCheckboxCellRenderer',
-        valueSetter: (params: any) => {
-          params.data.principal = params.newValue;
-          return true;
-        }
+        editable: false,
+        cellRenderer: (params: any) => {
+          const checked = !!params.value;
+          // Sin `disabled`: el navegador pinta el checkbox en gris. Icono + solo lectura visual.
+          return checked
+            ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
+            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+        },
       },
     ];
   }

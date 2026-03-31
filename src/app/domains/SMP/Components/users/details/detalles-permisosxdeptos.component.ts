@@ -140,42 +140,24 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         filter: 'agNumberColumnFilter',
         hide: true,
       },
-      // ✅ Principal ANTES de Departamento (selección exclusiva: solo una fila marcada)
+      // ✅ Principal ANTES de Departamento (solo lectura; mismo aspecto que sucursales)
       {
         field: 'principal',
         headerName: 'Principal',
         width: 110,
-        editable: true,
-        cellEditor: 'agCheckboxCellEditor',
-        cellRenderer: 'agCheckboxCellRenderer',
+        editable: false,
         valueGetter: (params: any) => {
           if (params.data.principal === true || params.data.principal === 1) return true;
           if (!this.empleadoPrincipal) return false;
           return params.data.idRole == this.empleadoPrincipal.idDepto &&
                  params.data.idPosicion == this.empleadoPrincipal.idPosition;
         },
-        valueSetter: (params: any) => {
-          const newValue = !!params.newValue;
-          params.data.principal = newValue;
-
-          if (newValue) {
-            if (params.data.idRole == null || params.data.idPosicion == null) {
-              alerts.basicAlert('Principal', 'Debe seleccionar Departamento y Posición antes de marcarla como principal.', 'warning');
-              params.data.principal = false;
-              return false;
-            }
-            this.empleadoPrincipal = { idDepto: params.data.idRole, idPosition: params.data.idPosicion };
-          } else {
-            this.empleadoPrincipal = null;
-          }
-
-          setTimeout(() => {
-            if (this.warehousesGridApi) {
-              this.warehousesGridApi.refreshCells({ columns: ['principal'], force: true });
-            }
-          }, 0);
-          return true;
-        }
+        cellRenderer: (params: any) => {
+          const checked = !!params.value;
+          return checked
+            ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
+            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+        },
       },
       {
         field: 'idRole',
@@ -681,9 +663,20 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         idRole: event.data.idRole,
         idPosicion: event.data.idPosicion,
         userName: this.userName,
-        scope: 'position',
+        modalTitleDetail: this.buildPermissionsModalTitle(event.data.idPosicion),
+        seedFromRolePosition: true,
+        scope: 'userSystem',
       });
     }
+  }
+
+  /** Título del modal: nombre del usuario y posición (no departamento ni sucursal). */
+  private buildPermissionsModalTitle(idPosicion: number): string {
+    const pid = Number(idPosicion);
+    const pos = this.catalogGeneralPosiciones?.find((p: any) => Number(p.id) === pid);
+    const p = pos?.description ?? `Posición ${pid}`;
+    const u = (this.userName ?? '').trim() || 'Usuario';
+    return `${u} — ${p}`;
   }
 
   /** Mismo switch que «Permisos» bajo Setup Usuarios en Permisos maestros (`identifier`: permissions). */

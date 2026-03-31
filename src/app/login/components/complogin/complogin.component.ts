@@ -73,6 +73,14 @@ export class ComploginComponent implements OnInit, OnDestroy {
 
 
   ngOnInit(): void {
+    if (sessionStorage.getItem('idleLogoutNotice') === '1') {
+      sessionStorage.removeItem('idleLogoutNotice');
+      alerts.basicAlert(
+        'Sesión cerrada',
+        'Por seguridad, la sesión se cerró tras 5 minutos sin actividad.',
+        'info'
+      );
+    }
     this.setRandomCardPosition();
     this.loadLoginBackgroundImages();
     this.isAdvanced = this.signalsService.getIsAdvanced();
