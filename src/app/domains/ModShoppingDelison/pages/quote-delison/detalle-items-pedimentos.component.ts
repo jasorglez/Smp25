@@ -9,7 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
-  selector: 'app-detail-cell-renderer-pedimentos-items',
+  selector: 'app-detalle-items-pedimentos',
   standalone: true,
   imports: [CommonModule, AgGridModule],
   template: `
@@ -65,7 +65,7 @@ import { alerts } from 'app/helpers/alerts';
     }
   `]
 })
-export class DetailCellRendererPedimentosItemsComponent implements ICellRendererAngularComp {
+export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp {
   private params!: ICellRendererParams;
   private context: any;
   private gridApi!: GridApi;
@@ -116,7 +116,7 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
         nameArticle: item.nameArticle || '',
         recurrent: item.recurrent || '',
         articulo: item.nameArticle || item.description || item.article,
-        numeroArticulo: item.numArticle || (index + 1),
+        numeroArticulo: item.recurrent === 'Nuevo' ? '' : (item.numArticle || (index + 1)),
         cantidad: item.quantity,
         tipo: item.intorext || item.tipo,
         proveedorInterno: item.proveedorInterno,
@@ -399,7 +399,7 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
       },
       {
         field: 'tipoPrioridad',
-        headerName: 'Tipo Prioridad',
+        headerName: 'Tipo Prioridad4',
         width: 150
       },
       {

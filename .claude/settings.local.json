@@ -127,7 +127,10 @@
       "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosBPI' -type f -name *.cs -o -name *.sql)",
       "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios' -type f \\\\\\(-name *.sql -o -name *init* -o -name *setup* -o -name *seed* \\\\\\))",
       "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosBPI' -type f -name *.cs)",
-      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosWarehouse\\\\Warehouse' -type d -not -path */.git* -not -path */bin/* -not -path */obj/*)"
+      "Bash(find 'C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosWarehouse\\\\Warehouse' -type d -not -path */.git* -not -path */bin/* -not -path */obj/*)",
+      "mcp__b2-mssql-administration__execute_sql",
+      "mcp__b2-mssql-warehouses__execute_sql",
+      "mcp__b2-mssql-warehouses__get_table_schema"
     ],
     "deny": [],
     "ask": []

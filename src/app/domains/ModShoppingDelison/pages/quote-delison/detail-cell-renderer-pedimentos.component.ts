@@ -5,14 +5,14 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
-import { DetailCellRendererPedimentosItemsComponent } from './detail-cell-renderer-pedimentos-items.component';
-import { DetailCellRendererProveedorComponent } from './detail-cell-renderer-proveedor.component';
+import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.component';
+import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorComponent, DetailCellRendererPedimentoReportComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -85,6 +85,9 @@ export class DetailCellRendererPedimentosComponent {
         idProvider: pedimento.idProvider || 0,
         idProvider2: pedimento.idProvider2 || 0,
         idProvider3: pedimento.idProvider3 || 0,
+        name_idProvider: pedimento.name_idProvider || '',
+        name_idProvider2: pedimento.name_idProvider2 || '',
+        name_idProvider3: pedimento.name_idProvider3 || '',
         pdf: 'PDF',
         creo: pedimento.createdBy || 'N/A',
         createdBy: pedimento.createdBy || 'N/A',
@@ -171,7 +174,7 @@ export class DetailCellRendererPedimentosComponent {
           icon: 'bi-person-badge',
           title: 'Ver/Editar Proveedor A'
         },
-        valueGetter: () => 'Proveedor A',
+        valueGetter: (params: any) => params.data?.name_idProvider || (params.data?.idProvider > 0 ? `Prov. ${params.data.idProvider}` : 'Proveedor A'),
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
       },
 
@@ -185,7 +188,7 @@ export class DetailCellRendererPedimentosComponent {
           icon: 'bi-person-badge',
           title: 'Ver/Editar Proveedor B'
         },
-        valueGetter: () => 'Proveedor B',
+        valueGetter: (params: any) => params.data?.name_idProvider2 || (params.data?.idProvider2 > 0 ? `Prov. ${params.data.idProvider2}` : 'Proveedor B'),
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer' }
       },
 
@@ -199,7 +202,7 @@ export class DetailCellRendererPedimentosComponent {
           icon: 'bi-person-badge',
           title: 'Ver/Editar Proveedor C'
         },
-        valueGetter: () => 'Proveedor C',
+        valueGetter: (params: any) => params.data?.name_idProvider3 || (params.data?.idProvider3 > 0 ? `Prov. ${params.data.idProvider3}` : 'Proveedor C'),
         cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
       },
 
@@ -226,7 +229,7 @@ export class DetailCellRendererPedimentosComponent {
     detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'proveedor') {
         return {
-          component: DetailCellRendererProveedorComponent,
+          component: DetalleItemsProveedorComponent,
           params: {
             providerField: params.data.providerField,
             providerLabel: params.data.providerLabel
@@ -243,7 +246,7 @@ export class DetailCellRendererPedimentosComponent {
         };
       }
       // Por defecto, mostrar artículos
-      return { component: DetailCellRendererPedimentosItemsComponent };
+      return { component: DetalleItemsPedimentosComponent };
     },
     embedFullWidthRows: true,
     suppressCellFocus: true,
@@ -364,12 +367,9 @@ export class DetailCellRendererPedimentosComponent {
       this.activeProviderField = providerField;
       this.activeProviderLabel = providerLabel;
 
-      // Actualizar el contexto del grid (manteniendo componentParent)
-      this.gridOptions.context = {
-        componentParent: this,
-        providerField: providerField,
-        providerLabel: providerLabel
-      };
+      // Mutar el contexto existente (no reemplazar) para que AG Grid mantenga la referencia
+      this.gridOptions.context.providerField = providerField;
+      this.gridOptions.context.providerLabel = providerLabel;
 
       // Aplicar los cambios de altura
       this.gridApi.onRowHeightChanged();
