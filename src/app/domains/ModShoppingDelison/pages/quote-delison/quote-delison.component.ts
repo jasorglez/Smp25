@@ -233,7 +233,7 @@ export class QuoteDelisonComponent implements OnInit {
         console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
       }
 
-      // ✅ PASO 2.2: Para cada cotización, cargar sus items
+      // ✅ PASO 2.2: Para cada cotización, cargar sus items y sus COTIZes de proveedor
       const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
         let items: any[] = [];
         try {
@@ -249,14 +249,33 @@ export class QuoteDelisonComponent implements OnInit {
           console.error(`   ❌ Error al cargar items de cotización ${cotizacion.id}:`, error);
         }
 
+        // Cargar COTIZes de proveedor (hijos del pedimento, typeReference='delison')
+        let providerCotizs: any[] = [];
+        try {
+          const pcData: any = await new Promise((resolve, reject) => {
+            this.ocAndReqsService.getOcAndReqs('delison', cotizacion.id, 'COTIZ').subscribe({
+              next: (d) => resolve(d), error: (e) => reject(e)
+            });
+          });
+          providerCotizs = Array.isArray(pcData) ? pcData : [];
+        } catch (_) {}
+
+        // Mapear slot A/B/C por folio → extraer idProvider + nombre (solicit)
+        const slotA = providerCotizs.filter(c => c.folio?.includes('-A-')).sort((a,b) => b.id - a.id)[0];
+        const slotB = providerCotizs.filter(c => c.folio?.includes('-B-')).sort((a,b) => b.id - a.id)[0];
+        const slotC = providerCotizs.filter(c => c.folio?.includes('-C-')).sort((a,b) => b.id - a.id)[0];
+
         return {
           id: cotizacion.id,
           name: `Pedimento ${cotizacion.pedimento}`,
           pedimento: cotizacion.pedimento,
           folio: cotizacion.folio || '',
-          idProvider: cotizacion.idProvider || 0,
-          idProvider2: cotizacion.idProvider2 || 0,
-          idProvider3: cotizacion.idProvider3 || 0,
+          idProvider:  slotA?.idProvider || 0,
+          idProvider2: slotB?.idProvider || 0,
+          idProvider3: slotC?.idProvider || 0,
+          name_idProvider:  slotA?.solicit || '',
+          name_idProvider2: slotB?.solicit || '',
+          name_idProvider3: slotC?.solicit || '',
           createdBy: cotizacion.createdBy || cotizacion.solicit || '',
           items: items.map((item: any) => ({
             id: item.id,
@@ -350,7 +369,7 @@ export class QuoteDelisonComponent implements OnInit {
             console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
           }
 
-          // ✅ PASO 3: Para cada cotización, cargar sus items
+          // ✅ PASO 3: Para cada cotización, cargar sus items y sus COTIZes de proveedor
           const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
             let items: any[] = [];
             try {
@@ -366,14 +385,32 @@ export class QuoteDelisonComponent implements OnInit {
               console.error(`   ❌ Error al cargar items de cotización ${cotizacion.id}:`, error);
             }
 
+            // Cargar COTIZes de proveedor (hijos del pedimento, typeReference='delison')
+            let providerCotizs: any[] = [];
+            try {
+              const pcData: any = await new Promise((resolve, reject) => {
+                this.ocAndReqsService.getOcAndReqs('delison', cotizacion.id, 'COTIZ').subscribe({
+                  next: (d) => resolve(d), error: (e) => reject(e)
+                });
+              });
+              providerCotizs = Array.isArray(pcData) ? pcData : [];
+            } catch (_) {}
+
+            const slotA = providerCotizs.filter(c => c.folio?.includes('-A-')).sort((a,b) => b.id - a.id)[0];
+            const slotB = providerCotizs.filter(c => c.folio?.includes('-B-')).sort((a,b) => b.id - a.id)[0];
+            const slotC = providerCotizs.filter(c => c.folio?.includes('-C-')).sort((a,b) => b.id - a.id)[0];
+
             return {
               id: cotizacion.id,
               name: `Pedimento ${cotizacion.pedimento}`,
               pedimento: cotizacion.pedimento,
               folio: cotizacion.folio || '',
-              idProvider: cotizacion.idProvider || 0,
-              idProvider2: cotizacion.idProvider2 || 0,
-              idProvider3: cotizacion.idProvider3 || 0,
+              idProvider:  slotA?.idProvider || 0,
+              idProvider2: slotB?.idProvider || 0,
+              idProvider3: slotC?.idProvider || 0,
+              name_idProvider:  slotA?.solicit || '',
+              name_idProvider2: slotB?.solicit || '',
+              name_idProvider3: slotC?.solicit || '',
               createdBy: cotizacion.createdBy || cotizacion.solicit || '',
               items: items.map((item: any) => ({
                 id: item.id,

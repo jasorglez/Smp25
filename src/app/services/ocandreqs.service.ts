@@ -40,6 +40,10 @@ export class OcAndReqsService {
     return this.http.post(`${environment.urlWarehouse}/Detailsreqoc`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  addReqItemsBulk(items: any[]): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Detailsreqoc/bulk`, items, { headers: this.trackingService.getHeaders() });
+  }
+
   updateReqItem(id: string, data: any): Observable<any> {
     return this.http.put<any[]>(`${environment.urlWarehouse}/Detailsreqoc/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
