@@ -1,0 +1,30 @@
+<div class="p-2">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span class="fw-bold text-primary">Proyectos del empleado</span>
+
+    <button class="btn btn-sm btn-primary position-relative ms-2"
+            (click)="saveChanges()" [disabled]="!hasUnsavedChanges || isLoading">
+      <i class="bi bi-floppy"></i> Guardar
+      <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasUnsavedChanges">
+        <span class="visually-hidden">Hay cambios sin guardar</span>
+      </span>
+    </button>
+
+    <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="isLoading">
+      <i class="bi bi-arrow-clockwise"></i> Deshacer
+    </button>
+
+    <span *ngIf="isLoading" class="spinner-border spinner-border-sm text-secondary ms-2"></span>
+  </div>
+
+  <ag-grid-angular
+    style="width: 100%; height: 35vh;"
+    class="ag-theme-quartz small-text-ag-grid"
+    [rowData]="rowData"
+    [columnDefs]="columnDefs"
+    [defaultColDef]="defaultColDef"
+    [gridOptions]="gridOptions"
+    (gridReady)="onGridReady($event)">
+  </ag-grid-angular>
+</div>

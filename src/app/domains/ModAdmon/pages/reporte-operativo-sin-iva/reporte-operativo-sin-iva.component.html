@@ -9,13 +9,13 @@
       <div class="filters-section">
         <div class="filter-group">
           <label for="startDate">Desde:</label>
-          <input type="date" id="startDate" class="form-control form-control-sm"
-                 [(ngModel)]="startDate" (change)="onFilterChange()">
+          <input type="date" id="startDate" class="form-control form-control-sm" [(ngModel)]="startDate"
+            (change)="onFilterChange()">
         </div>
         <div class="filter-group">
           <label for="endDate">Hasta:</label>
-          <input type="date" id="endDate" class="form-control form-control-sm"
-                 [(ngModel)]="endDate" (change)="onFilterChange()">
+          <input type="date" id="endDate" class="form-control form-control-sm" [(ngModel)]="endDate"
+            (change)="onFilterChange()">
         </div>
       </div>
       <div class="fecha-info">
@@ -30,16 +30,12 @@
         <span>Rev.: 00</span>
       </div>
       <div class="export-buttons">
-        <button
-          class="btn btn-sm btn-danger"
-          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+        <button class="btn btn-sm btn-danger" [disabled]="isExportingPdf || isExportingXlsx || isLoading"
           (click)="exportToPdf()">
           <i class="bi bi-filetype-pdf"></i>
           {{ isExportingPdf ? 'Exportando...' : 'PDF' }}
         </button>
-        <button
-          class="btn btn-sm btn-success"
-          [disabled]="isExportingPdf || isExportingXlsx || isLoading"
+        <button class="btn btn-sm btn-success" [disabled]="isExportingPdf || isExportingXlsx || isLoading"
           (click)="exportToXlsx()">
           <i class="bi bi-filetype-xlsx"></i>
           {{ isExportingXlsx ? 'Exportando...' : 'XLSX' }}
@@ -114,70 +110,12 @@
               </td>
               <td class="text-end"><strong>{{ formatCurrency(totales.margenNeto) }}</strong></td>
               <td class="text-center">
-                <strong>{{ totales.montoCobrado > 0 ? formatPercent((totales.margenNeto / totales.montoCobrado) * 100) : '0%' }}</strong>
+                <strong>{{ totales.montoCobrado > 0 ? formatPercent((totales.margenNeto / totales.montoCobrado) * 100) :
+                  '0%' }}</strong>
               </td>
             </tr>
           </tfoot>
         </table>
-      </div>
-    </div>
-
-    <!-- Sección de Flujo Bancario -->
-    <div class="table-card flujo-section" *ngIf="flujoData.length > 0">
-      <h4 class="section-title">FLUJO DE CUENTAS BANCARIAS</h4>
-      <div class="flujo-tables">
-        <!-- Flujo al corte -->
-        <div class="flujo-table-wrapper">
-          <h5 class="flujo-subtitle">FLUJO AL CORTE</h5>
-          <table class="reporte-table flujo-table">
-            <thead>
-              <tr>
-                <th>CONCEPTO</th>
-                <th class="text-end">IMPORTE</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let f of flujoData; let i = index" [class.row-alt]="i % 2 === 0">
-                <td>{{ f.concepto }}</td>
-                <td class="text-end" [class.positive]="f.importeCorte > 0" [class.negative]="f.importeCorte < 0">
-                  {{ formatCurrency(f.importeCorte) }}
-                </td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td><strong>TOTAL</strong></td>
-                <td class="text-end total-cell"><strong>{{ formatCurrency(totalFlujoCorte) }}</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <!-- Flujo actual -->
-        <div class="flujo-table-wrapper">
-          <h5 class="flujo-subtitle">FLUJO ACTUAL {{ fechaFlujoActual }}</h5>
-          <table class="reporte-table flujo-table">
-            <thead>
-              <tr>
-                <th>CONCEPTO</th>
-                <th class="text-end">IMPORTE</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let f of flujoData; let i = index" [class.row-alt]="i % 2 === 0">
-                <td>{{ f.concepto }}</td>
-                <td class="text-end" [class.positive]="f.importeActual > 0" [class.negative]="f.importeActual < 0">
-                  {{ formatCurrency(f.importeActual) }}
-                </td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td><strong>TOTAL</strong></td>
-                <td class="text-end total-cell"><strong>{{ formatCurrency(totalFlujoActual) }}</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
       </div>
     </div>
 
@@ -246,12 +184,74 @@
               <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionBanco) }}</strong></td>
               <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.aportacionEfectivo) }}</strong></td>
               <td class="text-end"><strong>{{ formatCurrency(totalesAportacion.retornoInversion) }}</strong></td>
-              <td class="text-end total-cell"><strong>{{ formatCurrency(totalesAportacion.totalUtilidad) }}</strong></td>
+              <td class="text-end total-cell"><strong>{{ formatCurrency(totalesAportacion.totalUtilidad) }}</strong>
+              </td>
             </tr>
           </tfoot>
         </table>
       </div>
     </div>
+
+
+    <!-- Sección de Flujo Bancario -->
+    <div class="table-card flujo-section" *ngIf="flujoData.length > 0">
+      <h4 class="section-title">FLUJO DE CUENTAS BANCARIAS</h4>
+      <div class="flujo-tables">
+        <!-- Flujo al corte -->
+        <div class="flujo-table-wrapper">
+          <h5 class="flujo-subtitle">FLUJO AL CORTE</h5>
+          <table class="reporte-table flujo-table">
+            <thead>
+              <tr>
+                <th>CONCEPTO</th>
+                <th class="text-end">IMPORTE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of flujoData; let i = index" [class.row-alt]="i % 2 === 0">
+                <td>{{ f.concepto }}</td>
+                <td class="text-end" [class.positive]="f.importeCorte > 0" [class.negative]="f.importeCorte < 0">
+                  {{ formatCurrency(f.importeCorte) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td class="text-end total-cell"><strong>{{ formatCurrency(totalFlujoCorte) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <!-- Flujo actual -->
+        <div class="flujo-table-wrapper">
+          <h5 class="flujo-subtitle">FLUJO ACTUAL {{ fechaFlujoActual }}</h5>
+          <table class="reporte-table flujo-table">
+            <thead>
+              <tr>
+                <th>CONCEPTO</th>
+                <th class="text-end">IMPORTE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of flujoData; let i = index" [class.row-alt]="i % 2 === 0">
+                <td>{{ f.concepto }}</td>
+                <td class="text-end" [class.positive]="f.importeActual > 0" [class.negative]="f.importeActual < 0">
+                  {{ formatCurrency(f.importeActual) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td class="text-end total-cell"><strong>{{ formatCurrency(totalFlujoActual) }}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
 
     <!-- Mensaje cuando no hay datos -->
     <div *ngIf="proyectosReporte.length === 0" class="no-data-message">
