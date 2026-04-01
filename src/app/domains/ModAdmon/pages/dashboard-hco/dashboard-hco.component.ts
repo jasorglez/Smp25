@@ -5,8 +5,10 @@ import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
-import { PersonalByProyectService } from 'app/services/personalByProyect.service';
+
 import { ProjectsService } from 'app/services/projects.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { BranchsService } from 'app/services/branchs.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
@@ -86,8 +88,10 @@ export class DashboardHcoComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private cuentasContablesService = inject(CuentasContablesService);
   private signalsService = inject(SignalsService);
-  private personalByProyectService = inject(PersonalByProyectService);
+
   private projectsService = inject(ProjectsService);
+  private employeesService = inject(EmployeesService);
+  private branchsService = inject(BranchsService);
 
   // Estado del componente
   public rootId: number;
@@ -121,8 +125,10 @@ export class DashboardHcoComponent {
   public personalPieChartOptions: Partial<PieChartOptions>;
 
   // Datos de personal
-  private cantidadPersonalData: any[] = [];
+
   private projectsList: any[] = [];
+  private allEmployees: any[] = [];
+  private branchesList: any[] = [];
   public totalPersonal: number = 0;
 
   // Datos de combustible
@@ -209,12 +215,13 @@ export class DashboardHcoComponent {
   }): any[] {
     const kpiTable = {
       table: {
-        widths: ['25%', '25%', '25%', '25%'],
+        widths: ['20%', '20%', '20%', '20%', '20%'],
         body: [[
           this.buildPdfKpiCell('EGRESOS TOTALES', this.formatCurrency(this.totalEgresos), '#DC2626'),
           this.buildPdfKpiCell('INGRESOS TOTALES', this.formatCurrency(this.totalIngresos), '#16A34A'),
           this.buildPdfKpiCell('FLUJO NETO', this.formatCurrency(this.flujoNeto), this.flujoNeto >= 0 ? '#2563EB' : '#DC2626'),
-          this.buildPdfKpiCell('MARGEN', `${this.margenPorcentaje.toFixed(1)}%`, '#7C3AED')
+          this.buildPdfKpiCell('MARGEN', `${this.margenPorcentaje.toFixed(1)}%`, '#7C3AED'),
+          this.buildPdfKpiCell('PERSONAL', this.totalPersonal.toString(), '#0891B2')
         ]]
       },
       layout: 'siafKpi',
@@ -223,11 +230,13 @@ export class DashboardHcoComponent {
 
     const rightColumnCharts: any[] = [];
     if (images.pieChart) {
-      rightColumnCharts.push({ text: 'GASTO TOTAL ACUMULADO', style: 'sectionTitle' });
-      rightColumnCharts.push({ image: images.pieChart, width: 285, margin: [0, 0, 0, 10] });
+      rightColumnCharts.push({ text: 'PERSONAL POR SUCURSAL', style: 'sectionTitle' });
+      rightColumnCharts.push({ image: images.pieChart, width: 285, margin: [0, 0, 0, 4] });
+      rightColumnCharts.push(this.buildPdfPersonalTable());
+      rightColumnCharts.push({ text: ' ', margin: [0, 6, 0, 0] });
     }
     if (images.barChart) {
-      rightColumnCharts.push({ text: 'RESUMEN ANUAL', style: 'sectionTitle' });
+      rightColumnCharts.push({ text: 'GASTO TOTAL ACUMULADO', style: 'sectionTitle' });
       rightColumnCharts.push({ image: images.barChart, width: 285, margin: [0, 0, 0, 10] });
     }
     if (images.combustibleChart) {
@@ -278,6 +287,38 @@ export class DashboardHcoComponent {
         { text: value, style: 'kpiValue' }
       ],
       fillColor: '#F8FAFC'
+    };
+  }
+
+  private buildPdfPersonalTable(): any {
+    const body: any[] = [[
+      { text: 'SUCURSAL', style: 'tableHeader', fillColor: '#0E7490' },
+      { text: 'CANTIDAD', style: 'tableHeader', fillColor: '#0E7490', alignment: 'right' }
+    ]];
+
+    const countByBranch = new Map<number, number>();
+    this.allEmployees.forEach(emp => {
+      const id = emp.idBranch ?? 0;
+      countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
+    });
+
+    countByBranch.forEach((count, idBranch) => {
+      const branch = this.branchesList.find(b => b.id === idBranch);
+      body.push([
+        { text: branch ? branch.name : `Sucursal ${idBranch}`, style: 'tableCell' },
+        { text: count.toString(), style: 'tableCellRight' }
+      ]);
+    });
+
+    body.push([
+      { text: 'TOTAL', style: 'totalLabel', fillColor: '#CFFAFE' },
+      { text: this.totalPersonal.toString(), style: 'totalValue', fillColor: '#CFFAFE' }
+    ]);
+
+    return {
+      table: { headerRows: 1, widths: ['70%', '30%'], body },
+      layout: 'lightHorizontalLines',
+      margin: [0, 0, 0, 0]
     };
   }
 
@@ -424,29 +465,45 @@ export class DashboardHcoComponent {
     subtitleCell.font = { italic: true, color: { argb: 'FF1A365D' }, size: 11 };
     subtitleCell.alignment = { horizontal: 'center' };
 
-    this.writeKpiCard(worksheet, 'A4', 'C4', 'A5', 'C5', 'EGRESOS TOTALES', this.totalEgresos, 'FFDC2626');
-    this.writeKpiCard(worksheet, 'D4', 'F4', 'D5', 'F5', 'INGRESOS TOTALES', this.totalIngresos, 'FF16A34A');
-    this.writeKpiCard(worksheet, 'G4', 'I4', 'G5', 'I5', 'FLUJO NETO', this.flujoNeto, this.flujoNeto >= 0 ? 'FF2563EB' : 'FFDC2626');
+    this.writeKpiCard(worksheet, 'A4', 'B4', 'A5', 'B5', 'EGRESOS TOTALES', this.totalEgresos, 'FFDC2626');
+    this.writeKpiCard(worksheet, 'C4', 'D4', 'C5', 'D5', 'INGRESOS TOTALES', this.totalIngresos, 'FF16A34A');
+    this.writeKpiCard(worksheet, 'E4', 'F4', 'E5', 'F5', 'FLUJO NETO', this.flujoNeto, this.flujoNeto >= 0 ? 'FF2563EB' : 'FFDC2626');
 
-    worksheet.mergeCells('J4:L4');
-    const margenTitle = worksheet.getCell('J4');
+    worksheet.mergeCells('G4:H4');
+    const margenTitle = worksheet.getCell('G4');
     margenTitle.value = 'MARGEN';
     margenTitle.font = { bold: true, color: { argb: 'FF7C3AED' } };
     margenTitle.alignment = { horizontal: 'center' };
     margenTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F3FF' } };
 
-    worksheet.mergeCells('J5:L5');
-    const margenValue = worksheet.getCell('J5');
+    worksheet.mergeCells('G5:H5');
+    const margenValue = worksheet.getCell('G5');
     margenValue.value = (this.margenPorcentaje || 0) / 100;
     margenValue.numFmt = '0.0%';
     margenValue.font = { bold: true, size: 12, color: { argb: 'FF7C3AED' } };
     margenValue.alignment = { horizontal: 'center' };
     margenValue.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F3FF' } };
 
+    worksheet.mergeCells('I4:J4');
+    const personalTitle = worksheet.getCell('I4');
+    personalTitle.value = 'PERSONAL';
+    personalTitle.font = { bold: true, color: { argb: 'FF0891B2' } };
+    personalTitle.alignment = { horizontal: 'center' };
+    personalTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+
+    worksheet.mergeCells('I5:J5');
+    const personalValue = worksheet.getCell('I5');
+    personalValue.value = this.totalPersonal;
+    personalValue.font = { bold: true, size: 12, color: { argb: 'FF0E7490' } };
+    personalValue.alignment = { horizontal: 'center' };
+    personalValue.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+
     let currentRow = 8;
     currentRow = this.writeClasificacionEgresosTable(worksheet, currentRow);
     currentRow += 2;
     currentRow = this.writeFlujoMensualTable(worksheet, currentRow);
+    currentRow += 2;
+    currentRow = this.writePersonalPorSucursalTable(worksheet, currentRow);
     return currentRow;
   }
 
@@ -571,6 +628,50 @@ export class DashboardHcoComponent {
     return row;
   }
 
+  private writePersonalPorSucursalTable(worksheet: any, startRow: number): number {
+    worksheet.mergeCells(`A${startRow}:B${startRow}`);
+    const titleCell = worksheet.getCell(`A${startRow}`);
+    titleCell.value = 'PERSONAL POR SUCURSAL';
+    titleCell.font = { bold: true, color: { argb: 'FF0E7490' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+
+    const headerRow = startRow + 1;
+    ['SUCURSAL', 'CANTIDAD'].forEach((h, i) => {
+      const cell = worksheet.getCell(headerRow, i + 1);
+      cell.value = h;
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { horizontal: i === 0 ? 'left' : 'right' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7490' } };
+    });
+
+    const countByBranch = new Map<number, number>();
+    this.allEmployees.forEach(emp => {
+      const id = emp.idBranch ?? 0;
+      countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
+    });
+
+    let row = headerRow + 1;
+    countByBranch.forEach((count, idBranch) => {
+      const branch = this.branchesList.find(b => b.id === idBranch);
+      worksheet.getCell(`A${row}`).value = branch ? branch.name : `Sucursal ${idBranch}`;
+      const countCell = worksheet.getCell(`B${row}`);
+      countCell.value = count;
+      countCell.alignment = { horizontal: 'right' };
+      row++;
+    });
+
+    worksheet.getCell(`A${row}`).value = 'TOTAL';
+    worksheet.getCell(`A${row}`).font = { bold: true };
+    worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFFAFE' } };
+    const totalCell = worksheet.getCell(`B${row}`);
+    totalCell.value = this.totalPersonal;
+    totalCell.font = { bold: true };
+    totalCell.alignment = { horizontal: 'right' };
+    totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFFAFE' } };
+
+    return row;
+  }
+
   private setMoneyCell(
     cell: any,
     value: number,
@@ -669,15 +770,20 @@ export class DashboardHcoComponent {
   }
 
   private loadData(rootId: number): void {
-    // Cargar datos de personal por proyecto
-    this.personalByProyectService.getCantidadPersonal().subscribe(data => {
-      this.cantidadPersonalData = Array.isArray(data) ? data : [];
+    // Cargar total de personal de la empresa y agrupar por sucursal
+    this.employeesService.getEmployees(-rootId).subscribe((data: any) => {
+      this.allEmployees = Array.isArray(data) ? data : [];
+      this.totalPersonal = this.allEmployees.length;
+      this.preparePersonalPieChart();
+    });
+
+    this.branchsService.getBranches(rootId).subscribe((data: any) => {
+      this.branchesList = Array.isArray(data) ? data : [];
       this.preparePersonalPieChart();
     });
 
     this.projectsService.getProjectListByCompany(rootId).subscribe((data: any) => {
       this.projectsList = Array.isArray(data) ? data : [];
-      this.preparePersonalPieChart();
     });
 
     // Cargar catálogo de cuentas contables nivel 2 (subclasificación) - mismo método que expenditure
@@ -1014,29 +1120,31 @@ export class DashboardHcoComponent {
   }
 
   private preparePersonalPieChart(): void {
-    if (this.cantidadPersonalData.length === 0) {
-      this.totalPersonal = 0;
+    if (this.allEmployees.length === 0) {
       this.personalPieChartOptions = null;
       return;
     }
 
-    // Solo incluir proyectos que pertenezcan al root seleccionado
-    const conEmpleados = this.cantidadPersonalData.filter(item =>
-      (item.count || 0) > 0 && this.projectsList.some(p => p.id === item.idProyect)
-    );
-    this.totalPersonal = conEmpleados.reduce((sum, item) => sum + (item.count || 0), 0);
-
-    const labels = conEmpleados.map(item => {
-      const project = this.projectsList.find(p => p.id === item.idProyect);
-      return project ? project.name : `Proyecto ${item.idProyect}`;
+    // Agrupar empleados por sucursal
+    const countByBranch = new Map<number, number>();
+    this.allEmployees.forEach(emp => {
+      const id = emp.idBranch ?? 0;
+      countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
     });
-    const series = conEmpleados.map(item => item.count || 0);
+
+    const labels: string[] = [];
+    const series: number[] = [];
+    countByBranch.forEach((count, idBranch) => {
+      const branch = this.branchesList.find(b => b.id === idBranch);
+      labels.push(branch ? branch.name : `Sucursal ${idBranch}`);
+      series.push(count);
+    });
 
     this.personalPieChartOptions = {
       series,
       chart: { type: 'donut', height: 280 },
       labels,
-      title: { text: 'CANTIDAD DE PERSONAL', align: 'center', style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' } },
+      title: { text: 'PERSONAL POR SUCURSAL', align: 'center', style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' } },
       legend: { position: 'bottom', fontSize: '10px' },
       colors: ['#1e3a5f', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#7c3aed', '#a78bfa', '#06b6d4']
     };

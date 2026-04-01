@@ -104,6 +104,8 @@ export class ReporteOperativoSinIvaComponent {
   private transferenciasRecibidas: any[] = [];
   private transferenciasEnviadas: any[] = [];
   private cuentasBancarias: any[] = [];
+  private corporativos: any[] = [];
+  private corporativoActual: any = null;
 
   // Flujo de cuentas bancarias
   public flujoData: FlujoItem[] = [];
@@ -198,14 +200,15 @@ export class ReporteOperativoSinIvaComponent {
     this.isLoading = true;
     try {
       // Cargar datos en paralelo
-      const [rootData, proyectosData, incomesData, empresasData, cuentasData, allRootsData, customersData] = await Promise.all([
+      const [rootData, proyectosData, incomesData, empresasData, cuentasData, allRootsData, customersData, corporativosData] = await Promise.all([
         lastValueFrom(this.rootService.getRootbyId(this.rootId)),
         lastValueFrom(this.projectsService.getProjectListByCompany(this.rootId)),
         lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId)),
         lastValueFrom(this.branchsService.getBrancheswoa(this.rootId)),
         lastValueFrom(this.cuentasContablesService.getByNivel(this.rootId, 2)),
         lastValueFrom(this.rootService.getRoot()),
-        lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'CUSTOMERS'))
+        lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'CUSTOMERS')),
+        lastValueFrom(this.rootService.getCorporativos())
       ]);
 
       const currentRoot = rootData as any;
@@ -219,6 +222,11 @@ export class ReporteOperativoSinIvaComponent {
       }));
       this.cuentasContablesNivel2 = Array.isArray(cuentasData) ? cuentasData : [];
       this.allRoots = Array.isArray(allRootsData) ? allRootsData : [];
+      this.corporativos = Array.isArray(corporativosData) ? corporativosData : [];
+      const idCorporativoActual = (currentRoot as any)?.idCorporativo;
+      this.corporativoActual = idCorporativoActual
+        ? this.corporativos.find(c => c.id === idCorporativoActual) ?? null
+        : null;
 
       // Separar ingresos, egresos y retiros de utilidad de socios
       const allData = Array.isArray(incomesData) ? incomesData : [];
@@ -564,71 +572,63 @@ export class ReporteOperativoSinIvaComponent {
     const recibidas = this.filterByDateRange(this.transferenciasRecibidas);
     const enviadas = this.filterByDateRange(this.transferenciasEnviadas);
 
-    // Agrupar por socio (empresa origen para recibidas, empresa destino para enviadas)
-    const sociosMap = new Map<number, {
-      nombre: string;
+    // Clave: nombre del socio en mayúsculas; valor: montos acumulados
+    const sociosMap = new Map<string, {
       aportacionBanco: number;
       aportacionEfectivo: number;
       retornoInversion: number;
     }>();
 
+    // Pre-poblar con los socios del corporativo actual (aunque tengan $0)
+    if (this.corporativoActual) {
+      ['partner1', 'partner2', 'partner3', 'partner4', 'partner5'].forEach(field => {
+        const nombre = (this.corporativoActual[field] || '').trim().toUpperCase();
+        if (nombre) {
+          sociosMap.set(nombre, { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 });
+        }
+      });
+    }
+
     // Procesar transferencias RECIBIDAS (aportaciones de socios hacia nosotros)
     recibidas.forEach(trans => {
-      const idSocio = trans._empresaOrigenId;
-      if (!idSocio) return;
+      const nombreSocio = (trans._empresaOrigenName || '').trim().toUpperCase();
+      if (!nombreSocio) return;
 
-      const nombreSocio = trans._empresaOrigenName || `Empresa ${idSocio}`;
-      const current = sociosMap.get(idSocio) || {
-        nombre: nombreSocio,
-        aportacionBanco: 0,
-        aportacionEfectivo: 0,
-        retornoInversion: 0
-      };
-
+      const current = sociosMap.get(nombreSocio) || { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 };
       const monto = Number(trans.subtotal) || Number(trans.total) || 0;
       const formaPago = String(trans.formaPago || '').toLowerCase();
 
-      // Clasificar por forma de pago: 03 = transferencia (banco), 01 = efectivo
       if (formaPago === '01' || formaPago.includes('efectivo')) {
         current.aportacionEfectivo += monto;
       } else {
-        // Por defecto es banco (transferencia)
         current.aportacionBanco += monto;
       }
 
-      sociosMap.set(idSocio, current);
+      sociosMap.set(nombreSocio, current);
     });
 
     // Procesar transferencias ENVIADAS (retorno de inversión hacia socios)
     enviadas.forEach(trans => {
-      const idSocio = trans._empresaDestinoId;
-      if (!idSocio) return;
+      const nombreSocio = (trans._empresaDestinoName || '').trim().toUpperCase();
+      if (!nombreSocio) return;
 
-      const nombreSocio = trans._empresaDestinoName || `Empresa ${idSocio}`;
-      const current = sociosMap.get(idSocio) || {
-        nombre: nombreSocio,
-        aportacionBanco: 0,
-        aportacionEfectivo: 0,
-        retornoInversion: 0
-      };
-
+      const current = sociosMap.get(nombreSocio) || { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 };
       const monto = Number(trans.subtotal) || Number(trans.total) || 0;
       current.retornoInversion += monto;
 
-      sociosMap.set(idSocio, current);
+      sociosMap.set(nombreSocio, current);
     });
 
     // Convertir a array y calcular totales
     this.aportacionesSocios = Array.from(sociosMap.entries())
-      .map(([idSocio, data]) => ({
-        socio: data.nombre,
-        idSocio: idSocio,
+      .map(([nombre, data]) => ({
+        socio: nombre,
+        idSocio: 0,
         aportacionBanco: data.aportacionBanco,
         aportacionEfectivo: data.aportacionEfectivo,
         retornoInversion: data.retornoInversion,
         totalUtilidad: data.aportacionBanco + data.aportacionEfectivo - data.retornoInversion
       }))
-      .filter(s => s.aportacionBanco > 0 || s.aportacionEfectivo > 0 || s.retornoInversion > 0)
       .sort((a, b) => a.socio.localeCompare(b.socio));
 
     // Calcular totales
@@ -764,12 +764,6 @@ export class ReporteOperativoSinIvaComponent {
     const proyectosTable = this.buildProyectosTable();
     content.push(proyectosTable);
 
-    // Sección de Flujo Bancario
-    if (this.flujoData.length > 0) {
-      content.push({ text: 'FLUJO DE CUENTAS BANCARIAS', style: 'sectionTitle' });
-      content.push(this.buildFlujoTable());
-    }
-
     // Sección de Aportación de Socios
     if (this.aportacionesSocios.length > 0) {
       content.push({ text: 'APORTACIÓN SOCIOS', style: 'sectionTitle' });
@@ -780,6 +774,12 @@ export class ReporteOperativoSinIvaComponent {
     if (this.inversionActivos.length > 0) {
       content.push({ text: 'INVERSIÓN DE ACTIVOS', style: 'sectionTitle' });
       content.push(this.buildInversionTable());
+    }
+
+    // Sección de Flujo Bancario (al final)
+    if (this.flujoData.length > 0) {
+      content.push({ text: 'FLUJO DE CUENTAS BANCARIAS', style: 'sectionTitle' });
+      content.push(this.buildFlujoTable());
     }
 
     return content;
@@ -835,7 +835,7 @@ export class ReporteOperativoSinIvaComponent {
     return {
       table: {
         headerRows: 1,
-        widths: [97, 107, 74, 74, 101, 101, 101, 101, 101, 101, 93, 101, 43],
+        widths: ['*', '*', 52, 52, 80, 80, 80, 74, 76, 80, 70, 80, 28],
         body
       },
       layout: 'siafStripe'
@@ -1099,6 +1099,108 @@ export class ReporteOperativoSinIvaComponent {
         flujoTotalRow.getCell(3).numFmt = '"$"#,##0.00';
 
         flujoSheet.columns = [{ width: 45 }, { width: 18 }, { width: 18 }];
+      }
+
+      // Hoja de Aportación de Socios
+      if (this.aportacionesSocios.length > 0) {
+        const sociosSheet = workbook.addWorksheet('Aportación Socios');
+        sociosSheet.views = [{ showGridLines: false }];
+
+        sociosSheet.mergeCells('A1:E1');
+        const sociosTitle = sociosSheet.getCell('A1');
+        sociosTitle.value = 'APORTACIÓN DE SOCIOS';
+        sociosTitle.font = { bold: true, size: 12, color: { argb: 'FF1A365D' } };
+        sociosTitle.alignment = { horizontal: 'center' };
+
+        const sociosHeaders = ['SOCIOS', 'APORTACIÓN BANCO', 'APORTACIÓN EFECTIVO', 'RETORNO DE INVERSIÓN', 'TOTAL UTILIDAD'];
+        const sociosHeaderRow = sociosSheet.getRow(2);
+        sociosHeaders.forEach((h, i) => {
+          const cell = sociosHeaderRow.getCell(i + 1);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+          cell.alignment = { horizontal: 'center' };
+        });
+
+        let sociosRow = 3;
+        this.aportacionesSocios.forEach(s => {
+          const row = sociosSheet.getRow(sociosRow);
+          row.getCell(1).value = s.socio;
+          row.getCell(2).value = s.aportacionBanco;
+          row.getCell(2).numFmt = '"$"#,##0.00';
+          row.getCell(3).value = s.aportacionEfectivo;
+          row.getCell(3).numFmt = '"$"#,##0.00';
+          row.getCell(4).value = s.retornoInversion;
+          row.getCell(4).numFmt = '"$"#,##0.00';
+          row.getCell(5).value = s.totalUtilidad;
+          row.getCell(5).numFmt = '"$"#,##0.00';
+          sociosRow++;
+        });
+
+        const sociosTotalRow = sociosSheet.getRow(sociosRow);
+        sociosTotalRow.font = { bold: true };
+        sociosTotalRow.getCell(1).value = 'TOTAL';
+        sociosTotalRow.getCell(2).value = this.totalesAportacion.aportacionBanco;
+        sociosTotalRow.getCell(2).numFmt = '"$"#,##0.00';
+        sociosTotalRow.getCell(3).value = this.totalesAportacion.aportacionEfectivo;
+        sociosTotalRow.getCell(3).numFmt = '"$"#,##0.00';
+        sociosTotalRow.getCell(4).value = this.totalesAportacion.retornoInversion;
+        sociosTotalRow.getCell(4).numFmt = '"$"#,##0.00';
+        sociosTotalRow.getCell(5).value = this.totalesAportacion.totalUtilidad;
+        sociosTotalRow.getCell(5).numFmt = '"$"#,##0.00';
+
+        sociosSheet.columns = [{ width: 30 }, { width: 20 }, { width: 22 }, { width: 22 }, { width: 18 }];
+      }
+
+      // Hoja de Inversión de Activos
+      if (this.inversionActivos.length > 0) {
+        const invSheet = workbook.addWorksheet('Inversión Activos');
+        invSheet.views = [{ showGridLines: false }];
+
+        const invHeaders = ['EQUIPOS', ...this.empresasColumnas, 'TOTAL'];
+        invSheet.mergeCells(`A1:${String.fromCharCode(64 + invHeaders.length)}1`);
+        const invTitle = invSheet.getCell('A1');
+        invTitle.value = 'INVERSIÓN DE ACTIVOS';
+        invTitle.font = { bold: true, size: 12, color: { argb: 'FF1A365D' } };
+        invTitle.alignment = { horizontal: 'center' };
+
+        const invHeaderRow = invSheet.getRow(2);
+        invHeaders.forEach((h, i) => {
+          const cell = invHeaderRow.getCell(i + 1);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+          cell.alignment = { horizontal: 'center' };
+        });
+
+        let invRow = 3;
+        this.inversionActivos.forEach(inv => {
+          const row = invSheet.getRow(invRow);
+          row.getCell(1).value = inv.tipoEquipo;
+          this.empresasColumnas.forEach((emp, i) => {
+            row.getCell(i + 2).value = inv.empresas[emp] || 0;
+            row.getCell(i + 2).numFmt = '"$"#,##0.00';
+          });
+          row.getCell(this.empresasColumnas.length + 2).value = inv.total;
+          row.getCell(this.empresasColumnas.length + 2).numFmt = '"$"#,##0.00';
+          invRow++;
+        });
+
+        const invTotalRow = invSheet.getRow(invRow);
+        invTotalRow.font = { bold: true };
+        invTotalRow.getCell(1).value = 'TOTAL';
+        this.empresasColumnas.forEach((emp, i) => {
+          invTotalRow.getCell(i + 2).value = this.totalesInversion[emp] || 0;
+          invTotalRow.getCell(i + 2).numFmt = '"$"#,##0.00';
+        });
+        invTotalRow.getCell(this.empresasColumnas.length + 2).value = this.granTotalInversion;
+        invTotalRow.getCell(this.empresasColumnas.length + 2).numFmt = '"$"#,##0.00';
+
+        invSheet.columns = [
+          { width: 30 },
+          ...this.empresasColumnas.map(() => ({ width: 18 })),
+          { width: 15 }
+        ];
       }
 
       // Generar archivo
