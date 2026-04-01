@@ -15,7 +15,7 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 
 # Build Angular app for production
-RUN npm run build -- --configuration=production
+RUN npm run build #Ya está configurado a producción
 
 # ============================================
 # Stage 2: Serve with Nginx
