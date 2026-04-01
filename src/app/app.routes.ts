@@ -666,6 +666,21 @@ export const routes: Routes = [
             }
           },
           {
+            path: 'roles',
+            loadComponent: () =>
+              import('./domains/SMP/Components/rolesDelison/rolesDelison.component').then(
+                (r) => r.RolesDelisonComponent
+              ),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: {
+              permissions: { master: 'setup', detailed: 'roles' },
+              tracking: {
+                logMessage: 'Click en Pestaña Configuración Módulo Roles',
+                category: 'Setup'
+              }
+            }
+          },
+          {
             path: 'root',
             loadComponent: () =>
               import('./domains/SMP/Components/root/root.component').then(

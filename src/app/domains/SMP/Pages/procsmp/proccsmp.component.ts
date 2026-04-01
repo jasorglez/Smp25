@@ -24,6 +24,7 @@ export class ProccsmpComponent {
   canSeeUsers: boolean = false;
   canSeeCorporativos: boolean = false;
   canSeeRoot: boolean = false;
+  canSeeRoles: boolean = false;
 
   ngOnInit() {
     if (this.signalsService.getemailChoose() === environment.root) {
@@ -37,6 +38,7 @@ export class ProccsmpComponent {
     this.canSeeUsers = this.authService.hasDetailedPermission('setup', 'users');
     this.canSeeCorporativos = this.isRoot || this.authService.hasDetailedPermission('setup', 'corporativos');
     this.canSeeRoot = this.isRoot || this.authService.hasDetailedPermission('setup', 'root');
+    this.canSeeRoles = this.isRoot || this.authService.hasDetailedPermission('setup', 'roles');
 
   }
 
