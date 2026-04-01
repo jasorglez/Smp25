@@ -365,9 +365,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
-      // Sin filtro de tipo: el backend devuelve todos los proveedores del material
       const providers = await firstValueFrom(
-        this.ocAndReqsService.getProviders(materialId)
+        this.ocAndReqsService.getProviders(materialId, type)
       );
 
       this.providersCache.set(cacheKey, providers);
