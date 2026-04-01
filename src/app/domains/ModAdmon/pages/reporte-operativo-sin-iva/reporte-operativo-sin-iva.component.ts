@@ -764,16 +764,16 @@ export class ReporteOperativoSinIvaComponent {
     const proyectosTable = this.buildProyectosTable();
     content.push(proyectosTable);
 
-    // Sección de Aportación de Socios
-    if (this.aportacionesSocios.length > 0) {
-      content.push({ text: 'APORTACIÓN SOCIOS', style: 'sectionTitle' });
-      content.push(this.buildAportacionesTable());
-    }
-
     // Sección de Inversión de Activos
     if (this.inversionActivos.length > 0) {
       content.push({ text: 'INVERSIÓN DE ACTIVOS', style: 'sectionTitle' });
       content.push(this.buildInversionTable());
+    }
+
+    // Sección de Aportación de Socios
+    if (this.aportacionesSocios.length > 0) {
+      content.push({ text: 'APORTACIÓN SOCIOS', style: 'sectionTitle' });
+      content.push(this.buildAportacionesTable());
     }
 
     // Sección de Flujo Bancario (al final)
@@ -1058,47 +1058,55 @@ export class ReporteOperativoSinIvaComponent {
         { width: 15 }, { width: 15 }, { width: 18 }, { width: 15 }, { width: 8 }
       ];
 
-      // Hoja de Flujo Bancario
-      if (this.flujoData.length > 0) {
-        const flujoSheet = workbook.addWorksheet('Flujo Bancario');
-        flujoSheet.views = [{ showGridLines: false }];
+      // Hoja de Inversión de Activos
+      if (this.inversionActivos.length > 0) {
+        const invSheet = workbook.addWorksheet('Inversión Activos');
+        invSheet.views = [{ showGridLines: false }];
 
-        // Encabezados
-        flujoSheet.mergeCells('A1:C1');
-        const flujoTitle = flujoSheet.getCell('A1');
-        flujoTitle.value = 'FLUJO DE CUENTAS BANCARIAS';
-        flujoTitle.font = { bold: true, size: 12, color: { argb: 'FF155E75' } };
-        flujoTitle.alignment = { horizontal: 'center' };
+        const invHeaders = ['EQUIPOS', ...this.empresasColumnas, 'TOTAL'];
+        invSheet.mergeCells(`A1:${String.fromCharCode(64 + invHeaders.length)}1`);
+        const invTitle = invSheet.getCell('A1');
+        invTitle.value = 'INVERSIÓN DE ACTIVOS';
+        invTitle.font = { bold: true, size: 12, color: { argb: 'FF1A365D' } };
+        invTitle.alignment = { horizontal: 'center' };
 
-        const flujoHeaders = flujoSheet.getRow(2);
-        ['CONCEPTO', 'FLUJO AL CORTE', `FLUJO ACTUAL ${this.fechaFlujoActual}`].forEach((h, i) => {
-          const cell = flujoHeaders.getCell(i + 1);
+        const invHeaderRow = invSheet.getRow(2);
+        invHeaders.forEach((h, i) => {
+          const cell = invHeaderRow.getCell(i + 1);
           cell.value = h;
           cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7490' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
           cell.alignment = { horizontal: 'center' };
         });
 
-        let flujoRow = 3;
-        this.flujoData.forEach(f => {
-          const row = flujoSheet.getRow(flujoRow);
-          row.getCell(1).value = f.concepto;
-          row.getCell(2).value = f.importeCorte;
-          row.getCell(2).numFmt = '"$"#,##0.00';
-          row.getCell(3).value = f.importeActual;
-          row.getCell(3).numFmt = '"$"#,##0.00';
-          flujoRow++;
+        let invRow = 3;
+        this.inversionActivos.forEach(inv => {
+          const row = invSheet.getRow(invRow);
+          row.getCell(1).value = inv.tipoEquipo;
+          this.empresasColumnas.forEach((emp, i) => {
+            row.getCell(i + 2).value = inv.empresas[emp] || 0;
+            row.getCell(i + 2).numFmt = '"$"#,##0.00';
+          });
+          row.getCell(this.empresasColumnas.length + 2).value = inv.total;
+          row.getCell(this.empresasColumnas.length + 2).numFmt = '"$"#,##0.00';
+          invRow++;
         });
 
-        const flujoTotalRow = flujoSheet.getRow(flujoRow);
-        flujoTotalRow.getCell(1).value = 'TOTAL';
-        flujoTotalRow.font = { bold: true };
-        flujoTotalRow.getCell(2).value = this.totalFlujoCorte;
-        flujoTotalRow.getCell(2).numFmt = '"$"#,##0.00';
-        flujoTotalRow.getCell(3).value = this.totalFlujoActual;
-        flujoTotalRow.getCell(3).numFmt = '"$"#,##0.00';
+        const invTotalRow = invSheet.getRow(invRow);
+        invTotalRow.font = { bold: true };
+        invTotalRow.getCell(1).value = 'TOTAL';
+        this.empresasColumnas.forEach((emp, i) => {
+          invTotalRow.getCell(i + 2).value = this.totalesInversion[emp] || 0;
+          invTotalRow.getCell(i + 2).numFmt = '"$"#,##0.00';
+        });
+        invTotalRow.getCell(this.empresasColumnas.length + 2).value = this.granTotalInversion;
+        invTotalRow.getCell(this.empresasColumnas.length + 2).numFmt = '"$"#,##0.00';
 
-        flujoSheet.columns = [{ width: 45 }, { width: 18 }, { width: 18 }];
+        invSheet.columns = [
+          { width: 30 },
+          ...this.empresasColumnas.map(() => ({ width: 18 })),
+          { width: 15 }
+        ];
       }
 
       // Hoja de Aportación de Socios
@@ -1152,55 +1160,46 @@ export class ReporteOperativoSinIvaComponent {
         sociosSheet.columns = [{ width: 30 }, { width: 20 }, { width: 22 }, { width: 22 }, { width: 18 }];
       }
 
-      // Hoja de Inversión de Activos
-      if (this.inversionActivos.length > 0) {
-        const invSheet = workbook.addWorksheet('Inversión Activos');
-        invSheet.views = [{ showGridLines: false }];
+      // Hoja de Flujo Bancario
+      if (this.flujoData.length > 0) {
+        const flujoSheet = workbook.addWorksheet('Flujo Bancario');
+        flujoSheet.views = [{ showGridLines: false }];
 
-        const invHeaders = ['EQUIPOS', ...this.empresasColumnas, 'TOTAL'];
-        invSheet.mergeCells(`A1:${String.fromCharCode(64 + invHeaders.length)}1`);
-        const invTitle = invSheet.getCell('A1');
-        invTitle.value = 'INVERSIÓN DE ACTIVOS';
-        invTitle.font = { bold: true, size: 12, color: { argb: 'FF1A365D' } };
-        invTitle.alignment = { horizontal: 'center' };
+        flujoSheet.mergeCells('A1:C1');
+        const flujoTitle = flujoSheet.getCell('A1');
+        flujoTitle.value = 'FLUJO DE CUENTAS BANCARIAS';
+        flujoTitle.font = { bold: true, size: 12, color: { argb: 'FF155E75' } };
+        flujoTitle.alignment = { horizontal: 'center' };
 
-        const invHeaderRow = invSheet.getRow(2);
-        invHeaders.forEach((h, i) => {
-          const cell = invHeaderRow.getCell(i + 1);
+        const flujoHeaders = flujoSheet.getRow(2);
+        ['CONCEPTO', 'FLUJO AL CORTE', `FLUJO ACTUAL ${this.fechaFlujoActual}`].forEach((h, i) => {
+          const cell = flujoHeaders.getCell(i + 1);
           cell.value = h;
           cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7490' } };
           cell.alignment = { horizontal: 'center' };
         });
 
-        let invRow = 3;
-        this.inversionActivos.forEach(inv => {
-          const row = invSheet.getRow(invRow);
-          row.getCell(1).value = inv.tipoEquipo;
-          this.empresasColumnas.forEach((emp, i) => {
-            row.getCell(i + 2).value = inv.empresas[emp] || 0;
-            row.getCell(i + 2).numFmt = '"$"#,##0.00';
-          });
-          row.getCell(this.empresasColumnas.length + 2).value = inv.total;
-          row.getCell(this.empresasColumnas.length + 2).numFmt = '"$"#,##0.00';
-          invRow++;
+        let flujoRow = 3;
+        this.flujoData.forEach(f => {
+          const row = flujoSheet.getRow(flujoRow);
+          row.getCell(1).value = f.concepto;
+          row.getCell(2).value = f.importeCorte;
+          row.getCell(2).numFmt = '"$"#,##0.00';
+          row.getCell(3).value = f.importeActual;
+          row.getCell(3).numFmt = '"$"#,##0.00';
+          flujoRow++;
         });
 
-        const invTotalRow = invSheet.getRow(invRow);
-        invTotalRow.font = { bold: true };
-        invTotalRow.getCell(1).value = 'TOTAL';
-        this.empresasColumnas.forEach((emp, i) => {
-          invTotalRow.getCell(i + 2).value = this.totalesInversion[emp] || 0;
-          invTotalRow.getCell(i + 2).numFmt = '"$"#,##0.00';
-        });
-        invTotalRow.getCell(this.empresasColumnas.length + 2).value = this.granTotalInversion;
-        invTotalRow.getCell(this.empresasColumnas.length + 2).numFmt = '"$"#,##0.00';
+        const flujoTotalRow = flujoSheet.getRow(flujoRow);
+        flujoTotalRow.getCell(1).value = 'TOTAL';
+        flujoTotalRow.font = { bold: true };
+        flujoTotalRow.getCell(2).value = this.totalFlujoCorte;
+        flujoTotalRow.getCell(2).numFmt = '"$"#,##0.00';
+        flujoTotalRow.getCell(3).value = this.totalFlujoActual;
+        flujoTotalRow.getCell(3).numFmt = '"$"#,##0.00';
 
-        invSheet.columns = [
-          { width: 30 },
-          ...this.empresasColumnas.map(() => ({ width: 18 })),
-          { width: 15 }
-        ];
+        flujoSheet.columns = [{ width: 45 }, { width: 18 }, { width: 18 }];
       }
 
       // Generar archivo
