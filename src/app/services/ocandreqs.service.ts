@@ -68,4 +68,8 @@ export class OcAndReqsService {
     return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/countitem`, { countItem }, { headers: this.trackingService.getHeaders() });
   }
 
+  setTotal(id: number, total: number): Observable<any> {
+    return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/total`, { total }, { headers: this.trackingService.getHeaders() });
+  }
+
 }

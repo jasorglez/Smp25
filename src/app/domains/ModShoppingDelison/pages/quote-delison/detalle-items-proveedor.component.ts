@@ -90,6 +90,15 @@ pdfMake.vfs = pdfFonts.vfs;
           style="width: 120%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
         </ag-grid-angular>
       </div>
+
+      <!-- Total Cotización -->
+      <div style="flex-shrink: 0; display: flex; justify-content: flex-end; align-items: center;
+                  background: #c8e6c9; border-top: 2px solid #388e3c; padding: 4px 12px;">
+        <span style="font-weight: bold; font-size: 0.85rem; color: #1b5e20;">Total Cotización:&nbsp;</span>
+        <span style="font-weight: bold; font-size: 0.9rem; color: #1b5e20;">
+          {{ totalCostoTotal | currency:'MXN':'symbol':'1.2-2' }}
+        </span>
+      </div>
     </div>
 
     <!-- Modal Nuevo Proveedor -->
@@ -250,8 +259,10 @@ export class DetalleItemsProveedorComponent {
   pdfFileName: string = '';
   selectedFile: File | null = null;
   hasUnsavedChanges: boolean = false;
+  totalCostoTotal: number = 0;
   providerLabel: string = '';
   providerField: string = '';
+  private _colDefs: ColDef[] | null = null;
 
   // Estado guardado
   cotizacionSaved: boolean = false;
@@ -350,6 +361,7 @@ export class DetalleItemsProveedorComponent {
       autorizado: false,
       oc: ''
     }));
+    this.updateTotal();
   }
 
   onProviderChange() {
@@ -447,6 +459,11 @@ export class DetalleItemsProveedorComponent {
       row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
     }
+    this.updateTotal();
+  }
+
+  updateTotal() {
+    this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0);
   }
 
   onFileSelected(event: any) {
@@ -520,7 +537,7 @@ export class DetalleItemsProveedorComponent {
 
   async saveChanges() {
     if (!this.selectedProviderId) {
-      alert('Seleccione un proveedor antes de guardar.');
+      alert('No se puede guardar la cotización porque no tienes Proveedor Elegido.');
       return;
     }
     if (this.savingChanges) return;
@@ -581,17 +598,20 @@ export class DetalleItemsProveedorComponent {
       this.savedOcId = 0;
     }
 
-    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    const idRoot    = this.signalsService.getRootSelectedBySidebar()();
+    const idBranch  = this.signalsService.getBranchSelectedBySidebar()();
     const slotSuffix = this.providerField === 'idProvider' ? 'A' :
                        this.providerField === 'idProvider2' ? 'B' : 'C';
     const folio = `${type}-${this.params.data.cotizacionId}-${slotSuffix}-${Date.now()}`;
     const providerName = this.getSelectedProviderName();
 
+    // OC → typeReference='branch' para que aparezca en Órdenes de Compra
+    // COTIZ → typeReference='delison' para que se cargue en el flujo de cotización
     const ocPayload = {
       idRoot,
       folio,
-      typeReference: 'delison',
-      idReference: this.params.data.cotizacionId || 0,
+      typeReference: type === 'OC' ? 'branch' : 'delison',
+      idReference:   type === 'OC' ? (idBranch || 0) : (this.params.data.cotizacionId || 0),
       idReq: this.params.data.requisitionId || 0,
       dateCreate: new Date().toISOString().split('T')[0],
       idProvider: this.selectedProviderId,
@@ -727,6 +747,7 @@ export class DetalleItemsProveedorComponent {
         oc: ''
       }));
       this.gridApi?.setGridOption('rowData', this.rowData);
+      this.updateTotal();
     } catch (err) {
       console.error('❌ Error cargando items guardados:', err);
     }
@@ -734,6 +755,7 @@ export class DetalleItemsProveedorComponent {
 
   revertChanges() {
     this.buildRowData();
+    this.updateTotal();
     this.hasUnsavedChanges = false;
     this.gridApi?.setGridOption('rowData', this.rowData);
   }
@@ -744,7 +766,9 @@ export class DetalleItemsProveedorComponent {
   }
 
   get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs) return this._colDefs;
+
+    this._colDefs = [
       {
         field: 'active',
         headerName: 'Activo',
@@ -782,6 +806,8 @@ export class DetalleItemsProveedorComponent {
       },
       { field: 'oc', headerName: 'OC', width: 80, editable: true }
     ];
+
+    return this._colDefs;
   }
 
   public gridOptions: any = {
@@ -790,7 +816,6 @@ export class DetalleItemsProveedorComponent {
     animateRows: true,
     suppressCellFocus: false,
     stopEditingWhenCellsLoseFocus: true,
-    domLayout: 'autoHeight',
     onCellEditingStarted: () => {
       // Si la OC ya fue generada, cancelar inmediatamente cualquier edición
       if (this.ocGenerated) {

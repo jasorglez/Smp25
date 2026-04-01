@@ -1,624 +1,537 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
-import {
-  CellDoubleClickedEvent,
-  ColDef,
-  GridApi,
-  GridChartsModule,
-  GridReadyEvent,
-  ICellRendererParams,
-} from 'ag-grid-enterprise';
-import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { CatalogsService } from 'app/services/catalogs.service';
-import { OcAndReqsService } from 'app/services/ocandreqs.service';
-import { ProvidersService } from 'app/services/providers.service';
-import { DepartmentsService } from 'app/services/departments.service';
-import { CurrencyService } from 'app/services/currency.service';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { ButtonCellRendererComponent } from '../purchaseorder/button-cell-renderer.component';
+import { PdfButtonCellRendererPurchaseOrderComponent } from '../purchaseorder/pdf-button-cell-renderer-purchaseorder.component';
+import { DetailCellRendererPurchaseOrderItemsComponent } from '../purchaseorder/detail-cell-renderer-purchase-order-items.component';
+import { DetailCellRendererPurchaseOrderReportComponent } from '../purchaseorder/detail-cell-renderer-purchaseorder-report.component';
 import { SignalsService } from 'app/services/signals.service';
-import { ModalService } from 'app/services/modal.service';
-import { ReceiptsService } from 'app/services/receipts.service';
-import { UsersService } from 'app/services/users.service';
-import { MaterialsService } from 'app/services/materials.service';
-import { SetupService } from 'app/services/setup.service';
-import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
-import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
-
-interface Catalog {
-  id: number;
-  description: string;
-}
-
-interface Provider {
-  id: number;
-  name: string;
-}
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { BranchsService } from 'app/services/branchs.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { AuthService } from 'app/services/auth.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-purchaseorderdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [
+    CommonModule, FormsModule, AgGridModule,
+    ButtonCellRendererComponent,
+    PdfButtonCellRendererPurchaseOrderComponent,
+    DetailCellRendererPurchaseOrderItemsComponent,
+    DetailCellRendererPurchaseOrderReportComponent
+  ],
   templateUrl: './purchaseorderdelison.component.html',
   styleUrl: './purchaseorderdelison.component.scss',
+  styles: [`
+    :host ::ng-deep .expanded-oc {
+      background-color: #e8f5e9 !important;
+    }
+  `]
 })
-export class PurchaseOrderDelisonComponent implements CanComponentDeactivate {
-  // Inject of new way for Angular 18
-  private requisitionsService = inject(OcAndReqsService);
+export class PurchaseOrderDelisonComponent implements OnInit {
+
+  private signalsService   = inject(SignalsService);
+  private ocAndReqsService = inject(OcAndReqsService);
+  private branchsService   = inject(BranchsService);
   private providersService = inject(ProvidersService);
-  private catalogsService = inject(CatalogsService);
-  private departmentsService = inject(DepartmentsService);
-  private currencyService = inject(CurrencyService);
-  private signalsService = inject(SignalsService);
-  private modalServiceTable = inject(ModalService);
-  private receiptsService = inject(ReceiptsService);
-  private usersService = inject(UsersService);
-  private materialsService = inject(MaterialsService);
-  private setupService = inject(SetupService);
+  public  authService      = inject(AuthService);
 
-  // Variables compartidas
-  notSavedChanges: boolean = false;
-  id: string = null;
+  private gridApi!: GridApi;
+  private isInitialized = false;
+  private expandedRowId: string | null = null;
+
+  rowData: any[]     = [];
+  fullRowData: any[] = [];
+  gridHeight         = '80vh';
+  hasUnsavedChanges  = false;
+
+  idRoot: number   = null;
   idBranch: number = null;
-  idProject: number = null;
-  idReference: number = null;
-  private tempIdCounter: number = 0;
-  idRequisition: number = null;
-  private gridApi: GridApi;
-  idRoot: number = null;
-  projectOrBranch: boolean = null; // True = Project, False = Branch
-  typeReference: string = null; // project or branch
+  idUser: number   = null;
 
-  // Variables para grid jerárquico unificado
-  hierarchicalData: any[] = [];
-  selectedRowData: any = null;
-  selectedNodeLevel: 'order' | 'detail' | null = null;
-  newlyAddedRows: string[] = [];
-
-  // Catálogos para combos
-  requisiciones: any[] = [];
+  branches: any[]   = [];
   proveedores: any[] = [];
-  departamentos: any[] = [];
-  ubicaciones: any[] = [];
-  monedas: any[] = [];
-  usuarios: any[] = [];
-  tipoPago: any[] = [];
+  branchesLoaded    = false;
 
-  // Catálogos Details
-  productos: any[] = [];
-
-  // Configuración Grid
+  public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   public rowSelection: 'single' | 'multiple' = 'single';
-  public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
-  public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'always';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
 
+  public defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    filter: true
+  };
+
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idRequisition = this.signalsService.getIdRequisition()();
-      this.getSetupData();
-      this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
+      const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-      this.loadHierarchicalData();
+      if (newIdBranch !== undefined && newIdBranch !== null && newIdBranch !== this.idBranch) {
+        this.idBranch = newIdBranch;
+        if (this.branchesLoaded) {
+          this.loadPurchaseOrders();
+        }
+      } else if (!newIdBranch && newIdBranch !== 0 && this.isInitialized) {
+        this.idBranch = null;
+        this.fullRowData = [];
+        this.rowData = [];
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', []);
+        }
+        alerts.basicAlert(
+          'Sucursal requerida',
+          'Por favor, seleccione una sucursal en el sidebar para ver las órdenes de compra',
+          'warning'
+        );
+      }
     });
   }
 
   ngOnInit() {
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.signalsService.deleteRequisitionData();
-    this.loadHierarchicalData();
-    this.obtenerDepartamentos();
-    this.obtenerUbicaciones();
-    this.obtenerMonedas();
-    this.obtenerUsuarios();
-    this.obtenerRequisiciones();
-    this.obtenerProveedores();
-    this.obtenerTipoPago();
-    this.obtenerProductos();
-  }
+    setTimeout(() => {
+      this.idRoot  = this.signalsService.getRootSelectedBySidebar()();
+      this.idUser  = this.signalsService.getIdUSer()();
 
-  @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
-    if (this.notSavedChanges) {
-      $event.returnValue =
-        'Tienes cambios sin guardar. ¿Seguro que deseas salir?';
-    }
-  }
-
-  // Configuración del grid jerárquico
-  get gridOptions(): any {
-    return {
-      headerHeight: 35,
-      rowHeight: 35,
-      animateRows: true,
-      treeData: false, // Usar estructura plana con niveles
-      // Grid en modo solo lectura - sin edición inline
-      suppressClickEdit: true,
-      singleClickEdit: false,
-      stopEditingWhenCellsLoseFocus: true,
-      onRowSelected: (event: any) => {
-        if (event.node.isSelected()) {
-          this.onRowSelected(event);
-        }
-      },
-      onCellValueChanged: (event: any) => {
-        this.onCellValueChanged(event);
-      },
-      onCellDoubleClicked: (event: any) => {
-        // Abrir modal de edición en doble click 
-        if (event.data) {
-          this.openEditModal(event.data);
-        }
+      if (this.idRoot) {
+        this.loadBranches();
+        this.loadProviders();
+      } else {
+        setTimeout(() => {
+          this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+          if (this.idRoot) {
+            this.loadBranches();
+            this.loadProviders();
+          }
+        }, 300);
       }
-    };
+      this.isInitialized = true;
+    }, 200);
   }
 
-  getSetupData() {
-    this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+  // ==================== CARGA INICIAL ====================
+
+  loadBranches() {
+    this.branchsService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe({
       next: (data: any) => {
-        this.projectOrBranch = data[0].projectOrBranch;
-        this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-        console.log(this.projectOrBranch);
-      },
-      error: (err) => {
-        if (err.status === 404) {
-          console.error(err);
-          alerts.basicAlert(
-            'Purchase Order Delison',
-            'No se encontró la configuración de almacenes de la empresa.',
-            'error'
-          );
+        this.branches = (data.project || []).map((row: any) => ({
+          id: row.idPermission || row.idBranch || row.id,
+          name: row.name || row.description || ''
+        }));
+        this.branchesLoaded = true;
+
+        const current = this.signalsService.getBranchSelectedBySidebar()();
+        if (current !== null && current !== undefined) {
+          this.idBranch = current;
+          this.loadPurchaseOrders();
         }
       },
+      error: () => {
+        this.branches = [];
+        this.branchesLoaded = true;
+      }
     });
   }
 
-  nameRequisition = this.signalsService.getRequisitionName();
+  loadProviders() {
+    this.providersService.getProviders(this.idRoot).subscribe({
+      next: (data: any) => { this.proveedores = Array.isArray(data) ? data : []; },
+      error: () => {}
+    });
+  }
 
-  // Definición de columnas jerárquicas
-  get columnDefs(): ColDef[] {
+  getProviderName(idProvider: number): string {
+    if (!idProvider) return '';
+    const found = this.proveedores.find(p => p.id === idProvider);
+    return found?.name || found?.description || `Prov. ${idProvider}`;
+  }
+
+  // ==================== CARGA OC ====================
+
+  loadPurchaseOrders() {
+    if (this.idBranch === null || this.idBranch === undefined) {
+      this.fullRowData = [];
+      this.rowData = [];
+      return;
+    }
+    if (this.idBranch < 0) {
+      this.loadFromAllBranches();
+    } else {
+      this.loadFromSingleBranch(this.idBranch);
+    }
+  }
+
+  private mapOcRow(oc: any, branchName: string): any {
+    const rawCreate = oc.dateCreate ? String(oc.dateCreate).split('T')[0] : '';
+    const fechaCreate = rawCreate
+      ? (() => { const [y, m, d] = rawCreate.split('-'); return d && m && y ? `${d}/${m}/${y}` : rawCreate; })()
+      : '';
+
+    // El backend puede devolver datesupply o dateSupply según el mapeo
+    const supplyRaw = oc.datesupply || oc.dateSupply || '';
+    const rawSupply = supplyRaw ? String(supplyRaw).split('T')[0] : '';
+    const fechaSupply = rawSupply
+      ? (() => { const [y, m, d] = rawSupply.split('-'); return d && m && y ? `${d}/${m}/${y}` : rawSupply; })()
+      : '';
+
+    return {
+      id:           oc.id,
+      branch:       branchName,
+      idReference:  oc.idReference || oc.id_reference,
+      folio:        oc.folio || '',
+      fechaCreate,
+      fechaSupply,
+      idProvider:   oc.idProvider || oc.id_provider || 0,
+      providerName: oc.solicit || this.getProviderName(oc.idProvider || oc.id_provider),
+      solicit:      oc.solicit || '',
+      typeOc:       oc.typeOc || oc.typeoc || '',
+      delivery:     oc.delivery || '',
+      deliveryTime: oc.deliveryTime || oc.deliverytime || '',
+      conditions:   oc.conditions || '',
+      countrow:     oc.countrow || oc.countitem || 0,
+      total:        oc.total || 0,
+      active:       oc.active !== false,
+      detailType:   null
+    };
+  }
+
+  private loadFromAllBranches() {
+    if (!this.branches || this.branches.length === 0) {
+      this.fullRowData = [];
+      this.rowData = [];
+      if (this.gridApi) { this.gridApi.setGridOption('rowData', []); }
+      return;
+    }
+
+    const promises = this.branches.map(branch =>
+      new Promise<any[]>((resolve) => {
+        this.ocAndReqsService.getOcAndReqs('branch', branch.id, 'OC').subscribe({
+          next: (data: any) => resolve(Array.isArray(data) ? data : []),
+          error: () => resolve([])
+        });
+      }).then((ocs: any[]) => ocs.map(oc => this.mapOcRow(oc, branch.name)))
+    );
+
+    Promise.all(promises).then((allData: any[][]) => {
+      this.fullRowData = allData.flat();
+      this.rowData = [...this.fullRowData];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.refreshCells({ force: true });
+      }
+    });
+  }
+
+  private loadFromSingleBranch(branchId: number) {
+    const branch = this.branches.find(b => b.id === branchId);
+    const branchName = branch?.name || '';
+
+    this.ocAndReqsService.getOcAndReqs('branch', branchId, 'OC').subscribe({
+      next: (data: any) => {
+        this.fullRowData = Array.isArray(data)
+          ? data.map((oc: any) => this.mapOcRow(oc, branchName))
+          : [];
+        this.rowData = [...this.fullRowData];
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.refreshCells({ force: true });
+        }
+      },
+      error: () => {
+        alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de compra', 'error');
+        this.fullRowData = [];
+        this.rowData = [];
+      }
+    });
+  }
+
+  // ==================== GRID CONFIG ====================
+
+  public gridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 35,
+    animateRows: true,
+    masterDetail: true,
+    detailRowHeight: 1035,
+    isRowMaster: () => true,
+    detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'report') {
+        return { component: DetailCellRendererPurchaseOrderReportComponent, params: {} };
+      }
+      return { component: DetailCellRendererPurchaseOrderItemsComponent };
+    },
+    getRowClass: (params: any) => {
+      if (params.node.isSelected())   return 'selected-row';
+      if (params.data?.__isNew)       return 'new-row-highlight';
+      if (params.data?.isExpanded)    return 'expanded-oc';
+      return '';
+    },
+    onRowClicked: (event: any) => {
+      const colId = event.column?.getColId();
+      if (colId === 'countrow' || colId === 'pdf') return;
+      event.node.setSelected(true);
+    },
+    onRowSelected: (event: any) => {
+      if (event.node.isSelected() && event.api) {
+        event.api.forEachNode((node: any) => {
+          if (node.id !== event.node.id) node.setSelected(false);
+        });
+      }
+    }
+  };
+
+  get colMaster(): ColDef[] {
     return [
       {
-        headerName: 'Orden de Compra Delison',
-        field: 'orderDisplay',
-        width: 300,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const childCount = this.getDetailCountForOrder(params.data.originalId);
-            const isExpanded = params.data.isExpanded || false;
-            const chevron = isExpanded ? '▼' : '▶';
-            return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px;">${chevron}</span> ${params.data.folio} (${childCount})`;
-          }
-          return '';
+        field: 'countrow',
+        headerName: 'Artículos',
+        width: 90,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: { onClick: (node: any) => this.toggleCascade(node) },
+        valueGetter: params => params.data?.countrow || 0,
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      {
+        field: 'pdf',
+        headerName: 'PDF',
+        width: 60,
+        cellRenderer: PdfButtonCellRendererPurchaseOrderComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleReportCascade(node),
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Generar reporte PDF de la Orden de Compra'
         },
-        onCellClicked: (event: any) => {
-          if (event.event.target.classList.contains('chevron-icon') || 
-              event.event.target.getAttribute('data-action') === 'toggle') {
-            this.toggleOrderExpansion(event.data);
-          }
-        }
+        editable: false,
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
-        headerName: 'Producto/Detalle',
-        field: 'productDisplay',
-        width: 300,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            const productName = this.productos.find(p => p.id === params.data.idSupplie)?.description || 'Sin producto';
-            return `<span style="margin-right: 15px;"></span> ${productName}`;
-          }
-          return '';
-        }
+        field: 'folio',
+        headerName: '# Orden de Compra',
+        width: 180,
+        filter: true,
+        editable: false,
+        cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500' }
       },
       {
+        field: 'providerName',
         headerName: 'Proveedor',
-        field: 'providerDisplay',
+        width: 220,
+        filter: true,
+        editable: false
+      },
+      {
+        field: 'fechaCreate',
+        headerName: 'Fecha Creación',
+        width: 140,
+        editable: false
+      },
+      {
+        field: 'fechaSupply',
+        headerName: 'Fecha Entrega',
+        width: 140,
+        editable: false
+      },
+      {
+        field: 'branch',
+        headerName: 'Sucursal',
         width: 200,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            const provider = this.proveedores.find(p => p.id === params.data.idProvider);
-            return provider ? provider.name : '';
-          }
-          return '';
-        }
+        filter: true,
+        editable: false
       },
       {
-        headerName: 'Fecha',
-        field: 'dateDisplay',
-        width: 150,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'order') {
-            return params.data.dateCreate ? params.data.dateCreate.split('T')[0] : '';
-          }
-          return '';
-        }
-      },
-      {
-        headerName: 'Cantidad',
-        field: 'quantityDisplay',
-        width: 100,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            return params.data.quantity || '';
-          }
-          return '';
-        }
-      },
-      {
-        headerName: 'Precio',
-        field: 'priceDisplay',
+        field: 'typeOc',
+        headerName: 'Tipo OC',
         width: 120,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            return params.data.price ? `$${params.data.price.toFixed(2)}` : '';
-          }
-          return '';
-        }
+        filter: true,
+        editable: false
       },
       {
-        headerName: 'Total',
-        field: 'totalDisplay',
+        field: 'delivery',
+        headerName: 'Entrega',
         width: 120,
-        cellRenderer: (params: any) => {
-          if (params.data.nodeLevel === 'detail') {
-            return params.data.total ? `$${params.data.total.toFixed(2)}` : '';
-          } else if (params.data.nodeLevel === 'order') {
-            // Calcular total de la orden
-            const orderTotal = this.calculateOrderTotal(params.data.originalId);
-            return orderTotal ? `$${orderTotal.toFixed(2)}` : '';
-          }
-          return '';
-        }
+        editable: false
+      },
+      {
+        field: 'conditions',
+        headerName: 'Condiciones',
+        width: 160,
+        editable: false
+      },
+      {
+        field: 'solicit',
+        headerName: 'Solicitó',
+        width: 160,
+        editable: false
+      },
+      {
+        field: 'total',
+        headerName: 'Total OC',
+        width: 140,
+        editable: false,
+        valueFormatter: (params: any) => {
+          const v = params.value || 0;
+          return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v);
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', fontWeight: 'bold', textAlign: 'right' }
       }
     ];
   }
 
-  // ========== MÉTODOS PARA ESTRUCTURA JERÁRQUICA ==========
-  
-  // Cargar datos jerárquicos unificados
-  async loadHierarchicalData() {
-    if (!this.idRoot) return;
-    
-    try {
-      // Cargar órdenes y detalles en paralelo
-      const [orders, allDetails] = await Promise.all([
-        lastValueFrom(this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, 'OC')),
-        this.getAllOrderDetails()
-      ]);
+  // ==================== GRID EVENTS ====================
 
-      // Construir estructura jerárquica
-      this.buildHierarchicalStructure(orders as any[], allDetails);
-      
-    } catch (error) {
-      console.error('Error al cargar datos jerárquicos:', error);
-      this.hierarchicalData = [];
-      alerts.basicAlert(
-        'Error',
-        'Error al cargar los datos de órdenes de compra.',
-        'error'
-      );
-    }
-  }
-
-  // Obtener todos los detalles de todas las órdenes
-  private async getAllOrderDetails(): Promise<any[]> {
-    try {
-      // Obtenemos todas las órdenes primero para obtener los detalles
-      const orders = await lastValueFrom(
-        this.requisitionsService.getOcAndReqs(this.typeReference, this.idReference, 'OC')
-      ) as any[];
-      
-      const allDetailsPromises = orders.map(order => 
-        lastValueFrom(this.requisitionsService.getReqItems(order.id))
-      );
-      
-      const allDetailsArrays = await Promise.all(allDetailsPromises);
-      return allDetailsArrays.flat();
-      
-    } catch (error) {
-      console.error('Error al cargar detalles:', error);
-      return [];
-    }
-  }
-
-  // Construir estructura plana para 2 niveles con control de expansión
-  private buildHierarchicalStructure(orders: any[], allDetails: any[]) {
-    this.hierarchicalData = [];
-    
-    // Agregar órdenes (nivel 1) - siempre visibles
-    orders.forEach(order => {
-      const orderNode = {
-        ...order,
-        nodeLevel: 'order',
-        originalId: order.id,
-        isExpanded: true, // Por defecto expandido
-        isVisible: true
-      };
-      this.hierarchicalData.push(orderNode);
-      
-      // Buscar detalles de esta orden (nivel 2)
-      const orderDetails = allDetails.filter(detail => detail.idMovement === order.id);
-      
-      orderDetails.forEach(detail => {
-        const detailNode = {
-          ...detail,
-          nodeLevel: 'detail',
-          originalId: detail.id,
-          parentOrderId: order.id,
-          isVisible: true
-        };
-        this.hierarchicalData.push(detailNode);
-      });
-    });
-
-    console.log('Estructura jerárquica construida:', this.hierarchicalData);
-  }
-
-  // Retornar datos filtrados por visibilidad para AG-Grid
-  flattenHierarchicalData(): any[] {
-    return this.hierarchicalData.filter(item => item.isVisible);
-  }
-
-  // Métodos para manejar expand/collapse
-  toggleOrderExpansion(orderData: any) {
-    const order = this.hierarchicalData.find(item => 
-      item.nodeLevel === 'order' && item.originalId === orderData.originalId
-    );
-    
-    if (order) {
-      order.isExpanded = !order.isExpanded;
-      
-      // Mostrar/ocultar detalles de esta orden
-      this.hierarchicalData.forEach(item => {
-        if (item.nodeLevel === 'detail' && item.parentOrderId === order.originalId) {
-          item.isVisible = order.isExpanded;
-        }
-      });
-      
-      // Refrescar el grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenHierarchicalData());
-      }
-    }
-  }
-
-  // ========== MÉTODOS HELPER PARA CONTADORES ==========
-  
-  // Contar detalles de una orden
-  private getDetailCountForOrder(orderId: string | number): number {
-    if (!this.hierarchicalData || !orderId) return 0;
-    
-    return this.hierarchicalData.filter(item => 
-      item.nodeLevel === 'detail' && item.parentOrderId === orderId
-    ).length;
-  }
-  
-  // Calcular total de una orden
-  calculateOrderTotal(orderId: string | number): number {
-    if (!this.hierarchicalData || !orderId) return 0;
-    
-    return this.hierarchicalData
-      .filter(item => item.nodeLevel === 'detail' && item.parentOrderId === orderId)
-      .reduce((total, detail) => total + (detail.total || 0), 0);
-  }
-
-  // Obtener nombre del proveedor
-  getProviderName(providerId: number): string {
-    if (!providerId || !this.proveedores) return 'Sin proveedor';
-    const provider = this.proveedores.find(p => p.id === providerId);
-    return provider ? provider.name : 'Sin proveedor';
-  }
-
-  // Obtener nombre del producto
-  getProductName(productId: number): string {
-    if (!productId || !this.productos) return 'Sin producto';
-    const product = this.productos.find(p => p.id === productId);
-    return product ? product.description : 'Sin producto';
-  }
-
-  // Selección de filas
-  onRowSelected(event: any) {
-    this.selectedRowData = event.data;
-    if (event.data) {
-      this.selectedNodeLevel = event.data.nodeLevel || 'order';
-    } else {
-      this.selectedNodeLevel = null;
-    }
-  }
-
-  // Cambios en celdas
-  onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
-    event.data.__modified = true;
-    this.notSavedChanges = true;
-  }
-
-  // Grid listo
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (p: any) => { p.successCallback([]); },
+      context: {
+        componentParent: this,
+        proveedores: this.proveedores,
+        productos: [],
+        ITEMS: {
+          load: (ocId: number, callback: (data: any[]) => void) => {
+            this.ocAndReqsService.getReqItems(ocId).subscribe({
+              next: (data: any) => callback(Array.isArray(data) ? data : []),
+              error: () => callback([])
+            });
+          },
+          save: () => {},
+          delete: () => {},
+          updateCount: (ocId: number, count: number) => {
+            this.updateOcCount(ocId, count);
+          },
+          updateTotal: (ocId: number, total: number) => {
+            this.updateOcTotal(ocId, total);
+          }
+        }
+      }
+    });
   }
 
-  // ========== MÉTODOS PARA MODALES ==========
-  
-  // Agregar nuevo elemento según nivel seleccionado
-  addItem() {
-    if (!this.selectedRowData) {
-      this.openAddOrderModal(); // Si no hay selección, agregar orden
-      return;
+  onSelectionChanged(_event: any) {}
+  onCellValueChanged(_event: any) { this.hasUnsavedChanges = true; }
+
+  // ==================== CASCADE ====================
+
+  toggleCascade(node: any) {
+    const api = this.gridApi;
+    const isExpanded = node.expanded && node.data.detailType === 'items' && this.expandedRowId === node.id;
+
+    if (isExpanded) {
+      node.setExpanded(false);
+      node.data.detailType  = null;
+      node.data.isExpanded  = false;
+      this.expandedRowId    = null;
+      api.forEachNode((n: any) => n.setRowHeight(undefined));
+      api.onRowHeightChanged();
+      api.redrawRows();
+    } else {
+      // Colapsar fila previa
+      if (this.expandedRowId) {
+        api.forEachNode((n: any) => {
+          if (n.id === this.expandedRowId) {
+            n.setExpanded(false);
+            n.data.detailType = null;
+            n.data.isExpanded = false;
+          }
+        });
+      }
+      // Ocultar resto
+      api.forEachNode((n: any) => n.setRowHeight(n.id !== node.id ? 0 : undefined));
+
+      node.data.detailType = 'items';
+      node.data.isExpanded = true;
+      this.expandedRowId   = node.id;
+
+      api.onRowHeightChanged();
+      api.redrawRows();
+      setTimeout(() => node.setExpanded(true), 0);
     }
+  }
 
-    switch (this.selectedNodeLevel) {
-      case 'order':
-        this.openAddDetailModal();
-        break;
-      case 'detail':
-        this.openAddDetailModal();
-        break;
-      default:
-        this.openAddOrderModal();
+  toggleReportCascade(node: any) {
+    node.setSelected(true);
+    const api = this.gridApi;
+    const isExpanded = node.expanded && node.data.detailType === 'report' && this.expandedRowId === node.id;
+
+    if (isExpanded) {
+      node.setExpanded(false);
+      node.data.detailType = null;
+      node.data.isExpanded = false;
+      this.expandedRowId   = null;
+      api.forEachNode((n: any) => n.setRowHeight(undefined));
+      api.onRowHeightChanged();
+      api.redrawRows();
+    } else {
+      if (this.expandedRowId) {
+        api.forEachNode((n: any) => {
+          if (n.id === this.expandedRowId) {
+            n.setExpanded(false);
+            n.data.detailType = null;
+            n.data.isExpanded = false;
+          }
+        });
+      }
+      api.forEachNode((n: any) => n.setRowHeight(n.id !== node.id ? 0 : undefined));
+
+      node.data.detailType = 'report';
+      node.data.isExpanded = true;
+      this.expandedRowId   = node.id;
+
+      api.onRowHeightChanged();
+      api.redrawRows();
+      setTimeout(() => node.setExpanded(true), 0);
     }
   }
 
-  // Abrir modal para nueva orden
-  openAddOrderModal() {
-    alerts.basicAlert('Información', 'Funcionalidad de agregar orden pendiente de implementar.', 'info');
-  }
-  
-  // Abrir modal para nuevo detalle
-  openAddDetailModal() {
-    if (!this.selectedRowData || this.selectedNodeLevel !== 'order') {
-      alerts.basicAlert('Error', 'Seleccione una orden para agregar un detalle.', 'warning');
-      return;
+  collapseReportDetail() {
+    if (this.expandedRowId && this.gridApi) {
+      this.gridApi.forEachNode((node: any) => {
+        if (node.id === this.expandedRowId) {
+          node.setExpanded(false);
+          node.data.isExpanded = false;
+          node.data.detailType = null;
+        }
+        node.setRowHeight(undefined);
+      });
+      this.expandedRowId = null;
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
     }
-    alerts.basicAlert('Información', 'Funcionalidad de agregar detalle pendiente de implementar.', 'info');
-  }
-  
-  // Abrir modal de edición
-  openEditModal(item: any) {
-    if (!item) return;
-    alerts.basicAlert('Información', 'Funcionalidad de edición pendiente de implementar.', 'info');
   }
 
-  // ========== MÉTODOS CRUD PRINCIPALES ==========
+  // ==================== UTILS ====================
 
-  // Guardar cambios
-  async saveChanges() {
-    alerts.basicAlert('Información', 'Funcionalidad de guardado pendiente de implementar.', 'info');
+  refreshData() {
+    this.loadPurchaseOrders();
   }
 
-  // Revertir cambios
-  revertChanges() {
-    this.loadHierarchicalData();
-    this.notSavedChanges = false;
-    this.newlyAddedRows = [];
-    this.selectedRowData = null;
-    this.selectedNodeLevel = null;
-    alerts.basicAlert('Cambios revertidos', 'Se han revertido todos los cambios.', 'info');
-  }
-
-  // Eliminar elemento seleccionado
-  async deleteSelectedItem() {
-    if (!this.selectedRowData) {
-      alerts.basicAlert(
-        'Error',
-        'Por favor, seleccione un elemento para eliminar.',
-        'warning'
-      );
-      return;
+  updateOcCount(ocId: number, count: number) {
+    const row = this.rowData.find(r => r.id === ocId);
+    if (row) {
+      row.countrow = count;
+      const node = this.gridApi?.getRowNode(String(ocId));
+      if (node) this.gridApi.refreshCells({ rowNodes: [node], columns: ['countrow'], force: true });
     }
-    alerts.basicAlert('Información', 'Funcionalidad de eliminación pendiente de implementar.', 'info');
   }
 
-  createOC(idRequisition: number, action: string) {
-    this.receiptsService.generateOC(idRequisition, action);
-  }
-
-  // ==================== LEGACY METHODS (mantener por compatibilidad) ====================
-
-  obtenerDatos() {
-    // Método legacy - ahora usa loadHierarchicalData()
-    this.loadHierarchicalData();
-  }
-
-  obtenerRequisiciones() {
-    this.requisitionsService
-      .getOcAndReqs(this.typeReference, this.idReference, 'REQUIS')
-      .subscribe(
-        (data: any) => {
-          this.requisiciones = data;
-          console.log(this.requisiciones);
-        },
-        (error) => console.error('Error fetching requisitions:', error)
-      );
-  }
-
-  obtenerProveedores() {
-    this.providersService.getProviders(this.idRoot).subscribe(
-      (data: any) => {
-        this.proveedores = data;
-        console.log(this.proveedores);
-      },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
-  }
-
-  obtenerUsuarios() {
-    this.usersService.getDataUsers(this.idRoot).subscribe(
-      (response: any) => {
-        this.usuarios = response.data;
-      },
-      (error) => console.error('Error fetching users:', error)
-    );
-  }
-
-  obtenerDepartamentos() {
-    this.departmentsService.getDepartments(this.idRoot).subscribe(
-      (data: Provider[]) => {
-        this.departamentos = data;
-        console.log(this.departamentos);
-      },
-      (error) => console.error('Error fetching departments:', error)
-    );
-  }
-
-  obtenerUbicaciones() {
-    this.catalogsService.getLocations().subscribe(
-      (data: Catalog[]) => {
-        this.ubicaciones = data;
-      },
-      (error) => console.error('Error fetching locations:', error)
-    );
-  }
-
-  obtenerMonedas() {
-    this.currencyService.getCurrencies(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.monedas = data;
-      },
-      (error) => console.error('Error fetching currencies:', error)
-    );
-  }
-
-  obtenerTipoPago() {
-    this.currencyService.getPaymentTypes(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.tipoPago = data;
-      },
-      (error) => console.error('Error fetching payment types:', error)
-    );
-  }
-
-  obtenerProductos() {
-    this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.productos = data;
-        console.log(data);
-      },
-      (error) => console.error('Error fetching materials:', error)
-    );
-  }
-
-  // ==================== UTILITY METHODS ====================
-
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
+  updateOcTotal(ocId: number, total: number) {
+    // Persiste en BD
+    this.ocAndReqsService.setTotal(ocId, total).subscribe();
+    // Actualiza celda en el grid master
+    const row = this.rowData.find(r => r.id === ocId);
+    if (row) {
+      row.total = total;
+      const node = this.gridApi?.getRowNode(String(ocId));
+      if (node) this.gridApi.refreshCells({ rowNodes: [node], columns: ['total'], force: true });
     }
-    return cleanedData;
-  }
-
-  // ==================== GUARD ALERT UNSAVED CHANGES ====================
-
-  async canDeactivate(): Promise<boolean> {
-    return confirmExitIfUnsaved(this.notSavedChanges);
   }
 }

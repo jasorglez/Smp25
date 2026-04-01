@@ -41,6 +41,15 @@ import { alerts } from 'app/helpers/alerts';
         (cellValueChanged)="onCellValueChanged($event)"
         style="height: 300px; width: 100%;">
       </ag-grid-angular>
+
+      <!-- Total OC -->
+      <div style="display: flex; justify-content: flex-end; align-items: center;
+                  background: #c8e6c9; border-top: 2px solid #388e3c; padding: 4px 12px; border-radius: 0 0 6px 6px; margin-top: 2px;">
+        <span style="font-weight: bold; font-size: 0.85rem; color: #1b5e20;">Total OC:&nbsp;</span>
+        <span style="font-weight: bold; font-size: 0.9rem; color: #1b5e20;">
+          {{ totalGeneral | currency:'MXN':'symbol':'1.2-2' }}
+        </span>
+      </div>
     </div>
   `,
   styles: [`
@@ -63,6 +72,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   private context: any;
 
   rowData: any[] = [];
+  totalGeneral: number = 0;
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   productos: any[] = [];
@@ -91,6 +101,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           __isNew: false,
           __modified: false
         }));
+        this.recalcTotal();
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
@@ -255,11 +266,12 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   };
 
   updateTotal(data: any) {
-    if (data.quantity && data.price) {
-      data.total = data.quantity * data.price;
-    } else {
-      data.total = 0;
-    }
+    data.total = data.quantity && data.price ? data.quantity * data.price : 0;
+    this.recalcTotal();
+  }
+
+  recalcTotal() {
+    this.totalGeneral = this.rowData.reduce((sum, row) => sum + (row.total || 0), 0);
   }
 
   addItem() {
@@ -281,6 +293,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     };
 
     this.rowData = [...this.rowData, newItem];
+    this.recalcTotal();
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 
@@ -310,6 +323,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     if (this.context && this.context.ITEMS && this.context.ITEMS.delete) {
       this.context.ITEMS.delete({ data: selectedItem, api: this.gridApi }, () => {
         this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+        this.recalcTotal();
         this.gridApi.setGridOption('rowData', this.rowData);
         this.hasUnsavedChanges = true;
 
@@ -338,6 +352,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
       const purchaseOrderId = this.params.data.id;
       this.context.ITEMS.save(purchaseOrderId, this.rowData);
       this.hasUnsavedChanges = false;
+      // Actualizar total en master grid y BD
+      if (this.context.ITEMS.updateTotal) {
+        this.context.ITEMS.updateTotal(purchaseOrderId, this.totalGeneral);
+      }
     }
   }
 

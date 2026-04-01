@@ -1,183 +1,31 @@
-<app-multi-line-editor></app-multi-line-editor>
-
-<div class="container-fluid p-0 mt-3">
-  <!-- Información del componente -->
-  <div class="alert alert-info d-flex align-items-center mb-3" role="alert">
-    <i class="bi bi-cart-check-fill me-2"></i>
-    <div>
-      <strong>Órdenes de Compra Delison</strong><br>
-      <small>Gestión especializada de órdenes y detalles para Delison</small>
-    </div>
-  </div>
-
-  <!-- Barra de herramientas -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="btn-group" role="group">
-      <button 
-        type="button" 
-        class="btn btn-success btn-sm" 
-        (click)="addItem()"
-        title="Agregar orden o detalle">
-        <i class="bi bi-plus-circle"></i> Agregar
+<div class="container-fluid mt-3">
+  <div class="row">
+    <!-- Botones CRUD izquierda -->
+    <nav class="col-auto d-flex flex-column align-items-start">
+      <button type="button" class="btn btn-warning mb-2" (click)="refreshData()" title="Actualizar">
+        <i class="bi bi-arrow-clockwise" style="font-size: 1rem;"></i>
       </button>
-      
-      <button 
-        type="button" 
-        class="btn btn-warning btn-sm" 
-        (click)="deleteSelectedItem()"
-        [disabled]="!selectedRowData"
-        title="Eliminar elemento seleccionado">
-        <i class="bi bi-trash"></i> Eliminar
-      </button>
+    </nav>
 
-      <button 
-        *ngIf="selectedRowData?.nodeLevel === 'order'" 
-        type="button" 
-        class="btn btn-info btn-sm" 
-        (click)="createOC(selectedRowData.originalId, 'open')"
-        title="Generar PDF de la orden">
-        <i class="bi bi-file-earmark-pdf"></i> PDF
-      </button>
-    </div>
-
-    <div class="btn-group" role="group">
-      <button 
-        type="button" 
-        class="btn btn-primary btn-sm" 
-        (click)="saveChanges()"
-        [disabled]="!notSavedChanges"
-        title="Guardar cambios">
-        <i class="bi bi-save"></i> Guardar
-        <span 
-          class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-          *ngIf="notSavedChanges">
-          <span class="visually-hidden">Cambios sin guardar</span>
-        </span>
-      </button>
-      
-      <button 
-        type="button" 
-        class="btn btn-secondary btn-sm" 
-        (click)="revertChanges()"
-        [disabled]="!notSavedChanges"
-        title="Revertir cambios">
-        <i class="bi bi-arrow-clockwise"></i> Revertir
-      </button>
-    </div>
-  </div>
-
-  <!-- Indicador de cambios pendientes -->
-  <div class="alert alert-warning d-flex align-items-center mb-3" role="alert" *ngIf="notSavedChanges">
-    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-    <div>
-      <strong>Cambios pendientes</strong><br>
-      <small>Tienes cambios sin guardar. No olvides guardar antes de salir.</small>
-    </div>
-  </div>
-
-  <!-- Grid AG-Grid Jerárquico Único -->
-  <div class="ag-theme-alpine" style="height: 70vh; width: 100%;">
-    <ag-grid-angular
-      [gridOptions]="gridOptions"
-      [columnDefs]="columnDefs"
-      [rowData]="flattenHierarchicalData()"
-      [animateRows]="true"
-      [enableCellChangeFlash]="true"
-      [rowSelection]="'single'"
-      [suppressRowClickSelection]="false"
-      [enableRangeSelection]="true"
-      [suppressMenuHide]="true"
-      [defaultColDef]="{
-        sortable: true,
-        filter: true,
-        resizable: true,
-        menuTabs: ['filterMenuTab', 'generalMenuTab']
-      }"
-      (gridReady)="onGridReady($event)">
-    </ag-grid-angular>
-  </div>
-
-  <!-- Información del elemento seleccionado -->
-  <div class="mt-3" *ngIf="selectedRowData">
-    <div class="card">
-      <div class="card-header">
-        <h6 class="mb-0">
-          <i class="bi bi-info-circle"></i> 
-          <span *ngIf="selectedRowData.nodeLevel === 'order'">Orden Delison Seleccionada</span>
-          <span *ngIf="selectedRowData.nodeLevel === 'detail'">Detalle Seleccionado</span>
-        </h6>
-      </div>
-      <div class="card-body">
-        <div class="row" *ngIf="selectedRowData.nodeLevel === 'order'">
-          <div class="col-md-4">
-            <small class="text-muted">Orden:</small><br>
-            <strong>{{ selectedRowData.folio }}</strong>
-          </div>
-          <div class="col-md-4">
-            <small class="text-muted">Proveedor:</small><br>
-            <strong>{{ getProviderName(selectedRowData.idProvider) }}</strong>
-          </div>
-          <div class="col-md-4">
-            <small class="text-muted">Total:</small><br>
-            <strong>${{ calculateOrderTotal(selectedRowData.originalId).toFixed(2) }}</strong>
-          </div>
-        </div>
-        <div class="row" *ngIf="selectedRowData.nodeLevel === 'detail'">
-          <div class="col-md-4">
-            <small class="text-muted">Producto:</small><br>
-            <strong>{{ getProductName(selectedRowData.idSupplie) }}</strong>
-          </div>
-          <div class="col-md-4">
-            <small class="text-muted">Cantidad:</small><br>
-            <strong>{{ selectedRowData.quantity }}</strong>
-          </div>
-          <div class="col-md-4">
-            <small class="text-muted">Total:</small><br>
-            <strong>${{ selectedRowData.total?.toFixed(2) || '0.00' }}</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Leyenda de ayuda -->
-  <div class="mt-3">
-    <div class="card">
-      <div class="card-header">
-        <h6 class="mb-0">
-          <i class="bi bi-lightbulb"></i> Ayuda - Purchase Order Delison
-        </h6>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-6">
-            <h6>Operaciones:</h6>
-            <ul class="list-unstyled small">
-              <li><i class="bi bi-plus-circle text-success"></i> <strong>Agregar:</strong> Nueva orden o detalle según selección</li>
-              <li><i class="bi bi-trash text-warning"></i> <strong>Eliminar:</strong> Orden o detalle seleccionado</li>
-              <li><i class="bi bi-save text-primary"></i> <strong>Guardar:</strong> Confirmar todos los cambios</li>
-              <li><i class="bi bi-arrow-clockwise text-secondary"></i> <strong>Revertir:</strong> Deshacer cambios sin guardar</li>
-            </ul>
-          </div>
-          <div class="col-md-6">
-            <h6>Navegación:</h6>
-            <ul class="list-unstyled small">
-              <li><i class="bi bi-chevron-right"></i> <strong>Click en chevron:</strong> Expandir/colapsar orden</li>
-              <li><i class="bi bi-mouse"></i> <strong>Doble-click:</strong> Editar orden o detalle</li>
-              <li><i class="bi bi-file-earmark-pdf"></i> <strong>PDF:</strong> Generar reporte de orden seleccionada</li>
-              <li><i class="bi bi-funnel"></i> <strong>Filtros:</strong> Disponibles en cada columna</li>
-            </ul>
-          </div>
-        </div>
-        <div class="row mt-2">
-          <div class="col-12">
-            <div class="alert alert-light">
-              <small><strong>Nota:</strong> Este es el componente especializado para órdenes de compra de Delison. 
-              Las funcionalidades CRUD están preparadas para implementación según especificaciones particulares.</small>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Grid principal -->
+    <div class="col">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{'height': gridHeight}"
+        class="ag-theme-quartz small-text-ag-grid"
+        [columnDefs]="colMaster"
+        [rowData]="rowData"
+        [gridOptions]="gridOptions"
+        [defaultColDef]="defaultColDef"
+        [localeText]="AG_GRID_LOCALE_ES"
+        [rowSelection]="rowSelection"
+        [pagination]="true"
+        [paginationPageSize]="paginationPageSize"
+        [paginationPageSizeSelector]="paginationPageSizeSelector"
+        (gridReady)="onGridReady($event)"
+        (selectionChanged)="onSelectionChanged($event)"
+        (cellValueChanged)="onCellValueChanged($event)">
+      </ag-grid-angular>
     </div>
   </div>
 </div>

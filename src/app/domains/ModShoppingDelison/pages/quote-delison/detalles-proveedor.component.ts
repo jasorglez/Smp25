@@ -92,6 +92,17 @@ pdfMake.vfs = pdfFonts.vfs;
           style="width: 120%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
         </ag-grid-angular>
       </div>
+
+      <!-- Total Costo Total -->
+      <div style="flex-shrink: 0; display: flex; justify-content: flex-end; align-items: center;
+                  background: #c8e6c9; border-top: 2px solid #388e3c; padding: 4px 12px; border-radius: 0 0 6px 6px;">
+        <span style="font-weight: bold; font-size: 0.85rem; color: #1b5e20;">
+          Total Cotización:&nbsp;
+        </span>
+        <span style="font-weight: bold; font-size: 0.9rem; color: #1b5e20;">
+          {{ totalCostoTotal | currency:'MXN':'symbol':'1.2-2' }}
+        </span>
+      </div>
     </div>
   `,
   styles: [`
@@ -127,13 +138,20 @@ export class DetallesProveedorComponent {
   pdfFileName: string = '';
   selectedFile: File | null = null;
   hasUnsavedChanges: boolean = false;
+  totalCostoTotal: number = 0;
   providerLabel: string = '';
   providerField: string = '';
+  private _colDefs: ColDef[] | null = null;
 
   // COTPRO state
   cotproId: number | null = null;
   cotizacionId: number | null = null;
   existingItemIds: Map<number, number> = new Map(); // rowIndex -> detailId
+
+  /** ID del COTPRO que pertenece a ESTA ranura (no al de otra ranura) */
+  private slotCotproId: number | null = null;
+  /** true cuando el usuario cambia el proveedor desde el dropdown (no carga inicial) */
+  private providerChangedByUser = false;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -154,6 +172,10 @@ export class DetallesProveedorComponent {
 
   onGridReady(params: any) {
     this.gridApi = params.api;
+  }
+
+  updateTotal() {
+    this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0);
   }
 
   async loadProviders() {
@@ -191,6 +213,11 @@ export class DetallesProveedorComponent {
 
       if (existing) {
         this.cotproId = existing.id;
+        // Solo marca como "propio" si el proveedor NO fue cambiado por el usuario
+        // (es decir, viene de la carga inicial de esta ranura)
+        if (!this.providerChangedByUser) {
+          this.slotCotproId = existing.id;
+        }
         await this.loadCotproItems();
       } else {
         this.buildRowData();
@@ -224,6 +251,7 @@ export class DetallesProveedorComponent {
           comment: item.comment || ''
         };
       });
+      this.updateTotal();
     } catch {
       this.buildRowData();
     }
@@ -249,11 +277,12 @@ export class DetallesProveedorComponent {
       autorizado: false,
       comment: ''
     }));
+    this.updateTotal();
   }
 
   onProviderChange() {
     this.hasUnsavedChanges = true;
-    // Reload COTPRO for newly selected provider
+    this.providerChangedByUser = true;
     this.cotproId = null;
     this.existingItemIds = new Map();
     this.loadExistingCotproOrBuildFromArticulos();
@@ -267,6 +296,7 @@ export class DetallesProveedorComponent {
       row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
     }
+    this.updateTotal();
   }
 
   onFileSelected(event: any) {
@@ -293,6 +323,26 @@ export class DetallesProveedorComponent {
       return;
     }
 
+    // Validar que el proveedor no esté ya guardado en otra ranura (A, B o C)
+    try {
+      const allCotpros: any = await firstValueFrom(
+        this.ocAndReqsService.getOcAndReqs('cotiz', this.cotizacionId, 'COTPRO')
+      );
+      const duplicado = (Array.isArray(allCotpros) ? allCotpros : []).find(
+        (c: any) => c.idProvider === this.selectedProviderId && c.active !== false && c.id !== this.slotCotproId
+      );
+      if (duplicado) {
+        alerts.basicAlert(
+          'Proveedor duplicado',
+          'No puedes guardar la cotización porque ese proveedor ya existe en otra ranura.',
+          'warning'
+        );
+        return;
+      }
+    } catch {
+      // Si falla la validación, continuar (no bloquear)
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const providerName = this.getSelectedProviderName();
 
@@ -314,6 +364,7 @@ export class DetallesProveedorComponent {
           this.ocAndReqsService.addOcAndReq(cotproData)
         );
         this.cotproId = cotproResponse.id;
+        this.slotCotproId = cotproResponse.id; // Esta ranura es dueña de este COTPRO
       }
 
       // 2. Obtener filas actuales del grid
@@ -438,7 +489,9 @@ export class DetallesProveedorComponent {
   }
 
   get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs) return this._colDefs;
+
+    this._colDefs = [
       { field: 'active', headerName: 'Activo', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: true },
       { field: 'numArticulo', headerName: '# Art', width: 130 },
       { field: 'articulo', headerName: 'Artículo', width: 140 },
@@ -451,6 +504,8 @@ export class DetallesProveedorComponent {
       { field: 'autorizado', headerName: 'Autoriz.', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: true },
       { field: 'comment', headerName: 'Comentario', width: 200, editable: true }
     ];
+
+    return this._colDefs;
   }
 
   public gridOptions: any = {
@@ -458,7 +513,6 @@ export class DetallesProveedorComponent {
     rowHeight: 28,
     animateRows: true,
     suppressCellFocus: false,
-    stopEditingWhenCellsLoseFocus: true,
-    domLayout: 'autoHeight'
+    stopEditingWhenCellsLoseFocus: true
   };
 }
