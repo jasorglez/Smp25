@@ -20,6 +20,7 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
   constructor(private dropdownService: SelectDropdownService) {}
 
   agInit(params: any): void {
+    console.log('SelectWithTooltipEditorV2: agInit called');
     this.params = params;
     this.selectedValue = params.value;
 
@@ -33,8 +34,11 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
         this.selectedValue,
         (value) => {
           // Callback cuando se selecciona una opción
+          console.log('SelectWithTooltipEditorV2: Value selected:', value);
+
           // Verificar si hay un callback personalizado para valores especiales
           if (params.onSpecialValue && params.specialValues?.includes(value)) {
+            console.log('SelectWithTooltipEditorV2: Special value detected:', value);
             this.shouldCloseOnDestroy = false;
             if (this.params.stopEditing) {
               this.params.stopEditing(true); // Cancelar sin guardar
@@ -47,12 +51,18 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
           this.selectedValue = value;
           this.shouldCloseOnDestroy = false;
 
+          // Actualizar el valor en AG Grid ANTES de cerrar el editor
+          if (this.params.node && this.params.column) {
+            this.params.node.setDataValue(this.params.column.getColId(), value);
+          }
+
           if (this.params.stopEditing) {
             this.params.stopEditing();
           }
         },
         () => {
           // Callback cuando se cancela
+          console.log('SelectWithTooltipEditorV2: Cancelled');
           this.shouldCloseOnDestroy = false;
           if (this.params.stopEditing) {
             this.params.stopEditing(true);
@@ -83,6 +93,7 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
   }
 
   ngOnDestroy(): void {
+    console.log('SelectWithTooltipEditorV2: ngOnDestroy called, shouldCloseOnDestroy:', this.shouldCloseOnDestroy);
     // NO cerrar el dropdown aquí - AG Grid destruye el componente inmediatamente
     // pero queremos que el dropdown permanezca abierto
     // El dropdown se cerrará solo a través de sus callbacks

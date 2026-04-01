@@ -310,6 +310,9 @@ export class RequisitionsDelisonComponent implements OnInit {
         };
       });
 
+      // ✅ Ordenar por ID descendente (más reciente primero)
+      this.fullRowData.sort((a, b) => b.id - a.id);
+
       this.rowData = [...this.fullRowData];
 
 
@@ -374,6 +377,9 @@ export class RequisitionsDelisonComponent implements OnInit {
             idReference: req.idReference
           };
         }) : [];
+
+        // ✅ Ordenar por ID descendente (más reciente primero)
+        this.fullRowData.sort((a, b) => b.id - a.id);
 
         this.rowData = [...this.fullRowData];
 
@@ -611,12 +617,21 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'requestDate',
         headerName: 'Fecha solicitud',
         width: 130,
-        editable: () => !!this.idBranch,
+        editable: (params: any) => !params.data?.__isNew && !!this.idBranch,
         cellEditor: 'agDateCellEditor',
         valueGetter: (params: any) =>
           params.data?.requestDate ? String(params.data.requestDate).substring(0, 10) : '',
         valueSetter: (params: any) => {
-          params.data.requestDate = params.newValue;
+          if (!params.newValue) return false;
+          if (params.newValue instanceof Date) {
+            const d = params.newValue;
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            params.data.requestDate = `${y}-${m}-${day}`;
+          } else {
+            params.data.requestDate = String(params.newValue).substring(0, 10);
+          }
           return true;
         },
         valueFormatter: (params: any) => {
@@ -882,6 +897,16 @@ export class RequisitionsDelisonComponent implements OnInit {
     }
 
     if (isDetailColumn) {
+      // Bloquear si la fila no está guardada
+      if (event.data.__isNew || event.data.__modified) {
+        alerts.basicAlert(
+          'Guarda primero',
+          'Debes guardar la requisición antes de poder ver su detalle.',
+          'warning'
+        );
+        return;
+      }
+
       const node = event.node;
       const api = event.api;
 
@@ -1089,6 +1114,15 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (rowNode) {
               this.gridApi.refreshCells({ rowNodes: [rowNode], force: true });
             }
+          },
+          updateMasterUserAndDate: (requisitionId: number, solicitedBy: string, requestDate: string) => {
+            this.gridApi.forEachNode((node: any) => {
+              if (node.data && node.data.id === requisitionId) {
+                node.data.solicitedBy = solicitedBy;
+                node.data.requestDate = requestDate;
+                this.gridApi.refreshCells({ rowNodes: [node], columns: ['solicitedBy', 'requestDate'], force: true });
+              }
+            });
           }
         },
         PURCHASES: {
@@ -1166,24 +1200,36 @@ export class RequisitionsDelisonComponent implements OnInit {
 
     }
 
+    // Asegurar que los roles estén cargados antes de crear la fila (para pre-poblar departamento)
+    const crearFila = (prefixData: any) => {
+      if (this.rolesByBranchCache.has(selectedBranchId)) {
+        this.createNewRequisitionRow(selectedBranchId, prefixData);
+      } else if (this.idUser) {
+        this.rolesService.getRolesByBranchDelison(this.idUser, selectedBranchId).subscribe({
+          next: (roles: any[]) => {
+            this.rolesByBranchCache.set(selectedBranchId, roles.map(r => ({
+              id: r.id, description: r.description, name: r.description
+            })));
+            this.createNewRequisitionRow(selectedBranchId, prefixData);
+          },
+          error: () => this.createNewRequisitionRow(selectedBranchId, prefixData)
+        });
+      } else {
+        this.createNewRequisitionRow(selectedBranchId, prefixData);
+      }
+    };
+
     // Obtener el prefijo y consecutivo de la sucursal
     this.typexPrefixesService.getPrefix('branch', selectedBranchId).subscribe({
       next: (prefixData: any) => {
         this.currentPrefixData = prefixData;
-        this.createNewRequisitionRow(selectedBranchId, prefixData);
+        crearFila(prefixData);
       },
-      error: (err) => {
-        // Si no existe configuración, usar valores por defecto y mostrar warning
+      error: () => {
         const defaultPrefixData = { prefix: '', consecutive: 0 };
         this.currentPrefixData = defaultPrefixData;
-
-        alerts.basicAlert(
-          'Sin configuración',
-          'No se encontró configuración de prefijo para esta sucursal. Se creará con valores por defecto. Configure el prefijo en Configuración de Almacén.',
-          'warning'
-        );
-
-        this.createNewRequisitionRow(selectedBranchId, defaultPrefixData);
+        alerts.basicAlert('Sin configuración', 'No se encontró configuración de prefijo. Se usarán valores por defecto.', 'warning');
+        crearFila(defaultPrefixData);
       }
     });
   }
@@ -1207,14 +1253,19 @@ export class RequisitionsDelisonComponent implements OnInit {
     const branch = this.branches.find(b => b.id === selectedBranchId);
     const branchName = branch?.name || branch?.description || '';
 
+    // Pre-poblar el primer departamento disponible del caché
+    const cachedRoles = this.rolesByBranchCache.get(selectedBranchId) || [];
+    const defaultDeptId = cachedRoles.length > 0 ? cachedRoles[0].id : null;
+    const defaultDeptName = cachedRoles.length > 0 ? cachedRoles[0].description : '';
+
     const newId = `temp_${Date.now()}`;
     const newItem = {
       id: newId,
       branch: branchName,
       requisitionNumber: requisitionNumber,
       requestDate: new Date().toISOString(),
-      departmentId: null,
-      departmentName: '',
+      departmentId: defaultDeptId,
+      departmentName: defaultDeptName,
       solicitedBy: this.currentUserName,
       articlesCount: 0,
       articleNumber: '',
@@ -1556,10 +1607,12 @@ export class RequisitionsDelisonComponent implements OnInit {
       if (modifiedItems.length > 0) {
 
 
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
         for (const item of modifiedItems) {
           // Validar que tenga un ID válido (no temporal)
           if (!item.id || String(item.id).startsWith('temp_')) {
-
             continue;
           }
 
@@ -1568,44 +1621,43 @@ export class RequisitionsDelisonComponent implements OnInit {
             folio: item.requisitionNumber || '',
             typeReference: 'branch',
             idReq: 0,
-            idReference: item.idReference, // ✅ Usar el idReference de la fila, NO this.idBranch
-            dateCreate: item.requestDate,
+            idReference: item.idReference,
+            dateCreate: todayStr,
             idProvider: 0,
             idDepartament: item.departmentId || 0,
-            delivery: item.delivery || 'NO APLICA', // ✅ Valor por defecto del backend
-            deliveryTime: item.deliveryTime || '1 DAY', // ✅ Valor por defecto del backend
-            typeOc: item.typeOc || 'INSUMOS', // ✅ Valor por defecto del backend
+            delivery: item.delivery || 'NO APLICA',
+            deliveryTime: item.deliveryTime || '1 DAY',
+            typeOc: item.typeOc || 'INSUMOS',
             dateSupply: item.dateSupply || new Date().toISOString(),
             idPayment: item.idPayment || 0,
             idCurrency: item.idCurrency || 0,
-            conditions: item.conditions || null, // ✅ null en lugar de string vacío
+            conditions: item.conditions || null,
             idAuthorize: 0,
-            priority: item.column8 || null, // ✅ null en lugar de string vacío
-            solicit: item.solicitedBy || this.currentUserName,
+            priority: item.column8 || null,
+            solicit: this.currentUserName,
             discount: 0,
             ivaRetention: 0,
             idSolicit: 0,
-            address: item.address || null, // ✅ null en lugar de string vacío
-            city: item.city || null, // ✅ null en lugar de string vacío
-            phone: item.phone || null, // ✅ null en lugar de string vacío
+            address: item.address || null,
+            city: item.city || null,
+            phone: item.phone || null,
             type: 'REQUIS',
             compliancePedimento: 0,
             complianceRequesicion: 0,
-            comments: item.comments || null, // ✅ null en lugar de string vacío
+            comments: item.comments || null,
             close: item.close || false,
             active: item.active !== false
           };
 
-
-
           await new Promise<void>((resolve, reject) => {
             this.ocAndReqsService.updateOcAndReq(item.id, updateReqData).subscribe({
-              next: (response) => {
-
+              next: () => {
+                // Actualizar display local
+                item.solicitedBy = this.currentUserName;
+                item.requestDate = todayStr;
                 resolve();
               },
               error: (err) => {
-
                 hasErrors = true;
                 reject(err);
               }

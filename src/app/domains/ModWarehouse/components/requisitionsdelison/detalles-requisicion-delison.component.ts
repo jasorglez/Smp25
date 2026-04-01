@@ -356,8 +356,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     });
   }
 
-  async loadProviders(materialId: number, type: string): Promise<any[]> {
-    const cacheKey = `${materialId}_${type}`;
+  async loadProviders(materialId: number, type?: string): Promise<any[]> {
+    const cacheKey = `${materialId}`;
 
     // Verificar si ya están en caché
     if (this.providersCache.has(cacheKey)) {
@@ -365,17 +365,15 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
+      // Sin filtro de tipo: el backend devuelve todos los proveedores del material
       const providers = await firstValueFrom(
-        this.ocAndReqsService.getProviders(materialId, type)
+        this.ocAndReqsService.getProviders(materialId)
       );
 
-      // Guardar en caché
       this.providersCache.set(cacheKey, providers);
-
 
       return providers;
     } catch (error) {
-
       return [];
     }
   }
@@ -677,18 +675,19 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             return { options: [] };
           }
 
-          const cacheKey = `${materialId}_${type}`;
-
-          // Buscar proveedores en el caché
-          const providers = this.providersCache.get(cacheKey) || [];
+          // Buscar proveedores en el caché (clave solo por material)
+          const providers = this.providersCache.get(`${materialId}`) || [];
 
           console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo: ${type}, Proveedores en caché: ${providers.length}`);
 
           return {
-            options: providers.map(p => ({
-              id: p.idProvider,
-              description: p.providerName
-            }))
+            options: providers.map(p => {
+              const dashIdx = (p.providerName || '').indexOf(' - ');
+              const display = dashIdx !== -1
+                ? p.providerName.substring(dashIdx + 3).trim()
+                : (p.providerName || '').trim();
+              return { id: p.idProvider, description: display };
+            })
           };
         },
         onCellClicked: async (params: any) => {
@@ -717,15 +716,17 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
             // Buscar el nombre del proveedor en la caché
             const materialId = params.data.idSupplie || params.data.materialId || 0;
-            const type = params.data.intorext || 'Externo';
-            const cacheKey = `${materialId}_${type}`;
+            const cacheKey = `${materialId}`;
 
             if (this.providersCache.has(cacheKey)) {
               const providers = this.providersCache.get(cacheKey)!;
               const selectedProvider = providers.find(p => p.idProvider === newValue);
               if (selectedProvider) {
-                params.data.nameProvider = selectedProvider.providerName;
-                console.log(`✅ Proveedor seleccionado: ${selectedProvider.providerName}`);
+                const dashIdx = (selectedProvider.providerName || '').indexOf(' - ');
+                params.data.nameProvider = dashIdx !== -1
+                  ? selectedProvider.providerName.substring(dashIdx + 3).trim()
+                  : (selectedProvider.providerName || '').trim();
+                console.log(`✅ Proveedor seleccionado: ${params.data.nameProvider}`);
               }
             }
 
@@ -993,6 +994,27 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Validar que los items con Proveedor Interno tengan proveedor seleccionado
+    const itemsSinProveedorInterno = this.rowData.filter(item =>
+      (item.__isNew || item.__modified) &&
+      (item.intorext || '').toLowerCase() === 'interno' &&
+      (!item.idProvider || item.idProvider === 0)
+    );
+
+    if (itemsSinProveedorInterno.length > 0) {
+      const filas = itemsSinProveedorInterno.map((_, i) => {
+        const idx = this.rowData.indexOf(itemsSinProveedorInterno[i]) + 1;
+        return `Fila ${idx}`;
+      }).join(', ');
+
+      alerts.basicAlert(
+        'Campo obligatorio',
+        `La columna "Proveedor Interno" es obligatoria cuando el tipo es "Interno". Por favor, seleccione un proveedor en: ${filas}.`,
+        'warning'
+      );
+      return;
+    }
+
     // Guardar items nuevos (POST)
     const newItemsPromises = newItems.map(item => {
       // Si el artículo fue creado como "Nuevo", idSupplie debe ser 0
@@ -1025,8 +1047,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
         justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
       };
-
-      console.log('📤 POST - Enviando item nuevo al endpoint:', payload);
 
       return firstValueFrom(this.ocAndReqsService.addReqItem(payload));
     });
@@ -1065,8 +1085,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
       };
 
-      console.log('📤 PUT - Enviando item modificado al endpoint:', payload);
-
       return firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), payload));
     });
 
@@ -1095,13 +1113,31 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Propagar cambios a todos los pedimentos existentes
         await this.propagateChangesToPedimentos(newItemsData, modifiedItemsData);
 
+        // Actualizar solicit y dateCreate del maestro con el usuario actual y fecha de hoy
+        try {
+          const currentUser = this.signalsService.getDisplayName()();
+          const today = new Date();
+          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+          const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+          await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+            ...maestro,
+            solicit: currentUser,
+            dateCreate: todayStr
+          }));
+
+          // Actualizar el maestro vía contexto (actualiza rowData + refresca celdas del grid padre)
+          if (this.context?.ITEMS?.updateMasterUserAndDate) {
+            this.context.ITEMS.updateMasterUserAndDate(this.requisitionId, currentUser, todayStr);
+          }
+        } catch { /* no bloquear el flujo */ }
+
         alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} artículo(s) exitosamente.`, 'success');
 
         // Recargar datos desde el servidor
         this.loadData();
       })
-      .catch((error) => {
-        console.error('Error al guardar artículos:', error);
+      .catch(() => {
         alerts.basicAlert('Error', 'Ocurrió un error al guardar los artículos', 'error');
       });
   }
