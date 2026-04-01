@@ -191,13 +191,13 @@ export class ControlFacturacionIngresosComponent {
       return fechaFormatted >= this.fechaInicio && fechaFormatted <= this.fechaFin;
     });
 
-    // Agrupar por (idCliente, idProyecto)
+    // Agrupar por (idCliente, idProyecto, paymentMonth) para respetar el mes capturado en income
     const grupos = new Map<string, {
-      idCliente: number; idProyecto: number;
+      idCliente: number; idProyecto: number; paymentMonth: string;
       importeFactura: number; importeDescuento: number; subtotal: number; iva: number; total: number;
-      fechaFactura: Date | null; fechaPago: Date | null; count: number;
+      fechaFactura: Date | null; fechaPago: Date | null;
       statuses: Set<string>; estatusPagos: Set<string>;
-      diasPlazo: number | null;
+      diasPlazo: number | null; ocs: Set<string>; facturas: Set<string>;
     }>();
 
     filtered.forEach(ingreso => {
@@ -205,13 +205,14 @@ export class ControlFacturacionIngresosComponent {
       const idProyecto = ingreso.idProject;
       if (!idCliente || !idProyecto) return;
 
-      const key = `${idCliente}_${idProyecto}`;
+      const paymentMonth = (ingreso.paymentMonth || '').trim();
+      const key = `${idCliente}_${idProyecto}_${paymentMonth}`;
       const current = grupos.get(key) || {
-        idCliente, idProyecto,
+        idCliente, idProyecto, paymentMonth,
         importeFactura: 0, importeDescuento: 0, subtotal: 0, iva: 0, total: 0,
-        fechaFactura: null, fechaPago: null, count: 0,
+        fechaFactura: null, fechaPago: null,
         statuses: new Set<string>(), estatusPagos: new Set<string>(),
-        diasPlazo: null
+        diasPlazo: null, ocs: new Set<string>(), facturas: new Set<string>()
       };
 
       if (current.diasPlazo == null && ingreso.diasPlazo != null) {
@@ -221,9 +222,16 @@ export class ControlFacturacionIngresosComponent {
       current.subtotal += Number(ingreso.subtotal) || 0;
       current.iva += Number(ingreso.tax) || 0;
       current.total += Number(ingreso.total) || 0;
-      current.count += 1;
       if (ingreso.deliveryStatus) current.statuses.add(ingreso.deliveryStatus);
       if (ingreso.status) current.estatusPagos.add(ingreso.status);
+
+      const oc = (ingreso.oc || '').toString().trim();
+      if (oc) current.ocs.add(oc);
+
+      const numDoc = (ingreso.uuid && ingreso.uuid !== 'NA')
+        ? ingreso.uuid
+        : (ingreso.numberDocument || '').toString().trim();
+      if (numDoc) current.facturas.add(numDoc);
 
       const fechaFactura = ingreso.dateStamped ? new Date(ingreso.dateStamped) : null;
       if (fechaFactura) {
@@ -238,20 +246,21 @@ export class ControlFacturacionIngresosComponent {
     });
 
     // Convertir a filas
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const mesOrden = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     this.facturacionIngresos = [];
-    grupos.forEach(({ idCliente, idProyecto, importeFactura, subtotal, iva, total, fechaFactura, fechaPago, count, statuses, estatusPagos, diasPlazo }) => {
+    grupos.forEach(({ idCliente, idProyecto, paymentMonth, importeFactura, subtotal, iva, total, fechaFactura, fechaPago, statuses, estatusPagos, diasPlazo, ocs, facturas }) => {
       const customer = this.customers.find(c => c.id === idCliente);
       const project = this.projects.find(p => p.id === idProyecto);
       if (!project) return;
 
-      const mes = fechaFactura ? meses[fechaFactura.getMonth()] : '';
       const estatus = [...statuses].join(' / ');
       const estatusPago = [...estatusPagos].join(' / ');
+      const oc = ocs.size > 0 ? [...ocs].join(', ') : '';
+      const factura = facturas.size > 0 ? [...facturas].join(', ') : '';
 
       const dias = (fechaFactura && fechaPago)
         ? Math.round((fechaPago.getTime() - fechaFactura.getTime()) / (1000 * 60 * 60 * 24))
@@ -269,13 +278,13 @@ export class ControlFacturacionIngresosComponent {
 
       this.facturacionIngresos.push({
         id: idProyecto,
-        mes,
+        mes: paymentMonth,
         cliente: customer?.name || '',
         proyecto: project?.name || '',
         fechaFactura,
         fechaPago,
-        factura: count > 1 ? `${count} facturas` : '1 factura',
-        oc: '',
+        factura,
+        oc,
         importeFactura,
         importeDescuento: 0,
         subtotal,
@@ -291,6 +300,9 @@ export class ControlFacturacionIngresosComponent {
     });
 
     this.facturacionIngresos.sort((a, b) => {
+      const ma = mesOrden.indexOf(a.mes);
+      const mb = mesOrden.indexOf(b.mes);
+      if (ma !== mb) return ma - mb;
       const cmp = a.cliente.localeCompare(b.cliente);
       return cmp !== 0 ? cmp : a.proyecto.localeCompare(b.proyecto);
     });
