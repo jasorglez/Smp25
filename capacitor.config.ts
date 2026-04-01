@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.bi.smp',
   appName: 'SMP',
-  webDir: 'dist/bi-aug-24/browser'
+  webDir: 'dist/hco-siaf-front/browser',
 };
 
 export default config;

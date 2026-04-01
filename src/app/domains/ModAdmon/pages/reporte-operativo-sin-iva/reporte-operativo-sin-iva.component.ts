@@ -380,8 +380,8 @@ export class ReporteOperativoSinIvaComponent {
   private filterByDateRange(data: any[]): any[] {
     if (!this.startDate || !this.endDate) return data;
 
-    const start = new Date(this.startDate);
-    const end = new Date(this.endDate);
+    const start = new Date(this.startDate + 'T00:00:00');
+    const end = new Date(this.endDate + 'T00:00:00');
     end.setHours(23, 59, 59, 999);
 
     return data.filter(item => {
@@ -571,26 +571,29 @@ export class ReporteOperativoSinIvaComponent {
 
   private processAportacionesSocios(): void {
     const aportacionesFiltradas = this.filterByDateRange(this.aportaciones);
-    const retirosFiltrados = this.filterByDateRange(this.retiros);
+    const allRetirosFiltrados = this.filterByDateRange(this.retiros);
+    const retirosFiltrados    = allRetirosFiltrados.filter(r => String(r?.type ?? '').toUpperCase() === 'RETIRO');
+    const utilidadesFiltradas = allRetirosFiltrados.filter(r => String(r?.type ?? '').toUpperCase() === 'UTILIDADES');
 
     // Clave: nombre del socio en mayúsculas; valor: montos acumulados
     const sociosMap = new Map<string, {
       aportacionBanco: number;
       aportacionEfectivo: number;
       retornoInversion: number;
+      totalUtilidad: number;
     }>();
+
+    const emptyEntry = () => ({ aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0, totalUtilidad: 0 });
 
     // Pre-poblar con los socios del corporativo actual (aunque tengan $0)
     if (this.corporativoActual) {
       ['partner1', 'partner2', 'partner3', 'partner4', 'partner5'].forEach(field => {
         const nombre = (this.corporativoActual[field] || '').trim().toUpperCase();
-        if (nombre) {
-          sociosMap.set(nombre, { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 });
-        }
+        if (nombre) sociosMap.set(nombre, emptyEntry());
       });
     }
 
-    // Procesar APORTACIONES: type='APORTACION', socio en description, banco/efectivo por idAccount→cash
+    // APORTACION: socio en description, banco/efectivo por idAccount→cash
     aportacionesFiltradas.forEach(ap => {
       const match = (ap.description || '').match(/^Aportaci[oó]n de (.+?) - /i);
       const nombreSocio = match ? match[1].trim().toUpperCase() : '';
@@ -600,43 +603,50 @@ export class ReporteOperativoSinIvaComponent {
       const esCash = cuenta?.cash === true;
       const monto = Number(ap.subtotal) || Number(ap.total) || 0;
 
-      const current = sociosMap.get(nombreSocio) || { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 };
-      if (esCash) {
-        current.aportacionEfectivo += monto;
-      } else {
-        current.aportacionBanco += monto;
-      }
+      const current = sociosMap.get(nombreSocio) || emptyEntry();
+      if (esCash) current.aportacionEfectivo += monto;
+      else        current.aportacionBanco    += monto;
       sociosMap.set(nombreSocio, current);
     });
 
-    // Procesar RETIROS/UTILIDADES: idCustomer = corporativoId * 10 + partnerNumber
-    retirosFiltrados.forEach(retiro => {
-      const idCustomer = Number(retiro.idCustomer);
-      if (!idCustomer) return;
-
+    // Helper: decodificar idCustomer → nombre del socio
+    const getNombreSocio = (idCustomer: number): string => {
+      if (!idCustomer) return '';
       const partnerNumber = idCustomer % 10;
       const corporativoId = Math.floor(idCustomer / 10);
       const corp = this.corporativos.find(c => c.id === corporativoId);
-      if (!corp) return;
+      return corp ? (corp[`partner${partnerNumber}`] || '').trim().toUpperCase() : '';
+    };
 
-      const nombreSocio = (corp[`partner${partnerNumber}`] || '').trim().toUpperCase();
+    // RETIRO → retornoInversion
+    retirosFiltrados.forEach(retiro => {
+      const nombreSocio = getNombreSocio(Number(retiro.idCustomer));
       if (!nombreSocio) return;
-
       const monto = Number(retiro.subtotal) || Number(retiro.total) || 0;
-      const current = sociosMap.get(nombreSocio) || { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 };
+      const current = sociosMap.get(nombreSocio) || emptyEntry();
       current.retornoInversion += monto;
       sociosMap.set(nombreSocio, current);
     });
 
-    // Convertir a array y calcular totales
+    // UTILIDADES → totalUtilidad
+    utilidadesFiltradas.forEach(util => {
+      const nombreSocio = getNombreSocio(Number(util.idCustomer));
+      if (!nombreSocio) return;
+      const monto = Number(util.subtotal) || Number(util.total) || 0;
+      const current = sociosMap.get(nombreSocio) || emptyEntry();
+      current.totalUtilidad += monto;
+      sociosMap.set(nombreSocio, current);
+    });
+
+    // Convertir a array
     this.aportacionesSocios = Array.from(sociosMap.entries())
       .map(([nombre, data]) => ({
         socio: nombre,
         idSocio: 0,
-        aportacionBanco: data.aportacionBanco,
+        aportacionBanco:   data.aportacionBanco,
         aportacionEfectivo: data.aportacionEfectivo,
-        retornoInversion: data.retornoInversion,
-        totalUtilidad: data.aportacionBanco + data.aportacionEfectivo - data.retornoInversion
+        retornoInversion:  data.retornoInversion,
+        totalUtilidad:     data.totalUtilidad
       }))
       .sort((a, b) => a.socio.localeCompare(b.socio));
 

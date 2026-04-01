@@ -23,11 +23,11 @@ RUN npm run build -- --configuration=production
 FROM nginx:1.27-alpine
 
 RUN apk add --no-cache curl && \
-    rm /etc/nginx/conf.d/default.conf
+  rm /etc/nginx/conf.d/default.conf
 
 COPY nginx.docker.conf /etc/nginx/conf.d/default.conf
 
-COPY --from=build /app/dist/bi-aug-24/browser /usr/share/nginx/html
+COPY --from=build /app/dist/hco-siaf-front/browser /usr/share/nginx/html
 
 EXPOSE 80
 

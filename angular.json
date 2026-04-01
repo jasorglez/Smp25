@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "bi-aug-24": {
+    "hco-siaf-front": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -39,13 +39,10 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/bi-aug-24",
+            "outputPath": "dist/hco-siaf-front",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": [
-              "zone.js",
-              "@angular/localize/init"
-            ],
+            "polyfills": ["zone.js", "@angular/localize/init"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -104,10 +101,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "bi-aug-24:build:production"
+              "buildTarget": "hco-siaf-front:build:production"
             },
             "development": {
-              "buildTarget": "bi-aug-24:build:development"
+              "buildTarget": "hco-siaf-front:build:development"
             }
           },
           "defaultConfiguration": "development"

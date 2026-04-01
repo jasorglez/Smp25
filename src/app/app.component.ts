@@ -1,8 +1,7 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import {AuthService} from "./services/auth.service";
+import { AuthService } from './services/auth.service';
 import { SignalsService } from './services/signals.service';
-
 
 @Component({
   selector: 'app-root',
@@ -11,7 +10,7 @@ import { SignalsService } from './services/signals.service';
   template: '<router-outlet></router-outlet>',
 })
 export class AppComponent implements OnInit {
-  title = 'bi-aug-24';
+  title = 'hco-siaf-front';
   private lastLoadedBranchId: number | null = null; // Variable para rastrear la última sucursal cargada
 
   private authService = inject(AuthService);
@@ -34,9 +33,16 @@ export class AppComponent implements OnInit {
     // ngOnInit puede permanecer vacío o usarse para otra lógica inicial que no dependa de estos signals.
   }
 
-  private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {
+  private loadPermissions(
+    email: string,
+    isAdvanced: boolean,
+    idBranch: number | null,
+  ) {
     // Si los permisos ya existen y no han cambiado las condiciones, no recargar.
-    if (this.authService.getUserPermissions() && Object.keys(this.authService.getUserPermissions()).length > 0) {
+    if (
+      this.authService.getUserPermissions() &&
+      Object.keys(this.authService.getUserPermissions()).length > 0
+    ) {
       if (!isAdvanced || (isAdvanced && idBranch === this.lastLoadedBranchId)) {
         return;
       }
@@ -45,25 +51,29 @@ export class AppComponent implements OnInit {
     this.authService.getUserId(email).subscribe((userId) => {
       if (isAdvanced && idBranch > 0) {
         // Intentar cargar permisos avanzados por sucursal
-        this.authService.fetchUserPermissionsAdvanced(userId, idBranch).subscribe({
-          next: (data: any) => {
-            const perms = data.permissions;
-            if (perms && Object.keys(perms).length > 0) {
-              // Tiene permisos CRUD detallados para esta sucursal
-              this.authService.setUserPermissions(perms);
-            } else {
-              // No tiene CrudPremissions para esta sucursal, usar permisos básicos
-              this.authService.fetchUserPermissions(userId).subscribe({
-                next: (basicData: any) => {
-                  this.authService.setUserPermissions(basicData.permissions);
-                },
-                error: (error) => console.error('Error fetching basic permissions:', error),
-              });
-            }
-            this.lastLoadedBranchId = idBranch;
-          },
-          error: (error) => console.error('Error fetching advanced permissions:', error),
-        });
+        this.authService
+          .fetchUserPermissionsAdvanced(userId, idBranch)
+          .subscribe({
+            next: (data: any) => {
+              const perms = data.permissions;
+              if (perms && Object.keys(perms).length > 0) {
+                // Tiene permisos CRUD detallados para esta sucursal
+                this.authService.setUserPermissions(perms);
+              } else {
+                // No tiene CrudPremissions para esta sucursal, usar permisos básicos
+                this.authService.fetchUserPermissions(userId).subscribe({
+                  next: (basicData: any) => {
+                    this.authService.setUserPermissions(basicData.permissions);
+                  },
+                  error: (error) =>
+                    console.error('Error fetching basic permissions:', error),
+                });
+              }
+              this.lastLoadedBranchId = idBranch;
+            },
+            error: (error) =>
+              console.error('Error fetching advanced permissions:', error),
+          });
       } else {
         // No avanzado o "Todas las sucursales" (idBranch negativo): usar permisos básicos
         this.authService.fetchUserPermissions(userId).subscribe({
@@ -71,7 +81,8 @@ export class AppComponent implements OnInit {
             this.authService.setUserPermissions(data.permissions);
             this.lastLoadedBranchId = idBranch;
           },
-          error: (error) => console.error('Error fetching user permissions:', error),
+          error: (error) =>
+            console.error('Error fetching user permissions:', error),
         });
       }
     });

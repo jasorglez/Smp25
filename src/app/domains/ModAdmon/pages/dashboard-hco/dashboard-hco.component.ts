@@ -1585,7 +1585,9 @@ export class DashboardHcoComponent {
     const asString = String(value).trim();
     if (!asString) return null;
 
-    const isoDate = new Date(asString);
+    // Fechas solo-fecha (YYYY-MM-DD) se parsean como UTC por spec; forzar local añadiendo hora
+    const normalized = /^\d{4}-\d{2}-\d{2}$/.test(asString) ? asString + 'T00:00:00' : asString;
+    const isoDate = new Date(normalized);
     if (!Number.isNaN(isoDate.getTime())) return isoDate;
 
     // Formato dd-MM-yyyy o dd/MM/yyyy
