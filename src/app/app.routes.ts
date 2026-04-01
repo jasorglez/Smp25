@@ -671,8 +671,9 @@ export const routes: Routes = [
               import('./domains/SMP/Components/root/root.component').then(
                 (r) => r.RootComponent
               ),
-            canActivate: [TrackingGuard],
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
             data: {
+              permissions: { master: 'setup', detailed: 'root' },
               tracking: {
                 logMessage: 'Click en Pestaña Configuración Módulo Root',
                 category: 'Setup'

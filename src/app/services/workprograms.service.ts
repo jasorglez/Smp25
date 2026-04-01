@@ -54,13 +54,26 @@ export class WorkprogramsService {
   }
 
 
-  getConceptsHierarchy(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/concepts-hierarchy?idProject=${id}`, { headers: this.trackingService.getHeaders() });
+  getConceptsHierarchy(id: number, idConvention?: number | null): Observable<any[]> {
+    const conventionParam = idConvention != null ? `&idConvention=${idConvention}` : '';
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/concepts-hierarchy?idProject=${id}${conventionParam}`, { headers: this.trackingService.getHeaders() });
   }
 
   getConceptsBySubpartida(id: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/concepts-subpartidas?idProject=${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getByConvention(idConvention: number, idProject?: number): Observable<any[]> {
+    const projectParam = idProject ? `&idProject=${idProject}` : '';
+    return this.http.get<any[]>(`${environment.urlSmp}/Workprogram/byconvention?idConvention=${idConvention}${projectParam}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  copyFromConvention(sourceConventionId: number, targetConventionId: number, idProject?: number): Observable<{ copied: number; message: string }> {
+    return this.http.post<{ copied: number; message: string }>(
+      `${environment.urlSmp}/Workprogram/copy-convention`,
+      { sourceConventionId, targetConventionId, idProject: idProject ?? null },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
 
 }

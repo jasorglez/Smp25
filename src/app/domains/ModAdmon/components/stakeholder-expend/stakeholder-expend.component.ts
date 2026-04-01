@@ -206,19 +206,36 @@ export class StakeholderExpendComponent {
     multiLineEditor: MultiLineEditorComponent,
   };
 
-  // Cargar Corporativos y extraer socios
+  // Cargar Corporativos y extraer socios solo del corporativo de la empresa actual
   async loadCorporativos() {
     return new Promise<void>((resolve) => {
-      this.rootService.getCorporativos().subscribe({
-        next: (data: any) => {
-          this.corporativos = data || [];
-          this.extractStakeholders();
-          console.log('✅ Corporativos cargados:', this.corporativos.length);
-          console.log('✅ Socios extraídos:', this.stakeholders.length);
-          resolve();
+      this.rootService.getRootbyId(this.idRoot).subscribe({
+        next: (currentRoot: any) => {
+          const idCorporativo = currentRoot?.idCorporativo;
+          if (!idCorporativo) {
+            this.corporativos = [];
+            this.stakeholders = [];
+            resolve();
+            return;
+          }
+          this.rootService.getCorporativos().subscribe({
+            next: (data: any) => {
+              this.corporativos = data || [];
+              this.extractStakeholders(idCorporativo);
+              console.log('✅ Corporativos cargados:', this.corporativos.length);
+              console.log('✅ Socios extraídos:', this.stakeholders.length);
+              resolve();
+            },
+            error: (error) => {
+              console.error('Error obteniendo corporativos:', error);
+              this.corporativos = [];
+              this.stakeholders = [];
+              resolve();
+            }
+          });
         },
         error: (error) => {
-          console.error('Error obteniendo corporativos:', error);
+          console.error('Error obteniendo empresa actual:', error);
           this.corporativos = [];
           this.stakeholders = [];
           resolve();
@@ -227,27 +244,28 @@ export class StakeholderExpendComponent {
     });
   }
 
-  // Extraer socios de los corporativos
+  // Extraer socios solo del corporativo al que pertenece la empresa
   // ID codificado: corporativoId * 10 + partnerNumber (1-5)
-  private extractStakeholders() {
+  private extractStakeholders(idCorporativo: number) {
     this.stakeholders = [];
 
-    this.corporativos.forEach(corp => {
-      const partners = ['partner1', 'partner2', 'partner3', 'partner4', 'partner5'];
-      partners.forEach((partnerField, index) => {
-        const partnerNumber = index + 1; // 1-5
-        if (corp[partnerField] && corp[partnerField].trim() !== '') {
-          // ID codificado: corporativoId * 10 + partnerNumber
-          const encodedId = corp.id * 10 + partnerNumber;
-          this.stakeholders.push({
-            id: encodedId,
-            name: corp[partnerField].trim(),
-            corporativoId: corp.id,
-            corporativoName: corp.name || 'Sin nombre',
-            partnerNumber: partnerNumber
-          });
-        }
-      });
+    const corp = this.corporativos.find(c => c.id === idCorporativo);
+    if (!corp) return;
+
+    const partners = ['partner1', 'partner2', 'partner3', 'partner4', 'partner5'];
+    partners.forEach((partnerField, index) => {
+      const partnerNumber = index + 1; // 1-5
+      if (corp[partnerField] && corp[partnerField].trim() !== '') {
+        // ID codificado: corporativoId * 10 + partnerNumber
+        const encodedId = corp.id * 10 + partnerNumber;
+        this.stakeholders.push({
+          id: encodedId,
+          name: corp[partnerField].trim(),
+          corporativoId: corp.id,
+          corporativoName: corp.name || 'Sin nombre',
+          partnerNumber: partnerNumber
+        });
+      }
     });
   }
 
