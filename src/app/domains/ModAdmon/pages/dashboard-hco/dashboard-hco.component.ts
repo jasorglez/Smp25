@@ -426,6 +426,10 @@ export class DashboardHcoComponent {
       ? { image: logoBase64, width: 55, alignment: 'left' }
       : { text: '', alignment: 'left' };
 
+    const mes = this.getMesActualNombre().toUpperCase();
+    const anio = this.selectedYear || new Date().getFullYear();
+    const titulo = `TABLERO DE GASTOS E INGRESOS ${mes}-${anio}`;
+
     return {
       margin: [20, 10, 20, 0],
       table: {
@@ -436,14 +440,14 @@ export class DashboardHcoComponent {
             {
               stack: [
                 {
-                  text: 'SISTEMA INTEGRAL DE ADMINISTRACION FINANCIERA',
+                  text: titulo,
                   fontSize: 12,
                   bold: true,
                   alignment: 'center',
                   color: '#1A365D',
                 },
                 {
-                  text: `Dashboard HCO - ${this.getFilterPeriodLabel()}`,
+                  text: 'Sistema de Gestión de Calidad',
                   fontSize: 8,
                   alignment: 'center',
                   color: '#475569',
@@ -451,7 +455,13 @@ export class DashboardHcoComponent {
                 },
               ],
             },
-            { text: '' },
+            {
+              stack: [
+                { text: 'Referencia: HCO-ADM-SGC-005', fontSize: 7, alignment: 'right', color: '#334155' },
+                { text: 'Código: HCO-ADM-FO-017',      fontSize: 7, alignment: 'right', color: '#334155' },
+                { text: 'Rev.: 00',                     fontSize: 7, alignment: 'right', color: '#334155' },
+              ],
+            },
           ],
         ],
       },
