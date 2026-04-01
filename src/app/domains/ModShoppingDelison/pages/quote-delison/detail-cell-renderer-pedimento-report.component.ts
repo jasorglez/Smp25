@@ -219,7 +219,7 @@ export class DetailCellRendererPedimentoReportComponent {
                 { text: fechaPedimento }
               ],
               [
-                { text: 'QUIEN LO CREÓ:', bold: true, fillColor: '#e3f2fd' },
+                { text: 'QUIEN LO CREÓ:2', bold: true, fillColor: '#e3f2fd' },
                 { text: quienCreo },
                 { text: 'PROVEEDOR:', bold: true, fillColor: '#e3f2fd' },
                 { text: providerName }
