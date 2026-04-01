@@ -160,9 +160,9 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         },
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.banks ? this.banks.map((item) => item.id) : [],
-        },
+        }),
         valueFormatter: (params) => {
           const foundItem = this.banks
             ? this.banks.find((item) => item.id === params.value)
@@ -331,6 +331,13 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         width: 110,
         filter: true,
       },
+      {
+        field: 'cash',
+        headerName: 'Efectivo',
+        editable: true,
+        width: 90,
+        cellEditor: 'agCheckboxCellEditor',
+      },
     ];
 
     return this._colMaster;
@@ -461,8 +468,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       error: (error) => {
         console.error('Error al cargar bancos:', error);
         this.banks = [];
-        alerts.basicAlert('Error', 'Error al cargar el catálogo de bancos', 'error');
-      }
+        alerts.basicAlert(
+          'Error',
+          'Error al cargar el catálogo de bancos',
+          'error',
+        );
+      },
     });
   }
 
@@ -477,33 +488,35 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       return;
     }
 
-    this.administrationService
-      .getAccountBanks(companyId)
-      .subscribe({
-        next: (response: any) => {
-          if (response && response.length > 0) {
-            this.rowMaster = response;
-          } else {
-            this.rowMaster = [];
-          }
-        },
-        error: (error) => {
-          // 404 significa "no hay datos", no es un error real
-          if (error.status === 404) {
-            this.rowMaster = [];
-            console.log('No hay cuentas bancarias para esta empresa');
-          } else {
-            // Otros errores sí son problemas reales
-            console.error('Error al cargar cuentas bancarias:', error);
-            this.rowMaster = [];
-            alerts.basicAlert('Error', 'Error al cargar las cuentas bancarias', 'error');
-          }
-          this.isLoading = false;
-        },
-        complete: () => {
-          this.isLoading = false;
+    this.administrationService.getAccountBanks(companyId).subscribe({
+      next: (response: any) => {
+        if (response && response.length > 0) {
+          this.rowMaster = response;
+        } else {
+          this.rowMaster = [];
         }
-      });
+      },
+      error: (error) => {
+        // 404 significa "no hay datos", no es un error real
+        if (error.status === 404) {
+          this.rowMaster = [];
+          console.log('No hay cuentas bancarias para esta empresa');
+        } else {
+          // Otros errores sí son problemas reales
+          console.error('Error al cargar cuentas bancarias:', error);
+          this.rowMaster = [];
+          alerts.basicAlert(
+            'Error',
+            'Error al cargar las cuentas bancarias',
+            'error',
+          );
+        }
+        this.isLoading = false;
+      },
+      complete: () => {
+        this.isLoading = false;
+      },
+    });
   }
 
   private loadBalanceData(id: string) {
@@ -568,7 +581,11 @@ export class AccountbanksComponent implements CanComponentDeactivate {
   addRow() {
     const companyId = parseInt(localStorage.getItem('company') || '0');
     if (!companyId || companyId === 0) {
-      alerts.basicAlert('Error', 'No se ha seleccionado una empresa válida', 'error');
+      alerts.basicAlert(
+        'Error',
+        'No se ha seleccionado una empresa válida',
+        'error',
+      );
       return;
     }
 
@@ -591,6 +608,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       maskex: '',
       consecex: 0,
       eAplicaFiscal: 'Si',
+      cash: false,
       active: true,
       __isNew: true,
     };
@@ -613,20 +631,20 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     //console.log('RowData', this.rowData)
 
     const isValid = this.rowMaster.every(
-      (item) => item.numberAccount && item.nameAccount
+      (item) => item.numberAccount && item.nameAccount,
     );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
         'Debe llenar todos los campos antes de guardar.',
-        'error'
+        'error',
       );
       return;
     }
 
     const newRows = this.rowMaster.filter((row) => row.__isNew);
     const modifiedRows = this.rowMaster.filter(
-      (row) => row.__modified && !row.__isNew
+      (row) => row.__modified && !row.__isNew,
     );
 
     const addObservables = newRows.map((row) => {
@@ -643,12 +661,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     // Using concat to combine observables and lastValueFrom for async/await
     try {
       const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
+        concat(...addObservables, ...updateObservables).pipe(toArray()),
       );
       alerts.basicAlert(
         'Datos actualizados',
         'Se han actualizado los datos correctamente.',
-        'success'
+        'success',
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
@@ -661,7 +679,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
+        'error',
       );
     }
   }
@@ -672,7 +690,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       alerts.basicAlert(
         'Eliminar entrada',
         'Por favor, seleccione una entrada para eliminar.',
-        'error'
+        'error',
       );
       return;
     }
@@ -683,15 +701,19 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     // Verificar si es una fila temporal (no guardada)
     if (id.toString().startsWith('temp_')) {
       // Eliminar del array local sin llamar al API
-      this.rowMaster = this.rowMaster.filter(row => row.id !== id);
-      this.newlyAddedRows = this.newlyAddedRows.filter(tempId => tempId !== id);
-      this.notSavedChanges = this.rowMaster.some(row => row.__isNew || row.__modified);
+      this.rowMaster = this.rowMaster.filter((row) => row.id !== id);
+      this.newlyAddedRows = this.newlyAddedRows.filter(
+        (tempId) => tempId !== id,
+      );
+      this.notSavedChanges = this.rowMaster.some(
+        (row) => row.__isNew || row.__modified,
+      );
       this.selectedRowData = null;
       this.gridApi.setGridOption('rowData', this.rowMaster);
       alerts.basicAlert(
         'Eliminar entrada',
         'Entrada eliminada satisfactoriamente.',
-        'success'
+        'success',
       );
       return;
     }
@@ -704,7 +726,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       alerts.basicAlert(
         'No se puede eliminar',
         'Tienes Gastos e Ingresos en la cuenta. No es posible eliminarla.',
-        'error'
+        'error',
       );
       return;
     }
@@ -714,7 +736,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       'Eliminar cuenta bancaria',
       `¿Está seguro que desea eliminar la cuenta "${selectedData.nameAccount}"?`,
       'warning',
-      'Sí, eliminar'
+      'Sí, eliminar',
     );
 
     if (!result.isConfirmed) {
@@ -729,16 +751,16 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           alerts.basicAlert(
             'Eliminar entrada',
             'Error al eliminar la entrada.',
-            'error'
+            'error',
           );
           return EMPTY;
-        })
+        }),
       )
       .subscribe(() => {
         alerts.basicAlert(
           'Eliminar entrada',
           'Entrada eliminada satisfactoriamente.',
-          'success'
+          'success',
         );
         this.notSavedChanges = false;
         this.selectedRowData = null;
@@ -768,7 +790,8 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       consecin: data.consecin || 0,
       maskex: data.maskex || '',
       consecex: data.consecex || 0,
-      eAplicaFiscal: data.eAplicaFiscal || 'Si'
+      eAplicaFiscal: data.eAplicaFiscal || 'Si',
+      cash: data.cash ? true : false,
     };
 
     // Solo incluir ID si no es temporal (para updates)
@@ -776,7 +799,12 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       cleanedData.id = data.id;
     }
 
-    console.log('🔍 CompanyId:', companyId, '| idBussines final:', cleanedData.idBussines);
+    console.log(
+      '🔍 CompanyId:',
+      companyId,
+      '| idBussines final:',
+      cleanedData.idBussines,
+    );
 
     return cleanedData;
   }
@@ -785,19 +813,27 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
   openSaldosModal() {
     if (!this.selectedRowData) {
-      alerts.basicAlert('Aviso', 'Seleccione una cuenta bancaria primero.', 'warning');
+      alerts.basicAlert(
+        'Aviso',
+        'Seleccione una cuenta bancaria primero.',
+        'warning',
+      );
       return;
     }
     if (!this.rowDetails || this.rowDetails.length === 0) {
-      alerts.basicAlert('Aviso', 'La cuenta seleccionada no tiene movimientos registrados.', 'info');
+      alerts.basicAlert(
+        'Aviso',
+        'La cuenta seleccionada no tiene movimientos registrados.',
+        'info',
+      );
       return;
     }
     const now = new Date();
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const firstDay = new Date(prev.getFullYear(), prev.getMonth(), 1);
-    const lastDay  = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+    const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
     this.reportSaldosStartDate = this.formatDateSaldos(firstDay);
-    this.reportSaldosEndDate   = this.formatDateSaldos(lastDay);
+    this.reportSaldosEndDate = this.formatDateSaldos(lastDay);
     this.showSaldosModal = true;
     document.body.classList.add('modal-open');
   }
@@ -815,7 +851,10 @@ export class AccountbanksComponent implements CanComponentDeactivate {
   }
 
   formatCurrencySaldos(amount: number): string {
-    return (amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (amount || 0).toLocaleString('es-MX', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   }
 
   async generateSaldosReport() {
@@ -828,12 +867,16 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       if (!item.fecha) return false;
       const d = new Date(item.fecha);
       if (isNaN(d.getTime())) return false;
-      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       return ds >= this.reportSaldosStartDate && ds <= this.reportSaldosEndDate;
     });
 
     if (filtered.length === 0) {
-      alerts.basicAlert('Sin datos', 'No hay movimientos en el rango de fechas seleccionado', 'info');
+      alerts.basicAlert(
+        'Sin datos',
+        'No hay movimientos en el rango de fechas seleccionado',
+        'info',
+      );
       return;
     }
 
@@ -842,15 +885,20 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     try {
       const companyId = parseInt(localStorage.getItem('company') || '0');
       const bankName = this.banks
-        ? (this.banks.find((b: any) => b.id === this.selectedRowData?.idBanco)?.name || '')
+        ? this.banks.find((b: any) => b.id === this.selectedRowData?.idBanco)
+            ?.name || ''
         : '';
       const accountName = `${this.selectedRowData?.nameAccount || ''} - ${bankName}`;
 
       let logoData: string | null = null;
       try {
-        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(companyId));
+        const rootData: any = await lastValueFrom(
+          this.rootService.getRootbyId(companyId),
+        );
         if (rootData?.picture) {
-          logoData = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+          logoData = await this.base64EncodeService.convertImageToBase64(
+            rootData.picture,
+          );
         }
       } catch {}
 
@@ -860,15 +908,17 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
       const period = `Del ${this.reportSaldosStartDate} al ${this.reportSaldosEndDate}`;
 
-      const tableRows: any[] = [[
-        { text: 'NUMERO DOCUMENTO', style: 'th' },
-        { text: 'FECHA',            style: 'th' },
-        { text: 'DESCRIPCION',      style: 'th' },
-        { text: 'TIPO',             style: 'th' },
-        { text: 'DEPOSITO',         style: 'th' },
-        { text: 'GASTO',            style: 'th' },
-        { text: 'SALDO',            style: 'th' },
-      ]];
+      const tableRows: any[] = [
+        [
+          { text: 'NUMERO DOCUMENTO', style: 'th' },
+          { text: 'FECHA', style: 'th' },
+          { text: 'DESCRIPCION', style: 'th' },
+          { text: 'TIPO', style: 'th' },
+          { text: 'DEPOSITO', style: 'th' },
+          { text: 'GASTO', style: 'th' },
+          { text: 'SALDO', style: 'th' },
+        ],
+      ];
 
       let totalDeposito = 0;
       let totalGasto = 0;
@@ -876,35 +926,89 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       filtered.forEach((item: any, idx: number) => {
         const bg = idx % 2 === 0 ? '#eaf4fb' : '#ffffff';
         const deposito = parseFloat(item.deposito) || 0;
-        const gasto    = parseFloat(item.gasto)    || 0;
-        const saldo    = parseFloat(item.saldo)    || 0;
+        const gasto = parseFloat(item.gasto) || 0;
+        const saldo = parseFloat(item.saldo) || 0;
         totalDeposito += deposito;
-        totalGasto    += gasto;
+        totalGasto += gasto;
 
         const fechaDisplay = (() => {
           try {
             const d = new Date(item.fecha);
-            return isNaN(d.getTime()) ? (item.fecha || '') :
-              `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-          } catch { return item.fecha || ''; }
+            return isNaN(d.getTime())
+              ? item.fecha || ''
+              : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+          } catch {
+            return item.fecha || '';
+          }
         })();
 
         tableRows.push([
           { text: item.numeroDocumento || '', style: 'td', fillColor: bg },
-          { text: fechaDisplay, style: 'td', fillColor: bg, alignment: 'center' },
+          {
+            text: fechaDisplay,
+            style: 'td',
+            fillColor: bg,
+            alignment: 'center',
+          },
           { text: item.descripcion || '', style: 'td', fillColor: bg },
-          { text: item.tipo || '', style: 'td', fillColor: bg, alignment: 'center' },
-          { text: deposito > 0 ? `$${this.formatCurrencySaldos(deposito)}` : '', style: 'td', fillColor: bg, alignment: 'right', color: '#008000' },
-          { text: gasto > 0 ? `$${this.formatCurrencySaldos(gasto)}` : '', style: 'td', fillColor: bg, alignment: 'right', color: '#CC0000' },
-          { text: `$${this.formatCurrencySaldos(saldo)}`, style: 'td', fillColor: bg, alignment: 'right', color: saldo >= 0 ? '#000080' : '#CC0000' },
+          {
+            text: item.tipo || '',
+            style: 'td',
+            fillColor: bg,
+            alignment: 'center',
+          },
+          {
+            text: deposito > 0 ? `$${this.formatCurrencySaldos(deposito)}` : '',
+            style: 'td',
+            fillColor: bg,
+            alignment: 'right',
+            color: '#008000',
+          },
+          {
+            text: gasto > 0 ? `$${this.formatCurrencySaldos(gasto)}` : '',
+            style: 'td',
+            fillColor: bg,
+            alignment: 'right',
+            color: '#CC0000',
+          },
+          {
+            text: `$${this.formatCurrencySaldos(saldo)}`,
+            style: 'td',
+            fillColor: bg,
+            alignment: 'right',
+            color: saldo >= 0 ? '#000080' : '#CC0000',
+          },
         ]);
       });
 
       tableRows.push([
-        { text: 'TOTAL', colSpan: 4, style: 'totalLabel', alignment: 'right', bold: true, border: [false, true, false, false] },
-        {}, {}, {},
-        { text: `$${this.formatCurrencySaldos(totalDeposito)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#008000' },
-        { text: `$${this.formatCurrencySaldos(totalGasto)}`,    style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#CC0000' },
+        {
+          text: 'TOTAL',
+          colSpan: 4,
+          style: 'totalLabel',
+          alignment: 'right',
+          bold: true,
+          border: [false, true, false, false],
+        },
+        {},
+        {},
+        {},
+        {
+          text: `$${this.formatCurrencySaldos(totalDeposito)}`,
+          style: 'totalValue',
+          alignment: 'right',
+          border: [false, true, false, false],
+          bold: true,
+          color: '#008000',
+        },
+        {
+          text: `$${this.formatCurrencySaldos(totalGasto)}`,
+          style: 'totalValue',
+          alignment: 'right',
+          border: [false, true, false, false],
+          bold: true,
+          color: '#CC0000',
+        },
         { text: '', border: [false, true, false, false] },
       ]);
 
@@ -919,57 +1023,108 @@ export class AccountbanksComponent implements CanComponentDeactivate {
               : { text: '', width: 60, margin: [20, 10, 0, 0] },
             {
               stack: [
-                { text: 'ESTADO DE CUENTA / REPORTE DE SALDOS', fontSize: 11, bold: true, alignment: 'center' },
-                { text: accountName, fontSize: 9, alignment: 'center', color: '#444' },
-                { text: period, fontSize: 8, alignment: 'center', color: '#666' },
+                {
+                  text: 'ESTADO DE CUENTA / REPORTE DE SALDOS',
+                  fontSize: 11,
+                  bold: true,
+                  alignment: 'center',
+                },
+                {
+                  text: accountName,
+                  fontSize: 9,
+                  alignment: 'center',
+                  color: '#444',
+                },
+                {
+                  text: period,
+                  fontSize: 8,
+                  alignment: 'center',
+                  color: '#666',
+                },
               ],
-              margin: [0, 10, 0, 0]
+              margin: [0, 10, 0, 0],
             },
             {
               stack: [
-                { text: 'Referencia: EST-CTB', fontSize: 7, alignment: 'right', color: '#666' },
-                { text: 'Código: 09', fontSize: 7, alignment: 'right', color: '#666' },
-                { text: 'Rev: 00', fontSize: 7, alignment: 'right', color: '#666' },
-                { text: `Pág. ${currentPage}/${pageCount}`, fontSize: 7, alignment: 'right', color: '#666' },
+                {
+                  text: 'Referencia: EST-CTB',
+                  fontSize: 7,
+                  alignment: 'right',
+                  color: '#666',
+                },
+                {
+                  text: 'Código: 09',
+                  fontSize: 7,
+                  alignment: 'right',
+                  color: '#666',
+                },
+                {
+                  text: 'Rev: 00',
+                  fontSize: 7,
+                  alignment: 'right',
+                  color: '#666',
+                },
+                {
+                  text: `Pág. ${currentPage}/${pageCount}`,
+                  fontSize: 7,
+                  alignment: 'right',
+                  color: '#666',
+                },
               ],
-              margin: [0, 10, 20, 0]
-            }
-          ]
+              margin: [0, 10, 20, 0],
+            },
+          ],
         }),
-        content: [{
-          table: {
-            headerRows: 1,
-            widths: [85, 65, '*', 65, 70, 70, 70],
-            body: tableRows,
+        content: [
+          {
+            table: {
+              headerRows: 1,
+              widths: [85, 65, '*', 65, 70, 70, 70],
+              body: tableRows,
+            },
+            layout: {
+              hLineWidth: (i: number, node: any) =>
+                i === 0 || i === node.table.body.length ? 1 : 0.3,
+              vLineWidth: () => 0.3,
+              hLineColor: () => '#aaa',
+              vLineColor: () => '#aaa',
+            },
           },
-          layout: {
-            hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length) ? 1 : 0.3,
-            vLineWidth: () => 0.3,
-            hLineColor: () => '#aaa',
-            vLineColor: () => '#aaa',
-          }
-        }],
+        ],
         styles: {
-          th:         { fontSize: 7, bold: true, color: '#FFFFFF', fillColor: '#1a5276', alignment: 'center', margin: [2, 3, 2, 3] },
-          td:         { fontSize: 7, margin: [2, 2, 2, 2] },
+          th: {
+            fontSize: 7,
+            bold: true,
+            color: '#FFFFFF',
+            fillColor: '#1a5276',
+            alignment: 'center',
+            margin: [2, 3, 2, 3],
+          },
+          td: { fontSize: 7, margin: [2, 2, 2, 2] },
           totalLabel: { fontSize: 7, margin: [2, 3, 2, 3] },
           totalValue: { fontSize: 7, margin: [2, 3, 2, 3] },
-        }
+        },
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
       try {
         pdf.open();
       } catch {
-        pdf.download(`saldos-${this.selectedRowData?.nameAccount || 'cuenta'}-${this.reportSaldosStartDate}-al-${this.reportSaldosEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        pdf.download(
+          `saldos-${this.selectedRowData?.nameAccount || 'cuenta'}-${this.reportSaldosStartDate}-al-${this.reportSaldosEndDate}.pdf`,
+        );
+        alerts.basicAlert(
+          'Reporte descargado',
+          'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
+          'info',
+        );
       }
       this.closeSaldosModal();
       this.trackingService.addLog(
         'AccountBanks',
         `Reporte de Saldos: ${accountName} - ${this.reportSaldosStartDate} al ${this.reportSaldosEndDate}`,
         'Cuentas Bancarias - Saldos',
-        this.trackingService.getEmail()
+        this.trackingService.getEmail(),
       );
     } catch (error) {
       console.error('Error al generar reporte de saldos:', error);
@@ -983,7 +1138,11 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
   openAjusteModal() {
     if (!this.selectedRowData) {
-      alerts.basicAlert('Aviso', 'Seleccione una cuenta bancaria primero.', 'warning');
+      alerts.basicAlert(
+        'Aviso',
+        'Seleccione una cuenta bancaria primero.',
+        'warning',
+      );
       return;
     }
 
@@ -1006,18 +1165,29 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     // Convertir fecha de cada fila al mismo formato YYYY-MM-DD (igual que el PDF)
     const toDs = (fecha: any): string => {
       const d = new Date(fecha);
-      return isNaN(d.getTime()) ? ''
+      return isNaN(d.getTime())
+        ? ''
         : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
     // Ordenar por fecha ascendente y quedarse con las que sean <= fecha seleccionada
     const candidatos = (this.rowDetails as any[])
-      .filter(item => item.fecha && toDs(item.fecha) !== '' && toDs(item.fecha) <= fechaSel)
-      .sort((a, b) => toDs(a.fecha) < toDs(b.fecha) ? -1 : toDs(a.fecha) > toDs(b.fecha) ? 1 : 0);
+      .filter(
+        (item) =>
+          item.fecha && toDs(item.fecha) !== '' && toDs(item.fecha) <= fechaSel,
+      )
+      .sort((a, b) =>
+        toDs(a.fecha) < toDs(b.fecha)
+          ? -1
+          : toDs(a.fecha) > toDs(b.fecha)
+            ? 1
+            : 0,
+      );
 
     if (candidatos.length > 0) {
       // El último (más reciente hasta esa fecha) tiene el saldo acumulado correcto
-      this.saldoActual = parseFloat(candidatos[candidatos.length - 1].saldo) || 0;
+      this.saldoActual =
+        parseFloat(candidatos[candidatos.length - 1].saldo) || 0;
     } else {
       // No hay movimientos anteriores a esa fecha
       this.saldoActual = this.selectedRowData?.saldo || 0;
@@ -1049,8 +1219,20 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       const companyId = parseInt(localStorage.getItem('company') || '0');
       // Añadir hora para evitar desfase de zona horaria
       const fechaAjuste = new Date(this.ajusteDate + 'T12:00:00');
-      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const meses = [
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre',
+      ];
       const paymentMonth = meses[fechaAjuste.getMonth()];
 
       const adjustmentData = {
@@ -1076,9 +1258,15 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         active: true,
       };
 
-      await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(adjustmentData));
+      await lastValueFrom(
+        this.incomesAndExpensesService.addIncomesAndExpenses(adjustmentData),
+      );
 
-      alerts.basicAlert('Ajuste guardado', 'El ajuste de saldo se ha registrado correctamente.', 'success');
+      alerts.basicAlert(
+        'Ajuste guardado',
+        'El ajuste de saldo se ha registrado correctamente.',
+        'success',
+      );
 
       this.closeAjusteModal();
 
@@ -1092,11 +1280,15 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         'AccountBanks',
         `Ajuste de Saldo: ${this.selectedRowData?.nameAccount} - ${this.ajusteTipo} $${this.ajusteMonto}`,
         'Cuentas Bancarias - Ajuste Saldo',
-        this.trackingService.getEmail()
+        this.trackingService.getEmail(),
       );
     } catch (error) {
       console.error('Error al guardar ajuste:', error);
-      alerts.basicAlert('Error', 'Error al registrar el ajuste de saldo.', 'error');
+      alerts.basicAlert(
+        'Error',
+        'Error al registrar el ajuste de saldo.',
+        'error',
+      );
     } finally {
       this.isSavingAjuste = false;
     }
@@ -1113,7 +1305,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       'Cambios sin guardar',
       'Tienes cambios sin guardar. ¿Deseas salir sin guardar?',
       'warning',
-      'Sí, salir'
+      'Sí, salir',
     );
     return result.isConfirmed;
   }

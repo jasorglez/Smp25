@@ -9,8 +9,10 @@ import { CuentasContablesService } from 'app/services/cuentas-contables.service'
 import { ProjectsService } from 'app/services/projects.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { BranchsService } from 'app/services/branchs.service';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, lastValueFrom, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
 import { NgApexchartsModule, ChartComponent } from 'ng-apexcharts';
 import { Workbook } from 'exceljs';
@@ -93,6 +95,8 @@ export class DashboardHcoComponent {
   private projectsService = inject(ProjectsService);
   private employeesService = inject(EmployeesService);
   private branchsService = inject(BranchsService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
 
   // Estado del componente
   public rootId: number;
@@ -112,8 +116,12 @@ export class DashboardHcoComponent {
   public isDataReady = false;
 
   private checkDataReady(): void {
-    this.isDataReady = this._loadedEmployees && this._loadedBranches &&
-                       this._loadedProjects && this._loadedCuentas && this._loadedEgresos;
+    this.isDataReady =
+      this._loadedEmployees &&
+      this._loadedBranches &&
+      this._loadedProjects &&
+      this._loadedCuentas &&
+      this._loadedEgresos;
   }
 
   private resetLoadFlags(): void {
@@ -198,6 +206,21 @@ export class DashboardHcoComponent {
     this.isExportingPdf = true;
 
     try {
+      // Obtener logo de la empresa
+      const rootData: any = await lastValueFrom(
+        this.rootService.getRootbyId(this.rootId),
+      );
+      let logoBase64: string | null = null;
+      if (rootData?.picture) {
+        try {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(
+            rootData.picture,
+          );
+        } catch (e) {
+          console.warn('No se pudo cargar el logo');
+        }
+      }
+
       const [pieChart, barChart, combustibleChart, lineChart] =
         await Promise.all([
           this.captureChartAsBase64(this.personalChartRef),
@@ -216,7 +239,8 @@ export class DashboardHcoComponent {
       const documentDefinition = {
         pageSize: 'TABLOID',
         pageOrientation: 'landscape',
-        pageMargins: [20, 20, 20, 20],
+        pageMargins: [20, 65, 20, 20],
+        header: this.buildPdfHeader(logoBase64),
         content,
         styles: {
           title: {
@@ -384,12 +408,6 @@ export class DashboardHcoComponent {
     }
 
     const content: any[] = [
-      { text: 'SISTEMA INTEGRAL DE ADMINISTRACION FINANCIERA', style: 'title' },
-      {
-        text: `Dashboard HCO - ${this.getFilterPeriodLabel()}`,
-        style: 'subtitle',
-        margin: [0, 2, 0, 4],
-      },
       kpiTable,
       {
         columns: [
@@ -401,6 +419,44 @@ export class DashboardHcoComponent {
     ];
 
     return content;
+  }
+
+  private buildPdfHeader(logoBase64: string | null): any {
+    const logoCell = logoBase64
+      ? { image: logoBase64, width: 55, alignment: 'left' }
+      : { text: '', alignment: 'left' };
+
+    return {
+      margin: [20, 10, 20, 0],
+      table: {
+        widths: ['15%', '*', '20%'],
+        body: [
+          [
+            logoCell,
+            {
+              stack: [
+                {
+                  text: 'SISTEMA INTEGRAL DE ADMINISTRACION FINANCIERA',
+                  fontSize: 12,
+                  bold: true,
+                  alignment: 'center',
+                  color: '#1A365D',
+                },
+                {
+                  text: `Dashboard HCO - ${this.getFilterPeriodLabel()}`,
+                  fontSize: 8,
+                  alignment: 'center',
+                  color: '#475569',
+                  margin: [0, 2, 0, 0],
+                },
+              ],
+            },
+            { text: '' },
+          ],
+        ],
+      },
+      layout: 'noBorders',
+    };
   }
 
   private buildPdfKpiCell(label: string, value: string, color: string): any {
@@ -1223,7 +1279,7 @@ export class DashboardHcoComponent {
     const start = this.startDate || 'sin fecha inicial';
     const end = this.endDate || 'sin fecha final';
     const year = this.selectedYear ? String(this.selectedYear) : 'Todos';
-    return `Periodo ${start} al ${end} | Ano: ${year}`;
+    return `Periodo ${start} al ${end} | Año: ${year}`;
   }
 
   private loadData(rootId: number): void {

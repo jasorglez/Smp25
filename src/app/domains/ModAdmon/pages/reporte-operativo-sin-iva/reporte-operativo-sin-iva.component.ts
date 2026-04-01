@@ -97,6 +97,7 @@ export class ReporteOperativoSinIvaComponent {
   private ingresos: any[] = [];
   private egresos: any[] = [];
   private retiros: any[] = [];
+  private aportaciones: any[] = [];
   private empresas: any[] = [];
   private cuentasContablesNivel2: any[] = [];
   private allRoots: any[] = [];
@@ -233,6 +234,7 @@ export class ReporteOperativoSinIvaComponent {
       this.ingresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'DEPOSITO');
       this.egresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
       this.retiros = allData.filter(item => ['RETIRO', 'UTILIDADES'].includes(String(item?.type ?? '').toUpperCase()));
+      this.aportaciones = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'APORTACION');
 
       // Obtener empresas del mismo corporativo
       const idCorporativo = currentRoot?.idCorporativo;
@@ -568,9 +570,8 @@ export class ReporteOperativoSinIvaComponent {
   }
 
   private processAportacionesSocios(): void {
-    // Filtrar transferencias por rango de fechas
-    const recibidas = this.filterByDateRange(this.transferenciasRecibidas);
-    const enviadas = this.filterByDateRange(this.transferenciasEnviadas);
+    const aportacionesFiltradas = this.filterByDateRange(this.aportaciones);
+    const retirosFiltrados = this.filterByDateRange(this.retiros);
 
     // Clave: nombre del socio en mayúsculas; valor: montos acumulados
     const sociosMap = new Map<string, {
@@ -589,33 +590,41 @@ export class ReporteOperativoSinIvaComponent {
       });
     }
 
-    // Procesar transferencias RECIBIDAS (aportaciones de socios hacia nosotros)
-    recibidas.forEach(trans => {
-      const nombreSocio = (trans._empresaOrigenName || '').trim().toUpperCase();
+    // Procesar APORTACIONES: type='APORTACION', socio en description, banco/efectivo por idAccount→cash
+    aportacionesFiltradas.forEach(ap => {
+      const match = (ap.description || '').match(/^Aportaci[oó]n de (.+?) - /i);
+      const nombreSocio = match ? match[1].trim().toUpperCase() : '';
       if (!nombreSocio) return;
 
-      const current = sociosMap.get(nombreSocio) || { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 };
-      const monto = Number(trans.subtotal) || Number(trans.total) || 0;
-      const formaPago = String(trans.formaPago || '').toLowerCase();
+      const cuenta = this.cuentasBancarias.find(c => c.id === ap.idAccount);
+      const esCash = cuenta?.cash === true;
+      const monto = Number(ap.subtotal) || Number(ap.total) || 0;
 
-      if (formaPago === '01' || formaPago.includes('efectivo')) {
+      const current = sociosMap.get(nombreSocio) || { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 };
+      if (esCash) {
         current.aportacionEfectivo += monto;
       } else {
         current.aportacionBanco += monto;
       }
-
       sociosMap.set(nombreSocio, current);
     });
 
-    // Procesar transferencias ENVIADAS (retorno de inversión hacia socios)
-    enviadas.forEach(trans => {
-      const nombreSocio = (trans._empresaDestinoName || '').trim().toUpperCase();
+    // Procesar RETIROS/UTILIDADES: idCustomer = corporativoId * 10 + partnerNumber
+    retirosFiltrados.forEach(retiro => {
+      const idCustomer = Number(retiro.idCustomer);
+      if (!idCustomer) return;
+
+      const partnerNumber = idCustomer % 10;
+      const corporativoId = Math.floor(idCustomer / 10);
+      const corp = this.corporativos.find(c => c.id === corporativoId);
+      if (!corp) return;
+
+      const nombreSocio = (corp[`partner${partnerNumber}`] || '').trim().toUpperCase();
       if (!nombreSocio) return;
 
+      const monto = Number(retiro.subtotal) || Number(retiro.total) || 0;
       const current = sociosMap.get(nombreSocio) || { aportacionBanco: 0, aportacionEfectivo: 0, retornoInversion: 0 };
-      const monto = Number(trans.subtotal) || Number(trans.total) || 0;
       current.retornoInversion += monto;
-
       sociosMap.set(nombreSocio, current);
     });
 
