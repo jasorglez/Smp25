@@ -1309,11 +1309,11 @@ export class DashboardHcoComponent {
         this.checkDataReady();
       });
 
-    // Cargar catálogo de cuentas contables nivel 2 (subclasificación) - mismo método que expenditure
-    this.cuentasContablesService.getByNivel(rootId, 2).subscribe((data) => {
+    // Cargar todas las cuentas contables (nivel 1 y 2) para poder subir al padre
+    this.cuentasContablesService.getAll(rootId).subscribe((data) => {
       this.cuentasContablesNivel2 = data || [];
       console.log(
-        '✅ Cuentas contables Nivel 2 cargadas:',
+        '✅ Cuentas contables cargadas:',
         this.cuentasContablesNivel2.length,
       );
       this._loadedCuentas = true;
@@ -1489,20 +1489,30 @@ export class DashboardHcoComponent {
   }
 
   private getTipoGasto(item: any): { codigo: string; nombre: string } {
-    // Buscar primero por idSubclasificacion (nivel 2) - usado en expenditure
+    // Para idSubclasificacion (nivel 2): subir al padre (nivel 1) via idPadre
     if (item?.idSubclasificacion) {
-      const cuenta = this.cuentasContablesNivel2.find(
+      const subcuenta = this.cuentasContablesNivel2.find(
         (c) => c.id === item.idSubclasificacion,
       );
-      if (cuenta) {
+      if (subcuenta?.idPadre) {
+        const padre = this.cuentasContablesNivel2.find(c => c.id === subcuenta.idPadre);
+        if (padre) {
+          return {
+            codigo: String(padre.codigo ?? subcuenta.idPadre),
+            nombre: padre.nombre || padre.descripcion || 'Clasificación',
+          };
+        }
+      }
+      // Fallback: si no tiene padre, usar la subcuenta misma
+      if (subcuenta) {
         return {
-          codigo: String(cuenta.codigo ?? item.idSubclasificacion),
-          nombre: cuenta.nombre || cuenta.descripcion || 'Subclasificación',
+          codigo: String(subcuenta.codigo ?? item.idSubclasificacion),
+          nombre: subcuenta.nombre || subcuenta.descripcion || 'Subclasificación',
         };
       }
     }
 
-    // Luego buscar por idClasificacion (nivel 1)
+    // Para idClasificacion (nivel 1): buscar directamente
     if (item?.idClasificacion) {
       const cuenta = this.cuentasContablesNivel2.find(
         (c) => c.id === item.idClasificacion,
@@ -1519,6 +1529,15 @@ export class DashboardHcoComponent {
     const idExpend = this.getIdExpend(item);
     if (idExpend) {
       const cuenta = this.cuentasContablesNivel2.find((c) => c.id === idExpend);
+      if (cuenta?.idPadre) {
+        const padre = this.cuentasContablesNivel2.find(c => c.id === cuenta.idPadre);
+        if (padre) {
+          return {
+            codigo: String(padre.codigo ?? cuenta.idPadre),
+            nombre: padre.nombre || padre.descripcion || 'Clasificación',
+          };
+        }
+      }
       if (cuenta) {
         return {
           codigo: String(cuenta.codigo ?? idExpend),
