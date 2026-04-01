@@ -58,6 +58,7 @@
         <table class="reporte-table">
           <thead>
             <tr>
+              <th class="text-center">Cliente</th>
               <th class="text-center">Proyecto</th>
               <th class="text-center">Fecha</th>
               <th class="text-center">Mes</th>
@@ -74,11 +75,11 @@
               <th class="text-center">Proveedor</th>
               <th class="text-center">Tipo Pago</th>
               <th class="text-center">Cuenta</th>
-              <th class="text-center">Cliente</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let e of concentradoEgresos; let i = index" [class.row-alt]="i % 2 === 0">
+              <td class="text-center">{{ e.cliente }}</td>
               <td class="text-center">{{ e.proyecto }}</td>
               <td class="text-center">{{ e.fecha | date:'dd/MM/yyyy' }}</td>
               <td class="text-center">{{ e.mes }}</td>
@@ -95,7 +96,6 @@
               <td class="text-center">{{ e.proveedor }}</td>
               <td class="text-center">{{ e.tipoPago }}</td>
               <td class="text-center cuenta-cell">{{ e.cuenta }}</td>
-              <td class="text-center">{{ e.cliente }}</td>
             </tr>
           </tbody>
           <tfoot>

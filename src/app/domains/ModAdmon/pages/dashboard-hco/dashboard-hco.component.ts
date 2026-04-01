@@ -26,7 +26,7 @@ import {
   ApexTooltip,
   ApexStroke,
   ApexFill,
-} from "ng-apexcharts";
+} from 'ng-apexcharts';
 
 // Tipos para las gráficas
 export type LineChartOptions = {
@@ -75,12 +75,13 @@ export interface FlujoMensual {
   standalone: true,
   imports: [CommonModule, NgApexchartsModule, FormsModule],
   templateUrl: './dashboard-hco.component.html',
-  styleUrl: './dashboard-hco.component.scss'
+  styleUrl: './dashboard-hco.component.scss',
 })
 export class DashboardHcoComponent {
   @ViewChild('personalChartRef') private personalChartRef?: ChartComponent;
   @ViewChild('pieChartRef') private pieChartRef?: ChartComponent;
-  @ViewChild('combustibleChartRef') private combustibleChartRef?: ChartComponent;
+  @ViewChild('combustibleChartRef')
+  private combustibleChartRef?: ChartComponent;
   @ViewChild('lineChartRef') private lineChartRef?: ChartComponent;
 
   private pdfWorkerService = inject(PdfWorkerService);
@@ -102,6 +103,28 @@ export class DashboardHcoComponent {
   public isExportingPdf = false;
   public isExportingXlsx = false;
 
+  // Flags de carga — todos deben ser true para habilitar exportación
+  private _loadedEmployees = false;
+  private _loadedBranches = false;
+  private _loadedProjects = false;
+  private _loadedCuentas = false;
+  private _loadedEgresos = false;
+  public isDataReady = false;
+
+  private checkDataReady(): void {
+    this.isDataReady = this._loadedEmployees && this._loadedBranches &&
+                       this._loadedProjects && this._loadedCuentas && this._loadedEgresos;
+  }
+
+  private resetLoadFlags(): void {
+    this._loadedEmployees = false;
+    this._loadedBranches = false;
+    this._loadedProjects = false;
+    this._loadedCuentas = false;
+    this._loadedEgresos = false;
+    this.isDataReady = false;
+  }
+
   // Datos crudos - separados por tipo
   private egresosData: any[] = [];
   private ingresosData: any[] = [];
@@ -116,7 +139,12 @@ export class DashboardHcoComponent {
   // Datos para tablas - Solo clasificación de EGRESOS
   public clasificacionEgresos: ClasificacionContable[] = [];
   public flujoMensual: FlujoMensual[] = [];
-  public totalesPorAnio: { anio: number; egreso: number; ingreso: number; flujo: number }[] = [];
+  public totalesPorAnio: {
+    anio: number;
+    egreso: number;
+    ingreso: number;
+    flujo: number;
+  }[] = [];
 
   // Opciones de gráficas
   public pieChartOptions: Partial<PieChartOptions>;
@@ -137,7 +165,9 @@ export class DashboardHcoComponent {
   constructor() {
     // Inicializar fechas por defecto (últimos 24 meses para tener histórico)
     const today = new Date();
-    const twentyFourMonthsAgo = new Date(new Date().setMonth(today.getMonth() - 24));
+    const twentyFourMonthsAgo = new Date(
+      new Date().setMonth(today.getMonth() - 24),
+    );
     const pad = (n: number) => String(n).padStart(2, '0');
     this.endDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
     this.startDate = `${twentyFourMonthsAgo.getFullYear()}-${pad(twentyFourMonthsAgo.getMonth() + 1)}-${pad(twentyFourMonthsAgo.getDate())}`;
@@ -148,12 +178,15 @@ export class DashboardHcoComponent {
       this.availableYears.push(i);
     }
 
-    effect(() => {
-      this.rootId = this.signalsService.getRootSelectedBySidebar()();
-      if (this.rootId) {
-        this.loadData(this.rootId);
-      }
-    }, { allowSignalWrites: true });
+    effect(
+      () => {
+        this.rootId = this.signalsService.getRootSelectedBySidebar()();
+        if (this.rootId) {
+          this.loadData(this.rootId);
+        }
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   public onFilterChange(): void {
@@ -165,18 +198,19 @@ export class DashboardHcoComponent {
     this.isExportingPdf = true;
 
     try {
-      const [pieChart, barChart, combustibleChart, lineChart] = await Promise.all([
-        this.captureChartAsBase64(this.personalChartRef),
-        this.captureChartAsBase64(this.pieChartRef),
-        this.captureChartAsBase64(this.combustibleChartRef),
-        this.captureChartAsBase64(this.lineChartRef)
-      ]);
+      const [pieChart, barChart, combustibleChart, lineChart] =
+        await Promise.all([
+          this.captureChartAsBase64(this.personalChartRef),
+          this.captureChartAsBase64(this.pieChartRef),
+          this.captureChartAsBase64(this.combustibleChartRef),
+          this.captureChartAsBase64(this.lineChartRef),
+        ]);
 
       const content = this.buildStructuredPdfContent({
         pieChart,
         barChart,
         combustibleChart,
-        lineChart
+        lineChart,
       });
 
       const documentDefinition = {
@@ -185,23 +219,59 @@ export class DashboardHcoComponent {
         pageMargins: [20, 20, 20, 20],
         content,
         styles: {
-          title: { bold: true, color: '#1A365D', fontSize: 14, alignment: 'center' },
+          title: {
+            bold: true,
+            color: '#1A365D',
+            fontSize: 14,
+            alignment: 'center',
+          },
           subtitle: { color: '#475569', fontSize: 10, alignment: 'center' },
-          sectionTitle: { bold: true, color: '#1A365D', fontSize: 10, margin: [0, 0, 0, 4] },
-          kpiTitle: { bold: true, color: '#475569', fontSize: 8, alignment: 'center' },
-          kpiValue: { bold: true, color: '#0F172A', fontSize: 11, alignment: 'center' },
+          sectionTitle: {
+            bold: true,
+            color: '#1A365D',
+            fontSize: 10,
+            margin: [0, 0, 0, 4],
+          },
+          kpiTitle: {
+            bold: true,
+            color: '#475569',
+            fontSize: 8,
+            alignment: 'center',
+          },
+          kpiValue: {
+            bold: true,
+            color: '#0F172A',
+            fontSize: 11,
+            alignment: 'center',
+          },
           tableHeader: { bold: true, color: '#FFFFFF', fontSize: 8 },
           tableCell: { fontSize: 7.5, color: '#334155' },
-          tableCellRight: { fontSize: 7.5, color: '#334155', alignment: 'right' },
+          tableCellRight: {
+            fontSize: 7.5,
+            color: '#334155',
+            alignment: 'right',
+          },
           totalLabel: { bold: true, fontSize: 8, color: '#0F172A' },
-          totalValue: { bold: true, fontSize: 8, color: '#0F172A', alignment: 'right' }
+          totalValue: {
+            bold: true,
+            fontSize: 8,
+            color: '#0F172A',
+            alignment: 'right',
+          },
         },
       };
 
-      await this.pdfWorkerService.generateAndDownload(documentDefinition, this.getExportFileName('pdf'));
+      await this.pdfWorkerService.generateAndDownload(
+        documentDefinition,
+        this.getExportFileName('pdf'),
+      );
     } catch (error) {
       console.error('Error exportando dashboard a PDF:', error);
-      alerts.basicAlert('Error', 'No fue posible exportar el dashboard a PDF.', 'error');
+      alerts.basicAlert(
+        'Error',
+        'No fue posible exportar el dashboard a PDF.',
+        'error',
+      );
     } finally {
       this.isExportingPdf = false;
     }
@@ -216,66 +286,119 @@ export class DashboardHcoComponent {
     const kpiTable = {
       table: {
         widths: ['20%', '20%', '20%', '20%', '20%'],
-        body: [[
-          this.buildPdfKpiCell('EGRESOS TOTALES', this.formatCurrency(this.totalEgresos), '#DC2626'),
-          this.buildPdfKpiCell('INGRESOS TOTALES', this.formatCurrency(this.totalIngresos), '#16A34A'),
-          this.buildPdfKpiCell('FLUJO NETO', this.formatCurrency(this.flujoNeto), this.flujoNeto >= 0 ? '#2563EB' : '#DC2626'),
-          this.buildPdfKpiCell('MARGEN', `${this.margenPorcentaje.toFixed(1)}%`, '#7C3AED'),
-          this.buildPdfKpiCell('PERSONAL', this.totalPersonal.toString(), '#0891B2')
-        ]]
+        body: [
+          [
+            this.buildPdfKpiCell(
+              'EGRESOS TOTALES',
+              this.formatCurrency(this.totalEgresos),
+              '#DC2626',
+            ),
+            this.buildPdfKpiCell(
+              'INGRESOS TOTALES',
+              this.formatCurrency(this.totalIngresos),
+              '#16A34A',
+            ),
+            this.buildPdfKpiCell(
+              'FLUJO NETO',
+              this.formatCurrency(this.flujoNeto),
+              this.flujoNeto >= 0 ? '#2563EB' : '#DC2626',
+            ),
+            this.buildPdfKpiCell(
+              'MARGEN',
+              `${this.margenPorcentaje.toFixed(1)}%`,
+              '#7C3AED',
+            ),
+            this.buildPdfKpiCell(
+              'PERSONAL',
+              this.totalPersonal.toString(),
+              '#0891B2',
+            ),
+          ],
+        ],
       },
       layout: 'siafKpi',
-      margin: [0, 8, 0, 12]
+      margin: [0, 8, 0, 12],
     };
 
     const rightColumnCharts: any[] = [];
     if (images.pieChart) {
-      rightColumnCharts.push({ text: 'PERSONAL POR SUCURSAL', style: 'sectionTitle' });
-      rightColumnCharts.push({ image: images.pieChart, width: 285, margin: [0, 0, 0, 4] });
+      rightColumnCharts.push({
+        text: 'PERSONAL POR SUCURSAL',
+        style: 'sectionTitle',
+      });
+      rightColumnCharts.push({
+        image: images.pieChart,
+        width: 285,
+        margin: [0, 0, 0, 4],
+      });
       rightColumnCharts.push(this.buildPdfPersonalTable());
       rightColumnCharts.push({ text: ' ', margin: [0, 6, 0, 0] });
     }
     if (images.barChart) {
-      rightColumnCharts.push({ text: 'GASTO TOTAL ACUMULADO', style: 'sectionTitle' });
-      rightColumnCharts.push({ image: images.barChart, width: 285, margin: [0, 0, 0, 10] });
+      rightColumnCharts.push({
+        text: 'GASTO TOTAL ACUMULADO',
+        style: 'sectionTitle',
+      });
+      rightColumnCharts.push({
+        image: images.barChart,
+        width: 285,
+        margin: [0, 0, 0, 10],
+      });
     }
     if (images.combustibleChart) {
-      rightColumnCharts.push({ text: 'CONSUMO DE COMBUSTIBLE', style: 'sectionTitle' });
-      rightColumnCharts.push({ image: images.combustibleChart, width: 285, margin: [0, 0, 0, 10] });
+      rightColumnCharts.push({
+        text: 'CONSUMO DE COMBUSTIBLE',
+        style: 'sectionTitle',
+      });
+      rightColumnCharts.push({
+        image: images.combustibleChart,
+        width: 285,
+        margin: [0, 0, 0, 10],
+      });
     }
     if (rightColumnCharts.length === 0) {
-      rightColumnCharts.push({ text: 'Sin graficas para mostrar', style: 'tableCell' });
+      rightColumnCharts.push({
+        text: 'Sin graficas para mostrar',
+        style: 'tableCell',
+      });
+    }
+
+    const leftColumnStack: any[] = [
+      {
+        text: 'CLASIFICACION DE EGRESOS (CUENTAS CONTABLES)',
+        style: 'sectionTitle',
+      },
+      this.buildPdfClasificacionTable(),
+      { text: ' ', margin: [0, 4, 0, 4] },
+      { text: 'GASTO E INGRESO POR MES', style: 'sectionTitle' },
+      this.buildPdfFlujoMensualTable(),
+    ];
+
+    if (images.lineChart) {
+      leftColumnStack.push({
+        text: 'COMPORTAMIENTO DEL NEGOCIO',
+        style: 'sectionTitle',
+        margin: [0, 8, 0, 4],
+      });
+      leftColumnStack.push({ image: images.lineChart, fit: [760, 480] });
     }
 
     const content: any[] = [
       { text: 'SISTEMA INTEGRAL DE ADMINISTRACION FINANCIERA', style: 'title' },
-      { text: `Dashboard HCO - ${this.getFilterPeriodLabel()}`, style: 'subtitle', margin: [0, 2, 0, 4] },
+      {
+        text: `Dashboard HCO - ${this.getFilterPeriodLabel()}`,
+        style: 'subtitle',
+        margin: [0, 2, 0, 4],
+      },
       kpiTable,
       {
         columns: [
-          {
-            width: '*',
-            stack: [
-              { text: 'CLASIFICACION DE EGRESOS (CUENTAS CONTABLES)', style: 'sectionTitle' },
-              this.buildPdfClasificacionTable(),
-              { text: ' ', margin: [0, 4, 0, 4] },
-              { text: 'GASTO E INGRESO POR MES', style: 'sectionTitle' },
-              this.buildPdfFlujoMensualTable()
-            ]
-          },
-          {
-            width: 295,
-            stack: rightColumnCharts
-          }
+          { width: '*', stack: leftColumnStack },
+          { width: 295, stack: rightColumnCharts },
         ],
-        columnGap: 10
-      }
+        columnGap: 10,
+      },
     ];
-
-    if (images.lineChart) {
-      content.push({ text: 'COMPORTAMIENTO DEL NEGOCIO', style: 'sectionTitle', margin: [0, 10, 0, 4] });
-      content.push({ image: images.lineChart, width: 780 });
-    }
 
     return content;
   }
@@ -284,101 +407,197 @@ export class DashboardHcoComponent {
     return {
       stack: [
         { text: label, style: 'kpiTitle', color },
-        { text: value, style: 'kpiValue' }
+        { text: value, style: 'kpiValue' },
       ],
-      fillColor: '#F8FAFC'
+      fillColor: '#F8FAFC',
     };
   }
 
   private buildPdfPersonalTable(): any {
-    const body: any[] = [[
-      { text: 'SUCURSAL', style: 'tableHeader', fillColor: '#0E7490' },
-      { text: 'CANTIDAD', style: 'tableHeader', fillColor: '#0E7490', alignment: 'right' }
-    ]];
+    const body: any[] = [
+      [
+        { text: 'SUCURSAL', style: 'tableHeader', fillColor: '#0E7490' },
+        {
+          text: 'CANTIDAD',
+          style: 'tableHeader',
+          fillColor: '#0E7490',
+          alignment: 'right',
+        },
+      ],
+    ];
 
     const countByBranch = new Map<number, number>();
-    this.allEmployees.forEach(emp => {
+    this.allEmployees.forEach((emp) => {
       const id = emp.idBranch ?? 0;
       countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
     });
 
     countByBranch.forEach((count, idBranch) => {
-      const branch = this.branchesList.find(b => b.id === idBranch);
+      const branch = this.branchesList.find((b) => b.id === idBranch);
       body.push([
-        { text: branch ? branch.name : `Sucursal ${idBranch}`, style: 'tableCell' },
-        { text: count.toString(), style: 'tableCellRight' }
+        {
+          text: branch ? branch.name : `Sucursal ${idBranch}`,
+          style: 'tableCell',
+        },
+        { text: count.toString(), style: 'tableCellRight' },
       ]);
     });
 
     body.push([
       { text: 'TOTAL', style: 'totalLabel', fillColor: '#CFFAFE' },
-      { text: this.totalPersonal.toString(), style: 'totalValue', fillColor: '#CFFAFE' }
+      {
+        text: this.totalPersonal.toString(),
+        style: 'totalValue',
+        fillColor: '#CFFAFE',
+      },
     ]);
 
     return {
       table: { headerRows: 1, widths: ['70%', '30%'], body },
       layout: 'lightHorizontalLines',
-      margin: [0, 0, 0, 0]
+      margin: [0, 0, 0, 0],
     };
   }
 
   private buildPdfClasificacionTable(): any {
-    const body: any[] = [[
-      { text: 'CLASIFICACION', style: 'tableHeader', fillColor: '#1A365D' },
-      { text: 'TOTAL ANTERIOR', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
-      { text: this.getMesActualNombre().toUpperCase(), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
-      { text: 'TOTAL ACUMULADO', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' }
-    ]];
+    const body: any[] = [
+      [
+        { text: 'CLASIFICACION', style: 'tableHeader', fillColor: '#1A365D' },
+        {
+          text: 'TOTAL ANTERIOR',
+          style: 'tableHeader',
+          fillColor: '#1A365D',
+          alignment: 'right',
+        },
+        {
+          text: this.getMesActualNombre().toUpperCase(),
+          style: 'tableHeader',
+          fillColor: '#1A365D',
+          alignment: 'right',
+        },
+        {
+          text: 'TOTAL ACUMULADO',
+          style: 'tableHeader',
+          fillColor: '#1A365D',
+          alignment: 'right',
+        },
+      ],
+    ];
 
-    this.clasificacionEgresos.forEach(item => {
+    this.clasificacionEgresos.forEach((item) => {
       body.push([
         { text: `${item.codigo} - ${item.nombre}`, style: 'tableCell' },
-        { text: this.formatCurrency(item.gastoAnterior), style: 'tableCellRight' },
-        { text: this.formatCurrency(item.gastoMesActual), style: 'tableCellRight' },
-        { text: this.formatCurrency(item.gastoAcumulado), style: 'tableCellRight' }
+        {
+          text: this.formatCurrency(item.gastoAnterior),
+          style: 'tableCellRight',
+        },
+        {
+          text: this.formatCurrency(item.gastoMesActual),
+          style: 'tableCellRight',
+        },
+        {
+          text: this.formatCurrency(item.gastoAcumulado),
+          style: 'tableCellRight',
+        },
       ]);
     });
 
     body.push([
       { text: 'Gran Total Egresos', style: 'totalLabel', fillColor: '#FEE2E2' },
-      { text: this.formatCurrency(this.getTotalEgresoAnterior()), style: 'totalValue', fillColor: '#FEE2E2' },
-      { text: this.formatCurrency(this.getTotalEgresoMesActual()), style: 'totalValue', fillColor: '#FEE2E2' },
-      { text: this.formatCurrency(this.getTotalEgresoAcumulado()), style: 'totalValue', fillColor: '#FEE2E2' }
+      {
+        text: this.formatCurrency(this.getTotalEgresoAnterior()),
+        style: 'totalValue',
+        fillColor: '#FEE2E2',
+      },
+      {
+        text: this.formatCurrency(this.getTotalEgresoMesActual()),
+        style: 'totalValue',
+        fillColor: '#FEE2E2',
+      },
+      {
+        text: this.formatCurrency(this.getTotalEgresoAcumulado()),
+        style: 'totalValue',
+        fillColor: '#FEE2E2',
+      },
     ]);
 
     return {
       table: {
         headerRows: 1,
         widths: ['46%', '18%', '18%', '18%'],
-        body
+        body,
       },
-      layout: 'lightHorizontalLines'
+      layout: 'lightHorizontalLines',
     };
   }
 
   private buildPdfFlujoMensualTable(): any {
-    const body: any[] = [[
-      { text: 'MES', style: 'tableHeader', fillColor: '#1A365D' },
-      { text: 'EGRESO MENSUAL S/IVA', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
-      { text: 'INGRESO S/IVA', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
-      { text: 'FLUJO MENSUAL', style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' }
-    ]];
+    const body: any[] = [
+      [
+        { text: 'MES', style: 'tableHeader', fillColor: '#1A365D' },
+        {
+          text: 'EGRESO MENSUAL S/IVA',
+          style: 'tableHeader',
+          fillColor: '#1A365D',
+          alignment: 'right',
+        },
+        {
+          text: 'INGRESO S/IVA',
+          style: 'tableHeader',
+          fillColor: '#1A365D',
+          alignment: 'right',
+        },
+        {
+          text: 'FLUJO MENSUAL',
+          style: 'tableHeader',
+          fillColor: '#1A365D',
+          alignment: 'right',
+        },
+      ],
+    ];
 
     this.flujoMensual.forEach((item, index) => {
       body.push([
         { text: item.mes, style: 'tableCell' },
-        { text: this.formatCurrency(item.egresoMensual), style: 'tableCellRight' },
-        { text: this.formatCurrency(item.ingresoMensual), style: 'tableCellRight' },
-        { text: this.formatCurrency(item.flujoMensual), style: 'tableCellRight', color: item.flujoMensual >= 0 ? '#15803D' : '#DC2626' }
+        {
+          text: this.formatCurrency(item.egresoMensual),
+          style: 'tableCellRight',
+        },
+        {
+          text: this.formatCurrency(item.ingresoMensual),
+          style: 'tableCellRight',
+        },
+        {
+          text: this.formatCurrency(item.flujoMensual),
+          style: 'tableCellRight',
+          color: item.flujoMensual >= 0 ? '#15803D' : '#DC2626',
+        },
       ]);
 
       if (this.flujoMensual[index + 1]?.anio !== item.anio) {
         const flujoAnio = this.getTotalAnio(item.anio, 'flujo');
         body.push([
-          { text: `Total ${item.anio}`, style: 'totalLabel', fillColor: '#DBEAFE' },
-          { text: this.formatCurrency(this.getTotalAnio(item.anio, 'egreso')), style: 'totalValue', fillColor: '#DBEAFE' },
-          { text: this.formatCurrency(this.getTotalAnio(item.anio, 'ingreso')), style: 'totalValue', fillColor: '#DBEAFE' },
-          { text: this.formatCurrency(flujoAnio), style: 'totalValue', fillColor: '#DBEAFE', color: flujoAnio >= 0 ? '#15803D' : '#DC2626' }
+          {
+            text: `Total ${item.anio}`,
+            style: 'totalLabel',
+            fillColor: '#DBEAFE',
+          },
+          {
+            text: this.formatCurrency(this.getTotalAnio(item.anio, 'egreso')),
+            style: 'totalValue',
+            fillColor: '#DBEAFE',
+          },
+          {
+            text: this.formatCurrency(this.getTotalAnio(item.anio, 'ingreso')),
+            style: 'totalValue',
+            fillColor: '#DBEAFE',
+          },
+          {
+            text: this.formatCurrency(flujoAnio),
+            style: 'totalValue',
+            fillColor: '#DBEAFE',
+            color: flujoAnio >= 0 ? '#15803D' : '#DC2626',
+          },
         ]);
       }
     });
@@ -386,25 +605,44 @@ export class DashboardHcoComponent {
     const totalGeneral = this.getTotalGeneral();
     body.push([
       { text: 'Total General', style: 'tableHeader', fillColor: '#1A365D' },
-      { text: this.formatCurrency(totalGeneral.egreso), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
-      { text: this.formatCurrency(totalGeneral.ingreso), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' },
-      { text: this.formatCurrency(totalGeneral.flujo), style: 'tableHeader', fillColor: '#1A365D', alignment: 'right' }
+      {
+        text: this.formatCurrency(totalGeneral.egreso),
+        style: 'tableHeader',
+        fillColor: '#1A365D',
+        alignment: 'right',
+      },
+      {
+        text: this.formatCurrency(totalGeneral.ingreso),
+        style: 'tableHeader',
+        fillColor: '#1A365D',
+        alignment: 'right',
+      },
+      {
+        text: this.formatCurrency(totalGeneral.flujo),
+        style: 'tableHeader',
+        fillColor: '#1A365D',
+        alignment: 'right',
+      },
     ]);
 
     body.push([
       { text: '', border: [false, false, false, false] },
       { text: '', border: [false, false, false, false] },
       { text: 'Margen', style: 'totalLabel', alignment: 'right' },
-      { text: `${this.margenPorcentaje.toFixed(1)}%`, style: 'totalValue', color: '#15803D' }
+      {
+        text: `${this.margenPorcentaje.toFixed(1)}%`,
+        style: 'totalValue',
+        color: '#15803D',
+      },
     ]);
 
     return {
       table: {
         headerRows: 1,
         widths: ['28%', '24%', '24%', '24%'],
-        body
+        body,
       },
-      layout: 'lightHorizontalLines'
+      layout: 'lightHorizontalLines',
     };
   }
 
@@ -424,14 +662,17 @@ export class DashboardHcoComponent {
       await this.addDashboardChartsToWorksheet(workbook, worksheet, endRow);
 
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob(
-        [buffer],
-        { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
-      );
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
       this.downloadBlob(blob, this.getExportFileName('xlsx'));
     } catch (error) {
       console.error('Error exportando dashboard a XLSX:', error);
-      alerts.basicAlert('Error', 'No fue posible exportar el dashboard a XLSX.', 'error');
+      alerts.basicAlert(
+        'Error',
+        'No fue posible exportar el dashboard a XLSX.',
+        'error',
+      );
     } finally {
       this.isExportingXlsx = false;
     }
@@ -443,13 +684,24 @@ export class DashboardHcoComponent {
       orientation: 'landscape',
       fitToPage: true,
       fitToWidth: 1,
-      fitToHeight: 0
+      fitToHeight: 0,
     };
 
     worksheet.columns = [
-      { width: 38 }, { width: 19 }, { width: 19 }, { width: 19 }, { width: 3 },
-      { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 },
-      { width: 20 }, { width: 20 }, { width: 20 }, { width: 20 }
+      { width: 38 },
+      { width: 19 },
+      { width: 19 },
+      { width: 19 },
+      { width: 3 },
+      { width: 20 },
+      { width: 20 },
+      { width: 20 },
+      { width: 20 },
+      { width: 20 },
+      { width: 20 },
+      { width: 20 },
+      { width: 20 },
+      { width: 20 },
     ];
 
     worksheet.mergeCells('A1:N1');
@@ -457,7 +709,11 @@ export class DashboardHcoComponent {
     titleCell.value = 'SISTEMA INTEGRAL DE ADMINISTRACION FINANCIERA';
     titleCell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 14 };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1A365D' },
+    };
 
     worksheet.mergeCells('A2:N2');
     const subtitleCell = worksheet.getCell('A2');
@@ -465,16 +721,47 @@ export class DashboardHcoComponent {
     subtitleCell.font = { italic: true, color: { argb: 'FF1A365D' }, size: 11 };
     subtitleCell.alignment = { horizontal: 'center' };
 
-    this.writeKpiCard(worksheet, 'A4', 'B4', 'A5', 'B5', 'EGRESOS TOTALES', this.totalEgresos, 'FFDC2626');
-    this.writeKpiCard(worksheet, 'C4', 'D4', 'C5', 'D5', 'INGRESOS TOTALES', this.totalIngresos, 'FF16A34A');
-    this.writeKpiCard(worksheet, 'E4', 'F4', 'E5', 'F5', 'FLUJO NETO', this.flujoNeto, this.flujoNeto >= 0 ? 'FF2563EB' : 'FFDC2626');
+    this.writeKpiCard(
+      worksheet,
+      'A4',
+      'B4',
+      'A5',
+      'B5',
+      'EGRESOS TOTALES',
+      this.totalEgresos,
+      'FFDC2626',
+    );
+    this.writeKpiCard(
+      worksheet,
+      'C4',
+      'D4',
+      'C5',
+      'D5',
+      'INGRESOS TOTALES',
+      this.totalIngresos,
+      'FF16A34A',
+    );
+    this.writeKpiCard(
+      worksheet,
+      'E4',
+      'F4',
+      'E5',
+      'F5',
+      'FLUJO NETO',
+      this.flujoNeto,
+      this.flujoNeto >= 0 ? 'FF2563EB' : 'FFDC2626',
+    );
 
     worksheet.mergeCells('G4:H4');
     const margenTitle = worksheet.getCell('G4');
     margenTitle.value = 'MARGEN';
     margenTitle.font = { bold: true, color: { argb: 'FF7C3AED' } };
     margenTitle.alignment = { horizontal: 'center' };
-    margenTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F3FF' } };
+    margenTitle.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF5F3FF' },
+    };
 
     worksheet.mergeCells('G5:H5');
     const margenValue = worksheet.getCell('G5');
@@ -482,21 +769,33 @@ export class DashboardHcoComponent {
     margenValue.numFmt = '0.0%';
     margenValue.font = { bold: true, size: 12, color: { argb: 'FF7C3AED' } };
     margenValue.alignment = { horizontal: 'center' };
-    margenValue.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F3FF' } };
+    margenValue.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF5F3FF' },
+    };
 
     worksheet.mergeCells('I4:J4');
     const personalTitle = worksheet.getCell('I4');
     personalTitle.value = 'PERSONAL';
     personalTitle.font = { bold: true, color: { argb: 'FF0891B2' } };
     personalTitle.alignment = { horizontal: 'center' };
-    personalTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+    personalTitle.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0F2FE' },
+    };
 
     worksheet.mergeCells('I5:J5');
     const personalValue = worksheet.getCell('I5');
     personalValue.value = this.totalPersonal;
     personalValue.font = { bold: true, size: 12, color: { argb: 'FF0E7490' } };
     personalValue.alignment = { horizontal: 'center' };
-    personalValue.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+    personalValue.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0F2FE' },
+    };
 
     let currentRow = 8;
     currentRow = this.writeClasificacionEgresosTable(worksheet, currentRow);
@@ -515,14 +814,18 @@ export class DashboardHcoComponent {
     valueTo: string,
     title: string,
     value: number,
-    color: string
+    color: string,
   ): void {
     worksheet.mergeCells(`${titleFrom}:${titleTo}`);
     const titleCell = worksheet.getCell(titleFrom);
     titleCell.value = title;
     titleCell.font = { bold: true, color: { argb: color }, size: 10 };
     titleCell.alignment = { horizontal: 'center' };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF8FAFC' },
+    };
 
     worksheet.mergeCells(`${valueFrom}:${valueTo}`);
     const valueCell = worksheet.getCell(valueFrom);
@@ -530,28 +833,48 @@ export class DashboardHcoComponent {
     valueCell.numFmt = '"$"#,##0.00';
     valueCell.font = { bold: true, size: 13, color: { argb: 'FF1E293B' } };
     valueCell.alignment = { horizontal: 'center' };
-    valueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+    valueCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFFFF' },
+    };
   }
 
-  private writeClasificacionEgresosTable(worksheet: any, startRow: number): number {
+  private writeClasificacionEgresosTable(
+    worksheet: any,
+    startRow: number,
+  ): number {
     worksheet.mergeCells(`A${startRow}:D${startRow}`);
     const titleCell = worksheet.getCell(`A${startRow}`);
     titleCell.value = 'CLASIFICACION DE EGRESOS (CUENTAS CONTABLES)';
     titleCell.font = { bold: true, color: { argb: 'FFDC2626' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF1F2' } };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFF1F2' },
+    };
 
     const headerRow = startRow + 1;
-    const headers = ['CLASIFICACION', 'TOTAL ANTERIOR', this.getMesActualNombre().toUpperCase(), 'TOTAL ACUMULADO'];
+    const headers = [
+      'CLASIFICACION',
+      'TOTAL ANTERIOR',
+      this.getMesActualNombre().toUpperCase(),
+      'TOTAL ACUMULADO',
+    ];
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(headerRow, index + 1);
       cell.value = header;
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
       cell.alignment = { horizontal: index === 0 ? 'left' : 'right' };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1A365D' },
+      };
     });
 
     let row = headerRow + 1;
-    this.clasificacionEgresos.forEach(item => {
+    this.clasificacionEgresos.forEach((item) => {
       worksheet.getCell(`A${row}`).value = `${item.codigo} - ${item.nombre}`;
       this.setMoneyCell(worksheet.getCell(`B${row}`), item.gastoAnterior);
       this.setMoneyCell(worksheet.getCell(`C${row}`), item.gastoMesActual);
@@ -560,11 +883,30 @@ export class DashboardHcoComponent {
     });
 
     worksheet.getCell(`A${row}`).value = 'Gran Total Egresos';
-    worksheet.getCell(`A${row}`).font = { bold: true, color: { argb: 'FFB91C1C' } };
-    worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
-    this.setMoneyCell(worksheet.getCell(`B${row}`), this.getTotalEgresoAnterior(), true);
-    this.setMoneyCell(worksheet.getCell(`C${row}`), this.getTotalEgresoMesActual(), true);
-    this.setMoneyCell(worksheet.getCell(`D${row}`), this.getTotalEgresoAcumulado(), true);
+    worksheet.getCell(`A${row}`).font = {
+      bold: true,
+      color: { argb: 'FFB91C1C' },
+    };
+    worksheet.getCell(`A${row}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFEE2E2' },
+    };
+    this.setMoneyCell(
+      worksheet.getCell(`B${row}`),
+      this.getTotalEgresoAnterior(),
+      true,
+    );
+    this.setMoneyCell(
+      worksheet.getCell(`C${row}`),
+      this.getTotalEgresoMesActual(),
+      true,
+    );
+    this.setMoneyCell(
+      worksheet.getCell(`D${row}`),
+      this.getTotalEgresoAcumulado(),
+      true,
+    );
 
     return row;
   }
@@ -574,16 +916,29 @@ export class DashboardHcoComponent {
     const titleCell = worksheet.getCell(`A${startRow}`);
     titleCell.value = 'GASTO E INGRESO POR MES';
     titleCell.font = { bold: true, color: { argb: 'FF1A365D' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2E8F0' },
+    };
 
     const headerRow = startRow + 1;
-    const headers = ['MES', 'EGRESO MENSUAL S/IVA', 'INGRESO S/IVA', 'FLUJO MENSUAL'];
+    const headers = [
+      'MES',
+      'EGRESO MENSUAL S/IVA',
+      'INGRESO S/IVA',
+      'FLUJO MENSUAL',
+    ];
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(headerRow, index + 1);
       cell.value = header;
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
       cell.alignment = { horizontal: index === 0 ? 'left' : 'right' };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1A365D' },
+      };
     });
 
     let row = headerRow + 1;
@@ -591,33 +946,86 @@ export class DashboardHcoComponent {
       worksheet.getCell(`A${row}`).value = item.mes;
       this.setMoneyCell(worksheet.getCell(`B${row}`), item.egresoMensual);
       this.setMoneyCell(worksheet.getCell(`C${row}`), item.ingresoMensual);
-      this.setMoneyCell(worksheet.getCell(`D${row}`), item.flujoMensual, false, item.flujoMensual >= 0 ? 'FF15803D' : 'FFDC2626');
+      this.setMoneyCell(
+        worksheet.getCell(`D${row}`),
+        item.flujoMensual,
+        false,
+        item.flujoMensual >= 0 ? 'FF15803D' : 'FFDC2626',
+      );
       row++;
 
       if (this.flujoMensual[index + 1]?.anio !== item.anio) {
         worksheet.getCell(`A${row}`).value = `Total ${item.anio}`;
-        worksheet.getCell(`A${row}`).font = { bold: true, color: { argb: 'FF1E40AF' } };
-        worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
-        this.setMoneyCell(worksheet.getCell(`B${row}`), this.getTotalAnio(item.anio, 'egreso'), true);
-        this.setMoneyCell(worksheet.getCell(`C${row}`), this.getTotalAnio(item.anio, 'ingreso'), true);
+        worksheet.getCell(`A${row}`).font = {
+          bold: true,
+          color: { argb: 'FF1E40AF' },
+        };
+        worksheet.getCell(`A${row}`).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFDBEAFE' },
+        };
+        this.setMoneyCell(
+          worksheet.getCell(`B${row}`),
+          this.getTotalAnio(item.anio, 'egreso'),
+          true,
+        );
+        this.setMoneyCell(
+          worksheet.getCell(`C${row}`),
+          this.getTotalAnio(item.anio, 'ingreso'),
+          true,
+        );
         const flujoAnual = this.getTotalAnio(item.anio, 'flujo');
-        this.setMoneyCell(worksheet.getCell(`D${row}`), flujoAnual, true, flujoAnual >= 0 ? 'FF15803D' : 'FFDC2626');
+        this.setMoneyCell(
+          worksheet.getCell(`D${row}`),
+          flujoAnual,
+          true,
+          flujoAnual >= 0 ? 'FF15803D' : 'FFDC2626',
+        );
         row++;
       }
     });
 
     worksheet.getCell(`A${row}`).value = 'Total General';
-    worksheet.getCell(`A${row}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+    worksheet.getCell(`A${row}`).font = {
+      bold: true,
+      color: { argb: 'FFFFFFFF' },
+    };
+    worksheet.getCell(`A${row}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1A365D' },
+    };
 
     const totalGeneral = this.getTotalGeneral();
-    this.setMoneyCell(worksheet.getCell(`B${row}`), totalGeneral.egreso, true, 'FFFFFFFF', 'FF1A365D');
-    this.setMoneyCell(worksheet.getCell(`C${row}`), totalGeneral.ingreso, true, 'FFFFFFFF', 'FF1A365D');
-    this.setMoneyCell(worksheet.getCell(`D${row}`), totalGeneral.flujo, true, 'FFFFFFFF', 'FF1A365D');
+    this.setMoneyCell(
+      worksheet.getCell(`B${row}`),
+      totalGeneral.egreso,
+      true,
+      'FFFFFFFF',
+      'FF1A365D',
+    );
+    this.setMoneyCell(
+      worksheet.getCell(`C${row}`),
+      totalGeneral.ingreso,
+      true,
+      'FFFFFFFF',
+      'FF1A365D',
+    );
+    this.setMoneyCell(
+      worksheet.getCell(`D${row}`),
+      totalGeneral.flujo,
+      true,
+      'FFFFFFFF',
+      'FF1A365D',
+    );
     row++;
 
     worksheet.getCell(`C${row}`).value = 'Margen';
-    worksheet.getCell(`C${row}`).font = { bold: true, color: { argb: 'FF15803D' } };
+    worksheet.getCell(`C${row}`).font = {
+      bold: true,
+      color: { argb: 'FF15803D' },
+    };
     worksheet.getCell(`C${row}`).alignment = { horizontal: 'right' };
     const marginCell = worksheet.getCell(`D${row}`);
     marginCell.value = (this.margenPorcentaje || 0) / 100;
@@ -628,12 +1036,19 @@ export class DashboardHcoComponent {
     return row;
   }
 
-  private writePersonalPorSucursalTable(worksheet: any, startRow: number): number {
+  private writePersonalPorSucursalTable(
+    worksheet: any,
+    startRow: number,
+  ): number {
     worksheet.mergeCells(`A${startRow}:B${startRow}`);
     const titleCell = worksheet.getCell(`A${startRow}`);
     titleCell.value = 'PERSONAL POR SUCURSAL';
     titleCell.font = { bold: true, color: { argb: 'FF0E7490' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0F2FE' },
+    };
 
     const headerRow = startRow + 1;
     ['SUCURSAL', 'CANTIDAD'].forEach((h, i) => {
@@ -641,19 +1056,25 @@ export class DashboardHcoComponent {
       cell.value = h;
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.alignment = { horizontal: i === 0 ? 'left' : 'right' };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E7490' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF0E7490' },
+      };
     });
 
     const countByBranch = new Map<number, number>();
-    this.allEmployees.forEach(emp => {
+    this.allEmployees.forEach((emp) => {
       const id = emp.idBranch ?? 0;
       countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
     });
 
     let row = headerRow + 1;
     countByBranch.forEach((count, idBranch) => {
-      const branch = this.branchesList.find(b => b.id === idBranch);
-      worksheet.getCell(`A${row}`).value = branch ? branch.name : `Sucursal ${idBranch}`;
+      const branch = this.branchesList.find((b) => b.id === idBranch);
+      worksheet.getCell(`A${row}`).value = branch
+        ? branch.name
+        : `Sucursal ${idBranch}`;
       const countCell = worksheet.getCell(`B${row}`);
       countCell.value = count;
       countCell.alignment = { horizontal: 'right' };
@@ -662,12 +1083,20 @@ export class DashboardHcoComponent {
 
     worksheet.getCell(`A${row}`).value = 'TOTAL';
     worksheet.getCell(`A${row}`).font = { bold: true };
-    worksheet.getCell(`A${row}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFFAFE' } };
+    worksheet.getCell(`A${row}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFCFFAFE' },
+    };
     const totalCell = worksheet.getCell(`B${row}`);
     totalCell.value = this.totalPersonal;
     totalCell.font = { bold: true };
     totalCell.alignment = { horizontal: 'right' };
-    totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCFFAFE' } };
+    totalCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFCFFAFE' },
+    };
 
     return row;
   }
@@ -677,30 +1106,40 @@ export class DashboardHcoComponent {
     value: number,
     bold = false,
     fontColor = 'FF1E293B',
-    fillColor = ''
+    fillColor = '',
   ): void {
     cell.value = Number.isFinite(value) ? value : 0;
     cell.numFmt = '"$"#,##0.00';
     cell.alignment = { horizontal: 'right' };
     cell.font = { bold, color: { argb: fontColor } };
     if (fillColor) {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: fillColor },
+      };
     }
   }
 
-  private async addDashboardChartsToWorksheet(workbook: Workbook, worksheet: any, endRow: number): Promise<void> {
-    const [pieChart, barChart, combustibleChart, lineChart] = await Promise.all([
-      this.captureChartAsBase64(this.personalChartRef),
-      this.captureChartAsBase64(this.pieChartRef),
-      this.captureChartAsBase64(this.combustibleChartRef),
-      this.captureChartAsBase64(this.lineChartRef)
-    ]);
+  private async addDashboardChartsToWorksheet(
+    workbook: Workbook,
+    worksheet: any,
+    endRow: number,
+  ): Promise<void> {
+    const [pieChart, barChart, combustibleChart, lineChart] = await Promise.all(
+      [
+        this.captureChartAsBase64(this.personalChartRef),
+        this.captureChartAsBase64(this.pieChartRef),
+        this.captureChartAsBase64(this.combustibleChartRef),
+        this.captureChartAsBase64(this.lineChartRef),
+      ],
+    );
 
     if (pieChart) {
       const imageId = workbook.addImage({ base64: pieChart, extension: 'png' });
       worksheet.addImage(imageId, {
         tl: { col: 5, row: 7 },
-        ext: { width: 500, height: 260 }
+        ext: { width: 500, height: 260 },
       });
     }
 
@@ -708,28 +1147,36 @@ export class DashboardHcoComponent {
       const imageId = workbook.addImage({ base64: barChart, extension: 'png' });
       worksheet.addImage(imageId, {
         tl: { col: 5, row: 24 },
-        ext: { width: 500, height: 250 }
+        ext: { width: 500, height: 250 },
       });
     }
 
     if (combustibleChart) {
-      const imageId = workbook.addImage({ base64: combustibleChart, extension: 'png' });
+      const imageId = workbook.addImage({
+        base64: combustibleChart,
+        extension: 'png',
+      });
       worksheet.addImage(imageId, {
         tl: { col: 5, row: 41 },
-        ext: { width: 500, height: 250 }
+        ext: { width: 500, height: 250 },
       });
     }
 
     if (lineChart) {
-      const imageId = workbook.addImage({ base64: lineChart, extension: 'png' });
+      const imageId = workbook.addImage({
+        base64: lineChart,
+        extension: 'png',
+      });
       worksheet.addImage(imageId, {
         tl: { col: 0, row: Math.max(endRow + 2, 42) },
-        ext: { width: 1230, height: 300 }
+        ext: { width: 1230, height: 300 },
       });
     }
   }
 
-  private async captureChartAsBase64(chartRef: ChartComponent | undefined): Promise<string | null> {
+  private async captureChartAsBase64(
+    chartRef: ChartComponent | undefined,
+  ): Promise<string | null> {
     if (!chartRef) return null;
     try {
       const result = await (chartRef as any).dataURI();
@@ -740,11 +1187,15 @@ export class DashboardHcoComponent {
   }
 
   // Método legacy mantenido por compatibilidad — no se usa en exportaciones
-  private async captureElementAsBase64_legacy(selector: string): Promise<string | null> {
+  private async captureElementAsBase64_legacy(
+    selector: string,
+  ): Promise<string | null> {
     const element = document.querySelector(selector) as HTMLElement | null;
     if (!element) return null;
 
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
     const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const { default: html2canvas } = await import('html2canvas');
     const canvas = await html2canvas(element, {
@@ -753,10 +1204,16 @@ export class DashboardHcoComponent {
       useCORS: true,
       width: element.scrollWidth,
       height: element.scrollHeight,
-      windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
-      windowHeight: Math.max(document.documentElement.clientHeight, element.scrollHeight),
+      windowWidth: Math.max(
+        document.documentElement.clientWidth,
+        element.scrollWidth,
+      ),
+      windowHeight: Math.max(
+        document.documentElement.clientHeight,
+        element.scrollHeight,
+      ),
       scrollX: 0,
-      scrollY: -window.scrollY
+      scrollY: -window.scrollY,
     });
 
     return canvas.toDataURL('image/png');
@@ -770,79 +1227,117 @@ export class DashboardHcoComponent {
   }
 
   private loadData(rootId: number): void {
+    this.resetLoadFlags();
+
     // Cargar total de personal de la empresa y agrupar por sucursal
     this.employeesService.getEmployees(-rootId).subscribe((data: any) => {
       this.allEmployees = Array.isArray(data) ? data : [];
       this.totalPersonal = this.allEmployees.length;
+      this._loadedEmployees = true;
+      this.checkDataReady();
       this.preparePersonalPieChart();
     });
 
     this.branchsService.getBranches(rootId).subscribe((data: any) => {
       this.branchesList = Array.isArray(data) ? data : [];
+      this._loadedBranches = true;
+      this.checkDataReady();
       this.preparePersonalPieChart();
     });
 
-    this.projectsService.getProjectListByCompany(rootId).subscribe((data: any) => {
-      this.projectsList = Array.isArray(data) ? data : [];
-    });
+    this.projectsService
+      .getProjectListByCompany(rootId)
+      .subscribe((data: any) => {
+        this.projectsList = Array.isArray(data) ? data : [];
+        this._loadedProjects = true;
+        this.checkDataReady();
+      });
 
     // Cargar catálogo de cuentas contables nivel 2 (subclasificación) - mismo método que expenditure
-    this.cuentasContablesService.getByNivel(rootId, 2).subscribe(data => {
+    this.cuentasContablesService.getByNivel(rootId, 2).subscribe((data) => {
       this.cuentasContablesNivel2 = data || [];
-      console.log('✅ Cuentas contables Nivel 2 cargadas:', this.cuentasContablesNivel2.length);
+      console.log(
+        '✅ Cuentas contables Nivel 2 cargadas:',
+        this.cuentasContablesNivel2.length,
+      );
+      this._loadedCuentas = true;
+      this.checkDataReady();
       this.processAllData();
     });
 
     // Cargar ingresos y egresos desde la misma fuente que income/expenditure
-    this.incomesAndExpensesService.getIncomesAndExpenses(rootId).subscribe(data => {
-      const rows = Array.isArray(data) ? data : [];
-      const gastos = rows.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
-      this.ingresosData = rows.filter(item => String(item?.type ?? '').toUpperCase() === 'DEPOSITO');
+    this.incomesAndExpensesService
+      .getIncomesAndExpenses(rootId)
+      .subscribe((data) => {
+        const rows = Array.isArray(data) ? data : [];
+        const gastos = rows.filter(
+          (item) => String(item?.type ?? '').toUpperCase() === 'GASTO',
+        );
+        this.ingresosData = rows.filter(
+          (item) => String(item?.type ?? '').toUpperCase() === 'DEPOSITO',
+        );
 
-      console.log('✅ Egresos cargados (GASTO):', gastos.length);
-      console.log('✅ Ingresos cargados (DEPOSITO):', this.ingresosData.length);
+        console.log('✅ Egresos cargados (GASTO):', gastos.length);
+        console.log(
+          '✅ Ingresos cargados (DEPOSITO):',
+          this.ingresosData.length,
+        );
 
-      // Expandir gastos usando dateExpend de los conceptos (detalles-expenditure)
-      // para que la fecha de clasificación mensual refleje la fecha real del concepto
-      if (gastos.length === 0) {
-        this.egresosData = [];
-        this.processAllData();
-        return;
-      }
+        // Expandir gastos usando dateExpend de los conceptos (detalles-expenditure)
+        // para que la fecha de clasificación mensual refleje la fecha real del concepto
+        if (gastos.length === 0) {
+          this.egresosData = [];
+          this._loadedEgresos = true;
+          this.checkDataReady();
+          this.processAllData();
+          return;
+        }
 
-      const conceptRequests = gastos.map(gasto =>
-        this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(gasto.id).pipe(
-          map(concepts => ({ gasto, concepts: Array.isArray(concepts) ? concepts : [] })),
-          catchError(() => of({ gasto, concepts: [] }))
-        )
-      );
+        const conceptRequests = gastos.map((gasto) =>
+          this.incomesAndExpensesService
+            .getConceptsFromIncomesAndExpenses(gasto.id)
+            .pipe(
+              map((concepts) => ({
+                gasto,
+                concepts: Array.isArray(concepts) ? concepts : [],
+              })),
+              catchError(() => of({ gasto, concepts: [] })),
+            ),
+        );
 
-      forkJoin(conceptRequests).subscribe(results => {
-        const expandedEgresos: any[] = [];
+        forkJoin(conceptRequests).subscribe((results) => {
+          const expandedEgresos: any[] = [];
 
-        results.forEach(({ gasto, concepts }) => {
-          const activeConcepts = concepts.filter((c: any) => c?.active !== false && (c?.total ?? 0) !== 0);
-          if (activeConcepts.length === 0) {
-            // Sin conceptos: usar el gasto padre con su fecha original
-            expandedEgresos.push(gasto);
-          } else {
-            // Expandir a nivel de concepto usando dateExpend como fecha
-            activeConcepts.forEach((concept: any) => {
-              expandedEgresos.push({
-                ...gasto,
-                date: concept.dateExpend ?? gasto.date,
-                total: concept.total ?? 0,
-                conceptoDescripcion: concept.description ?? '',
+          results.forEach(({ gasto, concepts }) => {
+            const activeConcepts = concepts.filter(
+              (c: any) => c?.active !== false && (c?.total ?? 0) !== 0,
+            );
+            if (activeConcepts.length === 0) {
+              // Sin conceptos: usar el gasto padre con su fecha original
+              expandedEgresos.push(gasto);
+            } else {
+              // Expandir a nivel de concepto usando dateExpend como fecha
+              activeConcepts.forEach((concept: any) => {
+                expandedEgresos.push({
+                  ...gasto,
+                  date: concept.dateExpend ?? gasto.date,
+                  total: concept.total ?? 0,
+                  conceptoDescripcion: concept.description ?? '',
+                });
               });
-            });
-          }
-        });
+            }
+          });
 
-        this.egresosData = expandedEgresos;
-        console.log('✅ Egresos expandidos con fechas de conceptos:', expandedEgresos.length);
-        this.processAllData();
+          this.egresosData = expandedEgresos;
+          console.log(
+            '✅ Egresos expandidos con fechas de conceptos:',
+            expandedEgresos.length,
+          );
+          this._loadedEgresos = true;
+          this.checkDataReady();
+          this.processAllData();
+        });
       });
-    });
   }
 
   private downloadBlob(blob: Blob, fileName: string): void {
@@ -868,15 +1363,26 @@ export class DashboardHcoComponent {
 
     // Para KPIs usar datos por endpoint, sin depender del mapeo contable 4xxx/5xxx/6xxx.
     const egresosReales = filteredExpenseData;
-    const ingresosReales = filteredIncomeData.filter(i => String(i?.status ?? '').toLowerCase() !== 'cancelada');
+    const ingresosReales = filteredIncomeData.filter(
+      (i) => String(i?.status ?? '').toLowerCase() !== 'cancelada',
+    );
 
-    console.log(`📊 Datos: ${egresosReales.length} egresos, ${ingresosReales.length} ingresos`);
+    console.log(
+      `📊 Datos: ${egresosReales.length} egresos, ${ingresosReales.length} ingresos`,
+    );
 
     // Calcular KPIs
-    this.totalEgresos = egresosReales.reduce((sum, e) => sum + this.getMonto(e), 0);
-    this.totalIngresos = ingresosReales.reduce((sum, i) => sum + this.getMonto(i), 0);
+    this.totalEgresos = egresosReales.reduce(
+      (sum, e) => sum + this.getMonto(e),
+      0,
+    );
+    this.totalIngresos = ingresosReales.reduce(
+      (sum, i) => sum + this.getMonto(i),
+      0,
+    );
     this.flujoNeto = this.totalIngresos - this.totalEgresos;
-    this.margenPorcentaje = this.totalIngresos > 0 ? (this.flujoNeto / this.totalIngresos) * 100 : 0;
+    this.margenPorcentaje =
+      this.totalIngresos > 0 ? (this.flujoNeto / this.totalIngresos) * 100 : 0;
 
     // Preparar datos para tablas y gráficas
     this.prepareClasificacionEgresos(filteredExpenseData);
@@ -895,7 +1401,7 @@ export class DashboardHcoComponent {
       item?.id_expend,
       item?.idCuentaContable,
       item?.id_cuenta_contable,
-      item?.idExpense
+      item?.idExpense,
     ];
 
     for (const candidate of candidates) {
@@ -907,11 +1413,16 @@ export class DashboardHcoComponent {
     return null;
   }
 
-  private parseTipoGastoTexto(value: any): { codigo: string; nombre: string } | null {
+  private parseTipoGastoTexto(
+    value: any,
+  ): { codigo: string; nombre: string } | null {
     const text = String(value ?? '').trim();
     if (!text) return null;
 
-    const parts = text.split('-').map(part => part.trim()).filter(Boolean);
+    const parts = text
+      .split('-')
+      .map((part) => part.trim())
+      .filter(Boolean);
     if (parts.length >= 2) {
       const codigo = parts[0];
       const nombre = parts.slice(1).join(' - ');
@@ -924,22 +1435,26 @@ export class DashboardHcoComponent {
   private getTipoGasto(item: any): { codigo: string; nombre: string } {
     // Buscar primero por idSubclasificacion (nivel 2) - usado en expenditure
     if (item?.idSubclasificacion) {
-      const cuenta = this.cuentasContablesNivel2.find(c => c.id === item.idSubclasificacion);
+      const cuenta = this.cuentasContablesNivel2.find(
+        (c) => c.id === item.idSubclasificacion,
+      );
       if (cuenta) {
         return {
           codigo: String(cuenta.codigo ?? item.idSubclasificacion),
-          nombre: cuenta.nombre || cuenta.descripcion || 'Subclasificación'
+          nombre: cuenta.nombre || cuenta.descripcion || 'Subclasificación',
         };
       }
     }
 
     // Luego buscar por idClasificacion (nivel 1)
     if (item?.idClasificacion) {
-      const cuenta = this.cuentasContablesNivel2.find(c => c.id === item.idClasificacion);
+      const cuenta = this.cuentasContablesNivel2.find(
+        (c) => c.id === item.idClasificacion,
+      );
       if (cuenta) {
         return {
           codigo: String(cuenta.codigo ?? item.idClasificacion),
-          nombre: cuenta.nombre || cuenta.descripcion || 'Clasificación'
+          nombre: cuenta.nombre || cuenta.descripcion || 'Clasificación',
         };
       }
     }
@@ -947,17 +1462,20 @@ export class DashboardHcoComponent {
     // Fallback: buscar por idExpend (campo antiguo)
     const idExpend = this.getIdExpend(item);
     if (idExpend) {
-      const cuenta = this.cuentasContablesNivel2.find(c => c.id === idExpend);
+      const cuenta = this.cuentasContablesNivel2.find((c) => c.id === idExpend);
       if (cuenta) {
         return {
           codigo: String(cuenta.codigo ?? idExpend),
-          nombre: cuenta.nombre || cuenta.descripcion || 'Cuenta contable'
+          nombre: cuenta.nombre || cuenta.descripcion || 'Cuenta contable',
         };
       }
     }
 
     const fromText = this.parseTipoGastoTexto(
-      item?.expenseTypeText ?? item?.tipoGastoTexto ?? item?.tipoGasto ?? item?.cuentaContableTexto
+      item?.expenseTypeText ??
+        item?.tipoGastoTexto ??
+        item?.tipoGasto ??
+        item?.cuentaContableTexto,
     );
     if (fromText) {
       return fromText;
@@ -977,7 +1495,7 @@ export class DashboardHcoComponent {
     if (!start || !end) return data;
     end.setHours(23, 59, 59, 999);
 
-    return data.filter(item => {
+    return data.filter((item) => {
       const itemDate = this.getItemDate(item, usePaymentDate);
       if (!itemDate) return false;
       return itemDate >= start && itemDate <= end;
@@ -986,7 +1504,8 @@ export class DashboardHcoComponent {
 
   private parseDateValue(value: any): Date | null {
     if (!value) return null;
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (value instanceof Date)
+      return Number.isNaN(value.getTime()) ? null : value;
 
     const asString = String(value).trim();
     if (!asString) return null;
@@ -1009,7 +1528,11 @@ export class DashboardHcoComponent {
 
   private getItemDate(item: any, usePaymentDate: boolean): Date | null {
     const rawDate = usePaymentDate
-      ? (item?.date ?? item?.paymentDate ?? item?.fechaPago ?? item?.dateStamped ?? item?.datestamped)
+      ? (item?.date ??
+        item?.paymentDate ??
+        item?.fechaPago ??
+        item?.dateStamped ??
+        item?.datestamped)
       : (item?.date ?? item?.dateStamped ?? item?.datestamped);
 
     return this.parseDateValue(rawDate);
@@ -1026,7 +1549,7 @@ export class DashboardHcoComponent {
     const currentYear = today.getFullYear();
     const grouped = new Map<string, ClasificacionContable>();
 
-    egresos.forEach(item => {
+    egresos.forEach((item) => {
       const tipoGasto = this.getTipoGasto(item);
       const key = `${tipoGasto.codigo}|${tipoGasto.nombre}`;
       const itemDate = this.getItemDate(item, false);
@@ -1039,34 +1562,54 @@ export class DashboardHcoComponent {
           gastoAnterior: 0,
           gastoMesActual: 0,
           gastoAcumulado: 0,
-          tipo: 'EGRESO'
+          tipo: 'EGRESO',
         });
       }
 
       const registro = grouped.get(key)!;
       const monto = this.getMonto(item);
-      if (itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth) {
+      if (
+        itemDate.getFullYear() === currentYear &&
+        itemDate.getMonth() === currentMonth
+      ) {
         registro.gastoMesActual += monto;
       } else {
         registro.gastoAnterior += monto;
       }
-      registro.gastoAcumulado = registro.gastoAnterior + registro.gastoMesActual;
+      registro.gastoAcumulado =
+        registro.gastoAnterior + registro.gastoMesActual;
     });
 
     this.clasificacionEgresos = Array.from(grouped.values())
-      .filter(item => item.gastoAcumulado > 0)
-      .sort((a, b) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true }));
+      .filter((item) => item.gastoAcumulado > 0)
+      .sort((a, b) =>
+        a.codigo.localeCompare(b.codigo, 'es', { numeric: true }),
+      );
 
-    console.log(`📊 Egresos clasificados por tipo de gasto: ${this.clasificacionEgresos.length} tipos`);
+    console.log(
+      `📊 Egresos clasificados por tipo de gasto: ${this.clasificacionEgresos.length} tipos`,
+    );
   }
 
   private prepareFlujoMensual(egresos: any[], ingresos: any[]): void {
     const monthMap = new Map<string, { egreso: number; ingreso: number }>();
-    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const monthNames = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
 
     // Procesar egresos (5xxx, 6xxx)
-    egresos.forEach(item => {
+    egresos.forEach((item) => {
       const date = this.getItemDate(item, false);
       if (!date) return;
       const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
@@ -1076,7 +1619,7 @@ export class DashboardHcoComponent {
     });
 
     // Procesar ingresos (fecha de pago)
-    ingresos.forEach(item => {
+    ingresos.forEach((item) => {
       const date = this.getItemDate(item, true);
       if (!date) return;
       const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
@@ -1088,16 +1631,23 @@ export class DashboardHcoComponent {
     // Convertir a array ordenado
     const sortedKeys = Array.from(monthMap.keys()).sort();
     let flujoAcumulado = 0;
-    const totalesPorAnioMap = new Map<number, { egreso: number; ingreso: number; flujo: number }>();
+    const totalesPorAnioMap = new Map<
+      number,
+      { egreso: number; ingreso: number; flujo: number }
+    >();
 
-    this.flujoMensual = sortedKeys.map(key => {
+    this.flujoMensual = sortedKeys.map((key) => {
       const [year, month] = key.split('-').map(Number);
       const data = monthMap.get(key)!;
       const flujoMes = data.ingreso - data.egreso;
       flujoAcumulado += flujoMes;
 
       // Acumular totales por año
-      const anioData = totalesPorAnioMap.get(year) || { egreso: 0, ingreso: 0, flujo: 0 };
+      const anioData = totalesPorAnioMap.get(year) || {
+        egreso: 0,
+        ingreso: 0,
+        flujo: 0,
+      };
       anioData.egreso += data.egreso;
       anioData.ingreso += data.ingreso;
       anioData.flujo += flujoMes;
@@ -1109,7 +1659,7 @@ export class DashboardHcoComponent {
         egresoMensual: data.egreso,
         ingresoMensual: data.ingreso,
         flujoMensual: flujoMes,
-        flujoAcumulado: flujoAcumulado
+        flujoAcumulado: flujoAcumulado,
       };
     });
 
@@ -1127,7 +1677,7 @@ export class DashboardHcoComponent {
 
     // Agrupar empleados por sucursal
     const countByBranch = new Map<number, number>();
-    this.allEmployees.forEach(emp => {
+    this.allEmployees.forEach((emp) => {
       const id = emp.idBranch ?? 0;
       countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
     });
@@ -1135,7 +1685,7 @@ export class DashboardHcoComponent {
     const labels: string[] = [];
     const series: number[] = [];
     countByBranch.forEach((count, idBranch) => {
-      const branch = this.branchesList.find(b => b.id === idBranch);
+      const branch = this.branchesList.find((b) => b.id === idBranch);
       labels.push(branch ? branch.name : `Sucursal ${idBranch}`);
       series.push(count);
     });
@@ -1144,31 +1694,61 @@ export class DashboardHcoComponent {
       series,
       chart: { type: 'donut', height: 280 },
       labels,
-      title: { text: 'PERSONAL POR SUCURSAL', align: 'center', style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' } },
+      title: {
+        text: 'PERSONAL POR SUCURSAL',
+        align: 'center',
+        style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' },
+      },
       legend: { position: 'bottom', fontSize: '10px' },
-      colors: ['#1e3a5f', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#7c3aed', '#a78bfa', '#06b6d4']
+      colors: [
+        '#1e3a5f',
+        '#2563eb',
+        '#3b82f6',
+        '#60a5fa',
+        '#93c5fd',
+        '#7c3aed',
+        '#a78bfa',
+        '#06b6d4',
+      ],
     };
   }
 
   private preparePieChart(): void {
     // Filtrar solo egresos con valor > 0
-    const egresosConValor = this.clasificacionEgresos.filter(e => e.gastoAcumulado > 0);
+    const egresosConValor = this.clasificacionEgresos.filter(
+      (e) => e.gastoAcumulado > 0,
+    );
 
     if (egresosConValor.length === 0) {
       this.pieChartOptions = null;
       return;
     }
 
-    const labels = egresosConValor.map(e => `${e.codigo} - ${e.nombre}`);
-    const series = egresosConValor.map(e => e.gastoAcumulado);
+    const labels = egresosConValor.map((e) => `${e.codigo} - ${e.nombre}`);
+    const series = egresosConValor.map((e) => e.gastoAcumulado);
 
     this.pieChartOptions = {
       series: series,
       chart: { type: 'donut', height: 320 },
       labels: labels,
-      title: { text: 'GASTO TOTAL ACUMULADO', align: 'center', style: { fontSize: '14px', fontWeight: 'bold', color: '#1a365d' } },
+      title: {
+        text: 'GASTO TOTAL ACUMULADO',
+        align: 'center',
+        style: { fontSize: '14px', fontWeight: 'bold', color: '#1a365d' },
+      },
       legend: { position: 'bottom', fontSize: '10px' },
-      colors: ['#1e3a5f', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#7c3aed', '#a78bfa', '#c4b5fd']
+      colors: [
+        '#1e3a5f',
+        '#2563eb',
+        '#3b82f6',
+        '#60a5fa',
+        '#93c5fd',
+        '#bfdbfe',
+        '#dbeafe',
+        '#7c3aed',
+        '#a78bfa',
+        '#c4b5fd',
+      ],
     };
   }
 
@@ -1178,18 +1758,25 @@ export class DashboardHcoComponent {
       return;
     }
 
-    const categories = this.flujoMensual.map(f => `${f.mes.substring(0, 3)} ${f.anio.toString().substring(2)}`);
-    const egresoData = this.flujoMensual.map(f => f.egresoMensual);
-    const ingresoData = this.flujoMensual.map(f => f.ingresoMensual);
-    const flujoData = this.flujoMensual.map(f => f.flujoAcumulado);
+    const categories = this.flujoMensual.map(
+      (f) => `${f.mes.substring(0, 3)} ${f.anio.toString().substring(2)}`,
+    );
+    const egresoData = this.flujoMensual.map((f) => f.egresoMensual);
+    const ingresoData = this.flujoMensual.map((f) => f.ingresoMensual);
+    const flujoData = this.flujoMensual.map((f) => f.flujoAcumulado);
 
     this.lineChartOptions = {
       series: [
         { name: 'EGRESO MENSUAL S/IVA', data: egresoData },
         { name: 'INGRESO S/IVA', data: ingresoData },
-        { name: 'FLUJO ACUMULADO', data: flujoData }
+        { name: 'FLUJO ACUMULADO', data: flujoData },
       ],
-      chart: { type: 'area', height: 350, toolbar: { show: false }, zoom: { enabled: false } },
+      chart: {
+        type: 'area',
+        height: 350,
+        toolbar: { show: false },
+        zoom: { enabled: false },
+      },
       stroke: { curve: 'smooth', width: [2, 2, 3] },
       fill: {
         type: 'gradient',
@@ -1197,25 +1784,30 @@ export class DashboardHcoComponent {
           shadeIntensity: 1,
           opacityFrom: 0.4,
           opacityTo: 0.1,
-          stops: [0, 90, 100]
-        }
+          stops: [0, 90, 100],
+        },
       },
       xaxis: {
         categories: categories,
-        labels: { rotate: -45, style: { fontSize: '10px' } }
+        labels: { rotate: -45, style: { fontSize: '10px' } },
       },
       yaxis: {
         labels: {
-          formatter: (val) => '$' + (val / 1000).toFixed(1) + 'K'
-        }
+          formatter: (val) => '$' + (val / 1000).toFixed(1) + 'K',
+        },
       },
-      title: { text: 'COMPORTAMIENTO DEL NEGOCIO', align: 'left', style: { fontSize: '14px', fontWeight: 'bold', color: '#1a365d' } },
+      title: {
+        text: 'COMPORTAMIENTO DEL NEGOCIO',
+        align: 'left',
+        style: { fontSize: '14px', fontWeight: 'bold', color: '#1a365d' },
+      },
       tooltip: {
         y: {
-          formatter: (val) => `$${val.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-        }
+          formatter: (val) =>
+            `$${val.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        },
       },
-      legend: { position: 'top', horizontalAlign: 'center' }
+      legend: { position: 'top', horizontalAlign: 'center' },
     };
   }
 
@@ -1223,13 +1815,17 @@ export class DashboardHcoComponent {
     // Identificar cuentas de combustible dinámicamente por nombre o código (56xx)
     const combustibleIds = new Set(
       this.cuentasContablesNivel2
-        .filter(c => {
+        .filter((c) => {
           const nombre = String(c.nombre ?? c.descripcion ?? '').toUpperCase();
           const codigo = String(c.codigo ?? '');
-          return nombre.includes('COMBUSTIBLE') || nombre.includes('GASOLINA') ||
-                 nombre.includes('DIESEL') || codigo.startsWith('56');
+          return (
+            nombre.includes('COMBUSTIBLE') ||
+            nombre.includes('GASOLINA') ||
+            nombre.includes('DIESEL') ||
+            codigo.startsWith('56')
+          );
         })
-        .map(c => c.id)
+        .map((c) => c.id),
     );
 
     if (combustibleIds.size === 0) {
@@ -1238,8 +1834,10 @@ export class DashboardHcoComponent {
       return;
     }
 
-    const items = filteredExpenseData.filter(item =>
-      combustibleIds.has(item.idSubclasificacion) || combustibleIds.has(item.idClasificacion)
+    const items = filteredExpenseData.filter(
+      (item) =>
+        combustibleIds.has(item.idSubclasificacion) ||
+        combustibleIds.has(item.idClasificacion),
     );
 
     if (items.length === 0) {
@@ -1250,9 +1848,13 @@ export class DashboardHcoComponent {
 
     // Agrupar por proyecto
     const grouped = new Map<string, number>();
-    items.forEach(item => {
-      const project = this.projectsList.find(p => p.id === item.idProject);
-      const label = project ? project.name : (item.idProject ? `Proyecto ${item.idProject}` : 'SIN PROYECTO');
+    items.forEach((item) => {
+      const project = this.projectsList.find((p) => p.id === item.idProject);
+      const label = project
+        ? project.name
+        : item.idProject
+          ? `Proyecto ${item.idProject}`
+          : 'SIN PROYECTO';
       grouped.set(label, (grouped.get(label) ?? 0) + this.getMonto(item));
     });
 
@@ -1264,43 +1866,80 @@ export class DashboardHcoComponent {
       series,
       chart: { type: 'donut', height: 280 },
       labels,
-      title: { text: 'CONSUMO DE COMBUSTIBLE', align: 'center', style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' } },
+      title: {
+        text: 'CONSUMO DE COMBUSTIBLE',
+        align: 'center',
+        style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' },
+      },
       legend: { position: 'bottom', fontSize: '10px' },
-      colors: ['#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fde68a', '#92400e', '#78350f', '#451a03'],
+      colors: [
+        '#b45309',
+        '#d97706',
+        '#f59e0b',
+        '#fbbf24',
+        '#fde68a',
+        '#92400e',
+        '#78350f',
+        '#451a03',
+      ],
     };
   }
 
   // Helpers para la vista - EGRESOS
   public getTotalEgresoAnterior(): number {
-    return this.clasificacionEgresos.reduce((sum, c) => sum + c.gastoAnterior, 0);
+    return this.clasificacionEgresos.reduce(
+      (sum, c) => sum + c.gastoAnterior,
+      0,
+    );
   }
 
   public getTotalEgresoMesActual(): number {
-    return this.clasificacionEgresos.reduce((sum, c) => sum + c.gastoMesActual, 0);
+    return this.clasificacionEgresos.reduce(
+      (sum, c) => sum + c.gastoMesActual,
+      0,
+    );
   }
 
   public getTotalEgresoAcumulado(): number {
-    return this.clasificacionEgresos.reduce((sum, c) => sum + c.gastoAcumulado, 0);
+    return this.clasificacionEgresos.reduce(
+      (sum, c) => sum + c.gastoAcumulado,
+      0,
+    );
   }
 
   public getTotalGeneral(): { egreso: number; ingreso: number; flujo: number } {
     return {
       egreso: this.totalesPorAnio.reduce((sum, t) => sum + t.egreso, 0),
       ingreso: this.totalesPorAnio.reduce((sum, t) => sum + t.ingreso, 0),
-      flujo: this.totalesPorAnio.reduce((sum, t) => sum + t.flujo, 0)
+      flujo: this.totalesPorAnio.reduce((sum, t) => sum + t.flujo, 0),
     };
   }
 
-  public getTotalAnio(anio: number, tipo: 'egreso' | 'ingreso' | 'flujo'): number {
-    const anioData = this.totalesPorAnio.find(t => t.anio === anio);
+  public getTotalAnio(
+    anio: number,
+    tipo: 'egreso' | 'ingreso' | 'flujo',
+  ): number {
+    const anioData = this.totalesPorAnio.find((t) => t.anio === anio);
     if (!anioData) return 0;
     return anioData[tipo];
   }
 
   // Obtener el nombre del mes actual
   public getMesActualNombre(): string {
-    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const monthNames = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
     return monthNames[new Date().getMonth()];
   }
 }

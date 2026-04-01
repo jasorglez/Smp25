@@ -9,21 +9,22 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies (build reproducible)
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
 # Build Angular app for production
-RUN npm run build --configuration=production
+RUN npm run build -- --configuration=production
 
 # ============================================
 # Stage 2: Serve with Nginx
 # ============================================
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
-RUN apk add --no-cache curl
-RUN rm /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache curl && \
+    rm /etc/nginx/conf.d/default.conf
+
 COPY nginx.docker.conf /etc/nginx/conf.d/default.conf
 
 COPY --from=build /app/dist/bi-aug-24/browser /usr/share/nginx/html
