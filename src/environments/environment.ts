@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.46 (31 Marzo 2026 11:00) - SMP v2.5 - Angular 18',
+  version: '3.47 (01 Abril 2026 15:30) - SMP v2.5 - Angular 18',
 };
 
