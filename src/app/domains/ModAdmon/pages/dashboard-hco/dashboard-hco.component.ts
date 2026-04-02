@@ -1445,22 +1445,22 @@ export class DashboardHcoComponent {
     // Para KPIs usar datos por endpoint, sin depender del mapeo contable 4xxx/5xxx/6xxx.
     const egresosReales = filteredExpenseData;
     const ingresosReales = filteredIncomeData.filter(
-      (i) => String(i?.status ?? '').toLowerCase() !== 'cancelada',
+      (i) => String(i?.status ?? '').toLowerCase() === 'pagada',
     );
 
     console.log(
       `📊 Datos: ${egresosReales.length} egresos, ${ingresosReales.length} ingresos`,
     );
 
-    // Calcular KPIs
+    // Calcular KPIs (ingresos pagados sin IVA)
     this.totalEgresos = egresosReales.reduce(
       (sum, e) => sum + this.getMonto(e),
       0,
     );
-    this.totalIngresos = ingresosReales.reduce(
-      (sum, i) => sum + this.getMonto(i),
-      0,
-    );
+    this.totalIngresos = ingresosReales.reduce((sum, i) => {
+      const subtotal = Number(i?.subtotal);
+      return sum + (Number.isFinite(subtotal) ? subtotal : 0);
+    }, 0);
     this.flujoNeto = this.totalIngresos - this.totalEgresos;
     this.margenPorcentaje =
       this.totalIngresos > 0 ? (this.flujoNeto / this.totalIngresos) * 100 : 0;
@@ -1728,15 +1728,18 @@ export class DashboardHcoComponent {
       monthMap.set(key, current);
     });
 
-    // Procesar ingresos (fecha de pago)
-    ingresos.forEach((item) => {
-      const date = this.getItemDate(item, true);
-      if (!date) return;
-      const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
-      const current = monthMap.get(key) || { egreso: 0, ingreso: 0 };
-      current.ingreso += this.getMonto(item);
-      monthMap.set(key, current);
-    });
+    // Procesar ingresos (solo pagados, sin IVA)
+    ingresos
+      .filter((item) => String(item?.status ?? '').toLowerCase() === 'pagada')
+      .forEach((item) => {
+        const date = this.getItemDate(item, true);
+        if (!date) return;
+        const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
+        const current = monthMap.get(key) || { egreso: 0, ingreso: 0 };
+        const subtotal = Number(item?.subtotal);
+        current.ingreso += Number.isFinite(subtotal) ? subtotal : 0;
+        monthMap.set(key, current);
+      });
 
     // Convertir a array ordenado
     const sortedKeys = Array.from(monthMap.keys()).sort();
