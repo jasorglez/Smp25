@@ -19,6 +19,7 @@ export interface Icontract {
   active        : number;
   stateContract : string | null;
   consecutive   : number;
+  idCustomer    : number | null;
   __isNew?      : boolean;
   __modified?   : boolean;
 }

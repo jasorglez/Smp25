@@ -56,6 +56,10 @@ export class EmployeesService {
 
   addEmployeeClock(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/EmployeesXClock`, data, { headers: this.trackingService.getHeaders() });
-  } 
+  }
+
+  getEmployeeProjectsByRoot(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeeXProyect/root/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
 
 }

@@ -16,6 +16,7 @@ import { AuthService } from 'app/services/auth.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { DetailCellRendererProyectosComponent } from './details/detalles-proyectos.component';
 import { ProjectsService } from 'app/services/projects.service';
+import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-contracts',
@@ -31,6 +32,7 @@ export class ContractsComponent {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.obtenerBranchs();
       this.getProviders();
+      this.getCustomers();
       this.getContracts();
     });
   }
@@ -61,6 +63,7 @@ export class ContractsComponent {
   private providersService = inject(ProvidersService);
   private branchsService = inject(BranchsService);
   private projectsService = inject(ProjectsService);
+  private customersService = inject(CustomersService);
   authService = inject(AuthService);
 
   // Components for master-detail
@@ -71,6 +74,7 @@ export class ContractsComponent {
   public contract: Icontract[] = [];
   branchs: any[] = [];
   providers: any[] = [];
+  customers: any[] = [];
   private gridApi!: GridApi<Icontract>;
 
   // Opciones para combos
@@ -303,6 +307,27 @@ export class ContractsComponent {
       },
     },
     {
+      field: 'idCustomer',
+      headerName: 'Compañía',
+      editable: true,
+      filter: true,
+      minWidth: 120,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({
+        values: ['', ...this.customers.map(c => c.company)]
+      }),
+      valueSetter: (params) => {
+        const found = this.customers.find(c => c.company === params.newValue);
+        params.data.idCustomer = found ? found.id : null;
+        return true;
+      },
+      valueGetter: (params) => {
+        if (!params.data?.idCustomer) return '';
+        const c = this.customers.find(c => c.id === params.data.idCustomer);
+        return c ? c.company : '';
+      },
+    },
+    {
       field: 'description',
       headerName: 'Descripcion',
       minWidth: 100,
@@ -495,6 +520,18 @@ export class ContractsComponent {
     );
   }
 
+  getCustomers() {
+    this.customersService.getCustomersByCompany(this.idRoot, 'CUSTOMERS').subscribe({
+      next: (resp: any) => {
+        this.customers = resp || [];
+      },
+      error: (error) => {
+        console.error('Error fetching customers', error);
+        this.customers = [];
+      }
+    });
+  }
+
   getProviders() {
     this.providersService.getProviders(this.idRoot).subscribe({
       next: (resp: any) => {
@@ -539,7 +576,8 @@ export class ContractsComponent {
       term: w.term,
       idBranch: w.idBranch,
       consecutive: w.consecutive,
-      active: w.active
+      active: w.active,
+      idCustomer: w.idCustomer ?? null
     } as Icontract));
   }
 
@@ -744,6 +782,7 @@ export class ContractsComponent {
     // Asegurar que los campos numéricos sean números
     cleanedData.idBranch = Number(cleanedData.idBranch);
     cleanedData.idProvider = Number(cleanedData.idProvider) || null;
+    cleanedData.idCustomer = cleanedData.idCustomer ? Number(cleanedData.idCustomer) : null;
     cleanedData.amountMx = Number(cleanedData.amountMx) || 0;
     cleanedData.amountDll = Number(cleanedData.amountDll) || 0;
     cleanedData.term = Number(cleanedData.term) || 0;

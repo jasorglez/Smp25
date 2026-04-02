@@ -8,7 +8,6 @@ import { CuentasContablesService } from 'app/services/cuentas-contables.service'
 
 import { ProjectsService } from 'app/services/projects.service';
 import { EmployeesService } from 'app/services/employees.service';
-import { BranchsService } from 'app/services/branchs.service';
 import { forkJoin, lastValueFrom, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { RootService } from 'app/services/root.service';
@@ -94,7 +93,6 @@ export class DashboardHcoComponent {
 
   private projectsService = inject(ProjectsService);
   private employeesService = inject(EmployeesService);
-  private branchsService = inject(BranchsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
 
@@ -109,7 +107,6 @@ export class DashboardHcoComponent {
 
   // Flags de carga — todos deben ser true para habilitar exportación
   private _loadedEmployees = false;
-  private _loadedBranches = false;
   private _loadedProjects = false;
   private _loadedCuentas = false;
   private _loadedEgresos = false;
@@ -118,7 +115,6 @@ export class DashboardHcoComponent {
   private checkDataReady(): void {
     this.isDataReady =
       this._loadedEmployees &&
-      this._loadedBranches &&
       this._loadedProjects &&
       this._loadedCuentas &&
       this._loadedEgresos;
@@ -126,7 +122,6 @@ export class DashboardHcoComponent {
 
   private resetLoadFlags(): void {
     this._loadedEmployees = false;
-    this._loadedBranches = false;
     this._loadedProjects = false;
     this._loadedCuentas = false;
     this._loadedEgresos = false;
@@ -164,6 +159,7 @@ export class DashboardHcoComponent {
 
   private projectsList: any[] = [];
   private allEmployees: any[] = [];
+  private allEmployeeProjects: any[] = [];
   private branchesList: any[] = [];
   public totalPersonal: number = 0;
 
@@ -482,7 +478,7 @@ export class DashboardHcoComponent {
   private buildPdfPersonalTable(): any {
     const body: any[] = [
       [
-        { text: 'SUCURSAL', style: 'tableHeader', fillColor: '#0E7490' },
+        { text: 'PROYECTO', style: 'tableHeader', fillColor: '#0E7490' },
         {
           text: 'CANTIDAD',
           style: 'tableHeader',
@@ -492,19 +488,10 @@ export class DashboardHcoComponent {
       ],
     ];
 
-    const countByBranch = new Map<number, number>();
-    this.allEmployees.forEach((emp) => {
-      const id = emp.idBranch ?? 0;
-      countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
-    });
-
-    countByBranch.forEach((count, idBranch) => {
-      const branch = this.branchesList.find((b) => b.id === idBranch);
+    const countByLabel = this.getPersonalByProject();
+    countByLabel.forEach((count, label) => {
       body.push([
-        {
-          text: branch ? branch.name : `Sucursal ${idBranch}`,
-          style: 'tableCell',
-        },
+        { text: label, style: 'tableCell' },
         { text: count.toString(), style: 'tableCellRight' },
       ]);
     });
@@ -523,6 +510,28 @@ export class DashboardHcoComponent {
       layout: 'lightHorizontalLines',
       margin: [0, 0, 0, 0],
     };
+  }
+
+  private getPersonalByProject(): Map<string, number> {
+    const countByLabel = new Map<string, number>();
+    this.allEmployees.forEach((emp) => {
+      const empProjects = this.allEmployeeProjects.filter(
+        (ep) => ep.idEmployee === emp.id
+      );
+      let label: string;
+      if (empProjects.length === 0) {
+        label = 'Sin Proyecto';
+      } else if (empProjects.length > 1) {
+        label = 'Multiproyectos';
+      } else {
+        const project = this.projectsList.find(
+          (p) => p.id === empProjects[0].idProyect
+        );
+        label = project ? project.name : `Proyecto ${empProjects[0].idProyect}`;
+      }
+      countByLabel.set(label, (countByLabel.get(label) || 0) + 1);
+    });
+    return countByLabel;
   }
 
   private buildPdfClasificacionTable(): any {
@@ -1117,7 +1126,7 @@ export class DashboardHcoComponent {
     };
 
     const headerRow = startRow + 1;
-    ['SUCURSAL', 'CANTIDAD'].forEach((h, i) => {
+    ['PROYECTO', 'CANTIDAD'].forEach((h, i) => {
       const cell = worksheet.getCell(headerRow, i + 1);
       cell.value = h;
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1129,18 +1138,11 @@ export class DashboardHcoComponent {
       };
     });
 
-    const countByBranch = new Map<number, number>();
-    this.allEmployees.forEach((emp) => {
-      const id = emp.idBranch ?? 0;
-      countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
-    });
+    const countByLabel = this.getPersonalByProject();
 
     let row = headerRow + 1;
-    countByBranch.forEach((count, idBranch) => {
-      const branch = this.branchesList.find((b) => b.id === idBranch);
-      worksheet.getCell(`A${row}`).value = branch
-        ? branch.name
-        : `Sucursal ${idBranch}`;
+    countByLabel.forEach((count, label) => {
+      worksheet.getCell(`A${row}`).value = label;
       const countCell = worksheet.getCell(`B${row}`);
       countCell.value = count;
       countCell.alignment = { horizontal: 'right' };
@@ -1295,7 +1297,7 @@ export class DashboardHcoComponent {
   private loadData(rootId: number): void {
     this.resetLoadFlags();
 
-    // Cargar total de personal de la empresa y agrupar por sucursal
+    // Cargar total de personal de la empresa y agrupar por proyecto
     this.employeesService.getEmployees(-rootId).subscribe((data: any) => {
       this.allEmployees = Array.isArray(data) ? data : [];
       this.totalPersonal = this.allEmployees.length;
@@ -1304,12 +1306,11 @@ export class DashboardHcoComponent {
       this.preparePersonalPieChart();
     });
 
-    this.branchsService.getBranches(rootId).subscribe((data: any) => {
-      this.branchesList = Array.isArray(data) ? data : [];
-      this._loadedBranches = true;
-      this.checkDataReady();
+    this.employeesService.getEmployeeProjectsByRoot(rootId).subscribe((data: any) => {
+      this.allEmployeeProjects = Array.isArray(data) ? data : [];
       this.preparePersonalPieChart();
     });
+
 
     this.projectsService
       .getProjectListByCompany(rootId)
@@ -1317,6 +1318,7 @@ export class DashboardHcoComponent {
         this.projectsList = Array.isArray(data) ? data : [];
         this._loadedProjects = true;
         this.checkDataReady();
+        this.preparePersonalPieChart();
       });
 
     // Cargar todas las cuentas contables (nivel 1 y 2) para poder subir al padre
@@ -1757,23 +1759,16 @@ export class DashboardHcoComponent {
   }
 
   private preparePersonalPieChart(): void {
-    if (this.allEmployees.length === 0) {
-      this.personalPieChartOptions = null;
+    if (this.allEmployees.length === 0 || this.projectsList.length === 0) {
       return;
     }
 
-    // Agrupar empleados por sucursal
-    const countByBranch = new Map<number, number>();
-    this.allEmployees.forEach((emp) => {
-      const id = emp.idBranch ?? 0;
-      countByBranch.set(id, (countByBranch.get(id) || 0) + 1);
-    });
+    const countByLabel = this.getPersonalByProject();
 
     const labels: string[] = [];
     const series: number[] = [];
-    countByBranch.forEach((count, idBranch) => {
-      const branch = this.branchesList.find((b) => b.id === idBranch);
-      labels.push(branch ? branch.name : `Sucursal ${idBranch}`);
+    countByLabel.forEach((count, label) => {
+      labels.push(label);
       series.push(count);
     });
 
@@ -1782,7 +1777,7 @@ export class DashboardHcoComponent {
       chart: { type: 'donut', height: 280 },
       labels,
       title: {
-        text: 'PERSONAL POR SUCURSAL',
+        text: 'PERSONAL POR PROYECTO',
         align: 'center',
         style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' },
       },
