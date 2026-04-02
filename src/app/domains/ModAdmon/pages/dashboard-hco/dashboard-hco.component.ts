@@ -12,6 +12,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 import { SignalsService } from 'app/services/signals.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 
+import { AdministrationService } from 'app/services/administration.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { forkJoin, lastValueFrom, of } from 'rxjs';
@@ -103,6 +104,7 @@ export class DashboardHcoComponent {
   private employeesService = inject(EmployeesService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private administrationService = inject(AdministrationService);
 
   // Estado del componente
   public rootId: number;
@@ -556,7 +558,7 @@ export class DashboardHcoComponent {
           alignment: 'right',
         },
         {
-          text: this.getMesActualNombre().toUpperCase(),
+          text: 'TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
           style: 'tableHeader',
           fillColor: '#1A365D',
           alignment: 'right',
@@ -944,7 +946,7 @@ export class DashboardHcoComponent {
     const headers = [
       'CLASIFICACION',
       'TOTAL ANTERIOR',
-      this.getMesActualNombre().toUpperCase(),
+      'TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
       'TOTAL ACUMULADO',
     ];
     headers.forEach((header, index) => {
@@ -1346,17 +1348,26 @@ export class DashboardHcoComponent {
       this.processAllData();
     });
 
-    // Cargar ingresos y egresos desde la misma fuente que income/expenditure
-    this.incomesAndExpensesService
-      .getIncomesAndExpenses(rootId)
-      .subscribe((data) => {
-        const rows = Array.isArray(data) ? data : [];
-        const gastos = rows.filter(
-          (item) => String(item?.type ?? '').toUpperCase() === 'GASTO',
-        );
-        this.ingresosData = rows.filter(
-          (item) => String(item?.type ?? '').toUpperCase() === 'DEPOSITO',
-        );
+    // Cargar cuentas bancarias para filtrar las de tipo "cash"
+    this.administrationService.getAccountBanks(rootId).pipe(
+      catchError(() => of([]))
+    ).subscribe((cuentasBancariasData: any[]) => {
+      const cuentasBancarias = Array.isArray(cuentasBancariasData) ? cuentasBancariasData : [];
+      const cashAccountIds = cuentasBancarias.filter(c => c.cash).map(c => c.id);
+
+      // Cargar ingresos y egresos desde la misma fuente que income/expenditure
+      this.incomesAndExpensesService
+        .getIncomesAndExpenses(rootId)
+        .subscribe((data) => {
+          const rowsUnfiltered = Array.isArray(data) ? data : [];
+          const rows = rowsUnfiltered.filter(item => !cashAccountIds.includes(item.idAccount));
+          
+          const gastos = rows.filter(
+            (item) => String(item?.type ?? '').toUpperCase() === 'GASTO',
+          );
+          this.ingresosData = rows.filter(
+            (item) => String(item?.type ?? '').toUpperCase() === 'DEPOSITO',
+          );
 
         console.log('✅ Egresos cargados (GASTO):', gastos.length);
         console.log(
@@ -1419,6 +1430,7 @@ export class DashboardHcoComponent {
           this.processAllData();
         });
       });
+    });
   }
 
   private downloadBlob(blob: Blob, fileName: string): void {
@@ -1655,8 +1667,13 @@ export class DashboardHcoComponent {
 
   private prepareClasificacionEgresos(egresos: any[]): void {
     const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+    let targetMonth = today.getMonth() - 1;
+    let targetYear = today.getFullYear();
+    if (targetMonth < 0) {
+      targetMonth = 11;
+      targetYear -= 1;
+    }
+    
     const grouped = new Map<string, ClasificacionContable>();
 
     egresos.forEach((item) => {
@@ -1679,11 +1696,14 @@ export class DashboardHcoComponent {
       const registro = grouped.get(key)!;
       const monto = this.getMonto(item);
       if (
-        itemDate.getFullYear() === currentYear &&
-        itemDate.getMonth() === currentMonth
+        itemDate.getFullYear() === targetYear &&
+        itemDate.getMonth() === targetMonth
       ) {
         registro.gastoMesActual += monto;
-      } else {
+      } else if (
+        itemDate.getFullYear() < targetYear ||
+        (itemDate.getFullYear() === targetYear && itemDate.getMonth() < targetMonth)
+      ) {
         registro.gastoAnterior += monto;
       }
       registro.gastoAcumulado =
@@ -2156,19 +2176,20 @@ export class DashboardHcoComponent {
   // Obtener el nombre del mes actual
   public getMesActualNombre(): string {
     const monthNames = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
     ];
     return monthNames[new Date().getMonth()];
+  }
+
+  // Obtener el nombre del mes anterior
+  public getMesAnteriorNombre(): string {
+    const monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+    let prevMonth = new Date().getMonth() - 1;
+    if (prevMonth < 0) prevMonth = 11;
+    return monthNames[prevMonth];
   }
 }
