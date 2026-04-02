@@ -281,7 +281,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
     //Agrego Soriano esta columna por que pedro se le olvido
     {
-      field: 'campo3',
+      field: 'campo11',
       headerName: 'Codigo Externo',
       editable: true,
       width: 140
@@ -672,6 +672,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       providerName: '',        // Nombre del proveedor (para mostrar en combo)
       campo2: '',              // Descripción empaque
       campo3: '',              // Pieza x paquete
+      campo11: '',             // Codigo externo
       campo4: '',              // Medidas
       campo5: '',              // Peso/Volumen
       campo6: '',              // Caducidad/Garantía

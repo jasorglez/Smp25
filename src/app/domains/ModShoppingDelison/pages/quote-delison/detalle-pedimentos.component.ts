@@ -5,14 +5,14 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
-import { DetallesPedimentosItemsComponent } from './detalles-pedimentos-items.component';
-import { DetallesProveedorComponent } from './detalles-proveedor.component';
+import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.component';
+import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
 
 @Component({
-  selector: 'app-detalle-pedimentos',
+  selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetallesPedimentosItemsComponent, DetallesProveedorComponent, DetailCellRendererPedimentoReportComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -45,7 +45,7 @@ import { DetailCellRendererPedimentoReportComponent } from './detail-cell-render
     }
   `]
 })
-export class DetallePedimentosComponent {
+export class DetailCellRendererPedimentosComponent {
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   rowData: any[] = [];
@@ -66,10 +66,7 @@ export class DetallePedimentosComponent {
     this.rowData = [];
 
     pedimentos.forEach((pedimento: any) => {
-      const rawFecha = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
-      const fechaPedimento = rawFecha
-        ? (() => { const [y, m, d] = rawFecha.split('-'); return `${d}-${m}-${y}`; })()
-        : '';
+      const fechaPedimento = pedimento.createdAt ? pedimento.createdAt.split('T')[0] : '';
 
       // ✅ Usar el número de pedimento secuencial (1, 2, 3, etc.) en lugar del folio
       const numeroPedimento = pedimento.pedimento || 0;
@@ -85,6 +82,9 @@ export class DetallePedimentosComponent {
         idProvider: pedimento.idProvider || 0,
         idProvider2: pedimento.idProvider2 || 0,
         idProvider3: pedimento.idProvider3 || 0,
+        name_idProvider: pedimento.name_idProvider || '',
+        name_idProvider2: pedimento.name_idProvider2 || '',
+        name_idProvider3: pedimento.name_idProvider3 || '',
         pdf: 'PDF',
         creo: pedimento.createdBy || 'N/A',
         createdBy: pedimento.createdBy || 'N/A',
@@ -125,9 +125,8 @@ export class DetallePedimentosComponent {
         },
         valueGetter: params => {
           const articulos = params.data.articulos || [];
-          const externos = articulos.filter((item: any) => (item.tipo || '').toLowerCase() !== 'interno');
-          const solicitados = externos.filter((item: any) => item.pedimento === true).length;
-          const total = externos.length;
+          const solicitados = articulos.filter((item: any) => item.pedimento === true).length;
+          const total = articulos.length;
           return `${solicitados}/${total}`;
         },
         editable: false,
@@ -151,7 +150,7 @@ export class DetallePedimentosComponent {
 
       {
         field: 'creo',
-        headerName: 'QUIEN LO CREÓ',
+        headerName: 'QUIEN LO CREÓ2',
         width: 180
       },
 
@@ -171,7 +170,7 @@ export class DetallePedimentosComponent {
           icon: 'bi-person-badge',
           title: 'Ver/Editar Proveedor A'
         },
-        valueGetter: () => 'Proveedor A',
+        valueGetter: (params: any) => params.data?.name_idProvider || (params.data?.idProvider > 0 ? `Prov. ${params.data.idProvider}` : 'Proveedor A'),
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
       },
 
@@ -185,7 +184,7 @@ export class DetallePedimentosComponent {
           icon: 'bi-person-badge',
           title: 'Ver/Editar Proveedor B'
         },
-        valueGetter: () => 'Proveedor B',
+        valueGetter: (params: any) => params.data?.name_idProvider2 || (params.data?.idProvider2 > 0 ? `Prov. ${params.data.idProvider2}` : 'Proveedor B'),
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer' }
       },
 
@@ -199,7 +198,7 @@ export class DetallePedimentosComponent {
           icon: 'bi-person-badge',
           title: 'Ver/Editar Proveedor C'
         },
-        valueGetter: () => 'Proveedor C',
+        valueGetter: (params: any) => params.data?.name_idProvider3 || (params.data?.idProvider3 > 0 ? `Prov. ${params.data.idProvider3}` : 'Proveedor C'),
         cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
       },
 
@@ -226,7 +225,7 @@ export class DetallePedimentosComponent {
     detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'proveedor') {
         return {
-          component: DetallesProveedorComponent,
+          component: DetalleItemsProveedorComponent,
           params: {
             providerField: params.data.providerField,
             providerLabel: params.data.providerLabel
@@ -243,7 +242,7 @@ export class DetallePedimentosComponent {
         };
       }
       // Por defecto, mostrar artículos
-      return { component: DetallesPedimentosItemsComponent };
+      return { component: DetalleItemsPedimentosComponent };
     },
     embedFullWidthRows: true,
     suppressCellFocus: true,
@@ -364,12 +363,9 @@ export class DetallePedimentosComponent {
       this.activeProviderField = providerField;
       this.activeProviderLabel = providerLabel;
 
-      // Actualizar el contexto del grid (manteniendo componentParent)
-      this.gridOptions.context = {
-        componentParent: this,
-        providerField: providerField,
-        providerLabel: providerLabel
-      };
+      // Mutar el contexto existente (no reemplazar) para que AG Grid mantenga la referencia
+      this.gridOptions.context.providerField = providerField;
+      this.gridOptions.context.providerLabel = providerLabel;
 
       // Aplicar los cambios de altura
       this.gridApi.onRowHeightChanged();

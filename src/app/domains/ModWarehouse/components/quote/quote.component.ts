@@ -28,7 +28,7 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
 import { ProviderQuoteDetailComponent } from './provider-quote-detail.component';
-import { DetailCellRendererPedimentosComponent } from '../../../ModShoppingDelison/pages/quote-delison/detail-cell-renderer-pedimentos.component';
+import { DetailCellRendererPedimentosComponent } from '../../../ModShoppingDelison/pages/quote-delison/detalle-pedimentos.component';
 
 interface Catalog {
   id: number;

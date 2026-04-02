@@ -118,9 +118,11 @@ export class DetailCellRendererPedimentoReportComponent {
         ? await this.base64EncodeService.convertImageToBase64(companyData.picture3)
         : null;
 
-      // Obtener artículos del pedimento (excluir tipo Interno)
+      // Obtener artículos del pedimento: solo Solicitado=true y excluir tipo Interno
       const articulos = (this.pedimentoData.articulos || []).filter(
-        (item: any) => (item.tipo || item.intorext || '').toLowerCase() !== 'interno'
+        (item: any) =>
+          item.pedimento === true &&
+          (item.tipo || item.intorext || '').toLowerCase() !== 'interno'
       );
 
       // Generar el PDF
@@ -219,7 +221,7 @@ export class DetailCellRendererPedimentoReportComponent {
                 { text: fechaPedimento }
               ],
               [
-                { text: 'QUIEN LO CREÓ:2', bold: true, fillColor: '#e3f2fd' },
+                { text: 'QUIEN LO CREÓ:', bold: true, fillColor: '#e3f2fd' },
                 { text: quienCreo },
                 { text: 'PROVEEDOR:', bold: true, fillColor: '#e3f2fd' },
                 { text: providerName }
