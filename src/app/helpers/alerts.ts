@@ -152,6 +152,100 @@ export class alerts{
 	}
 
 	/*=============================================
+	 * Toast minimalista para el apartado Usuarios
+	 * (auto-cierre y animaciones). No afecta a otras pantallas.
+	 *=============================================*/
+	static userSaveSuccessToast(title: string, text: string, durationMs: number = 2000) {
+		return Swal.fire({
+			icon: 'success',
+			title,
+			text,
+			toast: true,
+			position: 'bottom-end',
+			timer: durationMs,
+			timerProgressBar: false,
+			showConfirmButton: false,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'users-save-toast'
+			},
+			showClass: { popup: 'usersToastIn' },
+			hideClass: { popup: 'usersToastOut' },
+		});
+	}
+
+	static userSaveErrorToast(title: string, text: string, durationMs: number = 2500) {
+		return Swal.fire({
+			icon: 'error',
+			title,
+			text,
+			toast: true,
+			position: 'bottom-end',
+			timer: durationMs,
+			timerProgressBar: false,
+			showConfirmButton: false,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'users-save-toast users-save-toast-error'
+			},
+			showClass: { popup: 'usersToastIn' },
+			hideClass: { popup: 'usersToastOut' },
+		});
+	}
+
+	/** Confirmación minimalista para eliminar (solo Usuarios). */
+	static userConfirmDelete(title: string, text: string, confirmButtonText: string = 'Sí, eliminar', cancelButtonText: string = 'Cancelar') {
+		return Swal.fire({
+			title,
+			text,
+			icon: 'warning',
+			showCancelButton: true,
+			confirmButtonText,
+			cancelButtonText,
+			reverseButtons: true,
+			focusCancel: true,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'users-confirm-popup',
+				title: 'users-confirm-title',
+				htmlContainer: 'users-confirm-text',
+				confirmButton: 'users-confirm-btn',
+				cancelButton: 'users-cancel-btn',
+			},
+			showClass: { popup: 'usersLoadingIn' },
+			hideClass: { popup: 'usersLoadingOut' },
+		});
+	}
+
+	static userDeleteSuccessToast(title: string = 'Eliminado', text: string = 'Entrada eliminada satisfactoriamente.', durationMs: number = 2000) {
+		return this.userSaveSuccessToast(title, text, durationMs);
+	}
+
+	/**
+	 * Loading minimalista (solo Usuarios). No afecta al loading global.
+	 */
+	static userSaveLoading(title: string, text: string) {
+		Swal.fire({
+			title,
+			html: `<div class="users-loading-text">${text}</div>`,
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+			allowEnterKey: false,
+			showConfirmButton: false,
+			backdrop: true,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'users-loading-popup'
+			},
+			showClass: { popup: 'usersLoadingIn' },
+			hideClass: { popup: 'usersLoadingOut' },
+			didOpen: () => {
+				Swal.showLoading();
+			}
+		});
+	}
+
+	/*=============================================
 	Función para mostrar loading con progreso actualizable
 	=============================================*/
 

@@ -40,11 +40,6 @@
     <div class="permissions-modal-header">
       <strong class="modal-title-text">Permisos — {{ modalUserName }}</strong>
       <div class="modal-header-actions">
-        <button class="action-btn-sm edit"
-          (click)="permissionsViewRef?.modificar()"
-          title="Modificar">
-          <i class="bi bi-pencil"></i>
-        </button>
         <button class="action-btn-sm save position-relative"
           (click)="permissionsViewRef?.saveDetailChanges()"
           [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"

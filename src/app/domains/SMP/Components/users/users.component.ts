@@ -297,31 +297,178 @@ export class UsersComponent implements OnDestroy {
 
     const addBranchPermission$ = this.usersxrootService.addUserxPermission(sucursal);
 
-    const addDetailedPermissions$ = from(this.getCRUD(this.dataEmpleado.idPosition)).pipe(
-      mergeMap(rolesDefinidos => {
+    const normalizeCrudArray = (data: any): any[] => {
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === 'object') {
+        const o = data as Record<string, any>;
+        if (Array.isArray(o['data'])) return o['data'];
+        if (Array.isArray(o['project'])) return o['project'];
+        if (Array.isArray(o['permissions'])) return o['permissions'];
+      }
+      return [];
+    };
+
+    /**
+     * Para encender switches (panel derecho y UserSystemPermissions) solo cuenta lectura.
+     * Create/Update/Delete NO deben activar módulos/tarjetas por sí solos.
+     */
+    const anyReadOn = (r: any): boolean => {
+      return (
+        r?.detailedRead === true ||
+        r?.DetailedRead === true ||
+        r?.masterRead === true ||
+        r?.MasterRead === true ||
+        r?.canRead === true ||
+        r?.CanRead === true
+      );
+    };
+
+    const idCompany = Number(this.signalsService.getRootSelectedBySidebar()() ?? this.idRoot);
+    const idRole = Number(this.dataEmpleado.idDepto);
+    const idPosicion = Number(this.dataEmpleado.idPosition);
+
+    const templateRows$ = this.rolesService.getPermissionsByRoles(
+      idCompany,
+      idRole,
+      idPosicion
+    ).pipe(
+      map((raw: any) => normalizeCrudArray(raw)),
+      catchError(() => of([]))
+    );
+
+    // 1) Se inserta CrudPremissionsDelison desde el template Departamento+Posición.
+    const addDetailedPermissions$ = templateRows$.pipe(
+      mergeMap((rolesDefinidos: any[]) => {
         if (!rolesDefinidos || rolesDefinidos.length === 0) {
           return EMPTY;
         }
-        const detailObservables = rolesDefinidos.map(permiso => {
-          const detailData = {
+
+        // Dedupe por (idDetailedPermission + idShowPermition): mantener la estructura completa del template.
+        const changesMap = new Map<string, any>();
+        for (const r of rolesDefinidos) {
+          const did = Number(r?.idDetailedPermission ?? r?.IdDetailedPermission);
+          const sid = Number(r?.idShowPermition ?? r?.IdShowPermition);
+          if (!Number.isFinite(did) || did <= 0 || !Number.isFinite(sid) || sid <= 0) continue;
+          const subd =
+            String(
+              r?.subdetailedPermissionName ??
+                r?.SubdetailedPermissionName ??
+                r?.name ??
+                r?.Name ??
+                ''
+            ).trim();
+          const key = `${did}-${sid}-${subd}`;
+          if (changesMap.has(key)) continue;
+
+          const canRead = r?.canRead ?? r?.CanRead ?? r?.detailedRead ?? r?.DetailedRead ?? false;
+          const masterRead =
+            r?.masterRead ?? r?.MasterRead ?? (r?.masterRead === false ? false : anyReadOn(r));
+          const detailedRead =
+            r?.detailedRead ?? r?.DetailedRead ?? (canRead === true ? true : false);
+          const canCreate = r?.canCreate ?? r?.CanCreate ?? (canRead ? true : false);
+          const canUpdate = r?.canUpdate ?? r?.CanUpdate ?? (canRead ? true : false);
+          const canDelete = r?.canDelete ?? r?.CanDelete ?? (canRead ? true : false);
+
+          changesMap.set(key, {
             idUser: userId,
             idBranch: this.dataEmpleado.idBranch,
-            idRole: this.dataEmpleado.idDepto,
-            idPosicion: this.dataEmpleado.idPosition,
-            idDetailedPermission: permiso.idDetailedPermission,
-            canCreate: permiso.canCreate,
-            canRead: permiso.canRead,
-            canUpdate: permiso.canUpdate,
-            canDelete: permiso.canDelete,
-            active: permiso.active
-          };
-          return this.permitionsService.addPermitionsDetail(detailData);
-        });
-        return concat(...detailObservables);
+            idMasterPermission: Number(r?.idMasterPermission ?? r?.IdMasterPermission) || undefined,
+            masterRead: masterRead ?? undefined,
+            idDetailedPermission: did,
+            detailedRead: detailedRead ?? undefined,
+            subdetailedPermissionName:
+              r?.subdetailedPermissionName ??
+              r?.SubdetailedPermissionName ??
+              r?.name ??
+              r?.Name ??
+              null,
+            idShowPermition: sid,
+            showColumn: r?.showColumn ?? r?.ShowColumn ?? undefined,
+            idRole: idRole,
+            idPosicion: idPosicion,
+            canCreate: canCreate === false ? false : true,
+            canRead: canRead === false ? false : true,
+            canUpdate: canUpdate === false ? false : true,
+            canDelete: canDelete === false ? false : true,
+            active: r?.active ?? r?.Active ?? 1,
+          });
+        }
+
+        const requests = Array.from(changesMap.values()).map((payload) =>
+          this.permitionsService.addPermitions(payload)
+        );
+        // Optimización: enviar CRUD en paralelo con límite de concurrencia.
+        return requests.length
+          ? from(requests).pipe(
+              mergeMap((req$) => req$, 8),
+              toArray()
+            )
+          : EMPTY;
       })
     );
 
-    return concat(addBranchPermission$, addDetailedPermissions$);
+    // 2) Se actualiza UserSystemPermissions para que el sidebar al iniciar sesión refleje compras/almacenes.
+    //    Esto usa los mismos “permissionId” que el modal de permisos.
+    const seedUserSystem$ = forkJoin({
+      templateRows: templateRows$,
+      catalog: this.masterPermissions2Service.getMasterPermissions(idCompany).pipe(
+        catchError(() => of([]))
+      )
+    }).pipe(
+      mergeMap(({ templateRows, catalog }: any) => {
+        const normalizar = (texto: any): string =>
+          String(texto ?? '')
+            .toLowerCase()
+            .trim()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+        const enabledIds = new Set<number>();
+        for (const r of Array.isArray(templateRows) ? templateRows : []) {
+          const id = Number(r?.idDetailedPermission ?? r?.IdDetailedPermission);
+          if (!Number.isFinite(id) || id <= 0) continue;
+          if (anyReadOn(r)) {
+            enabledIds.add(id);
+          }
+        }
+
+        // Ajuste homónimo: Almacenes (switch maestro) necesita el id detallado “Almacenes” homónimo.
+        // Si en el template el master Almacenes está ON, forzamos que el id homónimo entre al set.
+        const almacenesOn = (Array.isArray(templateRows) ? templateRows : []).some((r: any) => {
+          const mn = normalizar(r?.masterPermissionName ?? r?.MasterPermissionName ?? '');
+          return mn.includes('almacen') && anyReadOn(r);
+        });
+
+        if (almacenesOn && Array.isArray(catalog) && catalog.length > 0) {
+          // Buscamos el master “Almacenes” en el catálogo de UserSystemPermissions
+          const masterName = (Array.isArray(catalog) ? catalog : []).find((m: any) => {
+            const n = normalizar(m?.permissionName ?? m?.PermissionName ?? '');
+            return n.includes('almacen');
+          })?.permissionName;
+
+          const target = normalizar(masterName);
+          const masterEntry =
+            (Array.isArray(catalog) ? catalog : []).find((m: any) => {
+              const n = normalizar(m?.permissionName ?? m?.PermissionName ?? '');
+              return n === target || (n.length >= 3 && target.length >= 3 && (n.includes(target) || target.includes(n)));
+            }) ?? null;
+
+          const sameNameDetail = masterEntry?.detailedPermissions?.find((d: any) => {
+            const dn = normalizar(d?.permissionName ?? d?.PermissionName ?? '');
+            return dn === target;
+          });
+
+          const hid = Number(sameNameDetail?.id ?? sameNameDetail?.Id);
+          if (Number.isFinite(hid) && hid > 0) {
+            enabledIds.add(hid);
+          }
+        }
+
+        return this.masterPermissions2Service.updateUserPermissions(userId, Array.from(enabledIds));
+      })
+    );
+
+    return concat(addBranchPermission$, addDetailedPermissions$, seedUserSystem$);
   }
 
   getCRUD(idPosicion: number): Promise<any[]> {
@@ -740,6 +887,7 @@ export class UsersComponent implements OnDestroy {
     }
 
     try {
+      alerts.userSaveLoading('Guardando usuario', 'Espera un momento, el usuario se está creando…');
       const addUserRequests = newRows.map((row, index) => {
         const cleanedData = this.cleanDataForServer(row);
         this.trackingService.addLog(
@@ -768,11 +916,10 @@ export class UsersComponent implements OnDestroy {
         return this.usersService.updateUser(row.id, cleanedData);
       });
 
-      const userResponses = await lastValueFrom(
-        concat(...addUserRequests, ...updateUserRequests).pipe(toArray())
-      );
-
-      const newUserResponses = userResponses.slice(0, newRows.length);
+      // Optimización: crear/actualizar usuarios en paralelo (reduce tiempo total).
+      const addResponses = addUserRequests.length > 0 ? await lastValueFrom(forkJoin(addUserRequests)) : [];
+      const updateResponses = updateUserRequests.length > 0 ? await lastValueFrom(forkJoin(updateUserRequests)) : [];
+      const newUserResponses = addResponses;
 
       const permissionRequests = newUserResponses.map((response) => {
         const userId = response.data?.id;
@@ -807,22 +954,31 @@ export class UsersComponent implements OnDestroy {
       }).filter(req => req !== null);
 
       if (permissionRequests.length > 0) {
-        await lastValueFrom(concat(...permissionRequests.flat()).pipe(toArray()));
+        // Optimización: permisos en paralelo con límite de concurrencia (no saturar el backend).
+        const all = permissionRequests.flat();
+        await lastValueFrom(
+          from(all).pipe(
+            mergeMap((req$) => req$, 8),
+            toArray()
+          )
+        );
       }
 
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.closeLoading();
+      alerts.userSaveSuccessToast('Datos actualizados', 'Se han actualizado los datos correctamente.');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       setTimeout(() => this.obtenerDatos(), 500);
 
     } catch (error) {
+      alerts.closeLoading();
       console.error('Error al guardar usuarios:', error);
       let errorMessage = 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.';
       if (error?.error?.message) errorMessage = error.error.message;
       else if (error?.status === 400) errorMessage = 'Error de validación: Verifique que todos los campos obligatorios estén completos.';
       else if (error?.status === 409) errorMessage = 'Conflicto: El correo electrónico ya está en uso.';
       else if (error?.status === 500) errorMessage = 'Error del servidor: Contacte al administrador.';
-      alerts.basicAlert('Error', errorMessage, 'error');
+      alerts.userSaveErrorToast('Error', errorMessage);
     }
   }
 
@@ -841,7 +997,8 @@ export class UsersComponent implements OnDestroy {
       return;
     }
 
-    alerts.confirmAlert('Eliminar empleado', '¿Está seguro que desea eliminar este usuario?', 'warning', 'Sí, eliminar')
+    const who = (selectedData?.displayName || selectedData?.email || 'este usuario').toString().trim();
+    alerts.userConfirmDelete(`Eliminar a ${who}`, '¿Está seguro que desea eliminar este usuario?')
       .then((value) => {
         if (value.isConfirmed) {
           selectedData.active = 0;
@@ -851,7 +1008,7 @@ export class UsersComponent implements OnDestroy {
               return EMPTY;
             })
           ).subscribe(() => {
-            alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+            alerts.userDeleteSuccessToast('Eliminar entrada', 'Entrada eliminada satisfactoriamente.');
             this.obtenerDatos();
             this.trackingService.addLog(
               this.trackingService.getnameComp(),

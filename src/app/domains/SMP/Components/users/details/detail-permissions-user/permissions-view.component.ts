@@ -71,6 +71,25 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   /** Misma respuesta que Permisos maestros: `getMasterPermissions` (acordeón). */
   private masterPermissionsCatalog: any[] = [];
 
+  /**
+   * Nombres normalizados de maestros que alguna vez vinieron en el CRUD de este modal (mismo usuario/sucursal/rol/posición).
+   * Solo esos pueden reinyectarse desde el catálogo al apagar todo un módulo; no se lista el catálogo completo de la empresa.
+   */
+  private modalSidebarMasterKeys = new Set<string>();
+  /**
+   * Universe de tarjetas (details) permitido por la plantilla `rol+posición`,
+   * por nombre de maestro normalizado.
+   * Usado para no “inyectar” tarjetas extra al merge desde el catálogo.
+   */
+  private modalSidebarDetailKeysByMaster = new Map<string, Set<string>>();
+  /**
+   * CRUD completo de la plantilla `rol+posición` (RolesxDetailedPermissionsSummary).
+   * Se usa para reponer `subdetails` cuando el catálogo inyecta masters/details
+   * pero sin estructura CRUD (solo nombres).
+   */
+  private roleTemplateCrudRows: any[] = [];
+  private lastPermissionsModalContextKey = '';
+
   /** Línea base de switches maestros izquierdos tras cargar/ revertir (evita “sucio” falso). */
   private masterReadBaselineByName = new Map<string, boolean>();
 
@@ -862,6 +881,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     idPosicion: number,
     options?: { preserveUiSelection?: boolean; onComplete?: () => void }
   ) {
+    const ctx = `${idUser}|${idBranch}|${idRole}|${idPosicion}`;
+    if (ctx !== this.lastPermissionsModalContextKey) {
+      this.lastPermissionsModalContextKey = ctx;
+      this.modalSidebarMasterKeys.clear();
+      this.modalSidebarDetailKeysByMaster.clear();
+      this.roleTemplateCrudRows = [];
+    }
+
     const preserve = options?.preserveUiSelection === true;
     const savedMasterName = preserve ? this.masterSeleccionado?.masterPermissionName : undefined;
     const savedDetailName = preserve ? this.detailSeleccionado?.detailedPermissionName : undefined;
@@ -878,6 +905,19 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
             sub.complete();
           });
 
+    const roleTemplateRows$ =
+      scope === 'userSystem' &&
+      !roleTemplateOnly &&
+      Number.isFinite(idRole) &&
+      idRole > 0 &&
+      Number.isFinite(idPosicion) &&
+      idPosicion > 0
+        ? this.rolesService.getPermissionsByRoles(idCompany, idRole, idPosicion).pipe(
+            map((raw) => this.normalizeCrudArray(raw)),
+            catchError(() => of([]))
+          )
+        : of([]);
+
     forkJoin({
       crud: this.getCrudRowsForModal$(scope, idCompany, idUser, idBranch, idRole, idPosicion, seedFromRolePos, roleTemplateOnly),
       userSys: userSys$,
@@ -885,16 +925,62 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         scope === 'userSystem'
           ? this.systemPermissionsService.getMasterPermissions(idCompany)
           : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
+      roleTemplateRows: roleTemplateRows$,
     }).subscribe({
-      next: ({ crud, userSys, catalog }: any) => {
+      next: ({ crud, userSys, catalog, roleTemplateRows }: any) => {
+        const debug = localStorage.getItem('debugPermisosView') === '1';
         this.rawData = crud;
-        console.log('new data', this.rawData);
+        if (debug) {
+          const compras = (Array.isArray(this.rawData) ? this.rawData : []).filter((x: any) =>
+            this.normalizar(String(x?.masterPermissionName ?? x?.MasterPermissionName ?? '')).includes('compras')
+          );
+          console.log('[PermisosViewDebug] crudCount=', Array.isArray(this.rawData) ? this.rawData.length : 0, {
+            comprasCount: compras.length,
+            comprasSample: compras.slice(0, 3).map((it: any) => ({
+              master: it?.masterPermissionName ?? it?.MasterPermissionName,
+              detailed: it?.detailedPermissionName ?? it?.DetailedPermissionName,
+              sub: it?.subdetailedPermissionName ?? it?.SubdetailedPermissionName,
+              show: it?.showColumn ?? it?.ShowColumn,
+              idDetailed: it?.idDetailedPermission ?? it?.IdDetailedPermission,
+              idShow: it?.idShowPermition ?? it?.IdShowPermition,
+              canRead: it?.canRead ?? it?.CanRead,
+              detailedRead: it?.detailedRead ?? it?.DetailedRead,
+              masterRead: it?.masterRead ?? it?.MasterRead,
+            })),
+          });
+        }
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
+        this.unionModalSidebarUniverseFromRoleTemplate(roleTemplateRows ?? []);
+        this.roleTemplateCrudRows = this.normalizeCrudArray(roleTemplateRows ?? []);
         this.userSystemPermissionIds = (userSys ?? []).map((p: any) => p.permissionId);
-        // Precarga desde rol+posición: solo si el usuario aún no tiene permisos maestros asignados.
+        // Para usuarios nuevos, si seedFromRolePosition está activo y no existe UserSystemPermissions,
+        // el CRUD + flags ya deben reflejar la plantilla rol+posición (lo traemos en `crud` o `roleTemplateRows`).
+        // En ese caso, evitar sobrescribir `detail.detailedRead` con ids calculados desde UserSystemPermissions
+        // (que puede no mapear 1:1 en algunos homónimos). Priorizamos la plantilla visual.
+        let seededFromRoleTemplateVisual = false;
+        // Precarga desde rol+posición.
+        // Si el modal se abrió desde “Departamentos de:”, la intención es que el panel derecho
+        // replique 1:1 la plantilla Departamento+Posición. En ese caso, no queremos que
+        // `syncReadFlagsFromUserSystemPermissions()` sobrescriba por ids que pudieran venir extra.
         if (scope === 'userSystem' && seedFromRolePos && this.userSystemPermissionIds.length === 0) {
+          seededFromRoleTemplateVisual = true;
           const seed = new Set<number>();
-          for (const r of Array.isArray(crud) ? crud : []) {
+          // Para switches con lógica especial (ej. Almacenes homónimo), necesitamos
+          // saber si ese master está ON en la plantilla aunque el id exacto del toggle
+          // no venga explícito en alguna fila del detalle.
+          const templateMasterOnByNorm = new Map<string, { masterPermissionName: string; anyOn: boolean }>();
+          for (const r of Array.isArray(roleTemplateRows) ? roleTemplateRows : []) {
+            const masterName = String((r as any)?.masterPermissionName ?? (r as any)?.MasterPermissionName ?? '').trim();
+            const masterNorm = this.normalizar(masterName);
+            if (masterNorm) {
+              const prev = templateMasterOnByNorm.get(masterNorm);
+              if (prev) {
+                // Si ya venía ON, se mantiene.
+                prev.anyOn = prev.anyOn || false;
+              } else {
+                templateMasterOnByNorm.set(masterNorm, { masterPermissionName: masterName, anyOn: false });
+              }
+            }
             const id = this.normalizeDetailedId((r as any)?.idDetailedPermission ?? (r as any)?.IdDetailedPermission);
             if (id == null) continue;
             const anyOn =
@@ -910,19 +996,58 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
               !!(r as any)?.CanUpdate ||
               !!(r as any)?.canDelete ||
               !!(r as any)?.CanDelete;
+            if (masterNorm && templateMasterOnByNorm.has(masterNorm)) {
+              const entry = templateMasterOnByNorm.get(masterNorm)!;
+              entry.anyOn = entry.anyOn || anyOn;
+            }
             if (anyOn) seed.add(id);
+          }
+
+          // Ajuste homónimo: Almacenes (switch maestro) depende de un id específico.
+          // Si en la plantilla el master Almacenes está ON, garantizamos que el id del toggle homónimo
+          // también esté en `seed` para reflejar el master correctamente en el modal del usuario.
+          for (const [mn, entry] of templateMasterOnByNorm.entries()) {
+            const entryName = entry.masterPermissionName;
+            if (!entry.anyOn) continue;
+            const entryNorm = this.normalizar(entryName);
+            if (!entryNorm.includes('almacen')) continue;
+            const hid = this.getCatalogDetailedIdForMasterToggle(entryName);
+            if (hid != null) {
+              seed.add(hid);
+            }
           }
           this.userSystemPermissionIds = [...seed];
         }
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
-        this.groupedPermissions = this.transformData(this.rawData);
+        this.rebuildGroupedPermissionsFromRaw();
         if (scope === 'userSystem') {
-          this.syncReadFlagsFromUserSystemPermissions();
           this.syncMasterLeftSwitchesFromUserSys();
+          // Si el modal viene de “Departamentos de:” replicamos visualmente desde plantilla
+          // y no sobrescribimos con UserSystemPermissions.
+          if (seedFromRolePos) {
+            this.applyTemplateCrudFlagsToGroupedPermissions();
+          } else {
+            this.syncReadFlagsFromUserSystemPermissions();
+          }
         } else {
           this.recomputeReadsFromCrud();
         }
         this.captureMasterReadBaseline();
+
+        if (debug) {
+          const comprasMaster = this.groupedPermissions.find((m) =>
+            this.normalizar(String(m?.masterPermissionName ?? '')).includes('compras')
+          );
+          console.log('[PermisosViewDebug] groupedCompras=', {
+            master: comprasMaster?.masterPermissionName,
+            detailsCount: comprasMaster?.details?.length ?? 0,
+            detailsSample: (comprasMaster?.details ?? []).slice(0, 6).map((d) => ({
+              name: d.detailedPermissionName,
+              detailedRead: d.detailedRead,
+              subdetailsCount: d.subdetails?.length ?? 0,
+            })),
+          });
+        }
 
         if (preserve && savedMasterName) {
           const m = this.groupedPermissions.find((x) => x.masterPermissionName === savedMasterName);
@@ -981,6 +1106,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
               })
             );
 
+    const roleTemplateRowsMod$ =
+      scope === 'userSystem' && !roleTemplateOnly && this.idRole > 0 && this.idPosicion > 0
+        ? this.rolesService.getPermissionsByRoles(idCo, this.idRole, this.idPosicion).pipe(
+            map((raw) => this.normalizeCrudArray(raw)),
+            catchError(() => of([]))
+          )
+        : of([]);
+
     forkJoin({
       crud: crudReload$,
       userSys:
@@ -991,13 +1124,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         scope === 'userSystem'
           ? this.systemPermissionsService.getMasterPermissions(idCo)
           : new Observable<any[]>((sub) => { sub.next([]); sub.complete(); }),
+      roleTemplateRows: roleTemplateRowsMod$,
     }).subscribe({
-      next: ({ crud, userSys, catalog }: any) => {
+      next: ({ crud, userSys, catalog, roleTemplateRows }: any) => {
         this.rawData = crud;
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
+        this.unionModalSidebarUniverseFromRoleTemplate(roleTemplateRows ?? []);
+        this.roleTemplateCrudRows = this.normalizeCrudArray(roleTemplateRows ?? []);
         this.userSystemPermissionIds = (userSys ?? []).map((p: any) => p.permissionId);
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
-        this.groupedPermissions = this.transformData(this.rawData);
+        this.rebuildGroupedPermissionsFromRaw();
         if (scope === 'userSystem') {
           this.syncReadFlagsFromUserSystemPermissions();
           this.syncMasterLeftSwitchesFromUserSys();
@@ -1559,6 +1695,417 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     return result;
   }
 
+  /**
+   * El API de filas CRUD puede omitir módulos sin permisos guardados; el catálogo de maestros
+   * (mismo que Permisos maestros) define la lista completa del sidebar izquierdo.
+   */
+  private catalogMasterAlreadyInGrouped(grouped: MasterPermission[], catRow: any): boolean {
+    const catId = Number(catRow?.id ?? catRow?.Id);
+    if (Number.isFinite(catId) && catId > 0) {
+      for (const m of grouped) {
+        const hit = this.getMasterCatalogEntry(m.masterPermissionName);
+        const hid = Number(hit?.id ?? hit?.Id);
+        if (hit != null && Number.isFinite(hid) && hid === catId) {
+          return true;
+        }
+      }
+    }
+    const cname = this.normalizar(String(catRow?.permissionName ?? catRow?.PermissionName ?? ''));
+    if (!cname) {
+      return false;
+    }
+    for (const m of grouped) {
+      const mn = this.normalizar(m.masterPermissionName || '');
+      if (mn === cname) {
+        return true;
+      }
+      if (mn.length >= 3 && cname.length >= 3 && (mn.includes(cname) || cname.includes(mn))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** ¿Este maestro (nombre ya normalizado) pertenece al subconjunto CRUD de este modal? */
+  private isMasterInModalSidebarUniverse(catalogNameNorm: string): boolean {
+    if (!catalogNameNorm) {
+      return false;
+    }
+    if (this.modalSidebarMasterKeys.has(catalogNameNorm)) {
+      return true;
+    }
+    // "Compras" genérico no debe considerarse del universo solo porque exista "Compras delison"
+    // (substring); si no, al apagar Compras delison el merge del catálogo añade una fila "Compras".
+    if (catalogNameNorm === 'compras' || catalogNameNorm === 'compra') {
+      return (
+        this.modalSidebarMasterKeys.has('compras') ||
+        this.modalSidebarMasterKeys.has('compra')
+      );
+    }
+    for (const k of this.modalSidebarMasterKeys) {
+      if (
+        k.length >= 3 &&
+        catalogNameNorm.length >= 3 &&
+        (k.includes(catalogNameNorm) || catalogNameNorm.includes(k))
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private unionModalSidebarUniverseFromGrouped(grouped: MasterPermission[]): void {
+    for (const m of grouped) {
+      const k = this.normalizar(m.masterPermissionName || '');
+      if (k) {
+        this.modalSidebarMasterKeys.add(k);
+      }
+    }
+    for (const row of Array.isArray(this.rawData) ? this.rawData : []) {
+      const mn = this.normalizar(String((row as any)?.masterPermissionName ?? (row as any)?.MasterPermissionName ?? ''));
+      if (mn) {
+        this.modalSidebarMasterKeys.add(mn);
+      }
+    }
+  }
+
+  /** Los maestros del sidebar coinciden con la plantilla rol+posición (siempre N filas aunque el CRUD del usuario omita módulos apagados). */
+  private unionModalSidebarUniverseFromRoleTemplate(templateRows: any[]): void {
+    for (const row of Array.isArray(templateRows) ? templateRows : []) {
+      const mn = this.normalizar(
+        String((row as any)?.masterPermissionName ?? (row as any)?.MasterPermissionName ?? '')
+      );
+      if (mn) {
+        this.modalSidebarMasterKeys.add(mn);
+
+        const dn = this.normalizar(
+          String(
+            (row as any)?.detailedPermissionName ??
+              (row as any)?.DetailedPermissionName ??
+              ''
+          )
+        );
+        if (dn) {
+          let set = this.modalSidebarDetailKeysByMaster.get(mn);
+          if (!set) {
+            set = new Set<string>();
+            this.modalSidebarDetailKeysByMaster.set(mn, set);
+          }
+          set.add(dn);
+        }
+      }
+    }
+  }
+
+  /**
+   * Añade maestros del catálogo que no vinieron en `rawData` (p. ej. módulo apagado tras guardar),
+   * para que el switch izquierdo no «desaparezca».
+   * Solo maestros que ya formaron parte del CRUD de este contexto (`modalSidebarMasterKeys`), no todo el catálogo.
+   */
+  private mergeCatalogMastersIntoGrouped(grouped: MasterPermission[]): MasterPermission[] {
+    if ((this.scopeInput ?? 'userSystem') !== 'userSystem') {
+      return grouped;
+    }
+    const catalog = this.masterPermissionsCatalog;
+    if (!Array.isArray(catalog) || catalog.length === 0) {
+      return grouped;
+    }
+    const extras: MasterPermission[] = [];
+    for (const cat of catalog) {
+      if (this.catalogMasterAlreadyInGrouped(grouped, cat)) {
+        continue;
+      }
+      const name = String(cat?.permissionName ?? cat?.PermissionName ?? '').trim();
+      if (!name) {
+        continue;
+      }
+      const nameNorm = this.normalizar(name);
+      if (!this.isMasterInModalSidebarUniverse(nameNorm)) {
+        continue;
+      }
+      const allowedDetailKeys = this.modalSidebarDetailKeysByMaster.get(nameNorm);
+      const details: DetailedPermission[] = [];
+      for (const d of cat.detailedPermissions ?? []) {
+        const dn = String(d?.permissionName ?? d?.PermissionName ?? '').trim();
+        if (!dn) {
+          continue;
+        }
+        if (allowedDetailKeys && allowedDetailKeys.size > 0) {
+          const dnNorm = this.normalizar(dn);
+          if (!allowedDetailKeys.has(dnNorm)) {
+            continue;
+          }
+        }
+        details.push({
+          detailedPermissionName: dn,
+          detailedRead: false,
+          subdetails: [],
+        });
+      }
+      extras.push({
+        masterPermissionName: name,
+        masterRead: false,
+        details,
+      });
+    }
+    if (extras.length === 0) {
+      return grouped;
+    }
+    const combined = [...grouped, ...extras];
+    combined.sort((a, b) => {
+      const nameA = this.normalizar(a.masterPermissionName);
+      const nameB = this.normalizar(b.masterPermissionName);
+      const posA = this.ordenMaster.findIndex((o) => nameA.includes(o));
+      const posB = this.ordenMaster.findIndex((o) => nameB.includes(o));
+      return (posA === -1 ? 999 : posA) - (posB === -1 ? 999 : posB);
+    });
+    combined.forEach((master) => {
+      master.details.sort((a, b) => {
+        const nameA = this.normalizar(a.detailedPermissionName);
+        const nameB = this.normalizar(b.detailedPermissionName);
+        const indexA = this.ordenDetails.findIndex((o) => nameA.includes(o));
+        const indexB = this.ordenDetails.findIndex((o) => nameB.includes(o));
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+      });
+    });
+    return combined;
+  }
+
+  /**
+   * Si en el contexto existe "Compras delison", no mostrar además el maestro genérico "Compras"
+   * (mismo slot; no afecta a "Compras TD" u otros nombres compuestos).
+   */
+  private dedupeGenericComprasWhenComprasDelisonPresent(grouped: MasterPermission[]): MasterPermission[] {
+    const hasComprasDelison = grouped.some((m) => {
+      const n = this.normalizar(m.masterPermissionName || '');
+      return n.includes('delison') && n.includes('compras');
+    });
+    if (!hasComprasDelison) {
+      return grouped;
+    }
+    return grouped.filter((m) => {
+      const n = this.normalizar(m.masterPermissionName || '');
+      if (n === 'compras' || n === 'compra') {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Recorta los details del panel derecho al universo permitido por la plantilla
+   * `rol+posición` (si existe ese universo para el maestro).
+   *
+   * Esto evita que se muestren “tarjetas extra” incluso si el CRUD ya traía más de las esperadas.
+   */
+  private filterDetailsToRoleTemplateUniverse(grouped: MasterPermission[]): MasterPermission[] {
+    if (!this.modalSidebarDetailKeysByMaster || this.modalSidebarDetailKeysByMaster.size === 0) {
+      return grouped;
+    }
+    return grouped.map((master) => {
+      const mn = this.normalizar(master.masterPermissionName || '');
+      const allowed = this.modalSidebarDetailKeysByMaster.get(mn);
+      if (!allowed || allowed.size === 0) {
+        return master;
+      }
+      return {
+        ...master,
+        details: (master.details || []).filter((d) => {
+          const dn = this.normalizar(d.detailedPermissionName || '');
+          return allowed.has(dn);
+        }),
+      };
+    });
+  }
+
+  /**
+   * Si el catálogo inyecta masters/details pero no trae la estructura CRUD completa
+   * (subdetalles vacíos), repone esa estructura desde la plantilla rol+posición.
+   */
+  private hydrateMissingSubdetailsFromRoleTemplate(grouped: MasterPermission[]): MasterPermission[] {
+    if (!Array.isArray(this.roleTemplateCrudRows) || this.roleTemplateCrudRows.length === 0) {
+      return grouped;
+    }
+
+    const templateGrouped = this.transformData(this.roleTemplateCrudRows);
+    const templateMasterByNorm = new Map<string, MasterPermission>();
+    for (const m of templateGrouped) {
+      const mn = this.normalizar(m.masterPermissionName || '');
+      if (mn) {
+        templateMasterByNorm.set(mn, m);
+      }
+    }
+
+    const cloneCrudPermission = (p: CrudPermission): CrudPermission => ({
+      name: p.name,
+      canRead: p.canRead,
+      canCreate: p.canCreate,
+      canUpdate: p.canUpdate,
+      canDelete: p.canDelete,
+      idMasterPermission: p.idMasterPermission,
+      idDetailedPermission: p.idDetailedPermission,
+      idShowPermition: p.idShowPermition,
+      active: p.active,
+      __original: { ...(p.__original ?? {}) },
+    });
+
+    const cloneSubdetail = (sd: SubdetailPermission): SubdetailPermission => ({
+      subdetailedPermissionName: sd.subdetailedPermissionName,
+      principal: sd.principal ? cloneCrudPermission(sd.principal) : null,
+      children: Array.isArray(sd.children) ? sd.children.map(cloneCrudPermission) : [],
+    });
+
+    return grouped.map((master) => {
+      const mn = this.normalizar(master.masterPermissionName || '');
+      const tMaster = templateMasterByNorm.get(mn);
+      if (!tMaster) {
+        return master;
+      }
+
+      const nextDetails = (master.details || []).map((detail) => {
+        const dn = this.normalizar(detail.detailedPermissionName || '');
+        const tDetail = (tMaster.details || []).find(
+          (d) => this.normalizar(d.detailedPermissionName || '') === dn
+        );
+        if (!tDetail) {
+          return detail;
+        }
+        if (Array.isArray(detail.subdetails) && detail.subdetails.length > 0) {
+          return detail;
+        }
+        return {
+          ...detail,
+          subdetails: (tDetail.subdetails || []).map(cloneSubdetail),
+        };
+      });
+
+      return {
+        ...master,
+        details: nextDetails,
+      };
+    });
+  }
+
+  /**
+   * Cuando el modal del usuario se precarga desde la plantilla rol+posición,
+   * algunos backends no llenan bien `detailedRead/masterRead` en el CRUD del usuario.
+   * Para que el panel derecho coincida 1:1 con el modal de Departamento+Posición,
+   * aplicamos los flags `canRead/canCreate/canUpdate/canDelete` desde la plantilla
+   * directamente sobre `groupedPermissions` (principal/children) y recalculamos
+   * `detailedRead`/`masterRead`.
+   */
+  private applyTemplateCrudFlagsToGroupedPermissions(): void {
+    if (!Array.isArray(this.roleTemplateCrudRows) || this.roleTemplateCrudRows.length === 0) {
+      return;
+    }
+    if (!Array.isArray(this.groupedPermissions) || this.groupedPermissions.length === 0) {
+      return;
+    }
+
+    // Match lo más robusto posible: por IDs, no por nombres/texto.
+    // key1: `${idDetailedPermission}-${idShowPermition}`
+    // key2 (fallback): `${idDetailedPermission}` si no hay idShowPermition.
+    const templateByKey = new Map<string, { canRead: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean }>();
+    const templateByDetailOnly = new Map<string, { canRead: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean }>();
+
+    for (const r of this.roleTemplateCrudRows) {
+      const did = Number((r as any)?.idDetailedPermission ?? (r as any)?.IdDetailedPermission);
+      const sid = Number((r as any)?.idShowPermition ?? (r as any)?.IdShowPermition);
+      if (!Number.isFinite(did) || did <= 0) continue;
+
+      const canRead = (r as any)?.canRead ?? (r as any)?.CanRead ?? (r as any)?.detailedRead ?? (r as any)?.DetailedRead ?? false;
+      const canCreate = (r as any)?.canCreate ?? (r as any)?.CanCreate ?? (canRead ? true : false);
+      const canUpdate = (r as any)?.canUpdate ?? (r as any)?.CanUpdate ?? (canRead ? true : false);
+      const canDelete = (r as any)?.canDelete ?? (r as any)?.CanDelete ?? (canRead ? true : false);
+
+      const v = { canRead: !!canRead, canCreate: !!canCreate, canUpdate: !!canUpdate, canDelete: !!canDelete };
+
+      const detailKey = `${did}`;
+      const existingDetail = templateByDetailOnly.get(detailKey);
+      if (existingDetail) {
+        existingDetail.canRead = existingDetail.canRead || v.canRead;
+        existingDetail.canCreate = existingDetail.canCreate || v.canCreate;
+        existingDetail.canUpdate = existingDetail.canUpdate || v.canUpdate;
+        existingDetail.canDelete = existingDetail.canDelete || v.canDelete;
+      } else {
+        templateByDetailOnly.set(detailKey, { ...v });
+      }
+
+      if (Number.isFinite(sid) && sid > 0) {
+        const key = `${did}-${sid}`;
+        const existing = templateByKey.get(key);
+        if (existing) {
+          existing.canRead = existing.canRead || v.canRead;
+          existing.canCreate = existing.canCreate || v.canCreate;
+          existing.canUpdate = existing.canUpdate || v.canUpdate;
+          existing.canDelete = existing.canDelete || v.canDelete;
+        } else {
+          templateByKey.set(key, { ...v });
+        }
+      }
+    }
+
+    // Aplicar flags al árbol actual
+    for (const master of this.groupedPermissions) {
+      let anyDetailOn = false;
+      for (const detail of master.details || []) {
+        let detailAny = false;
+        for (const sd of detail.subdetails || []) {
+          if (sd.principal) {
+            const pid = sd.principal.idDetailedPermission;
+            const pShow = sd.principal.idShowPermition;
+            const key1 = Number.isFinite(pid) && Number.isFinite(pShow) && pShow > 0 ? `${pid}-${pShow}` : null;
+            const key2 = Number.isFinite(pid) ? `${pid}` : null;
+            const t = (key1 ? templateByKey.get(key1) : undefined) ?? (key2 ? templateByDetailOnly.get(key2) : undefined);
+            if (t) {
+              sd.principal.canRead = t.canRead;
+              sd.principal.canCreate = t.canCreate;
+              sd.principal.canUpdate = t.canUpdate;
+              sd.principal.canDelete = t.canDelete;
+            }
+          }
+          for (const child of sd.children || []) {
+            const cid = child.idDetailedPermission;
+            const cShow = child.idShowPermition;
+            const key1 = Number.isFinite(cid) && Number.isFinite(cShow) && cShow > 0 ? `${cid}-${cShow}` : null;
+            const key2 = Number.isFinite(cid) ? `${cid}` : null;
+            const t = (key1 ? templateByKey.get(key1) : undefined) ?? (key2 ? templateByDetailOnly.get(key2) : undefined);
+            if (t) {
+              child.canRead = t.canRead;
+              child.canCreate = t.canCreate;
+              child.canUpdate = t.canUpdate;
+              child.canDelete = t.canDelete;
+            }
+          }
+        }
+
+        // Recalcular detallado
+        const detailAnyOn = (detail.subdetails || []).some((sd) => {
+          const principalOn = sd.principal?.canRead === true;
+          const childrenOn = (sd.children || []).some((c) => c.canRead === true);
+          return principalOn || childrenOn;
+        });
+        detail.detailedRead = detailAnyOn;
+        if (detailAnyOn) {
+          detailAny = true;
+          anyDetailOn = true;
+        }
+      }
+
+      master.masterRead = anyDetailOn;
+    }
+  }
+
+  private rebuildGroupedPermissionsFromRaw(): void {
+    let next = this.transformData(this.rawData);
+    this.unionModalSidebarUniverseFromGrouped(next);
+    next = this.mergeCatalogMastersIntoGrouped(next);
+    next = this.dedupeGenericComprasWhenComprasDelisonPresent(next);
+    next = this.filterDetailsToRoleTemplateUniverse(next);
+    next = this.hydrateMissingSubdetailsFromRoleTemplate(next);
+    this.groupedPermissions = next;
+  }
+
   checkForChanges() {
     const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
     // En modo "position" NO debe tocar permisos maestros (UserSystemPermissions).
@@ -1569,7 +2116,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   revertChanges() {
-    this.groupedPermissions = this.transformData(this.rawData);
+    this.rebuildGroupedPermissionsFromRaw();
     this.userSystemPermissionIds = [...this.userSystemPermissionIdsBaseline];
     this.syncReadFlagsFromUserSystemPermissions();
     this.syncMasterLeftSwitchesFromUserSys();

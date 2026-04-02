@@ -101,8 +101,13 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
   showRoot: boolean = false;
   canSeeBranches: boolean = false;
   permiso: any[] = [];
-  /** Mapa branchId -> { idRole, idPosicion } para mostrar Dept/Pos por sucursal. */
-  private deptPosByBranchId = new Map<number, { idRole: number; idPosicion: number }>();
+  /**
+   * Por sucursal: rol/posición principal (tooltip) y conteo de asignaciones distintas (misma lógica que el grid hijo).
+   */
+  private deptPosByBranchId = new Map<
+    number,
+    { idRole: number; idPosicion: number; detailPairCount: number }
+  >();
   catalogRoles: any[] = [];
   catalogGeneralPosiciones: any[] = [];
 
@@ -264,9 +269,15 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           field: 'department',
           headerName: 'Departamento',
           valueFormatter: (params) => {
-            // Mantener el contador como antes
-            const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
-            return found ? found.departmentCount ?? 0 : 0;
+            const branchId = Number(params.data?.idPermission);
+            const meta = Number.isFinite(branchId) && branchId > 0 ? this.deptPosByBranchId.get(branchId) : undefined;
+            if (meta != null) {
+              return meta.detailPairCount;
+            }
+            const found = this.permiso.find(
+              (p: any) => Number(p?.id ?? p?.Id) === branchId
+            );
+            return found ? Number(found.departmentCount ?? found.DepartmentCount ?? 0) : 0;
           },
           tooltipValueGetter: (params: any) => {
             // Mostrar el nombre real (rol) como tooltip
@@ -286,9 +297,15 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           field: 'position',
           headerName: 'Posición',
           valueFormatter: (params) => {
-            // Mantener el contador como antes
-            const found = this.permiso.find((p: any) => p.id === params.data.idPermission);
-            return found ? found.positionCount ?? 0 : 0;
+            const branchId = Number(params.data?.idPermission);
+            const meta = Number.isFinite(branchId) && branchId > 0 ? this.deptPosByBranchId.get(branchId) : undefined;
+            if (meta != null) {
+              return meta.detailPairCount;
+            }
+            const found = this.permiso.find(
+              (p: any) => Number(p?.id ?? p?.Id) === branchId
+            );
+            return found ? Number(found.positionCount ?? found.PositionCount ?? 0) : 0;
           },
           tooltipValueGetter: (params: any) => {
             // Mostrar el nombre real (posición) como tooltip
@@ -325,6 +342,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       .subscribe((data: any) => {
         this.permiso = data;
         console.log('🔵 getInfoByUser - permiso:', this.permiso);
+        queueMicrotask(() => this.permissionsGridApi?.refreshCells({ force: true }));
       });
   }
 
@@ -591,8 +609,17 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           const principal = normalized.find((p: any) => p.principal === true || p.principal === 1) ?? normalized[0];
           const idRole = Number(principal?.idRole ?? 0) || 0;
           const idPosicion = Number(principal?.idPosicion ?? 0) || 0;
-          if (idRole > 0 || idPosicion > 0) {
-            this.deptPosByBranchId.set(bid, { idRole, idPosicion });
+          const pairKeys = new Set<string>();
+          for (const p of normalized) {
+            const r = Number(p?.idRole ?? 0);
+            const pos = Number(p?.idPosicion ?? 0);
+            if (r > 0 && pos > 0) {
+              pairKeys.add(`${r}|${pos}`);
+            }
+          }
+          const detailPairCount = pairKeys.size;
+          if (idRole > 0 || idPosicion > 0 || detailPairCount > 0) {
+            this.deptPosByBranchId.set(bid, { idRole, idPosicion, detailPairCount });
           }
         }
         this.permissionsGridApi?.refreshCells({ force: true });
