@@ -1818,14 +1818,15 @@ export class DashboardHcoComponent {
       },
       legend: { position: 'bottom', fontSize: '10px' },
       colors: [
-        '#1e3a5f',
-        '#2563eb',
-        '#3b82f6',
-        '#60a5fa',
-        '#93c5fd',
-        '#7c3aed',
-        '#a78bfa',
-        '#06b6d4',
+        '#c55a11', // naranja oscuro — Sin Proyecto
+        '#4472c4', // azul office
+        '#70ad47', // verde
+        '#ffc000', // amarillo
+        '#ed7d31', // naranja medio
+        '#5b9bd5', // azul claro
+        '#a9d18e', // verde claro
+        '#ff0000', // rojo
+        '#7030a0', // morado
       ],
     };
   }
@@ -2009,14 +2010,16 @@ export class DashboardHcoComponent {
       },
       legend: { position: 'bottom', fontSize: '10px' },
       colors: [
-        '#b45309',
-        '#d97706',
-        '#f59e0b',
-        '#fbbf24',
-        '#fde68a',
-        '#92400e',
-        '#78350f',
-        '#451a03',
+        '#4472c4', // azul
+        '#70ad47', // verde
+        '#ed7d31', // naranja
+        '#ffc000', // amarillo
+        '#a5a5a5', // gris
+        '#5b9bd5', // azul claro
+        '#a9d18e', // verde claro
+        '#ff0000', // rojo
+        '#7030a0', // morado
+        '#c55a11', // naranja oscuro
       ],
     };
   }

@@ -42,7 +42,7 @@ export interface ConcentradoEgreso {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './concentrado-egresos.component.html',
-  styleUrl: './concentrado-egresos.component.scss'
+  styleUrl: './concentrado-egresos.component.scss',
 })
 export class ConcentradoEgresosComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
@@ -78,7 +78,7 @@ export class ConcentradoEgresosComponent {
     '29': 'Tarjeta de servicios',
     '30': 'Aplicación de anticipos',
     '31': 'Intermediario pagos',
-    '99': 'Por definir'
+    '99': 'Por definir',
   };
 
   // Estado del componente
@@ -109,7 +109,7 @@ export class ConcentradoEgresosComponent {
     importeSinIva: 0,
     iva: 0,
     otrosImpuestos: 0,
-    importeTotal: 0
+    importeTotal: 0,
   };
 
   constructor() {
@@ -117,17 +117,24 @@ export class ConcentradoEgresosComponent {
     const today = new Date();
     this.fechaActual = this.formatDateDisplay(today);
 
-    const twentyFourMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 24, 1);
+    const twentyFourMonthsAgo = new Date(
+      today.getFullYear(),
+      today.getMonth() - 24,
+      1,
+    );
 
     this.fechaInicio = this.formatDateForInput(twentyFourMonthsAgo);
     this.fechaFin = this.formatDateForInput(today);
 
-    effect(() => {
-      this.rootId = this.signalsService.getRootSelectedBySidebar()();
-      if (this.rootId) {
-        this.loadAllData();
-      }
-    }, { allowSignalWrites: true });
+    effect(
+      () => {
+        this.rootId = this.signalsService.getRootSelectedBySidebar()();
+        if (this.rootId) {
+          this.loadAllData();
+        }
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   public onFilterChange(): void {
@@ -144,7 +151,20 @@ export class ConcentradoEgresosComponent {
 
   private formatDateDisplay(date: Date): string {
     const day = date.getDate().toString().padStart(2, '0');
-    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
+    ];
     const month = months[date.getMonth()];
     const year = date.getFullYear().toString().slice(-2);
     return `${day}-${month}-${year}`;
@@ -168,41 +188,60 @@ export class ConcentradoEgresosComponent {
   private async loadAllData(): Promise<void> {
     this.isLoading = true;
     try {
-      const [rootData, expensesData, projectsData, providersData, clientsData, cuentasData, accountsData] = await Promise.all([
+      const [
+        rootData,
+        expensesData,
+        projectsData,
+        providersData,
+        clientsData,
+        cuentasData,
+        accountsData,
+      ] = await Promise.all([
         lastValueFrom(this.rootService.getRootbyId(this.rootId)),
-        lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId)),
-        lastValueFrom(this.projectsService.getProjectListByCompany(this.rootId)),
-        lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'PROVIDERS')),
-        lastValueFrom(this.customersService.getCustomersByCompany(this.rootId, 'CUSTOMERS')),
+        lastValueFrom(
+          this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId),
+        ),
+        lastValueFrom(
+          this.projectsService.getProjectListByCompany(this.rootId),
+        ),
+        lastValueFrom(
+          this.customersService.getCustomersByCompany(this.rootId, 'PROVIDERS'),
+        ),
+        lastValueFrom(
+          this.customersService.getCustomersByCompany(this.rootId, 'CUSTOMERS'),
+        ),
         lastValueFrom(this.cuentasContablesService.getAll(this.rootId)),
-        lastValueFrom(this.administrationService.getAccountBanks(this.rootId))
+        lastValueFrom(this.administrationService.getAccountBanks(this.rootId)),
       ]);
 
-      this.companyName = (rootData as any)?.name || (rootData as any)?.nameCompany || 'Empresa';
+      this.companyName =
+        (rootData as any)?.name || (rootData as any)?.nameCompany || 'Empresa';
 
       // Filtrar solo egresos (GASTO)
       const allData = Array.isArray(expensesData) ? expensesData : [];
-      this.egresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
+      this.egresos = allData.filter(
+        (item) => String(item?.type ?? '').toUpperCase() === 'GASTO',
+      );
 
       // Mapear proyectos
       const projectsArray = Array.isArray(projectsData) ? projectsData : [];
       this.projects = projectsArray.map((p: any) => ({
         id: p.id,
-        name: p.name || p.number || 'Sin nombre'
+        name: p.name || p.number || 'Sin nombre',
       }));
 
       // Mapear proveedores
       const providersArray = Array.isArray(providersData) ? providersData : [];
       this.providers = providersArray.map((c: any) => ({
         id: c.id,
-        name: c.nameContact || c.company || c.name || 'Sin nombre'
+        name: c.nameContact || c.company || c.name || 'Sin nombre',
       }));
 
       // Mapear clientes
       const clientsArray = Array.isArray(clientsData) ? clientsData : [];
       this.clients = clientsArray.map((c: any) => ({
         id: c.id,
-        name: c.company || c.nameContact || c.name || 'Sin nombre'
+        name: c.company || c.nameContact || c.name || 'Sin nombre',
       }));
 
       // Mapear cuentas contables
@@ -210,38 +249,56 @@ export class ConcentradoEgresosComponent {
       this.cuentasContables = cuentasArray.map((c: any) => ({
         id: c.id,
         name: c.nombre || c.name || '',
-        code: c.codigo || c.code || ''
+        code: c.codigo || c.code || '',
       }));
 
       // Mapear cuentas bancarias
       const accountsArray = Array.isArray(accountsData) ? accountsData : [];
       this.accounts = accountsArray.map((a: any) => ({
         id: a.id,
-        label: a.nameAccount ? `${a.nameAccount} - ${a.bankName}` : (a.number || a.description || '')
+        label: a.nameAccount
+          ? `${a.nameAccount} - ${a.bankName}`
+          : a.number || a.description || '',
       }));
 
       console.log('Datos cargados:', {
         egresos: this.egresos.length,
         proyectos: this.projects.length,
         proveedores: this.providers.length,
-        cuentas: this.cuentasContables.length
+        cuentas: this.cuentasContables.length,
       });
 
       this.processData();
     } catch (error) {
       console.error('Error cargando datos:', error);
-      alerts.basicAlert('Error', 'Error al cargar los datos del reporte', 'error');
+      alerts.basicAlert(
+        'Error',
+        'Error al cargar los datos del reporte',
+        'error',
+      );
     } finally {
       this.isLoading = false;
     }
   }
 
   private processData(): void {
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const meses = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
 
     // Filtrar por rango de fechas
-    const filtered = this.egresos.filter(egreso => {
+    const filtered = this.egresos.filter((egreso) => {
       const fechaStr = egreso.date || egreso.dateStamped;
       if (!fechaStr) return false;
 
@@ -249,84 +306,106 @@ export class ConcentradoEgresosComponent {
       if (isNaN(fecha.getTime())) return false;
 
       const fechaFormatted = this.formatDateForInput(fecha);
-      return fechaFormatted >= this.fechaInicio && fechaFormatted <= this.fechaFin;
+      return (
+        fechaFormatted >= this.fechaInicio && fechaFormatted <= this.fechaFin
+      );
     });
 
     // Procesar cada egreso
-    this.concentradoEgresos = filtered.map(egreso => {
-      const fecha = egreso.date ? new Date(egreso.date) : null;
-      const mes = fecha ? meses[fecha.getMonth()] : '';
-      const anioEjercicio = fecha ? fecha.getFullYear() : new Date().getFullYear();
+    this.concentradoEgresos = filtered
+      .map((egreso) => {
+        const fecha = egreso.date ? new Date(egreso.date) : null;
+        const mes = fecha ? meses[fecha.getMonth()] : '';
+        const anioEjercicio = fecha
+          ? fecha.getFullYear()
+          : new Date().getFullYear();
 
-      // Obtener proyecto
-      const project = this.projects.find(p => p.id === egreso.idProject);
+        // Obtener proyecto
+        const project = this.projects.find((p) => p.id === egreso.idProject);
 
-      // Obtener proveedor (desde idCustomer, campo usado en expenditure)
-      const provider = this.providers.find(p => p.id === egreso.idCustomer);
+        // Obtener proveedor (desde idCustomer, campo usado en expenditure)
+        const provider = this.providers.find((p) => p.id === egreso.idCustomer);
 
-      // Obtener cliente (desde idClient)
-      const client = this.clients.find(c => c.id === egreso.idClient);
+        // Obtener cliente (desde idClient)
+        const client = this.clients.find((c) => c.id === egreso.idClient);
 
-      // Obtener clasificación y subclasificación (desde cuentas contables, como en expenditure)
-      const clasificacionCuenta = this.cuentasContables.find(c => c.id === egreso.idClasificacion);
-      const subclasificacionCuenta = this.cuentasContables.find(c => c.id === egreso.idSubclasificacion);
+        // Obtener clasificación y subclasificación (desde cuentas contables, como en expenditure)
+        const clasificacionCuenta = this.cuentasContables.find(
+          (c) => c.id === egreso.idClasificacion,
+        );
+        const subclasificacionCuenta = this.cuentasContables.find(
+          (c) => c.id === egreso.idSubclasificacion,
+        );
 
-      // Obtener cuenta bancaria (id_account → Accounts)
-      const accountId = egreso.idAccount ?? egreso.id_account;
-      const account = this.accounts.find(a => a.id === accountId);
+        // Obtener cuenta bancaria (id_account → Accounts)
+        const accountId = egreso.idAccount ?? egreso.id_account;
+        const account = this.accounts.find((a) => a.id === accountId);
 
-      // Tipo de pago: código SAT + nombre
-      const formaPagoCodigo = egreso.formaPago || egreso.forma_pago || '';
-      const formaPagoNombre = this.SAT_FORMAS_PAGO[formaPagoCodigo] || '';
-      const tipoPago = formaPagoCodigo
-        ? (formaPagoNombre ? `${formaPagoCodigo} - ${formaPagoNombre}` : formaPagoCodigo)
-        : '';
+        // Tipo de pago: código SAT + nombre
+        const formaPagoCodigo = egreso.formaPago || egreso.forma_pago || '';
+        const formaPagoNombre = this.SAT_FORMAS_PAGO[formaPagoCodigo] || '';
+        const tipoPago = formaPagoCodigo
+          ? formaPagoNombre
+            ? `${formaPagoCodigo} - ${formaPagoNombre}`
+            : formaPagoCodigo
+          : '';
 
-      // Calcular importes
-      const subtotal = Number(egreso.subtotal) || 0;
-      const iva = Number(egreso.tax) || 0;
-      const otrosImpuestos = Number(egreso.otherTaxes) || 0;
-      const total = Number(egreso.total) || 0;
+        // Calcular importes
+        const subtotal = Number(egreso.subtotal) || 0;
+        const iva = Number(egreso.tax) || 0;
+        const otrosImpuestos = Number(egreso.otherTaxes) || 0;
+        const total = Number(egreso.total) || 0;
 
-      return {
-        id: egreso.id,
-        proveedor: provider?.name || '',
-        cliente: client?.name || '',
-        proyecto: project?.name || '',
-        fecha,
-        mes,
-        anioEjercicio,
-        ejercicio: egreso.ejercicio || '',
-        clasificacion: clasificacionCuenta ? `${clasificacionCuenta.code} - ${clasificacionCuenta.name}` : '',
-        subclasificacion: subclasificacionCuenta ? `${subclasificacionCuenta.code} - ${subclasificacionCuenta.name}` : '',
-        concepto: egreso.concept || egreso.description || '',
-        importeSinIva: subtotal,
-        iva,
-        otrosImpuestos,
-        importeTotal: total,
-        numeroFactura: (egreso.uuid && egreso.uuid !== 'NA') ? egreso.uuid : (egreso.numberDocument || ''),
-        tipoPago,
-        cuenta: account?.label || ''
-      };
-    }).sort((a, b) => {
-      // Ordenar por fecha descendente
-      if (!a.fecha) return 1;
-      if (!b.fecha) return -1;
-      return b.fecha.getTime() - a.fecha.getTime();
-    });
+        return {
+          id: egreso.id,
+          proveedor: provider?.name || '',
+          cliente: client?.name || '',
+          proyecto: project?.name || '',
+          fecha,
+          mes,
+          anioEjercicio,
+          ejercicio: egreso.ejercicio || '',
+          clasificacion: clasificacionCuenta
+            ? `${clasificacionCuenta.code} - ${clasificacionCuenta.name}`
+            : '',
+          subclasificacion: subclasificacionCuenta
+            ? `${subclasificacionCuenta.code} - ${subclasificacionCuenta.name}`
+            : '',
+          concepto: egreso.concept || egreso.description || '',
+          importeSinIva: subtotal,
+          iva,
+          otrosImpuestos,
+          importeTotal: total,
+          numeroFactura:
+            egreso.uuid && egreso.uuid !== 'NA'
+              ? egreso.uuid
+              : egreso.numberDocument || '',
+          tipoPago,
+          cuenta: account?.label || '',
+        };
+      })
+      .sort((a, b) => {
+        // Ordenar por fecha descendente
+        if (!a.fecha) return 1;
+        if (!b.fecha) return -1;
+        return b.fecha.getTime() - a.fecha.getTime();
+      });
 
     // Calcular totales
-    this.totales = this.concentradoEgresos.reduce((acc, e) => ({
-      importeSinIva: acc.importeSinIva + e.importeSinIva,
-      iva: acc.iva + e.iva,
-      otrosImpuestos: acc.otrosImpuestos + e.otrosImpuestos,
-      importeTotal: acc.importeTotal + e.importeTotal
-    }), {
-      importeSinIva: 0,
-      iva: 0,
-      otrosImpuestos: 0,
-      importeTotal: 0
-    });
+    this.totales = this.concentradoEgresos.reduce(
+      (acc, e) => ({
+        importeSinIva: acc.importeSinIva + e.importeSinIva,
+        iva: acc.iva + e.iva,
+        otrosImpuestos: acc.otrosImpuestos + e.otrosImpuestos,
+        importeTotal: acc.importeTotal + e.importeTotal,
+      }),
+      {
+        importeSinIva: 0,
+        iva: 0,
+        otrosImpuestos: 0,
+        importeTotal: 0,
+      },
+    );
   }
 
   public formatCurrency(value: number): string {
@@ -335,16 +414,19 @@ export class ConcentradoEgresosComponent {
       style: 'currency',
       currency: 'MXN',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     });
   }
 
   private formatCurrencyShort(value: number): string {
     if (!Number.isFinite(value)) return '$0';
-    return '$' + value.toLocaleString('es-MX', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+    return (
+      '$' +
+      value.toLocaleString('es-MX', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    );
   }
 
   public async exportToPdf(): Promise<void> {
@@ -353,11 +435,15 @@ export class ConcentradoEgresosComponent {
 
     try {
       // Obtener logo
-      const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.rootId));
+      const rootData: any = await lastValueFrom(
+        this.rootService.getRootbyId(this.rootId),
+      );
       let logoBase64: string | null = null;
       if (rootData?.picture) {
         try {
-          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(
+            rootData.picture,
+          );
         } catch (e) {
           console.warn('No se pudo cargar el logo');
         }
@@ -368,7 +454,20 @@ export class ConcentradoEgresosComponent {
       // Período en texto
       const [sy, sm] = this.fechaInicio.split('-');
       const [ey, em] = this.fechaFin.split('-');
-      const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+      const meses = [
+        'ENERO',
+        'FEBRERO',
+        'MARZO',
+        'ABRIL',
+        'MAYO',
+        'JUNIO',
+        'JULIO',
+        'AGOSTO',
+        'SEPTIEMBRE',
+        'OCTUBRE',
+        'NOVIEMBRE',
+        'DICIEMBRE',
+      ];
       let periodText = '';
       if (sy === ey && sm === em) {
         periodText = `MES DE ${meses[parseInt(sm) - 1]} ${sy}`;
@@ -385,24 +484,51 @@ export class ConcentradoEgresosComponent {
         header: this.buildPdfHeader(logoBase64, periodText),
         content,
         styles: {
-          tableHeader: { fontSize: 6, bold: true, color: '#FFFFFF', fillColor: '#1a5276' },
+          tableHeader: {
+            fontSize: 6,
+            bold: true,
+            color: '#FFFFFF',
+            fillColor: '#1a5276',
+          },
           tableCell: { fontSize: 5.5, color: '#333333' },
-          tableCellRight: { fontSize: 5.5, color: '#333333', alignment: 'right' },
-          tableCellMoney: { fontSize: 5.5, color: '#333333', alignment: 'right' },
+          tableCellRight: {
+            fontSize: 5.5,
+            color: '#333333',
+            alignment: 'right',
+          },
+          tableCellMoney: {
+            fontSize: 5.5,
+            color: '#333333',
+            alignment: 'right',
+          },
           totalRow: { fontSize: 6, bold: true, fillColor: '#e2e8f0' },
-          sectionTitle: { fontSize: 12, bold: true, color: '#1a5276', margin: [0, 15, 0, 10] }
-        }
+          sectionTitle: {
+            fontSize: 12,
+            bold: true,
+            color: '#1a5276',
+            margin: [0, 15, 0, 10],
+          },
+        },
       };
 
-      const footerTemplate = { text: 'Página {cp} de {pc}', alignment: 'center', fontSize: 7, margin: [0, 5, 0, 0] };
+      const footerTemplate = {
+        text: 'Página {cp} de {pc}',
+        alignment: 'center',
+        fontSize: 7,
+        margin: [0, 5, 0, 0],
+      };
       const fileName = `concentrado-egresos-${this.fechaInicio}-al-${this.fechaFin}.pdf`;
-      await this.pdfWorkerService.generateAndDownload(docDefinition, fileName, footerTemplate);
+      await this.pdfWorkerService.generateAndDownload(
+        docDefinition,
+        fileName,
+        footerTemplate,
+      );
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Exportación PDF - Concentrado de Egresos',
         'Concentrado Egresos',
-        this.trackingService.getEmail()
+        this.trackingService.getEmail(),
       );
     } catch (error) {
       console.error('Error exportando PDF:', error);
@@ -421,82 +547,193 @@ export class ConcentradoEgresosComponent {
       margin: [15, 8, 15, 0],
       table: {
         widths: ['15%', '*', '20%'],
-        body: [[
-          logoCell,
-          {
-            stack: [
-              { text: 'Concentrado de Egresos', fontSize: 12, bold: true, alignment: 'center', color: '#1a5276' },
-              { text: 'Sistema de Gestión de Calidad', fontSize: 8, alignment: 'center', color: '#666' },
-              { text: periodText, fontSize: 7, alignment: 'center', color: '#333', margin: [0, 2, 0, 0] }
-            ]
-          },
-          {
-            stack: [
-              { text: 'Referencia: HCO-ADM-SGC-005', fontSize: 7, alignment: 'right' },
-              { text: 'Código: HCO-ADM-FO-016', fontSize: 7, alignment: 'right' },
-              { text: 'Rev.: 01', fontSize: 7, alignment: 'right' }
-            ]
-          }
-        ]]
+        body: [
+          [
+            logoCell,
+            {
+              stack: [
+                {
+                  text: 'Concentrado de Egresos',
+                  fontSize: 12,
+                  bold: true,
+                  alignment: 'center',
+                  color: '#1a5276',
+                },
+                {
+                  text: 'Sistema de Gestión de Calidad',
+                  fontSize: 8,
+                  alignment: 'center',
+                  color: '#666',
+                },
+              ],
+            },
+            {
+              stack: [
+                {
+                  text: 'Referencia: HCO-ADM-SGC-005',
+                  fontSize: 7,
+                  alignment: 'right',
+                },
+                {
+                  text: 'Código: HCO-ADM-FO-016',
+                  fontSize: 7,
+                  alignment: 'right',
+                },
+                { text: 'Rev.: 01', fontSize: 7, alignment: 'right' },
+              ],
+            },
+          ],
+        ],
       },
-      layout: 'noBorders'
+      layout: 'noBorders',
     };
   }
 
   private buildPdfContent(): any[] {
     const content: any[] = [];
 
-    const headers = ['CLIENTE', 'PROYECTO', 'FECHA', 'MES', 'AÑO', 'EJERCICIO', 'CLASIF.', 'SUBCLASIF.',
-                     'CONCEPTO', 'IMP. S/IVA', 'IVA', 'OTROS IMP.', 'IMP. TOTAL',
-                     '# FACTURA', 'PROVEEDOR', 'TIPO PAGO', 'CUENTA'];
-
-    const body: any[] = [
-      headers.map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))
+    const headers = [
+      'CLIENTE',
+      'PROYECTO',
+      'FECHA',
+      'MES',
+      'AÑO',
+      'EJERCICIO',
+      'CLASIF.',
+      'SUBCLASIF.',
+      'CONCEPTO',
+      'IMP. S/IVA',
+      'IVA',
+      'OTROS IMP.',
+      'IMP. TOTAL',
+      '# FACTURA',
+      'PROVEEDOR',
+      'TIPO PAGO',
+      'CUENTA',
     ];
 
-    this.concentradoEgresos.forEach(e => {
+    const body: any[] = [
+      headers.map((h) => ({
+        text: h,
+        style: 'tableHeader',
+        alignment: 'center',
+      })),
+    ];
+
+    this.concentradoEgresos.forEach((e) => {
       body.push([
         { text: e.cliente, style: 'tableCell', alignment: 'left' },
         { text: e.proyecto, style: 'tableCell', alignment: 'left' },
-        { text: this.formatDateShort(e.fecha), style: 'tableCell', alignment: 'center' },
+        {
+          text: this.formatDateShort(e.fecha),
+          style: 'tableCell',
+          alignment: 'center',
+        },
         { text: e.mes, style: 'tableCell', alignment: 'center' },
-        { text: e.anioEjercicio.toString(), style: 'tableCell', alignment: 'center' },
+        {
+          text: e.anioEjercicio.toString(),
+          style: 'tableCell',
+          alignment: 'center',
+        },
         { text: e.ejercicio, style: 'tableCell', alignment: 'center' },
         { text: e.clasificacion, style: 'tableCell', alignment: 'left' },
         { text: e.subclasificacion, style: 'tableCell', alignment: 'left' },
         { text: e.concepto, style: 'tableCell', alignment: 'left' },
-        { text: this.formatCurrencyShort(e.importeSinIva), style: 'tableCellMoney' },
+        {
+          text: this.formatCurrencyShort(e.importeSinIva),
+          style: 'tableCellMoney',
+        },
         { text: this.formatCurrencyShort(e.iva), style: 'tableCellMoney' },
-        { text: e.otrosImpuestos > 0 ? this.formatCurrencyShort(e.otrosImpuestos) : '', style: 'tableCellMoney' },
-        { text: this.formatCurrencyShort(e.importeTotal), style: 'tableCellMoney', bold: true },
+        {
+          text:
+            e.otrosImpuestos > 0
+              ? this.formatCurrencyShort(e.otrosImpuestos)
+              : '',
+          style: 'tableCellMoney',
+        },
+        {
+          text: this.formatCurrencyShort(e.importeTotal),
+          style: 'tableCellMoney',
+          bold: true,
+        },
         { text: e.numeroFactura, style: 'tableCell', alignment: 'center' },
         { text: e.proveedor, style: 'tableCell', alignment: 'left' },
         { text: e.tipoPago, style: 'tableCell', alignment: 'center' },
-        { text: e.cuenta, style: 'tableCell', alignment: 'left' }
+        { text: e.cuenta, style: 'tableCell', alignment: 'left' },
       ]);
     });
 
     // Fila de totales (17 columnas): Cliente, Proyecto, Fecha, Mes, Año, Ejercicio, Clasif, Subclasif, Concepto → colSpan 9
     body.push([
-      { text: 'TOTAL', colSpan: 9, style: 'totalRow', alignment: 'right', bold: true },
-      {}, {}, {}, {}, {}, {}, {}, {},
-      { text: this.formatCurrencyShort(this.totales.importeSinIva), style: 'totalRow', alignment: 'right' },
-      { text: this.formatCurrencyShort(this.totales.iva), style: 'totalRow', alignment: 'right' },
-      { text: this.totales.otrosImpuestos > 0 ? this.formatCurrencyShort(this.totales.otrosImpuestos) : '', style: 'totalRow', alignment: 'right' },
-      { text: this.formatCurrencyShort(this.totales.importeTotal), style: 'totalRow', alignment: 'right', color: '#dc2626' },
+      {
+        text: 'TOTAL',
+        colSpan: 9,
+        style: 'totalRow',
+        alignment: 'right',
+        bold: true,
+      },
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {
+        text: this.formatCurrencyShort(this.totales.importeSinIva),
+        style: 'totalRow',
+        alignment: 'right',
+      },
+      {
+        text: this.formatCurrencyShort(this.totales.iva),
+        style: 'totalRow',
+        alignment: 'right',
+      },
+      {
+        text:
+          this.totales.otrosImpuestos > 0
+            ? this.formatCurrencyShort(this.totales.otrosImpuestos)
+            : '',
+        style: 'totalRow',
+        alignment: 'right',
+      },
+      {
+        text: this.formatCurrencyShort(this.totales.importeTotal),
+        style: 'totalRow',
+        alignment: 'right',
+      },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
-      { text: '', style: 'totalRow' }
+      { text: '', style: 'totalRow' },
     ]);
 
     content.push({
       table: {
         headerRows: 1,
-        widths: ['*', '*', 46, 28, 26, 26, '*', '*', '*', 55, 40, 46, 55, 60, '*', 42, '*'],
-        body
+        widths: [
+          '*',
+          '*',
+          46,
+          28,
+          26,
+          26,
+          '*',
+          '*',
+          '*',
+          55,
+          40,
+          46,
+          55,
+          60,
+          '*',
+          42,
+          '*',
+        ],
+        body,
       },
-      layout: 'siafStripeTeal'
+      layout: 'siafStripeTeal',
     });
 
     return content;
@@ -521,24 +758,45 @@ export class ConcentradoEgresosComponent {
 
       // Info
       worksheet.getCell('A2').value = `Empresa: ${this.companyName}`;
-      worksheet.getCell('A3').value = `Período: ${this.fechaInicio} al ${this.fechaFin}`;
+      worksheet.getCell('A3').value =
+        `Período: ${this.fechaInicio} al ${this.fechaFin}`;
 
       // Headers
-      const headers = ['Cliente', 'Proyecto', 'Fecha', 'Mes', 'Año Ejercicio', 'Ejercicio', 'Clasificación', 'Subclasificación',
-                       'Concepto', 'Importe s/IVA', 'IVA', 'Otros Impuestos', 'Importe Total',
-                       '# Factura', 'Proveedor', 'Tipo de Pago', 'Cuenta'];
+      const headers = [
+        'Cliente',
+        'Proyecto',
+        'Fecha',
+        'Mes',
+        'Año Ejercicio',
+        'Ejercicio',
+        'Clasificación',
+        'Subclasificación',
+        'Concepto',
+        'Importe s/IVA',
+        'IVA',
+        'Otros Impuestos',
+        'Importe Total',
+        '# Factura',
+        'Proveedor',
+        'Tipo de Pago',
+        'Cuenta',
+      ];
       const headerRow = worksheet.getRow(5);
       headers.forEach((header, index) => {
         const cell = headerRow.getCell(index + 1);
         cell.value = header;
         cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A5276' } };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF1A5276' },
+        };
         cell.alignment = { horizontal: 'center' };
       });
 
       // Datos
       let rowIndex = 6;
-      this.concentradoEgresos.forEach(e => {
+      this.concentradoEgresos.forEach((e) => {
         const row = worksheet.getRow(rowIndex);
         row.getCell(1).value = e.cliente;
         row.getCell(2).value = e.proyecto;
@@ -574,21 +832,38 @@ export class ConcentradoEgresosComponent {
       totalRow.getCell(11).value = this.totales.iva;
       totalRow.getCell(11).numFmt = '"$"#,##0.00';
       totalRow.getCell(12).value = this.totales.otrosImpuestos || '';
-      if (this.totales.otrosImpuestos) totalRow.getCell(12).numFmt = '"$"#,##0.00';
+      if (this.totales.otrosImpuestos)
+        totalRow.getCell(12).numFmt = '"$"#,##0.00';
       totalRow.getCell(13).value = this.totales.importeTotal;
       totalRow.getCell(13).numFmt = '"$"#,##0.00';
       totalRow.getCell(13).font = { bold: true, color: { argb: 'FFDC2626' } };
 
       // Anchos (17 columnas)
       worksheet.columns = [
-        { width: 18 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 10 }, { width: 18 }, { width: 22 },
-        { width: 25 }, { width: 14 }, { width: 12 }, { width: 14 }, { width: 14 },
-        { width: 15 }, { width: 22 }, { width: 12 }, { width: 22 }, { width: 22 }
+        { width: 18 },
+        { width: 12 },
+        { width: 10 },
+        { width: 8 },
+        { width: 10 },
+        { width: 18 },
+        { width: 22 },
+        { width: 25 },
+        { width: 14 },
+        { width: 12 },
+        { width: 14 },
+        { width: 14 },
+        { width: 15 },
+        { width: 22 },
+        { width: 12 },
+        { width: 22 },
+        { width: 22 },
       ];
 
       // Generar archivo
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
 
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -601,10 +876,14 @@ export class ConcentradoEgresosComponent {
         this.trackingService.getnameComp(),
         'Exportación XLSX - Concentrado de Egresos',
         'Concentrado Egresos',
-        this.trackingService.getEmail()
+        this.trackingService.getEmail(),
       );
 
-      alerts.basicAlert('Éxito', 'Archivo Excel generado correctamente', 'success');
+      alerts.basicAlert(
+        'Éxito',
+        'Archivo Excel generado correctamente',
+        'success',
+      );
     } catch (error) {
       console.error('Error exportando XLSX:', error);
       alerts.basicAlert('Error', 'Error al generar el archivo Excel', 'error');

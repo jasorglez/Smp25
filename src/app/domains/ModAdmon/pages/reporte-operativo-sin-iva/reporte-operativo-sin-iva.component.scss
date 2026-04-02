@@ -292,11 +292,6 @@
 
 // Flujo Bancario Section
 .flujo-section {
-  .section-title {
-    color: #155e75;
-    border-bottom-color: #155e75;
-  }
-
   .flujo-tables {
     display: flex;
     gap: 30px;
@@ -306,11 +301,10 @@
   .flujo-table-wrapper {
     flex: 1;
     min-width: 280px;
-    max-width: 480px;
   }
 
   .flujo-subtitle {
-    color: #0e7490;
+    color: #1a365d;
     font-size: 0.9rem;
     font-weight: 700;
     margin-bottom: 8px;
@@ -323,7 +317,6 @@
     width: 100%;
 
     th {
-      background-color: #0e7490;
       min-width: 80px;
 
       &:first-child {
@@ -335,17 +328,11 @@
 
 // Aportacion Socios Table specifics
 .aportacion-section {
-  .section-title {
-    color: #1e40af;
-    border-bottom-color: #1e40af;
-  }
-
   .aportacion-table {
     min-width: auto;
 
     th {
       min-width: 120px;
-      background-color: #1e40af;
 
       &:first-child {
         min-width: 150px;
