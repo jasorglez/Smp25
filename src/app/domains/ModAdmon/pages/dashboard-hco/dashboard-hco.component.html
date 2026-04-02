@@ -78,10 +78,10 @@
         <table class="siaf-table">
           <thead>
             <tr>
-              <th>CLASIFICACIÓN</th>
-              <th class="text-end">TOTAL ANTERIOR</th>
-              <th class="text-end">TOTAL {{ getMesAnteriorNombre() | uppercase }}</th>
-              <th class="text-end">TOTAL ACUMULADO</th>
+              <th>CLASIFICACIÓN DEL GASTO</th>
+              <th class="text-end">GASTO TOTAL ANTERIOR</th>
+              <th class="text-end">GASTO TOTAL {{ getMesAnteriorNombre() | uppercase }}</th>
+              <th class="text-end">GASTO TOTAL ACUMULADO</th>
             </tr>
           </thead>
           <tbody>
@@ -184,8 +184,8 @@
           *ngIf="personalPieChartOptions?.series && personalPieChartOptions.series.length > 0"
           [series]="personalPieChartOptions.series" [chart]="personalPieChartOptions.chart"
           [labels]="personalPieChartOptions.labels" [title]="personalPieChartOptions.title"
-          [plotOptions]="personalPieChartOptions.plotOptions"
-          [legend]="personalPieChartOptions.legend" [colors]="personalPieChartOptions.colors"></apx-chart>
+          [plotOptions]="personalPieChartOptions.plotOptions" [legend]="personalPieChartOptions.legend"
+          [colors]="personalPieChartOptions.colors"></apx-chart>
         <div *ngIf="!personalPieChartOptions?.series || personalPieChartOptions.series.length === 0" class="no-data">
           <i class="bi bi-people"></i>
           <span>Sin datos de personal</span>
@@ -200,8 +200,8 @@
         </div>
         <apx-chart #pieChartRef *ngIf="pieChartOptions?.series && pieChartOptions.series.length > 0"
           [series]="pieChartOptions.series" [chart]="pieChartOptions.chart" [labels]="pieChartOptions.labels"
-          [title]="pieChartOptions.title" [plotOptions]="pieChartOptions.plotOptions"
-          [legend]="pieChartOptions.legend" [colors]="pieChartOptions.colors"></apx-chart>
+          [title]="pieChartOptions.title" [plotOptions]="pieChartOptions.plotOptions" [legend]="pieChartOptions.legend"
+          [colors]="pieChartOptions.colors"></apx-chart>
         <div *ngIf="!pieChartOptions?.series || pieChartOptions.series.length === 0" class="no-data">
           <i class="bi bi-pie-chart"></i>
           <span>Sin datos para mostrar</span>
@@ -218,8 +218,8 @@
           *ngIf="combustiblePieChartOptions?.series && combustiblePieChartOptions.series.length > 0"
           [series]="combustiblePieChartOptions.series" [chart]="combustiblePieChartOptions.chart"
           [labels]="combustiblePieChartOptions.labels" [title]="combustiblePieChartOptions.title"
-          [plotOptions]="combustiblePieChartOptions.plotOptions"
-          [legend]="combustiblePieChartOptions.legend" [colors]="combustiblePieChartOptions.colors"></apx-chart>
+          [plotOptions]="combustiblePieChartOptions.plotOptions" [legend]="combustiblePieChartOptions.legend"
+          [colors]="combustiblePieChartOptions.colors"></apx-chart>
         <div *ngIf="!combustiblePieChartOptions?.series || combustiblePieChartOptions.series.length === 0"
           class="no-data">
           <i class="bi bi-fuel-pump"></i>

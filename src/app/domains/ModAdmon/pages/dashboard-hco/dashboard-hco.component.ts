@@ -358,7 +358,11 @@ export class DashboardHcoComponent {
         alignment: 'center',
         margin: [0, 0, 0, 2],
       });
-      rightColumnCharts.push({ image: images.barChart, width: 285, margin: [0, 0, 0, 10] });
+      rightColumnCharts.push({
+        image: images.barChart,
+        width: 285,
+        margin: [0, 0, 0, 10],
+      });
     }
     if (images.pieChart) {
       rightColumnCharts.push({
@@ -367,7 +371,11 @@ export class DashboardHcoComponent {
         alignment: 'center',
         margin: [0, 0, 0, 2],
       });
-      rightColumnCharts.push({ image: images.pieChart, width: 285, margin: [0, 0, 0, 6] });
+      rightColumnCharts.push({
+        image: images.pieChart,
+        width: 285,
+        margin: [0, 0, 0, 6],
+      });
     }
     if (images.combustibleChart) {
       rightColumnCharts.push({
@@ -376,7 +384,11 @@ export class DashboardHcoComponent {
         alignment: 'center',
         margin: [0, 0, 0, 2],
       });
-      rightColumnCharts.push({ image: images.combustibleChart, width: 285, margin: [0, 0, 0, 10] });
+      rightColumnCharts.push({
+        image: images.combustibleChart,
+        width: 285,
+        margin: [0, 0, 0, 10],
+      });
     }
     if (rightColumnCharts.length === 0) {
       rightColumnCharts.push({
@@ -550,21 +562,25 @@ export class DashboardHcoComponent {
   private buildPdfClasificacionTable(): any {
     const body: any[] = [
       [
-        { text: 'CLASIFICACION', style: 'tableHeader', fillColor: '#1A365D' },
         {
-          text: 'TOTAL ANTERIOR',
+          text: 'CLASIFICACION DEL GASTO',
+          style: 'tableHeader',
+          fillColor: '#1A365D',
+        },
+        {
+          text: 'GASTO TOTAL ANTERIOR',
           style: 'tableHeader',
           fillColor: '#1A365D',
           alignment: 'right',
         },
         {
-          text: 'TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
+          text: 'GASTO TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
           style: 'tableHeader',
           fillColor: '#1A365D',
           alignment: 'right',
         },
         {
-          text: 'TOTAL ACUMULADO',
+          text: 'GASTO TOTAL ACUMULADO',
           style: 'tableHeader',
           fillColor: '#1A365D',
           alignment: 'right',
@@ -944,10 +960,10 @@ export class DashboardHcoComponent {
 
     const headerRow = startRow + 1;
     const headers = [
-      'CLASIFICACION',
-      'TOTAL ANTERIOR',
-      'TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
-      'TOTAL ACUMULADO',
+      'CLASIFICACION DEL GASTO',
+      'GASTO TOTAL ANTERIOR',
+      'GASTO TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
+      'GASTO TOTAL ACUMULADO',
     ];
     headers.forEach((header, index) => {
       const cell = worksheet.getCell(headerRow, index + 1);
@@ -1349,88 +1365,95 @@ export class DashboardHcoComponent {
     });
 
     // Cargar cuentas bancarias para filtrar las de tipo "cash"
-    this.administrationService.getAccountBanks(rootId).pipe(
-      catchError(() => of([]))
-    ).subscribe((cuentasBancariasData: any[]) => {
-      const cuentasBancarias = Array.isArray(cuentasBancariasData) ? cuentasBancariasData : [];
-      const cashAccountIds = cuentasBancarias.filter(c => c.cash).map(c => c.id);
+    this.administrationService
+      .getAccountBanks(rootId)
+      .pipe(catchError(() => of([])))
+      .subscribe((cuentasBancariasData: any[]) => {
+        const cuentasBancarias = Array.isArray(cuentasBancariasData)
+          ? cuentasBancariasData
+          : [];
+        const cashAccountIds = cuentasBancarias
+          .filter((c) => c.cash)
+          .map((c) => c.id);
 
-      // Cargar ingresos y egresos desde la misma fuente que income/expenditure
-      this.incomesAndExpensesService
-        .getIncomesAndExpenses(rootId)
-        .subscribe((data) => {
-          const rowsUnfiltered = Array.isArray(data) ? data : [];
-          const rows = rowsUnfiltered.filter(item => !cashAccountIds.includes(item.idAccount));
-          
-          const gastos = rows.filter(
-            (item) => String(item?.type ?? '').toUpperCase() === 'GASTO',
-          );
-          this.ingresosData = rows.filter(
-            (item) => String(item?.type ?? '').toUpperCase() === 'DEPOSITO',
-          );
-
-        console.log('✅ Egresos cargados (GASTO):', gastos.length);
-        console.log(
-          '✅ Ingresos cargados (DEPOSITO):',
-          this.ingresosData.length,
-        );
-
-        // Expandir gastos usando dateExpend de los conceptos (detalles-expenditure)
-        // para que la fecha de clasificación mensual refleje la fecha real del concepto
-        if (gastos.length === 0) {
-          this.egresosData = [];
-          this._loadedEgresos = true;
-          this.checkDataReady();
-          this.processAllData();
-          return;
-        }
-
-        const conceptRequests = gastos.map((gasto) =>
-          this.incomesAndExpensesService
-            .getConceptsFromIncomesAndExpenses(gasto.id)
-            .pipe(
-              map((concepts) => ({
-                gasto,
-                concepts: Array.isArray(concepts) ? concepts : [],
-              })),
-              catchError(() => of({ gasto, concepts: [] })),
-            ),
-        );
-
-        forkJoin(conceptRequests).subscribe((results) => {
-          const expandedEgresos: any[] = [];
-
-          results.forEach(({ gasto, concepts }) => {
-            const activeConcepts = concepts.filter(
-              (c: any) => c?.active !== false && (c?.total ?? 0) !== 0,
+        // Cargar ingresos y egresos desde la misma fuente que income/expenditure
+        this.incomesAndExpensesService
+          .getIncomesAndExpenses(rootId)
+          .subscribe((data) => {
+            const rowsUnfiltered = Array.isArray(data) ? data : [];
+            const rows = rowsUnfiltered.filter(
+              (item) => !cashAccountIds.includes(item.idAccount),
             );
-            if (activeConcepts.length === 0) {
-              // Sin conceptos: usar el gasto padre con su fecha original
-              expandedEgresos.push(gasto);
-            } else {
-              // Expandir a nivel de concepto usando dateExpend como fecha
-              activeConcepts.forEach((concept: any) => {
-                expandedEgresos.push({
-                  ...gasto,
-                  date: concept.dateExpend ?? gasto.date,
-                  total: concept.total ?? 0,
-                  conceptoDescripcion: concept.description ?? '',
-                });
-              });
-            }
-          });
 
-          this.egresosData = expandedEgresos;
-          console.log(
-            '✅ Egresos expandidos con fechas de conceptos:',
-            expandedEgresos.length,
-          );
-          this._loadedEgresos = true;
-          this.checkDataReady();
-          this.processAllData();
-        });
+            const gastos = rows.filter(
+              (item) => String(item?.type ?? '').toUpperCase() === 'GASTO',
+            );
+            this.ingresosData = rows.filter(
+              (item) => String(item?.type ?? '').toUpperCase() === 'DEPOSITO',
+            );
+
+            console.log('✅ Egresos cargados (GASTO):', gastos.length);
+            console.log(
+              '✅ Ingresos cargados (DEPOSITO):',
+              this.ingresosData.length,
+            );
+
+            // Expandir gastos usando dateExpend de los conceptos (detalles-expenditure)
+            // para que la fecha de clasificación mensual refleje la fecha real del concepto
+            if (gastos.length === 0) {
+              this.egresosData = [];
+              this._loadedEgresos = true;
+              this.checkDataReady();
+              this.processAllData();
+              return;
+            }
+
+            const conceptRequests = gastos.map((gasto) =>
+              this.incomesAndExpensesService
+                .getConceptsFromIncomesAndExpenses(gasto.id)
+                .pipe(
+                  map((concepts) => ({
+                    gasto,
+                    concepts: Array.isArray(concepts) ? concepts : [],
+                  })),
+                  catchError(() => of({ gasto, concepts: [] })),
+                ),
+            );
+
+            forkJoin(conceptRequests).subscribe((results) => {
+              const expandedEgresos: any[] = [];
+
+              results.forEach(({ gasto, concepts }) => {
+                const activeConcepts = concepts.filter(
+                  (c: any) => c?.active !== false && (c?.total ?? 0) !== 0,
+                );
+                if (activeConcepts.length === 0) {
+                  // Sin conceptos: usar el gasto padre con su fecha original
+                  expandedEgresos.push(gasto);
+                } else {
+                  // Expandir a nivel de concepto usando dateExpend como fecha
+                  activeConcepts.forEach((concept: any) => {
+                    expandedEgresos.push({
+                      ...gasto,
+                      date: concept.dateExpend ?? gasto.date,
+                      total: concept.total ?? 0,
+                      conceptoDescripcion: concept.description ?? '',
+                    });
+                  });
+                }
+              });
+
+              this.egresosData = expandedEgresos;
+              console.log(
+                '✅ Egresos expandidos con fechas de conceptos:',
+                expandedEgresos.length,
+              );
+              this._loadedEgresos = true;
+              this.checkDataReady();
+              this.processAllData();
+            });
+          });
       });
-    });
   }
 
   private downloadBlob(blob: Blob, fileName: string): void {
@@ -1673,7 +1696,7 @@ export class DashboardHcoComponent {
       targetMonth = 11;
       targetYear -= 1;
     }
-    
+
     const grouped = new Map<string, ClasificacionContable>();
 
     egresos.forEach((item) => {
@@ -1702,7 +1725,8 @@ export class DashboardHcoComponent {
         registro.gastoMesActual += monto;
       } else if (
         itemDate.getFullYear() < targetYear ||
-        (itemDate.getFullYear() === targetYear && itemDate.getMonth() < targetMonth)
+        (itemDate.getFullYear() === targetYear &&
+          itemDate.getMonth() < targetMonth)
       ) {
         registro.gastoAnterior += monto;
       }
@@ -1833,7 +1857,10 @@ export class DashboardHcoComponent {
                 label: `${this.totalPersonal} personas`,
                 fontSize: '11px',
                 fontWeight: 700,
-                formatter: () => this.totalNomina > 0 ? this.formatCurrency(this.totalNomina) : '',
+                formatter: () =>
+                  this.totalNomina > 0
+                    ? this.formatCurrency(this.totalNomina)
+                    : '',
               },
             },
           },
@@ -2176,8 +2203,18 @@ export class DashboardHcoComponent {
   // Obtener el nombre del mes actual
   public getMesActualNombre(): string {
     const monthNames = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     return monthNames[new Date().getMonth()];
   }
@@ -2185,8 +2222,18 @@ export class DashboardHcoComponent {
   // Obtener el nombre del mes anterior
   public getMesAnteriorNombre(): string {
     const monthNames = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     let prevMonth = new Date().getMonth() - 1;
     if (prevMonth < 0) prevMonth = 11;
