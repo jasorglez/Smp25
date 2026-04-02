@@ -94,7 +94,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   }
 
   refresh(): boolean {
-    return false;
+    return true; // No destruir el componente cuando el padre hace refreshCells
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -231,7 +231,26 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     rowData.__modified = true;
     this.hasUnsavedChanges = true;
 
-    // Refrescar solo la celda del checkbox
+    // Sincronizar en el array articulos del padre para que el valueGetter lo refleje
+    if (rowData._rawItem) {
+      rowData._rawItem.pedimento = newValue;
+    }
+    const articulos = this.params.data.articulos || [];
+    const match = articulos.find((a: any) => a.id === rowData.id);
+    if (match) {
+      match.pedimento = newValue;
+    }
+
+    // Refrescar la celda 'articulos' en el grid padre (muestra X/Total)
+    // Sin force:true para no destruir este detail renderer
+    if (this.params.api && this.params.node) {
+      this.params.api.refreshCells({
+        rowNodes: [this.params.node],
+        columns: ['articulos']
+      });
+    }
+
+    // Refrescar la celda del checkbox en el sub-grid
     if (this.gridApi) {
       this.gridApi.refreshCells({ force: true, columns: ['pedimento'] });
     }
