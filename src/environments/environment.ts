@@ -76,5 +76,5 @@ export const environment = {
   urlRefreshToken:
     'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.0.9 (01 Abril 2026 20:37) - Ruby',
+  version: '6.0.10 (02 Abril 2026 12:07) - Ruby',
 };

@@ -372,6 +372,30 @@
   }
 }
 
+// Nómina breakdown
+.nomina-breakdown {
+  padding: 4px 16px 8px;
+
+  .nomina-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+    border-bottom: 1px dotted #e2e8f0;
+
+    .nomina-cat-label {
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+
+    .nomina-cat-amount {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #1a365d;
+    }
+  }
+}
+
 // Chart Card
 .chart-card {
   background-color: #ffffff;

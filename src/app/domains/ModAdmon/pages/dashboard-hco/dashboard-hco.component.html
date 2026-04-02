@@ -22,21 +22,13 @@
         </select>
       </div>
       <div class="export-buttons" data-html2canvas-ignore="true">
-        <button
-          class="btn btn-sm btn-danger"
-          type="button"
-          [disabled]="!isDataReady || isExportingPdf || isExportingXlsx"
-          (click)="exportToPdf()"
-        >
+        <button class="btn btn-sm btn-danger" type="button"
+          [disabled]="!isDataReady || isExportingPdf || isExportingXlsx" (click)="exportToPdf()">
           <i class="bi bi-filetype-pdf"></i>
           {{ !isDataReady ? 'Cargando...' : isExportingPdf ? 'Exportando...' : 'PDF' }}
         </button>
-        <button
-          class="btn btn-sm btn-success"
-          type="button"
-          [disabled]="!isDataReady || isExportingPdf || isExportingXlsx"
-          (click)="exportToXlsx()"
-        >
+        <button class="btn btn-sm btn-success" type="button"
+          [disabled]="!isDataReady || isExportingPdf || isExportingXlsx" (click)="exportToXlsx()">
           <i class="bi bi-filetype-xlsx"></i>
           {{ !isDataReady ? 'Cargando...' : isExportingXlsx ? 'Exportando...' : 'XLSX' }}
         </button>
@@ -102,10 +94,11 @@
           </tbody>
           <tfoot>
             <tr class="total-row total-egreso-row">
-              <td><strong>Gran Total Egresos</strong></td>
+              <td><strong>Gran Total</strong></td>
               <td class="text-end"><strong>{{ getTotalEgresoAnterior() | currency:'$':'symbol':'1.2-2' }}</strong></td>
               <td class="text-end"><strong>{{ getTotalEgresoMesActual() | currency:'$':'symbol':'1.2-2' }}</strong></td>
-              <td class="text-end total-cell"><strong>{{ getTotalEgresoAcumulado() | currency:'$':'symbol':'1.2-2' }}</strong></td>
+              <td class="text-end total-cell"><strong>{{ getTotalEgresoAcumulado() | currency:'$':'symbol':'1.2-2'
+                  }}</strong></td>
             </tr>
           </tfoot>
         </table>
@@ -137,9 +130,12 @@
                 <!-- Fila de totales por año cuando cambia el año -->
                 <tr class="year-total-row" *ngIf="(flujoMensual[i + 1]?.anio !== item.anio)">
                   <td><strong>Total {{ item.anio }}</strong></td>
-                  <td class="text-end"><strong>{{ getTotalAnio(item.anio, 'egreso') | currency:'$':'symbol':'1.2-2' }}</strong></td>
-                  <td class="text-end"><strong>{{ getTotalAnio(item.anio, 'ingreso') | currency:'$':'symbol':'1.2-2' }}</strong></td>
-                  <td class="text-end" [ngClass]="getTotalAnio(item.anio, 'flujo') >= 0 ? 'flujo-positivo' : 'flujo-negativo'">
+                  <td class="text-end"><strong>{{ getTotalAnio(item.anio, 'egreso') | currency:'$':'symbol':'1.2-2'
+                      }}</strong></td>
+                  <td class="text-end"><strong>{{ getTotalAnio(item.anio, 'ingreso') | currency:'$':'symbol':'1.2-2'
+                      }}</strong></td>
+                  <td class="text-end"
+                    [ngClass]="getTotalAnio(item.anio, 'flujo') >= 0 ? 'flujo-positivo' : 'flujo-negativo'">
                     <strong>{{ getTotalAnio(item.anio, 'flujo') | currency:'$':'symbol':'1.2-2' }}</strong>
                   </td>
                 </tr>
@@ -148,8 +144,10 @@
             <tfoot>
               <tr class="grand-total-row">
                 <td><strong>Total General</strong></td>
-                <td class="text-end"><strong>{{ getTotalGeneral().egreso | currency:'$':'symbol':'1.2-2' }}</strong></td>
-                <td class="text-end"><strong>{{ getTotalGeneral().ingreso | currency:'$':'symbol':'1.2-2' }}</strong></td>
+                <td class="text-end"><strong>{{ getTotalGeneral().egreso | currency:'$':'symbol':'1.2-2' }}</strong>
+                </td>
+                <td class="text-end"><strong>{{ getTotalGeneral().ingreso | currency:'$':'symbol':'1.2-2' }}</strong>
+                </td>
                 <td class="text-end" [ngClass]="getTotalGeneral().flujo >= 0 ? 'flujo-positivo' : 'flujo-negativo'">
                   <strong>{{ getTotalGeneral().flujo | currency:'$':'symbol':'1.2-2' }}</strong>
                 </td>
@@ -172,15 +170,22 @@
           <span class="personal-kpi-label">CANTIDAD DE PERSONAL</span>
           <span class="personal-kpi-total">{{ totalPersonal }}</span>
         </div>
+        <div class="personal-kpi-header" *ngIf="totalNomina > 0">
+          <span class="personal-kpi-label">NÓMINA</span>
+          <span class="personal-kpi-total">{{ totalNomina | currency:'$':'symbol':'1.2-2' }}</span>
+        </div>
+        <div *ngIf="nominaByCategory.length > 0" class="nomina-breakdown">
+          <div class="nomina-breakdown-row" *ngFor="let cat of nominaByCategory">
+            <span class="nomina-cat-label">{{ cat.label }}</span>
+            <span class="nomina-cat-amount">{{ cat.amount | currency:'$':'symbol':'1.2-2' }}</span>
+          </div>
+        </div>
         <apx-chart #personalChartRef
           *ngIf="personalPieChartOptions?.series && personalPieChartOptions.series.length > 0"
-          [series]="personalPieChartOptions.series"
-          [chart]="personalPieChartOptions.chart"
-          [labels]="personalPieChartOptions.labels"
-          [title]="personalPieChartOptions.title"
-          [legend]="personalPieChartOptions.legend"
-          [colors]="personalPieChartOptions.colors"
-        ></apx-chart>
+          [series]="personalPieChartOptions.series" [chart]="personalPieChartOptions.chart"
+          [labels]="personalPieChartOptions.labels" [title]="personalPieChartOptions.title"
+          [plotOptions]="personalPieChartOptions.plotOptions"
+          [legend]="personalPieChartOptions.legend" [colors]="personalPieChartOptions.colors"></apx-chart>
         <div *ngIf="!personalPieChartOptions?.series || personalPieChartOptions.series.length === 0" class="no-data">
           <i class="bi bi-people"></i>
           <span>Sin datos de personal</span>
@@ -189,15 +194,14 @@
 
       <!-- Gráfica de pie: Gasto Total Acumulado -->
       <div class="chart-card">
-        <apx-chart #pieChartRef
-          *ngIf="pieChartOptions?.series && pieChartOptions.series.length > 0"
-          [series]="pieChartOptions.series"
-          [chart]="pieChartOptions.chart"
-          [labels]="pieChartOptions.labels"
-          [title]="pieChartOptions.title"
-          [legend]="pieChartOptions.legend"
-          [colors]="pieChartOptions.colors"
-        ></apx-chart>
+        <div class="personal-kpi-header">
+          <span class="personal-kpi-label">GASTO TOTAL ACUMULADO</span>
+          <span class="personal-kpi-total">{{ totalEgresos | currency:'$':'symbol':'1.2-2' }}</span>
+        </div>
+        <apx-chart #pieChartRef *ngIf="pieChartOptions?.series && pieChartOptions.series.length > 0"
+          [series]="pieChartOptions.series" [chart]="pieChartOptions.chart" [labels]="pieChartOptions.labels"
+          [title]="pieChartOptions.title" [plotOptions]="pieChartOptions.plotOptions"
+          [legend]="pieChartOptions.legend" [colors]="pieChartOptions.colors"></apx-chart>
         <div *ngIf="!pieChartOptions?.series || pieChartOptions.series.length === 0" class="no-data">
           <i class="bi bi-pie-chart"></i>
           <span>Sin datos para mostrar</span>
@@ -212,14 +216,12 @@
         </div>
         <apx-chart #combustibleChartRef
           *ngIf="combustiblePieChartOptions?.series && combustiblePieChartOptions.series.length > 0"
-          [series]="combustiblePieChartOptions.series"
-          [chart]="combustiblePieChartOptions.chart"
-          [labels]="combustiblePieChartOptions.labels"
-          [title]="combustiblePieChartOptions.title"
-          [legend]="combustiblePieChartOptions.legend"
-          [colors]="combustiblePieChartOptions.colors"
-        ></apx-chart>
-        <div *ngIf="!combustiblePieChartOptions?.series || combustiblePieChartOptions.series.length === 0" class="no-data">
+          [series]="combustiblePieChartOptions.series" [chart]="combustiblePieChartOptions.chart"
+          [labels]="combustiblePieChartOptions.labels" [title]="combustiblePieChartOptions.title"
+          [plotOptions]="combustiblePieChartOptions.plotOptions"
+          [legend]="combustiblePieChartOptions.legend" [colors]="combustiblePieChartOptions.colors"></apx-chart>
+        <div *ngIf="!combustiblePieChartOptions?.series || combustiblePieChartOptions.series.length === 0"
+          class="no-data">
           <i class="bi bi-fuel-pump"></i>
           <span>Sin datos de combustible</span>
         </div>
@@ -229,18 +231,10 @@
 
   <!-- Gráfica de líneas: Comportamiento del negocio (full width) -->
   <div class="chart-card full-width">
-    <apx-chart #lineChartRef
-      *ngIf="lineChartOptions?.series"
-      [series]="lineChartOptions.series"
-      [chart]="lineChartOptions.chart"
-      [xaxis]="lineChartOptions.xaxis"
-      [yaxis]="lineChartOptions.yaxis"
-      [title]="lineChartOptions.title"
-      [stroke]="lineChartOptions.stroke"
-      [fill]="lineChartOptions.fill"
-      [tooltip]="lineChartOptions.tooltip"
-      [legend]="lineChartOptions.legend"
-    ></apx-chart>
+    <apx-chart #lineChartRef *ngIf="lineChartOptions?.series" [series]="lineChartOptions.series"
+      [chart]="lineChartOptions.chart" [xaxis]="lineChartOptions.xaxis" [yaxis]="lineChartOptions.yaxis"
+      [title]="lineChartOptions.title" [stroke]="lineChartOptions.stroke" [fill]="lineChartOptions.fill"
+      [tooltip]="lineChartOptions.tooltip" [legend]="lineChartOptions.legend"></apx-chart>
     <div *ngIf="!lineChartOptions?.series" class="no-data">
       <i class="bi bi-graph-up"></i>
       <span>Sin datos para mostrar</span>

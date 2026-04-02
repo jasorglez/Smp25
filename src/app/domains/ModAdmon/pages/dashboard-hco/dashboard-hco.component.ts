@@ -1,5 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, ViewChild, effect, inject } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  ViewChild,
+  effect,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
@@ -49,6 +55,7 @@ export type PieChartOptions = {
   title: ApexTitleSubtitle;
   legend: ApexLegend;
   colors: string[];
+  plotOptions: any;
 };
 
 // Interfaz para clasificación de gastos (basada en cuentas contables)
@@ -86,6 +93,7 @@ export class DashboardHcoComponent {
   @ViewChild('lineChartRef') private lineChartRef?: ChartComponent;
 
   private pdfWorkerService = inject(PdfWorkerService);
+  private cdr = inject(ChangeDetectorRef);
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private cuentasContablesService = inject(CuentasContablesService);
@@ -160,11 +168,16 @@ export class DashboardHcoComponent {
   private projectsList: any[] = [];
   private allEmployees: any[] = [];
   private allEmployeeProjects: any[] = [];
+  private nominaRecordsCache: any[] = [];
   private branchesList: any[] = [];
   public totalPersonal: number = 0;
 
   // Datos de combustible
   public totalCombustible: number = 0;
+
+  // Datos de nómina
+  public totalNomina: number = 0;
+  public nominaByCategory: { label: string; amount: number }[] = [];
 
   constructor() {
     // Inicializar fechas por defecto (últimos 24 meses para tener histórico)
@@ -305,7 +318,7 @@ export class DashboardHcoComponent {
   }): any[] {
     const kpiTable = {
       table: {
-        widths: ['20%', '20%', '20%', '20%', '20%'],
+        widths: ['25%', '25%', '25%', '25%'],
         body: [
           [
             this.buildPdfKpiCell(
@@ -328,11 +341,6 @@ export class DashboardHcoComponent {
               `${this.margenPorcentaje.toFixed(1)}%`,
               '#7C3AED',
             ),
-            this.buildPdfKpiCell(
-              'PERSONAL',
-              this.totalPersonal.toString(),
-              '#0891B2',
-            ),
           ],
         ],
       },
@@ -341,40 +349,32 @@ export class DashboardHcoComponent {
     };
 
     const rightColumnCharts: any[] = [];
-    if (images.pieChart) {
-      rightColumnCharts.push({
-        text: 'PERSONAL POR SUCURSAL',
-        style: 'sectionTitle',
-      });
-      rightColumnCharts.push({
-        image: images.pieChart,
-        width: 285,
-        margin: [0, 0, 0, 4],
-      });
-      rightColumnCharts.push(this.buildPdfPersonalTable());
-      rightColumnCharts.push({ text: ' ', margin: [0, 6, 0, 0] });
-    }
     if (images.barChart) {
       rightColumnCharts.push({
         text: 'GASTO TOTAL ACUMULADO',
         style: 'sectionTitle',
+        alignment: 'center',
+        margin: [0, 0, 0, 2],
       });
+      rightColumnCharts.push({ image: images.barChart, width: 285, margin: [0, 0, 0, 10] });
+    }
+    if (images.pieChart) {
       rightColumnCharts.push({
-        image: images.barChart,
-        width: 285,
-        margin: [0, 0, 0, 10],
+        text: 'CANTIDAD DE PERSONAL',
+        style: 'sectionTitle',
+        alignment: 'center',
+        margin: [0, 0, 0, 2],
       });
+      rightColumnCharts.push({ image: images.pieChart, width: 285, margin: [0, 0, 0, 6] });
     }
     if (images.combustibleChart) {
       rightColumnCharts.push({
         text: 'CONSUMO DE COMBUSTIBLE',
         style: 'sectionTitle',
+        alignment: 'center',
+        margin: [0, 0, 0, 2],
       });
-      rightColumnCharts.push({
-        image: images.combustibleChart,
-        width: 285,
-        margin: [0, 0, 0, 10],
-      });
+      rightColumnCharts.push({ image: images.combustibleChart, width: 285, margin: [0, 0, 0, 10] });
     }
     if (rightColumnCharts.length === 0) {
       rightColumnCharts.push({
@@ -384,10 +384,6 @@ export class DashboardHcoComponent {
     }
 
     const leftColumnStack: any[] = [
-      {
-        text: 'CLASIFICACION DE EGRESOS (CUENTAS CONTABLES)',
-        style: 'sectionTitle',
-      },
       this.buildPdfClasificacionTable(),
       { text: ' ', margin: [0, 4, 0, 4] },
       { text: 'GASTO E INGRESO POR MES', style: 'sectionTitle' },
@@ -453,9 +449,24 @@ export class DashboardHcoComponent {
             },
             {
               stack: [
-                { text: 'Referencia: HCO-ADM-SGC-005', fontSize: 7, alignment: 'right', color: '#334155' },
-                { text: 'Código: HCO-ADM-FO-017',      fontSize: 7, alignment: 'right', color: '#334155' },
-                { text: 'Rev.: 00',                     fontSize: 7, alignment: 'right', color: '#334155' },
+                {
+                  text: 'Referencia: HCO-ADM-SGC-005',
+                  fontSize: 7,
+                  alignment: 'right',
+                  color: '#334155',
+                },
+                {
+                  text: 'Código: HCO-ADM-FO-017',
+                  fontSize: 7,
+                  alignment: 'right',
+                  color: '#334155',
+                },
+                {
+                  text: 'Rev.: 00',
+                  fontSize: 7,
+                  alignment: 'right',
+                  color: '#334155',
+                },
               ],
             },
           ],
@@ -516,7 +527,7 @@ export class DashboardHcoComponent {
     const countByLabel = new Map<string, number>();
     this.allEmployees.forEach((emp) => {
       const empProjects = this.allEmployeeProjects.filter(
-        (ep) => ep.idEmployee === emp.id
+        (ep) => ep.idEmployee === emp.id,
       );
       let label: string;
       if (empProjects.length === 0) {
@@ -525,7 +536,7 @@ export class DashboardHcoComponent {
         label = 'Multiproyectos';
       } else {
         const project = this.projectsList.find(
-          (p) => p.id === empProjects[0].idProyect
+          (p) => p.id === empProjects[0].idProyect,
         );
         label = project ? project.name : `Proyecto ${empProjects[0].idProyect}`;
       }
@@ -578,7 +589,7 @@ export class DashboardHcoComponent {
     });
 
     body.push([
-      { text: 'Gran Total Egresos', style: 'totalLabel', fillColor: '#FEE2E2' },
+      { text: 'Gran Total', style: 'totalLabel', fillColor: '#FEE2E2' },
       {
         text: this.formatCurrency(this.getTotalEgresoAnterior()),
         style: 'totalValue',
@@ -957,7 +968,7 @@ export class DashboardHcoComponent {
       row++;
     });
 
-    worksheet.getCell(`A${row}`).value = 'Gran Total Egresos';
+    worksheet.getCell(`A${row}`).value = 'Gran Total';
     worksheet.getCell(`A${row}`).font = {
       bold: true,
       color: { argb: 'FFB91C1C' },
@@ -1306,11 +1317,13 @@ export class DashboardHcoComponent {
       this.preparePersonalPieChart();
     });
 
-    this.employeesService.getEmployeeProjectsByRoot(rootId).subscribe((data: any) => {
-      this.allEmployeeProjects = Array.isArray(data) ? data : [];
-      this.preparePersonalPieChart();
-    });
-
+    this.employeesService
+      .getEmployeeProjectsByRoot(rootId)
+      .subscribe((data: any) => {
+        this.allEmployeeProjects = Array.isArray(data) ? data : [];
+        this.preparePersonalPieChart();
+        this.calcularNominaPorCategoria();
+      });
 
     this.projectsService
       .getProjectListByCompany(rootId)
@@ -1458,6 +1471,7 @@ export class DashboardHcoComponent {
     this.preparePieChart();
     this.prepareLineChart();
     this.prepareCombustibleChart(filteredExpenseData);
+    this.calcularTotalNomina(filteredExpenseData);
   }
 
   private getIdExpend(item: any): number | null {
@@ -1507,7 +1521,9 @@ export class DashboardHcoComponent {
         (c) => c.id === item.idSubclasificacion,
       );
       if (subcuenta?.idPadre) {
-        const padre = this.cuentasContablesNivel2.find(c => c.id === subcuenta.idPadre);
+        const padre = this.cuentasContablesNivel2.find(
+          (c) => c.id === subcuenta.idPadre,
+        );
         if (padre) {
           return {
             codigo: String(padre.codigo ?? subcuenta.idPadre),
@@ -1519,7 +1535,8 @@ export class DashboardHcoComponent {
       if (subcuenta) {
         return {
           codigo: String(subcuenta.codigo ?? item.idSubclasificacion),
-          nombre: subcuenta.nombre || subcuenta.descripcion || 'Subclasificación',
+          nombre:
+            subcuenta.nombre || subcuenta.descripcion || 'Subclasificación',
         };
       }
     }
@@ -1542,7 +1559,9 @@ export class DashboardHcoComponent {
     if (idExpend) {
       const cuenta = this.cuentasContablesNivel2.find((c) => c.id === idExpend);
       if (cuenta?.idPadre) {
-        const padre = this.cuentasContablesNivel2.find(c => c.id === cuenta.idPadre);
+        const padre = this.cuentasContablesNivel2.find(
+          (c) => c.id === cuenta.idPadre,
+        );
         if (padre) {
           return {
             codigo: String(padre.codigo ?? cuenta.idPadre),
@@ -1598,7 +1617,9 @@ export class DashboardHcoComponent {
     if (!asString) return null;
 
     // Fechas solo-fecha (YYYY-MM-DD) se parsean como UTC por spec; forzar local añadiendo hora
-    const normalized = /^\d{4}-\d{2}-\d{2}$/.test(asString) ? asString + 'T00:00:00' : asString;
+    const normalized = /^\d{4}-\d{2}-\d{2}$/.test(asString)
+      ? asString + 'T00:00:00'
+      : asString;
     const isoDate = new Date(normalized);
     if (!Number.isNaN(isoDate.getTime())) return isoDate;
 
@@ -1776,10 +1797,24 @@ export class DashboardHcoComponent {
       series,
       chart: { type: 'donut', height: 280 },
       labels,
-      title: {
-        text: 'PERSONAL POR PROYECTO',
-        align: 'center',
-        style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' },
+      plotOptions: {
+        pie: {
+          donut: {
+            labels: {
+              show: true,
+              name: { show: true },
+              value: { show: true, fontSize: '14px', fontWeight: 700 },
+              total: {
+                show: true,
+                showAlways: true,
+                label: `${this.totalPersonal} personas`,
+                fontSize: '11px',
+                fontWeight: 700,
+                formatter: () => this.totalNomina > 0 ? this.formatCurrency(this.totalNomina) : '',
+              },
+            },
+          },
+        },
       },
       legend: { position: 'bottom', fontSize: '10px' },
       colors: [
@@ -1813,10 +1848,22 @@ export class DashboardHcoComponent {
       series: series,
       chart: { type: 'donut', height: 320 },
       labels: labels,
-      title: {
-        text: 'GASTO TOTAL ACUMULADO',
-        align: 'center',
-        style: { fontSize: '14px', fontWeight: 'bold', color: '#1a365d' },
+      plotOptions: {
+        pie: {
+          donut: {
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                showAlways: true,
+                label: 'Total',
+                fontSize: '13px',
+                fontWeight: 700,
+                formatter: () => this.formatCurrency(this.totalEgresos),
+              },
+            },
+          },
+        },
       },
       legend: { position: 'bottom', fontSize: '10px' },
       colors: [
@@ -1877,11 +1924,6 @@ export class DashboardHcoComponent {
         labels: {
           formatter: (val) => '$' + (val / 1000).toFixed(1) + 'K',
         },
-      },
-      title: {
-        text: 'COMPORTAMIENTO DEL NEGOCIO',
-        align: 'left',
-        style: { fontSize: '14px', fontWeight: 'bold', color: '#1a365d' },
       },
       tooltip: {
         y: {
@@ -1948,10 +1990,22 @@ export class DashboardHcoComponent {
       series,
       chart: { type: 'donut', height: 280 },
       labels,
-      title: {
-        text: 'CONSUMO DE COMBUSTIBLE',
-        align: 'center',
-        style: { fontSize: '13px', fontWeight: 'bold', color: '#1a365d' },
+      plotOptions: {
+        pie: {
+          donut: {
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                showAlways: true,
+                label: 'Total',
+                fontSize: '13px',
+                fontWeight: 700,
+                formatter: () => this.formatCurrency(this.totalCombustible),
+              },
+            },
+          },
+        },
       },
       legend: { position: 'bottom', fontSize: '10px' },
       colors: [
@@ -1965,6 +2019,93 @@ export class DashboardHcoComponent {
         '#451a03',
       ],
     };
+  }
+
+  private calcularTotalNomina(filteredExpenseData: any[]): void {
+    const nominaIds = new Set(
+      this.cuentasContablesNivel2
+        .filter((c) => {
+          const nombre = String(c.nombre ?? c.descripcion ?? '').toUpperCase();
+          return nombre.includes('NOMINA') || nombre.includes('NÓMINA');
+        })
+        .map((c) => c.id),
+    );
+
+    if (nominaIds.size === 0) {
+      this.totalNomina = 0;
+      this.nominaByCategory = [];
+      return;
+    }
+
+    const nominaRecords = filteredExpenseData.filter(
+      (item) =>
+        nominaIds.has(item.idSubclasificacion) ||
+        nominaIds.has(item.idClasificacion),
+    );
+
+    // Total síncrono — mismo cálculo que antes
+    this.totalNomina = nominaRecords.reduce(
+      (sum, item) => sum + this.getMonto(item),
+      0,
+    );
+    this.nominaByCategory = [];
+
+    if (nominaRecords.length === 0) return;
+
+    this.nominaRecordsCache = nominaRecords;
+    this.preparePersonalPieChart();
+    this.calcularNominaPorCategoria();
+  }
+
+  private calcularNominaPorCategoria(): void {
+    if (this.nominaRecordsCache.length === 0) return;
+
+    Promise.all(
+      this.nominaRecordsCache.map((record) =>
+        lastValueFrom(
+          this.incomesAndExpensesService
+            .getConceptsFromIncomesAndExpenses(record.id)
+            .pipe(catchError(() => of([]))),
+        ),
+      ),
+    ).then((results) => {
+      const categoryTotals = new Map<string, number>();
+
+      results.flat().forEach((concept: any) => {
+        const amount = concept.total
+          ? Number(concept.total)
+          : Number(concept.quantity ?? 1) * Number(concept.price ?? 0);
+        if (!amount) return;
+
+        const empId = Number(concept.idExpense);
+        if (!this.allEmployees.some((e) => Number(e.id) === empId)) return;
+
+        const empProjects = this.allEmployeeProjects.filter(
+          (ep) => Number(ep.idEmployee) === empId,
+        );
+
+        let label: string;
+        if (empProjects.length === 0) {
+          label = 'Sin Proyecto';
+        } else if (empProjects.length > 1) {
+          label = 'Multiproyectos';
+        } else {
+          const project = this.projectsList.find(
+            (p) => p.id === empProjects[0].idProyect,
+          );
+          label = project
+            ? project.name
+            : `Proyecto ${empProjects[0].idProyect}`;
+        }
+
+        categoryTotals.set(label, (categoryTotals.get(label) || 0) + amount);
+      });
+
+      this.nominaByCategory = Array.from(categoryTotals.entries()).map(
+        ([label, amount]) => ({ label, amount }),
+      );
+      this.cdr.detectChanges();
+    });
   }
 
   // Helpers para la vista - EGRESOS

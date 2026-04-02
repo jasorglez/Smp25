@@ -12,8 +12,8 @@ services:
     networks:
       - hco-siaf-network
     labels:
-      - "com.hco-siaf.version=6.0.9"
-      - "com.hco-siaf.service=frontend"
+      - "com.hco-siaf.version=6.0.10"
+      - "com.hco-siaf.service=fronend"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
