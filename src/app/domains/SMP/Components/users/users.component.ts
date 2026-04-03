@@ -133,6 +133,39 @@ export class UsersComponent implements OnDestroy {
     }
   }
 
+  /**
+   * Espacio reservado encima del panel Security (tabs, toolbar, cabecera grid, ~1 fila maestra).
+   * Alineado con .users-container { height: calc(100vh - 195px) }.
+   */
+  private readonly detailPanelTopReservePx = 268;
+
+  /** Altura del panel «Sucursales» para que llegue hasta el fondo del área útil (sin franja gris). */
+  private computeDetailPanelHeight(): number {
+    if (typeof window === 'undefined') {
+      return 560;
+    }
+    const h = window.innerHeight;
+    return Math.max(380, h - this.detailPanelTopReservePx);
+  }
+
+  private applyDetailRowHeight(): void {
+    if (!this.gridApi) {
+      return;
+    }
+    const dh = this.computeDetailPanelHeight();
+    (this.gridApi as any).setGridOption('detailRowHeight', dh);
+    try {
+      this.gridApi.resetRowHeights();
+    } catch {
+      /* noop */
+    }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.applyDetailRowHeight();
+  }
+
   verification(): boolean {
     if (this.userRoot == 1) {
       return this.authorizedPass = true;
@@ -233,7 +266,11 @@ export class UsersComponent implements OnDestroy {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
           this.rowData = response.data.map((item: any) => {
-            return { id: item.id, ...item };
+            const idNum = Number(item.id);
+            return {
+              ...item,
+              id: Number.isFinite(idNum) && idNum > 0 ? idNum : item.id,
+            };
           });
           this.rowData = this.rowData.filter(row => row.active !== 0);
           this.refreshUserSetupFlagsCache();
@@ -494,6 +531,7 @@ export class UsersComponent implements OnDestroy {
     this.gridApi.setGridOption('columnDefs', this.columnDefs);
     const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
     this.gridApi.setColumnsVisible(['idRol'], showSecurity);
+    this.applyDetailRowHeight();
   }
 
   onCellEditingStopped(event: any) {
@@ -530,7 +568,8 @@ export class UsersComponent implements OnDestroy {
     masterDetail: true,
     isRowMaster: () => true,
     detailCellRenderer: 'usersDetailWrapper',
-    detailRowHeight: 1000,
+    /** Valor inicial; onGridReady ajusta con computeDetailPanelHeight() al alto de ventana. */
+    detailRowHeight: 560,
     context: { componentParent: null },
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
@@ -1080,6 +1119,20 @@ export class UsersComponent implements OnDestroy {
     });
   }
 
+  /**
+   * Localiza el nodo actual en el grid (tras refrescos de rowData el RowNode anterior puede quedar huérfano).
+   */
+  private findUserRowNodeById(userId: number): any | null {
+    let found: any = null;
+    this.gridApi.forEachNode((node: any) => {
+      const nid = Number(node?.data?.id);
+      if (Number.isFinite(nid) && nid === userId) {
+        found = node;
+      }
+    });
+    return found;
+  }
+
   togglePermissions() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
@@ -1110,12 +1163,50 @@ export class UsersComponent implements OnDestroy {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
     } else {
-      this.gridApi.forEachNode((node) => { if (node.expanded) node.setExpanded(false); });
+      const uid = Number(selectedData?.id);
+      if (!Number.isFinite(uid) || uid <= 0) {
+        alerts.basicAlert(
+          'Security',
+          'Este usuario aún no tiene ID numérico (p. ej. fila nueva sin guardar). Guarde antes de abrir permisos por sucursal.',
+          'warning'
+        );
+        return;
+      }
+
+      this.gridApi.forEachNode((node) => {
+        if (node.expanded) {
+          node.setExpanded(false);
+        }
+      });
       selectedData.detailType = 'permissions';
+
+      // El filtro numérico debe usar número; si id venía como string, equals a veces no coincide y la fila
+      // desaparece del modelo: el detalle queda en blanco hasta recargar sesión / datos.
       this.gridApi.setFilterModel(null);
-      this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: selectedData.id } });
+      this.gridApi.setFilterModel({
+        id: { filterType: 'number', type: 'equals', filter: uid },
+      });
       this.gridApi.onFilterChanged();
-      setTimeout(() => selectedNode.setExpanded(true), 50);
+
+      setTimeout(() => {
+        const node = this.findUserRowNodeById(uid);
+        if (node?.data) {
+          node.data.detailType = 'permissions';
+        }
+        if (node) {
+          node.setExpanded(true);
+          this.applyDetailRowHeight();
+        } else {
+          selectedData.detailType = null;
+          this.gridApi.setFilterModel(null);
+          this.gridApi.onFilterChanged();
+          alerts.basicAlert(
+            'Security',
+            'No se pudo abrir el detalle (filtro interno). Los filtros se limpiaron; pulse de nuevo en Security o recargue la lista de usuarios.',
+            'warning'
+          );
+        }
+      }, 80);
     }
   }
 
@@ -1133,12 +1224,46 @@ export class UsersComponent implements OnDestroy {
       return;
     }
 
-    this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+    const uid = Number(data?.id);
+    if (!Number.isFinite(uid) || uid <= 0) {
+      alerts.basicAlert(
+        'Empresas',
+        'Este usuario aún no tiene ID numérico. Guarde antes de abrir el detalle.',
+        'warning'
+      );
+      return;
+    }
+
+    this.gridApi.forEachNode((n: any) => {
+      if (n.expanded) {
+        n.setExpanded(false);
+      }
+    });
     data.detailType = 'empresas';
     this.gridApi.setFilterModel(null);
-    this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: data.id } });
+    this.gridApi.setFilterModel({
+      id: { filterType: 'number', type: 'equals', filter: uid },
+    });
     this.gridApi.onFilterChanged();
-    setTimeout(() => node.setExpanded(true), 50);
+    setTimeout(() => {
+      const fresh = this.findUserRowNodeById(uid);
+      if (fresh?.data) {
+        fresh.data.detailType = 'empresas';
+      }
+      if (fresh) {
+        fresh.setExpanded(true);
+        this.applyDetailRowHeight();
+      } else {
+        data.detailType = null;
+        this.gridApi.setFilterModel(null);
+        this.gridApi.onFilterChanged();
+        alerts.basicAlert(
+          'Empresas',
+          'No se pudo abrir el detalle. Los filtros se limpiaron; inténtelo de nuevo.',
+          'warning'
+        );
+      }
+    }, 80);
   }
 
   openPermisosMaestros(node: any): void {

@@ -1,9 +1,10 @@
-import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RolesService, CrudxDetailedPermission, RolesxDetailedPermission } from 'app/services/roles.service';
 import { SignalsService } from 'app/services/signals.service';
-import { forkJoin, lastValueFrom, Observable, of } from 'rxjs';
+import { EMPTY, forkJoin, lastValueFrom, Observable, of } from 'rxjs';
 import { take, map, catchError, switchMap } from 'rxjs/operators';
 import { TimeService } from 'app/services/time.service';
 import { alerts } from 'app/helpers/alerts';
@@ -93,6 +94,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   /** Línea base de switches maestros izquierdos tras cargar/ revertir (evita “sucio” falso). */
   private masterReadBaselineByName = new Map<string, boolean>();
 
+  /**
+   * Valor de `guardRefreshTick` tras el último `obtenerDatos` completo.
+   * El stream de resync solo aplica GET si el tick es **estrictamente mayor**: evita la petición paralela
+   * al abrir el modal (misma emisión de toObservable que llega ya con userId listo) y el “todo apagado”.
+   * Se resetea a +∞ al iniciar cada carga para no mezclar contextos.
+   */
+  private lastGuardTickAfterModalDataLoad = Number.POSITIVE_INFINITY;
+
   @Input() idUserInput: number | string;
   @Input() idBranchInput: number;
   @Input() idRoleInput: number;
@@ -151,30 +160,94 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   ];
 
   constructor() {
-    effect(() => {
-      this.signalsService.guardRefreshTick();
-      if (this.scopeInput === 'position') {
-        return;
+    // Cada bump del guard dispara un GET; switchMap cancela peticiones anteriores.
+    // Comparación con lastGuardTickAfterModalDataLoad evita el GET “fantasma” del mismo tick con el que
+    // acaba de cargar obtenerDatos (y skip(1), que dejaba el modal sin resync si no había más bumps).
+    toObservable(this.signalsService.guardRefreshTick)
+      .pipe(
+        switchMap((tickValue) => {
+          if ((this.scopeInput ?? 'userSystem') === 'position') {
+            return EMPTY;
+          }
+          const uid = this.userId;
+          if (uid == null || Number.isNaN(Number(uid)) || Number(uid) <= 0) {
+            return EMPTY;
+          }
+          if (tickValue <= this.lastGuardTickAfterModalDataLoad) {
+            return EMPTY;
+          }
+          return this.systemPermissionsService.getUserPermissions(Number(uid)).pipe(
+            take(1),
+            catchError((err) => {
+              console.error('Resync UserSystem (Permisos maestros ↔ modal)', err);
+              return of([] as any[]);
+            })
+          );
+        }),
+        takeUntilDestroyed()
+      )
+      .subscribe((userSys: any) => {
+        const list = this.normalizeUserSystemApiList(userSys);
+        this.userSystemPermissionIds = this.extractPermissionIdsFromUserSystemRows(list);
+        this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
+        this.syncReadFlagsFromUserSystemPermissions();
+        this.syncMasterLeftSwitchesFromUserSys();
+        this.notSavedChanges = false;
+      });
+  }
+
+  /** Respuesta de `UserSystemPermissions/user/{id}` puede ser array u objeto envuelto. */
+  private normalizeUserSystemApiList(userSys: unknown): any[] {
+    if (Array.isArray(userSys)) {
+      return userSys;
+    }
+    if (userSys && typeof userSys === 'object') {
+      const o = userSys as Record<string, unknown>;
+      if (Array.isArray(o['data'])) {
+        return o['data'] as any[];
       }
-      const uid = this.userId;
-      if (uid == null || Number.isNaN(Number(uid)) || Number(uid) <= 0) {
-        return;
+      if (Array.isArray(o['project'])) {
+        return o['project'] as any[];
       }
-      this.systemPermissionsService
-        .getUserPermissions(Number(uid))
-        .pipe(take(1))
-        .subscribe({
-          next: (userSys: any) => {
-            const list = userSys ?? [];
-            this.userSystemPermissionIds = list.map((p: any) => p.permissionId);
-            this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
-            this.syncReadFlagsFromUserSystemPermissions();
-            this.syncMasterLeftSwitchesFromUserSys();
-            this.notSavedChanges = false;
-          },
-          error: (err) => console.error('Resync UserSystem (Permisos maestros ↔ modal)', err),
-        });
-    });
+      const vals = Object.values(o).filter((v) => v != null && typeof v === 'object');
+      if (
+        vals.length > 0 &&
+        vals.every(
+          (v) =>
+            typeof (v as any).permissionId === 'number' ||
+            typeof (v as any).PermissionId === 'number' ||
+            typeof (v as any).userId === 'number'
+        )
+      ) {
+        return vals as any[];
+      }
+    }
+    return [];
+  }
+
+  private extractPermissionIdsFromUserSystemRows(list: any[]): number[] {
+    const out: number[] = [];
+    for (const p of list) {
+      if (p == null) {
+        continue;
+      }
+      if (typeof p === 'number' && Number.isFinite(p)) {
+        out.push(p);
+        continue;
+      }
+      const raw =
+        p.permissionId ??
+        p.PermissionId ??
+        p.permission_id ??
+        p.detailedPermission?.id ??
+        p.DetailedPermission?.Id ??
+        p.DetailedPermission?.idDetailedPermission;
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0) {
+        out.push(n);
+      }
+    }
+    return out;
   }
 
   // Normaliza texto: minúsculas y sin acentos
@@ -477,6 +550,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   /**
+   * Tarjeta del panel derecho cuyo nombre coincide con el maestro (p. ej. "Administración" bajo Administración).
+   * El CRUD a veces repite el id homónimo del maestro en todas las filas; no debe usarse como id canónico de otras tarjetas.
+   */
+  private isHomonymDetailForMaster(master: MasterPermission, detail: DetailedPermission): boolean {
+    const mn = this.normalizar(master.masterPermissionName || '');
+    const dn = this.normalizar(detail.detailedPermissionName || '');
+    return mn.length > 0 && mn === dn;
+  }
+
+  /**
    * ID del permiso detallado "principal" del módulo en UserSystemPermissions.
    * Ejemplo: master "Almacenes" -> detail "Almacenes" (como en Permisos Maestros).
    */
@@ -754,6 +837,36 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   /**
+   * Ids de catálogo / rejilla que representan “este módulo” en UserSystemPermissions.
+   * Incluye el permiso homónimo del maestro (p. ej. Administración) además de los detalles del panel derecho.
+   */
+  private collectUserSystemIdsRelevantToMaster(master: MasterPermission): Set<number> {
+    const ids = new Set<number>();
+    if (this.isConfiguracionMaster(master)) {
+      for (const id of this.collectConfiguracionEdgeAndHomonymIds(master, {
+        includeSetupUsuarioSubIds: true,
+      })) {
+        ids.add(id);
+      }
+      return ids;
+    }
+    for (const id of this.collectDetailedPermissionIdsForMaster(master)) {
+      ids.add(id);
+    }
+    const homonym = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
+    if (homonym != null) {
+      ids.add(homonym);
+    }
+    return ids;
+  }
+
+  /** ¿El usuario sigue teniendo en BD algún id de este módulo? (evita podar por fallo de nombres en sync). */
+  private userSysStillHasAnyIdForMaster(master: MasterPermission): boolean {
+    const ids = this.collectUserSystemIdsRelevantToMaster(master);
+    return [...ids].some((id) => this.userSystemPermissionIds.includes(id));
+  }
+
+  /**
    * Switch izquierdo: si hay rejilla, refleja "¿algún submódulo encendido?".
    * Si todos los del lado derecho están apagados → maestro apagado y se limpian ids/CRUD del módulo.
    * Almacenes (solo modal, homónimo): si todas las tarjetas derechas están apagadas, apagar el switch izquierdo
@@ -768,11 +881,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           const hid = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName)!;
           const allRightOff = master.details.every((d) => !d.detailedRead);
           if (allRightOff) {
-            master.masterRead = false;
-            const beforeLen = this.userSystemPermissionIds.length;
-            this.userSystemPermissionIds = this.userSystemPermissionIds.filter((id) => id !== hid);
-            if (this.userSystemPermissionIds.length !== beforeLen) {
-              pruned = true;
+            if (this.userSystemPermissionIds.includes(hid)) {
+              // La rejilla puede no reflejar aún el homónimo; si el id sigue en UserSystem, mantener encendido.
+              master.masterRead = true;
+            } else {
+              master.masterRead = false;
+              const beforeLen = this.userSystemPermissionIds.length;
+              this.userSystemPermissionIds = this.userSystemPermissionIds.filter((id) => id !== hid);
+              if (this.userSystemPermissionIds.length !== beforeLen) {
+                pruned = true;
+              }
             }
           } else {
             master.masterRead = this.userSystemPermissionIds.includes(hid);
@@ -780,9 +898,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           continue;
         }
 
-        const anyDetailOn = this.anyDetailReadOnForMasterLeftSwitch(master);
+        let anyDetailOn = this.anyDetailReadOnForMasterLeftSwitch(master);
         master.masterRead = anyDetailOn;
         if (!anyDetailOn) {
+          if (this.userSysStillHasAnyIdForMaster(master)) {
+            master.masterRead = true;
+            for (const detail of master.details) {
+              this.syncReadFlagsForSingleDetail(detail);
+            }
+            continue;
+          }
           const beforeLen = this.userSystemPermissionIds.length;
           const toRemove = this.isConfiguracionMaster(master)
             ? this.collectConfiguracionEdgeAndHomonymIds(master, { includeSetupUsuarioSubIds: true })
@@ -808,7 +933,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       } else {
         const catIds = this.getCatalogDetailedIdsForMasterName(master.masterPermissionName);
         if (catIds.size > 0) {
-          master.masterRead = [...catIds].every((id) => this.userSystemPermissionIds.includes(id));
+          // Un usuario con permisos parciales del módulo debe ver el maestro encendido (antes: .every exigía todos).
+          master.masterRead = [...catIds].some((id) => this.userSystemPermissionIds.includes(id));
         }
       }
     }
@@ -889,6 +1015,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       this.roleTemplateCrudRows = [];
     }
 
+    this.lastGuardTickAfterModalDataLoad = Number.POSITIVE_INFINITY;
+
     const preserve = options?.preserveUiSelection === true;
     const savedMasterName = preserve ? this.masterSeleccionado?.masterPermissionName : undefined;
     const savedDetailName = preserve ? this.detailSeleccionado?.detailedPermissionName : undefined;
@@ -952,7 +1080,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
         this.unionModalSidebarUniverseFromRoleTemplate(roleTemplateRows ?? []);
         this.roleTemplateCrudRows = this.normalizeCrudArray(roleTemplateRows ?? []);
-        this.userSystemPermissionIds = (userSys ?? []).map((p: any) => p.permissionId);
+        const userSysList = this.normalizeUserSystemApiList(userSys);
+        this.userSystemPermissionIds = this.extractPermissionIdsFromUserSystemRows(userSysList);
         // Para usuarios nuevos, si seedFromRolePosition está activo y no existe UserSystemPermissions,
         // el CRUD + flags ya deben reflejar la plantilla rol+posición (lo traemos en `crud` o `roleTemplateRows`).
         // En ese caso, evitar sobrescribir `detail.detailedRead` con ids calculados desde UserSystemPermissions
@@ -1021,14 +1150,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.rebuildGroupedPermissionsFromRaw();
         if (scope === 'userSystem') {
-          this.syncMasterLeftSwitchesFromUserSys();
-          // Si el modal viene de “Departamentos de:” replicamos visualmente desde plantilla
-          // y no sobrescribimos con UserSystemPermissions.
+          // Primero alinear rejilla/CRUD con UserSystemPermissions (o plantilla si aplica).
+          // Si se llama syncMasterLeftSwitchesFromUserSys() antes, `detailedRead` suele seguir
+          // en false y el método interpreta “módulo apagado” y poda ids de usuario → todo apagado
+          // y al guardar + recargar parece que se revierte.
           if (seedFromRolePos) {
             this.applyTemplateCrudFlagsToGroupedPermissions();
           } else {
             this.syncReadFlagsFromUserSystemPermissions();
           }
+          this.syncMasterLeftSwitchesFromUserSys();
         } else {
           this.recomputeReadsFromCrud();
         }
@@ -1066,10 +1197,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           this.detailSeleccionado = null;
         }
 
+        this.lastGuardTickAfterModalDataLoad = this.signalsService.guardRefreshTick();
         this.notSavedChanges = false;
         options?.onComplete?.();
       },
-      error: (err) => console.error(err),
+      error: (err) => {
+        console.error(err);
+        options?.onComplete?.();
+      },
     });
   }
 
@@ -1131,7 +1266,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
         this.unionModalSidebarUniverseFromRoleTemplate(roleTemplateRows ?? []);
         this.roleTemplateCrudRows = this.normalizeCrudArray(roleTemplateRows ?? []);
-        this.userSystemPermissionIds = (userSys ?? []).map((p: any) => p.permissionId);
+        const userSysList = this.normalizeUserSystemApiList(userSys);
+        this.userSystemPermissionIds = this.extractPermissionIdsFromUserSystemRows(userSysList);
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.rebuildGroupedPermissionsFromRaw();
         if (scope === 'userSystem') {
@@ -1141,6 +1277,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           this.recomputeReadsFromCrud();
         }
         this.captureMasterReadBaseline();
+        this.lastGuardTickAfterModalDataLoad = this.signalsService.guardRefreshTick();
         this.notSavedChanges = false;
       },
       error: (err) => console.error(err),
@@ -1167,9 +1304,22 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   /** Al apagar el módulo izquierdo: apagar rejilla, paneles CRUD y quitar ids del usuario (en memoria hasta Guardar). */
   private applyMasterOffCascade(master: MasterPermission): void {
     master.masterRead = false;
-    const toRemove = this.isConfiguracionMaster(master)
-      ? this.collectConfiguracionEdgeAndHomonymIds(master, { includeSetupUsuarioSubIds: true })
-      : this.collectDetailedPermissionIdsForMaster(master);
+    let toRemove: Set<number>;
+    if (this.isConfiguracionMaster(master)) {
+      toRemove = this.collectConfiguracionEdgeAndHomonymIds(master, {
+        includeSetupUsuarioSubIds: true,
+      });
+    } else {
+      toRemove = new Set(this.collectDetailedPermissionIdsForMaster(master));
+      // Almacenes (homónimo): al encender el maestro se añade `hid` aparte de los ids de tarjetas;
+      // al apagar hay que quitarlo también; si no, syncMasterLeft ve allRightOff + hid y vuelve a encender el switch.
+      if (this.isAlmacenesHomonymLeftSwitchMode(master)) {
+        const hid = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
+        if (hid != null) {
+          toRemove.add(hid);
+        }
+      }
+    }
     this.userSystemPermissionIds = this.userSystemPermissionIds.filter((id) => !toRemove.has(id));
 
     if (this.isConfiguracionMaster(master)) {
@@ -1280,13 +1430,36 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         return fromCatalog;
       }
     }
+    const homonymId =
+      master != null ? this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName) : null;
     for (const sd of detail.subdetails) {
       if (sd.principal?.idDetailedPermission != null) {
-        return sd.principal.idDetailedPermission;
+        const raw = this.normalizeDetailedId(sd.principal.idDetailedPermission);
+        if (raw != null) {
+          if (
+            homonymId != null &&
+            raw === homonymId &&
+            !this.isHomonymDetailForMaster(master!, detail)
+          ) {
+            /* seguir buscando: id del maestro homónimo mal replicado en esta tarjeta */
+          } else {
+            return raw;
+          }
+        }
       }
       for (const c of sd.children) {
         if (c.idDetailedPermission != null) {
-          return c.idDetailedPermission;
+          const raw = this.normalizeDetailedId(c.idDetailedPermission);
+          if (raw != null) {
+            if (
+              homonymId != null &&
+              raw === homonymId &&
+              !this.isHomonymDetailForMaster(master!, detail)
+            ) {
+              continue;
+            }
+            return raw;
+          }
         }
       }
     }
@@ -1329,7 +1502,17 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           }
         } else {
           const pid = this.normalizeDetailedId(sd.principal.idDetailedPermission);
-          const pidUse = canonical != null ? canonical : pid;
+          let pidUse = canonical != null ? canonical : pid;
+          const mPr = this.findMasterContainingDetail(detail);
+          const homonymPr = mPr ? this.getCatalogDetailedIdForMasterToggle(mPr.masterPermissionName) : null;
+          if (
+            homonymPr != null &&
+            pidUse === homonymPr &&
+            mPr &&
+            !this.isHomonymDetailForMaster(mPr, detail)
+          ) {
+            pidUse = null;
+          }
           if (pidUse != null) {
             sd.principal.canRead = this.userSystemPermissionIds.includes(pidUse);
           }
@@ -1342,6 +1525,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         for (const child of sd.children) {
           const cid = this.normalizeDetailedId(child.idDetailedPermission);
           if (cid != null) {
+            const mCh = this.findMasterContainingDetail(detail);
+            const homonymCh = mCh ? this.getCatalogDetailedIdForMasterToggle(mCh.masterPermissionName) : null;
+            if (
+              homonymCh != null &&
+              cid === homonymCh &&
+              mCh &&
+              !this.isHomonymDetailForMaster(mCh, detail)
+            ) {
+              continue;
+            }
             child.canRead = this.userSystemPermissionIds.includes(cid);
           }
         }
@@ -1366,6 +1559,12 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           }
         }
       }
+    }
+    if (canonical == null && !multiPrincipal) {
+      detail.detailedRead = detail.subdetails.some(
+        (sd) =>
+          !!sd.principal?.canRead || sd.children.some((c) => !!c.canRead)
+      );
     }
   }
 
@@ -2407,6 +2606,9 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       await lastValueFrom(forkJoin(requests));
       alerts.closeLoading();
 
+      const sameSessionUser = scope === 'userSystem' && this.isEditingSessionUser();
+      const needsModalReload = crudDirty || userSysDirty;
+
       if (userSysDirty) {
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.trackingService.addLog(
@@ -2415,8 +2617,6 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           'Menu Administracion Permisos Maestros',
           this.trackingService.getEmail()
         );
-        // Solo en modo UserSystem: esto hace que el menú/guards se re-sincronicen.
-        this.signalsService.bumpGuardRefreshTick();
       }
 
       if (crudDirty) {
@@ -2430,40 +2630,40 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         );
       }
 
-      // IMPORTANTE:
-      // - En modo "position" este modal NO debe restringir ni refrescar permisos de sesión/menú.
-      // - Solo guarda la configuración en BD.
-      if (scope === 'userSystem') {
-        const sameSessionUser = this.isEditingSessionUser();
-        // Menú Setup (pestañas Sucursales, Empresas, etc.): siempre que UserSystem cambió, usar guard/{userId}
-        // (guard básico). guardAdvanced lee CrudPermissions y no refleja updateUserPermissions correctamente.
-        if (sameSessionUser) {
-          try {
-            await lastValueFrom(
-              this.authService.reloadCurrentSessionGuard({
-                idBranchOverride: this.branchId,
-                ...(userSysDirty ? { preferUserSystemGuard: true as const } : {}),
-              })
-            );
-          } catch (err) {
-            console.error(
-              'Error al actualizar permisos del menú lateral tras guardar',
-              err
-            );
-          }
+      // Recargar primero el árbol del modal para que la UI coincida con BD antes de la alerta
+      // y antes de bump/reload de sesión (evita parpadeo «todo apagado» con el aviso encima).
+      if (needsModalReload) {
+        await new Promise<void>((resolve) => {
+          this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion, {
+            preserveUiSelection: true,
+            onComplete: () => resolve(),
+          });
+        });
+      }
+
+      // Menú lateral / guards: tras tener el modal al día; reload de sesión ya hace bump interno.
+      if (scope === 'userSystem' && sameSessionUser) {
+        try {
+          await lastValueFrom(
+            this.authService.reloadCurrentSessionGuard({
+              idBranchOverride: this.branchId,
+              ...(userSysDirty ? { preferUserSystemGuard: true as const } : {}),
+            })
+          );
+        } catch (err) {
+          console.error(
+            'Error al actualizar permisos del menú lateral tras guardar',
+            err
+          );
         }
+      } else if (userSysDirty) {
+        this.signalsService.bumpGuardRefreshTick();
       }
 
       alerts.basicAlert('Datos Guardados', 'Los permisos se han guardado correctamente.', 'success');
       this.notSavedChanges = false;
       if (!crudDirty) {
         this.captureMasterReadBaseline();
-      }
-
-      if (crudDirty || userSysDirty) {
-        this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion, {
-          preserveUiSelection: true,
-        });
       }
     } catch (error) {
       alerts.closeLoading();

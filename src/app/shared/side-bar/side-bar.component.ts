@@ -234,29 +234,35 @@ error: (error) => {
         )
         .subscribe(
           async (data) => {
-            this.branchData = data.project.map((branch: any) => ({
+            this.branchData = (data.project || []).map((branch: any) => ({
               id: branch.id,
               name: branch.name,
             }));
 
-            if (this.branchData.length > 0) {
-              this.selectedBranchId = String(this.branchData[0].id);
+            // Igual que en el flujo con see-all-branches: opción global para reportes / setup.
+            this.branchData.unshift({
+              id: -idRoot,
+              name: 'Todas las sucursales',
+            });
+
+            // Por defecto la primera sucursal concreta (índice 1), no «Todas».
+            const defaultBranch =
+              this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
+
+            if (defaultBranch) {
+              this.selectedBranchId = String(defaultBranch.id);
 
               this.signalsService.setBranchSelectedBySidebar(
                 Number(this.selectedBranchId)
               );
-              this.signalsService.setBranchNameSelectedBySidebar(
-                this.branchData[0].name
-              );
+              this.signalsService.setBranchNameSelectedBySidebar(defaultBranch.name);
               this.trackingService.setContract(this.selectedBranchId);
 
-              // Actualizar DOM después de que *ngFor haya creado las opciones
               setTimeout(() => {
                 const sel = document.getElementById('branchs') as HTMLSelectElement;
                 if (sel) sel.value = this.selectedBranchId;
               });
 
-              // Cargar contratos en cascada
               await this.getpermissionxContracts();
             }
           },
@@ -299,11 +305,12 @@ error: (error) => {
       this.signalsService.setBranchSelectedBySidebar(
         Number(this.selectedBranchId)
       );
-      this.signalsService.setBranchNameSelectedBySidebar(
-        this.branchData.find(
-          (branch) => branch.id === Number(this.selectedBranchId)
-        ).name
+      const branchMeta = this.branchData.find(
+        (branch) => branch.id === Number(this.selectedBranchId)
       );
+      if (branchMeta) {
+        this.signalsService.setBranchNameSelectedBySidebar(branchMeta.name);
+      }
       await this.getpermissionxContracts();
       // Borro la signal de project para resetear el dato
     }

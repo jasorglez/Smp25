@@ -12,7 +12,7 @@ import { EmployeesService } from 'app/services/employees.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { AuthService } from 'app/services/auth.service';
-import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, of, toArray } from 'rxjs';
 import { DetailPermissionsUserComponent } from './detail-permissions-user/detail-permissions-user.component';
 import { PermissionsViewByUserComponent } from './detail-permissions-user/permissions-view.component';
 import { ModalService } from 'app/services/permissions-modal.service';
@@ -109,6 +109,26 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
 
   private tempIdCounter: number = 0;
 
+  /** Posiciones por id de departamento/rol; evita que una fila pise el combo de otra. */
+  private positionsByRoleIdCache = new Map<number, any[]>();
+
+  private normalizeRoleId(id: unknown): number | null {
+    if (id == null || id === '') return null;
+    const n = Number(id);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  private getPosicionesListForRow(row: any): any[] {
+    const rid = this.normalizeRoleId(row?.idRole);
+    if (row?.posicionesDisponibles?.length) {
+      return row.posicionesDisponibles;
+    }
+    if (rid != null && this.positionsByRoleIdCache.has(rid)) {
+      return this.positionsByRoleIdCache.get(rid) ?? [];
+    }
+    return this.catalogPosiciones ?? [];
+  }
+
   warehousesGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
@@ -167,12 +187,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         filter: false,
         flex: 1,
         cellEditor: 'agSelectCellEditor',
-        onCellValueChanged: (params) => {
-          const newRolId = params.newValue;
-          if (newRolId && newRolId !== params.oldValue) {
-            this.getPoscionesbyRole(newRolId);
-          }
-        },
         cellEditorParams: (params) => {
           const usedRoles = this.warehousesRowData
             .filter(row => row !== params.data && row.idRole)
@@ -202,7 +216,9 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           if (params.data.idRole === newDeptId) return false;
 
           const duplicateExists = this.warehousesRowData.some(
-            (row) => row !== params.data && row.idRole === newDeptId
+            (row) =>
+              row !== params.data &&
+              this.normalizeRoleId(row.idRole) === this.normalizeRoleId(newDeptId)
           );
           if (duplicateExists) {
             alerts.basicAlert('Departamento Duplicado', 'Este departamento ya ha sido asignado.', 'error');
@@ -219,6 +235,10 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           params.data.idRole = newDeptId;
 
           this.getPoscionesbyRole(newDeptId).then((posiciones) => {
+            const rid = this.normalizeRoleId(newDeptId);
+            if (rid != null) {
+              this.positionsByRoleIdCache.set(rid, posiciones);
+            }
             this.catalogPosiciones = posiciones;
             params.data.posicionesDisponibles = posiciones;
             params.data.idPosicion = null;
@@ -240,14 +260,15 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           const currentRole = params.data.idRole;
+          const source = this.getPosicionesListForRow(params.data);
           const assignedPositions = this.warehousesRowData
-            .filter(row => row.idRole === currentRole && row !== params.data)
-            .map(row => row.idPosicion);
-          const filteredPosiciones = this.catalogPosiciones
-            ? this.catalogPosiciones.filter(item => !assignedPositions.includes(item.id))
-            : [];
+            .filter((row) => row.idRole == currentRole && row !== params.data)
+            .map((row) => row.idPosicion);
+          const filteredPosiciones = source.filter(
+            (item) => !assignedPositions.some((ap) => Number(ap) === Number(item.id))
+          );
           return {
-            values: filteredPosiciones.map(item => item.id)
+            values: filteredPosiciones.map((item) => item.id),
           };
         },
         valueFormatter: (params) => {
@@ -433,9 +454,44 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           this.empleadoPrincipal = null;
         }
 
-        setTimeout(() => {
-          if (this.warehousesGridApi) this.warehousesGridApi.refreshCells({ force: true });
-        }, 100);
+        const roleIds = [
+          ...new Set(
+            this.warehousesRowData
+              .map((r: any) => this.normalizeRoleId(r.idRole))
+              .filter((id): id is number => id != null)
+          ),
+        ];
+
+        if (roleIds.length === 0) {
+          setTimeout(() => {
+            if (this.warehousesGridApi) this.warehousesGridApi.refreshCells({ force: true });
+          }, 100);
+        } else {
+          forkJoin(
+            roleIds.map((rid) =>
+              this.rolesService.getCatalogPosiciones(this.idCompany, rid).pipe(
+                catchError(() => of([])),
+                map((data: any) => ({ rid, list: Array.isArray(data) ? data : [] }))
+              )
+            )
+          ).subscribe({
+            next: (pairs) => {
+              for (const { rid, list } of pairs) {
+                this.positionsByRoleIdCache.set(rid, list);
+              }
+              for (const row of this.warehousesRowData) {
+                const rid = this.normalizeRoleId(row.idRole);
+                if (rid != null) {
+                  row.posicionesDisponibles = this.positionsByRoleIdCache.get(rid) ?? [];
+                }
+              }
+              setTimeout(() => {
+                if (this.warehousesGridApi) this.warehousesGridApi.refreshCells({ force: true });
+              }, 0);
+            },
+            error: (err) => console.error('Error cargando posiciones por departamento:', err),
+          });
+        }
       },
       error: (err) => console.error('Error cargando datos de departamentos:', err)
     });

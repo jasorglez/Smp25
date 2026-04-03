@@ -9,7 +9,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { RootService } from 'app/services/root.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray, concatMap } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, of, toArray, concatMap } from 'rxjs';
 import { environment } from '@env/environment';
 import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 import { DetailBranchesRendererComponent } from './detail-branches-renderer.component';
@@ -18,14 +18,25 @@ import { PermitionsService } from 'app/services/permitions.service';
 import { UsersService } from 'app/services/users.service';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 import { RolesService } from 'app/services/roles.service';
+import { EmployeesService } from 'app/services/employees.service';
 
 
 @Component({
   selector: 'app-detalle-permisos-x-sucursales',
   standalone: true,
   imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent, DetailBranchesRendererComponent],
+  styles: [
+    `
+      :host {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+      }
+    `,
+  ],
   template: `
-    <div style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column; position: relative;">
+    <div style="padding: 10px; background-color: #e9ecef; height: 100%; min-height: 0; flex: 1; display: flex; flex-direction: column; position: relative; box-sizing: border-box;">
       <div
         *ngIf="sessionSecurityAllowed !== true"
         style="position: absolute; inset: 0; z-index: 2; background: rgba(255,255,255,0.94); display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px;">
@@ -37,7 +48,7 @@ import { RolesService } from 'app/services/roles.service';
         [style.pointer-events]="sessionSecurityAllowed === true ? 'auto' : 'none'"
         [style.opacity]="sessionSecurityAllowed === true ? 1 : 0.55"
         style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
           <strong>{{ isRootUser ? 'Empresas' : 'Sucursales' }} de: {{ userName }}</strong>
           <div class="d-flex">
             <button                      
@@ -65,10 +76,10 @@ import { RolesService } from 'app/services/roles.service';
             </button>
           </div>
         </div>
-        <div style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0;">
+        <div style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
           <ag-grid-angular
             class="ag-theme-quartz small-text-ag-grid"
-            style="width: 100%; height: 100%;"
+            style="width: 100%; height: 100%; min-height: 0; flex: 1;"
             [columnDefs]="permissionsColumnDefs"
             [rowData]="permissionsRowData"
             [gridOptions]="permissionsGridOptions"
@@ -91,6 +102,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
   private trackingService = inject(TrackingService);
   private permitionsService = inject(PermitionsService);
   private rolesService = inject(RolesService);
+  private employeeService = inject(EmployeesService);
   authService = inject(AuthService);
 
   params: any;
@@ -161,7 +173,11 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     detailCellRendererParams: {
       getDepartmentAllowed: () => this.sessionSecurityAllowed === true,
     },
-    detailRowHeight: 21000
+    /**
+     * Altura fija del panel «Departamentos de:». No usar detailRowAutoHeight aquí: con componente Angular
+     * + grid anidado la medición suele fallar y el tercer nivel queda con altura 0.
+     */
+    detailRowHeight: 420
   };
 
   get permissionsColumnDefs(): any[] {
@@ -565,6 +581,68 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     }
   }
 
+  private toEmpleadosArray(raw: any): any[] {
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    if (Array.isArray(raw?.project)) return raw.project;
+    return [];
+  }
+
+  /**
+   * Misma lógica que el grid «Departamentos»: pareja depto/posición del empleado en la sucursal
+   * cuando no está reflejada en PermissionBydescription (fila from_employee).
+   */
+  private extractEmployeeDeptPos(empleadosArr: any[]): { idDepto: number; idPosicion: number } | null {
+    if (!empleadosArr?.length) return null;
+    const normalize = (s: any) =>
+      String(s ?? '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const userEmailNorm = normalize(this.userEmail);
+    const userNameNorm = normalize(this.userName);
+
+    const emp =
+      (userEmailNorm
+        ? empleadosArr.find((e: any) => normalize(e.email) === userEmailNorm)
+        : null) ??
+      (userNameNorm
+        ? empleadosArr.find((e: any) => {
+            const n = normalize(e.name ?? e.displayName);
+            return n === userNameNorm || (n && userNameNorm && n.includes(userNameNorm));
+          })
+        : null);
+
+    if (!emp) return null;
+
+    const empDepto =
+      emp?.idRole ??
+      emp?.IdRole ??
+      emp?.idDepto ??
+      emp?.IdDepto ??
+      emp?.idDepartament ??
+      emp?.IdDepartament ??
+      emp?.id_departament ??
+      emp?.Id_departament ??
+      null;
+    const empPos =
+      emp?.idPosition ??
+      emp?.IdPosition ??
+      emp?.idPosicion ??
+      emp?.IdPosicion ??
+      emp?.id_position ??
+      emp?.Id_position ??
+      null;
+
+    const d = Number(empDepto ?? 0);
+    const p = Number(empPos ?? 0);
+    if (!Number.isFinite(d) || !Number.isFinite(p) || d <= 0 || p <= 0) return null;
+    return { idDepto: d, idPosicion: p };
+  }
+
   private loadDeptPosForBranches(): void {
     const ids = (this.permissionsRowData || [])
       .map((r: any) => Number(r?.idPermission))
@@ -576,26 +654,33 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       return;
     }
 
-    const requests: Record<string, any> = {};
+    const requests: Record<string, ReturnType<typeof forkJoin>> = {};
     for (const bid of unique) {
-      requests[String(bid)] = this.permitionsService.getRolYPosicion(this.userId, bid).pipe(
-        catchError(() => of([]))
-      );
+      const key = String(bid);
+      requests[key] = forkJoin({
+        rawPermis: this.permitionsService.getRolYPosicion(this.userId, bid).pipe(catchError(() => of([]))),
+        rawEmps: this.employeeService.getEmployees(bid).pipe(
+          catchError(() => of([])),
+          map((x: any) => this.toEmpleadosArray(x))
+        ),
+      });
     }
 
     forkJoin(requests).subscribe({
-      next: (resp: any) => {
+      next: (resp: Record<string, { rawPermis: any; rawEmps: any[] }>) => {
         this.deptPosByBranchId.clear();
-        for (const [bidStr, raw] of Object.entries(resp || {})) {
+        for (const [bidStr, bundle] of Object.entries(resp || {})) {
           const bid = Number(bidStr);
+          const raw = bundle.rawPermis;
+          const empleadosArr = bundle.rawEmps ?? [];
           const arr: any[] = Array.isArray(raw)
             ? raw
-            : Array.isArray((raw as any)?.data)
-              ? (raw as any).data
-              : Array.isArray((raw as any)?.project)
-                ? (raw as any).project
-                : Array.isArray((raw as any)?.permissions)
-                  ? (raw as any).permissions
+            : Array.isArray(raw?.data)
+              ? raw.data
+              : Array.isArray(raw?.project)
+                ? raw.project
+                : Array.isArray(raw?.permissions)
+                  ? raw.permissions
                   : [];
           const normalized = arr.map((p: any) => ({
             ...p,
@@ -615,6 +700,13 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
             const pos = Number(p?.idPosicion ?? 0);
             if (r > 0 && pos > 0) {
               pairKeys.add(`${r}|${pos}`);
+            }
+          }
+          const empPair = this.extractEmployeeDeptPos(empleadosArr);
+          if (empPair) {
+            const k = `${empPair.idDepto}|${empPair.idPosicion}`;
+            if (!pairKeys.has(k)) {
+              pairKeys.add(k);
             }
           }
           const detailPairCount = pairKeys.size;

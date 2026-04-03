@@ -23,8 +23,8 @@ export class TableroComponent {
   private navigateToDefaultChild(): void {
     if (this.route.firstChild) return;
 
-    const hasDashboard = this.authService.hasDetailedPermission('administration', 'dashboard');
-    const hasDashboardHco = this.authService.hasDetailedPermission('administration', 'dashboard-hco');
+    const hasDashboard = this.authService.hasMenuDetailedPermission('administration', 'dashboard');
+    const hasDashboardHco = this.authService.hasMenuDetailedPermission('administration', 'dashboard-hco');
     const defaultChild = hasDashboard ? 'dashmodadmon' : hasDashboardHco ? 'dashboard-hco' : null;
 
     if (defaultChild) {

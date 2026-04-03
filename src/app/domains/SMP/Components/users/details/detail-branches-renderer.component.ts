@@ -65,6 +65,7 @@ import { RolesService } from 'app/services/roles.service';
           [gridOptions]="branchesGridOptions"
           [defaultColDef]="defaultColDef"
           [components]="components"
+          [masterDetail]="branchesMasterDetailEnabled"
           [detailRowAutoHeight]="true"
           (gridReady)="onBranchesGridReady($event)"
           (cellValueChanged)="onBranchesCellValueChanged($event)"
@@ -95,6 +96,13 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
 
   branchesRowData: any[] = [];
   hasBranchChanges: boolean = false;
+  /**
+   * Mientras haya cambios sin guardar (mismo criterio que el punto rojo en Guardar),
+   * el grid no actúa como maestro: no existe fila expandible ni panel «Departamentos de».
+   */
+  get branchesMasterDetailEnabled(): boolean {
+    return this.canInteractSucursalesSegundoNivel() && !this.hasBranchChanges;
+  }
   branchesGridApi: any;
   selectedBranch: any = null;
 
@@ -103,6 +111,12 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   catalogGeneralPosiciones: any[] = [];
 
   private tempIdCounter: number = 0;
+
+  /**
+   * Ids de fila (`data.id`) con cambios locales no persistidos. AG Grid puede clonar/sustituir
+   * `data` y perder `__isNew`/`__modified`; este Set es la fuente de verdad para bloquear el detalle.
+   */
+  private unsavedBranchRowIds = new Set<string>();
 
   components = {
     detailPermisosXDeptos: DetailPermisosXDeptosComponent
@@ -119,8 +133,11 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
-    masterDetail: true,
-    isRowMaster: () => this.canInteractSucursalesSegundoNivel(),
+    /**
+     * `masterDetail` va en la plantilla (`[masterDetail]="branchesMasterDetailEnabled"`) para que
+     * Angular lo apague del todo con cambios sin guardar; aquí solo refinamos por fila.
+     */
+    isRowMaster: (dataItem: any) => this.isBranchesRowEligibleForMasterDetail(dataItem),
     detailCellRenderer: 'detailPermisosXDeptos',
     detailRowHeight: 350,
     suppressAutoSize: true,
@@ -137,6 +154,36 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         };
       }
       return { width: '100%' };
+    },
+    onCellClicked: (event: any) => {
+      if (event?.colDef?.field !== 'idRole') {
+        return;
+      }
+      const d = event?.data;
+      if (!d || this.isBranchesRowEligibleForMasterDetail(d)) {
+        return;
+      }
+      event.node?.setExpanded?.(false);
+      alerts.basicAlert(
+        'Guardar cambios',
+        'Guarde primero la sucursal (botón Guardar). Después podrá abrir Departamentos y el siguiente nivel.',
+        'info'
+      );
+    },
+    /** Master/Detail reutiliza el mismo evento que grupos: si la fila no es elegible, se revierte el expand. */
+    onRowGroupOpened: (event: any) => {
+      if (!event?.expanded || !event?.node) {
+        return;
+      }
+      const d = event.node.data;
+      if (d && !this.isBranchesRowEligibleForMasterDetail(d)) {
+        event.node.setExpanded(false);
+        alerts.basicAlert(
+          'Guardar cambios',
+          'Guarde primero la sucursal (botón Guardar) antes de abrir Departamentos.',
+          'info'
+        );
+      }
     },
   };
 
@@ -324,6 +371,8 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
 
         forkJoin({ employeesByBranch: forkJoin(employeeRequests), permisosByBranch: forkJoin(permisosRequests) }).subscribe({
           next: ({ employeesByBranch, permisosByBranch }: any) => {
+            // No llamar unsavedBranchRowIds.clear() aquí: si el usuario ya añadió una fila local,
+            // una respuesta HTTP tardía borraría el seguimiento y volvería a mostrar el detalle.
             this.branchesRowData = rows.map((row: any) => {
               const employees: any[] = Array.isArray(employeesByBranch[String(row.idPermission)])
                 ? employeesByBranch[String(row.idPermission)]
@@ -380,6 +429,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
               if (this.branchesGridApi && this.branches.length > 0) {
                 this.branchesGridApi.refreshCells();
               }
+              this.syncBranchesRowMasterState();
             }, 100);
           },
           error: (err) => {
@@ -389,7 +439,9 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         });
       },
       (error) => {
-        if (error.status == 404) this.branchesRowData = [];
+        if (error.status == 404) {
+          this.branchesRowData = [];
+        }
         console.error('Error fetching branches data:', error);
       }
     );
@@ -410,6 +462,101 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
       event.data.__modified = true;
     }
     this.hasBranchChanges = true;
+    this.markBranchRowAsUnsaved(event.data);
+    this.scheduleCollapseBranchDetailsAfterDirty();
+  }
+
+  private branchRowPersistentId(data: any): string | null {
+    if (data == null || data.id === undefined || data.id === null || data.id === '') {
+      return null;
+    }
+    return String(data.id);
+  }
+
+  private markBranchRowAsUnsaved(data: any): void {
+    const pid = this.branchRowPersistentId(data);
+    if (pid !== null) {
+      this.unsavedBranchRowIds.add(pid);
+    }
+  }
+
+  /** Tras marcar sucursales como sucias, apaga master-detail en el siguiente ciclo y cierra filas expandidas. */
+  private scheduleCollapseBranchDetailsAfterDirty(): void {
+    setTimeout(() => {
+      this.collapseAllBranchDetailRows();
+      this.syncBranchesRowMasterState();
+    }, 0);
+  }
+
+  private collapseAllBranchDetailRows(): void {
+    const api = this.branchesGridApi;
+    if (!api) {
+      return;
+    }
+    api.forEachNode((n: any) => {
+      if (n.expanded) {
+        n.setExpanded(false);
+      }
+    });
+    if (typeof api.refreshClientSideRowModel === 'function') {
+      api.refreshClientSideRowModel('map');
+    }
+    api.resetRowHeights?.();
+  }
+
+  /**
+   * Misma regla que `isRowMaster`: sucursal nueva, id temporal o fila editada sin guardar → no expandir a Departamentos.
+   */
+  private isBranchesRowEligibleForMasterDetail(dataItem: any): boolean {
+    if (!this.canInteractSucursalesSegundoNivel()) {
+      return false;
+    }
+    if (!dataItem) {
+      return false;
+    }
+    const persistentId = this.branchRowPersistentId(dataItem);
+    if (persistentId !== null && this.unsavedBranchRowIds.has(persistentId)) {
+      return false;
+    }
+    if (dataItem.__isNew === true) {
+      return false;
+    }
+    const rid = dataItem.id;
+    if (rid != null && String(rid).startsWith('temp_')) {
+      return false;
+    }
+    if (dataItem.__modified === true) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Tras editar celdas, el cliente de filas no recalcula si la fila es maestro; sin esto el detalle sigue abrible.
+   */
+  private syncBranchesRowMasterState(): void {
+    const api = this.branchesGridApi;
+    if (!api) {
+      return;
+    }
+    let masterToggled = false;
+    api.forEachNode((node: { data?: any; master: boolean; setMaster: (m: boolean) => void }) => {
+      const data = node.data;
+      if (!data) {
+        return;
+      }
+      const eligible = this.isBranchesRowEligibleForMasterDetail(data);
+      if (node.master !== eligible) {
+        node.setMaster(eligible);
+        masterToggled = true;
+      }
+    });
+    if (typeof api.resetRowHeights === 'function') {
+      api.resetRowHeights();
+    }
+    if (masterToggled && typeof api.refreshClientSideRowModel === 'function') {
+      api.refreshClientSideRowModel('map');
+    }
   }
 
   addBranch() {
@@ -438,9 +585,11 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
       __isNew: true
     };
 
+    this.markBranchRowAsUnsaved(newBranch);
     this.branchesRowData = [newBranch, ...this.branchesRowData];
     this.branchesGridApi.setRowData(this.branchesRowData);
     this.hasBranchChanges = true;
+    this.scheduleCollapseBranchDetailsAfterDirty();
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -450,6 +599,8 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     );
 
     setTimeout(() => {
+      this.collapseAllBranchDetailRows();
+      this.syncBranchesRowMasterState();
       this.branchesGridApi.startEditingCell({
         rowIndex: 0,
         colKey: 'name'
@@ -498,6 +649,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         'success'
       );
       this.hasBranchChanges = false;
+      this.unsavedBranchRowIds.clear();
       this.loadBranchesData();
     } catch (error) {
       console.error(error);
@@ -562,6 +714,15 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     const selectedNode = selectedNodes[0];
     const selectedData = selectedNode.data;
     const isCurrentlyExpanded = selectedNode.expanded;
+
+    if (!this.isBranchesRowEligibleForMasterDetail(selectedData)) {
+      alerts.basicAlert(
+        'Guardar cambios',
+        'Guarde primero la sucursal (botón Guardar) antes de abrir almacenes o el detalle de esta fila.',
+        'info'
+      );
+      return;
+    }
 
     selectedData.idUser = this.userId;
     selectedData.userName = this.userName;

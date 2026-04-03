@@ -1,4 +1,4 @@
-import { Component, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { DetallePermisosXSucursalesComponent } from './detallepermisosxsucursales.component';
@@ -8,8 +8,19 @@ import { DetalleEmpresasUsuarioComponent } from './detalle-empresas-usuario.comp
   selector: 'app-users-detail-wrapper',
   standalone: true,
   imports: [CommonModule, DetallePermisosXSucursalesComponent, DetalleEmpresasUsuarioComponent],
+  styles: [
+    `
+      :host {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+        height: 100%;
+      }
+    `,
+  ],
   template: `
-    <div style="height:100%;overflow:auto;">
+    <div style="height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box; display: flex; flex-direction: column;">
       <!-- Permisos/Sucursales (renderer existente) -->
       <app-detalle-permisos-x-sucursales
         *ngIf="detailType === 'permissions'"
@@ -26,8 +37,17 @@ import { DetalleEmpresasUsuarioComponent } from './detalle-empresas-usuario.comp
     </div>
   `
 })
-export class UsersDetailWrapperComponent implements ICellRendererAngularComp, AfterViewInit {
-  @ViewChild('permRef') permRef?: DetallePermisosXSucursalesComponent;
+export class UsersDetailWrapperComponent implements ICellRendererAngularComp {
+  permRef?: DetallePermisosXSucursalesComponent;
+
+  /**
+   * *ngIf crea el hijo un tick después; un solo ngAfterViewInit a menudo deja permRef undefined
+   * y el panel «Sucursales» nunca recibe agInit hasta recargar la app.
+   */
+  @ViewChild('permRef') set permRefSetter(c: DetallePermisosXSucursalesComponent | undefined) {
+    this.permRef = c;
+    this.bootstrapPermisosChild();
+  }
 
   detailType: string = 'permissions';
   userId: number = 0;
@@ -36,19 +56,21 @@ export class UsersDetailWrapperComponent implements ICellRendererAngularComp, Af
   private params: any;
   private componentParent: any;
 
-  agInit(params: any): void {
-    this.params          = params;
-    this.detailType      = params.data?.detailType ?? 'permissions';
-    this.userId          = params.data?.id ?? 0;
-    this.userName        = params.data?.displayName ?? '';
-    this.componentParent = params.context?.componentParent;
-  }
-
-  ngAfterViewInit(): void {
-    // Pasar params al renderer de permisos (necesita agInit propio)
-    if (this.detailType === 'permissions' && this.permRef) {
+  private bootstrapPermisosChild(): void {
+    if (this.detailType === 'permissions' && this.permRef && this.params) {
       this.permRef.agInit(this.params);
     }
+  }
+
+  agInit(params: any): void {
+    this.params = params;
+    this.detailType = params.data?.detailType ?? 'permissions';
+    this.userId = params.data?.id ?? 0;
+    this.userName = params.data?.displayName ?? '';
+    this.componentParent = params.context?.componentParent;
+    queueMicrotask(() => this.bootstrapPermisosChild());
+    // El hijo *ngIf a veces se crea después del microtask; segundo intento tras el siguiente tick.
+    setTimeout(() => this.bootstrapPermisosChild(), 0);
   }
 
   refresh(params: any): boolean { return false; }

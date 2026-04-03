@@ -1,6 +1,8 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
-import {AuthService} from "./services/auth.service";
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { AuthService } from './services/auth.service';
 import { SignalsService } from './services/signals.service';
 
 
@@ -49,31 +51,29 @@ export class AppComponent implements OnInit {
 
     this.authService.getUserId(email).subscribe((userId) => {
       if (isAdvanced && idBranch > 0) {
-        // Intentar cargar permisos avanzados por sucursal
-        this.authService.fetchUserPermissionsAdvanced(userId, idBranch).subscribe({
-          next: (data: any) => {
-            const perms = data.permissions;
-            if (perms && Object.keys(perms).length > 0) {
-              // Tiene permisos CRUD detallados para esta sucursal
-              this.authService.setUserPermissions(perms);
+        forkJoin({
+          basic: this.authService.fetchUserPermissions(userId),
+          advanced: this.authService.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
+            catchError(() => of({ permissions: {} }))
+          ),
+        }).subscribe({
+          next: ({ basic, advanced }) => {
+            const adv = advanced?.permissions;
+            this.authService.setMenuUserPermissions(basic.permissions);
+            if (adv && Object.keys(adv).length > 0) {
+              this.authService.setUserPermissions(adv);
             } else {
-              // No tiene CrudPremissions para esta sucursal, usar permisos básicos
-              this.authService.fetchUserPermissions(userId).subscribe({
-                next: (basicData: any) => {
-                  this.authService.setUserPermissions(basicData.permissions);
-                },
-                error: (error) => console.error('Error fetching basic permissions:', error),
-              });
+              this.authService.setUserPermissions(basic.permissions);
             }
             this.lastLoadedBranchId = idBranch;
           },
-          error: (error) => console.error('Error fetching advanced permissions:', error),
+          error: (error) => console.error('Error fetching permissions:', error),
         });
       } else {
-        // No avanzado o "Todas las sucursales" (idBranch negativo): usar permisos básicos
         this.authService.fetchUserPermissions(userId).subscribe({
           next: (data: any) => {
             this.authService.setUserPermissions(data.permissions);
+            this.authService.setMenuUserPermissions(data.permissions);
             this.lastLoadedBranchId = idBranch;
           },
           error: (error) => console.error('Error fetching user permissions:', error),
