@@ -8,7 +8,7 @@ import {
 } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, EMPTY, lastValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -111,6 +111,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
+  private effectInitialized = false;
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -139,12 +140,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (this.idBranch == null) {
         this.rowData = [];
-        alerts.basicAlert(
-          'Empleados',
-          'Debe elegir una sucursal primero.',
-          'error'
-        );
+        if (this.effectInitialized) {
+          alerts.basicAlert(
+            'Empleados',
+            'Debe elegir una sucursal primero.',
+            'error'
+          );
+        }
       } else {
+        this.effectInitialized = true;
         this.getGeneralPosicion();
         this.getRoles()
         this.obtenerDatos();
@@ -378,6 +382,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'employeeCode',
         headerName: 'UserName22',
+        hide: true,
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -480,7 +485,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'priceXHour',
         headerName: 'Precio por hora *',
-        hide: this.idRoot == 18,
+        hide: true,
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: (params) => {
@@ -515,7 +520,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        hide: this.idRoot == 18,
+        hide: true,
         editable: false,
         valueFormatter: (params) => {
         const value = params.value;
@@ -675,28 +680,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         suppressMovable: true,
         filter: true,
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
         },
         width: 200,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.banks.map((user) => user.id),
-        },
+        cellEditorParams: (params) => ({
+          values: this.banks.map((b) => b.id),
+        }),
         valueGetter: (params) => {
-          console.log(params.data)
           if (!params.data || !params.data.idBank) return 'EFECTIVO';
-          const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
+          const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
           return foundBank ? foundBank.name : 'EFECTIVO';
         },
         valueFormatter: (params) => {
           const foundBank = this.banks
-            ? this.banks.find((user) => user.id === params.value)
+            ? this.banks.find((b) => b.id === params.value)
             : null;
           return foundBank ? `${foundBank.name}` : params.value;
         },
-       
+
       },
       {
         field: 'ingressDate',
@@ -752,6 +754,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           }
         },
       },
+      { field: 'username', hide: true, editable: false },
     ];
     } else {
       this._colMaster = [
@@ -920,6 +923,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'employeeCode',
         headerName: 'UserName',
+        hide: true,
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -1064,7 +1068,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'priceXHour',
         headerName: 'Precio por hora *',
-        hide: this.idRoot == 18,
+        hide: true,
         headerClass: 'required-header',
         cellStyle: (params) => this.validateRequiredField(params.value),
         editable: (params) => {
@@ -1099,7 +1103,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       {
         field: 'baseHours',
         headerName: 'Horas base',
-        hide: this.idRoot == 18,
+        hide: true,
         editable: false,
         valueFormatter: (params) => {
         const value = params.value;
@@ -1246,28 +1250,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         suppressMovable: true,
         filter: true,
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
         },
         width: 200,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.banks.map((user) => user.id),
-        },
+        cellEditorParams: (params) => ({
+          values: this.banks.map((b) => b.id),
+        }),
         valueGetter: (params) => {
-          console.log(params.data)
           if (!params.data || !params.data.idBank) return 'EFECTIVO';
-          const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
+          const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
           return foundBank ? foundBank.name : 'EFECTIVO';
         },
         valueFormatter: (params) => {
           const foundBank = this.banks
-            ? this.banks.find((user) => user.id === params.value)
+            ? this.banks.find((b) => b.id === params.value)
             : null;
           return foundBank ? `${foundBank.name}` : params.value;
         },
-       
+
       },
       {
         field: 'ingressDate',
@@ -1323,6 +1324,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           }
         },
       },
+      { field: 'username', hide: true, editable: false },
     ];
     }
 
@@ -1333,10 +1335,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   // ==================== MASTER METHODS ====================
 
   obtenerBranchs() {
-    // alert('this.branchs'+ this.idBranch)
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
+        this.gridApi?.refreshCells({ force: true });
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -1381,23 +1383,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
     });
   }
-    getGeneralPosicion() {
+  getGeneralPosicion() {
     this.rolesService.getGeneralPosicion(this.idRoot).subscribe(
       (data: any) => {
         this.catalogGeneralPosiciones = data;
-      },      
+        this.gridApi?.refreshCells({ force: true });
+      },
       (error) => {
         if (error.status == 404) this.catalogGeneralPosiciones = [];
         console.error('Error fetching data:', error);
       }
     );
   }
-   getRoles() {
+
+  getRoles() {
     this.rolesService.getCatalogRoles(this.idRoot).subscribe(
       (data: any) => {
         this.catalogRoles = data;
-        //console.log(this.catalogRoles)
-      },      
+        this.gridApi?.refreshCells({ force: true });
+      },
       (error) => {
         if (error.status == 404) this.catalogRoles = [];
         console.error('Error fetching data:', error);
@@ -1448,8 +1452,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ idBank: '', name: 'EFECTIVO' }, ...data];
-      },      
+        this.banks = [{ id: null, name: 'EFECTIVO' }, ...data];
+        this.gridApi?.refreshCells({ force: true });
+      },
       (error) => {
         if (error.status == 404) this.banks = [];
         console.error('Error fetching data:', error);
@@ -1539,7 +1544,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       state: '',
       phone: '',
       baseHours: 0,
-      priceXHour: 0,
+      priceXHour: 1,
       ingressDate: timeData.dateObj, // Guardar como objeto Date
       position: '',
       email: '',
@@ -1588,14 +1593,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   }
 
   async saveMasterChanges() {
-    const isValid = this.rowData.every(
+    const newRows = this.rowData.filter((row) => row.__isNew);
+    const modifiedRows = this.rowData.filter(
+      (row) => row.__modified && !row.__isNew
+    );
+
+    const rowsToSave = [...newRows, ...modifiedRows];
+
+    if (rowsToSave.length === 0) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar.', 'info');
+      return;
+    }
+
+    const isValid = rowsToSave.every(
       (item) =>
         item.name &&
         item.idBranch &&
-        (item.employeeCode || item.email )&&
-        item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
-        item.idPosition &&
-        (item.priceXHour || this.idRoot == 18)
+        (item.employeeCode || item.email) &&
+        item.idDepto &&
+        item.idPosition
     );
     if (!isValid) {
       alerts.basicAlert(
@@ -1606,25 +1622,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       return;
     }
 
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeeService.addEmployee(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeeService.updateEmployee(row.id, cleanedData);
-    });
-
     try {
-      await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      await Promise.all([
+        ...newRows.map((row) => lastValueFrom(this.employeeService.addEmployee(this.cleanDataForServer(row)))),
+        ...modifiedRows.map((row) => lastValueFrom(this.employeeService.updateEmployee(row.id, this.cleanDataForServer(row)))),
+      ]);
 
       // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
@@ -1760,6 +1762,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
+    }
+    if (cleanedData.name) {
+      cleanedData.username = cleanedData.name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '');
     }
     return cleanedData;
   }

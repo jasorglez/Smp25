@@ -2,7 +2,7 @@ import { Component, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RootService } from 'app/services/root.service';
@@ -258,20 +258,16 @@ export class CorporativosComponent {
       (row) => row.__modified && !row.__isNew
     );
 
-    const addObservables: Promise<any>[] = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.rootService.addCorporativo(cleanedData));
-    });
-
-    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return lastValueFrom(this.rootService.updateCorporativo(row.id, cleanedData));
-    });
+    if (newRows.length === 0 && modifiedRows.length === 0) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar.', 'info');
+      return;
+    }
 
     try {
-      await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      await Promise.all([
+        ...newRows.map((row) => lastValueFrom(this.rootService.addCorporativo(this.cleanDataForServer(row)))),
+        ...modifiedRows.map((row) => lastValueFrom(this.rootService.updateCorporativo(row.id, this.cleanDataForServer(row)))),
+      ]);
 
       alerts.basicAlert(
         'Datos actualizados',
