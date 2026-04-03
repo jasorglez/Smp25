@@ -55,6 +55,10 @@ export class AportacionesComponent {
   fecha: string = new Date().toISOString().split('T')[0];
   isAportando: boolean = false;
 
+  // Edit state
+  editingId: number | null = null;
+  selectedRow: any = null;
+
   // Grid
   private gridApi: GridApi;
   historial: any[] = [];
@@ -196,17 +200,15 @@ export class AportacionesComponent {
     const empresaDestinoObj = this.empresasDestino.find(e => e.id === this.idEmpresaDestino);
     const nombreDestino = empresaDestinoObj?.nameSmall || empresaDestinoObj?.name || 'Destino';
 
-    const result = await alerts.confirmAlert(
-      'Confirmar Aportación',
-      `${this.socioSeleccionado} aportará ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} a ${nombreDestino}`,
-      'question',
-      'Aportar'
-    );
+    const isEditing = this.editingId !== null;
+    const confirmTitle = isEditing ? 'Confirmar Actualización' : 'Confirmar Aportación';
+    const confirmMsg = `${this.socioSeleccionado} ${isEditing ? 'actualiza' : 'aportará'} ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} a ${nombreDestino}`;
+    const result = await alerts.confirmAlert(confirmTitle, confirmMsg, 'question', isEditing ? 'Actualizar' : 'Aportar');
 
     if (!result.isConfirmed) return;
 
     this.isAportando = true;
-    alerts.showLoading('Procesando', 'Registrando aportación de socio...');
+    alerts.showLoading('Procesando', isEditing ? 'Actualizando aportación...' : 'Registrando aportación de socio...');
 
     try {
       const aportacionData: any = {
@@ -223,30 +225,42 @@ export class AportacionesComponent {
         tax: 0,
         status: 'Pagada',
         active: true,
-        createdBy: this.trackingService.getEmail() || 'Sistema',
-        createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
       };
 
-      await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(aportacionData));
+      if (isEditing) {
+        const updatePayload = {
+          ...this.selectedRow,        // preserva id, createdBy, createdAt y otros campos del registro original
+          ...aportacionData,          // sobreescribe con los valores editados
+          id: this.editingId,
+        };
+        await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(this.editingId, updatePayload));
+      } else {
+        aportacionData.createdBy = this.trackingService.getEmail() || 'Sistema';
+        aportacionData.createdAt = new Date().toISOString();
+        await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(aportacionData));
+      }
 
       alerts.closeLoading();
       alerts.basicAlert(
-        'Aportación Registrada',
-        `Se registró la aportación de ${this.socioSeleccionado} por ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} a ${nombreDestino}.`,
+        isEditing ? 'Aportación Actualizada' : 'Aportación Registrada',
+        `Se ${isEditing ? 'actualizó' : 'registró'} la aportación de ${this.socioSeleccionado} por ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} a ${nombreDestino}.`,
         'success'
       );
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
-        `Aportación: ${this.socioSeleccionado} → ${nombreDestino} por ${this.monto}`,
+        `${isEditing ? 'Actualización' : 'Aportación'}: ${this.socioSeleccionado} → ${nombreDestino} por ${this.monto}`,
         'Aportaciones',
         this.trackingService.getEmail()
       );
 
+      this.editingId = null;
+      this.selectedRow = null;
       this.monto = null;
       this.descripcion = '';
       this.fecha = new Date().toISOString().split('T')[0];
+      this.gridApi?.deselectAll();
 
       await this.loadHistorial();
 
@@ -290,6 +304,84 @@ export class AportacionesComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+  }
+
+  onSelectionChanged() {
+    const selected = this.gridApi?.getSelectedRows();
+    this.selectedRow = selected?.length ? selected[0] : null;
+  }
+
+  async editAportacion() {
+    if (!this.selectedRow) return;
+
+    const row = this.selectedRow;
+    this.editingId = row.id;
+
+    // Extract socio name from description: "Aportación de {socio} - {desc}"
+    const match = (row.description || '').match(/^Aportaci[oó]n de (.+?) - (.*)$/);
+    const socioName = match ? match[1] : '';
+    const desc = match ? match[2] : (row.description || '');
+
+    const socioFound = this.socios.find(s => s.value === socioName);
+    this.socioSeleccionado = socioFound ? socioFound.value : null;
+
+    this.idEmpresaDestino = row.idBusinnes;
+    this.monto = row.total;
+    this.descripcion = desc;
+    this.fecha = row.date ? row.date.split('T')[0] : new Date().toISOString().split('T')[0];
+
+    // Load bank accounts for the destination company, then set the account
+    this.idCuentaDestino = null;
+    this.bankAccountsDestino = [];
+    if (this.idEmpresaDestino) {
+      this.administrationService.getAccountBanks(this.idEmpresaDestino).subscribe({
+        next: (data: any) => {
+          this.bankAccountsDestino = Array.isArray(data) ? data : [];
+          this.idCuentaDestino = row.idAccount;
+        },
+        error: () => { this.bankAccountsDestino = []; }
+      });
+    }
+  }
+
+  cancelEdit() {
+    this.editingId = null;
+    this.selectedRow = null;
+    this.monto = null;
+    this.descripcion = '';
+    this.fecha = new Date().toISOString().split('T')[0];
+    this.socioSeleccionado = null;
+    this.idEmpresaDestino = null;
+    this.idCuentaDestino = null;
+    this.bankAccountsDestino = [];
+    this.gridApi?.deselectAll();
+  }
+
+  async deleteAportacion() {
+    if (!this.selectedRow) return;
+
+    const row = this.selectedRow;
+    const monto = row.total?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    const result = await alerts.confirmAlert(
+      'Eliminar Aportación',
+      `¿Desea eliminar esta aportación de ${monto}? Esta acción no se puede deshacer.`,
+      'warning',
+      'Eliminar'
+    );
+    if (!result.isConfirmed) return;
+
+    alerts.showLoading('Eliminando', 'Procesando...');
+    try {
+      await lastValueFrom(this.incomesAndExpensesService.deleteIncomesAndExpenses(row.id));
+      alerts.closeLoading();
+      alerts.basicAlert('Eliminado', 'La aportación fue eliminada correctamente.', 'success');
+      this.selectedRow = null;
+      this.editingId = null;
+      await this.loadHistorial();
+    } catch (error: any) {
+      alerts.closeLoading();
+      alerts.basicAlert('Error', error?.error?.message || 'No se pudo eliminar la aportación.', 'error');
+    }
   }
 
   private formatDate(value: string): string {
