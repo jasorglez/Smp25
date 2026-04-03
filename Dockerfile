@@ -8,14 +8,15 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (build reproducible)
-RUN npm ci --legacy-peer-deps
+# Install dependencies with npm cache
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
 # Build Angular app for production
-RUN npm run build #Ya está configurado a producción
+RUN npm run build
 
 # ============================================
 # Stage 2: Serve with Nginx

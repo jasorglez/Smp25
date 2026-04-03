@@ -1967,9 +1967,9 @@ export class DashboardHcoComponent {
 
     this.lineChartOptions = {
       series: [
-        { name: 'EGRESO S/IVA', type: 'line', data: egresoData },
-        { name: 'INGRESO S/IVA', type: 'line', data: ingresoData },
-        { name: 'FLUJO ACUMULADO', type: 'bar', data: flujoData },
+        { name: 'EGRESO S/IVA', data: egresoData },
+        { name: 'INGRESO S/IVA', data: ingresoData },
+        { name: 'FLUJO ACUMULADO', data: flujoData },
       ],
       chart: {
         type: 'line',
@@ -1978,11 +1978,9 @@ export class DashboardHcoComponent {
         zoom: { enabled: false },
       },
       colors: ['#dc2626', '#16a34a', '#f59e0b'],
-      stroke: { curve: 'smooth', width: [2, 2, 0] },
-      fill: { type: ['solid', 'solid', 'solid'], opacity: [1, 1, 0.85] },
-      plotOptions: {
-        bar: { columnWidth: '60%', borderRadius: 3 },
-      },
+      stroke: { curve: 'smooth', width: [2, 2, 2] },
+      fill: { type: 'solid', opacity: 1 },
+      plotOptions: {},
       dataLabels: { enabled: false },
       xaxis: {
         categories,

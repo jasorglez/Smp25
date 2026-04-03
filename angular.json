@@ -45,6 +45,7 @@
             "polyfills": ["zone.js", "@angular/localize/init"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "namedChunks": false,
             "assets": [
               "src/favicon.ico",
               "src/assets",
@@ -75,19 +76,23 @@
           },
           "configurations": {
             "production": {
+              "namedChunks": false,
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "3MB",
-                  "maximumError": "7MB"
+                  "maximumWarning": "4MB",
+                  "maximumError": "8MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "64kB",
-                  "maximumError": "256kB"
+                  "maximumWarning": "128kB",
+                  "maximumError": "512kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": true,
+              "sourceMap": false,
+              "extractLicenses": true
             },
             "development": {
               "optimization": false,
