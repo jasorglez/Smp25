@@ -16,6 +16,8 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 
 # Build Angular app for production
+# NODE_OPTIONS: limita heap a 1.5 GB para evitar OOM en VPS con pocos recursos
+ENV NODE_OPTIONS="--max_old_space_size=1536"
 RUN npm run build
 
 # ============================================

@@ -24,7 +24,12 @@ karma.conf.js
 
 # Documentation
 *.md
-!CLAUDE.md
+
+# Dockerfiles (cambiarlos no debe invalidar la capa de COPY . .)
+Dockerfile*
+
+# Claude Code
+.claude/
 
 # Environment (no incluir en imagen)
 .env
