@@ -241,7 +241,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Id',
         editable: false,
         width: 70,
-        hide: false,
+        hide: true,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
@@ -263,15 +263,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal',
+        headerName: 'Sucursal',
         headerClass: 'required-header',
-        hide:
-          this.authService.hasDetailedPermission(
-            'principal',
-            'see-all-branches'
-          ) || this.signalsService.getemailChoose() === environment.root
-            ? false
-            : true,
+        hide: false,
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -943,7 +937,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Id',
         editable: false,
         width: 70,
-        hide: false,
+        hide: true,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
@@ -980,15 +974,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },*/
       {
         field: 'idBranch',
-        headerName: 'Nombre sucursal',
+        headerName: 'Sucursal',
         headerClass: 'required-header',
-        hide:
-          this.authService.hasDetailedPermission(
-            'principal',
-            'see-all-branches'
-          ) || this.signalsService.getemailChoose() === environment.root
-            ? false
-            : true,
+        hide: false,
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
