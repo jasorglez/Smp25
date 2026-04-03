@@ -291,6 +291,39 @@ export class CorporativosComponent {
     this.notSavedChanges = false;
   }
 
+  async deleteSelected() {
+    if (!this.selectedRowData) return;
+
+    const confirm = await alerts.confirmAlert(
+      '¿Eliminar corporativo?',
+      `Se eliminará "${this.selectedRowData.name}". Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar',
+    );
+    if (!confirm.isConfirmed) return;
+
+    // Si es una fila nueva (no guardada), solo la quitamos del grid
+    if (this.selectedRowData.__isNew) {
+      this.rowData = this.rowData.filter((r) => r !== this.selectedRowData);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.selectedRowData = null;
+      if (!this.rowData.some((r) => r.__isNew || r.__modified)) {
+        this.notSavedChanges = false;
+      }
+      return;
+    }
+
+    try {
+      await lastValueFrom(this.rootService.deleteCorporativo(this.selectedRowData.id));
+      alerts.basicAlert('Eliminado', 'El corporativo fue eliminado correctamente.', 'success');
+      this.selectedRowData = null;
+      this.obtenerDatos();
+    } catch (error) {
+      console.error(error);
+      alerts.basicAlert('Error', 'No se pudo eliminar el corporativo.', 'error');
+    }
+  }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;

@@ -48,4 +48,8 @@ export class RootService {
     return this.http.put(`${environment.urlSmp}/GruposCorporativos/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  deleteCorporativo(id: number) {
+    return this.http.delete(`${environment.urlSmp}/GruposCorporativos/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
