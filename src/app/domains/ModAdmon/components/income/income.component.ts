@@ -79,6 +79,7 @@ export class IncomeComponent {
     effect(async () => {
       this.root = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      if (!this.root) return;
       this.idAccount = null;
 
       await this.getBillingManagementInfo();
@@ -221,6 +222,7 @@ export class IncomeComponent {
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda, excepto en las columnas de cascada
+      if (!event.column) return;
       const colId = event.column.getColId();
       if (colId !== 'pdfReport' && colId !== 'countItems') {
         event.node.setSelected(true);
@@ -440,6 +442,7 @@ export class IncomeComponent {
         field: 'countItems',
         headerName: 'Items',
         width: 90,
+        pinned: 'left',
         cellRenderer: ButtonCellRendererIncomeComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
@@ -483,7 +486,7 @@ export class IncomeComponent {
         field: 'idBranch',
         headerName: 'Sucursal',
         editable: true,
-        width: 140,
+        width: 120,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
           values: this.branches.map(b => b.id)
@@ -495,7 +498,7 @@ export class IncomeComponent {
         }
       },
 
-      { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 130 },
+      { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 110 },
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -526,19 +529,19 @@ export class IncomeComponent {
       },
 
       {
-        field: 'dateStamped', headerName: 'Fecha Factura', editable: true, cellDataType: 'date', width: 130,
+        field: 'dateStamped', headerName: 'Fecha Factura', editable: true, cellDataType: 'date', width: 120,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
-        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 130,
+        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 120,
         valueFormatter: (params) => this.formatDate(params.value)
       },
 
       {
         field: 'subtotal',
         headerName: 'Subtotal',
-        type: 'number',
+        filter: 'agNumberColumnFilter',
         editable: false,
         width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -546,7 +549,7 @@ export class IncomeComponent {
       {
         field: 'tax',
         headerName: 'Impuestos',
-        type: 'number',
+        filter: 'agNumberColumnFilter',
         editable: false,
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
@@ -554,8 +557,8 @@ export class IncomeComponent {
       {
         field: 'total',
         headerName: 'Total',
-        type: 'number',
-        editable: false,filter: true,
+        filter: 'agNumberColumnFilter',
+        editable: false,
         width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
@@ -1017,6 +1020,15 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+
+    const confirm = await alerts.confirmAlert(
+      '¿Eliminar ingreso?',
+      `¿Deseas eliminar el ingreso "${selectedData.numberDocument || id}"? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirm.isConfirmed) return;
+
     selectedData.active = 0;
     this.incomesAndExpensesService.deleteIncomesAndExpenses(id).pipe(
       catchError((error) => {
@@ -1037,12 +1049,6 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
             'success'
           );
           this.getIncomes();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
           this.notSavedChanges = false;
           this.selectedIncomes = null;

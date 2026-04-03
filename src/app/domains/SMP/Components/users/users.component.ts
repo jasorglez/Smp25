@@ -465,6 +465,17 @@ export class UsersComponent implements OnDestroy {
         filter: true
       },
       {
+        field: 'usersmall',
+        headerName: 'Username',
+        editable: () => true,
+        width: 150,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params) => {
+          params.data.usersmall = params.newValue ? params.newValue.toLowerCase().trim() : '';
+          return true;
+        }
+      },
+      {
         headerName: 'Contraseña *',
         field: 'password',
         flex: 1,
