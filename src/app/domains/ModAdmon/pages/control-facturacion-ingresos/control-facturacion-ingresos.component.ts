@@ -656,22 +656,22 @@ export class ControlFacturacionIngresosComponent {
 
     const headers = [
       'MES',
-      'CLIENTE',
+      'EMPRESA',
       'PROYECTO',
       'F. FACTURA',
       'F. PAGO',
-      'FACTURA',
+      'FACTURA / NC',
       'OC',
-      'IMP. FACT.',
-      'DESC.',
+      'IMP. FACTURA',
+      'IMP. NC / DESC.',
       'SUBTOTAL',
       'IVA',
       'TOTAL',
       'ESTATUS',
       'EST. PAGO',
       'DÍAS',
-      'F. VENC.',
-      'DÍAS V.',
+      'F. VENCIMIENTO',
+      'DÍAS VENC.',
     ];
 
     const body: any[] = [
@@ -843,22 +843,22 @@ export class ControlFacturacionIngresosComponent {
       // Headers
       const headers = [
         'Mes',
-        'Cliente',
+        'Empresa',
         'Proyecto',
         'Fecha Factura',
-        'Fecha Pago',
-        'Factura/NC',
+        'Fecha de Pago',
+        'Factura / NC',
         'OC',
         'Importe Factura',
-        'Importe Desc.',
+        'Importe NC / Desc.',
         'Subtotal',
         'IVA',
         'Total',
         'Estatus',
-        'Estatus Pago',
+        'Estatus de Pago',
         'Días',
-        'Fecha Venc.',
-        'Días Venc.',
+        'Fecha Vencimiento',
+        'Días Vencimiento',
       ];
       const headerRow = worksheet.getRow(5);
       headers.forEach((header, index) => {

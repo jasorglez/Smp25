@@ -592,6 +592,7 @@ export class ExpenditureComponent {
     }
 
     this._colMaster = [
+      // 0. #
       {
         headerName: '#',
         width: 50,
@@ -599,9 +600,10 @@ export class ExpenditureComponent {
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
+      // 1. ITEMS
       {
         field: 'countitems',
-        headerName: 'Items',
+        headerName: 'ITEMS',
         width: 80,
         cellRenderer: ButtonCellRendererExpenditure2Component,
         cellRendererParams: {
@@ -611,16 +613,14 @@ export class ExpenditureComponent {
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
+      // 2. PDF
       {
         field: 'pdfReport',
         headerName: 'PDF',
         width: 70,
         cellRenderer: PdfButtonCellRendererExpenditure2Component,
         cellRendererParams: {
-          onClick: (node: any) => {
-            console.log('🔵 PDF Click detectado:', node.data.id);
-            this.toggleReportDetail(node);
-          },
+          onClick: (node: any) => { this.toggleReportDetail(node); },
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
           title: 'Hacer clic para generar el reporte PDF'
@@ -628,50 +628,32 @@ export class ExpenditureComponent {
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
+      // 3. EMPRESA (idClient)
       {
-        field: 'idBranch',
-        headerName: 'Nombre sucursal',
-        headerClass: 'required-header',
-        hide:
-          this.authService.hasDetailedPermission(
-            'principal',
-            'see-all-branches'
-          ) || this.signalsService.getemailChoose() === environment.root
-            ? false
-            : true,
+        field: 'idClient',
+        headerName: 'EMPRESA',
         editable: true,
+        width: 180,
         filter: true,
-        width: 150,
         cellEditor: 'agSelectCellEditor',
-        filterParams: {
-          defaultToNothingSelected: true,
-        },
-        cellEditorParams: (params) => {
-          return {
-            values: this.branchs
-              ? this.branchs
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((item) => item.id)
-              : [],
-            useFormatter: true,
-          };
-        },
+        cellEditorParams: () => ({
+          values: this.clients.map((c) => c.id),
+          useFormatter: true,
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-          return foundBranch ? foundBranch.name : params.value;
+          const client = this.clients?.find((c) => c.id === params.value);
+          return client ? client.name : params.value;
         },
         valueSetter: (params) => {
-          params.data.idBranch = params.newValue;
+          params.data.idClient = params.newValue ? Number(params.newValue) : null;
           return true;
         },
       },
+      // 4. PROYECTO
       {
         field: 'idProject',
-        headerName: 'Proyecto',
+        headerName: 'PROYECTO',
         editable: true,
         width: 180,
         filter: true,
@@ -685,13 +667,19 @@ export class ExpenditureComponent {
           return project ? project.name : params.value;
         },
       },
+      // 5. FECHA
       {
-        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 110,
+        field: 'date',
+        headerName: 'FECHA',
+        editable: true,
+        cellDataType: 'date',
+        width: 110,
         valueFormatter: (params) => this.formatDate(params.value)
       },
+      // 6. MES
       {
         field: 'paymentMonth',
-        headerName: 'Mes',
+        headerName: 'MES',
         editable: true,
         width: 110,
         filter: true,
@@ -700,24 +688,27 @@ export class ExpenditureComponent {
           values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
         }
       },
+      // 7. AÑO
       {
         field: 'anio',
-        headerName: 'Año',
+        headerName: 'AÑO',
         editable: true,
         width: 80,
         filter: true,
         cellDataType: 'number',
       },
+      // 8. EJERCICIO
       {
         field: 'ejercicio',
-        headerName: 'Ejercicio',
+        headerName: 'EJERCICIO',
         editable: true,
         width: 100,
         filter: true,
       },
+      // 9. CLASIFICACION
       {
         field: 'idClasificacion',
-        headerName: 'Clasificación',
+        headerName: 'CLASIFICACION',
         editable: true,
         width: 200,
         cellEditor: 'agSelectCellEditor',
@@ -730,9 +721,10 @@ export class ExpenditureComponent {
           return cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : params.value;
         },
       },
+      // 10. SUBCLASIFICACION
       {
         field: 'idSubclasificacion',
-        headerName: 'Subclasificación',
+        headerName: 'SUBCLASIFICACION',
         editable: true,
         width: 220,
         cellEditor: 'agSelectCellEditor',
@@ -745,8 +737,13 @@ export class ExpenditureComponent {
           return cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : params.value;
         },
       },
+      // 11. CONCEPTO
       {
-        field: 'description', headerName: 'Concepto', editable: true, width: 220, filter: true,
+        field: 'description',
+        headerName: 'CONCEPTO',
+        editable: true,
+        width: 220,
+        filter: true,
         cellClass: 'description-cell',
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
@@ -769,21 +766,21 @@ export class ExpenditureComponent {
           }
         },
         cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
+          if (params.node.group) return params.value;
           const value = params.value || '';
           return `<div class="description-content" style="word-wrap: break-word; white-space: normal; line-height: 1.2; padding: 2px; overflow: visible; max-height: none;">${value}</div>`;
         }
       },
+      // 12. IMPORTE S/IVA
       {
         field: 'subtotal',
-        headerName: 'Importe S/IVA',
+        headerName: 'IMPORTE S/IVA',
         type: 'number',
         editable: false,
         width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
+      // 13. IVA
       {
         field: 'tax',
         headerName: 'IVA',
@@ -792,25 +789,28 @@ export class ExpenditureComponent {
         width: 100,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
+      // 14. OTROS IMPUESTOS
       {
         field: 'otrosImpuestos',
-        headerName: 'Otros Impuestos',
+        headerName: 'OTROS IMPUESTOS',
         type: 'number',
         editable: true,
         width: 130,
         valueFormatter: params => params.value != null ? params.value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '$0.00'
       },
+      // 15. IMPORTE TOTAL
       {
         field: 'total',
-        headerName: 'Total',
+        headerName: 'IMPORTE TOTAL',
         type: 'number',
         editable: false,
-        width: 110,
+        width: 120,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
+      // 16. # FACTURA
       {
         field: 'uuid',
-        headerName: 'Num Factura/UUID',
+        headerName: '# FACTURA',
         editable: true,
         width: 180,
         filter: true,
@@ -827,11 +827,11 @@ export class ExpenditureComponent {
           return { backgroundColor: '#fff3cd', color: '#856404' };
         }
       },
+      // 17. PROVEEDOR
       {
         field: 'idCustomer',
-        headerName: 'Proveedor',
+        headerName: 'PROVEEDOR',
         editable: true,
-        hide: false,
         width: 180,
         filter: true,
         cellEditor: 'agSelectCellEditor',
@@ -844,9 +844,29 @@ export class ExpenditureComponent {
           return prov ? prov.name : params.value;
         },
       },
+      // 18. OBSERVACIONES
+      {
+        field: 'observaciones',
+        headerName: 'OBSERVACIONES',
+        editable: true,
+        width: 220,
+        filter: true,
+        cellEditor: 'agPopupTextCellEditor',
+        cellEditorParams: {
+          maxLength: 500,
+          cols: 50,
+          rows: 3,
+          onKeyDown: (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.stopPropagation();
+            }
+          },
+        },
+      },
+      // 19. TIPO DE PAGO
       {
         field: 'formaPago',
-        headerName: 'Tipo de Pago',
+        headerName: 'TIPO DE PAGO',
         editable: true,
         width: 200,
         filter: true,
@@ -860,9 +880,10 @@ export class ExpenditureComponent {
           return found ? `${found.formaPagoValue} - ${found.descripcion}` : params.value;
         }
       },
+      // 20. CUENTA
       {
         field: 'idAccount',
-        headerName: 'Cuenta',
+        headerName: 'CUENTA',
         editable: false,
         width: 180,
         valueFormatter: (params) => {
@@ -871,29 +892,39 @@ export class ExpenditureComponent {
           return acc ? `${acc.nameAccount} - ${acc.bankName}` : params.value;
         },
       },
+      // --- Columnas no contempladas, al final ---
       {
-        field: 'idClient',
-        headerName: 'Cliente',
+        field: 'idBranch',
+        headerName: 'Sucursal',
+        headerClass: 'required-header',
+        hide: true,
         editable: true,
-        width: 180,
         filter: true,
+        width: 150,
         cellEditor: 'agSelectCellEditor',
+        filterParams: { defaultToNothingSelected: true },
         cellEditorParams: () => ({
-          values: this.clients.map((c) => c.id),
+          values: this.branchs
+            ? this.branchs.slice().sort((a, b) => a.name.localeCompare(b.name)).map((item) => item.id)
+            : [],
           useFormatter: true,
         }),
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const client = this.clients?.find((c) => c.id === params.value);
-          return client ? client.name : params.value;
+          const foundBranch = this.branchs?.find((item) => item.id === params.value);
+          return foundBranch ? foundBranch.name : params.value;
         },
         valueSetter: (params) => {
-          params.data.idClient = params.newValue ? Number(params.newValue) : null;
+          params.data.idBranch = params.newValue;
           return true;
         },
       },
       {
-        field: 'numberDocument', headerName: '# Documento', editable: true, filter: true, width: 130
+        field: 'numberDocument',
+        headerName: '# Documento',
+        editable: true,
+        filter: true,
+        width: 130
       },
       {
         field: 'deliveryStatus',
@@ -902,9 +933,7 @@ export class ExpenditureComponent {
         width: 110,
         filter: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['ENTREGADA', 'PENDIENTE', 'N/A']
-        }
+        cellEditorParams: { values: ['ENTREGADA', 'PENDIENTE', 'N/A'] }
       },
       {
         field: 'status',
@@ -912,10 +941,8 @@ export class ExpenditureComponent {
         editable: true,
         width: 120,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada']
-        }
-      }
+        cellEditorParams: { values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada'] }
+      },
     ];
 
     return this._colMaster;

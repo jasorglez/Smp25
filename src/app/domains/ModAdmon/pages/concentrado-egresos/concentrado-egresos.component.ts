@@ -19,7 +19,7 @@ import { Workbook } from 'exceljs';
 export interface ConcentradoEgreso {
   id: number;
   proveedor: string;
-  cliente: string;
+  empresa: string;
   proyecto: string;
   fecha: Date | null;
   mes: string;
@@ -35,6 +35,7 @@ export interface ConcentradoEgreso {
   numeroFactura: string;
   tipoPago: string;
   cuenta: string;
+  observaciones: string;
 }
 
 @Component({
@@ -359,7 +360,8 @@ export class ConcentradoEgresosComponent {
         return {
           id: egreso.id,
           proveedor: provider?.name || '',
-          cliente: client?.name || '',
+          empresa: client?.name || '',
+          observaciones: egreso.observaciones || '',
           proyecto: project?.name || '',
           fecha,
           mes,
@@ -593,22 +595,23 @@ export class ConcentradoEgresosComponent {
     const content: any[] = [];
 
     const headers = [
-      'CLIENTE',
+      'EMPRESA',
       'PROYECTO',
       'FECHA',
       'MES',
       'AÑO',
       'EJERCICIO',
-      'CLASIF.',
-      'SUBCLASIF.',
+      'CLASIFICACION',
+      'SUBCLASIFICACION',
       'CONCEPTO',
-      'IMP. S/IVA',
+      'IMPORTE S/IVA',
       'IVA',
-      'OTROS IMP.',
-      'IMP. TOTAL',
+      'OTROS IMPUESTOS',
+      'IMPORTE TOTAL',
       '# FACTURA',
       'PROVEEDOR',
-      'TIPO PAGO',
+      'OBSERVACIONES',
+      'TIPO DE PAGO',
       'CUENTA',
     ];
 
@@ -622,87 +625,36 @@ export class ConcentradoEgresosComponent {
 
     this.concentradoEgresos.forEach((e) => {
       body.push([
-        { text: e.cliente, style: 'tableCell', alignment: 'left' },
+        { text: e.empresa, style: 'tableCell', alignment: 'left' },
         { text: e.proyecto, style: 'tableCell', alignment: 'left' },
-        {
-          text: this.formatDateShort(e.fecha),
-          style: 'tableCell',
-          alignment: 'center',
-        },
+        { text: this.formatDateShort(e.fecha), style: 'tableCell', alignment: 'center' },
         { text: e.mes, style: 'tableCell', alignment: 'center' },
-        {
-          text: e.anioEjercicio.toString(),
-          style: 'tableCell',
-          alignment: 'center',
-        },
+        { text: e.anioEjercicio.toString(), style: 'tableCell', alignment: 'center' },
         { text: e.ejercicio, style: 'tableCell', alignment: 'center' },
         { text: e.clasificacion, style: 'tableCell', alignment: 'left' },
         { text: e.subclasificacion, style: 'tableCell', alignment: 'left' },
         { text: e.concepto, style: 'tableCell', alignment: 'left' },
-        {
-          text: this.formatCurrencyShort(e.importeSinIva),
-          style: 'tableCellMoney',
-        },
+        { text: this.formatCurrencyShort(e.importeSinIva), style: 'tableCellMoney' },
         { text: this.formatCurrencyShort(e.iva), style: 'tableCellMoney' },
-        {
-          text:
-            e.otrosImpuestos > 0
-              ? this.formatCurrencyShort(e.otrosImpuestos)
-              : '',
-          style: 'tableCellMoney',
-        },
-        {
-          text: this.formatCurrencyShort(e.importeTotal),
-          style: 'tableCellMoney',
-          bold: true,
-        },
+        { text: e.otrosImpuestos > 0 ? this.formatCurrencyShort(e.otrosImpuestos) : '', style: 'tableCellMoney' },
+        { text: this.formatCurrencyShort(e.importeTotal), style: 'tableCellMoney', bold: true },
         { text: e.numeroFactura, style: 'tableCell', alignment: 'center' },
         { text: e.proveedor, style: 'tableCell', alignment: 'left' },
+        { text: e.observaciones || '', style: 'tableCell', alignment: 'left' },
         { text: e.tipoPago, style: 'tableCell', alignment: 'center' },
         { text: e.cuenta, style: 'tableCell', alignment: 'left' },
       ]);
     });
 
-    // Fila de totales (17 columnas): Cliente, Proyecto, Fecha, Mes, Año, Ejercicio, Clasif, Subclasif, Concepto → colSpan 9
+    // Fila de totales (18 columnas)
     body.push([
-      {
-        text: 'TOTAL',
-        colSpan: 9,
-        style: 'totalRow',
-        alignment: 'right',
-        bold: true,
-      },
-      {},
-      {},
-      {},
-      {},
-      {},
-      {},
-      {},
-      {},
-      {
-        text: this.formatCurrencyShort(this.totales.importeSinIva),
-        style: 'totalRow',
-        alignment: 'right',
-      },
-      {
-        text: this.formatCurrencyShort(this.totales.iva),
-        style: 'totalRow',
-        alignment: 'right',
-      },
-      {
-        text:
-          this.totales.otrosImpuestos > 0
-            ? this.formatCurrencyShort(this.totales.otrosImpuestos)
-            : '',
-        style: 'totalRow',
-        alignment: 'right',
-      },
-      {
-        text: this.formatCurrencyShort(this.totales.importeTotal),
-        style: 'totalRow',
-        alignment: 'right',
-      },
+      { text: 'TOTAL', colSpan: 9, style: 'totalRow', alignment: 'right', bold: true },
+      {}, {}, {}, {}, {}, {}, {}, {},
+      { text: this.formatCurrencyShort(this.totales.importeSinIva), style: 'totalRow', alignment: 'right' },
+      { text: this.formatCurrencyShort(this.totales.iva), style: 'totalRow', alignment: 'right' },
+      { text: this.totales.otrosImpuestos > 0 ? this.formatCurrencyShort(this.totales.otrosImpuestos) : '', style: 'totalRow', alignment: 'right' },
+      { text: this.formatCurrencyShort(this.totales.importeTotal), style: 'totalRow', alignment: 'right' },
+      { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
@@ -713,23 +665,24 @@ export class ConcentradoEgresosComponent {
       table: {
         headerRows: 1,
         widths: [
-          '*',
-          '*',
-          46,
-          28,
-          26,
-          26,
-          '*',
-          '*',
-          '*',
-          55,
-          40,
-          46,
-          55,
-          60,
-          '*',
-          42,
-          '*',
+          '*',  // EMPRESA
+          '*',  // PROYECTO
+          46,   // FECHA
+          28,   // MES
+          26,   // AÑO
+          26,   // EJERCICIO
+          '*',  // CLASIFICACION
+          '*',  // SUBCLASIFICACION
+          '*',  // CONCEPTO
+          55,   // IMPORTE S/IVA
+          40,   // IVA
+          46,   // OTROS IMPUESTOS
+          55,   // IMPORTE TOTAL
+          60,   // # FACTURA
+          '*',  // PROVEEDOR
+          '*',  // OBSERVACIONES
+          42,   // TIPO DE PAGO
+          '*',  // CUENTA
         ],
         body,
       },
@@ -763,23 +716,24 @@ export class ConcentradoEgresosComponent {
 
       // Headers
       const headers = [
-        'Cliente',
-        'Proyecto',
-        'Fecha',
-        'Mes',
-        'Año Ejercicio',
-        'Ejercicio',
-        'Clasificación',
-        'Subclasificación',
-        'Concepto',
-        'Importe s/IVA',
+        'EMPRESA',
+        'PROYECTO',
+        'FECHA',
+        'MES',
+        'AÑO',
+        'EJERCICIO',
+        'CLASIFICACION',
+        'SUBCLASIFICACION',
+        'CONCEPTO',
+        'IMPORTE S/IVA',
         'IVA',
-        'Otros Impuestos',
-        'Importe Total',
-        '# Factura',
-        'Proveedor',
-        'Tipo de Pago',
-        'Cuenta',
+        'OTROS IMPUESTOS',
+        'IMPORTE TOTAL',
+        '# FACTURA',
+        'PROVEEDOR',
+        'OBSERVACIONES',
+        'TIPO DE PAGO',
+        'CUENTA',
       ];
       const headerRow = worksheet.getRow(5);
       headers.forEach((header, index) => {
@@ -798,7 +752,7 @@ export class ConcentradoEgresosComponent {
       let rowIndex = 6;
       this.concentradoEgresos.forEach((e) => {
         const row = worksheet.getRow(rowIndex);
-        row.getCell(1).value = e.cliente;
+        row.getCell(1).value = e.empresa;
         row.getCell(2).value = e.proyecto;
         row.getCell(3).value = e.fecha ? this.formatDateShort(e.fecha) : '';
         row.getCell(4).value = e.mes;
@@ -818,8 +772,9 @@ export class ConcentradoEgresosComponent {
         row.getCell(13).font = { bold: true };
         row.getCell(14).value = e.numeroFactura;
         row.getCell(15).value = e.proveedor;
-        row.getCell(16).value = e.tipoPago;
-        row.getCell(17).value = e.cuenta;
+        row.getCell(16).value = e.observaciones || '';
+        row.getCell(17).value = e.tipoPago;
+        row.getCell(18).value = e.cuenta;
         rowIndex++;
       });
 
@@ -838,25 +793,26 @@ export class ConcentradoEgresosComponent {
       totalRow.getCell(13).numFmt = '"$"#,##0.00';
       totalRow.getCell(13).font = { bold: true, color: { argb: 'FFDC2626' } };
 
-      // Anchos (17 columnas)
+      // Anchos (18 columnas)
       worksheet.columns = [
-        { width: 18 },
-        { width: 12 },
-        { width: 10 },
-        { width: 8 },
-        { width: 10 },
-        { width: 18 },
-        { width: 22 },
-        { width: 25 },
-        { width: 14 },
-        { width: 12 },
-        { width: 14 },
-        { width: 14 },
-        { width: 15 },
-        { width: 22 },
-        { width: 12 },
-        { width: 22 },
-        { width: 22 },
+        { width: 20 }, // EMPRESA
+        { width: 18 }, // PROYECTO
+        { width: 12 }, // FECHA
+        { width: 10 }, // MES
+        { width: 8  }, // AÑO
+        { width: 12 }, // EJERCICIO
+        { width: 22 }, // CLASIFICACION
+        { width: 25 }, // SUBCLASIFICACION
+        { width: 30 }, // CONCEPTO
+        { width: 14 }, // IMPORTE S/IVA
+        { width: 12 }, // IVA
+        { width: 14 }, // OTROS IMPUESTOS
+        { width: 14 }, // IMPORTE TOTAL
+        { width: 20 }, // # FACTURA
+        { width: 20 }, // PROVEEDOR
+        { width: 25 }, // OBSERVACIONES
+        { width: 18 }, // TIPO DE PAGO
+        { width: 22 }, // CUENTA
       ];
 
       // Generar archivo

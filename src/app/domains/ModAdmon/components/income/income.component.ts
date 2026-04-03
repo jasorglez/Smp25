@@ -437,9 +437,10 @@ export class IncomeComponent {
   get colMaster(): ColDef[] {
     if (this._colMaster) return this._colMaster;
     this._colMaster = [
+      // 1. ITEMS
       {
         field: 'countItems',
-        headerName: 'Items',
+        headerName: 'ITEMS',
         width: 90,
         cellRenderer: ButtonCellRendererIncomeComponent,
         cellRendererParams: {
@@ -449,15 +450,14 @@ export class IncomeComponent {
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
+      // 2. PDF
       {
         field: 'pdfReport',
         headerName: 'PDF',
         width: 80,
         cellRenderer: PdfButtonCellRendererIncomeComponent,
         cellRendererParams: {
-          onClick: (node: any) => {
-            this.toggleReportDetail(node, 'report');
-          },
+          onClick: (node: any) => { this.toggleReportDetail(node, 'report'); },
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
           title: 'Hacer clic para generar el recibo PDF'
@@ -465,10 +465,10 @@ export class IncomeComponent {
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
-
+      // 3. MES
       {
         field: 'paymentMonth',
-        headerName: 'Mes',
+        headerName: 'MES',
         editable: true,
         width: 110,
         filter: true,
@@ -477,180 +477,12 @@ export class IncomeComponent {
           values: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
         }
       },
-
+      // 4. EMPRESA (antes Cliente)
       {
-        field: 'idBranch',
-        headerName: 'Sucursal',
+        field: 'idCustomer',
+        headerName: 'EMPRESA',
         editable: true,
-        width: 140,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.branches.map(b => b.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const foundBranch = this.branches.find(b => b.id === params.value);
-          return foundBranch ? foundBranch.name : params.value;
-        }
-      },
-
-      {
-        field: 'idProject',
-        headerName: 'Proyecto',
-        editable: true,
-        width: 150,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: this.projects.map(p => p.id)
-        }),
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const foundProject = this.projects.find(p => p.id === params.value);
-          return foundProject ? foundProject.name : params.value;
-        }
-      },
-
-      {
-        field: 'dateStamped', headerName: 'Fecha Factura', editable: true, cellDataType: 'date', width: 130,
-        valueFormatter: (params) => this.formatDate(params.value)
-      },
-
-      {
-        field: 'date', headerName: 'Fecha Pago', editable: true, cellDataType: 'date', width: 130,
-        valueFormatter: (params) => this.formatDate(params.value)
-      },
-
-      {
-        field: 'uuid',
-        headerName: 'Num Factura/UUID',
-        editable: true,
-        width: 180,
-        filter: true,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: {
-          maxLength: 36
-        },
-        valueFormatter: (params) => {
-          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
-          return params.value.substring(0, 15) + '...';
-        },
-        cellStyle: (params) => {
-          if (params.value && params.value !== 'NA') {
-            return { backgroundColor: '#d4edda', color: '#155724' };
-          }
-          return { backgroundColor: '#fff3cd', color: '#856404' };
-        }
-      },
-
-      { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
-
-      {
-        field: 'subtotal',
-        headerName: 'Subtotal',
-        type: 'number',
-        editable: false,
-        width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'tax',
-        headerName: 'Impuestos',
-        type: 'number',
-        editable: false,
-        width: 100,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-      {
-        field: 'total',
-        headerName: 'Total',
-        type: 'number',
-        editable: false,
-        filter: true,
-        width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-      },
-
-      {
-        field: 'deliveryStatus',
-        headerName: 'Estatus',
-        editable: true,
-        width: 110,
-        filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['ENTREGADA', 'PENDIENTE', 'N/A']
-        }
-      },
-      {
-        field: 'status',
-        headerName: 'Estatus de pago',
-        editable: true,
-        width: 120,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada']
-        }
-      },
-
-      {
-        field: 'diasPlazo',
-        headerName: 'Días Plazo',
-        editable: true,
-        width: 100,
-        type: 'number',
-        valueSetter: (params) => {
-          params.data.diasPlazo = params.newValue != null ? Number(params.newValue) : null;
-          return true;
-        }
-      },
-
-      {
-        headerName: 'Fecha Vencimiento',
-        editable: false,
-        width: 140,
-        valueGetter: (params) => {
-          const ds = params.data?.dateStamped;
-          const dias = params.data?.diasPlazo;
-          if (!ds || dias == null) return null;
-          const fecha = new Date(ds);
-          fecha.setDate(fecha.getDate() + Number(dias));
-          return fecha;
-        },
-        valueFormatter: (params) => this.formatDate(params.value),
-        cellStyle: () => ({ color: '#555' })
-      },
-
-      {
-        headerName: 'Días Vencimiento',
-        editable: false,
-        width: 130,
-        valueGetter: (params) => {
-          const ds = params.data?.dateStamped;
-          const dias = params.data?.diasPlazo;
-          if (!ds || dias == null) return null;
-          const vencimiento = new Date(ds);
-          vencimiento.setDate(vencimiento.getDate() + Number(dias));
-          const hoy = new Date();
-          hoy.setHours(0, 0, 0, 0);
-          vencimiento.setHours(0, 0, 0, 0);
-          return Math.floor((hoy.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24));
-        },
-        cellStyle: (params) => {
-          if (params.value == null) return {};
-          if (params.value > 0) return { color: '#dc2626', fontWeight: 'bold' };
-          if (params.value >= -7) return { color: '#d97706', fontWeight: 'bold' };
-          return { color: '#16a34a' };
-        },
-        valueFormatter: (params) => {
-          if (params.value == null) return '';
-          if (params.value > 0) return `+${params.value} días (vencido)`;
-          if (params.value === 0) return 'Vence hoy';
-          return `${params.value} días`;
-        }
-      },
-
-      {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
+        width: 160,
         cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
           options: [
@@ -683,9 +515,210 @@ export class IncomeComponent {
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
-
+      // 5. PROYECTO
+      {
+        field: 'idProject',
+        headerName: 'PROYECTO',
+        editable: true,
+        width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.projects.map(p => p.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const foundProject = this.projects.find(p => p.id === params.value);
+          return foundProject ? foundProject.name : params.value;
+        }
+      },
+      // 6. FECHA FACTURA
+      {
+        field: 'dateStamped',
+        headerName: 'FECHA FACTURA',
+        editable: true,
+        cellDataType: 'date',
+        width: 130,
+        valueFormatter: (params) => this.formatDate(params.value)
+      },
+      // 7. FECHA DE PAGO
+      {
+        field: 'date',
+        headerName: 'FECHA DE PAGO',
+        editable: true,
+        cellDataType: 'date',
+        width: 130,
+        valueFormatter: (params) => this.formatDate(params.value)
+      },
+      // 8. FACTURA / NC
+      {
+        field: 'uuid',
+        headerName: 'FACTURA / NC',
+        editable: true,
+        width: 180,
+        filter: true,
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: { maxLength: 36 },
+        valueFormatter: (params) => {
+          if (!params.value || params.value === 'NA') return 'Sin Timbrar';
+          return params.value.substring(0, 15) + '...';
+        },
+        cellStyle: (params) => {
+          if (params.value && params.value !== 'NA') {
+            return { backgroundColor: '#d4edda', color: '#155724' };
+          }
+          return { backgroundColor: '#fff3cd', color: '#856404' };
+        }
+      },
+      // 9. OC
+      { field: 'oc', headerName: 'OC', editable: true, width: 100, filter: true },
+      // 10. IMPORTE FACTURA
+      {
+        field: 'importeFactura',
+        headerName: 'IMPORTE FACTURA',
+        type: 'number',
+        editable: true,
+        width: 140,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        valueSetter: (params) => {
+          params.data.importeFactura = params.newValue != null ? Number(params.newValue) : null;
+          return true;
+        }
+      },
+      // 11. IMPORTE NC / DESCUENTO
+      {
+        field: 'importeNc',
+        headerName: 'IMPORTE NC / DESCUENTO',
+        type: 'number',
+        editable: true,
+        width: 170,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        valueSetter: (params) => {
+          params.data.importeNc = params.newValue != null ? Number(params.newValue) : null;
+          return true;
+        }
+      },
+      // 12. SUBTOTAL
+      {
+        field: 'subtotal',
+        headerName: 'SUBTOTAL',
+        type: 'number',
+        editable: false,
+        width: 120,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      // 13. IVA
+      {
+        field: 'tax',
+        headerName: 'IVA',
+        type: 'number',
+        editable: false,
+        width: 100,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      // 14. TOTAL
+      {
+        field: 'total',
+        headerName: 'TOTAL',
+        type: 'number',
+        editable: false,
+        filter: true,
+        width: 120,
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      },
+      // 15. ESTATUS
+      {
+        field: 'deliveryStatus',
+        headerName: 'ESTATUS',
+        editable: true,
+        width: 110,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ['ENTREGADA', 'PENDIENTE', 'N/A'] }
+      },
+      // 16. ESTATUS DE PAGO
+      {
+        field: 'status',
+        headerName: 'ESTATUS DE PAGO',
+        editable: true,
+        width: 130,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada'] }
+      },
+      // 17. DIAS
+      {
+        field: 'diasPlazo',
+        headerName: 'DIAS',
+        editable: true,
+        width: 80,
+        type: 'number',
+        valueSetter: (params) => {
+          params.data.diasPlazo = params.newValue != null ? Number(params.newValue) : null;
+          return true;
+        }
+      },
+      // 18. FECHA DE VENCIMIENTO
+      {
+        headerName: 'FECHA DE VENCIMIENTO',
+        editable: false,
+        width: 155,
+        valueGetter: (params) => {
+          const ds = params.data?.dateStamped;
+          const dias = params.data?.diasPlazo;
+          if (!ds || dias == null) return null;
+          const fecha = new Date(ds);
+          fecha.setDate(fecha.getDate() + Number(dias));
+          return fecha;
+        },
+        valueFormatter: (params) => this.formatDate(params.value),
+        cellStyle: () => ({ color: '#555' })
+      },
+      // 19. DIAS DE VENCIMIENTO
+      {
+        headerName: 'DIAS DE VENCIMIENTO',
+        editable: false,
+        width: 150,
+        valueGetter: (params) => {
+          const ds = params.data?.dateStamped;
+          const dias = params.data?.diasPlazo;
+          if (!ds || dias == null) return null;
+          const vencimiento = new Date(ds);
+          vencimiento.setDate(vencimiento.getDate() + Number(dias));
+          const hoy = new Date();
+          hoy.setHours(0, 0, 0, 0);
+          vencimiento.setHours(0, 0, 0, 0);
+          return Math.floor((hoy.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24));
+        },
+        cellStyle: (params) => {
+          if (params.value == null) return {};
+          if (params.value > 0) return { color: '#dc2626', fontWeight: 'bold' };
+          if (params.value >= -7) return { color: '#d97706', fontWeight: 'bold' };
+          return { color: '#16a34a' };
+        },
+        valueFormatter: (params) => {
+          if (params.value == null) return '';
+          if (params.value > 0) return `+${params.value} días (vencido)`;
+          if (params.value === 0) return 'Vence hoy';
+          return `${params.value} días`;
+        }
+      },
+      // Columna Sucursal: oculta
+      {
+        field: 'idBranch',
+        headerName: 'Sucursal',
+        hide: true,
+        editable: true,
+        width: 140,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.branches.map(b => b.id)
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const foundBranch = this.branches.find(b => b.id === params.value);
+          return foundBranch ? foundBranch.name : params.value;
+        }
+      },
       { field: 'numberDocument', headerName: '# Docto', editable: false, filter: true, width: 130 },
-
       {
         field: 'description', headerName: 'Descripción', editable: true, width: 315, filter: true, hide: true,
         cellEditor: 'agPopupTextCellEditor',
@@ -805,6 +838,21 @@ onSelectionChanged(event: any) {
         this.openCustomerModal();
       }, 100);
       return;
+    }
+
+    // Recalcular subtotal/IVA/total cuando cambia importeNc
+    if (event.column.getColId() === 'importeNc') {
+      const data = event.data;
+      const importeFactura = Number(data.importeFactura) || 0;
+      const importeNc = Number(data.importeNc) || 0;
+      const newSubtotal = importeFactura - importeNc;
+      const hasIva = (Number(data.tax) > 0);
+      const ivaRate = hasIva ? 0.16 : 0;
+      const newTax = newSubtotal * ivaRate;
+      data.subtotal = newSubtotal;
+      data.tax = newTax;
+      data.total = newSubtotal + newTax;
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
     }
 
     // Actualizar campos de modificación solo para filas existentes

@@ -59,23 +59,22 @@
           <thead>
             <tr>
               <th class="text-center">Mes</th>
-              <th class="text-center">Cliente</th>
+              <th class="text-center">Empresa</th>
               <th class="text-center">Proyecto</th>
               <th class="text-center">Fecha Factura</th>
-              <th class="text-center">Fecha Pago</th>
-              <th class="text-center">Factura/NC</th>
+              <th class="text-center">Fecha de Pago</th>
+              <th class="text-center">Factura / NC</th>
               <th class="text-center">OC</th>
-              <th class="text-end">Imp. Factura</th>
-              <th class="text-end">Imp. Desc.</th>
+              <th class="text-end">Importe Factura</th>
+              <th class="text-end">Importe NC / Desc.</th>
               <th class="text-end">Subtotal</th>
               <th class="text-end">IVA</th>
               <th class="text-end">Total</th>
               <th class="text-center">Estatus</th>
-              <th class="text-center">Est. Pago</th>
-              <th class="text-center">Días Plazo</th>
+              <th class="text-center">Estatus de Pago</th>
               <th class="text-center">Días</th>
-              <th class="text-center">Fecha Venc.</th>
-              <th class="text-center">Días Venc.</th>
+              <th class="text-center">Fecha Vencimiento</th>
+              <th class="text-center">Días Vencimiento</th>
             </tr>
           </thead>
           <tbody>
@@ -94,7 +93,6 @@
               <td class="text-end total-cell">{{ formatCurrency(f.total) }}</td>
               <td class="text-center">{{ f.estatus }}</td>
               <td class="text-center" [ngClass]="getStatusClass(f.estatusPago)">{{ f.estatusPago }}</td>
-              <td class="text-center">{{ f.diasPlazo }}</td>
               <td class="text-center">{{ f.dias }}</td>
               <td class="text-center">{{ f.fechaVencimiento | date:'dd/MM/yyyy' }}</td>
               <td class="text-center" [ngClass]="getDiasVencimientoClass(f.diasVencimiento, f.estatusPago)">
@@ -104,7 +102,7 @@
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="8" class="text-end"><strong>TOTAL</strong></td>
+              <td colspan="7" class="text-end"><strong>TOTAL</strong></td>
               <td class="text-end"><strong>{{ formatCurrency(totales.importeFactura) }}</strong></td>
               <td class="text-end"><strong>{{ totales.importeDescuento > 0 ? formatCurrency(totales.importeDescuento) : '' }}</strong></td>
               <td class="text-end"><strong>{{ formatCurrency(totales.subtotal) }}</strong></td>

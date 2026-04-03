@@ -337,6 +337,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
         type: 'number',
         editable: false,
         flex: 2,
+        hide: true,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       { field: 'comment', headerName: 'Comentario', type: 'text', editable: true, flex: 3, cellEditor: 'multiLineEditorComponent' }
@@ -446,11 +447,21 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
         this.incomesAndExpensesService.getIncomeAndExpenseById(incomeId)
       );
       const mainDoc = mainDocResponse[0];
+
+      // Opción A: importeFactura = subtotal de ítems (pre-IVA), importeNc se preserva del doc padre
+      const importeFactura = this.subtotal;
+      const importeNc = Number(mainDoc.importeNc) || 0;
+      const newSubtotal = importeFactura - importeNc;
+      const hasIva = this.rowData.some(row => row.iva === true);
+      const newTax = hasIva ? newSubtotal * (this.ivaPercent / 100) : 0;
+      const newTotal = newSubtotal + newTax;
+
       const updatedDoc = {
         ...mainDoc,
-        subtotal: this.subtotal,
-        tax: this.iva2,
-        total: this.total,
+        importeFactura,
+        subtotal: newSubtotal,
+        tax: newTax,
+        total: newTotal,
         countItems: this.rowData.length
       };
       await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDoc));
