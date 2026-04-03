@@ -164,6 +164,22 @@
 
     <!-- Columna derecha: Gráficas -->
     <div class="charts-column">
+      <!-- Gráfica de pie: Gasto Total Acumulado -->
+      <div class="chart-card">
+        <div class="personal-kpi-header">
+          <span class="personal-kpi-label">GASTO TOTAL ACUMULADO</span>
+          <span class="personal-kpi-total">{{ totalEgresos | currency:'$':'symbol':'1.2-2' }}</span>
+        </div>
+        <apx-chart #pieChartRef *ngIf="pieChartOptions?.series && pieChartOptions.series.length > 0"
+          [series]="pieChartOptions.series" [chart]="pieChartOptions.chart" [labels]="pieChartOptions.labels"
+          [title]="pieChartOptions.title" [plotOptions]="pieChartOptions.plotOptions" [legend]="pieChartOptions.legend"
+          [colors]="pieChartOptions.colors"></apx-chart>
+        <div *ngIf="!pieChartOptions?.series || pieChartOptions.series.length === 0" class="no-data">
+          <i class="bi bi-pie-chart"></i>
+          <span>Sin datos para mostrar</span>
+        </div>
+      </div>
+
       <!-- KPI + Gráfica: Cantidad de Personal por Proyecto -->
       <div class="chart-card">
         <div class="personal-kpi-header">
@@ -189,22 +205,6 @@
         <div *ngIf="!personalPieChartOptions?.series || personalPieChartOptions.series.length === 0" class="no-data">
           <i class="bi bi-people"></i>
           <span>Sin datos de personal</span>
-        </div>
-      </div>
-
-      <!-- Gráfica de pie: Gasto Total Acumulado -->
-      <div class="chart-card">
-        <div class="personal-kpi-header">
-          <span class="personal-kpi-label">GASTO TOTAL ACUMULADO</span>
-          <span class="personal-kpi-total">{{ totalEgresos | currency:'$':'symbol':'1.2-2' }}</span>
-        </div>
-        <apx-chart #pieChartRef *ngIf="pieChartOptions?.series && pieChartOptions.series.length > 0"
-          [series]="pieChartOptions.series" [chart]="pieChartOptions.chart" [labels]="pieChartOptions.labels"
-          [title]="pieChartOptions.title" [plotOptions]="pieChartOptions.plotOptions" [legend]="pieChartOptions.legend"
-          [colors]="pieChartOptions.colors"></apx-chart>
-        <div *ngIf="!pieChartOptions?.series || pieChartOptions.series.length === 0" class="no-data">
-          <i class="bi bi-pie-chart"></i>
-          <span>Sin datos para mostrar</span>
         </div>
       </div>
 
@@ -234,7 +234,8 @@
     <apx-chart #lineChartRef *ngIf="lineChartOptions?.series" [series]="lineChartOptions.series"
       [chart]="lineChartOptions.chart" [xaxis]="lineChartOptions.xaxis" [yaxis]="lineChartOptions.yaxis"
       [title]="lineChartOptions.title" [stroke]="lineChartOptions.stroke" [fill]="lineChartOptions.fill"
-      [tooltip]="lineChartOptions.tooltip" [legend]="lineChartOptions.legend"></apx-chart>
+      [tooltip]="lineChartOptions.tooltip" [legend]="lineChartOptions.legend" [colors]="lineChartOptions.colors"
+      [plotOptions]="lineChartOptions.plotOptions" [dataLabels]="lineChartOptions.dataLabels"></apx-chart>
     <div *ngIf="!lineChartOptions?.series" class="no-data">
       <i class="bi bi-graph-up"></i>
       <span>Sin datos para mostrar</span>

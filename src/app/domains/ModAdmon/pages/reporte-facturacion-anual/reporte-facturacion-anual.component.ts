@@ -387,7 +387,7 @@ export class ReporteFacturacionAnualComponent {
     const content: any[] = [];
 
     // Tabla de facturación anual
-    const headers = ['Año', 'Monto OC', 'Facturado', 'Pagado', 'Ctas x Cobrar', 'Gastos', 'Dif. Pag vs Gas', 'Ret. Aport.', 'Ret. Util.', 'Ret. Total', 'Flujo Actual'];
+    const headers = ['Año', 'Monto Total OC', 'Monto Total Facturado', 'Monto Total Pagado', 'Cuentas por Cobrar', 'Gastos Totales', 'Dif. Pagado vs Gastos', 'Retiro Aportación', 'Retiro Utilidades', 'Retiro Total', 'Flujo Actual'];
 
     const body: any[] = [
       headers.map(h => ({ text: h, style: 'tableHeader', alignment: 'center' }))

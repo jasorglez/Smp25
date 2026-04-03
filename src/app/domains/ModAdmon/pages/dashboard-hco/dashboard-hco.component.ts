@@ -47,6 +47,9 @@ export type LineChartOptions = {
   tooltip: ApexTooltip;
   fill: ApexFill;
   legend: ApexLegend;
+  colors: string[];
+  plotOptions: any;
+  dataLabels: any;
 };
 
 export type PieChartOptions = {
@@ -360,8 +363,9 @@ export class DashboardHcoComponent {
       });
       rightColumnCharts.push({
         image: images.barChart,
-        width: 285,
-        margin: [0, 0, 0, 10],
+        fit: [285, 178],
+        alignment: 'center',
+        margin: [0, 0, 0, 4],
       });
     }
     if (images.pieChart) {
@@ -373,8 +377,9 @@ export class DashboardHcoComponent {
       });
       rightColumnCharts.push({
         image: images.pieChart,
-        width: 285,
-        margin: [0, 0, 0, 6],
+        fit: [285, 178],
+        alignment: 'center',
+        margin: [0, 0, 0, 4],
       });
     }
     if (images.combustibleChart) {
@@ -386,8 +391,9 @@ export class DashboardHcoComponent {
       });
       rightColumnCharts.push({
         image: images.combustibleChart,
-        width: 285,
-        margin: [0, 0, 0, 10],
+        fit: [285, 178],
+        alignment: 'center',
+        margin: [0, 0, 0, 4],
       });
     }
     if (rightColumnCharts.length === 0) {
@@ -1146,7 +1152,7 @@ export class DashboardHcoComponent {
   ): number {
     worksheet.mergeCells(`A${startRow}:B${startRow}`);
     const titleCell = worksheet.getCell(`A${startRow}`);
-    titleCell.value = 'PERSONAL POR SUCURSAL';
+    titleCell.value = 'PERSONAL POR PROYECTO';
     titleCell.font = { bold: true, color: { argb: 'FF0E7490' } };
     titleCell.fill = {
       type: 'pattern',
@@ -1494,7 +1500,14 @@ export class DashboardHcoComponent {
     );
     this.totalIngresos = ingresosReales.reduce((sum, i) => {
       const subtotal = Number(i?.subtotal);
-      return sum + (Number.isFinite(subtotal) ? subtotal : 0);
+      const total = Number(i?.total);
+      const monto =
+        Number.isFinite(subtotal) && subtotal > 0
+          ? subtotal
+          : Number.isFinite(total)
+            ? total
+            : 0;
+      return sum + monto;
     }, 0);
     this.flujoNeto = this.totalIngresos - this.totalEgresos;
     this.margenPorcentaje =
@@ -1781,7 +1794,14 @@ export class DashboardHcoComponent {
         const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
         const current = monthMap.get(key) || { egreso: 0, ingreso: 0 };
         const subtotal = Number(item?.subtotal);
-        current.ingreso += Number.isFinite(subtotal) ? subtotal : 0;
+        const total = Number(item?.total);
+        const monto =
+          Number.isFinite(subtotal) && subtotal > 0
+            ? subtotal
+            : Number.isFinite(total)
+              ? total
+              : 0;
+        current.ingreso += monto;
         monthMap.set(key, current);
       });
 
@@ -1897,7 +1917,7 @@ export class DashboardHcoComponent {
 
     this.pieChartOptions = {
       series: series,
-      chart: { type: 'donut', height: 320 },
+      chart: { type: 'donut', height: 280 },
       labels: labels,
       plotOptions: {
         pie: {
@@ -1947,38 +1967,35 @@ export class DashboardHcoComponent {
 
     this.lineChartOptions = {
       series: [
-        { name: 'EGRESO MENSUAL S/IVA', data: egresoData },
-        { name: 'INGRESO S/IVA', data: ingresoData },
-        { name: 'FLUJO ACUMULADO', data: flujoData },
+        { name: 'EGRESO S/IVA', type: 'line', data: egresoData },
+        { name: 'INGRESO S/IVA', type: 'line', data: ingresoData },
+        { name: 'FLUJO ACUMULADO', type: 'bar', data: flujoData },
       ],
       chart: {
-        type: 'area',
+        type: 'line',
         height: 350,
         toolbar: { show: false },
         zoom: { enabled: false },
       },
-      stroke: { curve: 'smooth', width: [2, 2, 3] },
-      fill: {
-        type: 'gradient',
-        gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.4,
-          opacityTo: 0.1,
-          stops: [0, 90, 100],
-        },
+      colors: ['#dc2626', '#16a34a', '#f59e0b'],
+      stroke: { curve: 'smooth', width: [2, 2, 0] },
+      fill: { type: ['solid', 'solid', 'solid'], opacity: [1, 1, 0.85] },
+      plotOptions: {
+        bar: { columnWidth: '60%', borderRadius: 3 },
       },
+      dataLabels: { enabled: false },
       xaxis: {
-        categories: categories,
+        categories,
         labels: { rotate: -45, style: { fontSize: '10px' } },
       },
       yaxis: {
         labels: {
-          formatter: (val) => '$' + (val / 1000).toFixed(1) + 'K',
+          formatter: (val: number) => '$' + (val / 1000).toFixed(1) + 'K',
         },
       },
       tooltip: {
         y: {
-          formatter: (val) =>
+          formatter: (val: number) =>
             `$${val.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         },
       },

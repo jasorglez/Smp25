@@ -669,7 +669,6 @@ export class ControlFacturacionIngresosComponent {
       'TOTAL',
       'ESTATUS',
       'EST. PAGO',
-      'DÍAS PLAZO',
       'DÍAS',
       'F. VENC.',
       'DÍAS V.',
@@ -736,11 +735,6 @@ export class ControlFacturacionIngresosComponent {
           style: 'tableCell',
           alignment: 'center',
           ...this.getPdfStatusStyle(f.estatusPago),
-        },
-        {
-          text: f.diasPlazo !== null ? f.diasPlazo.toString() : '',
-          style: 'tableCell',
-          alignment: 'center',
         },
         {
           text: f.dias !== null ? f.dias.toString() : '',
@@ -810,16 +804,12 @@ export class ControlFacturacionIngresosComponent {
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
-      { text: '', style: 'totalRow' },
     ]);
 
     content.push({
       table: {
         headerRows: 1,
-        widths: [
-          53, 79, 79, 58, 58, 69, 47, 66, 53, 66, 53, 69, 63, 53, 37, 37, 58,
-          43,
-        ],
+        widths: [53, 102, 102, 58, 58, 69, 47, 66, 53, 66, 53, 69, 63, 53, 37, 58, 43],
         body,
       },
       layout: 'siafStripeTeal',
@@ -866,7 +856,6 @@ export class ControlFacturacionIngresosComponent {
         'Total',
         'Estatus',
         'Estatus Pago',
-        'Días Plazo',
         'Días',
         'Fecha Venc.',
         'Días Venc.',
@@ -912,15 +901,14 @@ export class ControlFacturacionIngresosComponent {
         row.getCell(12).font = { bold: true };
         row.getCell(13).value = f.estatus;
         row.getCell(14).value = f.estatusPago;
-        row.getCell(15).value = f.diasPlazo !== null ? f.diasPlazo : '';
-        row.getCell(16).value = f.dias !== null ? f.dias : '';
-        row.getCell(17).value = f.fechaVencimiento
+        row.getCell(15).value = f.dias !== null ? f.dias : '';
+        row.getCell(16).value = f.fechaVencimiento
           ? this.formatDateShort(f.fechaVencimiento)
           : '';
-        row.getCell(18).value =
+        row.getCell(17).value =
           f.diasVencimiento !== null ? f.diasVencimiento : '';
         if (f.diasVencimiento !== null && f.diasVencimiento < 0) {
-          row.getCell(18).font = { color: { argb: 'FFDC2626' }, bold: true };
+          row.getCell(17).font = { color: { argb: 'FFDC2626' }, bold: true };
         }
         rowIndex++;
       });
@@ -956,7 +944,6 @@ export class ControlFacturacionIngresosComponent {
         { width: 12 },
         { width: 12 },
         { width: 12 },
-        { width: 10 },
         { width: 8 },
         { width: 12 },
         { width: 10 },
