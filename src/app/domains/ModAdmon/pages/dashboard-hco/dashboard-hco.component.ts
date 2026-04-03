@@ -580,7 +580,7 @@ export class DashboardHcoComponent {
           alignment: 'right',
         },
         {
-          text: 'GASTO TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
+          text: 'GASTO TOTAL ' + this.getMesActualNombre().toUpperCase(),
           style: 'tableHeader',
           fillColor: '#1A365D',
           alignment: 'right',
@@ -968,7 +968,7 @@ export class DashboardHcoComponent {
     const headers = [
       'CLASIFICACION DEL GASTO',
       'GASTO TOTAL ANTERIOR',
-      'GASTO TOTAL ' + this.getMesAnteriorNombre().toUpperCase(),
+      'GASTO TOTAL ' + this.getMesActualNombre().toUpperCase(),
       'GASTO TOTAL ACUMULADO',
     ];
     headers.forEach((header, index) => {
@@ -1702,13 +1702,9 @@ export class DashboardHcoComponent {
   }
 
   private prepareClasificacionEgresos(egresos: any[]): void {
-    const today = new Date();
-    let targetMonth = today.getMonth() - 1;
-    let targetYear = today.getFullYear();
-    if (targetMonth < 0) {
-      targetMonth = 11;
-      targetYear -= 1;
-    }
+    const endDateParsed = this.endDate ? new Date(this.endDate + 'T00:00:00') : new Date();
+    const targetMonth = endDateParsed.getMonth();
+    const targetYear = endDateParsed.getFullYear();
 
     const grouped = new Map<string, ClasificacionContable>();
 
@@ -2215,43 +2211,13 @@ export class DashboardHcoComponent {
     return anioData[tipo];
   }
 
-  // Obtener el nombre del mes actual
+  // Obtener el nombre del mes de endDate (es el "mes actual" para la tabla)
   public getMesActualNombre(): string {
     const monthNames = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
     ];
-    return monthNames[new Date().getMonth()];
-  }
-
-  // Obtener el nombre del mes anterior
-  public getMesAnteriorNombre(): string {
-    const monthNames = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-    let prevMonth = new Date().getMonth() - 1;
-    if (prevMonth < 0) prevMonth = 11;
-    return monthNames[prevMonth];
+    const d = this.endDate ? new Date(this.endDate + 'T00:00:00') : new Date();
+    return monthNames[d.getMonth()];
   }
 }
