@@ -103,7 +103,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   // Helper para formatear nombre de proveedor sin "undefined"
   private getProviderDisplayName(provider: any): string {
     if (!provider) return '';
-    return provider.company || provider.name || '';
+    return provider.name || provider.description || provider.nameContact || provider.company || '';
   }
 
   proveedorGridOptions: any = {
@@ -215,15 +215,24 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
               .map((row: any) => row.idTabla)
               .filter((id: any) => id && id !== 0 && id !== currentIdTabla)
           );
-          return {
-            options: (this.filteredProviders || [])
-              .filter((p: any) => !usedIds.has(p.id))
-              .map((p: any) => ({
+          const options = (this.filteredProviders || [])
+            .filter((p: any) => !usedIds.has(p.id))
+            .map((p: any) => {
+              const company = (p.name ?? p.company ?? '').trim();
+              const contact = (p.description ?? p.nameContact ?? '').trim();
+              const isCompany = !!company;
+              return {
                 id: p.id,
-                description: this.getProviderDisplayName(p)
-              }))
-              .sort((a: any, b: any) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }))
-          };
+                description: isCompany ? company : (contact || `Proveedor ${p.id}`),
+                group: isCompany ? 'Compañía' : 'Contacto',
+                sortKey: isCompany ? company : contact
+              };
+            })
+            .sort((a: any, b: any) => {
+              if (a.group !== b.group) return a.group === 'Compañía' ? -1 : 1;
+              return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
+            });
+          return { options };
         },
       
         valueFormatter: (params: any) => {

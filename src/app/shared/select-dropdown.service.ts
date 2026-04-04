@@ -5,6 +5,7 @@ export interface SelectOption {
   description: string;
   valueAddition?: string;
   valueAddition2?: string;
+  group?: string;
 }
 
 @Injectable({
@@ -188,8 +189,29 @@ export class SelectDropdownService {
       return;
     }
 
-    // Renderizar opciones
+    // Renderizar opciones (con headers de grupo si aplica)
+    const hasGroups = this.filteredOptions.some(o => o.group);
+    let lastGroup: string | undefined = undefined;
+
     this.filteredOptions.forEach(option => {
+      // Insertar header de grupo cuando cambia
+      if (hasGroups && option.group && option.group !== lastGroup) {
+        lastGroup = option.group;
+        const groupHeader = this.renderer.createElement('div');
+        this.renderer.setStyle(groupHeader, 'padding', '5px 12px');
+        this.renderer.setStyle(groupHeader, 'font-size', '11px');
+        this.renderer.setStyle(groupHeader, 'font-weight', '700');
+        this.renderer.setStyle(groupHeader, 'text-align', 'center');
+        this.renderer.setStyle(groupHeader, 'text-transform', 'uppercase');
+        this.renderer.setStyle(groupHeader, 'letter-spacing', '0.5px');
+        this.renderer.setStyle(groupHeader, 'color', '#fff');
+        this.renderer.setStyle(groupHeader, 'background', option.group === 'Compañía' ? '#1a5a9a' : '#5c6bc0');
+        this.renderer.setStyle(groupHeader, 'border-bottom', '1px solid rgba(255,255,255,0.2)');
+        const headerText = this.renderer.createText(option.group);
+        this.renderer.appendChild(groupHeader, headerText);
+        this.renderer.appendChild(optionsContainer, groupHeader);
+      }
+
       const optionElement = this.renderer.createElement('div');
       this.renderer.setStyle(optionElement, 'position', 'relative');
       this.renderer.setStyle(optionElement, 'padding', '8px 12px');
