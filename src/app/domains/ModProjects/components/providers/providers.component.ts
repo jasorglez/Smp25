@@ -55,6 +55,31 @@ export class ProvidersComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
 
+  private editableColumnOrder = ['name', 'nameShort', 'rfc', 'address', 'city', 'state', 'country', 'phone'];
+  private enterPressed: boolean = false;
+
+  public defaultColDef: ColDef = {
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
+  };
+
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const currentIndex = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (currentIndex !== -1 && currentIndex < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableColumnOrder[currentIndex + 1] });
+      }, 100);
+    }
+  }
+
   obtenerDatos() {
     this.providersService
       .getProviders(this.idRoot)
@@ -72,6 +97,9 @@ export class ProvidersComponent {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
+    rowClassRules: {
+      'new-row-highlight': (params: any) => !!params.data?.__isNew
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -113,7 +141,8 @@ export class ProvidersComponent {
           filterList: this.rowData.map(e => e.name),
           filterKey: 'name',
           placeholder: 'Nombre...',
-          minLength: 1
+          minLength: 1,
+          onEnterPressed: () => { this.enterPressed = true; }
         },
         valueSetter: (params) => {
           const duplicateExists = this.rowData.some((row, index) =>
@@ -143,7 +172,8 @@ export class ProvidersComponent {
           filterList: this.rowData.map(e => e.nameShort),
           filterKey: 'nameShort',
           placeholder: 'Nombre corto...',
-          minLength: 1
+          minLength: 1,
+          onEnterPressed: () => { this.enterPressed = true; }
         },
         valueSetter: (params) => {
           const duplicateExists = this.rowData.some((row, index) =>
@@ -173,7 +203,8 @@ export class ProvidersComponent {
           filterList: this.rowData.map(e => e.rfc),
           filterKey: 'rfc',
           placeholder: 'RFC...',
-          minLength: 1
+          minLength: 1,
+          onEnterPressed: () => { this.enterPressed = true; }
         },
         valueSetter: (params) => {
           const duplicateExists = this.rowData.some((row, index) =>

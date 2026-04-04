@@ -8,6 +8,8 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -247,6 +249,7 @@ export class DetalleItemsProveedorComponent {
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
   private ocandreqsService = inject(OcAndReqsService);
+  private providersService = inject(ProvidersService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -284,6 +287,7 @@ export class DetalleItemsProveedorComponent {
   emailInvalid: boolean = false;
 
   private readonly NEW_PROVIDER_SENTINEL = -1;
+  private rowsMissingProvider: any[] = []; // artículos sin asignación proveedor-material
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -364,7 +368,7 @@ export class DetalleItemsProveedorComponent {
     this.updateTotal();
   }
 
-  onProviderChange() {
+  async onProviderChange() {
     if (this.selectedProviderId === this.NEW_PROVIDER_SENTINEL) {
       this.selectedProviderId = null;
       this.selectedProviderObj = null;
@@ -372,8 +376,53 @@ export class DetalleItemsProveedorComponent {
       this.showNewProviderModal = true;
       return;
     }
+
     this.selectedProviderObj = this.providers.find(p => p.id === this.selectedProviderId) || null;
     this.hasUnsavedChanges = true;
+    this.rowsMissingProvider = [];
+
+    if (!this.selectedProviderId) return;
+
+    try {
+      // Obtener todas las asignaciones material-proveedor para este proveedor
+      const assignments: any = await lastValueFrom(
+        this.providersService.getProvidersXTable(this.selectedProviderId, 'MATERIAL')
+      );
+      const list: any[] = Array.isArray(assignments) ? assignments : [];
+
+      const missing: any[] = [];
+      this.rowData.forEach(row => {
+        const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
+        if (match) {
+          row.codigoExterno = match.campo11 || '';
+        } else {
+          row.codigoExterno = '';
+          if (row.idSupplie) missing.push(row);
+        }
+      });
+
+      this.gridApi?.setGridOption('rowData', this.rowData);
+
+      if (missing.length > 0) {
+        const nombres = missing.map((r: any) => `• ${r.articulo}`).join('\n');
+        const result = await alerts.confirmAlert(
+          'Sin Código Externo',
+          `Este proveedor no tiene Código Externo para:\n${nombres}\n\n¿Desea continuar con la cotización? Al guardar se creará la asignación automáticamente.`,
+          'warning',
+          'Sí, continuar'
+        );
+        if (result.isConfirmed) {
+          this.rowsMissingProvider = missing;
+        } else {
+          this.selectedProviderId = null;
+          this.selectedProviderObj = null;
+          this.rowData.forEach(row => { row.codigoExterno = ''; });
+          this.gridApi?.setGridOption('rowData', this.rowData);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error cargando códigos externos del proveedor:', error);
+    }
   }
 
   cancelNewProvider() {
@@ -549,6 +598,10 @@ export class DetalleItemsProveedorComponent {
 
     try {
       await this.saveCotizOrOC('COTIZ');
+      // Si hay artículos sin asignación proveedor-material, crearlas ahora
+      if (this.rowsMissingProvider.length > 0) {
+        await this.createMissingProviderAssignments();
+      }
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
       // Mutar el nodo padre directamente (NO setData: destruiría el detail y resetearía precios)
@@ -751,6 +804,35 @@ export class DetalleItemsProveedorComponent {
     } catch (err) {
       console.error('❌ Error cargando items guardados:', err);
     }
+  }
+
+  private async createMissingProviderAssignments(): Promise<void> {
+    for (const row of this.rowsMissingProvider) {
+      const payload = {
+        idTabla: this.selectedProviderId,
+        campo1: row.idSupplie,
+        campo2: 'NA',
+        campo3: 'NA',
+        campo4: 'NA',
+        campo5: 'NA',
+        campo6: 'NA',
+        campo7: false,
+        campo11: '',
+        campo9: 0,
+        campo10: 0,
+        type: 'MATERIAL',
+        vigente: true,
+        principal: false,
+        active: true
+      };
+      try {
+        await lastValueFrom(this.providersService.addProviderXTable(payload));
+        console.log(`✅ Asignación creada: Material ${row.idSupplie} → Proveedor ${this.selectedProviderId}`);
+      } catch (error) {
+        console.error(`❌ Error creando asignación para ${row.articulo}:`, error);
+      }
+    }
+    this.rowsMissingProvider = [];
   }
 
   revertChanges() {

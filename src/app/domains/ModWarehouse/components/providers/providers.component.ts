@@ -28,7 +28,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersPaymentsComponent } from './providers-payments.component';
 
-import { DetailCellRendererComponentContact } from './details/detail-cell-renderer-contact.component'; // This seems to be the one for contacts
+import { DetailCellRendererComponentContact } from './details/detalle-contactos.component';
 import { DetallesBancosxproveedorComponent } from './details/detalles-bancosxproveedor.component'; // This will be for banks
 import { DetailCellRendererComponentCuentas } from './details/detail-cell-renderer-cuentas.component';
 import { DetallesTiposProveedorComponent } from './details/detalles-tipos-proveedor.component';
@@ -51,7 +51,7 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
-//import { DetailCellRendererComponent_1 as DetailCellRendererComponent } from "./details/detail-cell-renderer-contact.component";  
+//import { DetailCellRendererComponent_1 as DetailCellRendererComponent } from "./details/detalle-contactos.component";
 
 @Component({
   selector: 'app-customers',
@@ -184,6 +184,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private lastEditedRowId: number | string | null = null;
   private isNewRowEditing: boolean = false; // Flag para saber si estamos en modo agregar fila
   private newRowEditingIndex: number = -1; // Índice de la fila nueva en edición
+  private enterPressedFlag: boolean = false; // Flag para detectar Enter desde editores custom (autocomplete)
 
   private isProcessingMouseOver = false; // Bandera para evitar eventos MouseOver en cascada
   private lastExpandedNode: any = null;
@@ -212,8 +213,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columnsddsd
-    // flex: 1, // Commented out to allow autosize to work properly
+    enableRowGroup: true,
+    cellClassRules: {
+      'new-row-cell': (params: any) => !!params.data?.__isNew
+    },
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressedFlag = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    }
   };
 
   currentIndex = 0;
@@ -239,6 +250,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
     headerHeight: 25,
     rowHeight: 20,
     rowBuffer: 20,
+    rowClassRules: {
+      'new-row-highlight': (params: any) => !!params.data?.__isNew
+    },
     masterDetail: true,
     isRowMaster: (dataItem) => {
       return true; // Todas las filas de proveedores son maestras
@@ -259,14 +273,36 @@ export class ProvidersComponent implements CanComponentDeactivate {
       // Guardar estado de columnas cuando se redimensiona
       this.saveColumnState();
     },
+    onCellEditingStarted: (event: any) => {
+      if (event.data?.__isNew) {
+        setTimeout(() => {
+          const cell = document.querySelector(
+            `.ag-row[row-index="${event.rowIndex}"] .ag-cell[col-id="${event.column.getColId()}"]`
+          ) as HTMLElement;
+          if (cell) {
+            cell.style.outline = '2px solid #e67e00';
+            const input = cell.querySelector('input') as HTMLElement;
+            if (input) input.style.backgroundColor = '#ffeaa0';
+          }
+        }, 30);
+      }
+    },
     onCellEditingStopped: (event: any) => {
-      console.log('🔚 Edición detenida - celda:', event.column.colId, 'valor:', event.value, 'event:', event.event?.key);
+      // Quitar amarillo de la celda que dejó de editarse
+      if (event.data?.__isNew) {
+        const cell = document.querySelector(
+          `.ag-row[row-index="${event.rowIndex}"] .ag-cell[col-id="${event.column.getColId()}"]`
+        ) as HTMLElement;
+        if (cell) {
+          cell.style.outline = '';
+          const input = cell.querySelector('input') as HTMLElement;
+          if (input) input.style.backgroundColor = '';
+        }
+      }
 
       // Verificar si hay error de validación en esta celda
       const cellKey = `${event.rowIndex}_${event.column.colId}`;
       if (this.cellValidationErrors.has(cellKey)) {
-        console.log('⛔ Hay error de validación, manteniendo en edición:', cellKey);
-        // Mantener la celda en modo edición
         setTimeout(() => {
           this.gridApi.startEditingCell({
             rowIndex: event.rowIndex,
@@ -284,27 +320,19 @@ export class ProvidersComponent implements CanComponentDeactivate {
         return;
       }
 
-      // Verificar si el editor tiene flag para prevenir avance (columnas con autocomplete)
-      const colDef = event.column.getColDef();
-      const isEnterKey = event.event?.key === 'Enter' || event.event?.keyCode === 13;
-      
-      // Solo prevenir avance si es un Enter real Y la columna tiene disableAdvanceOnEnter
-      if (colDef?.cellEditorParams?.disableAdvanceOnEnter && isEnterKey) {
-        console.log('⛔ Prevented advance due to disableAdvanceOnEnter');
-        return;
-      }
+      // Detectar Enter: desde editores nativos (event.event) o desde autocomplete (enterPressedFlag)
+      const isEnterKey = event.event?.key === 'Enter' || event.event?.keyCode === 13 || this.enterPressedFlag;
+      this.enterPressedFlag = false;
 
       // Avanzar a la siguiente columna editable si se presiona Enter
       if (isEnterKey) {
         const allColumns = this.gridApi.getColumnDefs();
         const currentIndex = allColumns.findIndex(col => 'field' in col && col.field === event.column.colId);
-        // Buscar siguiente columna editable, saltando las que no tienen field o están ocultas
         const nextEditableCol = allColumns.slice(currentIndex + 1).find(col =>
           'field' in col && col.field && col.editable && !('hide' in col && col.hide)
         );
 
         if (nextEditableCol && 'field' in nextEditableCol) {
-          console.log('➡️ Moviendo a siguiente columna:', nextEditableCol.field);
           setTimeout(() => {
             this.gridApi.startEditingCell({
               rowIndex: event.rowIndex,
@@ -312,7 +340,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
             });
           }, 100);
         } else {
-          // Ya no hay más columnas editables
           if (this.isNewRowEditing && event.data?.__isNew) {
             this.isNewRowEditing = false;
             this.newRowEditingIndex = -1;
@@ -434,7 +461,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
             filterKey: 'company',
             placeholder: 'Nombre Compañía',
             minLength: 1,
-            disableAdvanceOnEnter: true
+            onEnterPressed: () => { this.enterPressedFlag = true; }
           };
         },
         valueSetter: (params) => {
@@ -513,7 +540,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
             filterKey: 'nameContact',
             placeholder: 'Nombre Contacto',
             minLength: 1,
-            disableAdvanceOnEnter: true
+            onEnterPressed: () => { this.enterPressedFlag = true; }
           };
         },
 

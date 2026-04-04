@@ -103,9 +103,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   // Helper para formatear nombre de proveedor sin "undefined"
   private getProviderDisplayName(provider: any): string {
     if (!provider) return '';
-    const name = provider.name || '';
-    const description = provider.description || '';
-    return `${name} ${description}`.trim();
+    return provider.company || provider.name || '';
   }
 
   proveedorGridOptions: any = {
@@ -143,6 +141,18 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         },
+      },
+      {
+        field: 'active',
+        headerName: 'Activo',
+        editable: true,
+        width: 80,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        onCellValueChanged: (params: any) => {
+          params.data.__modified = true;
+          this.hasProveedorChanges = true;
+        }
       },
       {
         field: 'principal',
@@ -703,6 +713,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   async saveProveedores() {
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.save) {
+      // Confirmar cualquier celda que esté en edición antes de guardar
+      this.proveedorGridApi?.stopEditing();
       try {
         // Guardar los cambios
         await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
