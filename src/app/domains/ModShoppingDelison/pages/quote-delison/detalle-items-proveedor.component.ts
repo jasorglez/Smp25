@@ -9,6 +9,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { lastValueFrom } from 'rxjs';
@@ -250,6 +251,7 @@ export class DetalleItemsProveedorComponent {
   private signalsService = inject(SignalsService);
   private ocandreqsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
+  private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -589,6 +591,19 @@ export class DetalleItemsProveedorComponent {
       alert('No se puede guardar la cotización porque no tienes Proveedor Elegido.');
       return;
     }
+
+    // Validar que el proveedor no esté ya asignado en otro slot del mismo pedimento
+    const rowData = this.params.node.data;
+    const otherSlots = ['idProvider', 'idProvider2', 'idProvider3']
+      .filter(slot => slot !== this.providerField)
+      .map(slot => rowData[slot])
+      .filter(id => id && id > 0);
+
+    if (otherSlots.includes(this.selectedProviderId)) {
+      alert('❌ Este proveedor ya está asignado en otro slot (Proveedor 1, 2 o 3) del mismo pedimento. No se puede duplicar.');
+      return;
+    }
+
     if (this.savingChanges) return;
     this.gridApi?.stopEditing();
     this.savingChanges = true;
@@ -807,8 +822,10 @@ export class DetalleItemsProveedorComponent {
   }
 
   private async createMissingProviderAssignments(): Promise<void> {
+    const branchId = this.signalsService.getBranchSelectedBySidebar()() || 0;
+
     for (const row of this.rowsMissingProvider) {
-      const payload = {
+      const provPayload = {
         idTabla: this.selectedProviderId,
         campo1: row.idSupplie,
         campo2: 'NA',
@@ -819,15 +836,32 @@ export class DetalleItemsProveedorComponent {
         campo7: false,
         campo11: '',
         campo9: 0,
-        campo10: 0,
+        campo10: branchId,
         type: 'MATERIAL',
         vigente: true,
         principal: false,
         active: true
       };
       try {
-        await lastValueFrom(this.providersService.addProviderXTable(payload));
+        const created: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
         console.log(`✅ Asignación creada: Material ${row.idSupplie} → Proveedor ${this.selectedProviderId}`);
+
+        // Crear automáticamente el detalle de sucursal si hay sucursal seleccionada
+        if (branchId && created?.id) {
+          const sucursalPayload = {
+            idMaterialByProveedor: created.id,
+            idSucursal: branchId,
+            fechaAlta: new Date().toLocaleDateString('en-CA') + 'T00:00:00',
+            stockMinimo: 0,
+            resurtido: 0,
+            capacidadMaxAlmacen: 0,
+            tiempoDeEntrega: 0,
+            vigente: true,
+            active: true
+          };
+          await lastValueFrom(this.sucursalByMaterialProveedorService.addSucursalByMaterial(sucursalPayload));
+          console.log(`✅ Sucursal ${branchId} asignada al proveedor-material id=${created.id}`);
+        }
       } catch (error) {
         console.error(`❌ Error creando asignación para ${row.articulo}:`, error);
       }

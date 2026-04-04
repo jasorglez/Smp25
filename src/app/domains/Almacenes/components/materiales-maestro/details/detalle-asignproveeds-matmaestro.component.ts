@@ -674,6 +674,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     // Verificar si es el primer proveedor (tabla vacía)
     const isFirstProvider = this.proveedorRowData.length === 0;
 
+    const branchId   = this.signalsService.getBranchSelectedBySidebar()() || 0;
+    const branchName = this.signalsService.getBranchNameSelectedBySidebar()() || '';
+
     const tempId = `temp_proveedor_${Date.now()}`;
     const newProveedor = {
       id: tempId,
@@ -688,8 +691,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       campo6: '',              // Caducidad/Garantía
       campo7: false,           // Campo oculto
       campo9: 0,               // Precio unitario
-      campo10: 0,              // ID sucursal
-      branchName: '',          // Nombre de sucursal (para mostrar en combo)
+      campo10: branchId,       // ID sucursal (del sidebar)
+      branchName,              // Nombre de sucursal (del sidebar)
       type: 'MATERIAL',
       active: true,
       principal: isFirstProvider, // Si es el primero, marcar como principal

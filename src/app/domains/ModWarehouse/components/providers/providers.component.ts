@@ -223,6 +223,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
         setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
         return true;
       }
+      if (params.event.key === 'Tab') {
+        params.event.preventDefault();
+        return true;
+      }
       return false;
     }
   };
