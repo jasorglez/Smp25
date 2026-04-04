@@ -5,7 +5,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
 import { alerts } from 'app/helpers/alerts';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray, tap, Observable, from, mergeMap, Subscription } from 'rxjs';
+import { catchError, concat, concatMap, EMPTY, forkJoin, lastValueFrom, of, toArray, tap, Observable, from, mergeMap, Subscription } from 'rxjs';
+import { BranchsService } from 'app/services/branchs.service';
 import { map } from 'rxjs/operators';
 import { MatDialogModule } from '@angular/material/dialog';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
@@ -97,6 +98,7 @@ export class UsersComponent implements OnDestroy {
   private permitionsService   = inject(PermitionsService);
   private modalService        = inject(ModalService);
   private masterPermissions2Service = inject(MasterPermissions2Service);
+  private branchsService = inject(BranchsService);
   authService                 = inject(AuthService);
 
   /** UserSystem › Setup Usuarios (Departamento / Security) por fila de usuario. */
@@ -257,42 +259,99 @@ export class UsersComponent implements OnDestroy {
     });
   }
 
+  /**
+   * Conteo de filas Usersxpermission tipo branch por usuario, solo si idPermission es sucursal de `idCompany`
+   * (misma lógica que la tabla «Sucursales de: …» del detalle).
+   */
+  private buildBranchCountByUserForCompany(branchPermsRaw: any, branchesRaw: any): Map<number, number> {
+    const branchList = Array.isArray(branchesRaw)
+      ? branchesRaw
+      : Array.isArray(branchesRaw?.data)
+        ? branchesRaw.data
+        : [];
+    const branchIds = new Set(
+      branchList
+        .map((b: any) => Number(b?.id ?? b?.Id))
+        .filter((n: number) => Number.isFinite(n) && n > 0)
+    );
+    const perms = Array.isArray(branchPermsRaw) ? branchPermsRaw : [];
+    const countByUser = new Map<number, number>();
+    for (const p of perms) {
+      const uid = Number(p?.idUser ?? p?.IdUser);
+      const bid = Number(p?.idPermission ?? p?.IdPermission);
+      if (!Number.isFinite(uid) || uid <= 0 || !Number.isFinite(bid) || bid <= 0) {
+        continue;
+      }
+      if (!branchIds.has(bid)) {
+        continue;
+      }
+      const act = p?.active ?? p?.Active ?? 1;
+      if (act === 0 || act === false) {
+        continue;
+      }
+      countByUser.set(uid, (countByUser.get(uid) ?? 0) + 1);
+    }
+    return countByUser;
+  }
+
+  private applyUsersListResponse(response: any, securityCountByUser: Map<number, number> | null): void {
+    if (!response || response.code !== 200 || !response.data) {
+      console.error('Respuesta inválida del servidor');
+      return;
+    }
+    this.rowData = response.data.map((item: any) => {
+      const idNum = Number(item.id);
+      const uid = Number.isFinite(idNum) && idNum > 0 ? idNum : Number(item.id);
+      const n = Number(uid);
+      const idRolDisplay =
+        securityCountByUser != null && Number.isFinite(n) && n > 0
+          ? securityCountByUser.get(n) ?? 0
+          : Number(item.idRol ?? item.IdRol ?? 0) || 0;
+      return {
+        ...item,
+        id: Number.isFinite(idNum) && idNum > 0 ? idNum : item.id,
+        idRol: idRolDisplay,
+      };
+    });
+    this.rowData = this.rowData.filter((row) => row.active !== 0);
+    this.refreshUserSetupFlagsCache();
+  }
+
   obtenerDatos() {
     if (this.signalsService.getemailChoose() !== environment.root && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
       // Todavía no hay compañía/root seleccionado; evita request con id=null
       return;
     }
-    const observer = {
-      next: (response: any) => {
-        if (response && response.code === 200 && response.data) {
-          this.rowData = response.data.map((item: any) => {
-            const idNum = Number(item.id);
-            return {
-              ...item,
-              id: Number.isFinite(idNum) && idNum > 0 ? idNum : item.id,
-            };
-          });
-          this.rowData = this.rowData.filter(row => row.active !== 0);
-          this.refreshUserSetupFlagsCache();
-        } else {
-          console.error('Respuesta inválida del servidor');
-        }
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          'Get Registro en Usuarios',
-          'Menu Recursos Humanos Usuarios',
-          this.trackingService.getEmail()
-        );
-      },
-      error: (error) => {
-        console.error('Error al obtener los datos:', error);
-      }
-    };
+
+    const logFetch = () =>
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Get Registro en Usuarios',
+        'Menu Recursos Humanos Usuarios',
+        this.trackingService.getEmail()
+      );
 
     if (this.signalsService.getemailChoose() === environment.root) {
-      this.usersService.getAllUsers().subscribe(observer);
+      this.usersService.getAllUsers().subscribe({
+        next: (response: any) => {
+          this.applyUsersListResponse(response, null);
+          logFetch();
+        },
+        error: (error) => console.error('Error al obtener los datos:', error),
+      });
     } else {
-      this.usersService.getDataUsers(this.idRoot).subscribe(observer);
+      forkJoin({
+        users: this.usersService.getDataUsers(this.idRoot),
+        branches: this.branchsService.getBranches(this.idRoot).pipe(catchError(() => of([]))),
+        branchPerms: this.usersxrootService.getDataUsersxPermissions('branch').pipe(catchError(() => of([]))),
+      }).subscribe({
+        next: ({ users, branches, branchPerms }) => {
+          const countByUser = this.buildBranchCountByUserForCompany(branchPerms, branches);
+          this.applyUsersListResponse(users, countByUser);
+          logFetch();
+        },
+        error: (error) => console.error('Error al obtener los datos:', error),
+      });
     }
   }
 
@@ -332,7 +391,9 @@ export class UsersComponent implements OnDestroy {
       active: 1
     };
 
-    const addBranchPermission$ = this.usersxrootService.addUserxPermission(sucursal);
+    const addBranchPermission$ = this.usersxrootService.addUserxPermission(sucursal).pipe(
+      concatMap(() => this.usersService.updateActulizarSecurity(userId, 'SUMA'))
+    );
 
     const normalizeCrudArray = (data: any): any[] => {
       if (Array.isArray(data)) return data;
@@ -621,7 +682,7 @@ export class UsersComponent implements OnDestroy {
             index !== params.node.rowIndex && row.displayName === newValue
           );
           if (duplicateExists) {
-            alerts.basicAlert('Nombre duplicado', 'Ya existe un usuario con ese nombre.', 'error');
+            alerts.userBasicAlert('Nombre duplicado', 'Ya existe un usuario con ese nombre.', 'error');
             return false;
           }
           const empleadoInfo = this.empleadoCatalgos?.find(
@@ -629,10 +690,14 @@ export class UsersComponent implements OnDestroy {
           );
           if (empleadoInfo) {
             this.dataEmpleado = empleadoInfo;
-            params.data.idRol = 1;
+            if (params.data.__isNew) {
+              params.data.idRol = 1;
+            }
           } else {
             this.dataEmpleado = null;
-            params.data.idRol = 0;
+            if (params.data.__isNew) {
+              params.data.idRol = 0;
+            }
           }
           params.data[params.colDef.field] = newValue;
           return true;
@@ -653,13 +718,13 @@ export class UsersComponent implements OnDestroy {
               index !== params.node.rowIndex && row.email === params.newValue
             );
             if (duplicateExists) {
-              alerts.basicAlert('Añadir usuario', 'Ya existe un usuario con ese correo electrónico.', 'error');
+              alerts.userBasicAlert('Añadir usuario', 'Ya existe un usuario con ese correo electrónico.', 'error');
               return false;
             }
             params.data[params.colDef.field] = params.newValue;
             return true;
           } else {
-            alerts.basicAlert('Editar usuario', 'Correo electrónico no válido.', 'error');
+            alerts.userBasicAlert('Editar usuario', 'Correo electrónico no válido.', 'error');
             return false;
           }
         },
@@ -717,13 +782,13 @@ export class UsersComponent implements OnDestroy {
               if (file) {
                 // Validar tipo de archivo
                 if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  alerts.userBasicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
                   document.body.removeChild(input);
                   return;
                 }
                 // Validar tamaño (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
-                  alerts.basicAlert('Archivo muy grande', 'La imagen no puede superar 5MB', 'error');
+                  alerts.userBasicAlert('Archivo muy grande', 'La imagen no puede superar 5MB', 'error');
                   document.body.removeChild(input);
                   return;
                 }
@@ -738,11 +803,11 @@ export class UsersComponent implements OnDestroy {
                   this.notSavedChanges = true;
                   // Cerrar loading y mostrar éxito
                   alerts.closeLoading();
-                  alerts.basicAlert('Imagen subida', 'La imagen de perfil se subió correctamente', 'success');
+                  alerts.userBasicAlert('Imagen subida', 'La imagen de perfil se subió correctamente', 'success');
                 } catch (error) {
                   console.error('Error al subir imagen:', error);
                   alerts.closeLoading();
-                  alerts.basicAlert('Error', 'No se pudo subir la imagen a Firebase', 'error');
+                  alerts.userBasicAlert('Error', 'No se pudo subir la imagen a Firebase', 'error');
                 }
               }
               document.body.removeChild(input);
@@ -776,13 +841,13 @@ export class UsersComponent implements OnDestroy {
               if (file) {
                 // Validar tipo de archivo
                 if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-                  alerts.basicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
+                  alerts.userBasicAlert('Tipo no válido', 'Solo se permiten imágenes JPG o PNG', 'error');
                   document.body.removeChild(input);
                   return;
                 }
                 // Validar tamaño (max 2MB para firma)
                 if (file.size > 2 * 1024 * 1024) {
-                  alerts.basicAlert('Archivo muy grande', 'La firma no puede superar 2MB', 'error');
+                  alerts.userBasicAlert('Archivo muy grande', 'La firma no puede superar 2MB', 'error');
                   document.body.removeChild(input);
                   return;
                 }
@@ -797,11 +862,11 @@ export class UsersComponent implements OnDestroy {
                   this.notSavedChanges = true;
                   // Cerrar loading y mostrar éxito
                   alerts.closeLoading();
-                  alerts.basicAlert('Firma subida', 'La firma se subió correctamente', 'success');
+                  alerts.userBasicAlert('Firma subida', 'La firma se subió correctamente', 'success');
                 } catch (error) {
                   console.error('Error al subir firma:', error);
                   alerts.closeLoading();
-                  alerts.basicAlert('Error', 'No se pudo subir la firma a Firebase', 'error');
+                  alerts.userBasicAlert('Error', 'No se pudo subir la firma a Firebase', 'error');
                 }
               }
               document.body.removeChild(input);
@@ -911,7 +976,7 @@ export class UsersComponent implements OnDestroy {
       if (!invalidRow.displayName) missingFields.push('Nombre');
       if (!invalidRow.email) missingFields.push('Correo electrónico');
       if (!invalidRow.password) missingFields.push('Contraseña');
-      alerts.basicAlert('Validación - Nuevo Usuario', `Faltan campos obligatorios: ${missingFields.join(', ')}`, 'error');
+      alerts.userBasicAlert('Validación - Nuevo Usuario', `Faltan campos obligatorios: ${missingFields.join(', ')}`, 'error');
       return;
     }
 
@@ -921,7 +986,7 @@ export class UsersComponent implements OnDestroy {
       let missingFields = [];
       if (!invalidRow.displayName) missingFields.push('Nombre');
       if (!invalidRow.email) missingFields.push('Correo electrónico');
-      alerts.basicAlert('Validación - Usuario Modificado', `Faltan campos obligatorios: ${missingFields.join(', ')}`, 'error');
+      alerts.userBasicAlert('Validación - Usuario Modificado', `Faltan campos obligatorios: ${missingFields.join(', ')}`, 'error');
       return;
     }
 
@@ -972,7 +1037,11 @@ export class UsersComponent implements OnDestroy {
           active: 1
         };
 
-        const requests = [this.usersxrootService.addUserxPermission(formattedRoot)];
+        const requests = [
+          this.usersxrootService.addUserxPermission(formattedRoot).pipe(
+            concatMap(() => this.usersService.updateActulizarSecurity(userId, 'SUMA'))
+          ),
+        ];
 
         const branchPermissionFromEmployee = this.procesoData(userId);
         if (branchPermissionFromEmployee && branchPermissionFromEmployee !== EMPTY) {
@@ -980,13 +1049,17 @@ export class UsersComponent implements OnDestroy {
         } else {
           const branchId = this.signalsService.getBranchSelectedBySidebar()();
           if (branchId > 0) {
-            requests.push(this.usersxrootService.addUserxPermission({
-              idUser: userId,
-              idPermission: branchId,
-              type: 'branch',
-              description: 'SIN DESCRIPCION',
-              active: 1
-            }));
+            requests.push(
+              this.usersxrootService
+                .addUserxPermission({
+                  idUser: userId,
+                  idPermission: branchId,
+                  type: 'branch',
+                  description: 'SIN DESCRIPCION',
+                  active: 1,
+                })
+                .pipe(concatMap(() => this.usersService.updateActulizarSecurity(userId, 'SUMA')))
+            );
           }
         }
         return requests;
@@ -1024,7 +1097,7 @@ export class UsersComponent implements OnDestroy {
   async deleteUser() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.', 'error');
+      alerts.userBasicAlert('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.', 'error');
       return;
     }
 
@@ -1032,7 +1105,7 @@ export class UsersComponent implements OnDestroy {
     const id = selectedData.id;
 
     if (selectedData.isRoot === 1 || selectedData.isRoot === true) {
-      alerts.basicAlert('Eliminar entrada', 'No se puede eliminar un usuario administrador', 'error');
+      alerts.userBasicAlert('Eliminar entrada', 'No se puede eliminar un usuario administrador', 'error');
       return;
     }
 
@@ -1043,7 +1116,7 @@ export class UsersComponent implements OnDestroy {
           selectedData.active = 0;
           this.usersService.deleteUser(id, selectedData).pipe(
             catchError((error) => {
-              alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
+              alerts.userBasicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
               return EMPTY;
             })
           ).subscribe(() => {
@@ -1079,7 +1152,7 @@ export class UsersComponent implements OnDestroy {
     }
     if (this.signalsService.getemailChoose() !== environment.root) {
       if (!this.authService.hasUsersMenuSecurityAccess()) {
-        alerts.basicAlert(
+        alerts.userBasicAlert(
           'Sin acceso',
           'No tienes el permiso «Security» en Setup Usuarios.',
           'info'
@@ -1136,7 +1209,7 @@ export class UsersComponent implements OnDestroy {
   togglePermissions() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Permisos', 'Por favor, seleccione un usuario para ver sus permisos.', 'warning');
+      alerts.userBasicAlert('Permisos', 'Por favor, seleccione un usuario para ver sus permisos.', 'warning');
       return;
     }
 
@@ -1147,7 +1220,7 @@ export class UsersComponent implements OnDestroy {
     if (!isCurrentlyExpanded) {
       if (this.signalsService.getemailChoose() !== environment.root) {
         if (!this.authService.hasUsersMenuSecurityAccess()) {
-          alerts.basicAlert(
+          alerts.userBasicAlert(
             'Sin acceso',
             'No tienes el permiso «Security» en Setup Usuarios.',
             'info'
@@ -1165,7 +1238,7 @@ export class UsersComponent implements OnDestroy {
     } else {
       const uid = Number(selectedData?.id);
       if (!Number.isFinite(uid) || uid <= 0) {
-        alerts.basicAlert(
+        alerts.userBasicAlert(
           'Security',
           'Este usuario aún no tiene ID numérico (p. ej. fila nueva sin guardar). Guarde antes de abrir permisos por sucursal.',
           'warning'
@@ -1200,7 +1273,7 @@ export class UsersComponent implements OnDestroy {
           selectedData.detailType = null;
           this.gridApi.setFilterModel(null);
           this.gridApi.onFilterChanged();
-          alerts.basicAlert(
+          alerts.userBasicAlert(
             'Security',
             'No se pudo abrir el detalle (filtro interno). Los filtros se limpiaron; pulse de nuevo en Security o recargue la lista de usuarios.',
             'warning'
@@ -1226,7 +1299,7 @@ export class UsersComponent implements OnDestroy {
 
     const uid = Number(data?.id);
     if (!Number.isFinite(uid) || uid <= 0) {
-      alerts.basicAlert(
+      alerts.userBasicAlert(
         'Empresas',
         'Este usuario aún no tiene ID numérico. Guarde antes de abrir el detalle.',
         'warning'
@@ -1257,7 +1330,7 @@ export class UsersComponent implements OnDestroy {
         data.detailType = null;
         this.gridApi.setFilterModel(null);
         this.gridApi.onFilterChanged();
-        alerts.basicAlert(
+        alerts.userBasicAlert(
           'Empresas',
           'No se pudo abrir el detalle. Los filtros se limpiaron; inténtelo de nuevo.',
           'warning'
@@ -1287,7 +1360,7 @@ export class UsersComponent implements OnDestroy {
           const perms = Array.isArray(branchPerms) ? branchPerms : [];
           idBranch = perms.length > 0 ? (perms[0].idPermission ?? perms[0].IdPermission) : 0;
           if (!idBranch) {
-            alerts.basicAlert('Permisos maestros', 'El usuario no tiene sucursales asignadas. Asigne sucursales y departamentos primero.', 'warning');
+            alerts.userBasicAlert('Permisos maestros', 'El usuario no tiene sucursales asignadas. Asigne sucursales y departamentos primero.', 'warning');
             return;
           }
           this.continuarAbrirPermisos(idUser, idBranch, userName);
@@ -1307,7 +1380,7 @@ export class UsersComponent implements OnDestroy {
       const idRole = first?.idRole ?? first?.IdRole ?? 0;
       const idPosicion = first?.idPosicion ?? first?.IdPosicion ?? 0;
       if (!idRole || !idPosicion) {
-        alerts.basicAlert('Permisos maestros', 'El usuario tiene sucursales pero no tiene departamentos/roles asignados. Expanda una sucursal y configure departamentos primero.', 'warning');
+        alerts.userBasicAlert('Permisos maestros', 'El usuario tiene sucursales pero no tiene departamentos/roles asignados. Expanda una sucursal y configure departamentos primero.', 'warning');
         return;
       }
       this.modalService.openPermissions({

@@ -266,6 +266,39 @@ body {
   padding: 0.55rem 0.9rem !important;
 }
 
+.users-basic-btn {
+  border-radius: 12px !important;
+  padding: 0.55rem 1.2rem !important;
+  font-size: 0.92rem !important;
+}
+
+/* Notificación centrada para toggle de switches maestros de permisos */
+.users-toggle-notice-popup {
+  width: min(440px, 92vw) !important;
+  padding: 1.4rem 1.5rem 1rem !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32) !important;
+  text-align: center !important;
+}
+
+.users-toggle-notice-title {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 0.35rem !important;
+}
+
+.users-toggle-notice-text {
+  font-size: 0.88rem !important;
+  color: #4b5563 !important;
+  line-height: 1.5 !important;
+}
+
+.users-toggle-notice-bar {
+  border-radius: 0 0 18px 18px !important;
+  height: 4px !important;
+  background: rgba(37, 99, 235, 0.45) !important;
+}
+
 /* Material tooltips por encima del sidebar (z-index: 1030) */
 .cdk-overlay-container {
   z-index: 1100 !important;

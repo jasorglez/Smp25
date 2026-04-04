@@ -59,7 +59,7 @@ export class AuthService {
 
   /** Cierre por inactividad (sin eventos de usuario en el documento). */
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+  private readonly IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
   private readonly ACTIVITY_THROTTLE_MS = 800;
   private lastActivityThrottleAt = 0;
   private idleListenersAttached = false;
