@@ -1501,6 +1501,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         for (const item of newItems) {
           const newReqData = {
             id: 0, // Siempre 0 para nuevos registros
+            idRoot: this.idRoot,
             folio: item.requisitionNumber || '',
             typeReference: 'branch',
             idReq: 0,

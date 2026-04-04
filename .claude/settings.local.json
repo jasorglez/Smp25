@@ -121,7 +121,8 @@
       "Bash(find \"/c/Developer/Visual Studio 22/c#/MicroServicios/MicroserviciosSmp\" -name \"Timeinactive*\" -o -name \"TimeInactive*\" 2>/dev/null | grep -v bin | grep -v obj)",
       "mcp__b2-mssql-warehouses__execute_sql",
       "mcp__b2-mssql-warehouses__get_table_schema",
-      "mcp__b2-mssql-warehouses__list_databases"
+      "mcp__b2-mssql-warehouses__list_databases",
+      "mcp__b2-mssql-administration__execute_sql"
     ],
     "deny": [],
     "ask": []

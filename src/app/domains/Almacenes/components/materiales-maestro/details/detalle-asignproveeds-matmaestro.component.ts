@@ -103,9 +103,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   // Helper para formatear nombre de proveedor sin "undefined"
   private getProviderDisplayName(provider: any): string {
     if (!provider) return '';
-    const name = provider.name || '';
-    const description = provider.description || '';
-    return `${name} ${description}`.trim();
+    return provider.name || provider.description || provider.nameContact || provider.company || '';
   }
 
   proveedorGridOptions: any = {
@@ -143,6 +141,18 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         },
+      },
+      {
+        field: 'active',
+        headerName: 'Activo',
+        editable: true,
+        width: 80,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        onCellValueChanged: (params: any) => {
+          params.data.__modified = true;
+          this.hasProveedorChanges = true;
+        }
       },
       {
         field: 'principal',
@@ -205,15 +215,24 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
               .map((row: any) => row.idTabla)
               .filter((id: any) => id && id !== 0 && id !== currentIdTabla)
           );
-          return {
-            options: (this.filteredProviders || [])
-              .filter((p: any) => !usedIds.has(p.id))
-              .map((p: any) => ({
+          const options = (this.filteredProviders || [])
+            .filter((p: any) => !usedIds.has(p.id))
+            .map((p: any) => {
+              const company = (p.name ?? p.company ?? '').trim();
+              const contact = (p.description ?? p.nameContact ?? '').trim();
+              const isCompany = !!company;
+              return {
                 id: p.id,
-                description: this.getProviderDisplayName(p)
-              }))
-              .sort((a: any, b: any) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }))
-          };
+                description: isCompany ? company : (contact || `Proveedor ${p.id}`),
+                group: isCompany ? 'Compañía' : 'Contacto',
+                sortKey: isCompany ? company : contact
+              };
+            })
+            .sort((a: any, b: any) => {
+              if (a.group !== b.group) return a.group === 'Compañía' ? -1 : 1;
+              return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
+            });
+          return { options };
         },
       
         valueFormatter: (params: any) => {
@@ -664,6 +683,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     // Verificar si es el primer proveedor (tabla vacía)
     const isFirstProvider = this.proveedorRowData.length === 0;
 
+    const branchId   = this.signalsService.getBranchSelectedBySidebar()() || 0;
+    const branchName = this.signalsService.getBranchNameSelectedBySidebar()() || '';
+
     const tempId = `temp_proveedor_${Date.now()}`;
     const newProveedor = {
       id: tempId,
@@ -678,8 +700,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       campo6: '',              // Caducidad/Garantía
       campo7: false,           // Campo oculto
       campo9: 0,               // Precio unitario
-      campo10: 0,              // ID sucursal
-      branchName: '',          // Nombre de sucursal (para mostrar en combo)
+      campo10: branchId,       // ID sucursal (del sidebar)
+      branchName,              // Nombre de sucursal (del sidebar)
       type: 'MATERIAL',
       active: true,
       principal: isFirstProvider, // Si es el primero, marcar como principal
@@ -703,6 +725,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   async saveProveedores() {
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.save) {
+      // Confirmar cualquier celda que esté en edición antes de guardar
+      this.proveedorGridApi?.stopEditing();
       try {
         // Guardar los cambios
         await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');

@@ -258,9 +258,11 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
   }
 
   addSucursal() {
+    const branchId = this.signalsService.getBranchSelectedBySidebar()() || 0;
+
     const newRow = {
       id: `temp_${Date.now()}`,
-      idSucursal: '',
+      idSucursal: branchId,
       fechaAlta: new Date(),
       stockMinimo: 0,
       resurtido: 0,

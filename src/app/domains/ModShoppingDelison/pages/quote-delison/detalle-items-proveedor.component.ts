@@ -8,6 +8,9 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -247,6 +250,8 @@ export class DetalleItemsProveedorComponent {
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
   private ocandreqsService = inject(OcAndReqsService);
+  private providersService = inject(ProvidersService);
+  private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -284,6 +289,7 @@ export class DetalleItemsProveedorComponent {
   emailInvalid: boolean = false;
 
   private readonly NEW_PROVIDER_SENTINEL = -1;
+  private rowsMissingProvider: any[] = []; // artículos sin asignación proveedor-material
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -364,7 +370,7 @@ export class DetalleItemsProveedorComponent {
     this.updateTotal();
   }
 
-  onProviderChange() {
+  async onProviderChange() {
     if (this.selectedProviderId === this.NEW_PROVIDER_SENTINEL) {
       this.selectedProviderId = null;
       this.selectedProviderObj = null;
@@ -372,8 +378,53 @@ export class DetalleItemsProveedorComponent {
       this.showNewProviderModal = true;
       return;
     }
+
     this.selectedProviderObj = this.providers.find(p => p.id === this.selectedProviderId) || null;
     this.hasUnsavedChanges = true;
+    this.rowsMissingProvider = [];
+
+    if (!this.selectedProviderId) return;
+
+    try {
+      // Obtener todas las asignaciones material-proveedor para este proveedor
+      const assignments: any = await lastValueFrom(
+        this.providersService.getProvidersXTable(this.selectedProviderId, 'MATERIAL')
+      );
+      const list: any[] = Array.isArray(assignments) ? assignments : [];
+
+      const missing: any[] = [];
+      this.rowData.forEach(row => {
+        const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
+        if (match) {
+          row.codigoExterno = match.campo11 || '';
+        } else {
+          row.codigoExterno = '';
+          if (row.idSupplie) missing.push(row);
+        }
+      });
+
+      this.gridApi?.setGridOption('rowData', this.rowData);
+
+      if (missing.length > 0) {
+        const nombres = missing.map((r: any) => `• ${r.articulo}`).join('\n');
+        const result = await alerts.confirmAlert(
+          'Sin Código Externo',
+          `Este proveedor no tiene Código Externo para:\n${nombres}\n\n¿Desea continuar con la cotización? Al guardar se creará la asignación automáticamente.`,
+          'warning',
+          'Sí, continuar'
+        );
+        if (result.isConfirmed) {
+          this.rowsMissingProvider = missing;
+        } else {
+          this.selectedProviderId = null;
+          this.selectedProviderObj = null;
+          this.rowData.forEach(row => { row.codigoExterno = ''; });
+          this.gridApi?.setGridOption('rowData', this.rowData);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error cargando códigos externos del proveedor:', error);
+    }
   }
 
   cancelNewProvider() {
@@ -540,6 +591,19 @@ export class DetalleItemsProveedorComponent {
       alert('No se puede guardar la cotización porque no tienes Proveedor Elegido.');
       return;
     }
+
+    // Validar que el proveedor no esté ya asignado en otro slot del mismo pedimento
+    const rowData = this.params.node.data;
+    const otherSlots = ['idProvider', 'idProvider2', 'idProvider3']
+      .filter(slot => slot !== this.providerField)
+      .map(slot => rowData[slot])
+      .filter(id => id && id > 0);
+
+    if (otherSlots.includes(this.selectedProviderId)) {
+      alert('❌ Este proveedor ya está asignado en otro slot (Proveedor 1, 2 o 3) del mismo pedimento. No se puede duplicar.');
+      return;
+    }
+
     if (this.savingChanges) return;
     this.gridApi?.stopEditing();
     this.savingChanges = true;
@@ -549,6 +613,10 @@ export class DetalleItemsProveedorComponent {
 
     try {
       await this.saveCotizOrOC('COTIZ');
+      // Si hay artículos sin asignación proveedor-material, crearlas ahora
+      if (this.rowsMissingProvider.length > 0) {
+        await this.createMissingProviderAssignments();
+      }
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
       // Mutar el nodo padre directamente (NO setData: destruiría el detail y resetearía precios)
@@ -751,6 +819,54 @@ export class DetalleItemsProveedorComponent {
     } catch (err) {
       console.error('❌ Error cargando items guardados:', err);
     }
+  }
+
+  private async createMissingProviderAssignments(): Promise<void> {
+    const branchId = this.signalsService.getBranchSelectedBySidebar()() || 0;
+
+    for (const row of this.rowsMissingProvider) {
+      const provPayload = {
+        idTabla: this.selectedProviderId,
+        campo1: row.idSupplie,
+        campo2: 'NA',
+        campo3: 'NA',
+        campo4: 'NA',
+        campo5: 'NA',
+        campo6: 'NA',
+        campo7: false,
+        campo11: '',
+        campo9: 0,
+        campo10: branchId,
+        type: 'MATERIAL',
+        vigente: true,
+        principal: false,
+        active: true
+      };
+      try {
+        const created: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
+        console.log(`✅ Asignación creada: Material ${row.idSupplie} → Proveedor ${this.selectedProviderId}`);
+
+        // Crear automáticamente el detalle de sucursal si hay sucursal seleccionada
+        if (branchId && created?.id) {
+          const sucursalPayload = {
+            idMaterialByProveedor: created.id,
+            idSucursal: branchId,
+            fechaAlta: new Date().toLocaleDateString('en-CA') + 'T00:00:00',
+            stockMinimo: 0,
+            resurtido: 0,
+            capacidadMaxAlmacen: 0,
+            tiempoDeEntrega: 0,
+            vigente: true,
+            active: true
+          };
+          await lastValueFrom(this.sucursalByMaterialProveedorService.addSucursalByMaterial(sucursalPayload));
+          console.log(`✅ Sucursal ${branchId} asignada al proveedor-material id=${created.id}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error creando asignación para ${row.articulo}:`, error);
+      }
+    }
+    this.rowsMissingProvider = [];
   }
 
   revertChanges() {

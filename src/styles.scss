@@ -32,6 +32,11 @@ body {
   border: 2px solid #e67e00 !important;
 }
 
+.ag-theme-quartz .ag-cell.new-row-cell.ag-cell-inline-editing {
+  background-color: #ffeaa0 !important;
+  border: 2px solid #e67e00 !important;
+}
+
 // DHTMLX Gantt CSS
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 
