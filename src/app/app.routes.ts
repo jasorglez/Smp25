@@ -1127,6 +1127,21 @@ export const routes: Routes = [
           },
 
           {
+            path: 'expend-rapido',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/expenditure/egreso-rapido.component'
+              ).then((e) => e.EgresoRapidoComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Egreso Rápido',
+                category: 'Administration'
+              }
+            }
+          },
+
+          {
             path: 'stakeholder-expend',
             loadComponent: () =>
               import(
