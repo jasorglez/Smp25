@@ -67,7 +67,8 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
           if (this.params.stopEditing) {
             this.params.stopEditing(true);
           }
-        }
+        },
+        params.showAbbreviation !== false // default true, false solo si se pasa explícitamente
       );
 
       // NO cerrar el dropdown en ngOnDestroy porque AG Grid destruye el componente inmediatamente

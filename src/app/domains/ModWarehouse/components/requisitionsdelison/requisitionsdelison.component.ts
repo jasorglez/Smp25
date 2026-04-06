@@ -306,7 +306,8 @@ export class RequisitionsDelisonComponent implements OnInit {
           conditions: req.conditions || '',
           close: req.close || false,
           active: req.active || true,
-          idReference: req.idReference
+          idReference: req.idReference,
+          locked: req.locked || false
         };
       });
 

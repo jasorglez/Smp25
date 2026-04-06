@@ -24,6 +24,7 @@ export class SelectDropdownService {
   private filteredOptions: SelectOption[] = [];
   private selectedValue: any = null;
   private searchText: string = '';
+  private showAbbreviation: boolean = true;
 
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
@@ -34,7 +35,8 @@ export class SelectDropdownService {
     options: SelectOption[],
     currentValue: any,
     onSelect: (value: any) => void,
-    onCancel: () => void
+    onCancel: () => void,
+    showAbbreviation: boolean = true
   ): void {
     // Cerrar dropdown anterior si existe (sin limpiar callbacks)
     if (this.dropdownElement) {
@@ -58,6 +60,7 @@ export class SelectDropdownService {
     this.onSelectCallback = onSelect;
     this.onCancelCallback = onCancel;
     this.searchText = '';
+    this.showAbbreviation = showAbbreviation;
 
     // Crear dropdown
     this.createDropdownInBody(cellRect);
@@ -406,7 +409,7 @@ export class SelectDropdownService {
     this.renderer.setStyle(descIcon, 'font-size', '12px');
     this.renderer.appendChild(descLabel, descIcon);
 
-    const descLabelText = this.renderer.createText('Descripción:');
+    const descLabelText = this.renderer.createText('Num. Material:');
     this.renderer.appendChild(descLabel, descLabelText);
     this.renderer.appendChild(descRow, descLabel);
 
@@ -454,7 +457,9 @@ export class SelectDropdownService {
     this.renderer.appendChild(abbrValue, abbrValueText);
     this.renderer.appendChild(abbrRow, abbrValue);
 
-    this.renderer.appendChild(body, abbrRow);
+    if (this.showAbbreviation) {
+      this.renderer.appendChild(body, abbrRow);
+    }
 
     this.renderer.appendChild(content, body);
     this.renderer.appendChild(this.tooltipElement, content);

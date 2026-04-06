@@ -36,7 +36,8 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
           <i class="bi bi-arrow-counterclockwise"></i> Deshacer
         </button>
         
-        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!hasRowSelected" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'delete')">
+        <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()" [disabled]="!hasRowSelected || hasProviderAssigned" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'delete')"
+          [title]="hasProviderAssigned ? 'No se puede eliminar: la cotización ya tiene proveedor asignado' : ''">
           <i class="bi bi-trash"></i> Eliminar
         </button>
         
@@ -187,6 +188,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   isAddingNewItem: boolean = false;
   hasPedimentoSelection: boolean = false;
   hasRowSelected: boolean = false;
+  hasProviderAssigned: boolean = false; // true = cotización con proveedor asignado → no eliminar
   materials: any[] = [];
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
@@ -224,6 +226,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.context = params.context;
     this.requisitionData = params.data;
     this.detailType = params.data.detailType || 'items';
+    this.hasProviderAssigned = params.data?.locked === true;
 
     if (this.detailType === 'items') {
       this.loadMaterials();
@@ -303,6 +306,14 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
         // ❌ NO actualizar el contador - ya viene del servidor con countrow
         // El contador articlesCount ya está correcto desde loadRequisitions()
+
+        // ✅ Verificar estado locked fresco desde el servidor
+        this.ocAndReqsService.getDetailedReq(this.requisitionId).subscribe({
+          next: (req: any) => {
+            this.hasProviderAssigned = req?.locked === true;
+          },
+          error: () => {} // silencioso
+        });
       },
       error: (error) => {
         console.error('❌ Error al cargar items:', error);
@@ -472,6 +483,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           });
 
           return {
+            showAbbreviation: false,
             options: availableMaterials.map(m => ({
               id: m.id,
               description: m.description,

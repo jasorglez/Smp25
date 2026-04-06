@@ -624,6 +624,11 @@ export class DetalleItemsProveedorComponent {
       this.params.node.data[this.providerField] = this.selectedProviderId;
       this.params.node.data['name_' + this.providerField] = providerName;
       this.params.api?.refreshCells({ rowNodes: [this.params.node], columns: [this.providerField], force: true });
+      // Bloquear la requisición en el servidor para evitar eliminación de artículos
+      const requisitionId = this.params.data.requisitionId;
+      if (requisitionId) {
+        this.ocandreqsService.lockRequisition(requisitionId, true).subscribe();
+      }
       const msg = isEditing
         ? `✅ Cotización editada: ${this.savedCotizFolio}`
         : `✅ Cotización creada: ${this.savedCotizFolio}`;
