@@ -23,7 +23,9 @@ import { lastValueFrom } from 'rxjs';
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
     <!-- Concepts Grid View -->
-    <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
+    <div class="detail-grid-container" *ngIf="detailType === 'concepts'"
+      (mouseenter)="onGridInteractionStart()"
+      (mouseleave)="onGridInteractionEnd()">
       <div class="detail-actions d-flex justify-content-between align-items-center mb-2">
         <div class="totals-display">
           <span class="badge bg-secondary me-2">Subtotal: {{ subtotal | currency:'MXN' }}</span>
@@ -61,6 +63,8 @@ import { lastValueFrom } from 'rxjs';
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
+        (cellEditingStarted)="onCellEditingStarted()"
+        (cellEditingStopped)="onCellEditingStopped()"
         [components]="components"
         style="height: 480px; width: 100%;">
       </ag-grid-angular>
@@ -208,6 +212,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private autoRefreshHandle: ReturnType<typeof setInterval> | null = null;
   private readonly autoRefreshMs: number = 5000;
   private lastServerFingerprint: string = '';
+  private isInteractingWithGrid: boolean = false;
+  private isEditingGrid: boolean = false;
 
   // Provider Modal properties
   showProviderModal: boolean = false;
@@ -426,6 +432,22 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+  }
+
+  onGridInteractionStart() {
+    this.isInteractingWithGrid = true;
+  }
+
+  onGridInteractionEnd() {
+    this.isInteractingWithGrid = false;
+  }
+
+  onCellEditingStarted() {
+    this.isEditingGrid = true;
+  }
+
+  onCellEditingStopped() {
+    this.isEditingGrid = false;
   }
 
   // Cache for column definitions
@@ -1022,7 +1044,13 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     this.stopAutoRefresh();
 
     this.autoRefreshHandle = setInterval(() => {
-      if (this.detailType !== 'concepts' || this.showProviderModal || this.hasUnsavedChanges) {
+      if (
+        this.detailType !== 'concepts' ||
+        this.showProviderModal ||
+        this.hasUnsavedChanges ||
+        this.isInteractingWithGrid ||
+        this.isEditingGrid
+      ) {
         return;
       }
 
