@@ -36,12 +36,12 @@
 
             <form [formGroup]="solicitudForm">
               <div class="mb-3">
-                <label class="form-label fw-semibold">Cuenta *</label>
+                <label class="form-label fw-semibold">Subcuenta *</label>
                 <select class="form-select" formControlName="id_cuenta">
-                  <option [value]="null" disabled>Seleccionar cuenta...</option>
-                  <option *ngFor="let c of cuentasOptions" [value]="c.id">
-                    {{ c.codigo }} — {{ c.nombre }}
-                  </option>
+                  <option [value]="null" disabled>Seleccionar subcuenta...</option>
+                  <optgroup *ngFor="let c of cuentasHoja" [label]="getCuentaPadre(c) || c.codigo">
+                    <option [value]="c.id">{{ c.codigo }} — {{ c.nombre }}</option>
+                  </optgroup>
                 </select>
               </div>
 

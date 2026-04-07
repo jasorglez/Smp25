@@ -2,7 +2,7 @@ import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-community';
+import { ColDef, GridReadyEvent, ICellRendererParams } from 'ag-grid-community';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { PresupuestoService } from 'app/services/presupuesto.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
@@ -41,8 +41,6 @@ export class IncrementosComponent implements OnInit {
   selectedRow: IPresupuestoIncremento | null = null;
 
   solicitudForm!: FormGroup;
-  private gridApi!: GridApi;
-
   public getRowStyle = (p: any) => {
     if (p.data?.estado === 'pendiente') return { background: '#fff3cd' };
     if (p.data?.estado === 'rechazado') return { background: '#f8d7da' };
@@ -131,8 +129,15 @@ export class IncrementosComponent implements OnInit {
       });
   }
 
-  get cuentasOptions(): ICuentaContable[] {
-    return this.cuentasFlat;
+  get cuentasHoja(): ICuentaContable[] {
+    return this.cuentasFlat.filter(c => c.esHoja);
+  }
+
+  getCuentaPadre(cuenta: ICuentaContable): string {
+    const parent = this.cuentasFlat.find(
+      c => c.nivel === cuenta.nivel - 1 && cuenta.codigo.startsWith(c.codigo)
+    );
+    return parent?.nombre ?? '';
   }
 
   async solicitarIncremento(): Promise<void> {
@@ -151,7 +156,7 @@ export class IncrementosComponent implements OnInit {
     this.procesando = true;
     this.presupuestoService.solicitarIncremento({
       id_presupuesto: this.presupuestoVigente!.id,
-      id_cuenta: val.id_cuenta,
+      id_cuenta: Number(val.id_cuenta),
       monto_solicitado: val.monto_solicitado,
       motivo: val.motivo,
       estado: 'pendiente',
@@ -204,7 +209,7 @@ export class IncrementosComponent implements OnInit {
       });
   }
 
-  onGridReady(p: GridReadyEvent): void { this.gridApi = p.api; }
+  onGridReady(_p: GridReadyEvent): void { }
 
   onSelectionChanged(e: any): void {
     const nodes = e.api.getSelectedNodes();

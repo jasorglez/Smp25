@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, effect } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -18,7 +19,12 @@ import {
   MESES
 } from 'app/interface/ipresupuesto';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
-import { catchError, EMPTY, lastValueFrom, concat, toArray } from 'rxjs';
+import { catchError, EMPTY, lastValueFrom, concat, toArray, forkJoin, of } from 'rxjs';
+import { map } from 'rxjs/operators';
+import Swal from 'sweetalert2';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { PdfWorkerService } from 'app/services/pdf-worker.service';
 
 @Component({
   selector: 'app-presupuesto',
@@ -29,12 +35,16 @@ import { catchError, EMPTY, lastValueFrom, concat, toArray } from 'rxjs';
 })
 export class PresupuestoComponent implements OnInit {
 
+  private router = inject(Router);
   private presupuestoService = inject(PresupuestoService);
   private cuentasService = inject(CuentasContablesService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private modalService = inject(NgbModal);
   private fb = inject(FormBuilder);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
+  private pdfWorkerService = inject(PdfWorkerService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   public MESES = MESES;
@@ -60,6 +70,14 @@ export class PresupuestoComponent implements OnInit {
   loading = false;
   loadingLineas = false;
   showMeses = false;
+  generandoPDF = false;
+
+  // Diff entre versiones
+  showDiff = false;
+  loadingDiff = false;
+  versionPrevia: IPresupuesto | null = null;
+  lineasPrevias: IPresupuestoLinea[] = [];
+  soloMostrarCambios = true;
 
   // Formulario para nuevo presupuesto
   presupuestoForm!: FormGroup;
@@ -277,7 +295,10 @@ export class PresupuestoComponent implements OnInit {
   selectPresupuesto(p: IPresupuesto): void {
     this.selectedPresupuesto = p;
     this.showMeses = false;
+    this.showDiff = false;
     this.selectedLinea = null;
+    this.lineasPrevias = [];
+    this.versionPrevia = null;
     this.loadLineas(p.id);
   }
 
@@ -289,7 +310,35 @@ export class PresupuestoComponent implements OnInit {
         this.lineas = data;
         this.hasUnsavedLineas = false;
         this.loadingLineas = false;
+        if (this.selectedPresupuesto?.vigente) {
+          this.checkSaldoAgotado(data);
+        }
       });
+  }
+
+  private checkSaldoAgotado(lineas: IPresupuestoLinea[]): void {
+    const conSaldo = lineas.filter(l => l.saldo_disponible !== undefined && l.monto > 0);
+    if (!conSaldo.length) return;
+
+    const hayAgotadas = conSaldo.some(l => (l.saldo_disponible ?? 0) <= 0);
+    const totalSaldo  = conSaldo.reduce((s, l) => s + (l.saldo_disponible ?? 0), 0);
+
+    if (hayAgotadas && totalSaldo <= 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Presupuesto Agotado',
+        html: `<p>Una o más cuentas no tienen saldo disponible y <strong>el presupuesto total del proyecto está agotado</strong>.</p>
+               <p class="mb-0">Se requiere una solicitud de incremento a Dirección General.</p>`,
+        confirmButtonText: 'Solicitar Incremento',
+        confirmButtonColor: '#dc3545',
+        showCancelButton: true,
+        cancelButtonText: 'Cerrar',
+      }).then(result => {
+        if (result.isConfirmed) {
+          this.router.navigate(['/presupuestos/incrementos']);
+        }
+      });
+    }
   }
 
   loadMeses(idLinea: number): void {
@@ -337,6 +386,7 @@ export class PresupuestoComponent implements OnInit {
       ...formVal,
       id_project: this.idProject,
       idCompany: this.idCompany,
+      numrevision: this.presupuestos.length,
       active: true
     };
 
@@ -394,7 +444,7 @@ export class PresupuestoComponent implements OnInit {
   }
 
   async saveLineas(): Promise<void> {
-    const nuevas = this.lineas.filter(l => (l as any).__isNew && l.id_cuenta);
+    const nuevas     = this.lineas.filter(l => (l as any).__isNew && l.id_cuenta);
     const modificadas = this.lineas.filter(l => (l as any).__modified && !(l as any).__isNew);
 
     if (!nuevas.length && !modificadas.length) {
@@ -402,23 +452,72 @@ export class PresupuestoComponent implements OnInit {
       return;
     }
 
+    // ── Líneas modificadas → ajuste que genera nueva versión ─────────────
+    if (modificadas.length) {
+      const { value: motivo, isConfirmed } = await Swal.fire({
+        title: 'Motivo del ajuste',
+        text: 'Los cambios generarán una nueva versión del presupuesto.',
+        input: 'textarea',
+        inputLabel: 'Motivo *',
+        inputPlaceholder: 'Describa el motivo de los cambios...',
+        inputValidator: v => (!v?.trim() ? 'El motivo es requerido' : null),
+        showCancelButton: true,
+        confirmButtonText: 'Guardar y versionar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0d6efd'
+      });
+      if (!isConfirmed) return;
+
+      // Crear nueva versión
+      const nuevoRev = this.presupuestos.length;
+      let nuevaVersion: IPresupuesto;
+      try {
+        nuevaVersion = await lastValueFrom(this.presupuestoService.create({
+          id_project:   this.idProject,
+          idCompany:    this.idCompany,
+          numrevision:  nuevoRev,
+          nombre:       `Rev.${nuevoRev}`,
+          motivo,
+          fecha_inicio: this.selectedPresupuesto!.fecha_inicio,
+          fecha_fin:    this.selectedPresupuesto!.fecha_fin,
+          vigente:      true,
+          active:       true
+        }));
+      } catch {
+        alerts.basicAlert('Error', 'No se pudo crear la nueva versión.', 'error');
+        return;
+      }
+
+      // Copiar TODAS las líneas guardadas (con montos actualizados) + nuevas
+      const lineasGuardadas = this.lineas.filter(l => typeof l.id === 'number');
+      const todasLineas = [...lineasGuardadas, ...nuevas];
+
+      if (todasLineas.length) {
+        const ops = todasLineas.map(l => this.presupuestoService.createLinea({
+          id_presupuesto: nuevaVersion.id,
+          id_cuenta:      l.id_cuenta,
+          descripcion:    l.descripcion,
+          monto:          l.monto,
+          active:         true
+        }).pipe(catchError(e => { console.error(e); return EMPTY; })));
+        await lastValueFrom(concat(...ops).pipe(toArray()));
+      }
+
+      alerts.basicAlert('Ajuste guardado', `Se creó ${nuevaVersion.nombre} con los cambios aplicados.`, 'success');
+      this.loadData();
+      return;
+    }
+
+    // ── Solo líneas nuevas → guardar directamente sin versionar ──────────
     const adds = nuevas.map(l => this.presupuestoService.createLinea({
       id_presupuesto: this.selectedPresupuesto!.id,
-      id_cuenta: l.id_cuenta,
-      descripcion: l.descripcion,
-      monto: l.monto,
-      active: true
+      id_cuenta:      l.id_cuenta,
+      descripcion:    l.descripcion,
+      monto:          l.monto,
+      active:         true
     }).pipe(catchError(e => { console.error(e); return EMPTY; })));
 
-    const updates = modificadas.map(l => this.presupuestoService.updateLinea(l.id as number, {
-      id_presupuesto: l.id_presupuesto,
-      id_cuenta: l.id_cuenta,
-      descripcion: l.descripcion,
-      monto: l.monto,
-      active: l.active
-    }).pipe(catchError(e => { console.error(e); return EMPTY; })));
-
-    await lastValueFrom(concat(...adds, ...updates).pipe(toArray()));
+    await lastValueFrom(concat(...adds).pipe(toArray()));
     alerts.basicAlert('Guardado', 'Líneas guardadas correctamente.', 'success');
     this.loadLineas(this.selectedPresupuesto!.id);
   }
@@ -456,7 +555,6 @@ export class PresupuestoComponent implements OnInit {
   }
 
   toggleMes(mes: IPresupuestoMes): void {
-    mes.seleccionado = !mes.seleccionado;
     if (!mes.seleccionado) mes.monto = 0;
   }
 
@@ -494,5 +592,315 @@ export class PresupuestoComponent implements OnInit {
 
   onGridVersionesRowClicked(e: any): void {
     if (e.data) { this.selectPresupuesto(e.data); }
+  }
+
+  // ── Diff entre versiones ──────────────────────────────────
+
+  cargarDiff(): void {
+    const previa = this.findVersionPrevia(this.selectedPresupuesto!);
+    if (!previa) {
+      alerts.basicAlert('Sin versión anterior', 'Esta es la primera versión del presupuesto, no hay versión anterior con la que comparar.', 'info');
+      return;
+    }
+    this.versionPrevia = previa;
+    this.loadingDiff = true;
+    this.showDiff = true;
+    this.showMeses = false;
+    this.presupuestoService.getLineas(previa.id)
+      .pipe(catchError(() => { this.loadingDiff = false; return EMPTY; }))
+      .subscribe(l => {
+        this.lineasPrevias = l;
+        this.loadingDiff = false;
+      });
+  }
+
+  private findVersionPrevia(p: IPresupuesto): IPresupuesto | null {
+    const sorted = [...this.presupuestos].sort((a, b) => a.numrevision - b.numrevision);
+    const idx = sorted.findIndex(x => x.id === p.id);
+    return idx > 0 ? sorted[idx - 1] : null;
+  }
+
+  get diffRows(): any[] {
+    const map = new Map<number, any>();
+
+    for (const l of this.lineasPrevias) {
+      map.set(l.id_cuenta, {
+        id_cuenta:     l.id_cuenta,
+        cuenta_codigo: l.cuenta_codigo ?? '',
+        cuenta_nombre: l.cuenta_nombre ?? '',
+        monto_previo:  l.monto,
+        monto_actual:  0,
+        tipo:          'eliminado'
+      });
+    }
+
+    for (const l of this.lineas) {
+      const existing = map.get(l.id_cuenta);
+      if (existing) {
+        existing.monto_actual = l.monto;
+        existing.tipo = existing.monto_previo === l.monto ? 'igual' : 'modificado';
+      } else {
+        map.set(l.id_cuenta, {
+          id_cuenta:     l.id_cuenta,
+          cuenta_codigo: l.cuenta_codigo ?? '',
+          cuenta_nombre: l.cuenta_nombre ?? '',
+          monto_previo:  0,
+          monto_actual:  l.monto,
+          tipo:          'nuevo'
+        });
+      }
+    }
+
+    const order: Record<string, number> = { modificado: 0, nuevo: 1, eliminado: 2, igual: 3 };
+    return Array.from(map.values())
+      .map(r => ({ ...r, diferencia: r.monto_actual - r.monto_previo }))
+      .filter(r => !this.soloMostrarCambios || r.tipo !== 'igual')
+      .sort((a, b) => (order[a.tipo] ?? 3) - (order[b.tipo] ?? 3));
+  }
+
+  get diffResumen() {
+    const counts = { modificado: 0, nuevo: 0, eliminado: 0, igual: 0 };
+    for (const l of this.lineasPrevias) {
+      const actual = this.lineas.find(x => x.id_cuenta === l.id_cuenta);
+      if (!actual) counts.eliminado++;
+      else if (actual.monto !== l.monto) counts.modificado++;
+      else counts.igual++;
+    }
+    for (const l of this.lineas) {
+      if (!this.lineasPrevias.find(x => x.id_cuenta === l.id_cuenta)) counts.nuevo++;
+    }
+    const totalPrevio = this.lineasPrevias.reduce((s, l) => s + l.monto, 0);
+    const totalActual = this.lineas.reduce((s, l) => s + l.monto, 0);
+    return { ...counts, totalPrevio, totalActual, delta: totalActual - totalPrevio };
+  }
+
+  // ── PDF Export ────────────────────────────────────────────
+
+  async generarPDF(): Promise<void> {
+    if (!this.selectedPresupuesto) {
+      alerts.basicAlert('Sin selección', 'Seleccione un presupuesto primero.', 'warning');
+      return;
+    }
+    if (!this.lineas.length) {
+      alerts.basicAlert('Sin líneas', 'El presupuesto no tiene líneas de detalle.', 'warning');
+      return;
+    }
+    this.generandoPDF = true;
+    try {
+      // Logo desde el root (empresa)
+      const rootData: any = await lastValueFrom(
+        this.rootService.getRootbyId(this.idCompany).pipe(catchError(() => of(null)))
+      );
+      let logoBase64: string | null = null;
+      if (rootData?.picture) {
+        try {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        } catch { /* sin logo */ }
+      }
+      const empresaNombre: string = rootData?.nombre || rootData?.name || 'HCO';
+
+      // Columnas de meses según rango del presupuesto
+      const mesesCols = this.buildMonthColumns();
+
+      // Cargar distribución mensual de todas las líneas en paralelo
+      const lineasReales = this.lineas.filter(l => typeof l.id === 'number');
+      const mesMap = new Map<number, Map<string, number>>();
+
+      if (lineasReales.length) {
+        const obs = lineasReales.map(l =>
+          this.presupuestoService.getMeses(l.id as number).pipe(
+            map(meses => ({ id: l.id as number, meses })),
+            catchError(() => of({ id: l.id as number, meses: [] }))
+          )
+        );
+        const results = await lastValueFrom(forkJoin(obs));
+        for (const r of results) {
+          const mm = new Map<string, number>();
+          for (const m of r.meses) {
+            mm.set(`${m.anio}-${m.mes}`, m.monto);
+          }
+          mesMap.set(r.id, mm);
+        }
+      }
+
+      const docDef = this.buildPresupuestoPdf(logoBase64, empresaNombre, mesesCols, mesMap);
+      const nombre = this.selectedPresupuesto.nombre.replace(/[^a-zA-Z0-9_.-]/g, '-');
+      await this.pdfWorkerService.generateAndDownload(
+        docDef,
+        `Presupuesto-${nombre}-${new Date().toISOString().substring(0, 10)}.pdf`
+      );
+    } catch (e) {
+      console.error('Error generando PDF presupuesto:', e);
+      alerts.basicAlert('Error', 'No se pudo generar el PDF.', 'error');
+    } finally {
+      this.generandoPDF = false;
+    }
+  }
+
+  private buildMonthColumns(): { num: number; anio: number; label: string }[] {
+    const p = this.selectedPresupuesto!;
+    if (!p.fecha_inicio || !p.fecha_fin) return [];
+    const start = new Date(p.fecha_inicio);
+    const end   = new Date(p.fecha_fin);
+    const cols: { num: number; anio: number; label: string }[] = [];
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cur <= end && cols.length < 24) {
+      const short = cur.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
+      const yy = String(cur.getFullYear()).slice(2);
+      cols.push({ num: cur.getMonth() + 1, anio: cur.getFullYear(), label: `${short}.-${yy}` });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return cols;
+  }
+
+  private findParentCuenta(linea: IPresupuestoLinea): ICuentaContable | null {
+    if (!linea.cuenta_codigo || !linea.cuenta_nivel || linea.cuenta_nivel <= 1) return null;
+    const targetNivel = linea.cuenta_nivel - 1;
+    const candidates = this.cuentasFlat.filter(c =>
+      c.nivel === targetNivel && linea.cuenta_codigo!.startsWith(c.codigo)
+    );
+    if (!candidates.length) return null;
+    return candidates.reduce((best, c) => c.codigo.length > best.codigo.length ? c : best);
+  }
+
+  private buildPresupuestoPdf(
+    logoBase64: string | null,
+    empresaNombre: string,
+    mesesCols: { num: number; anio: number; label: string }[],
+    mesMap: Map<number, Map<string, number>>
+  ): any {
+    const p = this.selectedPresupuesto!;
+    const fmt = (v: number) =>
+      new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v);
+    const nMeses = mesesCols.length || 1;
+    const nFixed = 4;
+    const totalCols = nFixed + nMeses;
+
+    // Anchos dinámicos — TABLOID landscape (1224pt) menos márgenes 20+20 = 1184pt usables
+    const fixedWidths = [38, 75, 75, 115];
+    const usable = 1184;
+    const monthW = Math.max(42, Math.floor((usable - fixedWidths.reduce((a, b) => a + b, 0)) / nMeses));
+    const widths = [...fixedWidths, ...mesesCols.map(() => monthW)];
+
+    // Fila de encabezado
+    const thStyle = { bold: true, fontSize: 7, color: '#FFFFFF', fillColor: '#2D5F8A', alignment: 'center' };
+    const headerRow = [
+      { text: 'EMPRESA',          ...thStyle },
+      { text: 'PROYECTO',         ...thStyle },
+      { text: 'CLASIFICACION',    ...thStyle },
+      { text: 'SUBCLASIFICACION', ...thStyle },
+      ...mesesCols.map(m => ({ text: m.label.toUpperCase(), ...thStyle }))
+    ];
+
+    // Filas de datos + totales por mes
+    const monthTotals = new Array(nMeses).fill(0);
+    const dataRows = this.lineas.map(l => {
+      const parent = this.findParentCuenta(l);
+      const clasificacion   = parent ? parent.nombre : '';
+      const subclasificacion = l.cuenta_nombre || l.descripcion || '';
+
+      const monthCells = mesesCols.map((m, i) => {
+        const mm = mesMap.get(l.id as number);
+        const amount = mm?.get(`${m.anio}-${m.num}`) ?? 0;
+        monthTotals[i] += amount;
+        return { text: amount > 0 ? fmt(amount) : '', style: 'tdRight' };
+      });
+
+      return [
+        { text: empresaNombre,                                style: 'td' },
+        { text: p.proyecto_nombre || `Proyecto #${p.id_project}`, style: 'td' },
+        { text: clasificacion,                                style: 'td' },
+        { text: subclasificacion,                             style: 'td' },
+        ...monthCells
+      ];
+    });
+
+    // Acumulado mensual
+    let running = 0;
+    const monthAccum = monthTotals.map(t => { running += t; return running; });
+    const grandTotal = running;
+
+    const empty = (n: number) =>
+      Array(n).fill({ text: '', border: [false, false, false, false] });
+
+    const makeLabelRow = (label: string, values: number[], fillColor = '#D9E1F2') => [
+      { text: label, colSpan: nFixed, alignment: 'right', bold: true, fontSize: 7, fillColor },
+      ...Array(nFixed - 1).fill({}),
+      ...values.map(v => ({ text: fmt(v), fontSize: 7, bold: true, alignment: 'right', fillColor }))
+    ];
+
+    const makeTotalRow = (label: string, total: number, fillColor = '#FFD700') => [
+      { text: label, colSpan: nFixed + 1, alignment: 'right', bold: true, fontSize: 8, fillColor },
+      ...Array(nFixed).fill({}),
+      { text: fmt(total), fontSize: 8, bold: true, alignment: 'right', fillColor, colSpan: nMeses - 1 > 0 ? nMeses - 1 : 1 },
+      ...Array(Math.max(0, nMeses - 2)).fill({})
+    ];
+
+    const body = [
+      headerRow,
+      ...dataRows,
+      makeLabelRow('Costo Mensual $',    monthTotals, '#D9E1F2'),
+      makeLabelRow('Costo Acumulado $',  monthAccum,  '#BDD7EE'),
+      empty(totalCols),
+      makeTotalRow('TOTAL DE EGRESOS $', grandTotal,  '#FFD700'),
+      empty(totalCols),
+      [
+        { text: '', style: 'td' },
+        { text: '', style: 'td' },
+        { text: 'Ingreso', style: 'td' },
+        { text: 'Facturación Mensual', style: 'td' },
+        ...mesesCols.map(() => ({ text: '', style: 'td' }))
+      ],
+      makeLabelRow('Acumulado $', new Array(nMeses).fill(0), '#D9E1F2'),
+      empty(totalCols),
+      makeTotalRow('TOTAL DE INGRESOS $', 0, '#92D050'),
+      empty(totalCols),
+      makeTotalRow('MARGEN DEL NEGOCIO $', 0, '#FFD700'),
+    ];
+
+    return {
+      pageSize: 'TABLOID',
+      pageOrientation: 'landscape',
+      pageMargins: [20, 65, 20, 20],
+      header: this.buildPresupuestoPdfHeader(logoBase64, p),
+      content: [{
+        table: { headerRows: 1, widths, body },
+        layout: 'lightHorizontalLines'
+      }],
+      styles: {
+        td:      { fontSize: 7, margin: [1, 1, 1, 1] },
+        tdRight: { fontSize: 7, alignment: 'right', margin: [1, 1, 1, 1] },
+      }
+    };
+  }
+
+  private buildPresupuestoPdfHeader(logoBase64: string | null, p: IPresupuesto): any {
+    const logoCell = logoBase64
+      ? { image: logoBase64, width: 50, alignment: 'left' }
+      : { text: 'HCO', bold: true, fontSize: 14, alignment: 'left' };
+
+    return {
+      margin: [20, 8, 20, 0],
+      table: {
+        widths: ['12%', '*', '22%'],
+        body: [[
+          logoCell,
+          {
+            stack: [
+              { text: 'FORMATO PRESUPUESTO PROYECTOS', fontSize: 11, bold: true, alignment: 'center', color: '#1A365D' },
+              { text: 'Sistema de Gestión de Calidad', fontSize: 8, alignment: 'center', color: '#475569', margin: [0, 2, 0, 0] },
+            ]
+          },
+          {
+            stack: [
+              { text: 'Código:     HCO-ADM-FO-021', fontSize: 7, alignment: 'right', color: '#334155' },
+              { text: 'Referencia: HCO-ADM-SGC-005', fontSize: 7, alignment: 'right', color: '#334155' },
+              { text: `Rev.:       ${p.numrevision ?? '00'}`, fontSize: 7, alignment: 'right', color: '#334155' },
+            ]
+          }
+        ]]
+      },
+      layout: 'noBorders'
+    };
   }
 }

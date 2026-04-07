@@ -2,7 +2,7 @@ import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
+import { ColDef } from 'ag-grid-community';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { PresupuestoService } from 'app/services/presupuesto.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
@@ -15,7 +15,7 @@ import {
   IPresupuestoMigracion
 } from 'app/interface/ipresupuesto';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, forkJoin, of } from 'rxjs';
 
 @Component({
   selector: 'app-migraciones',
@@ -39,6 +39,7 @@ export class MigracionesComponent implements OnInit {
   loading = false;
 
   presupuestoVigente: IPresupuesto | null = null;
+  todosPresupuestos: IPresupuesto[] = [];
   lineasVigentes: IPresupuestoLinea[] = [];
   migraciones: IPresupuestoMigracion[] = [];
   cuentasFlat: ICuentaContable[] = [];
@@ -46,14 +47,40 @@ export class MigracionesComponent implements OnInit {
   migracionForm!: FormGroup;
   procesando = false;
 
-  private gridApi!: GridApi;
-
   public defaultColDef: ColDef = { sortable: true, filter: true, resizable: true };
 
   public columnDefsMigraciones: ColDef[] = [
-    { headerName: 'Nueva Rev.', field: 'id_presupuesto_nuevo', width: 100 },
-    { headerName: 'Cuenta Origen', field: 'cuenta_origen_nombre', flex: 1, minWidth: 180 },
-    { headerName: 'Cuenta Destino', field: 'cuenta_destino_nombre', flex: 1, minWidth: 180 },
+    {
+      headerName: 'Nueva Rev.',
+      field: 'id_presupuesto_nuevo',
+      width: 110,
+      valueFormatter: p => {
+        const pres = this.todosPresupuestos.find(x => x.id === Number(p.value));
+        return pres ? pres.nombre : (p.value ? `#${p.value}` : '');
+      }
+    },
+    {
+      headerName: 'Cuenta Origen',
+      field: 'id_cuenta_origen',
+      flex: 1,
+      minWidth: 180,
+      valueFormatter: p => {
+        if (p.data?.cuenta_origen_nombre) return p.data.cuenta_origen_nombre;
+        const c = this.cuentasFlat.find(x => x.id === Number(p.value));
+        return c ? `${c.codigo} — ${c.nombre}` : (p.value ? String(p.value) : '');
+      }
+    },
+    {
+      headerName: 'Cuenta Destino',
+      field: 'id_cuenta_destino',
+      flex: 1,
+      minWidth: 180,
+      valueFormatter: p => {
+        if (p.data?.cuenta_destino_nombre) return p.data.cuenta_destino_nombre;
+        const c = this.cuentasFlat.find(x => x.id === Number(p.value));
+        return c ? `${c.codigo} — ${c.nombre}` : (p.value ? String(p.value) : '');
+      }
+    },
     {
       headerName: 'Monto Transferido',
       field: 'monto_transferido',
@@ -106,13 +133,16 @@ export class MigracionesComponent implements OnInit {
     this.loading = true;
     this.cuentasService.getAll(this.idCompany).subscribe(c => this.cuentasFlat = c);
 
-    this.presupuestoService.getVigente(this.idCompany, this.idProject)
-      .pipe(catchError(() => { this.loading = false; return EMPTY; }))
-      .subscribe(p => {
-        this.presupuestoVigente = p;
+    forkJoin({
+      vigente: this.presupuestoService.getVigente(this.idCompany, this.idProject),
+      todos:   this.presupuestoService.getAll(this.idCompany, this.idProject)
+    }).pipe(catchError(() => { this.loading = false; return EMPTY; }))
+      .subscribe(({ vigente, todos }) => {
+        this.presupuestoVigente = vigente;
+        this.todosPresupuestos  = todos;
         this.loading = false;
-        this.loadLineas(p.id);
-        this.loadMigraciones(p.id);
+        this.loadLineas(vigente.id);
+        this.cargarTodasMigraciones(todos.map(p => p.id));
       });
   }
 
@@ -121,23 +151,40 @@ export class MigracionesComponent implements OnInit {
       .subscribe(l => this.lineasVigentes = l);
   }
 
-  loadMigraciones(idPresupuesto: number): void {
-    this.presupuestoService.getMigraciones(idPresupuesto)
-      .subscribe(m => this.migraciones = m);
+  cargarTodasMigraciones(ids: number[]): void {
+    if (!ids.length) { this.migraciones = []; return; }
+    forkJoin(ids.map(id =>
+      this.presupuestoService.getMigraciones(id).pipe(catchError(() => of([] as IPresupuestoMigracion[])))
+    )).subscribe(resultados => {
+      const vistas = new Set<number>();
+      this.migraciones = resultados
+        .flat()
+        .filter(m => { if (vistas.has(m.id)) return false; vistas.add(m.id); return true; })
+        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    });
   }
 
   resetState(): void {
     this.presupuestoVigente = null;
-    this.lineasVigentes = [];
-    this.migraciones = [];
+    this.todosPresupuestos  = [];
+    this.lineasVigentes     = [];
+    this.migraciones        = [];
   }
 
-  get cuentasOptions(): ICuentaContable[] {
-    return this.cuentasFlat;
+  get cuentasHoja(): ICuentaContable[] {
+    return this.cuentasFlat.filter(c => c.esHoja);
   }
 
-  getSaldoLinea(idCuenta: number): number {
-    const linea = this.lineasVigentes.find(l => l.id_cuenta === idCuenta);
+  getCuentaPadre(cuenta: ICuentaContable): string {
+    const parent = this.cuentasFlat.find(
+      c => c.nivel === cuenta.nivel - 1 && cuenta.codigo.startsWith(c.codigo)
+    );
+    return parent?.nombre ?? '';
+  }
+
+  getSaldoLinea(idCuenta: any): number {
+    const id = Number(idCuenta);
+    const linea = this.lineasVigentes.find(l => l.id_cuenta === id);
     return linea?.saldo_disponible ?? 0;
   }
 
@@ -174,8 +221,8 @@ export class MigracionesComponent implements OnInit {
     this.procesando = true;
     this.presupuestoService.ejecutarMigracion({
       id_presupuesto_vigente: this.presupuestoVigente!.id,
-      id_cuenta_origen: val.id_cuenta_origen,
-      id_cuenta_destino: val.id_cuenta_destino,
+      id_cuenta_origen:  Number(val.id_cuenta_origen),
+      id_cuenta_destino: Number(val.id_cuenta_destino),
       monto_transferido: val.monto_transferido,
       motivo: val.motivo,
       usuario: this.trackingService.getEmail(),
@@ -198,7 +245,6 @@ export class MigracionesComponent implements OnInit {
     });
   }
 
-  onGridReady(p: GridReadyEvent): void { this.gridApi = p.api; }
 
   formatCurrency(v: number): string {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v ?? 0);

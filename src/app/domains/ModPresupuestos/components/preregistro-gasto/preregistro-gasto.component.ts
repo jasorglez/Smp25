@@ -11,7 +11,8 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { IPreregistroGasto } from 'app/interface/ipresupuesto';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
-import { catchError, EMPTY, concat, lastValueFrom, toArray } from 'rxjs';
+import { catchError, EMPTY, concat, lastValueFrom, toArray, forkJoin, of } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-preregistro-gasto',
@@ -161,10 +162,41 @@ export class PreregistroGastoComponent implements OnInit {
   async saveChanges(): Promise<void> {
     const nuevas = this.rowData.filter(r => (r as any).__isNew && r.id_cuenta && r.concepto && r.monto);
     const modificadas = this.rowData.filter(r => (r as any).__modified && !(r as any).__isNew);
+    const toSave = [...nuevas, ...modificadas];
 
-    if (!nuevas.length && !modificadas.length) {
+    if (!toSave.length) {
       alerts.basicAlert('Sin cambios', 'No hay cambios que guardar.', 'info');
       return;
+    }
+
+    // Verificar saldo disponible para cada registro antes de guardar
+    const conCuenta = toSave.filter(r => r.id_cuenta);
+    if (conCuenta.length) {
+      const checks = await lastValueFrom(
+        forkJoin(conCuenta.map(r =>
+          this.presupuestoService.getSaldoDisponible(this.idCompany, this.idProject, r.id_cuenta)
+            .pipe(
+              map(s => ({ r, saldo: s.saldo })),
+              catchError(() => of({ r, saldo: Infinity }))
+            )
+        ))
+      );
+
+      const excedidos = checks.filter(c => c.r.monto > c.saldo);
+      if (excedidos.length) {
+        const lineas = excedidos.map(c => {
+          const nombre = this.cuentasFlat.find(x => x.id === c.r.id_cuenta)?.nombre ?? `Cuenta #${c.r.id_cuenta}`;
+          return `• ${nombre}: se registran ${this.formatCurrency(c.r.monto)}, disponible ${this.formatCurrency(c.saldo)}`;
+        }).join('\n');
+
+        const confirm = await alerts.confirmAlert(
+          'Presupuesto Superado',
+          `Los siguientes registros exceden el presupuesto disponible:\n\n${lineas}\n\n¿Desea guardar de todas formas?`,
+          'warning',
+          'Sí, guardar de todas formas'
+        );
+        if (!confirm.isConfirmed) return;
+      }
     }
 
     const adds = nuevas.map(r => this.presupuestoService.createPreregistro({

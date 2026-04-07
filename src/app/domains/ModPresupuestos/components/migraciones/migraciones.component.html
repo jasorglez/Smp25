@@ -38,15 +38,15 @@
 
             <form [formGroup]="migracionForm">
               <div class="mb-3">
-                <label class="form-label fw-semibold">Cuenta Origen *</label>
+                <label class="form-label fw-semibold">Subcuenta Origen *</label>
                 <select class="form-select" formControlName="id_cuenta_origen">
-                  <option [value]="null" disabled>Seleccionar cuenta origen...</option>
-                  <option *ngFor="let c of cuentasOptions" [value]="c.id">
-                    {{ c.codigo }} — {{ c.nombre }}
-                  </option>
+                  <option [value]="null" disabled>Seleccionar subcuenta origen...</option>
+                  <optgroup *ngFor="let c of cuentasHoja" [label]="getCuentaPadre(c) || c.codigo">
+                    <option [value]="c.id">{{ c.codigo }} — {{ c.nombre }}</option>
+                  </optgroup>
                 </select>
-                <div class="small text-muted mt-1" *ngIf="migracionForm.value.id_cuenta_origen">
-                  Saldo disponible:
+                <div class="small mt-1" *ngIf="migracionForm.value.id_cuenta_origen">
+                  <span class="text-muted">Saldo disponible: </span>
                   <span [class.text-danger]="getSaldoLinea(migracionForm.value.id_cuenta_origen) <= 0"
                         [class.text-success]="getSaldoLinea(migracionForm.value.id_cuenta_origen) > 0"
                         class="fw-bold">
@@ -56,13 +56,21 @@
               </div>
 
               <div class="mb-3">
-                <label class="form-label fw-semibold">Cuenta Destino *</label>
+                <label class="form-label fw-semibold">Subcuenta Destino *</label>
                 <select class="form-select" formControlName="id_cuenta_destino">
-                  <option [value]="null" disabled>Seleccionar cuenta destino...</option>
-                  <option *ngFor="let c of cuentasOptions" [value]="c.id">
-                    {{ c.codigo }} — {{ c.nombre }}
-                  </option>
+                  <option [value]="null" disabled>Seleccionar subcuenta destino...</option>
+                  <optgroup *ngFor="let c of cuentasHoja" [label]="getCuentaPadre(c) || c.codigo">
+                    <option [value]="c.id">{{ c.codigo }} — {{ c.nombre }}</option>
+                  </optgroup>
                 </select>
+                <div class="small mt-1" *ngIf="migracionForm.value.id_cuenta_destino">
+                  <span class="text-muted">Saldo disponible: </span>
+                  <span [class.text-danger]="getSaldoLinea(migracionForm.value.id_cuenta_destino) <= 0"
+                        [class.text-success]="getSaldoLinea(migracionForm.value.id_cuenta_destino) > 0"
+                        class="fw-bold">
+                    {{ formatCurrency(getSaldoLinea(migracionForm.value.id_cuenta_destino)) }}
+                  </span>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -124,7 +132,6 @@
               [defaultColDef]="defaultColDef"
               [localeText]="AG_GRID_LOCALE_ES"
               [animateRows]="true"
-              (gridReady)="onGridReady($event)"
             ></ag-grid-angular>
           </div>
         </div>
