@@ -8,13 +8,14 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
+import { catchError, concat, concatMap, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 import { EmployeesService } from 'app/services/employees.service';
 import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
 import { RolesService } from 'app/services/roles.service';
+import { UsersService } from 'app/services/users.service';
 
 @Component({
   selector: 'app-detail-branches-renderer',
@@ -69,7 +70,7 @@ import { RolesService } from 'app/services/roles.service';
           [detailRowAutoHeight]="true"
           (gridReady)="onBranchesGridReady($event)"
           (cellValueChanged)="onBranchesCellValueChanged($event)"
-          [stopEditingWhenCellsLoseFocus]="true">
+          [stopEditingWhenCellsLoseFocus]="false">
         </ag-grid-angular>
       </div>
     </div>
@@ -84,6 +85,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
   private authService = inject(AuthService);
   private permitionsService = inject(PermitionsService);
   private rolesService = inject(RolesService);
+  private usersService = inject(UsersService);
 
   /** Venía del maestro: si el usuario editado tiene «Departamento» en UserSystem (Permisos maestros). */
   private getDepartmentAllowed: (() => boolean) | undefined;
@@ -133,6 +135,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
+    popupParent: typeof document !== 'undefined' ? document.body : undefined,
     /**
      * `masterDetail` va en la plantilla (`[masterDetail]="branchesMasterDetailEnabled"`) para que
      * Angular lo apague del todo con cambios sin guardar; aquí solo refinamos por fila.
@@ -196,6 +199,19 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         filter: 'agNumberColumnFilter',
         width: 80
       },
+      // Mismo criterio que Empleados (Activo primero): Principal antes de Sucursal.
+      {
+        field: 'principal',
+        headerName: 'Principal',
+        width: 110,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const checked = !!params.value;
+          return checked
+            ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
+            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+        },
+      },
       {
         field: 'name',
         headerName: 'Sucursal',
@@ -255,20 +271,6 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
           const id = Number(raw);
           const found = this.catalogGeneralPosiciones?.find((p: any) => Number(p.id) === id);
           return found?.description ?? (Number.isFinite(id) ? `ID: ${id}` : String(raw));
-        },
-      },
-      // ✅ Principal DESPUÉS de Posición
-      {
-        field: 'principal',
-        headerName: 'Principal',
-        width: 110,
-        editable: false,
-        cellRenderer: (params: any) => {
-          const checked = !!params.value;
-          // Sin `disabled`: el navegador pinta el checkbox en gris. Icono + solo lectura visual.
-          return checked
-            ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
-            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
         },
       },
     ];
@@ -633,7 +635,10 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.usersxpermissionsService.addUserxPermission(cleanedData);
+      const uid = Number(cleanedData.idUser ?? this.userId);
+      return this.usersxpermissionsService.addUserxPermission(cleanedData).pipe(
+        concatMap(() => this.usersService.updateActulizarSecurity(uid, 'SUMA'))
+      );
     });
 
     const updateObservables = modifiedRows.map((row) => {
@@ -650,6 +655,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
       );
       this.hasBranchChanges = false;
       this.unsavedBranchRowIds.clear();
+      this.signalsService.setRefresSecurity(true);
       this.loadBranchesData();
     } catch (error) {
       console.error(error);
@@ -677,6 +683,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     const branchId = this.selectedBranch.id;
 
     this.usersxpermissionsService.deleteUserxPermission(branchId).pipe(
+      concatMap(() => this.usersService.updateActulizarSecurity(this.userId, 'RESTA')),
       catchError((error) => {
         alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
         console.error(error);
@@ -692,6 +699,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
       );
       this.loadBranchesData();
       this.selectedBranch = null;
+      this.signalsService.setRefresSecurity(true);
     });
   }
 

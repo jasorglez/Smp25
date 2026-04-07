@@ -193,6 +193,64 @@ export class alerts{
 		});
 	}
 
+	/** Alerta básica minimalista para la sección Usuarios (success/error/warning/info). */
+	static userBasicAlert(title: string, text: string, icon: SweetAlertIcon) {
+		const btnColors: Record<string, string> = {
+			success: '#16a34a',
+			error:   '#dc2626',
+			warning: '#d97706',
+			info:    '#2563eb',
+			question:'#2563eb',
+		};
+		return Swal.fire({
+			title,
+			text,
+			icon,
+			confirmButtonText: 'Aceptar',
+			confirmButtonColor: btnColors[icon] ?? '#2563eb',
+			customClass: {
+				container:     'swal-over-modal',
+				popup:         'users-confirm-popup',
+				title:         'users-confirm-title',
+				htmlContainer: 'users-confirm-text',
+				confirmButton: 'users-basic-btn',
+			},
+			showClass: { popup: 'usersLoadingIn' },
+			hideClass: { popup: 'usersLoadingOut' },
+		});
+	}
+
+	/**
+	 * Notificación centrada auto-cierre para toggle de switches maestros de permisos.
+	 * Aparece en el centro de pantalla, se cierra automáticamente.
+	 */
+	static userPermissionToggleNotice(moduleName: string, isOn: boolean, durationMs: number = 5000) {
+		const title = isOn
+			? `Acceso activado — ${moduleName}`
+			: `Acceso desactivado — ${moduleName}`;
+		const text = isOn
+			? `Ahora tendrás permiso de acceder al apartado de ${moduleName}. Recuerda guardar los cambios para que se aplique la configuración.`
+			: `Se quitará el acceso al apartado de ${moduleName}. Recuerda guardar los cambios para que se aplique la configuración.`;
+		return Swal.fire({
+			title,
+			text,
+			icon: isOn ? 'success' : 'info',
+			timer: durationMs,
+			timerProgressBar: true,
+			showConfirmButton: false,
+			position: 'center',
+			customClass: {
+				container:     'swal-over-modal',
+				popup:         'users-toggle-notice-popup',
+				title:         'users-toggle-notice-title',
+				htmlContainer: 'users-toggle-notice-text',
+				timerProgressBar: 'users-toggle-notice-bar',
+			},
+			showClass: { popup: 'usersLoadingIn' },
+			hideClass: { popup: 'usersLoadingOut' },
+		});
+	}
+
 	/** Confirmación minimalista para eliminar (solo Usuarios). */
 	static userConfirmDelete(title: string, text: string, confirmButtonText: string = 'Sí, eliminar', cancelButtonText: string = 'Cancelar') {
 		return Swal.fire({

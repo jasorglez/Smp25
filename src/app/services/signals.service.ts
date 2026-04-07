@@ -913,6 +913,18 @@ getMasterUpdateTrigger() {
     return this.refresSecurity;
   }
 
+  /** Actualiza solo el contador Security de un usuario en la grilla sin recargar todo. */
+  private readonly securityDelta = signal<{ userId: number; delta: number } | null>(null);
+  setSecurityDelta(userId: number, delta: number) {
+    this.securityDelta.set({ userId, delta });
+  }
+  clearSecurityDelta() {
+    this.securityDelta.set(null);
+  }
+  getSecurityDelta() {
+    return this.securityDelta;
+  }
+
   setMasterCatalog(value: number){
     this.masterCatalog.set(value);
   }

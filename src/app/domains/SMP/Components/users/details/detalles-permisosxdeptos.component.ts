@@ -221,7 +221,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
               this.normalizeRoleId(row.idRole) === this.normalizeRoleId(newDeptId)
           );
           if (duplicateExists) {
-            alerts.basicAlert('Departamento Duplicado', 'Este departamento ya ha sido asignado.', 'error');
+            alerts.userBasicAlert('Departamento Duplicado', 'Este departamento ya ha sido asignado.', 'error');
             return false;
           }
 
@@ -293,7 +293,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             (row, index) => row.idRole === currentRoleId && row.idPosicion === newPosicionId && params.node.rowIndex !== index
           );
           if (duplicateExists) {
-            alerts.basicAlert('Permiso Duplicado', 'Esta combinación de Departamento y Posición ya ha sido asignada.', 'error');
+            alerts.userBasicAlert('Permiso Duplicado', 'Esta combinación de Departamento y Posición ya ha sido asignada.', 'error');
             return false;
           }
 
@@ -316,9 +316,12 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         field: 'Permisos',
         headerName: 'Permisos',
         cellStyle: (p: any) => ({
-          backgroundColor: this.canOpenVerPermisosModal() ? '#d4edda' : '#e9ecef',
+          backgroundColor: (!p.data?.__isNew && this.canOpenVerPermisosModal()) ? '#d4edda' : '#e9ecef',
         }),
-        cellRenderer: () => {
+        cellRenderer: (p: any) => {
+          if (p.data?.__isNew) {
+            return `<span class="text-muted" style="cursor: not-allowed;" title="Guarda el registro primero">—</span>`;
+          }
           if (!this.canOpenVerPermisosModal()) {
             return `<span class="text-muted" style="cursor: not-allowed;" title="Sin permiso (Setup Usuarios › Permisos)">—</span>`;
           }
@@ -518,6 +521,11 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       event.data.__modified = true;
     }
     this.hasWarehouseChanges = true;
+    if (event.data.__isNew) {
+      setTimeout(() => {
+        if (this.warehousesGridApi) this.warehousesGridApi.refreshCells({ force: true, columns: ['Permisos'] });
+      }, 0);
+    }
   }
 
   addWarehouse() {
@@ -538,6 +546,9 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.warehousesRowData = [newWarehouse, ...this.warehousesRowData];
     this.warehousesGridApi.setGridOption('rowData', this.warehousesRowData);
     this.hasWarehouseChanges = true;
+    setTimeout(() => {
+      if (this.warehousesGridApi) this.warehousesGridApi.refreshCells({ force: true, columns: ['Permisos'] });
+    }, 0);
 
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -558,7 +569,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     const invalidRow = rowsToValidate.find((item) => !item.idRole || !item.idPosicion);
 
     if (invalidRow) {
-      alerts.basicAlert('Añadir entrada', 'Debe seleccionar un Departamento y una Posición antes de guardar.', 'error');
+      alerts.userBasicAlert('Añadir entrada', 'Debe seleccionar un Departamento y una Posición antes de guardar.', 'error');
       return;
     }
 
@@ -624,26 +635,26 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.userBasicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.hasWarehouseChanges = false;
       this.signalsService.setRefresCantidadPermisos(true);
       this.obternerDatos();
     } catch (error) {
       console.error(error);
-      alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
+      alerts.userBasicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
   }
 
   deleteSelectedWarehouse() {
     if (!this.selectedWarehouse) {
-      alerts.basicAlert('Eliminar entrada', 'Por favor, seleccione un departamento para eliminar.', 'warning');
+      alerts.userBasicAlert('Eliminar entrada', 'Por favor, seleccione un departamento para eliminar.', 'warning');
       return;
     }
 
     const { idRole, idPosicion } = this.selectedWarehouse;
 
     if (!idRole || !idPosicion) {
-      alerts.basicAlert('Eliminar entrada', 'El registro seleccionado no tiene Departamento o Posición asignada.', 'error');
+      alerts.userBasicAlert('Eliminar entrada', 'El registro seleccionado no tiene Departamento o Posición asignada.', 'error');
       return;
     }
 
@@ -656,12 +667,12 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       if (value.isConfirmed) {
         this.permitionsService.deleteRoles(this.userId, this.branchId, idRole, idPosicion).pipe(
           catchError((error) => {
-            alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
+            alerts.userBasicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
             console.error(error);
             return EMPTY;
           })
         ).subscribe(() => {
-          alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+          alerts.userBasicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
           this.trackingService.addLog(
             this.trackingService.getnameComp(),
             'Delete Registro de Permisos por Departamento',
@@ -705,8 +716,9 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     }
 
     if (colId === 'Permisos') {
+      if (event.data?.__isNew) return;
       if (!this.canOpenVerPermisosModal()) {
-        alerts.basicAlert(
+        alerts.userBasicAlert(
           'Sin acceso',
           'No tienes el permiso «Permisos» en Setup Usuarios (Permisos maestros).',
           'info'

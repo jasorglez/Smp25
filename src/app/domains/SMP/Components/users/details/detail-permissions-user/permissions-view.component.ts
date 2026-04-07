@@ -68,6 +68,17 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   private userSystemPermissionIds: number[] = [];
   /** Copia al cargar datos: detectar cambios sin guardar y revertir. */
   private userSystemPermissionIdsBaseline: number[] = [];
+  /**
+   * true cuando el modal se abrió con la plantilla rol+posición pre-cargada y el usuario aún
+   * NO tiene UserSystemPermissions guardados. En ese estado los checks de "dirty" devuelven
+   * false (plantilla == baseline), pero el usuario ESPERA poder guardar la plantilla.
+   * Se resetea a false tras guardar o al recargar datos.
+   */
+  private isSeededFromTemplate = false;
+  /** true cuando se abre desde dept row y el usuario ya tiene CRUD propios guardados.
+   *  syncMasterLeftSwitchesFromUserSys debe derivar los switches izquierdos solo del lado
+   *  derecho (detailedRead), ignorando el fallback de UserSystem IDs. */
+  private forceDeriveLeftFromRight = false;
 
   /** Misma respuesta que Permisos maestros: `getMasterPermissions` (acordeón). */
   private masterPermissionsCatalog: any[] = [];
@@ -106,6 +117,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   @Input() idBranchInput: number;
   @Input() idRoleInput: number;
   @Input() idPosicionInput: number;
+  /** Empresa real del usuario editado. Evita usar la empresa del sidebar cuando root@bi2.mx está logueado. */
+  @Input() idCompanyInput: number;
   /** 'userSystem' (default): sincroniza con Permisos maestros / UserSystemPermissions. 'position': permisos por posición (opción B). */
   @Input() scopeInput: 'userSystem' | 'position' = 'userSystem';
   /** Si true (y scopeInput === 'userSystem'), precarga permisos base desde la plantilla rol+posición. */
@@ -867,6 +880,19 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   /**
+   * Modal «Departamentos de: …» → Ver permisos (`seedFromRolePosition`).
+   * La vista debe reflejar la plantilla rol+posición (como Configuración › Departamento),
+   * no mezclar switches con `UserSystemPermissions` globales del usuario (otras sucursales/roles).
+   */
+  private isUserPermissionsSeededFromRolePosition(): boolean {
+    return (
+      this.seedFromRolePosInput === true &&
+      (this.scopeInput ?? 'userSystem') === 'userSystem' &&
+      this.userSystemPermissionIds.length === 0
+    );
+  }
+
+  /**
    * Switch izquierdo: si hay rejilla, refleja "¿algún submódulo encendido?".
    * Si todos los del lado derecho están apagados → maestro apagado y se limpian ids/CRUD del módulo.
    * Almacenes (solo modal, homónimo): si todas las tarjetas derechas están apagadas, apagar el switch izquierdo
@@ -875,13 +901,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
    */
   private syncMasterLeftSwitchesFromUserSys(): void {
     let pruned = false;
+    const seedDeptModal = this.isUserPermissionsSeededFromRolePosition() || this.forceDeriveLeftFromRight;
     for (const master of this.groupedPermissions) {
       if (master.details?.length) {
         if (this.isAlmacenesHomonymLeftSwitchMode(master)) {
           const hid = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName)!;
           const allRightOff = master.details.every((d) => !d.detailedRead);
           if (allRightOff) {
-            if (this.userSystemPermissionIds.includes(hid)) {
+            if (!seedDeptModal && this.userSystemPermissionIds.includes(hid)) {
               // La rejilla puede no reflejar aún el homónimo; si el id sigue en UserSystem, mantener encendido.
               master.masterRead = true;
             } else {
@@ -893,7 +920,9 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
               }
             }
           } else {
-            master.masterRead = this.userSystemPermissionIds.includes(hid);
+            master.masterRead = seedDeptModal
+              ? this.anyDetailReadOnForMasterLeftSwitch(master)
+              : this.userSystemPermissionIds.includes(hid);
           }
           continue;
         }
@@ -901,7 +930,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         let anyDetailOn = this.anyDetailReadOnForMasterLeftSwitch(master);
         master.masterRead = anyDetailOn;
         if (!anyDetailOn) {
-          if (this.userSysStillHasAnyIdForMaster(master)) {
+          if (!seedDeptModal && this.userSysStillHasAnyIdForMaster(master)) {
             master.masterRead = true;
             for (const detail of master.details) {
               this.syncReadFlagsForSingleDetail(detail);
@@ -933,12 +962,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       } else {
         const catIds = this.getCatalogDetailedIdsForMasterName(master.masterPermissionName);
         if (catIds.size > 0) {
-          // Un usuario con permisos parciales del módulo debe ver el maestro encendido (antes: .every exigía todos).
-          master.masterRead = [...catIds].some((id) => this.userSystemPermissionIds.includes(id));
+          if (seedDeptModal) {
+            master.masterRead = false;
+          } else {
+            // Un usuario con permisos parciales del módulo debe ver el maestro encendido (antes: .every exigía todos).
+            master.masterRead = [...catIds].some((id) => this.userSystemPermissionIds.includes(id));
+          }
         }
       }
     }
-    if (pruned) {
+    if (pruned && !seedDeptModal) {
       this.syncReadFlagsFromUserSystemPermissions();
     }
   }
@@ -985,7 +1018,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.branchId = this.idBranchInput;
     this.idRole = idRole;
     this.idPosicion = idPosicion;
-    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.idCompany = this.idCompanyInput ?? this.signalsService.getRootSelectedBySidebar()();
     this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
   }
 
@@ -995,7 +1028,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.branchId = params.idBranch;
     this.idRole = params.idRole;
     this.idPosicion = params.idPosicion;
-    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.idCompany = this.idCompanyInput ?? this.signalsService.getRootSelectedBySidebar()();
     this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
   }
 
@@ -1016,6 +1049,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     }
 
     this.lastGuardTickAfterModalDataLoad = Number.POSITIVE_INFINITY;
+    this.isSeededFromTemplate = false; // se actualizará al recibir los datos
 
     const preserve = options?.preserveUiSelection === true;
     const savedMasterName = preserve ? this.masterSeleccionado?.masterPermissionName : undefined;
@@ -1082,16 +1116,11 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.roleTemplateCrudRows = this.normalizeCrudArray(roleTemplateRows ?? []);
         const userSysList = this.normalizeUserSystemApiList(userSys);
         this.userSystemPermissionIds = this.extractPermissionIdsFromUserSystemRows(userSysList);
-        // Para usuarios nuevos, si seedFromRolePosition está activo y no existe UserSystemPermissions,
-        // el CRUD + flags ya deben reflejar la plantilla rol+posición (lo traemos en `crud` o `roleTemplateRows`).
-        // En ese caso, evitar sobrescribir `detail.detailedRead` con ids calculados desde UserSystemPermissions
-        // (que puede no mapear 1:1 en algunos homónimos). Priorizamos la plantilla visual.
+        // Cuando se abre desde “Departamentos de:” y el usuario no tiene datos propios guardados,
+        // usar la plantilla como base visual. Si ya tiene datos guardados, mostrarlos tal cual.
+        const userHasOwnCrud = Array.isArray(crud) && crud.length > 0;
         let seededFromRoleTemplateVisual = false;
-        // Precarga desde rol+posición.
-        // Si el modal se abrió desde “Departamentos de:”, la intención es que el panel derecho
-        // replique 1:1 la plantilla Departamento+Posición. En ese caso, no queremos que
-        // `syncReadFlagsFromUserSystemPermissions()` sobrescriba por ids que pudieran venir extra.
-        if (scope === 'userSystem' && seedFromRolePos && this.userSystemPermissionIds.length === 0) {
+        if (scope === 'userSystem' && seedFromRolePos && this.roleTemplateCrudRows.length > 0 && !userHasOwnCrud) {
           seededFromRoleTemplateVisual = true;
           const seed = new Set<number>();
           // Para switches con lógica especial (ej. Almacenes homónimo), necesitamos
@@ -1145,21 +1174,49 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
               seed.add(hid);
             }
           }
-          this.userSystemPermissionIds = [...seed];
+          // Solo usar el seed del template para los switches izquierdos si el usuario
+          // no tiene sus propios UserSystem permissions. Si ya los tiene (config personalizada),
+          // se respetan — solo los flags CRUD del lado derecho se toman del template.
+          if (this.userSystemPermissionIds.length === 0) {
+            this.userSystemPermissionIds = [...seed];
+          }
         }
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
+        // Cuando se abre desde "Departamentos de:" y el usuario no tiene CRUD rows propios,
+        // usar la plantilla como rawData (usuario nuevo sin permisos previos guardados).
+        if (seedFromRolePos && this.roleTemplateCrudRows.length > 0 && (!Array.isArray(crud) || crud.length === 0)) {
+          this.rawData = [...this.roleTemplateCrudRows];
+        }
         this.rebuildGroupedPermissionsFromRaw();
         if (scope === 'userSystem') {
           // Primero alinear rejilla/CRUD con UserSystemPermissions (o plantilla si aplica).
           // Si se llama syncMasterLeftSwitchesFromUserSys() antes, `detailedRead` suele seguir
           // en false y el método interpreta “módulo apagado” y poda ids de usuario → todo apagado
           // y al guardar + recargar parece que se revierte.
-          if (seedFromRolePos) {
+          // Cuando se abre desde “Departamentos de:” (seedFromRolePos=true) y hay template,
+          // siempre usar applyTemplateCrudFlagsToGroupedPermissions() para que los flags de
+          // detalle reflejen la plantilla rol+posición, sin importar si el usuario tiene
+          // UserSystemPermissions propios (que son switches maestros, fuente distinta).
+          if (seededFromRoleTemplateVisual) {
             this.applyTemplateCrudFlagsToGroupedPermissions();
+          } else if (seedFromRolePos && userHasOwnCrud) {
+            // El usuario ya tiene sus CRUD rows guardados (con los flags correctos del template).
+            // rebuildGroupedPermissionsFromRaw() ya los leyó correctamente — no sobreescribir
+            // con syncReadFlagsFromUserSystemPermissions() que usa IDs de espacio distinto.
+            this.forceDeriveLeftFromRight = true;
           } else {
             this.syncReadFlagsFromUserSystemPermissions();
           }
           this.syncMasterLeftSwitchesFromUserSys();
+          this.forceDeriveLeftFromRight = false;
+          // Tras podar ids globales que no aplican a la plantilla (modal desde Departamentos de),
+          // la línea base debe coincidir con lo mostrado para no marcar sucio al abrir.
+          if (seededFromRoleTemplateVisual) {
+            this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
+            // Marcar que el modal está pre-cargado con plantilla: el botón guardar debe estar activo
+            // y saveDetailChanges() omitirá el check de dirty para persistir la plantilla al usuario.
+            this.isSeededFromTemplate = true;
+          }
         } else {
           this.recomputeReadsFromCrud();
         }
@@ -1653,13 +1710,20 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     return false;
   }
 
-  private propagarActivacionCrudTrasLectura(permission: CrudPermission): void {
+  private propagarActivacionCrudTrasLectura(permission: CrudPermission, parentSubdetail?: SubdetailPermission | null): void {
     if (permission.canRead && this.detailSeleccionado && this.masterSeleccionado) {
       this.detailSeleccionado.detailedRead = true;
       this.masterSeleccionado.masterRead = true;
       permission.canCreate = true;
       permission.canUpdate = true;
       permission.canDelete = true;
+      // Si se activó un hijo, también activar el switch principal del subdetail padre
+      if (parentSubdetail?.principal && !parentSubdetail.principal.canRead) {
+        parentSubdetail.principal.canRead = true;
+        parentSubdetail.principal.canCreate = true;
+        parentSubdetail.principal.canUpdate = true;
+        parentSubdetail.principal.canDelete = true;
+      }
     }
     if (!permission.canRead) {
       permission.canCreate = false;
@@ -1725,22 +1789,22 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         const setupUsuariosId = this.getCatalogDetailedIdFromSetupUsuariosPermission(permission.name);
         if (setupUsuariosId != null) {
           this.applyUserSystemPermissionLocal(setupUsuariosId, permission.canRead, () =>
-            this.propagarActivacionCrudTrasLectura(permission)
+            this.propagarActivacionCrudTrasLectura(permission, parentSubdetail)
           );
           return;
         }
       }
-      this.propagarActivacionCrudTrasLectura(permission);
+      this.propagarActivacionCrudTrasLectura(permission, parentSubdetail);
       this.checkForChanges();
       return;
     }
     if (id != null) {
       this.applyUserSystemPermissionLocal(id, permission.canRead, () =>
-        this.propagarActivacionCrudTrasLectura(permission)
+        this.propagarActivacionCrudTrasLectura(permission, parentSubdetail)
       );
       return;
     }
-    this.propagarActivacionCrudTrasLectura(permission);
+    this.propagarActivacionCrudTrasLectura(permission, parentSubdetail);
     this.checkForChanges();
   }
 
@@ -1783,10 +1847,10 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   mostrarPanelCrudParaDetalleSeleccionado(): boolean {
     const detail = this.detailSeleccionado;
     const master = this.masterSeleccionado;
-    if (!detail || !master || !master.masterRead) {
+    if (!detail || !master) {
       return false;
     }
-    if (detail.detailedRead) {
+    if (detail.subdetails && detail.subdetails.length > 0) {
       return true;
     }
     if (!this.isAlmacenesHomonymLeftSwitchMode(master)) {
@@ -2309,7 +2373,10 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     const scope: PermissionsScope = this.scopeInput ?? 'userSystem';
     // En modo "position" NO debe tocar permisos maestros (UserSystemPermissions).
     // Solo consideramos cambios de CRUD.
+    // Si se pre-cargó desde plantilla, consideramos siempre hay cambios pendientes (la plantilla
+    // aún no fue guardada para este usuario).
     this.notSavedChanges =
+      this.isSeededFromTemplate ||
       (scope === 'userSystem' ? this.areUserSystemPermissionsDirty() : false) ||
       this.hasNonUserSysCrudDirty();
   }
@@ -2326,6 +2393,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   onMasterReadChange(master: MasterPermission) {
+    alerts.userPermissionToggleNotice(master.masterPermissionName, master.masterRead);
     // En modo por posición, los switches del sidebar izquierdo NO deben sincronizarse con permisos maestros.
     // Solo afectan el CRUD local.
     if ((this.scopeInput ?? 'userSystem') === 'position') {
@@ -2521,11 +2589,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       return;
     }
     const persistedUserId = Number(this.userId);
-    const userSysDirty = scope === 'userSystem' ? this.areUserSystemPermissionsDirty() : false;
-    const crudDirty = this.hasNonUserSysCrudDirty();
+    // Si se pre-cargó desde plantilla (usuario sin permisos previos), forzar guardado completo
+    // aunque los checks de dirty devuelvan false (plantilla == baseline artificialmente igualados).
+    const forceFromTemplate = this.isSeededFromTemplate;
+    const userSysDirty = forceFromTemplate
+      ? (scope === 'userSystem' && this.userSystemPermissionIds.length > 0)
+      : (scope === 'userSystem' ? this.areUserSystemPermissionsDirty() : false);
+    const crudDirty = forceFromTemplate ? true : this.hasNonUserSysCrudDirty();
 
     if (!userSysDirty && !crudDirty) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios para guardar.', 'info');
+      alerts.userBasicAlert('Sin cambios', 'No hay cambios para guardar.', 'info');
       return;
     }
 
@@ -2541,7 +2614,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       if (roleTemplateOnly) {
         const modifiedPermissions = this.untransformTemplateDirtyOnly(this.groupedPermissions);
         if (modifiedPermissions.length === 0) {
-          alerts.basicAlert('Sin cambios', 'No hay cambios para guardar.', 'info');
+          alerts.userBasicAlert('Sin cambios', 'No hay cambios para guardar.', 'info');
           return;
         }
         const changesMap = new Map<string, RolesxDetailedPermission>();
@@ -2660,15 +2733,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.signalsService.bumpGuardRefreshTick();
       }
 
-      alerts.basicAlert('Datos Guardados', 'Los permisos se han guardado correctamente.', 'success');
+      alerts.userSaveSuccessToast('Permisos guardados', 'Los permisos se han guardado correctamente.');
       this.notSavedChanges = false;
+      this.isSeededFromTemplate = false; // ya guardado, dejar de forzar el save
       if (!crudDirty) {
         this.captureMasterReadBaseline();
       }
     } catch (error) {
       alerts.closeLoading();
       console.error('Error al guardar los permisos:', error);
-      alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');
+      alerts.userSaveErrorToast('Error', 'Ocurrió un error al guardar los datos.');
     }
   }
 

@@ -3,17 +3,17 @@
   <!-- Toolbar -->
   <div class="users-toolbar">
     <div class="toolbar-actions">
-      <button class="action-btn add"    (click)="addRow()"      title="Agregar usuario">
+      <button class="action-btn add"    (click)="addRow()"      title="Agregar usuario" [disabled]="hasDetailExpanded">
         <i class="bi bi-plus-lg"></i>
       </button>
-      <button class="action-btn save position-relative" (click)="saveChanges()" title="Guardar cambios">
+      <button class="action-btn save position-relative" (click)="saveChanges()" title="Guardar cambios" [disabled]="hasDetailExpanded">
         <i class="bi bi-floppy"></i>
         <span class="unsaved-dot" *ngIf="notSavedChanges"></span>
       </button>
-      <button class="action-btn revert" (click)="revert()"      title="Deshacer cambios">
+      <button class="action-btn revert" (click)="revert()"      title="Deshacer cambios" [disabled]="hasDetailExpanded">
         <i class="bi bi-arrow-clockwise"></i>
       </button>
-      <button class="action-btn delete" (click)="deleteUser()"  title="Eliminar usuario">
+      <button class="action-btn delete" (click)="deleteUser()"  title="Eliminar usuario" [disabled]="hasDetailExpanded">
         <i class="bi bi-trash"></i>
       </button>
     </div>
@@ -36,6 +36,7 @@
       (cellEditingStopped)="onCellEditingStopped($event)"
       (rowSelected)="onSelectedRow($event)"
       (gridReady)="onGridReady($event)"
+      (rowGroupOpened)="onRowGroupOpened($event)"
       [components]="components"
       [gridOptions]="gridOptions"
       [stopEditingWhenCellsLoseFocus]="true">
@@ -77,7 +78,8 @@
         [idPosicionInput]="modalPermissions.idPosicion"
         [scopeInput]="modalPermissions.scope"
         [seedFromRolePosInput]="modalPermissions.seedFromRolePosition"
-        [roleTemplateOnlyInput]="modalPermissions.roleTemplateOnly">
+        [roleTemplateOnlyInput]="modalPermissions.roleTemplateOnly"
+        [idCompanyInput]="modalPermissions.idCompany">
       </app-permissions-view-by-user>
     </div>
 

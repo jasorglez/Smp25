@@ -10,6 +10,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { RolesService } from 'app/services/roles.service';
+import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 import { alerts } from 'app/helpers/alerts';
 import { AuthService } from 'app/services/auth.service';
 import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, of, toArray } from 'rxjs';
@@ -45,6 +46,12 @@ import { environment } from '@env/environment';
             </span>
           </button>
           <button
+            class="btn btn-warning ms-1"
+            (click)="revertWarehouses()"
+            [disabled]="!hasWarehouseChanges">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <button
             class="btn btn-danger ms-1"
             (click)="deleteSelectedWarehouse()"
             [disabled]="!selectedWarehouse">
@@ -64,7 +71,7 @@ import { environment } from '@env/environment';
           (gridReady)="onWarehousesGridReady($event)"
           (cellValueChanged)="onWarehousesCellValueChanged($event)"
           (cellClicked)="onCellClicked($event)"
-          [stopEditingWhenCellsLoseFocus]="true">
+          [stopEditingWhenCellsLoseFocus]="false">
         </ag-grid-angular>
       </div>
     </div>
@@ -77,6 +84,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   private trackingService = inject(TrackingService);
   private rolesService = inject(RolesService);
   private permitionsService = inject(PermitionsService);
+  private systemPermissionsService = inject(MasterPermissions2Service);
   private employeeService = inject(EmployeesService);
   private modalService = inject(ModalService);
   authService = inject(AuthService);
@@ -100,6 +108,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   rolesDefinidos: any[] = [];
   catalogGeneralPosiciones: any[] = [];
   hasWarehouseChanges: boolean = false;
+  private warehousesRowDataOriginal: any[] = [];
   warehousesGridApi: any;
   idPosicionSelect: number;
   selectedWarehouse: any = null;
@@ -118,6 +127,19 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     return Number.isFinite(n) ? n : null;
   }
 
+  /** id numérico de ítems de catálogo (API camelCase o PascalCase). */
+  private catalogEntryId(entry: any): number | null {
+    if (!entry) return null;
+    const raw = entry.id ?? entry.Id;
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  private catalogEntryDescription(entry: any): string {
+    return entry?.description ?? entry?.Description ?? '';
+  }
+
   private getPosicionesListForRow(row: any): any[] {
     const rid = this.normalizeRoleId(row?.idRole);
     if (row?.posicionesDisponibles?.length) {
@@ -127,6 +149,33 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       return this.positionsByRoleIdCache.get(rid) ?? [];
     }
     return this.catalogPosiciones ?? [];
+  }
+
+  /** Rellena `catalogPosiciones` desde fila/caché o pide al API sin bloquear el clic (evita lentitud al abrir el editor). */
+  private primePosicionesForRow(row: any): void {
+    const roleId = row?.idRole;
+    if (roleId == null || roleId === '') {
+      this.catalogPosiciones = [];
+      return;
+    }
+    const rid = this.normalizeRoleId(roleId);
+    if (row?.posicionesDisponibles?.length) {
+      this.catalogPosiciones = row.posicionesDisponibles;
+      return;
+    }
+    if (rid != null && this.positionsByRoleIdCache.has(rid)) {
+      this.catalogPosiciones = this.positionsByRoleIdCache.get(rid) ?? [];
+      return;
+    }
+    void this.getPoscionesbyRole(roleId).then((list) => {
+      this.catalogPosiciones = list;
+      if (rid != null) {
+        this.positionsByRoleIdCache.set(rid, list);
+      }
+      if (row) {
+        row.posicionesDisponibles = list;
+      }
+    });
   }
 
   /**
@@ -165,6 +214,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
+    /** Select en popup: con true el grid cierra el editor al hacer clic en la lista (típico dentro de master-detail). */
+    popupParent: typeof document !== 'undefined' ? document.body : undefined,
     onRowClicked: (event) => {
       event.node.setSelected(true);
       this.selectedWarehouse = event.data;
@@ -217,25 +268,51 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         suppressMovable: true,
         filter: false,
         flex: 1,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params) => {
           const usedRoles = this.warehousesRowData
-            .filter(row => row !== params.data && row.idRole)
-            .map(row => row.idRole);
-          const filteredRoles = this.catalogRoles
-            ? this.catalogRoles.filter(item => !usedRoles.includes(item.id))
+            .filter((row) => row !== params.data && this.normalizeRoleId(row.idRole) != null)
+            .map((row) => this.normalizeRoleId(row.idRole) as number);
+          const filteredRoles = Array.isArray(this.catalogRoles)
+            ? this.catalogRoles.filter((item) => {
+                const cid = this.catalogEntryId(item);
+                return cid != null && !usedRoles.some((u) => u === cid);
+              })
             : [];
+          filteredRoles.sort((a, b) =>
+            this.catalogEntryDescription(a).localeCompare(this.catalogEntryDescription(b), 'es', {
+              sensitivity: 'base',
+              numeric: true,
+            })
+          );
+          const values = filteredRoles
+            .map((item) => this.catalogEntryId(item))
+            .filter((id): id is number => id != null);
           return {
-            values: filteredRoles.map(item => item.id)
+            values,
+            formatValue: (value: number | null | undefined) => {
+              if (value == null) return '';
+              const id = Number(value);
+              if (!Number.isFinite(id)) return '';
+              const found = this.catalogRoles?.find((item) => this.catalogEntryId(item) === id);
+              const label = this.catalogEntryDescription(found);
+              if (label) return label;
+              return `ID: ${id}`;
+            },
+            valueListMaxHeight: 320,
+            /** Solo selección desde la lista (sin texto libre). */
+            allowTyping: false,
+            filterList: false,
           };
         },
         valueFormatter: (params) => {
           const raw = params.value;
           if (raw == null || raw === '') return '';
           const id = Number(raw);
-          const found = this.catalogRoles?.find(item => Number(item.id) === id);
+          const found = this.catalogRoles?.find((item) => this.catalogEntryId(item) === id);
+          const fromCat = this.catalogEntryDescription(found);
+          if (fromCat) return fromCat;
           return (
-            found?.description ??
             params.data?.departmentName ??
             params.data?.roleName ??
             (Number.isFinite(id) ? `ID: ${id}` : String(raw))
@@ -282,32 +359,69 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       },
       {
         field: 'idPosicion',
-        headerName: 'Posicion',
+        headerName: 'Posición',
         editable: () => true,
         suppressMovable: true,
         filter: 'agNumberColumnFilter',
         flex: 1,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params) => {
           const currentRole = params.data.idRole;
           const source = this.getPosicionesListForRow(params.data);
           const assignedPositions = this.warehousesRowData
             .filter((row) => row.idRole == currentRole && row !== params.data)
             .map((row) => row.idPosicion);
-          const filteredPosiciones = source.filter(
-            (item) => !assignedPositions.some((ap) => Number(ap) === Number(item.id))
+          const filteredPosiciones = (Array.isArray(source) ? source : []).filter((item) => {
+            const pid = this.catalogEntryId(item);
+            return (
+              pid != null &&
+              !assignedPositions.some((ap) => Number(ap) === pid)
+            );
+          });
+          filteredPosiciones.sort((a, b) =>
+            this.catalogEntryDescription(a).localeCompare(this.catalogEntryDescription(b), 'es', {
+              sensitivity: 'base',
+              numeric: true,
+            })
           );
+          const values = filteredPosiciones
+            .map((item) => this.catalogEntryId(item))
+            .filter((id): id is number => id != null);
+          const rowData = params.data;
           return {
-            values: filteredPosiciones.map((item) => item.id),
+            values,
+            formatValue: (value: number | null | undefined) => {
+              if (value == null) return '';
+              const id = Number(value);
+              if (!Number.isFinite(id)) return '';
+              const rowList = this.getPosicionesListForRow(rowData);
+              const foundInRow =
+                Array.isArray(rowList) && rowList.find((item) => this.catalogEntryId(item) === id);
+              const found =
+                foundInRow ??
+                this.catalogGeneralPosiciones?.find((item) => this.catalogEntryId(item) === id);
+              const label = this.catalogEntryDescription(found);
+              if (label) return label;
+              return `ID: ${id}`;
+            },
+            valueListMaxHeight: 320,
+            allowTyping: false,
+            filterList: false,
           };
         },
         valueFormatter: (params) => {
           const raw = params.value;
           if (raw == null || raw === '') return '';
           const id = Number(raw);
-          const found = this.catalogGeneralPosiciones?.find(item => Number(item.id) === id);
+          const rowList = this.getPosicionesListForRow(params.data);
+          const foundInRow =
+            Array.isArray(rowList) && rowList.find((item) => this.catalogEntryId(item) === id);
+          const found =
+            foundInRow ??
+            this.catalogGeneralPosiciones?.find((item) => this.catalogEntryId(item) === id);
+          const fromCat = this.catalogEntryDescription(found);
+          if (fromCat) return fromCat;
           return (
-            found?.description ??
             params.data?.positionName ??
             params.data?.posicionName ??
             (Number.isFinite(id) ? `ID: ${id}` : String(raw))
@@ -344,9 +458,12 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         field: 'Permisos',
         headerName: 'Permisos',
         cellStyle: (p: any) => ({
-          backgroundColor: this.canOpenVerPermisosModal() ? '#d4edda' : '#e9ecef',
+          backgroundColor: (!p.data?.__isNew && this.canOpenVerPermisosModal()) ? '#d4edda' : '#e9ecef',
         }),
-        cellRenderer: () => {
+        cellRenderer: (p: any) => {
+          if (p.data?.__isNew) {
+            return `<span class="text-muted" style="cursor: not-allowed;" title="Guarda el registro antes de ver permisos">—</span>`;
+          }
           if (!this.canOpenVerPermisosModal()) {
             return `<span class="text-muted" style="cursor: not-allowed;" title="Sin permiso (Setup Usuarios › Permisos)">—</span>`;
           }
@@ -365,7 +482,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.userEmail = params.data.userEmail || '';
     this.branchId = params.data.idPermission;
     this.branchName = params.data.name || '';
-    this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.idCompany = Number(params.data.idCompany ?? this.signalsService.getRootSelectedBySidebar()());
     this.loadCatalogs();
     this.getGeneralPosicion();
     this.getRoles();
@@ -379,7 +496,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   getRoles() {
     this.rolesService.getCatalogRoles(this.idCompany).subscribe(
       (data: any) => {
-        this.catalogRoles = data;
+        this.catalogRoles = Array.isArray(data) ? data : [];
         if (this.warehousesGridApi) {
           this.warehousesGridApi.refreshCells({ force: true });
         }
@@ -394,7 +511,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   getGeneralPosicion() {
     this.rolesService.getGeneralPosicion(this.idCompany).subscribe(
       (data: any) => {
-        this.catalogGeneralPosiciones = data;
+        this.catalogGeneralPosiciones = Array.isArray(data) ? data : [];
         if (this.warehousesGridApi) {
           this.warehousesGridApi.refreshCells({ force: true });
         }
@@ -450,6 +567,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
 
         // Normalizar nombres de campos que varían por backend (camelCase/PascalCase)
         // para que el grid SIEMPRE tenga idRole/idPosicion y pueda formatear con catálogos.
+        this.warehousesRowDataOriginal = [];
         this.warehousesRowData = (permisosArr || []).map((r: any) => {
           const idRole =
             r?.idRole ??
@@ -481,6 +599,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             principal,
           };
         });
+
+        this.warehousesRowDataOriginal = JSON.parse(JSON.stringify(this.warehousesRowData));
 
         // 1) Si el backend envía una fila con principal === true/1, usarla para marcar el checkbox
         const rowPrincipal = this.warehousesRowData.find(
@@ -613,6 +733,13 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.hasWarehouseChanges = true;
   }
 
+  revertWarehouses() {
+    this.warehousesRowData = JSON.parse(JSON.stringify(this.warehousesRowDataOriginal));
+    this.warehousesGridApi.setGridOption('rowData', this.warehousesRowData);
+    this.hasWarehouseChanges = false;
+    this.selectedWarehouse = null;
+  }
+
   addWarehouse() {
     if (!this.warehousesGridApi) {
       console.error('Warehouses grid API not ready');
@@ -629,7 +756,10 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     };
 
     this.warehousesRowData = [newWarehouse, ...this.warehousesRowData];
-    this.warehousesGridApi.setRowData(this.warehousesRowData);
+    this.warehousesGridApi.setGridOption('rowData', this.warehousesRowData);
+    setTimeout(() => {
+      this.warehousesGridApi?.refreshCells({ force: true, columns: ['Permisos'] });
+    }, 0);
     this.hasWarehouseChanges = true;
 
     this.trackingService.addLog(
@@ -655,35 +785,16 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       return;
     }
 
-    const addObservables = newRows.flatMap((row) => {
-      const observables = [];
+    // Para filas nuevas: primero guardar la fila dept/posición, luego obtener plantilla y guardar CRUD permissions
+    const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       delete cleanedData.posicionesDisponibles;
-      observables.push(this.permitionsService.addPermitionsDetailBydescription(cleanedData));
+      const { idRole, idPosicion } = row;
 
-      console.log(this.rolesDefinidos);
-      if (this.rolesDefinidos && this.rolesDefinidos.length > 0) {
-        const detailObservables = this.rolesDefinidos.map((permiso) => {
-          const detailData = {
-            ...cleanedData,
-            idMasterPermission: permiso.idMasterPermission,
-            masterRead: permiso.masterRead,
-            idDetailedPermission: permiso.idDetailedPermission,
-            detailedRead: permiso.detailedRead,
-            idShowPermition: permiso.idShowPermition,
-            showColumn: permiso.showColumn,
-            canCreate: permiso.canCreate,
-            canRead: permiso.canRead,
-            canUpdate: permiso.canUpdate,
-            canDelete: permiso.canDelete,
-            active: permiso.active,
-          };
-          console.log(detailData);
-          return this.permitionsService.addPermitionsDetail(detailData);
-        });
-        observables.push(...detailObservables);
-      }
-      return observables;
+      return this.permitionsService.addPermitionsDetailBydescription(cleanedData).pipe(
+        catchError(() => of(null)),
+        map(() => ({ idRole, idPosicion }))
+      );
     });
 
     const updateObservables = modifiedRows.flatMap((row) => {
@@ -715,9 +826,95 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     });
 
     try {
-      await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      // 1. Guardar filas dept/posición (nuevas y modificadas)
+      const addResults: { idRole: number; idPosicion: number }[] = newRows.length > 0
+        ? await lastValueFrom(forkJoin(addObservables))
+        : [];
+      if (updateObservables.length > 0) {
+        await lastValueFrom(concat(...updateObservables).pipe(toArray()));
+      }
+
+      // 2. Para cada fila nueva guardada, aplicar la plantilla de permisos del rol+posición
+      if (addResults.length > 0) {
+        const templateSaves$ = addResults
+          .filter((r) => r?.idRole && r?.idPosicion)
+          .map(({ idRole, idPosicion }) =>
+            this.rolesService.getPermissionsByRoles(this.idCompany, idRole, idPosicion).pipe(
+              catchError(() => of([])),
+              map((templateRows: any[]) => {
+                if (!Array.isArray(templateRows) || templateRows.length === 0) return [];
+                const seen = new Set<string>();
+                return templateRows
+                  .filter((r: any) => {
+                    const key = `${r?.idDetailedPermission ?? r?.IdDetailedPermission}-${r?.idShowPermition ?? r?.IdShowPermition}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                  })
+                  .map((r: any) => ({
+                    idUser: this.userId,
+                    idBranch: this.branchId,
+                    idMasterPermission: r?.idMasterPermission ?? r?.IdMasterPermission,
+                    masterRead: r?.masterRead ?? r?.MasterRead ?? false,
+                    idDetailedPermission: r?.idDetailedPermission ?? r?.IdDetailedPermission,
+                    detailedRead: r?.detailedRead ?? r?.DetailedRead ?? false,
+                    subdetailedPermissionName: r?.subdetailedPermissionName ?? r?.SubdetailedPermissionName ?? '',
+                    idShowPermition: r?.idShowPermition ?? r?.IdShowPermition,
+                    idRole,
+                    idPosicion,
+                    canCreate: r?.canCreate ?? r?.CanCreate ?? false,
+                    canRead: r?.canRead ?? r?.CanRead ?? false,
+                    canUpdate: r?.canUpdate ?? r?.CanUpdate ?? false,
+                    canDelete: r?.canDelete ?? r?.CanDelete ?? false,
+                    active: true,
+                  }));
+              }),
+              map((payloads) => payloads.map((p) => this.permitionsService.addPermitions(p))),
+              map((obs) => obs.length > 0 ? forkJoin(obs).pipe(catchError(() => of([]))) : of([]))
+            )
+          );
+
+        for (const save$ of templateSaves$) {
+          const inner$ = await lastValueFrom(save$);
+          await lastValueFrom(inner$);
+        }
+
+        // 3. Merge UserSystem permissions: actuales del usuario + ids ON del template
+        for (const { idRole, idPosicion } of addResults.filter((r) => r?.idRole && r?.idPosicion)) {
+          const templateRows: any[] = await lastValueFrom(
+            this.rolesService.getPermissionsByRoles(this.idCompany, idRole, idPosicion).pipe(catchError(() => of([])))
+          );
+          if (!Array.isArray(templateRows) || templateRows.length === 0) continue;
+
+          // Extraer ids ON del template
+          const templateIds = new Set<number>();
+          for (const r of templateRows) {
+            const id = Number(r?.idDetailedPermission ?? r?.IdDetailedPermission);
+            if (!Number.isFinite(id)) continue;
+            const anyOn = !!(r?.detailedRead ?? r?.DetailedRead) || !!(r?.masterRead ?? r?.MasterRead)
+              || !!(r?.canRead ?? r?.CanRead) || !!(r?.canCreate ?? r?.CanCreate)
+              || !!(r?.canUpdate ?? r?.CanUpdate) || !!(r?.canDelete ?? r?.CanDelete);
+            if (anyOn) templateIds.add(id);
+          }
+          if (templateIds.size === 0) continue;
+
+          // Obtener permisos actuales del usuario y hacer merge
+          const currentPerms: any[] = await lastValueFrom(
+            this.systemPermissionsService.getUserPermissions(this.userId).pipe(catchError(() => of([])))
+          );
+          const currentIds = new Set<number>(
+            (Array.isArray(currentPerms) ? currentPerms : [])
+              .map((p: any) => Number(p?.permissionId ?? p?.PermissionId ?? p?.id))
+              .filter(Number.isFinite)
+          );
+          for (const id of templateIds) currentIds.add(id);
+
+          await lastValueFrom(
+            this.systemPermissionsService.updateUserPermissions(this.userId, [...currentIds]).pipe(catchError(() => of(null)))
+          );
+        }
+      }
+
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.hasWarehouseChanges = false;
       this.signalsService.setRefresCantidadPermisos(true);
@@ -741,21 +938,15 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       return;
     }
 
-    alerts.confirmAlert(
-      'Eliminar permiso',
-      '¿Está seguro que desea eliminar este permiso de departamento?',
-      'warning',
-      'Sí, eliminar'
+    alerts.userConfirmDelete(
+      '¿Eliminar departamento?',
+      'Se eliminará el departamento/posición y todos sus permisos configurados para este usuario.'
     ).then((value) => {
       if (value.isConfirmed) {
-        this.permitionsService.deleteRolesBydescription(this.userId, this.branchId, idRole, idPosicion).pipe(
-          catchError((error) => {
-            alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
-            console.error(error);
-            return EMPTY;
-          })
-        ).subscribe(() => {
-          alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+        forkJoin([
+          this.permitionsService.deleteRolesBydescription(this.userId, this.branchId, idRole, idPosicion).pipe(catchError(() => of(null))),
+          this.permitionsService.deleteRoles(this.userId, this.branchId, idRole, idPosicion).pipe(catchError(() => of(null))),
+        ]).subscribe(() => {
           this.trackingService.addLog(
             this.trackingService.getnameComp(),
             'Delete Registro de Permisos por Departamento',
@@ -783,24 +974,18 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     return cleanedData;
   }
 
-  async onCellClicked(event: any): Promise<void> {
+  onCellClicked(event: any): void {
     const colId = event.column.getColId();
 
-    if (colId === 'idRole') {
-      const roleId = event.data.idRole;
-      console.log(event.data);
-      this.catalogPosiciones = roleId ? await this.getPoscionesbyRole(roleId) : [];
-    }
-
     if (colId === 'idPosicion') {
-      const roleId = event.data.idRole;
       this.idPosicionSelect = event.data.idPosicion;
-      this.catalogPosiciones = roleId ? await this.getPoscionesbyRole(roleId) : [];
+      this.primePosicionesForRow(event.data);
     }
 
     if (colId === 'Permisos') {
+      if (event.data?.__isNew) return;
       if (!this.canOpenVerPermisosModal()) {
-        alerts.basicAlert(
+        alerts.userBasicAlert(
           'Sin acceso',
           'No tienes el permiso «Permisos» en Setup Usuarios (Permisos maestros).',
           'info'
@@ -816,6 +1001,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         modalTitleDetail: this.buildPermissionsModalTitle(event.data.idPosicion),
         seedFromRolePosition: true,
         scope: 'userSystem',
+        idCompany: this.idCompany,
       });
     }
   }
@@ -823,8 +1009,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   /** Título del modal: nombre del usuario y posición (no departamento ni sucursal). */
   private buildPermissionsModalTitle(idPosicion: number): string {
     const pid = Number(idPosicion);
-    const pos = this.catalogGeneralPosiciones?.find((p: any) => Number(p.id) === pid);
-    const p = pos?.description ?? `Posición ${pid}`;
+    const pos = this.catalogGeneralPosiciones?.find((p: any) => this.catalogEntryId(p) === pid);
+    const p = this.catalogEntryDescription(pos) || `Posición ${pid}`;
     const u = (this.userName ?? '').trim() || 'Usuario';
     return `${u} — ${p}`;
   }
