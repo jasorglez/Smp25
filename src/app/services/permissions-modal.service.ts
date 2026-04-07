@@ -22,6 +22,8 @@ export interface PermissionsModalData {
   roleTemplateOnly?: boolean;
   /** 'userSystem' = permisos maestros / UserSystemPermissions; 'position' = permisos por posición */
   scope?: 'userSystem' | 'position';
+  /** Empresa del usuario editado. Si no se pasa, permissions-view usa la empresa del sidebar. */
+  idCompany?: number;
 }
 
 @Injectable({ providedIn: 'root' })

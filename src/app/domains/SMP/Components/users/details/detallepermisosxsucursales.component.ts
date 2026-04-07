@@ -51,16 +51,16 @@ import { EmployeesService } from 'app/services/employees.service';
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
           <strong>{{ isRootUser ? 'Empresas' : 'Sucursales' }} de: {{ userName }}</strong>
           <div class="d-flex">
-            <button                      
+            <button
               class="btn btn-primary ms-1"
               (click)="addPermission()"
-              [disabled]="!permissionsGridApi || sessionSecurityAllowed !== true">
+              [disabled]="!permissionsGridApi || sessionSecurityAllowed !== true || hasDetailExpanded">
               <i class="bi bi-plus-lg"></i>
             </button>
             <button
               class="btn btn-success ms-1 position-relative"
               (click)="savePermissions()"
-              [disabled]="!hasPermissionChanges || sessionSecurityAllowed !== true">
+              [disabled]="!hasPermissionChanges || sessionSecurityAllowed !== true || hasDetailExpanded">
               <i class="bi bi-floppy"></i>
               <span
                 class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -69,9 +69,15 @@ import { EmployeesService } from 'app/services/employees.service';
               </span>
             </button>
             <button
+              class="btn btn-warning ms-1"
+              (click)="revertPermissions()"
+              [disabled]="!hasPermissionChanges || sessionSecurityAllowed !== true || hasDetailExpanded">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button
               class="btn btn-danger ms-1"
               (click)="deleteSelectedPermission()"
-              [disabled]="!selectedPermission || sessionSecurityAllowed !== true">
+              [disabled]="!selectedPermission || sessionSecurityAllowed !== true || hasDetailExpanded">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -86,6 +92,7 @@ import { EmployeesService } from 'app/services/employees.service';
             [components]="components"
             (gridReady)="onPermissionsGridReady($event)"
             (cellValueChanged)="onPermissionsCellValueChanged($event)"
+            (rowGroupOpened)="onRowGroupOpened($event)"
             [stopEditingWhenCellsLoseFocus]="false">
           </ag-grid-angular>
         </div>
@@ -127,6 +134,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
 
   permissionsRowData: any[] = [];
   hasPermissionChanges: boolean = false;
+  hasDetailExpanded: boolean = false;
+  private permissionsRowDataOriginal: any[] = [];
   permissionsGridApi: any;
   selectedPermission: any = null;
 
@@ -249,10 +258,12 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           suppressMovable: true,
           filter: false,
           flex: 1,
-          cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
-            values: this.branches ? this.branches.map((item: any) => item.name) : []
-          },
+          cellEditor: 'agRichSelectCellEditor',
+          cellEditorPopup: true,
+          cellEditorParams: () => ({
+            values: this.branches ? this.branches.map((item: any) => item.name) : [],
+            formatValue: (value: any) => value ?? '',
+          }),
           valueFormatter: (params: any) => {
             if (params.data?.name) {
               return params.data.name;
@@ -393,6 +404,19 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     this.getInfoByUser();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
+    // Cuando está logueado root@bi2.mx, getAllUsers() devuelve usuarios de todas las compañías.
+    // El sidebar puede tener seleccionada una compañía distinta a la del usuario editado,
+    // por lo que getBranchesByUserAndCompany devolvería vacío. Usar la compañía real del usuario.
+    const loggedEmail = this.signalsService.getemailChoose();
+    if (loggedEmail === environment.root) {
+      const userCompany = Number(
+        params.data.id_company ?? params.data.idCompany ?? params.data.Id_Company ?? 0
+      );
+      if (userCompany > 0) {
+        this.idRoot = userCompany;
+      }
+    }
+
     const userEmail = this.signalsService.getemailChoose();
     this.showRoot = userEmail === environment.root;
     this.sessionSecurityAllowed =
@@ -427,13 +451,6 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
         this.editedUserSecurityAllowed = flags.security;
         queueMicrotask(() => {
           if (this.permissionsGridApi) {
-            if (this.editedUserDepartmentAllowed !== true || this.editedUserSecurityAllowed !== true) {
-              this.permissionsGridApi.forEachNode((node: any) => {
-                if (node.expanded) {
-                  node.setExpanded(false);
-                }
-              });
-            }
             this.permissionsGridApi.refreshCells({ force: true });
           }
         });
@@ -554,14 +571,16 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
               idPermission: branchId,
               /** No ligar a la sucursal del sidebar («todas» deja de coincidir y apagaba el check). */
               principal: !!principalFromApi,
-              // Pasar userId y userName al detail renderer de departamentos
+              // Pasar userId, userName e idCompany al detail renderer de departamentos
               idUser: row.idUser ?? this.userId,
               userName: row.userName ?? this.userName,
               userEmail: row.userEmail ?? this.userEmail,
+              idCompany: this.idRoot,
             };
           });
 
-          console.log('🟢 permissionsRowData mapeado:', this.permissionsRowData);
+          // Guardar snapshot para poder revertir cambios no guardados
+          this.permissionsRowDataOriginal = JSON.parse(JSON.stringify(this.permissionsRowData));
 
           // Cargar depto/posición por sucursal para pintar columnas Departamento/Posición.
           this.loadDeptPosForBranches();
@@ -750,9 +769,9 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
             }
           }
           const detailPairCount = pairKeys.size;
-          if (idRole > 0 || idPosicion > 0 || detailPairCount > 0) {
-            this.deptPosByBranchId.set(bid, { idRole, idPosicion, detailPairCount });
-          }
+          // Siempre guardar la entrada (incluso cuando count=0) para que el formatter no caiga
+          // al fallback de `permiso` (API stale) y muestre 0 cuando no hay departamentos.
+          this.deptPosByBranchId.set(bid, { idRole, idPosicion, detailPairCount });
 
           const row = this.permissionsRowData?.find((r: any) => Number(r?.idPermission) === bid);
           if (row) {
@@ -808,11 +827,26 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     });
   }
 
+  onRowGroupOpened(event: any) {
+    let anyExpanded = false;
+    this.permissionsGridApi?.forEachNode((node: any) => {
+      if (node.expanded) anyExpanded = true;
+    });
+    this.hasDetailExpanded = anyExpanded;
+  }
+
   onPermissionsCellValueChanged(event: any) {
     if (!event.data.__isNew) {
       event.data.__modified = true;
     }
     this.hasPermissionChanges = true;
+  }
+
+  revertPermissions() {
+    this.permissionsRowData = JSON.parse(JSON.stringify(this.permissionsRowDataOriginal));
+    this.permissionsGridApi.setGridOption('rowData', this.permissionsRowData);
+    this.hasPermissionChanges = false;
+    this.selectedPermission = null;
   }
 
   addPermission() {
@@ -839,7 +873,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     };
 
     this.permissionsRowData = [newPermission, ...this.permissionsRowData];
-    this.permissionsGridApi.setRowData(this.permissionsRowData);
+    this.permissionsGridApi.setGridOption('rowData', this.permissionsRowData);
     this.hasPermissionChanges = true;
 
     const logMessage = this.isRootUser
@@ -911,7 +945,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       );
       alerts.userBasicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.hasPermissionChanges = false;
-      this.signalsService.setRefresSecurity(true);
+      // Actualizar solo el contador Security de la fila del usuario (evita colapsar los detail rows)
+      this.signalsService.setSecurityDelta(this.userId, newRows.length);
       this.loadPermissionsData();
     } catch (error) {
       console.error(error);
@@ -919,11 +954,44 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     }
   }
 
-  deleteSelectedPermission() {
+  async deleteSelectedPermission() {
     if (!this.selectedPermission) return;
 
     const permissionId = this.selectedPermission.internalId;
-    this.usersxpermissionsService.deleteUserxPermission(permissionId).pipe(
+    const branchId = Number(this.selectedPermission.idPermission);
+    const branchName = this.selectedPermission.name ??
+      this.allBranches.find((b: any) => Number(b.id) === branchId)?.name ?? `Sucursal ${branchId}`;
+
+    const confirm = await alerts.userConfirmDelete(
+      'Eliminar sucursal',
+      `¿Eliminar "${branchName}"? Se eliminarán también todos los departamentos y posiciones asignados a esta sucursal para este usuario.`
+    );
+    if (!confirm.isConfirmed) return;
+
+    this.permitionsService.getRolYPosicion(this.userId, branchId).pipe(
+      map((permisos: any) => {
+        const arr: any[] = Array.isArray(permisos)
+          ? permisos
+          : Array.isArray(permisos?.data) ? permisos.data
+          : Array.isArray(permisos?.project) ? permisos.project
+          : Array.isArray(permisos?.permissions) ? permisos.permissions
+          : [];
+        return arr.map((r: any) => ({
+          idRole: r?.idRole ?? r?.IdRole ?? r?.idDepto ?? r?.IdDepto ?? r?.idDepartament ?? r?.IdDepartament ?? null,
+          idPosicion: r?.idPosicion ?? r?.IdPosicion ?? r?.idPosition ?? r?.IdPosition ?? null,
+        })).filter((r: any) => r.idRole && r.idPosicion);
+      }),
+      concatMap((deptRows: any[]) => {
+        if (deptRows.length === 0) return of(null);
+        return concat(
+          ...deptRows.map((r: any) =>
+            this.permitionsService.deleteRolesBydescription(this.userId, branchId, r.idRole, r.idPosicion).pipe(
+              catchError(() => of(null))
+            )
+          )
+        ).pipe(toArray());
+      }),
+      concatMap(() => this.usersxpermissionsService.deleteUserxPermission(permissionId)),
       concatMap(() => this.usersService.updateActulizarSecurity(this.userId, 'RESTA')),
       catchError((error) => {
         alerts.userBasicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
@@ -931,7 +999,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
         return EMPTY;
       })
     ).subscribe(() => {
-      alerts.userBasicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+      alerts.userBasicAlert('Eliminar entrada', 'Sucursal y sus departamentos eliminados satisfactoriamente.', 'success');
 
       const logMessage = this.isRootUser
         ? 'Delete Registro en Usuarios por Empresa'
@@ -945,7 +1013,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
 
       this.loadPermissionsData();
       this.selectedPermission = null;
-      this.signalsService.setRefresSecurity(true);
+      this.signalsService.setSecurityDelta(this.userId, -1);
     });
   }
 

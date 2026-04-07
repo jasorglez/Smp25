@@ -64,6 +64,7 @@ export class UsersComponent implements OnDestroy {
   paginationPageSize = 20;
   pagination = true;
   notSavedChanges: boolean = false;
+  hasDetailExpanded: boolean = false;
   paginationPageSizeSelector = false;
   id: string;
   userRoot: number = 0;
@@ -77,7 +78,7 @@ export class UsersComponent implements OnDestroy {
   // --- Modal ---
   showPermissionsModal: boolean = false;
   modalUserName: string = '';
-  modalPermissions: { idUser: number | string, idBranch: number, idRole: number, idPosicion: number, scope?: 'userSystem' | 'position', seedFromRolePosition?: boolean, roleTemplateOnly?: boolean } | null = null;
+  modalPermissions: { idUser: number | string, idBranch: number, idRole: number, idPosicion: number, scope?: 'userSystem' | 'position', seedFromRolePosition?: boolean, roleTemplateOnly?: boolean, idCompany?: number } | null = null;
   private modalSubscription: Subscription;
 
   private gridApi: GridApi;
@@ -195,10 +196,23 @@ export class UsersComponent implements OnDestroy {
       }
       this.verification();
       if (this.signalsService.getRefresSecurity()()) {
-        if (typeof this.idRoot === 'number' && this.idRoot > 0) {
+        const isRoot = this.signalsService.getemailChoose() === environment.root;
+        if (isRoot || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
           this.obtenerDatos();
           this.signalsService.setRefresSecurity(false);
         }
+      }
+    });
+
+    effect(() => {
+      const delta = this.signalsService.getSecurityDelta()();
+      if (delta && delta.userId > 0 && this.gridApi) {
+        const row = this.rowData?.find((r: any) => r.id === delta.userId);
+        if (row) {
+          row.idRol = (Number(row.idRol) || 0) + delta.delta;
+          this.gridApi.applyTransaction({ update: [row] });
+        }
+        this.signalsService.clearSecurityDelta();
       }
     });
 
@@ -218,6 +232,7 @@ export class UsersComponent implements OnDestroy {
         scope: data.scope,
         seedFromRolePosition: data.seedFromRolePosition,
         roleTemplateOnly: data.roleTemplateOnly,
+        idCompany: data.idCompany,
       };
       this.modalUserName = data.modalTitleDetail ?? data.userName;
       this.showPermissionsModal = true;
@@ -332,9 +347,23 @@ export class UsersComponent implements OnDestroy {
       );
 
     if (this.signalsService.getemailChoose() === environment.root) {
-      this.usersService.getAllUsers().subscribe({
-        next: (response: any) => {
-          this.applyUsersListResponse(response, null);
+      forkJoin({
+        users: this.usersService.getAllUsers(),
+        branchPerms: this.usersxrootService.getDataUsersxPermissions('branch').pipe(catchError(() => of([]))),
+      }).subscribe({
+        next: ({ users, branchPerms }: any) => {
+          // Para root: contar permisos de tipo branch por usuario sin filtrar por empresa
+          const perms = Array.isArray(branchPerms) ? branchPerms : [];
+          const countByUser = new Map<number, number>();
+          for (const p of perms) {
+            const uid = Number(p?.idUser ?? p?.IdUser);
+            const bid = Number(p?.idPermission ?? p?.IdPermission);
+            const act = p?.active ?? p?.Active ?? 1;
+            if (!Number.isFinite(uid) || uid <= 0 || !Number.isFinite(bid) || bid <= 0) continue;
+            if (act === 0 || act === false) continue;
+            countByUser.set(uid, (countByUser.get(uid) ?? 0) + 1);
+          }
+          this.applyUsersListResponse(users, countByUser);
           logFetch();
         },
         error: (error) => console.error('Error al obtener los datos:', error),
@@ -593,6 +622,14 @@ export class UsersComponent implements OnDestroy {
     const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
     this.gridApi.setColumnsVisible(['idRol'], showSecurity);
     this.applyDetailRowHeight();
+  }
+
+  onRowGroupOpened(event: any) {
+    let anyExpanded = false;
+    this.gridApi?.forEachNode((node: any) => {
+      if (node.expanded) anyExpanded = true;
+    });
+    this.hasDetailExpanded = anyExpanded;
   }
 
   onCellEditingStopped(event: any) {
