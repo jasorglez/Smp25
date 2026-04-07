@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { lastValueFrom } from 'rxjs';
@@ -168,6 +169,54 @@ pdfMake.vfs = pdfFonts.vfs;
         </div>
       </div>
     </div>
+
+    <!-- Modal Compra Autorizada en Otra Fecha -->
+    <div *ngIf="showFechaPostponeModal" class="modal-backdrop-inline">
+      <div class="modal-box-inline" (click)="$event.stopPropagation()">
+        <div class="modal-header-inline" style="background: #0d6efd;">
+          <span><i class="bi bi-calendar-event me-2"></i>Compra Autorizada — Nueva Fecha</span>
+          <button type="button" class="btn-close btn-close-white" (click)="cancelFechaPostpone()"></button>
+        </div>
+        <div class="modal-body-inline">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Nueva fecha de compra <span class="text-danger">*</span></label>
+            <input type="date" class="form-control form-control-sm" [(ngModel)]="fechaPostponeDate">
+          </div>
+          <div class="mb-0">
+            <label class="form-label small fw-semibold">Comentario</label>
+            <textarea class="form-control form-control-sm" [(ngModel)]="fechaPostponeComment"
+              rows="3" placeholder="Motivo del cambio de fecha (opcional)..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer-inline">
+          <button type="button" class="btn btn-sm btn-secondary" (click)="cancelFechaPostpone()">Cancelar</button>
+          <button type="button" class="btn btn-sm btn-primary" (click)="confirmFechaPostpone()" [disabled]="!fechaPostponeDate">
+            <i class="bi bi-check-lg me-1"></i>Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Cambio de Especificaciones -->
+    <div *ngIf="showEspecificacionesModal" class="modal-backdrop-inline">
+      <div class="modal-box-inline" (click)="$event.stopPropagation()">
+        <div class="modal-header-inline" style="background: #fd7e14;">
+          <span><i class="bi bi-pencil-square me-2"></i>Cambio de Especificaciones</span>
+          <button type="button" class="btn-close btn-close-white" (click)="cancelEspecificaciones()"></button>
+        </div>
+        <div class="modal-body-inline">
+          <label class="form-label small fw-semibold">Describe el cambio <span class="text-danger">*</span></label>
+          <textarea class="form-control form-control-sm" [(ngModel)]="especificacionesText"
+            rows="4" placeholder="Escribe aquí el detalle del cambio de especificaciones..."></textarea>
+        </div>
+        <div class="modal-footer-inline">
+          <button type="button" class="btn btn-sm btn-secondary" (click)="cancelEspecificaciones()">Cancelar</button>
+          <button type="button" class="btn btn-sm btn-warning" (click)="confirmEspecificaciones()" [disabled]="!especificacionesText?.trim()">
+            <i class="bi bi-check-lg me-1"></i>Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     .detail-grid-container {
@@ -252,6 +301,7 @@ export class DetalleItemsProveedorComponent {
   private ocandreqsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
+  private catalogadmonService = inject(CatalogadmonService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -288,6 +338,19 @@ export class DetalleItemsProveedorComponent {
   companyDuplicateWarning: string = '';
   emailInvalid: boolean = false;
 
+  typeocValues: string[] = [];
+
+  // Modal cambio de especificaciones
+  showEspecificacionesModal: boolean = false;
+  especificacionesText: string = '';
+  private _especificacionesNode: any = null;
+
+  // Modal compra autorizada en otra fecha
+  showFechaPostponeModal: boolean = false;
+  fechaPostponeDate: string = '';
+  fechaPostponeComment: string = '';
+  private _fechaPostponeNode: any = null;
+
   private readonly NEW_PROVIDER_SENTINEL = -1;
   private rowsMissingProvider: any[] = []; // artículos sin asignación proveedor-material
 
@@ -303,6 +366,14 @@ export class DetalleItemsProveedorComponent {
     if (currentProviderId && currentProviderId > 0) {
       this.selectedProviderId = currentProviderId;
     }
+
+    this.catalogadmonService.getCatalogs(9, 'TYPEOC').subscribe({
+      next: (items: any[]) => {
+        this.typeocValues = items.filter(i => i.active).map(i => i.description as string);
+        this._colDefs = null; // fuerza rebuild de colDefs con valores cargados
+      },
+      error: () => { this.typeocValues = []; }
+    });
 
     this.buildRowData();
     this.loadProviders().then(() => {
@@ -365,7 +436,10 @@ export class DetalleItemsProveedorComponent {
       cantidadConfirmada: item.quantity || 0,
       costoTotal: (item.price || 0) * (item.quantity || 0),
       autorizado: false,
-      oc: ''
+      oc: '',
+      typeOC: '',
+      comment: '',
+      datePostpone: ''
     }));
     this.updateTotal();
   }
@@ -510,7 +584,63 @@ export class DetalleItemsProveedorComponent {
       row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
     }
+
+    if (event.column.getColId() === 'typeOC' && event.newValue === 'CAMBIO DE ESPECIFICACIONES') {
+      this._especificacionesNode = event.node;
+      this.especificacionesText = event.data.comment || '';
+      this.showEspecificacionesModal = true;
+    }
+
+    if (event.column.getColId() === 'typeOC' && event.newValue === 'COMPRA AUTORIZADA EN OTRA FECHA') {
+      this._fechaPostponeNode = event.node;
+      this.fechaPostponeDate = event.data.datePostpone || new Date().toISOString().split('T')[0];
+      this.fechaPostponeComment = event.data.comment || '';
+      this.showFechaPostponeModal = true;
+    }
+
     this.updateTotal();
+  }
+
+  cancelEspecificaciones() {
+    // Revertir la selección si no había texto previo
+    if (!this._especificacionesNode?.data?.comment) {
+      this._especificacionesNode.data.typeOC = '';
+      this.gridApi.refreshCells({ rowNodes: [this._especificacionesNode], force: true });
+    }
+    this.showEspecificacionesModal = false;
+    this.especificacionesText = '';
+    this._especificacionesNode = null;
+  }
+
+  confirmEspecificaciones() {
+    if (!this.especificacionesText?.trim()) return;
+    this._especificacionesNode.data.comment = this.especificacionesText.trim();
+    this.gridApi.refreshCells({ rowNodes: [this._especificacionesNode], force: true });
+    this.showEspecificacionesModal = false;
+    this.especificacionesText = '';
+    this._especificacionesNode = null;
+  }
+
+  cancelFechaPostpone() {
+    if (!this._fechaPostponeNode?.data?.datePostpone) {
+      this._fechaPostponeNode.data.typeOC = '';
+      this.gridApi.refreshCells({ rowNodes: [this._fechaPostponeNode], force: true });
+    }
+    this.showFechaPostponeModal = false;
+    this.fechaPostponeDate = '';
+    this.fechaPostponeComment = '';
+    this._fechaPostponeNode = null;
+  }
+
+  confirmFechaPostpone() {
+    if (!this.fechaPostponeDate) return;
+    this._fechaPostponeNode.data.datePostpone = this.fechaPostponeDate;
+    this._fechaPostponeNode.data.comment = this.fechaPostponeComment.trim();
+    this.gridApi.refreshCells({ rowNodes: [this._fechaPostponeNode], force: true });
+    this.showFechaPostponeModal = false;
+    this.fechaPostponeDate = '';
+    this.fechaPostponeComment = '';
+    this._fechaPostponeNode = null;
   }
 
   updateTotal() {
@@ -722,7 +852,10 @@ export class DetalleItemsProveedorComponent {
       recurrent: row.recurrent || 'Recurrente',
       nameArticle: row.articulo || '',
       numArticle: String(row.numArticulo || ''),
-      observation: row.codigoExterno || ''
+      observation: row.codigoExterno || '',
+      typeOc: row.typeOC || '',
+      comment: row.comment || '',
+      datePostpone: row.datePostpone || null
     }));
 
     try {
@@ -817,7 +950,10 @@ export class DetalleItemsProveedorComponent {
         cantidadConfirmada: item.quantity || 0,
         costoTotal: item.total || 0,
         autorizado: item.autorizado || false,
-        oc: ''
+        oc: '',
+        typeOC: item.typeOc || '',
+        comment: item.comment || '',
+        datePostpone: item.datePostpone ? String(item.datePostpone).substring(0, 10) : ''
       }));
       this.gridApi?.setGridOption('rowData', this.rowData);
       this.updateTotal();
@@ -902,7 +1038,7 @@ export class DetalleItemsProveedorComponent {
       { field: 'articulo', headerName: 'Artículo', width: 140 },
       { field: 'codigoExterno', headerName: 'Cód. Externo', width: 120, editable: true },
       { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: true },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 120, editable: true },
+      { field: 'tiempoEntrega', headerName: 'T. Entrega4', width: 120, editable: true },
       {
         field: 'costoUnitario',
         headerName: 'Costo Unit.',
@@ -918,9 +1054,20 @@ export class DetalleItemsProveedorComponent {
         valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00'
       },
       {
+        field: 'typeOC',
+        headerName: 'Tipo OC',
+        width: 220,
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({ values: this.typeocValues }),
+        cellEditorPopup: true,
+        tooltipValueGetter: (p: any) => p.value || ''
+      },
+      {
         field: 'autorizado',
         headerName: 'Autoriz.',
         width: 100,
+        hide: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
         editable: true
@@ -937,6 +1084,7 @@ export class DetalleItemsProveedorComponent {
     animateRows: true,
     suppressCellFocus: false,
     stopEditingWhenCellsLoseFocus: true,
+    tooltipShowDelay: 400,
     onCellEditingStarted: () => {
       // Si la OC ya fue generada, cancelar inmediatamente cualquier edición
       if (this.ocGenerated) {

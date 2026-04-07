@@ -55,7 +55,7 @@ export class PermissionComponent implements OnInit {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-    { field: 'permissionName', headerName: 'Nombre del Permiso', flex: 2 , editable: true},
+    { field: 'permissionName', headerName: 'Nombre del Permiso2', flex: 2 , editable: true},
     { field: 'identifier', headerName: 'Identificador', flex: 2 ,  editable: true},
     { field: 'comment', headerName: 'Comentario', flex: 3 ,  editable: true},
     { 
@@ -69,7 +69,10 @@ export class PermissionComponent implements OnInit {
     {
       field: 'active',
       headerName: 'Activo',
-      flex: 1,
+      width: 90,
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor',
     },
   ];
 
@@ -251,9 +254,14 @@ export class PermissionComponent implements OnInit {
 
     const selectedData = selectedNodes[0].data;
     
+    const subCount = (selectedData.detailData || []).length;
+    const subMsg = subCount > 0
+      ? `\n⚠️ Este permiso tiene ${subCount} sub-permiso(s) asociado(s). También serán desactivados.`
+      : '';
+
     const confirm = await alerts.confirmAlert(
-      'Eliminar', 
-      `¿Está seguro de eliminar el permiso ${selectedData.permissionName || 'seleccionado'}?`,
+      'Eliminar',
+      `¿Está seguro de eliminar el permiso ${selectedData.permissionName || 'seleccionado'}?${subMsg}`,
       'warning',
       'Sí, eliminar'
     );

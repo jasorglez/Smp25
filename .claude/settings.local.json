@@ -122,7 +122,10 @@
       "mcp__b2-mssql-warehouses__execute_sql",
       "mcp__b2-mssql-warehouses__get_table_schema",
       "mcp__b2-mssql-warehouses__list_databases",
-      "mcp__b2-mssql-administration__execute_sql"
+      "mcp__b2-mssql-administration__execute_sql",
+      "mcp__b2-mssql-smp__execute_sql",
+      "mcp__b2-mssql-administration__list_databases",
+      "mcp__b2-mssql-smp__list_databases"
     ],
     "deny": [],
     "ask": []
