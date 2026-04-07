@@ -808,6 +808,15 @@ export class ExpenditureComponent {
             },
             updateCount: (expenditureId: number, count: number) => {
               this.updateExpenditureCountItems(expenditureId, count);
+            },
+            syncMasterTotals: (expenditureId: number, totals: { subtotal: number; tax: number; total: number; count: number }) => {
+              this.updateExpenditureCountItems(expenditureId, totals.count);
+              this.updateMasterRowInGrid({
+                id: expenditureId,
+                subtotal: totals.subtotal,
+                tax: totals.tax,
+                total: totals.total
+              });
             }
           }
         }
@@ -898,6 +907,15 @@ export class ExpenditureComponent {
           },
           updateCount: (expenditureId: number, count: number) => {
             this.updateExpenditureCountItems(expenditureId, count);
+          },
+          syncMasterTotals: (expenditureId: number, totals: { subtotal: number; tax: number; total: number; count: number }) => {
+            this.updateExpenditureCountItems(expenditureId, totals.count);
+            this.updateMasterRowInGrid({
+              id: expenditureId,
+              subtotal: totals.subtotal,
+              tax: totals.tax,
+              total: totals.total
+            });
           }
         }
       }

@@ -12,6 +12,8 @@ import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { CustomersService } from 'app/services/customers.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { BranchsService } from 'app/services/branchs.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { DetallesExpenditureComponent } from './detalles-expenditure.component';
@@ -130,18 +132,44 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
           </ng-select>
         </div>
 
-        <!-- Cantidad y Precio -->
-        <div class="col-6 col-md-3 col-lg-2">
+        <!-- Sucursal -->
+        <div class="col-12 col-md-6 col-lg-4">
           <label class="form-label form-label-sm fw-semibold mb-1">
-            <i class="bi bi-hash me-1 text-primary"></i>Cantidad
+            <i class="bi bi-building me-1 text-primary"></i>Sucursal
           </label>
-          <input type="number" class="form-control form-control-sm text-end"
-            [(ngModel)]="form.quantity" min="0.01" step="0.01">
+          <ng-select
+            [items]="branches"
+            bindValue="id"
+            bindLabel="name"
+            [(ngModel)]="form.idBranch"
+            placeholder="Selecciona sucursal..."
+            [clearable]="true"
+            [searchable]="true"
+            notFoundText="Sin sucursales">
+          </ng-select>
         </div>
 
+        <!-- Proyecto -->
+        <div class="col-12 col-md-6 col-lg-4">
+          <label class="form-label form-label-sm fw-semibold mb-1">
+            <i class="bi bi-folder me-1 text-primary"></i>Proyecto
+          </label>
+          <ng-select
+            [items]="projects"
+            bindValue="id"
+            bindLabel="name"
+            [(ngModel)]="form.idProject"
+            placeholder="Selecciona proyecto..."
+            [clearable]="true"
+            [searchable]="true"
+            notFoundText="Sin proyectos">
+          </ng-select>
+        </div>
+
+        <!-- Monto -->
         <div class="col-6 col-md-3 col-lg-2">
           <label class="form-label form-label-sm fw-semibold mb-1">
-            <i class="bi bi-currency-dollar me-1 text-primary"></i>Precio
+            <i class="bi bi-currency-dollar me-1 text-primary"></i>Monto
           </label>
           <input type="number" class="form-control form-control-sm text-end"
             [(ngModel)]="form.price" min="0" step="0.01" (ngModelChange)="recalcular()">
@@ -238,6 +266,8 @@ export class EgresoRapidoComponent {
   private ccSvc      = inject(CuentasContablesService);
   private custSvc    = inject(CustomersService);
   private empSvc     = inject(EmployeesService);
+  private branchSvc  = inject(BranchsService);
+  private projectSvc = inject(ProjectsService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -253,6 +283,8 @@ export class EgresoRapidoComponent {
   providers: any[]       = [];
   employees: any[]       = [];
   cuentasContables: any[]= [];
+  branches: any[]        = [];
+  projects: any[]        = [];
 
   // --- Grid ---
   gridApi!: GridApi;
@@ -285,6 +317,8 @@ export class EgresoRapidoComponent {
         this.loadProviders(),
         this.loadEmployees(),
         this.loadCuentasContables(),
+        this.loadBranches(),
+        this.loadProjects(),
       ]);
       await this.loadIncomes();
     });
@@ -346,6 +380,24 @@ export class EgresoRapidoComponent {
           this.cuentasContables = (data || []).filter((c: any) => c.nivel === 2);
           resolve();
         },
+        error: () => resolve()
+      });
+    });
+  }
+
+  private loadBranches(): Promise<void> {
+    return new Promise(resolve => {
+      this.branchSvc.getBranches(this.idRoot).subscribe({
+        next: (data: any) => { this.branches = data || []; resolve(); },
+        error: () => resolve()
+      });
+    });
+  }
+
+  private loadProjects(): Promise<void> {
+    return new Promise(resolve => {
+      this.projectSvc.getProjectListByCompany(this.idRoot).subscribe({
+        next: (data: any) => { this.projects = data || []; resolve(); },
         error: () => resolve()
       });
     });
@@ -498,7 +550,8 @@ export class EgresoRapidoComponent {
       description: '',
       typeExpense: 'PROVEEDORES',
       idSpend:     null as number | null,
-      quantity:    1,
+      idBranch:    null as number | null,
+      idProject:   null as number | null,
       price:       0,
       iva:         false
     };
@@ -509,7 +562,7 @@ export class EgresoRapidoComponent {
   }
 
   recalcular() {
-    this.subtotal  = (this.form.quantity || 0) * (this.form.price || 0);
+    this.subtotal  = this.form.price || 0;
     this.ivaAmount = this.form.iva ? Math.round(this.subtotal * 0.16 * 100) / 100 : 0;
     this.total     = this.subtotal + this.ivaAmount;
   }
@@ -532,7 +585,8 @@ export class EgresoRapidoComponent {
     const cabecera = {
       idAccount:    this.form.idAccount,
       idBusinnes:   this.idRoot,
-      idBranch:     this.idBranch > 0 ? this.idBranch : null,
+      idBranch:     this.form.idBranch || null,
+      idProject:    this.form.idProject || null,
       date:         this.form.date,
       idExpend:     this.form.idExpend,
       description:  this.form.description.trim().toUpperCase(),
@@ -559,7 +613,7 @@ export class EgresoRapidoComponent {
           typeexpense:   this.form.typeExpense,
           id_spend:      this.form.idSpend || 0,
           dateexpend:    this.form.date,
-          quantity:      this.form.quantity,
+          quantity:      1,
           price:         this.form.price,
           iva:           this.form.iva,
           iva2:          this.ivaAmount,

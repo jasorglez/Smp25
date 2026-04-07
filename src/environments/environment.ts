@@ -80,7 +80,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.07 (06 Abril 2026 14:09) - sistema de licencias: trial 15 dias, banner aviso, bloqueo y watermark PDF',
+  version: '5.07 (07 Abril 2026 14:09) - sistema de licencias: trial 15 dias, banner aviso, bloqueo y watermark PDF',
 };
 
 

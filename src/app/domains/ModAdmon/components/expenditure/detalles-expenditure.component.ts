@@ -205,6 +205,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   expenditureData: any = null;
   pdfUrl: SafeResourceUrl | null = null;
   private originalPdfUrl: string | null = null;
+  private autoRefreshHandle: ReturnType<typeof setInterval> | null = null;
+  private readonly autoRefreshMs: number = 5000;
+  private lastServerFingerprint: string = '';
 
   // Provider Modal properties
   showProviderModal: boolean = false;
@@ -292,7 +295,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
     if (this.detailType === 'concepts') {
       this.loadConceptsData();
+      this.startAutoRefresh();
     } else if (this.detailType === 'report') {
+      this.stopAutoRefresh();
       this.loadConceptsDataForReport();
     }
   }
@@ -301,12 +306,19 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
+        const incomingData = Array.isArray(data) ? data : [];
+        const incomingFingerprint = this.buildConceptsFingerprint(incomingData);
+
+        if (this.hasUnsavedChanges && this.lastServerFingerprint && incomingFingerprint !== this.lastServerFingerprint) {
+          return;
+        }
+
         // Obtener datos del contexto
         const employees = this._employees;
         const providers = this._providers;
         const cuentasContables = this._cuentasContables;
 
-        this.rowData = data.map(concept => {
+        this.rowData = incomingData.map(concept => {
           const type = concept.typeExpense?.trim().toUpperCase();
           let selectedEntity = null;
 
@@ -326,6 +338,11 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             ...concept,
             typeExpense: type,
             selectedEntity: selectedEntity,
+            groupEntity: this.getGroupEntityLabel({
+              ...concept,
+              typeExpense: type,
+              selectedEntity
+            }),
             __isNew: false,
             __modified: false
           };
@@ -345,6 +362,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         }
         // Recalcular totales
         this.recalculateTotals();
+        this.lastServerFingerprint = incomingFingerprint;
+        this.syncMasterTotals();
       });
     }
   }
@@ -397,6 +416,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.stopAutoRefresh();
     // Clean up PDF URL
     if (this.originalPdfUrl) {
       URL.revokeObjectURL(this.originalPdfUrl);
@@ -420,17 +440,11 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     // Initialize once
     this._colDefs = [
       {
-        headerName: '#',
-        width: 50,
-        valueGetter: (params) => params.node!.rowIndex! + 1,
-        pinned: 'left',
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
-      },
-      {
         field: 'dateExpend',
         headerName: 'Fecha',
         editable: true,
         cellDataType: 'date',
+        sort: 'asc',
         width: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
@@ -455,6 +469,12 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           if (value === 'OTROS') return 'Otros';
           return value || '';
         }
+      },
+      {
+        field: 'groupEntity',
+        headerName: 'Agrupacion',
+        rowGroup: true,
+        hide: true
       },
       {
         field: 'selectedEntity',
@@ -527,6 +547,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             if (employee) {
               params.data.idExpense = employee.id;
               params.data.selectedEntity = employee.name;
+              params.data.groupEntity = this.getGroupEntityLabel(params.data);
               if (params.data.__isNew && !params.data.description) {
                 params.data.description = `Salario de ${employee.name}`;
               }
@@ -537,6 +558,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             if (provider) {
               params.data.idExpense = provider.id;
               params.data.selectedEntity = provider.name;
+              params.data.groupEntity = this.getGroupEntityLabel(params.data);
               return true;
             }
           } else if (type === 'OTROS') {
@@ -544,6 +566,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             if (cuenta) {
               params.data.idExpense = cuenta.id;
               params.data.selectedEntity = `${cuenta['codigo']} - ${cuenta['nombre']}`;
+              params.data.groupEntity = this.getGroupEntityLabel(params.data);
               return true;
             }
           }
@@ -628,14 +651,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         }
       },
       {
-        field: 'quantity',
-        headerName: 'Cantidad',
-        type: 'number',
-        editable: true,
-        width: 100
-      },
-
-      {
         field: 'price',
         headerName: 'Precio',
         type: 'number',
@@ -654,24 +669,30 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         field: 'iva2',
         headerName: 'IVA',
         type: 'number',
+        aggFunc: 'sum',
         editable: false,
         width: 100,
+        cellStyle: (params: any) => params.node?.footer ? { fontWeight: 'bold' } : null,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
         field: 'total',
         headerName: 'Subtotal',
         type: 'number',
+        aggFunc: 'sum',
         editable: false,
         width: 120,
+        cellStyle: (params: any) => params.node?.footer ? { fontWeight: 'bold' } : null,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
         field: 'totalFinal',
         headerName: 'Total Final',
         type: 'number',
+        aggFunc: 'sum',
         editable: false,
         width: 130,
+        cellStyle: (params: any) => params.node?.footer ? { fontWeight: 'bold' } : null,
         valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
       },
       {
@@ -687,10 +708,50 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   public gridOptions: any = {
     headerHeight: 35,
-    rowHeight: 45, // Aumentado para accommodate descripciones largas
+    rowHeight: 34,
     animateRows: true,
     rowSelection: 'single',
+    groupDisplayType: 'singleColumn',
+    groupDefaultExpanded: -1,
+    groupIncludeFooter: true,
+    groupIncludeTotalFooter: true,
+    suppressAggFuncInHeader: true,
+    autoGroupColumnDef: {
+      headerName: 'Proveedor / Entidad',
+      minWidth: 180,
+      width: 190,
+      pinned: 'left',
+      cellStyle: { fontWeight: 'bold' },
+      cellRendererParams: {
+        suppressCount: false,
+        footerValueGetter: (params: any) => {
+          if (params.node?.level === -1) {
+            return 'Total general';
+          }
+          return `Subtotal ${params.value || 'Sin asignar'}`;
+        }
+      }
+    },
+    postSortRows: (params: any) => {
+      params.nodes.sort((a: any, b: any) => {
+        if (a.group || b.group) {
+          return 0;
+        }
+
+        const dateA = this.getDateSortValue(a.data?.dateExpend);
+        const dateB = this.getDateSortValue(b.data?.dateExpend);
+
+        if (dateA === dateB) {
+          return 0;
+        }
+
+        return dateA - dateB;
+      });
+    },
     getRowClass: (params) => {
+      if (params.node.footer) {
+        return 'ag-row-footer';
+      }
       if (params.node.isSelected()) {
         return 'selected-row';
       }
@@ -713,6 +774,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       idExpense: null,
       idContribuyente: null,
       selectedEntity: null,
+      groupEntity: this.getGroupEntityLabel({ typeExpense: 'EMPLEADOS', selectedEntity: null }),
       dateExpend: this.params.data.date,
       description: '',
       quantity: 1,
@@ -801,8 +863,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
     // Sync grid data to rowData array
     const syncedData: any[] = [];
-    this.gridApi.forEachNode(node => {
+    this.gridApi.forEachLeafNode(node => {
       if (node.data) {
+        node.data.groupEntity = this.getGroupEntityLabel(node.data);
         syncedData.push(node.data);
       }
     });
@@ -866,6 +929,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       try {
         await this.context.CONCEPTS.save(expenditureId, dataToSave);
         this.hasUnsavedChanges = false;
+        this.lastServerFingerprint = this.buildConceptsFingerprint(this.rowData);
 
         // Refresh master grid (detail stays open for user to close manually)
         if (this.context?.componentParent?.gridApi) {
@@ -903,6 +967,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     if (event.colDef.field === 'typeExpense') {
       event.data.idExpense = null;
       event.data.selectedEntity = null;
+      event.data.groupEntity = this.getGroupEntityLabel(event.data);
       
       // Forzar refresh completo de la columna para que se actualicen las opciones del editor
       this._colDefs = [];
@@ -914,6 +979,14 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         force: true,
         columns: ['selectedEntity']
       });
+    }
+
+    if (event.colDef.field === 'selectedEntity') {
+      event.data.groupEntity = this.getGroupEntityLabel(event.data);
+    }
+
+    if (['typeExpense', 'selectedEntity'].includes(event.colDef.field) && this.gridApi) {
+      this.gridApi.refreshClientSideRowModel('group');
     }
 
     if (['iva', 'quantity', 'price'].includes(event.colDef.field)) {
@@ -943,6 +1016,82 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
     this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
     this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
+  }
+
+  private startAutoRefresh() {
+    this.stopAutoRefresh();
+
+    this.autoRefreshHandle = setInterval(() => {
+      if (this.detailType !== 'concepts' || this.showProviderModal || this.hasUnsavedChanges) {
+        return;
+      }
+
+      this.loadConceptsData();
+    }, this.autoRefreshMs);
+  }
+
+  private stopAutoRefresh() {
+    if (this.autoRefreshHandle) {
+      clearInterval(this.autoRefreshHandle);
+      this.autoRefreshHandle = null;
+    }
+  }
+
+  private buildConceptsFingerprint(concepts: any[]): string {
+    return JSON.stringify(
+      (concepts || [])
+        .map((concept: any) => ({
+          id: concept.id,
+          idExpense: concept.idExpense,
+          typeExpense: concept.typeExpense,
+          quantity: Number(concept.quantity || 0),
+          price: Number(concept.price || 0),
+          iva: !!concept.iva,
+          description: concept.description || '',
+          comment: concept.comment || '',
+          dateExpend: concept.dateExpend || ''
+        }))
+        .sort((a: any, b: any) => `${a.id}`.localeCompare(`${b.id}`))
+    );
+  }
+
+  private syncMasterTotals() {
+    if (this.context?.CONCEPTS?.syncMasterTotals) {
+      this.context.CONCEPTS.syncMasterTotals(this.params.data.id, {
+        subtotal: this.subtotal,
+        tax: this.iva2,
+        total: this.total,
+        count: this.rowData.length
+      });
+    }
+  }
+
+  private getGroupEntityLabel(concept: any): string {
+    const type = (concept?.typeExpense || '').trim().toUpperCase();
+    const entityName = concept?.selectedEntity || '';
+
+    if (type === 'PROVEEDORES') {
+      return entityName || 'Sin asignar';
+    }
+
+    if (type === 'EMPLEADOS') {
+      return entityName ? `Empleado ${entityName}` : 'Empleado Sin asignar';
+    }
+
+    if (type === 'OTROS') {
+      return entityName ? `Cuenta ${entityName}` : 'Cuenta Sin asignar';
+    }
+
+    return 'Sin asignar';
+  }
+
+  private getDateSortValue(value: any): number {
+    if (!value) {
+      return 0;
+    }
+
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? 0 : date.getTime();
   }
 
   closeDetail() {
@@ -1051,8 +1200,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           // Actualizar los valores directamente en el nodo
           selectedNode.data.idExpense = providerData.id;
           selectedNode.data.selectedEntity = providerData.name;
+          selectedNode.data.groupEntity = this.getGroupEntityLabel(selectedNode.data);
           selectedNode.data.__modified = true;
           this.hasUnsavedChanges = true;
+          this.gridApi.refreshClientSideRowModel('group');
           
           // Refrescar la celda específica
           this.gridApi.refreshCells({
