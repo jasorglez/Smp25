@@ -125,7 +125,8 @@
       "mcp__b2-mssql-administration__execute_sql",
       "mcp__b2-mssql-smp__execute_sql",
       "mcp__b2-mssql-administration__list_databases",
-      "mcp__b2-mssql-smp__list_databases"
+      "mcp__b2-mssql-smp__list_databases",
+      "mcp__b2-mssql-security__execute_sql"
     ],
     "deny": [],
     "ask": []

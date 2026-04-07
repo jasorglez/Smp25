@@ -55,7 +55,7 @@ export class PermissionComponent implements OnInit {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-    { field: 'permissionName', headerName: 'Nombre del Permiso2', flex: 2 , editable: true},
+    { field: 'permissionName', headerName: 'Nombre del Permiso3', flex: 2 , editable: true},
     { field: 'identifier', headerName: 'Identificador', flex: 2 ,  editable: true},
     { field: 'comment', headerName: 'Comentario', flex: 3 ,  editable: true},
     { 
