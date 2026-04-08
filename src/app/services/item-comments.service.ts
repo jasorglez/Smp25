@@ -1,12 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
 export interface ItemComment {
   id?: number;
-  idRequisicion: number;
+  documentType: string;   // 'REQ' | 'COTIZ' | 'PROVEEDOR'
+  idDocument: number;
   numArticle: string;
   idUser: number;
   userName: string;
@@ -20,9 +21,12 @@ export class ItemCommentsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getComments(idRequisicion: number, numArticle: string): Observable<ItemComment[]> {
+  /** Emite cuando un componente externo quiere abrir el chat de un ítem específico */
+  readonly openChatFor$ = new Subject<{ documentType: string; idDocument: number; numArticle: string }>();
+
+  getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
-      `${environment.urlWarehouse}/ItemComments?idRequisicion=${idRequisicion}&numArticle=${encodeURIComponent(numArticle)}`,
+      `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

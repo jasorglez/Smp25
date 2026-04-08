@@ -514,6 +514,7 @@ export class DetallesProveedorComponent {
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: () => ({ documentType: 'PROVEEDOR', idDocument: this.cotizacionId }),
       }
     ];
 

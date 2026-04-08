@@ -5,7 +5,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { ItemCommentsService, ItemComment } from 'app/services/item-comments.service';
 import { SignalsService } from 'app/services/signals.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-item-comments-cell-renderer',
@@ -13,7 +13,7 @@ import { firstValueFrom } from 'rxjs';
   imports: [CommonModule, FormsModule],
   template: `
     <!-- Celda -->
-    <div (click)="openChat()" style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+    <div (click)="openChat($event)" style="cursor:pointer; display:flex; align-items:center; gap:4px;">
       <i class="bi bi-chat-dots" [style.color]="comments.length ? '#0d6efd' : '#aaa'"></i>
       <span *ngIf="comments.length" style="font-size:11px; color:#0d6efd; font-weight:600;">
         {{ comments.length }}
@@ -80,6 +80,8 @@ import { firstValueFrom } from 'rxjs';
     }
     .chat-panel {
       position: fixed;
+      top: 80px;
+      right: 24px;
       width: 300px;
       max-height: 420px;
       background: #fff;
@@ -148,31 +150,45 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   currentUserId = 0;
   currentUserName = '';
   numArticle = '';
-  idRequisicion = 0;
+  documentType = '';
+  idDocument = 0;
 
-  private panelTop = 0;
-  private panelLeft = 0;
+  private openSub?: Subscription;
 
-  agInit(params: ICellRendererParams): void {
+  agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number }): void {
     this.currentUserId   = this.signalsService.getIdUSer()();
     this.currentUserName = this.signalsService.getDisplayName()() || '';
     this.numArticle      = String(params.data?.numArticulo || params.data?.numeroArticulo || params.data?.numArticle || '');
-    this.idRequisicion   = params.data?.requisitionId || 0;
+    this.documentType    = params.documentType || '';
+    this.idDocument      = params.idDocument || 0;
     this.loadComments();
+
+    // Escucha si algún componente externo quiere abrir este chat
+    this.openSub = this.commentsService.openChatFor$.subscribe(req => {
+      if (req.documentType === this.documentType &&
+          req.idDocument === this.idDocument &&
+          String(req.numArticle) === String(this.numArticle)) {
+        this.openChatCentered();
+      }
+    });
   }
 
   refresh(params: ICellRendererParams): boolean { return false; }
-  ngOnDestroy(): void { this.showChat = false; }
+  ngOnDestroy(): void { this.showChat = false; this.openSub?.unsubscribe(); }
 
   loadComments() {
-    if (!this.idRequisicion || !this.numArticle) return;
-    this.commentsService.getComments(this.idRequisicion, this.numArticle).subscribe({
+    if (!this.documentType || !this.idDocument || !this.numArticle) return;
+    this.commentsService.getComments(this.documentType, this.idDocument, this.numArticle).subscribe({
       next: (data) => { this.comments = data; },
       error: () => { this.comments = []; }
     });
   }
 
-  openChat() {
+  openChat(event: MouseEvent) {
+    this.showChat = true;
+  }
+
+  openChatCentered() {
     this.showChat = true;
   }
 
@@ -185,7 +201,8 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     if (!this.newText.trim() || this.saving) return;
     this.saving = true;
     const comment: ItemComment = {
-      idRequisicion: this.idRequisicion,
+      documentType: this.documentType,
+      idDocument: this.idDocument,
       numArticle: this.numArticle,
       idUser: this.currentUserId,
       userName: this.currentUserName,

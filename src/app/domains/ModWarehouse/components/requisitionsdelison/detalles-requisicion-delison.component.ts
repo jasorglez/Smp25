@@ -795,6 +795,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
       },
 
       {
