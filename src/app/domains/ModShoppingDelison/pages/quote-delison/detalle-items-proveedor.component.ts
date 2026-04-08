@@ -1075,14 +1075,14 @@ export class DetalleItemsProveedorComponent {
         valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00'
       },
 
-         {
+      {
         headerName: '💬',
         width: 60,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
         cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
-      }
+      },
 
       {
         field: 'typeOC',

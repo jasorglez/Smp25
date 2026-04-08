@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.52 (08 Abril 2026) - item-comments schema genérico REQ/COTIZ/PROVEEDOR',
+  version: '3.53 (08 Abril 2026) - item-comments REQ/COTIZ/PROVEEDOR',
 };
 
