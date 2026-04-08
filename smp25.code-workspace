@@ -2,9 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../../../Visual Studio 22/c#/MicroServicios"
 		}
 	],
 	"settings": {

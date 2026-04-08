@@ -366,11 +366,12 @@ export class PresupuestoComponent implements OnInit {
   openNuevoPresupuesto(modal: any): void {
     this.isEditingPresupuesto = false;
     const rev = this.presupuestos.length;
+    const vigente = this.presupuestos.find(p => p.vigente);
     this.presupuestoForm.patchValue({
       nombre: `Rev.${rev}`,
       motivo: rev === 0 ? 'Presupuesto inicial' : '',
-      fecha_inicio: '',
-      fecha_fin: '',
+      fecha_inicio: vigente?.fecha_inicio ?? '',
+      fecha_fin:    vigente?.fecha_fin    ?? '',
       vigente: true
     });
     this.modalService.open(modal, { size: 'lg', backdrop: 'static' });
@@ -382,24 +383,49 @@ export class PresupuestoComponent implements OnInit {
       return;
     }
     const formVal = this.presupuestoForm.value;
+    const numrevision = this.presupuestos.length;
     const payload: IPresupuestoForm = {
       ...formVal,
-      id_project: this.idProject,
-      idCompany: this.idCompany,
-      numrevision: this.presupuestos.length,
-      active: true
+      id_project:          this.idProject,
+      idCompany:           this.idCompany,
+      numrevision,
+      usuario_responsable: this.signalsService.profile.emailUser() ?? undefined,
+      active:              true
     };
 
-    this.presupuestoService.create(payload)
-      .pipe(catchError(() => {
-        alerts.basicAlert('Error', 'No se pudo crear el presupuesto.', 'error');
-        return EMPTY;
-      }))
-      .subscribe(nuevo => {
-        alerts.basicAlert('Presupuesto creado', `${nuevo.nombre} creado correctamente.`, 'success');
-        modal.close();
-        this.loadData();
-      });
+    let nuevo: IPresupuesto;
+    try {
+      nuevo = await lastValueFrom(this.presupuestoService.create(payload));
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo crear el presupuesto.', 'error');
+      return;
+    }
+
+    // Si es Rev.1 o superior, copiar líneas de la revisión vigente anterior
+    if (numrevision > 0) {
+      const vigenteAnterior = this.presupuestos.find(p => p.vigente);
+      if (vigenteAnterior) {
+        try {
+          const lineasAnteriores = await lastValueFrom(this.presupuestoService.getLineas(vigenteAnterior.id));
+          if (lineasAnteriores?.length) {
+            const ops = lineasAnteriores.map(l => this.presupuestoService.createLinea({
+              id_presupuesto: nuevo.id,
+              id_cuenta:      l.id_cuenta,
+              descripcion:    l.descripcion,
+              monto:          l.monto,
+              active:         true
+            }).pipe(catchError(() => EMPTY)));
+            await lastValueFrom(concat(...ops).pipe(toArray()));
+          }
+        } catch {
+          // Las líneas no son críticas; el encabezado ya fue creado
+        }
+      }
+    }
+
+    alerts.basicAlert('Presupuesto creado', `${nuevo.nombre} creado correctamente.`, 'success');
+    modal.close();
+    this.loadData();
   }
 
   async setVigente(p: IPresupuesto): Promise<void> {
@@ -473,15 +499,16 @@ export class PresupuestoComponent implements OnInit {
       let nuevaVersion: IPresupuesto;
       try {
         nuevaVersion = await lastValueFrom(this.presupuestoService.create({
-          id_project:   this.idProject,
-          idCompany:    this.idCompany,
-          numrevision:  nuevoRev,
-          nombre:       `Rev.${nuevoRev}`,
+          id_project:          this.idProject,
+          idCompany:           this.idCompany,
+          numrevision:         nuevoRev,
+          nombre:              `Rev.${nuevoRev}`,
           motivo,
-          fecha_inicio: this.selectedPresupuesto!.fecha_inicio,
-          fecha_fin:    this.selectedPresupuesto!.fecha_fin,
-          vigente:      true,
-          active:       true
+          fecha_inicio:        this.selectedPresupuesto!.fecha_inicio,
+          fecha_fin:           this.selectedPresupuesto!.fecha_fin,
+          usuario_responsable: this.signalsService.profile.emailUser() ?? undefined,
+          vigente:             true,
+          active:              true
         }));
       } catch {
         alerts.basicAlert('Error', 'No se pudo crear la nueva versión.', 'error');

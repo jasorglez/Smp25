@@ -66,6 +66,7 @@ export interface IPresupuestoForm {
   vigente: boolean;
   idCompany: number;
   active: boolean;
+  usuario_responsable?: string;
   lineas?: IPresupuestoLineaForm[];
 }
 

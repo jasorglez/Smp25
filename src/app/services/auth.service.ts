@@ -304,7 +304,6 @@ export class AuthService {
   }
 
   setUserPermissions(permissions: any): void {
-    console.log(permissions);
     this.userPermissions = permissions;
   }
 

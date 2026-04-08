@@ -314,13 +314,6 @@ export class ReporteOperativoSinIvaComponent {
         this.processFlujoData(),
       ]);
 
-      console.log('Datos cargados:', {
-        proyectos: this.proyectos.length,
-        ingresos: this.ingresos.length,
-        egresos: this.egresos.length,
-        empresas: this.empresas.length,
-        empresasCorporativo: this.empresasCorporativo.length,
-      });
 
       this.processData();
     } catch (error) {

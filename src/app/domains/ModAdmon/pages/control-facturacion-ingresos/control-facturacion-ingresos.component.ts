@@ -198,12 +198,6 @@ export class ControlFacturacionIngresosComponent {
         name: c.company || c.nameContact || c.name || 'Sin nombre',
       }));
 
-      console.log('Datos cargados:', {
-        ingresos: this.ingresos.length,
-        proyectos: this.projects.length,
-        clientes: this.customers.length,
-      });
-
       this.processData();
     } catch (error) {
       console.error('Error cargando datos:', error);

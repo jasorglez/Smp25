@@ -1361,10 +1361,6 @@ export class DashboardHcoComponent {
     // Cargar todas las cuentas contables (nivel 1 y 2) para poder subir al padre
     this.cuentasContablesService.getAll(rootId).subscribe((data) => {
       this.cuentasContablesNivel2 = data || [];
-      console.log(
-        '✅ Cuentas contables cargadas:',
-        this.cuentasContablesNivel2.length,
-      );
       this._loadedCuentas = true;
       this.checkDataReady();
       this.processAllData();
@@ -1396,12 +1392,6 @@ export class DashboardHcoComponent {
             );
             this.ingresosData = rows.filter(
               (item) => String(item?.type ?? '').toUpperCase() === 'DEPOSITO',
-            );
-
-            console.log('✅ Egresos cargados (GASTO):', gastos.length);
-            console.log(
-              '✅ Ingresos cargados (DEPOSITO):',
-              this.ingresosData.length,
             );
 
             // Expandir gastos usando dateExpend de los conceptos (detalles-expenditure)
@@ -1450,10 +1440,6 @@ export class DashboardHcoComponent {
               });
 
               this.egresosData = expandedEgresos;
-              console.log(
-                '✅ Egresos expandidos con fechas de conceptos:',
-                expandedEgresos.length,
-              );
               this._loadedEgresos = true;
               this.checkDataReady();
               this.processAllData();
@@ -1489,9 +1475,7 @@ export class DashboardHcoComponent {
       (i) => String(i?.status ?? '').toLowerCase() === 'pagada',
     );
 
-    console.log(
-      `📊 Datos: ${egresosReales.length} egresos, ${ingresosReales.length} ingresos`,
-    );
+
 
     // Calcular KPIs (ingresos pagados sin IVA)
     this.totalEgresos = egresosReales.reduce(
@@ -1749,9 +1733,6 @@ export class DashboardHcoComponent {
         a.codigo.localeCompare(b.codigo, 'es', { numeric: true }),
       );
 
-    console.log(
-      `📊 Egresos clasificados por tipo de gasto: ${this.clasificacionEgresos.length} tipos`,
-    );
   }
 
   private prepareFlujoMensual(egresos: any[], ingresos: any[]): void {

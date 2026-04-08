@@ -262,12 +262,7 @@ export class ConcentradoEgresosComponent {
           : a.number || a.description || '',
       }));
 
-      console.log('Datos cargados:', {
-        egresos: this.egresos.length,
-        proyectos: this.projects.length,
-        proveedores: this.providers.length,
-        cuentas: this.cuentasContables.length,
-      });
+
 
       this.processData();
     } catch (error) {
