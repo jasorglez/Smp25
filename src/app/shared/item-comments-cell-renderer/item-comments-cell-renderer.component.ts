@@ -148,16 +148,18 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   currentUserId = 0;
   currentUserName = '';
   numArticle = '';
-  idRequisicion = 0;
+  documentType = '';
+  idDocument = 0;
 
   private panelTop = 0;
   private panelLeft = 0;
 
-  agInit(params: ICellRendererParams): void {
+  agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number }): void {
     this.currentUserId   = this.signalsService.getIdUSer()();
     this.currentUserName = this.signalsService.getDisplayName()() || '';
     this.numArticle      = String(params.data?.numArticulo || params.data?.numeroArticulo || params.data?.numArticle || '');
-    this.idRequisicion   = params.data?.requisitionId || 0;
+    this.documentType    = params.documentType || '';
+    this.idDocument      = params.idDocument || 0;
     this.loadComments();
   }
 
@@ -165,8 +167,8 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   ngOnDestroy(): void { this.showChat = false; }
 
   loadComments() {
-    if (!this.idRequisicion || !this.numArticle) return;
-    this.commentsService.getComments(this.idRequisicion, this.numArticle).subscribe({
+    if (!this.documentType || !this.idDocument || !this.numArticle) return;
+    this.commentsService.getComments(this.documentType, this.idDocument, this.numArticle).subscribe({
       next: (data) => { this.comments = data; },
       error: () => { this.comments = []; }
     });
@@ -185,7 +187,8 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     if (!this.newText.trim() || this.saving) return;
     this.saving = true;
     const comment: ItemComment = {
-      idRequisicion: this.idRequisicion,
+      documentType: this.documentType,
+      idDocument: this.idDocument,
       numArticle: this.numArticle,
       idUser: this.currentUserId,
       userName: this.currentUserName,

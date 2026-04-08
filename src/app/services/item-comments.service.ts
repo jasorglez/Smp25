@@ -6,7 +6,8 @@ import { TrackingService } from './tracking.service';
 
 export interface ItemComment {
   id?: number;
-  idRequisicion: number;
+  documentType: string;   // 'REQ' | 'COTIZ' | 'PROVEEDOR'
+  idDocument: number;
   numArticle: string;
   idUser: number;
   userName: string;
@@ -20,9 +21,9 @@ export class ItemCommentsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getComments(idRequisicion: number, numArticle: string): Observable<ItemComment[]> {
+  getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
-      `${environment.urlWarehouse}/ItemComments?idRequisicion=${idRequisicion}&numArticle=${encodeURIComponent(numArticle)}`,
+      `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}`,
       { headers: this.trackingService.getHeaders() }
     );
   }
