@@ -13,7 +13,7 @@ import { firstValueFrom } from 'rxjs';
   imports: [CommonModule, FormsModule],
   template: `
     <!-- Celda -->
-    <div (click)="openChat()" style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+    <div (click)="openChat($event)" style="cursor:pointer; display:flex; align-items:center; gap:4px;">
       <i class="bi bi-chat-dots" [style.color]="comments.length ? '#0d6efd' : '#aaa'"></i>
       <span *ngIf="comments.length" style="font-size:11px; color:#0d6efd; font-weight:600;">
         {{ comments.length }}
@@ -23,7 +23,10 @@ import { firstValueFrom } from 'rxjs';
 
     <!-- Mini-chat panel -->
     <div *ngIf="showChat" class="chat-backdrop" (click)="closeChat()"></div>
-    <div *ngIf="showChat" class="chat-panel">
+    <div *ngIf="showChat" class="chat-panel"
+         [style.top]="panelOpenUp ? 'auto' : panelTop + 'px'"
+         [style.bottom]="panelOpenUp ? (windowHeight - panelTop) + 'px' : 'auto'"
+         [style.left]="panelLeft + 'px'">
       <!-- Header -->
       <div class="chat-header">
         <span class="chat-title">
@@ -151,8 +154,11 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   documentType = '';
   idDocument = 0;
 
-  private panelTop = 0;
-  private panelLeft = 0;
+  panelTop = 0;
+  panelLeft = 0;
+  panelOpenUp = false;
+  windowHeight = 0;
+  private readonly PANEL_HEIGHT = 420;
 
   agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number }): void {
     this.currentUserId   = this.signalsService.getIdUSer()();
@@ -174,7 +180,14 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     });
   }
 
-  openChat() {
+  openChat(event: MouseEvent) {
+    this.windowHeight = window.innerHeight;
+    const clickY = event.clientY;
+    const clickX = event.clientX;
+    const spaceBelow = this.windowHeight - clickY;
+    this.panelOpenUp = spaceBelow < this.PANEL_HEIGHT;
+    this.panelTop  = clickY + 4;
+    this.panelLeft = Math.min(clickX, window.innerWidth - 310);
     this.showChat = true;
   }
 
