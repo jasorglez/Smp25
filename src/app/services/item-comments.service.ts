@@ -1,0 +1,45 @@
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { environment } from '@env/environment';
+import { TrackingService } from './tracking.service';
+
+export interface ItemComment {
+  id?: number;
+  idRequisicion: number;
+  numArticle: string;
+  idUser: number;
+  userName: string;
+  text: string;
+  createdAt?: string;
+  active?: boolean;
+}
+
+@Injectable({ providedIn: 'root' })
+export class ItemCommentsService {
+  private http = inject(HttpClient);
+  private trackingService = inject(TrackingService);
+
+  getComments(idRequisicion: number, numArticle: string): Observable<ItemComment[]> {
+    return this.http.get<ItemComment[]>(
+      `${environment.urlWarehouse}/ItemComments?idRequisicion=${idRequisicion}&numArticle=${encodeURIComponent(numArticle)}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  addComment(comment: ItemComment): Observable<ItemComment> {
+    return this.http.post<ItemComment>(
+      `${environment.urlWarehouse}/ItemComments`,
+      comment,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  editComment(id: number, text: string): Observable<ItemComment> {
+    return this.http.put<ItemComment>(
+      `${environment.urlWarehouse}/ItemComments/${id}`,
+      { text },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+}

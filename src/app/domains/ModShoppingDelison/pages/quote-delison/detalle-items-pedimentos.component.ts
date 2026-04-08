@@ -6,11 +6,12 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
+import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 
 @Component({
   selector: 'app-detalle-items-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
+  imports: [CommonModule, AgGridModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Barra de botones CRUD -->
@@ -383,13 +384,20 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       },
       {
         field: 'tipoPrioridad',
-        headerName: 'Tipo Prioridad',
+        headerName: 'Tipo Prioridad3',
         width: 150
       },
       {
         field: 'comment',
         headerName: 'Observation',
         width: 200
+      },
+      {
+        headerName: '💬',
+        width: 60,
+        sortable: false,
+        filter: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
       },
       {
         field: 'pedimento',
