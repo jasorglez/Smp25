@@ -50,6 +50,14 @@ export class UsersService {
     );
   }
 
+  getUserByUserSmall(userSmall: string): Observable<SafeUserData> {
+    return this.http.get<ApiResponse<any>>(`${environment.urlSecurity}/User/usersmall?user=${encodeURIComponent(userSmall)}`,
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(
+      map(response => sanitizeUserData(response.data))
+    );
+  }
+
   addUser(data: any): Observable<any> {
     return this.http.post(`${environment.urlSecurity}/User`, data, { headers: this.trackingService.getHeaders() });
   }

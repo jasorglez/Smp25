@@ -8,7 +8,7 @@ import {
 } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -28,6 +28,8 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { RolesService } from 'app/services/roles.service';
 import { AuthService } from 'app/services/auth.service';
+import { UsersService } from 'app/services/users.service';
+import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
@@ -60,6 +62,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private branchesService = inject(BranchsService);
   authService = inject(AuthService);
   private rolesService = inject(RolesService);
+  private usersService = inject(UsersService);
+  private usersxpermissionsService = inject(UsersxpermissionsService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   id: number;
@@ -109,6 +113,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
+  private originalRowsById = new Map<number, any>();
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -1716,6 +1721,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           }
           
           console.log('Datos obtenidos del servidor:', this.rowData);
+          this.captureOriginalRows(this.rowData);
 
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
@@ -1974,6 +1980,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
+    const branchChangedRows = modifiedRows.filter((row) => this.didBranchChange(row));
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -1989,6 +1996,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+
+      console.log('[SYNC] branchChangedRows:', branchChangedRows.length, branchChangedRows.map(r => ({ id: r.id, name: r.name, oldBranch: this.getOriginalBranchId(r), newBranch: r.idBranch })));
+      for (const row of branchChangedRows) {
+        await this.syncUserPrincipalBranch(row);
+      }
 
       // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
@@ -2126,6 +2138,193 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  private captureOriginalRows(rows: any[]): void {
+    this.originalRowsById.clear();
+    for (const row of rows || []) {
+      const id = Number(row?.id);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      this.originalRowsById.set(id, {
+        idBranch: Number(row?.idBranch ?? 0) || 0,
+        email: String(row?.email ?? '').trim(),
+        employeeCode: String(row?.employeeCode ?? '').trim(),
+        name: String(row?.name ?? '').trim(),
+      });
+    }
+  }
+
+  private didBranchChange(row: any): boolean {
+    const id = Number(row?.id);
+    if (!Number.isFinite(id) || id <= 0) return false;
+    const original = this.originalRowsById.get(id);
+    if (!original) return false;
+    const currentBranchId = Number(row?.idBranch ?? 0) || 0;
+    return currentBranchId > 0 && currentBranchId !== Number(original.idBranch ?? 0);
+  }
+
+  private getOriginalBranchId(row: any): number {
+    const id = Number(row?.id);
+    if (!Number.isFinite(id) || id <= 0) return 0;
+    const original = this.originalRowsById.get(id);
+    return Number(original?.idBranch ?? 0) || 0;
+  }
+
+  private normalizeMatchString(value: any): string {
+    return String(value ?? '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private toUsersArray(raw: any): any[] {
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    if (Array.isArray(raw?.response?.data)) return raw.response.data;
+    if (Array.isArray(raw?.project)) return raw.project;
+    return [];
+  }
+
+  private toBranchPermissionRows(raw: any): any[] {
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.project)) return raw.project;
+    if (Array.isArray(raw?.data)) return raw.data;
+    return [];
+  }
+
+  private async resolveUserIdsForEmployee(row: any): Promise<number[]> {
+    const candidateIds = new Set<number>();
+    const rawUsers = await lastValueFrom(
+      this.usersService.getDataUsers(this.idRoot).pipe(catchError(() => of([])))
+    );
+    let users = this.toUsersArray(rawUsers);
+    if (users.length === 0) {
+      const allUsersResponse = await lastValueFrom(
+        this.usersService.getAllUsers().pipe(catchError(() => of([])))
+      );
+      users = this.toUsersArray(allUsersResponse);
+    }
+    if (users.length === 0) return [...candidateIds];
+
+    // Prefer active users to avoid touching stale duplicate accounts
+    const activeUsers = users.filter((u: any) => Number(u?.active ?? 1) !== 0);
+    const usersToSearch = activeUsers.length > 0 ? activeUsers : users;
+
+    const targetName = this.normalizeMatchString(row?.name);
+    const targetEmail = this.normalizeMatchString(row?.email);
+    const targetCode = this.normalizeMatchString(row?.employeeCode);
+
+    const exactNameMatches = usersToSearch.filter((user: any) => {
+      const userName = this.normalizeMatchString(user?.displayName);
+      return targetName.length > 0 && userName === targetName;
+    });
+    if (exactNameMatches.length > 0) {
+      for (const user of exactNameMatches) {
+        const userId = Number(user?.id ?? 0) || 0;
+        if (userId > 0) candidateIds.add(userId);
+      }
+      return [...candidateIds];
+    }
+
+    for (const user of usersToSearch) {
+      const userName = this.normalizeMatchString(user?.displayName);
+      const userEmail = this.normalizeMatchString(user?.email);
+      const userSmall = this.normalizeMatchString(user?.usersmall);
+      const userId = Number(user?.id ?? 0) || 0;
+      if (userId <= 0) continue;
+
+      if (targetName.length > 0 && userName === targetName) {
+        candidateIds.add(userId);
+        continue;
+      }
+      if (
+        targetName.length > 0 &&
+        userName.length > 0 &&
+        (userName.includes(targetName) || targetName.includes(userName))
+      ) {
+        candidateIds.add(userId);
+        continue;
+      }
+      if (targetEmail && userEmail === targetEmail) {
+        candidateIds.add(userId);
+        continue;
+      }
+      if (targetCode && userSmall && userSmall === targetCode) {
+        candidateIds.add(userId);
+        continue;
+      }
+    }
+
+    return [...candidateIds];
+  }
+
+  private async syncSingleUserPrincipalBranch(idUser: number, row: any): Promise<void> {
+    const newBranchId = Number(row?.idBranch ?? 0) || 0;
+    const oldBranchId = this.getOriginalBranchId(row);
+    if (newBranchId <= 0 || oldBranchId <= 0 || newBranchId === oldBranchId) return;
+
+    try {
+      // Solo usamos Security API — evitamos SMP que puede tener problemas
+      const rawPermissions = await lastValueFrom(
+        this.usersxpermissionsService
+          .getUsersxPermissionsGeneral('branch', idUser)
+          .pipe(catchError(() => of([])))
+      );
+      const branchPermissions = this.toUsersArray(rawPermissions);
+      console.log('[SYNC] branchPermissions for user', idUser, ':', branchPermissions);
+
+      const oldRow = branchPermissions.find((p: any) =>
+        Number(p?.idPermission ?? p?.IdPermission ?? 0) === oldBranchId
+      );
+      const newRow = branchPermissions.find((p: any) =>
+        Number(p?.idPermission ?? p?.IdPermission ?? 0) === newBranchId
+      );
+
+      // 1. Eliminar el permiso de la sucursal anterior
+      const oldRowId = Number(oldRow?.id ?? oldRow?.Id ?? 0) || 0;
+      if (oldRowId > 0) {
+        await lastValueFrom(
+          this.usersxpermissionsService
+            .deleteUserxPermission(oldRowId)
+            .pipe(catchError(() => of(null)))
+        );
+      }
+
+      // 2. Agregar el permiso de la nueva sucursal si no existe
+      if (!newRow) {
+        await lastValueFrom(
+          this.usersxpermissionsService
+            .addUserxPermission({
+              idUser,
+              idPermission: newBranchId,
+              type: 'branch',
+              description: null,
+              active: 1,
+            })
+            .pipe(catchError(() => of(null)))
+        );
+      }
+
+      // 3. Marcar nueva sucursal como principal
+      await lastValueFrom(
+        this.usersxpermissionsService
+          .setPrincipal(idUser, newBranchId)
+          .pipe(catchError(() => of(null)))
+      );
+    } catch (error) {
+      console.error('Error sincronizando sucursal principal del usuario:', error);
+    }
+  }
+
+  private async syncUserPrincipalBranch(row: any): Promise<void> {
+    const userIds = await this.resolveUserIdsForEmployee(row);
+    console.log('[SYNC] userIds found for', row.name, ':', userIds);
+    if (userIds.length === 0) return;
+    for (const idUser of userIds) {
+      await this.syncSingleUserPrincipalBranch(idUser, row);
+    }
   }
 
   private generateUniqueClockPassword(): string {
