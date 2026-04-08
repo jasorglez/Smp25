@@ -24,8 +24,7 @@ import { firstValueFrom, Subscription } from 'rxjs';
     <!-- Mini-chat panel -->
     <div *ngIf="showChat" class="chat-backdrop" (click)="closeChat()"></div>
     <div *ngIf="showChat" class="chat-panel"
-         [style.top]="panelOpenUp ? 'auto' : panelTop + 'px'"
-         [style.bottom]="panelOpenUp ? (windowHeight - panelTop) + 'px' : 'auto'"
+         [style.top]="panelTop + 'px'"
          [style.left]="panelLeft + 'px'">
       <!-- Header -->
       <div class="chat-header">
@@ -156,8 +155,6 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
 
   panelTop = 0;
   panelLeft = 0;
-  panelOpenUp = false;
-  windowHeight = 0;
   private readonly PANEL_HEIGHT = 420;
   private openSub?: Subscription;
 
@@ -191,21 +188,20 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   }
 
   openChat(event: MouseEvent) {
-    this.windowHeight = window.innerHeight;
     const clickY = event.clientY;
     const clickX = event.clientX;
-    const spaceBelow = this.windowHeight - clickY;
-    this.panelOpenUp = spaceBelow < this.PANEL_HEIGHT;
-    this.panelTop  = clickY + 4;
-    this.panelLeft = Math.min(clickX, window.innerWidth - 310);
+    const spaceBelow = window.innerHeight - clickY;
+    // Si no hay espacio abajo, abre hacia arriba desde el click
+    this.panelTop  = spaceBelow < this.PANEL_HEIGHT
+      ? Math.max(10, clickY - this.PANEL_HEIGHT)
+      : clickY + 4;
+    this.panelLeft = Math.min(clickX, window.innerWidth - 314);
     this.showChat = true;
   }
 
-  /** Abre el chat centrado en pantalla (sin evento de click) */
+  /** Abre el chat centrado horizontalmente, en la parte superior de la pantalla */
   openChatCentered() {
-    this.windowHeight = window.innerHeight;
-    this.panelOpenUp = false;
-    this.panelTop  = Math.max(60, (this.windowHeight - this.PANEL_HEIGHT) / 2);
+    this.panelTop  = 80;
     this.panelLeft = Math.max(10, (window.innerWidth - 310) / 2);
     this.showChat = true;
   }
