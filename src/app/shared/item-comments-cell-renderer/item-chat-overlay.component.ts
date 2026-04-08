@@ -21,17 +21,17 @@ import { SignalsService } from 'app/services/signals.service';
           <div *ngIf="!comments.length" class="chat-empty">Sin comentarios aún</div>
           <div *ngFor="let c of comments" class="chat-bubble"
                [class.chat-bubble-own]="c.idUser === currentUserId"
-               [class.chat-bubble-tag]="isTag(c.text)">
+               [class.chat-bubble-tag]="getTag(c.text)">
             <div class="chat-bubble-meta">
               <span class="chat-user">{{ c.userName }}</span>
               <span class="chat-date">{{ formatDate(c.createdAt) }}</span>
-              <span *ngIf="isTag(c.text)" class="chat-tag-inline">{{ c.text }}</span>
-              <button *ngIf="!isTag(c.text) && c.idUser === currentUserId && editingId !== c.id"
+              <span *ngIf="getTag(c.text)" class="chat-tag-inline">{{ getTag(c.text) }}</span>
+              <button *ngIf="c.idUser === currentUserId && editingId !== c.id"
                       class="btn-edit" (click)="startEdit(c)">
                 <i class="bi bi-pencil-fill"></i>
               </button>
             </div>
-            <div *ngIf="!isTag(c.text) && editingId !== c.id" class="chat-text">{{ c.text }}</div>
+            <div *ngIf="editingId !== c.id" class="chat-text">{{ getBody(c.text) }}</div>
             <div *ngIf="editingId === c.id" class="chat-edit-row">
               <textarea class="form-control form-control-sm" [(ngModel)]="editingText" rows="2"
                         (click)="$event.stopPropagation()"></textarea>
@@ -43,6 +43,9 @@ import { SignalsService } from 'app/services/signals.service';
           </div>
         </div>
         <div class="chat-input-row">
+          <div *ngIf="pendingTag" class="chat-pending-tag">
+            <i class="bi bi-tag-fill me-1"></i>{{ pendingTag }}
+          </div>
           <textarea class="form-control form-control-sm" [(ngModel)]="newText"
                     placeholder="Escribe un comentario..."
                     rows="2" (click)="$event.stopPropagation()"
@@ -98,6 +101,7 @@ import { SignalsService } from 'app/services/signals.service';
     .chat-edit-row { display: flex; flex-direction: column; gap: 4px; }
     .chat-edit-actions { display: flex; gap: 4px; }
     .chat-input-row { padding: 10px; border-top: 1px solid #dee2e6; flex-shrink: 0; }
+    .chat-pending-tag { font-size: 9px; font-weight: 700; color: #c0392b; margin-bottom: 4px; }
   `]
 })
 export class ItemChatOverlayComponent implements OnInit, OnDestroy {
@@ -116,6 +120,7 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   numArticle = '';
   documentType = '';
   idDocument = 0;
+  pendingTag = '';   // tag pendiente que se adhiere al próximo mensaje del usuario
 
   ngOnInit() {
     this.sub = this.commentsService.openChatFor$.subscribe(req => {
@@ -123,30 +128,13 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.currentUserName = this.signalsService.getDisplayName()() || '';
       this.documentType    = req.documentType;
       this.idDocument      = req.idDocument;
-      this.numArticle = req.numArticle;
+      this.numArticle      = req.numArticle;
+      this.pendingTag      = req.autoMessage || '';
       this.newText = '';
       this.cancelEdit();
       this.showChat = true;
       this.commentsService.getComments(req.documentType, req.idDocument, req.numArticle).subscribe({
-        next: async (data) => {
-          this.comments = data;
-          if (req.autoMessage) {
-            const yaExiste = data.some(c => c.text.trim() === req.autoMessage!.trim());
-            if (!yaExiste) {
-              try {
-                const saved = await firstValueFrom(this.commentsService.addComment({
-                  documentType: this.documentType,
-                  idDocument:   this.idDocument,
-                  numArticle:   this.numArticle,
-                  idUser:       this.currentUserId,
-                  userName:     this.currentUserName,
-                  text:         req.autoMessage!
-                }));
-                this.comments = [...this.comments, saved];
-              } catch {}
-            }
-          }
-        },
+        next: d => { this.comments = d; },
         error: () => { this.comments = []; }
       });
     });
@@ -167,17 +155,22 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   async send() {
     if (!this.newText.trim() || this.saving) return;
     this.saving = true;
+    // Si hay tag pendiente, lo codifica junto con el texto: "TAG\nMensaje"
+    const textToSave = this.pendingTag
+      ? `${this.pendingTag}\n${this.newText.trim()}`
+      : this.newText.trim();
     try {
       const saved = await firstValueFrom(this.commentsService.addComment({
         documentType: this.documentType,
-        idDocument: this.idDocument,
-        numArticle: this.numArticle,
-        idUser: this.currentUserId,
-        userName: this.currentUserName,
-        text: this.newText.trim()
+        idDocument:   this.idDocument,
+        numArticle:   this.numArticle,
+        idUser:       this.currentUserId,
+        userName:     this.currentUserName,
+        text:         textToSave
       }));
       this.comments = [...this.comments, saved];
       this.newText = '';
+      this.pendingTag = '';  // consumido
     } finally { this.saving = false; }
   }
 
@@ -195,8 +188,16 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
     } finally { this.saving = false; }
   }
 
-  isTag(text: string): boolean {
-    return text?.trim() === 'CAMBIO DE ESPECIFICACIONES';
+  getTag(text: string): string {
+    if (!text) return '';
+    const nl = text.indexOf('\n');
+    return nl > 0 ? text.substring(0, nl).trim() : '';
+  }
+
+  getBody(text: string): string {
+    if (!text) return '';
+    const nl = text.indexOf('\n');
+    return nl > 0 ? text.substring(nl + 1).trim() : text;
   }
 
   formatDate(d?: string): string {
