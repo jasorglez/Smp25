@@ -14,24 +14,27 @@ import { SignalsService } from 'app/services/signals.service';
       <div class="chat-backdrop" (click)="close()"></div>
       <div class="chat-panel">
         <div class="chat-header">
-          <span class="chat-title"><i class="bi bi-chat-dots me-1"></i>{{ numArticle }}</span>
-          <button class="btn-close btn-close-white btn-sm" (click)="close()"></button>
+          <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden;">
+            <span class="chat-title"><i class="bi bi-chat-dots me-1"></i>{{ numArticle }}</span>
+            <span *ngIf="contextLabel" class="chat-context-label">
+              <i class="bi bi-exclamation-circle-fill me-1"></i>{{ contextLabel }}
+            </span>
+          </div>
+          <button class="btn-close btn-close-white btn-sm ms-2" (click)="close()"></button>
         </div>
         <div class="chat-messages">
           <div *ngIf="!comments.length" class="chat-empty">Sin comentarios aún</div>
           <div *ngFor="let c of comments" class="chat-bubble"
-               [class.chat-bubble-own]="c.idUser === currentUserId"
-               [class.chat-bubble-alert]="isAlertMsg(c.text)">
+               [class.chat-bubble-own]="c.idUser === currentUserId">
             <div class="chat-bubble-meta">
-              <span class="chat-user" [class.chat-user-alert]="isAlertMsg(c.text)">{{ c.userName }}</span>
+              <span class="chat-user">{{ c.userName }}</span>
               <span class="chat-date">{{ formatDate(c.createdAt) }}</span>
               <button *ngIf="c.idUser === currentUserId && editingId !== c.id"
                       class="btn-edit" (click)="startEdit(c)">
                 <i class="bi bi-pencil-fill"></i>
               </button>
             </div>
-            <div *ngIf="editingId !== c.id" class="chat-text"
-                 [class.chat-text-alert]="isAlertMsg(c.text)">{{ c.text }}</div>
+            <div *ngIf="editingId !== c.id" class="chat-text">{{ c.text }}</div>
             <div *ngIf="editingId === c.id" class="chat-edit-row">
               <textarea class="form-control form-control-sm" [(ngModel)]="editingText" rows="2"
                         (click)="$event.stopPropagation()"></textarea>
@@ -79,6 +82,7 @@ import { SignalsService } from 'app/services/signals.service';
       display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
     }
     .chat-title { font-size: 11px; font-weight: 600; }
+    .chat-context-label { font-size: 10px; font-weight: 700; color: #ffe066; letter-spacing: 0.3px; }
     .chat-messages {
       flex: 1; overflow-y: auto; padding: 8px;
       display: flex; flex-direction: column; gap: 6px;
@@ -93,9 +97,6 @@ import { SignalsService } from 'app/services/signals.service';
     .btn-edit { background: none; border: none; cursor: pointer; color: #aaa; font-size: 9px; padding: 0; }
     .btn-edit:hover { color: #0d6efd; }
     .chat-text { color: #333; white-space: pre-wrap; font-size: 10px; }
-    .chat-bubble-alert { background: #fff0f0; border: 1px solid #f5c6c6; }
-    .chat-user-alert { color: #c0392b !important; font-weight: 700; }
-    .chat-text-alert { color: #c0392b; font-weight: 700; font-size: 11px; letter-spacing: 0.3px; }
     .chat-edit-row { display: flex; flex-direction: column; gap: 4px; }
     .chat-edit-actions { display: flex; gap: 4px; }
     .chat-input-row { padding: 10px; border-top: 1px solid #dee2e6; flex-shrink: 0; }
@@ -117,6 +118,7 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   numArticle = '';
   documentType = '';
   idDocument = 0;
+  contextLabel = '';
 
   ngOnInit() {
     this.sub = this.commentsService.openChatFor$.subscribe(req => {
@@ -124,40 +126,19 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.currentUserName = this.signalsService.getDisplayName()() || '';
       this.documentType    = req.documentType;
       this.idDocument      = req.idDocument;
-      this.numArticle      = req.numArticle;
+      this.numArticle   = req.numArticle;
+      this.contextLabel = req.contextLabel || '';
       this.newText = '';
       this.cancelEdit();
       this.showChat = true;
       this.commentsService.getComments(req.documentType, req.idDocument, req.numArticle).subscribe({
-        next: async (data) => {
-          this.comments = data;
-          if (req.autoMessage) {
-            await this.sendAutoMessage(req.autoMessage);
-          }
-        },
+        next: (data) => { this.comments = data; },
         error: () => { this.comments = []; }
       });
     });
   }
 
   ngOnDestroy() { this.sub?.unsubscribe(); }
-
-  async sendAutoMessage(text: string) {
-    // No enviar si ya existe ese mensaje exacto
-    const yaExiste = this.comments.some(c => c.text.trim() === text.trim());
-    if (yaExiste) return;
-    try {
-      const saved = await firstValueFrom(this.commentsService.addComment({
-        documentType: this.documentType,
-        idDocument:   this.idDocument,
-        numArticle:   this.numArticle,
-        idUser:       this.currentUserId,
-        userName:     this.currentUserName,
-        text
-      }));
-      this.comments = [...this.comments, saved];
-    } catch {}
-  }
 
   loadComments() {
     if (!this.documentType || !this.idDocument || !this.numArticle) return;
@@ -198,10 +179,6 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       if (idx !== -1) this.comments[idx] = { ...this.comments[idx], text: updated.text };
       this.cancelEdit();
     } finally { this.saving = false; }
-  }
-
-  isAlertMsg(text: string): boolean {
-    return text?.trim() === 'CAMBIO DE ESPECIFICACIONES';
   }
 
   formatDate(d?: string): string {
