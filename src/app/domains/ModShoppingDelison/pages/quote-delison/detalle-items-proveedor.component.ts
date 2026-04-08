@@ -572,8 +572,9 @@ export class DetalleItemsProveedorComponent {
       const numArticulo = String(event.data.numArticulo || '');
       this.itemCommentsService.openChatFor$.next({
         documentType: 'REQ',
-        idDocument: this.requisitionId ?? 0,
-        numArticle: numArticulo
+        idDocument:   this.requisitionId ?? 0,
+        numArticle:   numArticulo,
+        autoMessage:  'CAMBIO DE ESPECIFICACIONES'
       });
     }
 

@@ -60,8 +60,8 @@ import { SignalsService } from 'app/services/signals.service';
       position: fixed;
       top: 70px;
       right: 24px;
-      width: 310px;
-      max-height: 440px;
+      width: 420px;
+      max-height: 480px;
       background: #fff;
       border: 1px solid #dee2e6;
       border-radius: 8px;
@@ -72,27 +72,27 @@ import { SignalsService } from 'app/services/signals.service';
       overflow: hidden;
     }
     .chat-header {
-      background: #0d6efd; color: #fff; padding: 8px 10px;
+      background: #0d6efd; color: #fff; padding: 10px 12px;
       display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
     }
-    .chat-title { font-size: 12px; font-weight: 600; }
+    .chat-title { font-size: 11px; font-weight: 600; }
     .chat-messages {
       flex: 1; overflow-y: auto; padding: 8px;
       display: flex; flex-direction: column; gap: 6px;
-      min-height: 80px; max-height: 240px;
+      min-height: 80px; max-height: 270px;
     }
-    .chat-empty { color: #aaa; font-size: 11px; text-align: center; padding: 12px 0; }
-    .chat-bubble { background: #f1f3f5; border-radius: 6px; padding: 6px 8px; font-size: 11px; }
+    .chat-empty { color: #aaa; font-size: 10px; text-align: center; padding: 12px 0; }
+    .chat-bubble { background: #f1f3f5; border-radius: 6px; padding: 6px 8px; font-size: 10px; }
     .chat-bubble-own { background: #dbeafe; }
     .chat-bubble-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-    .chat-user { font-weight: 600; color: #0d6efd; }
-    .chat-date { color: #aaa; font-size: 10px; flex: 1; }
-    .btn-edit { background: none; border: none; cursor: pointer; color: #aaa; font-size: 10px; padding: 0; }
+    .chat-user { font-weight: 600; color: #0d6efd; font-size: 10px; }
+    .chat-date { color: #aaa; font-size: 9px; flex: 1; }
+    .btn-edit { background: none; border: none; cursor: pointer; color: #aaa; font-size: 9px; padding: 0; }
     .btn-edit:hover { color: #0d6efd; }
-    .chat-text { color: #333; white-space: pre-wrap; }
+    .chat-text { color: #333; white-space: pre-wrap; font-size: 10px; }
     .chat-edit-row { display: flex; flex-direction: column; gap: 4px; }
     .chat-edit-actions { display: flex; gap: 4px; }
-    .chat-input-row { padding: 8px; border-top: 1px solid #dee2e6; flex-shrink: 0; }
+    .chat-input-row { padding: 10px; border-top: 1px solid #dee2e6; flex-shrink: 0; }
   `]
 })
 export class ItemChatOverlayComponent implements OnInit, OnDestroy {
@@ -121,12 +121,34 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.numArticle      = req.numArticle;
       this.newText = '';
       this.cancelEdit();
-      this.loadComments();
       this.showChat = true;
+      this.commentsService.getComments(req.documentType, req.idDocument, req.numArticle).subscribe({
+        next: async (data) => {
+          this.comments = data;
+          if (req.autoMessage) {
+            await this.sendAutoMessage(req.autoMessage);
+          }
+        },
+        error: () => { this.comments = []; }
+      });
     });
   }
 
   ngOnDestroy() { this.sub?.unsubscribe(); }
+
+  async sendAutoMessage(text: string) {
+    try {
+      const saved = await firstValueFrom(this.commentsService.addComment({
+        documentType: this.documentType,
+        idDocument:   this.idDocument,
+        numArticle:   this.numArticle,
+        idUser:       this.currentUserId,
+        userName:     this.currentUserName,
+        text
+      }));
+      this.comments = [...this.comments, saved];
+    } catch {}
+  }
 
   loadComments() {
     if (!this.documentType || !this.idDocument || !this.numArticle) return;

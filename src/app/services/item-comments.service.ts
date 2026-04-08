@@ -22,7 +22,7 @@ export class ItemCommentsService {
   private trackingService = inject(TrackingService);
 
   /** Emite cuando un componente externo quiere abrir el chat de un ítem específico */
-  readonly openChatFor$ = new Subject<{ documentType: string; idDocument: number; numArticle: string }>();
+  readonly openChatFor$ = new Subject<{ documentType: string; idDocument: number; numArticle: string; autoMessage?: string }>();
 
   getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
