@@ -295,12 +295,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           this.gridApi.redrawRows();
         }
 
-        // Emitir colores al padre según typeOC de los ítems
-        const noAuth    = this.rowData.some(r => r.typeOC === 'COMPRA NO AUTORIZADA');
-        const changeSpec = this.rowData.some(r => r.typeOC === 'CAMBIO DE ESPECIFICACIONES');
-        if (noAuth || changeSpec) {
-          this.signalsService.updateReqTypeOc(this.requisitionId, { noAuth, changeSpec });
-        }
 
 
 

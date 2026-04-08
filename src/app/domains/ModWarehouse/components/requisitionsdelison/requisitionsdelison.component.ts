@@ -333,6 +333,9 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.refreshCells({ force: true });
       }
+
+      // Cargar flags de typeOC desde COTIZs vinculadas
+      this.loadTypeOcFlags();
     });
   }
 
@@ -403,6 +406,9 @@ export class RequisitionsDelisonComponent implements OnInit {
           // Forzar actualización de las columnas para que muestren los nombres correctos
           this.gridApi.refreshCells({ force: true });
         }
+
+        // Cargar flags de typeOC desde COTIZs vinculadas
+        this.loadTypeOcFlags();
       },
       error: (error) => {
 
@@ -412,6 +418,16 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.fullRowData = [];
         this.rowData = [];
       }
+    });
+  }
+
+  private loadTypeOcFlags() {
+    if (!this.idRoot) return;
+    this.ocAndReqsService.getTypeOcFlags(this.idRoot).subscribe({
+      next: (flags) => {
+        this.signalsService.setReqTypeOcBulk(flags);
+      },
+      error: () => { /* silencioso */ }
     });
   }
 

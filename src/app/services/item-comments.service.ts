@@ -4,6 +4,11 @@ import { Observable, Subject } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
+export interface DocumentCommentFlags {
+  hasNoAuth: boolean;
+  hasChangeSpec: boolean;
+}
+
 export interface ItemComment {
   id?: number;
   documentType: string;   // 'REQ' | 'COTIZ' | 'PROVEEDOR'
@@ -27,6 +32,13 @@ export class ItemCommentsService {
   getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
       `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getFlags(documentType: string, idDocument: number): Observable<DocumentCommentFlags> {
+    return this.http.get<DocumentCommentFlags>(
+      `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

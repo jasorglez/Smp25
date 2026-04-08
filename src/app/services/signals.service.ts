@@ -964,6 +964,12 @@ getMasterUpdateTrigger() {
     this.reqTypeOcMap.set(current);
   }
 
+  setReqTypeOcBulk(flags: { reqId: number; hasNoAuth: boolean; hasChangeSpec: boolean }[]) {
+    const map = new Map<number, { noAuth: boolean; changeSpec: boolean }>();
+    flags.forEach(f => map.set(f.reqId, { noAuth: f.hasNoAuth, changeSpec: f.hasChangeSpec }));
+    this.reqTypeOcMap.set(map);
+  }
+
   getReqTypeOcMap() {
     return this.reqTypeOcMap;
   }
