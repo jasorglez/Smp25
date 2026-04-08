@@ -4,13 +4,14 @@ import { forkJoin, of, Subscription } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { AuthService } from './services/auth.service';
 import { SignalsService } from './services/signals.service';
+import { ItemChatOverlayComponent } from './shared/item-comments-cell-renderer/item-chat-overlay.component';
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
-  template: '<router-outlet></router-outlet>',
+  imports: [RouterOutlet, ItemChatOverlayComponent],
+  template: '<router-outlet></router-outlet><app-item-chat-overlay></app-item-chat-overlay>',
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'bi-aug-24';
