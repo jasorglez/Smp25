@@ -154,7 +154,7 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   private panelLeft = 0;
 
   agInit(params: ICellRendererParams): void {
-    this.currentUserId   = this.signalsService.getidUser()();
+    this.currentUserId   = this.signalsService.getIdUSer()();
     this.currentUserName = this.signalsService.getDisplayName()() || '';
     this.numArticle      = String(params.data?.numArticulo || params.data?.numeroArticulo || params.data?.numArticle || '');
     this.idRequisicion   = params.data?.requisitionId || 0;
