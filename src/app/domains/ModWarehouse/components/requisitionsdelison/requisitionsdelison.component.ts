@@ -93,6 +93,14 @@ export class RequisitionsDelisonComponent implements OnInit {
         );
       }
     });
+
+    // Escucha typeOC de ítems para colorear celda # Requisicion
+    effect(() => {
+      this.signalsService.getReqTypeOcMap()(); // reactive
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ columns: ['requisitionNumber'], force: true });
+      }
+    });
   }
 
   rowData: any[] = [];
@@ -611,8 +619,18 @@ export class RequisitionsDelisonComponent implements OnInit {
         headerName: '# Requisicion',
         width: 120,
         filter: true,
-        editable: false, // ✅ NO editable - se genera automáticamente
-        cellStyle: { backgroundColor: '#f0f0f0' } // Estilo para indicar que no es editable
+        editable: false,
+        cellStyle: (params: any) => {
+          const flags = this.signalsService.getReqTypeOcMap()().get(params.data?.id);
+          if (!flags) return { backgroundColor: '#f0f0f0' };
+          if (flags.noAuth && flags.changeSpec)
+            return { background: 'linear-gradient(to right, #FFCC80 50%, #FFF59D 50%)', fontWeight: '600' };
+          if (flags.noAuth)
+            return { backgroundColor: '#FFCC80', fontWeight: '600' };
+          if (flags.changeSpec)
+            return { backgroundColor: '#FFF59D', fontWeight: '600' };
+          return { backgroundColor: '#f0f0f0' };
+        }
       },
       {
         field: 'requestDate',

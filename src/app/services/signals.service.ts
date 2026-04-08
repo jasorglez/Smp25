@@ -954,4 +954,17 @@ getMasterUpdateTrigger() {
   resetNewProviderCreated() {
     this.newProviderCreated.set(null);
   }
+
+  // Mapa de colores por typeOC de ítems en requisiciones
+  private reqTypeOcMap = signal<Map<number, { noAuth: boolean; changeSpec: boolean }>>(new Map());
+
+  updateReqTypeOc(reqId: number, flags: { noAuth: boolean; changeSpec: boolean }) {
+    const current = new Map(this.reqTypeOcMap());
+    current.set(reqId, flags);
+    this.reqTypeOcMap.set(current);
+  }
+
+  getReqTypeOcMap() {
+    return this.reqTypeOcMap;
+  }
 }

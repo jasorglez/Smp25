@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.55 (08 Abril 2026) - 15:00 update security',
+  version: '3.56 (08 Abril 2026) - mini-chat colores requisicion',
 };
 
