@@ -137,6 +137,9 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.sub?.unsubscribe(); }
 
   async sendAutoMessage(text: string) {
+    // No enviar si ya existe ese mensaje exacto
+    const yaExiste = this.comments.some(c => c.text.trim() === text.trim());
+    if (yaExiste) return;
     try {
       const saved = await firstValueFrom(this.commentsService.addComment({
         documentType: this.documentType,
