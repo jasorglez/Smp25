@@ -56,8 +56,8 @@ export class OcAndReqsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Material/providers-by-material?idMaterial=${id}&typeIntOrExt=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getTypeOcFlags(idRoot: number): Observable<{ reqId: number; hasNoAuth: boolean; hasChangeSpec: boolean }[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Ocandreq/${idRoot}/typeoc-flags`, { headers: this.trackingService.getHeaders() });
+  getTypeOcFlags(reqIds: number[]): Observable<{ reqId: number; hasNoAuth: boolean; hasChangeSpec: boolean }[]> {
+    return this.http.post<any[]>(`${environment.urlWarehouse}/Ocandreq/typeoc-flags`, reqIds, { headers: this.trackingService.getHeaders() });
   }
 
   getCotizByReq(idReq: number, typeReference: string, idReference: number): Observable<any> {

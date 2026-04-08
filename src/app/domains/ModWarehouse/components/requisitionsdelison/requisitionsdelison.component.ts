@@ -422,8 +422,9 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   private loadTypeOcFlags() {
-    if (!this.idRoot) return;
-    this.ocAndReqsService.getTypeOcFlags(this.idRoot).subscribe({
+    if (!this.rowData.length) return;
+    const reqIds = this.rowData.map(r => r.id);
+    this.ocAndReqsService.getTypeOcFlags(reqIds).subscribe({
       next: (flags) => {
         this.signalsService.setReqTypeOcBulk(flags);
       },
