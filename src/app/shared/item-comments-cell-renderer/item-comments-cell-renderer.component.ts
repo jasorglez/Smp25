@@ -23,9 +23,7 @@ import { firstValueFrom, Subscription } from 'rxjs';
 
     <!-- Mini-chat panel -->
     <div *ngIf="showChat" class="chat-backdrop" (click)="closeChat()"></div>
-    <div *ngIf="showChat" class="chat-panel"
-         [style.top]="panelTop + 'px'"
-         [style.left]="panelLeft + 'px'">
+    <div *ngIf="showChat" class="chat-panel">
       <!-- Header -->
       <div class="chat-header">
         <span class="chat-title">
@@ -82,6 +80,8 @@ import { firstValueFrom, Subscription } from 'rxjs';
     }
     .chat-panel {
       position: fixed;
+      top: 80px;
+      right: 24px;
       width: 300px;
       max-height: 420px;
       background: #fff;
@@ -153,9 +153,6 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   documentType = '';
   idDocument = 0;
 
-  panelTop = 0;
-  panelLeft = 0;
-  private readonly PANEL_HEIGHT = 420;
   private openSub?: Subscription;
 
   agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number }): void {
@@ -188,21 +185,10 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   }
 
   openChat(event: MouseEvent) {
-    const clickY = event.clientY;
-    const clickX = event.clientX;
-    const spaceBelow = window.innerHeight - clickY;
-    // Si no hay espacio abajo, abre hacia arriba desde el click
-    this.panelTop  = spaceBelow < this.PANEL_HEIGHT
-      ? Math.max(10, clickY - this.PANEL_HEIGHT)
-      : clickY + 4;
-    this.panelLeft = Math.min(clickX, window.innerWidth - 314);
     this.showChat = true;
   }
 
-  /** Abre el chat centrado horizontalmente, en la parte superior de la pantalla */
   openChatCentered() {
-    this.panelTop  = 80;
-    this.panelLeft = Math.max(10, (window.innerWidth - 310) / 2);
     this.showChat = true;
   }
 
