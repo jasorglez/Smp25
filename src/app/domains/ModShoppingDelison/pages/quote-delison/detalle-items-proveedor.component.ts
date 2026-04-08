@@ -574,7 +574,7 @@ export class DetalleItemsProveedorComponent {
         documentType: 'REQ',
         idDocument:   this.requisitionId ?? 0,
         numArticle:   numArticulo,
-        contextLabel: 'CAMBIO DE ESPECIFICACIONES'
+        autoMessage: 'CAMBIO DE ESPECIFICACIONES'
       });
     }
 
