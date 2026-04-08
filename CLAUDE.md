@@ -257,6 +257,33 @@ revertChanges() {
 - ✅ All domains (Almacenes, ModSales, ModProjects, ModAdmon, ModReshumans, etc.)
 - ✅ Any component with create/read/update/delete operations
 
+## Compact Instructions
+
+When compacting this conversation, always preserve:
+
+### Critical Context (NEVER lose)
+1. **MCP SQL config**: branch `branchDelison`/pruebas → servidor `76.13.28.145` → prefijo `b2-` (ej. `b2-mssql-warehouses`). Producción `main` → `66.179.240.10` → sin prefijo.
+2. **Git branch**: todo trabajo en `branchDelison`. NUNCA commitear en `main` directamente.
+3. **Full-stack**: Frontend Angular `C:\Developer\Angular\angular18\smp25` + Backend C# `C:\Developer\Visual Studio 22\c#\MicroServicios`. Ambas carpetas tienen acceso permanente — no pedir permisos.
+4. **Comunicación entre componentes**: SIEMPRE Signals (`SignalsService`), NUNCA `@Output()`.
+5. **Effect en constructor**: `effect()` SIEMPRE en el `constructor()`, NUNCA en `ngOnInit()`.
+6. **Versiones**: actualizar `environment.ts` (frontend) y `Program.cs` (backend) en cada cambio. Fecha actual en el string de versión.
+
+### Módulo Delison (ModWarehouse / ModShoppingDelison)
+- **Tablas principales**: `dbo.ocandreq` (maestro REQ/COTIZ/OC) + `dbo.detailsreqoc` (ítems) + `Delison.item_comments` (chat)
+- **Flujo de documentos**: REQUIS → COTIZ (id_req=requisición.id) → OC
+- **typeOC**: se asigna en ítems de la **COTIZ** (`detailsreqoc`), NO en la REQUIS — los ítems de REQUIS tienen `typeoc=null`
+- **id_busines**: columna `id_busines` en `ocandreq` vale `0` en registros viejos — NO filtrar por este campo
+- **Colores # Requisicion**: naranja pastel=`COMPRA NO AUTORIZADA`, amarillo pastel=`CAMBIO DE ESPECIFICACIONES`, gradiente 50/50 si ambos. Flags vienen de `POST /Ocandreq/typeoc-flags` con body `[int[] reqIds]`
+- **Mini-chat**: `ItemCommentsService` + `ItemChatOverlayComponent` (root level, fuera del DOM de AG Grid). `openChatFor$` Subject activa el panel. Tag encoded como primera línea: `"CAMBIO DE ESPECIFICACIONES\nMensaje del usuario"`
+- **AG Grid + position:fixed**: AG Grid usa `transform: translateY()` que rompe `position:fixed`. Solución: overlay en `app.component` raíz.
+
+### Patrones técnicos clave
+- **AG Grid Enter-key nav**: `suppressKeyboardEvent` en `defaultColDef` + `onCellEditingStopped` + `editableColumnOrder[]`
+- **Fila nueva amarilla**: `rowClassRules: { 'new-row-highlight': params => !!params.data?.__isNew }` — CSS global en `styles.scss`
+- **Backend field naming**: DB usa snake_case/lowercase, frontend usa camelCase. Siempre verificar antes de enviar al backend.
+- **Signals para colores**: `signalsService.setReqTypeOcBulk(flags)` llena el mapa, `effect()` hace `refreshCells()`, `cellStyle` lee el mapa.
+
 ## Project Memories
 
 - Hasta aaqui funciona relativamente bien

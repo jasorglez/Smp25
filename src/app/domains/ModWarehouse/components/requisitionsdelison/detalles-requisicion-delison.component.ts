@@ -282,6 +282,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
           urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
           justificationNewArticle: item.justificationNewArticle || '', // Justificación del artículo nuevo
+          typeOC: item.typeoc || item.typeOC || '',
           __isNew: false,
           __modified: false,
           saved: true
@@ -293,6 +294,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           this.gridApi.setGridOption('rowData', this.rowData);
           this.gridApi.redrawRows();
         }
+
 
 
 

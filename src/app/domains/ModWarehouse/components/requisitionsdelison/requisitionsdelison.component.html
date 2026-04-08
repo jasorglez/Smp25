@@ -30,6 +30,18 @@
 
     <!-- Right Panel: Grid -->
     <div class="col">
+      <!-- Leyenda de colores -->
+      <div class="d-flex gap-3 mb-2 align-items-center flex-wrap">
+        <div class="d-flex align-items-center gap-1">
+          <div style="width:14px; height:14px; border-radius:3px; background:#FFCC80; border:1px solid #e0a040; flex-shrink:0;"></div>
+          <span style="font-size:11px; color:#555;">COMPRA NO AUTORIZADA</span>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <div style="width:14px; height:14px; border-radius:3px; background:#FFF59D; border:1px solid #d4c000; flex-shrink:0;"></div>
+          <span style="font-size:11px; color:#555;">CAMBIO DE ESPECIFICACIÓN</span>
+        </div>
+      </div>
+
       <ag-grid-angular
         style="width: 100%;"
         [ngStyle]="{'height': gridHeight}"
