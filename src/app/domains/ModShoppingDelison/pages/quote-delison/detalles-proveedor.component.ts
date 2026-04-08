@@ -13,13 +13,14 @@ import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 
 pdfMake.vfs = pdfFonts.vfs;
 
 @Component({
   selector: 'app-detalles-proveedor',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Header con controles -->
@@ -141,6 +142,7 @@ export class DetallesProveedorComponent {
   totalCostoTotal: number = 0;
   providerLabel: string = '';
   providerField: string = '';
+  requisitionId: number | null = null;
   private _colDefs: ColDef[] | null = null;
 
   // COTPRO state
@@ -157,9 +159,10 @@ export class DetallesProveedorComponent {
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
-    this.providerLabel = params.context?.providerLabel || 'Proveedor';
-    this.providerField = params.context?.providerField || 'idProvider';
-    this.cotizacionId = this.params.data.cotizacionId || null;
+    this.providerLabel  = params.context?.providerLabel || 'Proveedor';
+    this.providerField  = params.context?.providerField || 'idProvider';
+    this.cotizacionId   = this.params.data.cotizacionId || null;
+    this.requisitionId  = this.params.data.requisitionId || null;
 
     const currentProviderId = this.params.data[this.providerField];
     if (currentProviderId && currentProviderId > 0) {
@@ -248,7 +251,8 @@ export class DetallesProveedorComponent {
           cantidadConfirmada: item.quantity || 0,
           costoTotal: (item.price || 0) * (item.quantity || 0),
           autorizado: item.autorizado || false,
-          comment: item.comment || ''
+          comment: item.comment || '',
+          requisitionId: this.requisitionId
         };
       });
       this.updateTotal();
@@ -273,6 +277,7 @@ export class DetallesProveedorComponent {
       compraMinima: 1,
       tiempoEntrega: '',
       cantidadConfirmada: item.quantity || 0,
+      requisitionId: this.requisitionId,
       costoTotal: 0,
       autorizado: false,
       comment: ''
@@ -502,7 +507,14 @@ export class DetallesProveedorComponent {
       { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 130, editable: true },
       { field: 'costoTotal', headerName: 'Costo Total', width: 150, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
       { field: 'autorizado', headerName: 'Autoriz.', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: true },
-      { field: 'comment', headerName: 'Comentario', width: 200, editable: true }
+      { field: 'comment', headerName: 'Comentario', width: 200, editable: true },
+      {
+        headerName: '💬',
+        width: 60,
+        sortable: false,
+        filter: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+      }
     ];
 
     return this._colDefs;

@@ -319,6 +319,9 @@ export class DetalleItemsProveedorComponent {
   providerField: string = '';
   private _colDefs: ColDef[] | null = null;
 
+  // IDs de referencia
+  requisitionId: number | null = null;
+
   // Estado guardado
   cotizacionSaved: boolean = false;
   savedCotizFolio: string = '';
@@ -359,8 +362,9 @@ export class DetalleItemsProveedorComponent {
   agInit(params: ICellRendererParams): void {
     this.params = params;
     // providerField viene por tres rutas posibles (detailCellRendererSelector params, node.data, o context)
-    this.providerLabel = (params as any).providerLabel || params.data?.providerLabel || params.context?.providerLabel || 'Proveedor';
-    this.providerField  = (params as any).providerField  || params.data?.providerField  || params.context?.providerField  || 'idProvider';
+    this.providerLabel    = (params as any).providerLabel || params.data?.providerLabel || params.context?.providerLabel || 'Proveedor';
+    this.providerField    = (params as any).providerField  || params.data?.providerField  || params.context?.providerField  || 'idProvider';
+    this.requisitionId    = params.data?.requisitionId || null;
 
     const currentProviderId = this.params.data[this.providerField];
     if (currentProviderId && currentProviderId > 0) {
@@ -614,11 +618,27 @@ export class DetalleItemsProveedorComponent {
 
   confirmEspecificaciones() {
     if (!this.especificacionesText?.trim()) return;
-    this._especificacionesNode.data.comment = this.especificacionesText.trim();
+    const texto = this.especificacionesText.trim();
+    const numArticulo = this._especificacionesNode.data.numArticulo;
+
+    this._especificacionesNode.data.comment = texto;
     this.gridApi.refreshCells({ rowNodes: [this._especificacionesNode], force: true });
     this.showEspecificacionesModal = false;
     this.especificacionesText = '';
     this._especificacionesNode = null;
+
+    // Propagar comment a la REQ original
+    if (this.requisitionId && numArticulo) {
+      this.ocandreqsService.getReqItems(this.requisitionId).subscribe({
+        next: (items: any[]) => {
+          const match = (Array.isArray(items) ? items : [])
+            .find((i: any) => String(i.numArticle || i.numarticle) === String(numArticulo));
+          if (match?.id) {
+            this.ocandreqsService.updateReqItem(String(match.id), { ...match, comment: texto }).subscribe();
+          }
+        }
+      });
+    }
   }
 
   cancelFechaPostpone() {
@@ -1061,7 +1081,19 @@ export class DetalleItemsProveedorComponent {
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({ values: this.typeocValues }),
         cellEditorPopup: true,
-        tooltipValueGetter: (p: any) => p.value || ''
+        tooltipValueGetter: (p: any) => {
+          if (p.value === 'COMPRA AUTORIZADA EN OTRA FECHA') {
+            const d = p.data?.datePostpone;
+            if (!d) return 'Fecha reprogramada: (sin fecha)';
+            const [y, m, day] = String(d).substring(0, 10).split('-');
+            return `Fecha reprogramada: ${day}/${m}/${y}`;
+          }
+          if (p.value === 'CAMBIO DE ESPECIFICACIONES') {
+            const c = p.data?.comment;
+            return c ? `Cambio: ${c}` : 'Sin descripción registrada';
+          }
+          return p.value || '';
+        }
       },
       {
         field: 'autorizado',

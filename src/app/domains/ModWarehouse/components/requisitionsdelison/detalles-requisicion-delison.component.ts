@@ -13,6 +13,7 @@ import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
+import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
@@ -20,7 +21,7 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
 @Component({
   selector: 'app-detalles-requisicion-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent],
   template: `
     <!-- Items Grid View -->
     <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
@@ -787,6 +788,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           return true;
         },
         cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
+      },
+      {
+        headerName: '💬',
+        width: 60,
+        sortable: false,
+        filter: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
       },
 
       {
