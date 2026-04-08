@@ -6,7 +6,7 @@ import { ColDef, ColGroupDef, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
-import { DetailCellRendererPedimentosComponent } from './detalle-pedimentos.component';
+import { DetailCellRendererPedimentosComponent } from './detalle-pedimentosxproveedor.component';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';

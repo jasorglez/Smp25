@@ -205,7 +205,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'createdBy',
         headerName: 'CREÓ',
-        width: 100
+        width: 200
       }
 
     ];

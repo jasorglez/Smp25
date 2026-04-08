@@ -1074,6 +1074,16 @@ export class DetalleItemsProveedorComponent {
         width: 150,
         valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00'
       },
+
+         {
+        headerName: '💬',
+        width: 60,
+        sortable: false,
+        filter: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
+      }
+
       {
         field: 'typeOC',
         headerName: 'Tipo OC',
@@ -1106,14 +1116,7 @@ export class DetalleItemsProveedorComponent {
         editable: true
       },
       { field: 'oc', headerName: 'OC', width: 80, editable: true },
-      {
-        headerName: '💬',
-        width: 60,
-        sortable: false,
-        filter: false,
-        cellRenderer: ItemCommentsCellRendererComponent,
-        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
-      }
+   
     ];
 
     return this._colDefs;
