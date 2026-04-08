@@ -16,13 +16,14 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 
 pdfMake.vfs = pdfFonts.vfs;
 
 @Component({
   selector: 'app-detalle-items-proveedor',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Banner de candado cuando ya existe OC -->
@@ -1058,7 +1059,7 @@ export class DetalleItemsProveedorComponent {
       { field: 'articulo', headerName: 'Artículo', width: 140 },
       { field: 'codigoExterno', headerName: 'Cód. Externo', width: 120, editable: true },
       { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: true },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega4', width: 120, editable: true },
+      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 120, editable: true },
       {
         field: 'costoUnitario',
         headerName: 'Costo Unit.',
@@ -1104,7 +1105,15 @@ export class DetalleItemsProveedorComponent {
         cellEditor: 'agCheckboxCellEditor',
         editable: true
       },
-      { field: 'oc', headerName: 'OC', width: 80, editable: true }
+      { field: 'oc', headerName: 'OC', width: 80, editable: true },
+      {
+        headerName: '💬',
+        width: 60,
+        sortable: false,
+        filter: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
+      }
     ];
 
     return this._colDefs;

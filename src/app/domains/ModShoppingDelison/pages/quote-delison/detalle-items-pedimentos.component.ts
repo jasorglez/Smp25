@@ -398,7 +398,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
-        cellRendererParams: () => ({ documentType: 'COTIZ', idDocument: this.cotizacionId }),
+        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
       },
       {
         field: 'pedimento',
