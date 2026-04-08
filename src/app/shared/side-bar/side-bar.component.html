@@ -8,8 +8,9 @@
   <div class="d-flex flex-column align-items-center p-2 border-bottom" *ngIf="!isSidebarCollapsed || isTemporarilyExpanded">
     <!-- Logo -->
     <img
-      [src]="trackingService.getpictureComp()"
-      alt="BI Company"
+      [src]="companyLogoSrc"
+      (error)="onCompanyLogoError($event)"
+      alt="Logo empresa"
       class="img-fluid sidebar-logo"
     />
   </div>
@@ -93,7 +94,6 @@
         [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('projects' | translate)) : ''"
         matTooltipPosition="right"
       >
-        >
         <option selected disabled value="">
           {{ "projects" | translate }}
         </option>
@@ -130,22 +130,6 @@
           matTooltipPosition="right"
         >
           <mat-icon>bar_chart</mat-icon> <span>{{ "indicators" | translate }}</span>
-        </a>
-      </li>
-
-      <li
-        class="nav-item"
-        *ngIf="authService.hasMasterPermission('administration')"
-      >
-<a
-          class="nav-link d-flex align-items-center"
-          [routerLink]="['/procmodadmon']"
-          routerLinkActive="active-link"
-          (click)="Admonproc()"
-          [matTooltip]="isSidebarCollapsed ? ('admins' | translate) : ''"
-          matTooltipPosition="right"
-        >
-          <mat-icon>menu_book</mat-icon> <span>{{ "admins" | translate }}</span>
         </a>
       </li>
 
@@ -313,8 +297,9 @@
     <!-- Logo pequeño cuando está colapsado -->
     <div *ngIf="isSidebarCollapsed && !isTemporarilyExpanded" class="collapsed-logo-container mb-2">
       <img
-        [src]="trackingService.getpictureComp()"
-        alt="BI Company"
+        [src]="companyLogoSrc"
+        (error)="onCompanyLogoError($event)"
+        alt="Logo empresa"
         class="collapsed-logo"
       />
     </div>

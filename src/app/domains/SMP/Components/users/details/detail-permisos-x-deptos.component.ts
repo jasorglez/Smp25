@@ -99,6 +99,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   userName: string;
   userEmail: string;
   branchId: number;
+  isBranchPrincipal: boolean = false;
   branchName: string;
   idCompany: number;
 
@@ -251,18 +252,42 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         editable: false,
         valueGetter: (params: any) => {
           if (params.data.principal === true || params.data.principal === 1) return true;
+          // Fallback de empleado solo cuando ninguna fila tiene principal explícito en DB/memoria
+          const hasExplicit = (this.warehousesRowData ?? []).some(
+            (r: any) => r.principal === true || r.principal === 1
+          );
+          if (hasExplicit) return false;
           if (!this.empleadoPrincipal) return false;
           return params.data.idRole == this.empleadoPrincipal.idDepto &&
                  params.data.idPosicion == this.empleadoPrincipal.idPosition;
         },
         cellRenderer: (params: any) => {
           const checked = !!params.value;
+          const isLocked = this.isBranchPrincipal || !!params.data?.__isNew;
+
+          // Sucursal principal: mostrar ícono de solo lectura (azul si marcado, gris si no)
+          if (isLocked) {
+            const span = document.createElement('span');
+            span.style.display = 'inline-flex';
+            span.style.alignItems = 'center';
+            span.style.justifyContent = 'center';
+            span.style.fontSize = '1rem';
+            span.style.lineHeight = '1';
+            span.style.pointerEvents = 'none';
+            span.style.userSelect = 'none';
+            span.title = this.isBranchPrincipal ? 'No editable en sucursal principal' : '';
+            span.innerHTML = checked
+              ? '<i class="bi bi-check-square-fill" style="color:#0d6efd;"></i>'
+              : '<i class="bi bi-square" style="color:#6c757d;opacity:.45;"></i>';
+            return span;
+          }
+
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = checked;
           checkbox.title = checked ? 'Principal actual' : 'Marcar como principal';
-          checkbox.style.cursor = params.data?.__isNew ? 'not-allowed' : 'pointer';
-          checkbox.disabled = !!params.data?.__isNew;
+          checkbox.style.cursor = 'pointer';
+          checkbox.disabled = false;
 
           checkbox.addEventListener('change', () => {
             checkbox.checked = checked;
@@ -272,15 +297,23 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             const { idRole, idPosicion } = params.data;
             if (!idRole || !idPosicion) return;
 
-            // Solo actualizar en memoria — se persiste al hacer clic en Guardar
+            // Actualizar en memoria
             this.warehousesRowData = this.warehousesRowData.map((row: any) => ({
               ...row,
               principal: row.idRole === idRole && row.idPosicion === idPosicion,
             }));
             this.pendingPrincipal = { idRole, idPosicion };
             this.hasWarehouseChanges = true;
+
+            // Actualizar cada nodo directamente para forzar re-render visual confiable
             if (this.warehousesGridApi) {
-              this.warehousesGridApi.setGridOption('rowData', this.warehousesRowData);
+              this.warehousesGridApi.forEachNode((node: any) => {
+                if (node.data) {
+                  const isSelected =
+                    node.data.idRole === idRole && node.data.idPosicion === idPosicion;
+                  node.setData({ ...node.data, principal: isSelected });
+                }
+              });
             }
           });
 
@@ -508,6 +541,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.userEmail = params.data.userEmail || '';
     this.branchId = params.data.idPermission;
     this.branchName = params.data.name || '';
+    this.isBranchPrincipal = !!params.data.principal;
     this.idCompany = Number(params.data.idCompany ?? this.signalsService.getRootSelectedBySidebar()());
     this.loadCatalogs();
     this.getGeneralPosicion();
@@ -624,16 +658,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             idPosicion,
             principal,
           };
-        });
-
-        this.warehousesRowData.sort((a: any, b: any) => {
-          const ap = a?.principal === true || a?.principal === 1 ? 1 : 0;
-          const bp = b?.principal === true || b?.principal === 1 ? 1 : 0;
-          if (bp !== ap) return bp - ap;
-          const ar = Number(a?.idRole ?? 0);
-          const br = Number(b?.idRole ?? 0);
-          if (ar !== br) return ar - br;
-          return Number(a?.idPosicion ?? 0) - Number(b?.idPosicion ?? 0);
         });
 
         this.warehousesRowDataOriginal = JSON.parse(JSON.stringify(this.warehousesRowData));
@@ -822,6 +846,17 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       return;
     }
 
+    // Auto-guardar la fila virtual del empleado (from_employee) si existe y aún no está en DB
+    const fromEmployeeRow = this.warehousesRowData.find((r: any) => r.id === 'from_employee');
+    if (fromEmployeeRow) {
+      const cleanedFromEmployee = this.cleanDataForServer(fromEmployeeRow);
+      delete cleanedFromEmployee.posicionesDisponibles;
+      await lastValueFrom(
+        this.permitionsService.addPermitionsDetailBydescription(cleanedFromEmployee)
+          .pipe(catchError(() => of(null)))
+      );
+    }
+
     // Para filas nuevas: primero guardar la fila dept/posición, luego obtener plantilla y guardar CRUD permissions
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -958,6 +993,13 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         await lastValueFrom(
           this.permitionsService.setPrincipal(this.userId, this.branchId, idRole, idPosicion).pipe(catchError(() => of(null)))
         );
+        // Actualizar el registro de empleado en la sucursal (si no existe, el backend devuelve 404 silencioso)
+        if (this.userName) {
+          await lastValueFrom(
+            this.employeeService.updateEmployeeDeptPos(this.branchId, this.userName, idRole, idPosicion)
+              .pipe(catchError(() => of(null)))
+          );
+        }
         this.pendingPrincipal = null;
       }
 

@@ -209,7 +209,7 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
           const checked = !!params.value;
           return checked
             ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
-            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+            : '<span class="text-primary" style="pointer-events:none;user-select:none;opacity:.7;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
         },
       },
       {

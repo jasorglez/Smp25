@@ -206,17 +206,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         // Modal desde «Departamentos › Ver permisos»: el árbol derecho es CRUD rol+sucursal.
         // Alinear ese panel con UserSystem *global* enciende módulos (p. ej. Almacenes) que el usuario
         // puede tener en perfil pero no en este contexto CRUD — tras F5 parece que «solo Compras» se corrompe.
-        if (
-          (this.scopeInput ?? 'userSystem') === 'userSystem' &&
-          this.seedFromRolePosInput === true
-        ) {
-          this.forceDeriveLeftFromRight = true;
-          this.syncMasterLeftSwitchesFromUserSys();
-          this.forceDeriveLeftFromRight = false;
-        } else {
-          this.syncReadFlagsFromUserSystemPermissions();
-          this.syncMasterLeftSwitchesFromUserSys();
-        }
+        this.syncReadFlagsFromUserSystemPermissions();
+        this.syncMasterLeftSwitchesFromUserSys();
         this.notSavedChanges = false;
       });
   }
@@ -1411,14 +1402,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.rebuildGroupedPermissionsFromRaw();
         if (scope === 'userSystem') {
-          if (this.seedFromRolePosInput === true) {
-            this.forceDeriveLeftFromRight = true;
-            this.syncMasterLeftSwitchesFromUserSys();
-            this.forceDeriveLeftFromRight = false;
-          } else {
-            this.syncReadFlagsFromUserSystemPermissions();
-            this.syncMasterLeftSwitchesFromUserSys();
-          }
+          this.syncReadFlagsFromUserSystemPermissions();
+          this.syncMasterLeftSwitchesFromUserSys();
         } else {
           this.recomputeReadsFromCrud();
         }
@@ -2502,27 +2487,6 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     });
   }
 
-  /**
-   * Modal Usuarios › sucursal › departamentos › Ver permisos: no mostrar el maestro «Administración»
-   * aunque siga en catálogo / plantilla / CRUD (solicitud de negocio).
-   * No aplica al modal de plantilla rol+posición (`scope: 'position'`).
-   */
-  private stripAdministracionMasterFromModalSidebar(grouped: MasterPermission[]): MasterPermission[] {
-    const strippedKeys = new Set<string>();
-    const filtered = grouped.filter((m) => {
-      const n = this.normalizar(m.masterPermissionName || '');
-      if (n.includes('administrac')) {
-        strippedKeys.add(n);
-        return false;
-      }
-      return true;
-    });
-    for (const k of strippedKeys) {
-      this.modalSidebarMasterKeys.delete(k);
-    }
-    return filtered;
-  }
-
   private rebuildGroupedPermissionsFromRaw(): void {
     let next = this.transformData(this.rawData);
     this.unionModalSidebarUniverseFromGrouped(next);
@@ -2531,9 +2495,6 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     next = this.filterDetailsToRoleTemplateUniverse(next);
     next = this.hydrateDetailCardsFromRoleTemplate(next);
     next = this.hydrateMissingSubdetailsFromRoleTemplate(next);
-    if ((this.scopeInput ?? 'userSystem') === 'userSystem' && this.seedFromRolePosInput === true) {
-      next = this.stripAdministracionMasterFromModalSidebar(next);
-    }
     this.groupedPermissions = next;
   }
 

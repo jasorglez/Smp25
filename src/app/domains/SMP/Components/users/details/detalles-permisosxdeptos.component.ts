@@ -118,23 +118,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     return Number.isFinite(n) ? n : null;
   }
 
-  /** Evita que el orden del API (p. ej. tras guardar permisos CRUD) baraja las filas del grid. */
-  private sortRolPosicionRowsStable(rows: any[]): any[] {
-    return [...rows].sort((a: any, b: any) => {
-      const ap =
-        a?.principal === true || a?.principal === 1 || a?.Principal === true || a?.Principal === 1 ? 1 : 0;
-      const bp =
-        b?.principal === true || b?.principal === 1 || b?.Principal === true || b?.Principal === 1 ? 1 : 0;
-      if (bp !== ap) return bp - ap;
-      const ar = Number(a?.idRole ?? a?.IdRole ?? a?.idDepto ?? 0);
-      const br = Number(b?.idRole ?? b?.IdRole ?? b?.idDepto ?? 0);
-      if (ar !== br) return ar - br;
-      const apos = Number(a?.idPosicion ?? a?.IdPosicion ?? a?.idPosition ?? 0);
-      const bpos = Number(b?.idPosicion ?? b?.IdPosicion ?? b?.idPosition ?? 0);
-      return apos - bpos;
-    });
-  }
-
   private getPosicionesListForRow(row: any): any[] {
     const rid = this.normalizeRoleId(row?.idRole);
     if (row?.posicionesDisponibles?.length) {
@@ -193,7 +176,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           const checked = !!params.value;
           return checked
             ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
-            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+            : '<span class="text-primary" style="pointer-events:none;user-select:none;opacity:.7;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
         },
       },
       {
@@ -462,7 +445,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           }];
           this.hasWarehouseChanges = true;
         } else {
-          this.warehousesRowData = this.sortRolPosicionRowsStable(permisosArr);
+          this.warehousesRowData = permisosArr;
         }
 
         const rowPrincipal = this.warehousesRowData.find((r: any) => r.principal === true || r.principal === 1);

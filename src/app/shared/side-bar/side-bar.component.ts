@@ -26,9 +26,11 @@ import { alerts } from 'app/helpers/alerts';
 export class SideBarComponent {
   /** Fuerza reevaluación de *ngIf del menú tras recargar `guard` / `guardAdvanced` en sesión. */
   readonly guardUiTick: Signal<number>;
+  readonly defaultCompanyLogo = './assets/img/default.png';
 
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
+  companyLogoSrc = this.defaultCompanyLogo;
 
   selectedRoot: string = '';
 
@@ -175,6 +177,7 @@ error: (error) => {
       // Obtener el nameSmall de la empresa seleccionada
       const selectedCompany = this.rootData.find(r => r.id === parseInt(this.selectedRoot));
       if (selectedCompany) {
+        this.applyCompanyHeaderData(selectedCompany);
         this.signalsService.setCompanyNameSmall(selectedCompany.nameSmall || selectedCompany.name);
       }
 
@@ -194,6 +197,7 @@ error: (error) => {
           this.rootData = root;
           // Seleccionar automáticamente el primer elemento
           this.selectedRoot = this.rootData[0].id;
+          this.applyCompanyHeaderData(this.rootData[0]);
           this.signalsService.setRootSelectedBySidebar(
             Number(this.selectedRoot)
           );
@@ -410,16 +414,77 @@ error: (error) => {
   }
 
   getHeadersCompanys(companyId) {
-    this.rootService.getRootbyId(companyId).subscribe((datacom: any) => {
-      // Utilizar los datos obtenidos
-      this.trackingService.setnameComp(datacom.name);
-      this.signalsService.setCompanyName(datacom.name); // Envio la signal a auth.service
-      this.trackingService.setpictureComp(datacom.picture);
-      this.trackingService.setPictureComp2(datacom.picture2);
-      this.trackingService.setPictureComp3(datacom.picture3);
-      //this.trackingService.setformatrepint(datacom.formatrep);
-      // alert('Format:'+ datacom.formatrep);
+    this.rootService.getRootbyId(companyId).subscribe({
+      next: (datacom: any) => {
+        this.applyCompanyHeaderData(datacom);
+      },
+      error: () => {
+        // Root/{id} failed — try get-all as fallback to retrieve company with picture
+        this.rootService.getRoot().subscribe({
+          next: (allRoots: any) => {
+            const roots = Object.values(allRoots) as any[];
+            const found = roots.find((r) => Number(r.id) === Number(companyId));
+            if (found) {
+              this.applyCompanyHeaderData(found);
+            }
+          },
+          error: () => {
+            // Both endpoints failed; keep whatever logo is already set
+          },
+        });
+      },
     });
+  }
+
+  private applyCompanyHeaderData(company: any): void {
+    if (!company) {
+      return;
+    }
+
+    this.trackingService.setnameComp(company.name ?? '');
+    this.signalsService.setCompanyName(company.name ?? '');
+
+    const resolvedLogo = this.resolveCompanyLogo(company.picture);
+    this.trackingService.setpictureComp(resolvedLogo);
+    this.companyLogoSrc = resolvedLogo;
+
+    this.trackingService.setPictureComp2(company.picture2 ?? '');
+    this.trackingService.setPictureComp3(company.picture3 ?? '');
+  }
+
+  private resolveCompanyLogo(picture: string | null | undefined): string {
+    const raw = (picture ?? '').trim();
+
+    if (!raw) {
+      return this.defaultCompanyLogo;
+    }
+
+    if (
+      raw.startsWith('http://') ||
+      raw.startsWith('https://') ||
+      raw.startsWith('data:') ||
+      raw.startsWith('blob:') ||
+      raw.startsWith('./assets/') ||
+      raw.startsWith('/assets/')
+    ) {
+      return raw;
+    }
+
+    if (raw.startsWith('/')) {
+      return `${environment.urlAzure.replace(/\/+$/, '')}${raw}`;
+    }
+
+    return `${environment.urlAzure.replace(/\/+$/, '')}/${raw.replace(/^\/+/, '')}`;
+  }
+
+  onCompanyLogoError(event: Event): void {
+    const img = event.target as HTMLImageElement | null;
+    if (img && img.src.endsWith('/assets/img/default.png')) {
+      return;
+    }
+
+    this.companyLogoSrc = this.defaultCompanyLogo;
+    this.trackingService.setpictureComp(this.defaultCompanyLogo);
   }
 
   async onCpSelected(event: Event) {
@@ -459,15 +524,6 @@ error: (error) => {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Eleccion del menu Dashboard',
-      'Menu Side Bar',
-      ''
-    );
-  }
-
-  Admonproc() {
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Eleccion del menu Admon',
       'Menu Side Bar',
       ''
     );
