@@ -6,7 +6,7 @@ import {
   Router,
 } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { Observable, of } from 'rxjs';
+import { forkJoin, Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SignalsService } from 'app/services/signals.service';
 
@@ -47,19 +47,36 @@ export class MasterPermissionsGuard implements CanActivate {
     }
 
     return this.permissionService.getUserId(email).pipe(
-      switchMap((userId) => isAdvanced
-                    ? this.permissionService.fetchUserPermissionsAdvanced(userId, idBranch)
-                    : this.permissionService.fetchUserPermissions(userId)),
-      map((permissions) => {
-        this.permissionService.setUserPermissions(permissions.permissions);
+      switchMap((userId) =>
+        isAdvanced
+          ? forkJoin({
+              basic: this.permissionService.fetchUserPermissions(userId),
+              advanced: this.permissionService.fetchUserPermissionsAdvanced(
+                userId,
+                idBranch
+              ),
+            }).pipe(
+              map(({ basic, advanced }) =>
+                this.permissionService.mergeGuardAdvancedIntoBase(
+                  basic.permissions,
+                  advanced?.permissions
+                )
+              )
+            )
+          : this.permissionService
+              .fetchUserPermissions(userId)
+              .pipe(map((p) => p.permissions))
+      ),
+      map((permissionsTree) => {
+        this.permissionService.setUserPermissions(permissionsTree);
         const hasMasterPermission = this.permissionService.hasMasterPermission(
           requiredPermissions.master
         );
         const hasDetailedPermission = requiredPermissions.detailed
           ? this.permissionService.hasDetailedPermission(
-            requiredPermissions.master,
-            requiredPermissions.detailed
-          )
+              requiredPermissions.master,
+              requiredPermissions.detailed
+            )
           : true;
 
         if (hasMasterPermission && hasDetailedPermission) {

@@ -62,4 +62,13 @@ export class PermitionsService {
   deleteRolesBydescription(idUser: number, idBranch: number, idRole: number, idPosicion: number): Observable<any> {
     return this.http.delete(`${environment.urlSecurity}/CrudPremissionsDelison/bydescription/${idUser}/${idBranch}/${idRole}/${idPosicion}`, { headers: this.trackingService.getHeaders() });
   }
+
+  /** Marca un departamento/posición como principal para el usuario+sucursal; desmarca todos los demás. */
+  setPrincipal(idUser: number, idBranch: number, idRole: number, idPosicion: number): Observable<any> {
+    return this.http.put(
+      `${environment.urlSecurity}/CrudPremissionsDelison/principal?idUser=${idUser}&idBranch=${idBranch}&idRole=${idRole}&idPosicion=${idPosicion}`,
+      {},
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
 }

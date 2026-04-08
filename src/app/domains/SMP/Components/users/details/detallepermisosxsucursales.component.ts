@@ -346,7 +346,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
             return found?.description ?? '';
           }
         },
-        // ✅ Principal DESPUÉS de Posición
+        // ✅ Principal DESPUÉS de Posición — solo lectura, se asigna automáticamente
         {
           field: 'principal',
           headerName: 'Principal',
@@ -751,11 +751,21 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
             principal:
               p?.principal ?? p?.Principal ?? p?.isPrincipal ?? p?.IsPrincipal ?? false,
           }));
-          const principal = normalized.find((p: any) => p.principal === true || p.principal === 1) ?? normalized[0];
+          // Orden estable: no depender del orden arbitrario del API tras guardar CRUD (evita «tarjetas»/tooltips inconsistentes).
+          const sorted = [...normalized].sort((a: any, b: any) => {
+            const ap = a.principal === true || a.principal === 1 ? 1 : 0;
+            const bp = b.principal === true || b.principal === 1 ? 1 : 0;
+            if (bp !== ap) return bp - ap;
+            const ar = Number(a.idRole ?? 0);
+            const br = Number(b.idRole ?? 0);
+            if (ar !== br) return ar - br;
+            return Number(a.idPosicion ?? 0) - Number(b.idPosicion ?? 0);
+          });
+          const principal = sorted.find((p: any) => p.principal === true || p.principal === 1) ?? sorted[0];
           const idRole = Number(principal?.idRole ?? 0) || 0;
           const idPosicion = Number(principal?.idPosicion ?? 0) || 0;
           const pairKeys = new Set<string>();
-          for (const p of normalized) {
+          for (const p of sorted) {
             const r = Number(p?.idRole ?? 0);
             const pos = Number(p?.idPosicion ?? 0);
             if (r > 0 && pos > 0) {
@@ -776,38 +786,46 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
           const row = this.permissionsRowData?.find((r: any) => Number(r?.idPermission) === bid);
           if (row) {
             const listedInBranchEmployees = empRecordBranch != null;
-            const hadPrincipalFromApi =
-              row.principal === true || row.principal === 1;
 
-            if (normalized.length > 0) {
+            // Solo promover a principal=true (nunca forzar false aquí): el API de sucursal a veces no manda el flag
+            // y antes se infería desde CRUD/nómina. Poner false según CRUD tras guardar el modal desmarcaba filas válidas.
+            if (sorted.length > 0) {
               const principalPerm =
-                normalized.find((p: any) => p.principal === true || p.principal === 1) ?? null;
-              const anyPerm = normalized[0] ?? null;
-              const idRoleReal = Number(principalPerm?.idRole ?? anyPerm?.idRole ?? 0) || 0;
-              const idPosicionReal = Number(principalPerm?.idPosicion ?? anyPerm?.idPosicion ?? 0) || 0;
+                sorted.find((p: any) => p.principal === true || p.principal === 1) ?? null;
+              const firstPerm = sorted[0] ?? null;
+              const idRoleReal = Number(principalPerm?.idRole ?? firstPerm?.idRole ?? 0) || 0;
+              const idPosicionReal =
+                Number(principalPerm?.idPosicion ?? firstPerm?.idPosicion ?? 0) || 0;
 
               if (principalPerm) {
                 row.principal = true;
               } else if (listedInBranchEmployees) {
-                /** Sucursal donde figura en tabla Empleados → marcar Principal (p. ej. BODEGAS para Mariano). */
                 row.principal = true;
-              } else if (empPair && idRoleReal > 0 && idPosicionReal > 0) {
-                const matchesEmp =
-                  idRoleReal === empPair.idDepto && idPosicionReal === empPair.idPosicion;
-                if (matchesEmp) {
-                  row.principal = true;
-                } else if (!hadPrincipalFromApi) {
-                  row.principal = false;
-                }
-              } else if (!hadPrincipalFromApi) {
-                row.principal = false;
+              } else if (
+                empPair &&
+                idRoleReal > 0 &&
+                idPosicionReal > 0 &&
+                idRoleReal === empPair.idDepto &&
+                idPosicionReal === empPair.idPosicion
+              ) {
+                row.principal = true;
               }
             } else if (listedInBranchEmployees) {
               row.principal = true;
             }
-            /** Sin filas de permisos y sin coincidencia en nómina: no pisar un true que ya vino del API. */
           }
         }
+
+        // Garantizar que solo una sucursal sea principal a la vez.
+        // Si la detección de empleados marcó más de una, conservar solo la primera
+        // (orden del API ≈ orden de inserción, por lo que la sucursal "real" queda primero).
+        const principalRows = (this.permissionsRowData ?? []).filter(
+          (r: any) => r.principal === true
+        );
+        if (principalRows.length > 1) {
+          principalRows.slice(1).forEach((r: any) => { r.principal = false; });
+        }
+
         this.permissionsGridApi?.refreshCells({ force: true });
       },
       error: () => {
@@ -943,6 +961,26 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+      // Auto-detectar principal desde registro de empleado para filas nuevas
+      for (const row of newRows) {
+        const idPermission = Number(row.idPermission);
+        if (!idPermission) continue;
+        const empleados: any[] = await lastValueFrom(
+          this.employeeService.getEmployees(idPermission).pipe(
+            catchError(() => of([])),
+            map((x: any) => this.toEmpleadosArray(x))
+          )
+        );
+        const emp = this.findEmployeeRecordForUser(empleados);
+        if (emp) {
+          await lastValueFrom(
+            this.usersxpermissionsService.setPrincipal(this.userId, idPermission)
+              .pipe(catchError(() => of(null)))
+          );
+          break; // Solo una sucursal puede ser principal
+        }
+      }
+
       alerts.userBasicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.hasPermissionChanges = false;
       // Actualizar solo el contador Security de la fila del usuario (evita colapsar los detail rows)

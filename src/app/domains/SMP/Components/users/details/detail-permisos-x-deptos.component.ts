@@ -112,6 +112,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   warehousesGridApi: any;
   idPosicionSelect: number;
   selectedWarehouse: any = null;
+  private pendingPrincipal: { idRole: number; idPosicion: number } | null = null;
 
   warehouses: any[] = [];
   warehousesMap: { [key: string]: string } = {};
@@ -242,7 +243,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         filter: 'agNumberColumnFilter',
         hide: true,
       },
-      // ✅ Principal ANTES de Departamento (solo lectura; mismo aspecto que sucursales)
+      // ✅ Principal ANTES de Departamento — clickeable, comportamiento radio (solo uno activo)
       {
         field: 'principal',
         headerName: 'Principal',
@@ -256,9 +257,34 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         },
         cellRenderer: (params: any) => {
           const checked = !!params.value;
-          return checked
-            ? '<span class="text-primary" style="pointer-events:none;user-select:none;font-size:1rem;line-height:1;" aria-label="Principal"><i class="bi bi-check-square-fill"></i></span>'
-            : '<span class="text-secondary" style="pointer-events:none;user-select:none;opacity:.45;font-size:1rem;line-height:1;" aria-label="No principal"><i class="bi bi-square"></i></span>';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = checked;
+          checkbox.title = checked ? 'Principal actual' : 'Marcar como principal';
+          checkbox.style.cursor = params.data?.__isNew ? 'not-allowed' : 'pointer';
+          checkbox.disabled = !!params.data?.__isNew;
+
+          checkbox.addEventListener('change', () => {
+            checkbox.checked = checked;
+            if (params.data?.__isNew) return;
+            if (checked) return; // Ya es principal
+
+            const { idRole, idPosicion } = params.data;
+            if (!idRole || !idPosicion) return;
+
+            // Solo actualizar en memoria — se persiste al hacer clic en Guardar
+            this.warehousesRowData = this.warehousesRowData.map((row: any) => ({
+              ...row,
+              principal: row.idRole === idRole && row.idPosicion === idPosicion,
+            }));
+            this.pendingPrincipal = { idRole, idPosicion };
+            this.hasWarehouseChanges = true;
+            if (this.warehousesGridApi) {
+              this.warehousesGridApi.setGridOption('rowData', this.warehousesRowData);
+            }
+          });
+
+          return checkbox;
         },
       },
       {
@@ -600,6 +626,16 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           };
         });
 
+        this.warehousesRowData.sort((a: any, b: any) => {
+          const ap = a?.principal === true || a?.principal === 1 ? 1 : 0;
+          const bp = b?.principal === true || b?.principal === 1 ? 1 : 0;
+          if (bp !== ap) return bp - ap;
+          const ar = Number(a?.idRole ?? 0);
+          const br = Number(b?.idRole ?? 0);
+          if (ar !== br) return ar - br;
+          return Number(a?.idPosicion ?? 0) - Number(b?.idPosicion ?? 0);
+        });
+
         this.warehousesRowDataOriginal = JSON.parse(JSON.stringify(this.warehousesRowData));
 
         // 1) Si el backend envía una fila con principal === true/1, usarla para marcar el checkbox
@@ -738,6 +774,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.warehousesGridApi.setGridOption('rowData', this.warehousesRowData);
     this.hasWarehouseChanges = false;
     this.selectedWarehouse = null;
+    this.pendingPrincipal = null;
   }
 
   addWarehouse() {
@@ -915,6 +952,15 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         }
       }
 
+      // Guardar cambio de principal si hubo
+      if (this.pendingPrincipal) {
+        const { idRole, idPosicion } = this.pendingPrincipal;
+        await lastValueFrom(
+          this.permitionsService.setPrincipal(this.userId, this.branchId, idRole, idPosicion).pipe(catchError(() => of(null)))
+        );
+        this.pendingPrincipal = null;
+      }
+
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.hasWarehouseChanges = false;
       this.signalsService.setRefresCantidadPermisos(true);
@@ -998,7 +1044,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         idRole: event.data.idRole,
         idPosicion: event.data.idPosicion,
         userName: this.userName,
-        modalTitleDetail: this.buildPermissionsModalTitle(event.data.idPosicion),
+        modalTitleDetail: this.buildPermissionsModalTitle(event.data.idPosicion, event.data.idRole),
         seedFromRolePosition: true,
         scope: 'userSystem',
         idCompany: this.idCompany,
@@ -1007,12 +1053,17 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   }
 
   /** Título del modal: nombre del usuario y posición (no departamento ni sucursal). */
-  private buildPermissionsModalTitle(idPosicion: number): string {
+  private buildPermissionsModalTitle(idPosicion: number, idRole?: number): string {
     const pid = Number(idPosicion);
     const pos = this.catalogGeneralPosiciones?.find((p: any) => this.catalogEntryId(p) === pid);
-    const p = this.catalogEntryDescription(pos) || `Posición ${pid}`;
+    const posName = this.catalogEntryDescription(pos) || `Posición ${pid}`;
     const u = (this.userName ?? '').trim() || 'Usuario';
-    return `${u} — ${p}`;
+    const branch = (this.branchName ?? '').trim();
+    const rid = Number(idRole);
+    const role = rid > 0 ? this.catalogRoles?.find((r: any) => this.catalogEntryId(r) === rid) : null;
+    const deptName = role ? this.catalogEntryDescription(role) : '';
+    const parts = [u, branch, deptName, posName].filter(Boolean);
+    return parts.join(' — ');
   }
 
   /** Mismo switch que «Permisos» bajo Setup Usuarios en Permisos maestros (`identifier`: permissions). */

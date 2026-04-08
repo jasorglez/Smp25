@@ -487,15 +487,10 @@ export class AuthService {
               return this.fetchUserPermissions(userId).pipe(
                 tap((basicData: any) => {
                   this.setMenuUserPermissions(basicData.permissions);
-                  if (perms && Object.keys(perms).length > 0) {
-                    this.setUserPermissions(perms);
-                  } else {
-                    this.setUserPermissions(basicData.permissions);
-                  }
+                  const merged = this.mergeGuardAdvancedIntoBase(basicData.permissions, perms);
+                  this.setUserPermissions(merged);
                 }),
-                map((basicData: any) =>
-                  perms && Object.keys(perms).length > 0 ? perms : basicData.permissions
-                )
+                map((basicData: any) => this.mergeGuardAdvancedIntoBase(basicData.permissions, perms))
               );
             })
           );
@@ -517,6 +512,99 @@ export class AuthService {
         }
       })
     );
+  }
+
+  /**
+   * Combina `guard` (árbol UserSystem completo) con `guardAdvanced` (CRUD por sucursal).
+   * El backend solo incluye en guardAdvanced maestros con filas CrudPermissions para esa sucursal.
+   * - Si solo se usara advanced, faltarían maestros con permiso en UserSystem pero sin clave en la respuesta.
+   * - Si solo se mezclaran las claves presentes en advanced, los maestros no devueltos seguirían activos
+   *   por el básico y el menú mostraría más módulos de los que el CRUD de esa sucursal permite.
+   * Regla: partir del básico, aplicar cada maestro que venga en advanced y desactivar el subárbol de los
+   * maestros del básico que no figuren en advanced para esta sucursal.
+   */
+  mergeGuardAdvancedIntoBase(basePermissions: any, advancedPermissions: any): any {
+    if (basePermissions == null || typeof basePermissions !== 'object') {
+      return advancedPermissions != null && typeof advancedPermissions === 'object'
+        ? advancedPermissions
+        : {};
+    }
+    if (
+      advancedPermissions == null ||
+      typeof advancedPermissions !== 'object' ||
+      Object.keys(advancedPermissions).length === 0
+    ) {
+      return basePermissions;
+    }
+    const merged = this.deepClonePlainObject(basePermissions);
+    for (const masterKey of Object.keys(merged)) {
+      if (Object.prototype.hasOwnProperty.call(advancedPermissions, masterKey)) {
+        merged[masterKey] = this.mergeAdvancedPermissionNodes(
+          merged[masterKey],
+          advancedPermissions[masterKey]
+        );
+      } else {
+        merged[masterKey] = this.deactivatePermissionSubtree(merged[masterKey]);
+      }
+    }
+    for (const masterKey of Object.keys(advancedPermissions)) {
+      if (!Object.prototype.hasOwnProperty.call(merged, masterKey)) {
+        merged[masterKey] = this.deepClonePlainObject(advancedPermissions[masterKey]);
+      }
+    }
+    return merged;
+  }
+
+  private deactivatePermissionSubtree(node: any): any {
+    if (node == null || typeof node !== 'object') {
+      return node;
+    }
+    const out: any = Array.isArray(node) ? [...node] : { ...node };
+    out.active = false;
+    if (out.children != null && typeof out.children === 'object' && !Array.isArray(out.children)) {
+      const nextChildren: any = {};
+      for (const ck of Object.keys(out.children)) {
+        nextChildren[ck] = this.deactivatePermissionSubtree(out.children[ck]);
+      }
+      out.children = nextChildren;
+    }
+    return out;
+  }
+
+  private deepClonePlainObject<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj)) as T;
+  }
+
+  private mergeAdvancedPermissionNodes(baseNode: any, advNode: any): any {
+    if (advNode == null || typeof advNode !== 'object') {
+      return baseNode;
+    }
+    if (baseNode == null || typeof baseNode !== 'object') {
+      return this.deepClonePlainObject(advNode);
+    }
+    const out: any = { ...baseNode };
+    for (const k of Object.keys(advNode)) {
+      if (k === 'children' && advNode.children != null && typeof advNode.children === 'object') {
+        const bc = baseNode.children;
+        const bcObj = bc != null && typeof bc === 'object' ? bc : {};
+        const oc = advNode.children as Record<string, unknown>;
+        out.children = { ...bcObj };
+        const childKeys = new Set([...Object.keys(bcObj), ...Object.keys(oc)]);
+        for (const ck of childKeys) {
+          if (Object.prototype.hasOwnProperty.call(oc, ck)) {
+            out.children[ck] = this.mergeAdvancedPermissionNodes(bcObj[ck], oc[ck]);
+          } else {
+            out.children[ck] = bcObj[ck];
+          }
+        }
+      } else if (k !== 'children') {
+        out[k] = advNode[k];
+      }
+    }
+    if (!('children' in advNode) && baseNode.children != null) {
+      out.children = baseNode.children;
+    }
+    return out;
   }
 
   setUserPermissions(permissions: any): void {

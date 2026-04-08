@@ -167,10 +167,11 @@ export class RolesDelisonComponent {
   /** Orden alfabético por nombre de departamento (español, ignora mayúsculas y acentos en la comparación). */
   private sortDepartamentosPorNombre(rows: any[]): any[] {
     if (!Array.isArray(rows)) return [];
-    return [...rows].sort((a, b) =>
-      String(a?.description ?? '')
-        .localeCompare(String(b?.description ?? ''), 'es', { sensitivity: 'base', numeric: true })
-    );
+    return [...rows].sort((a, b) => {
+      if (b.active !== a.active) return b.active ? 1 : -1;
+      return String(a?.description ?? '')
+        .localeCompare(String(b?.description ?? ''), 'es', { sensitivity: 'base', numeric: true });
+    });
   }
 
   obtenerDatos() {
@@ -272,6 +273,22 @@ export class RolesDelisonComponent {
         field: 'id',
         filter: 'agNumberColumnFilter',
         hide: true
+      },
+      {
+        field: 'active',
+        headerName: 'Activo',
+        width: 90,
+        maxWidth: 90,
+        cellRenderer: (params: any) => {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = !!params.value;
+          checkbox.style.cursor = 'pointer';
+          checkbox.addEventListener('change', () => {
+            params.node.setDataValue('active', checkbox.checked);
+          });
+          return checkbox;
+        },
       },
       {
         field: 'description',
@@ -524,11 +541,7 @@ export class RolesDelisonComponent {
   async deleteRol() {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
-      );
+      alerts.basicAlert('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.', 'error');
       return;
     }
 
@@ -536,61 +549,52 @@ export class RolesDelisonComponent {
     const id = selectedData.id;
 
     if (selectedData.isRoot === 1) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'No se puede eliminar un usuario administrador',
-        'error'
-      );
+      alerts.basicAlert('Eliminar entrada', 'No se puede eliminar un usuario administrador.', 'error');
       return;
     }
 
-    // Validar si tiene posiciones antes de eliminar
+    // Validar que ninguna posición tenga switches de permisos encendidos
     try {
       const posiciones: any = await lastValueFrom(
-        this.posicionesService.getPositionsByRole(this.idRoot, id).pipe(
-          catchError(() => [])
-        )
+        this.posicionesService.getPositionsByRole(this.idRoot, id).pipe(catchError(() => []))
       );
+      const posicionesArray: any[] = Array.isArray(posiciones) ? posiciones : (posiciones ? [posiciones] : []);
 
-      const posicionesArray = Array.isArray(posiciones) ? posiciones : (posiciones ? [posiciones] : []);
-
-      if (posicionesArray.length > 0) {
-        alerts.basicAlert(
-          'No se puede eliminar',
-          `El departamento "${selectedData.description}" tiene ${posicionesArray.length} posición(es) asignada(s). Elimine las posiciones primero.`,
-          'error'
+      for (const pos of posicionesArray) {
+        const permisos: any = await lastValueFrom(
+          this.rolesService.getCatalogCRUD(pos.id).pipe(catchError(() => []))
         );
-        return;
+        const permisosArray: any[] = Array.isArray(permisos) ? permisos : (permisos ? [permisos] : []);
+        const tieneActivos = permisosArray.some(p => p.canRead || p.canCreate || p.canUpdate || p.canDelete);
+        if (tieneActivos) {
+          alerts.basicAlert(
+            'No se puede eliminar',
+            `El departamento "${selectedData.description}" tiene permisos activos en la posición "${pos.description}". Apague todos los switches antes de eliminar.`,
+            'warning'
+          );
+          return;
+        }
       }
     } catch (error) {
-      console.error('Error verificando posiciones:', error);
+      console.error('Error verificando permisos:', error);
     }
 
     const result = await alerts.confirmAlert(
-      'Eliminar rol',
-      '¿Está seguro que desea eliminar este rol?',
+      'Eliminar departamento',
+      `¿Está seguro que desea eliminar "${selectedData.description}"? Esta acción eliminará también sus posiciones y permisos.`,
       'warning',
       'Sí, eliminar'
     );
 
     if (result.isConfirmed) {
-      selectedData.active = 0;
       this.rolesService.deleteRoles(id).pipe(
         catchError((error) => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
-            'error'
-          );
+          alerts.basicAlert('Error', 'No se pudo eliminar el departamento.', 'error');
           console.error(error);
           return EMPTY;
         })
       ).subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
+        alerts.basicAlert('Eliminado', 'Departamento eliminado correctamente.', 'success');
         this.obtenerDatos();
         this.trackingService.addLog(this.trackingService.getnameComp(), 'Delete Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
         this.notSavedChanges = false;

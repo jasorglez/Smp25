@@ -139,6 +139,13 @@ import { ModalService } from 'app/services/permissions-modal.service';
               <i class="bi bi-floppy"></i> Guardar
             </button>
             <button
+              class="btn btn-sm btn-warning me-2"
+              (click)="revertNewPosiciones()"
+              [disabled]="!hasNewRows"
+              >
+              <i class="bi bi-arrow-clockwise"></i> Deshacer
+            </button>
+            <button
               class="btn btn-sm btn-danger"
               (click)="deleteSelectedPosicion()"
               [disabled]="!selectedPosicion"
@@ -176,6 +183,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   roleName: string;
   posicionRowData: any[] = [];
   hasPosicionChanges: boolean = false;
+  hasNewRows: boolean = false;
   posicionGridApi: any;
   selectedPosicion: any = null;
   idUser: number = null;
@@ -226,16 +234,16 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       filter: 'agNumberColumnFilter',
       hide: true,
     },
-    { 
-      field: 'description', 
-      headerName: 'Descripción', 
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true
-        },
-      flex: 1 
+    {
+      field: 'description',
+      headerName: 'Descripción',
+      editable: () => true,
+      flex: 1,
+      valueSetter: (params) => {
+        params.data.description = (params.newValue || '').toUpperCase().trim();
+        return true;
+      },
+      valueGetter: (params) => params.data?.description ?? ''
     },
     { 
       field: 'permisos', 
@@ -334,6 +342,11 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   }
 
   onPosicionCellValueChanged(event: any) {
+    if (event.colDef.field === 'description') {
+      const upper = (event.data.description || '').toUpperCase().trim();
+      event.data.description = upper;
+      event.api.refreshCells({ rowNodes: [event.node], columns: ['description'], force: true });
+    }
     if (event.newValue !== event.oldValue) {
       event.data.__modified = true;
       this.hasPosicionChanges = true;
@@ -364,9 +377,17 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     };
     this.posicionRowData = [newPosicion, ...this.posicionRowData];
     this.hasPosicionChanges = true;
+    this.hasNewRows = true;
     setTimeout(() => {
       this.posicionGridApi.startEditingCell({ rowIndex: 0, colKey: 'description' });
     }, 150);
+  }
+
+  revertNewPosiciones() {
+    this.posicionGridApi.stopEditing(true);
+    this.posicionRowData = this.posicionRowData.filter(row => !row.__isNew);
+    this.hasNewRows = false;
+    this.hasPosicionChanges = this.posicionRowData.some(row => row.__modified);
   }
 
   async savePosiciones() {
@@ -386,6 +407,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       await lastValueFrom(forkJoin([...addObservables, ...updateObservables]));
       alerts.basicAlert('Éxito', 'Posiciones guardadas correctamente', 'success');
       this.hasPosicionChanges = false;
+      this.hasNewRows = false;
       this.loadPosicionData();
     } catch (error) {
       alerts.basicAlert('Error', 'No se pudieron guardar las posiciones', 'error');

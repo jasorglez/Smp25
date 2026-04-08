@@ -203,8 +203,20 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         const list = this.normalizeUserSystemApiList(userSys);
         this.userSystemPermissionIds = this.extractPermissionIdsFromUserSystemRows(list);
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
-        this.syncReadFlagsFromUserSystemPermissions();
-        this.syncMasterLeftSwitchesFromUserSys();
+        // Modal desde «Departamentos › Ver permisos»: el árbol derecho es CRUD rol+sucursal.
+        // Alinear ese panel con UserSystem *global* enciende módulos (p. ej. Almacenes) que el usuario
+        // puede tener en perfil pero no en este contexto CRUD — tras F5 parece que «solo Compras» se corrompe.
+        if (
+          (this.scopeInput ?? 'userSystem') === 'userSystem' &&
+          this.seedFromRolePosInput === true
+        ) {
+          this.forceDeriveLeftFromRight = true;
+          this.syncMasterLeftSwitchesFromUserSys();
+          this.forceDeriveLeftFromRight = false;
+        } else {
+          this.syncReadFlagsFromUserSystemPermissions();
+          this.syncMasterLeftSwitchesFromUserSys();
+        }
         this.notSavedChanges = false;
       });
   }
@@ -827,6 +839,48 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     return ids;
   }
 
+  /**
+   * Solo tarjetas encendidas (`detailedRead`), para no volcar en UserSystem los ids de todo el maestro
+   * cuando `seedDeptModal` sincroniza tras abrir con CRUD propio (p. ej. encender «Proveedores» no debe
+   * marcar Materia prima / Órdenes / … si estaban apagadas).
+   */
+  private collectActiveDetailedPermissionIdsForMaster(master: MasterPermission): Set<number> {
+    const ids = new Set<number>();
+    for (const detail of master.details || []) {
+      if (!detail.detailedRead) {
+        continue;
+      }
+      const id = this.getDetailedPermissionIdForDetail(detail);
+      if (id != null) {
+        ids.add(id);
+      }
+    }
+    return ids;
+  }
+
+  /** Como `collectConfiguracionEdgeAndHomonymIds` pero solo bordes activos + homónimo si alguno está on. */
+  private collectActiveConfiguracionEdgeAndHomonymIds(master: MasterPermission): Set<number> {
+    const ids = new Set<number>();
+    let anyEdgeOn = false;
+    for (const detail of master.details || []) {
+      if (!this.isConfiguracionEdgeCardDetail(detail) || !detail.detailedRead) {
+        continue;
+      }
+      anyEdgeOn = true;
+      const id = this.getDetailedPermissionIdForDetail(detail);
+      if (id != null) {
+        ids.add(id);
+      }
+    }
+    if (anyEdgeOn) {
+      const homonym = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
+      if (homonym != null) {
+        ids.add(homonym);
+      }
+    }
+    return ids;
+  }
+
   private zeroCrudReadsForConfiguracionEdges(master: MasterPermission): void {
     for (const detail of master.details) {
       if (!this.isConfiguracionEdgeCardDetail(detail)) {
@@ -958,6 +1012,35 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
             }
             this.zeroCrudReadsForMaster(master);
           }
+        } else if (seedDeptModal) {
+          // Cuando derivamos switches izquierdos del lado derecho (CRUD), sincronizamos los IDs
+          // de UserSystem para que al guardar, estos módulos queden correctamente en UsersSecurity
+          // y aparezcan en el sidebar del usuario.
+          // Importante: solo ids de tarjetas realmente encendidas; no todo el maestro (evita encender
+          // todas las tarjetas de Compras al activar una sola). También podamos ids viejos del mismo
+          // maestro que ya no correspondan a tarjetas activas (corrige estados envenenados previos).
+          const idsToAdd = this.isConfiguracionMaster(master)
+            ? this.collectActiveConfiguracionEdgeAndHomonymIds(master)
+            : this.collectActiveDetailedPermissionIdsForMaster(master);
+          const universe = this.isConfiguracionMaster(master)
+            ? this.collectConfiguracionEdgeAndHomonymIds(master, { includeSetupUsuarioSubIds: false })
+            : this.collectDetailedPermissionIdsForMaster(master);
+          if (!this.isConfiguracionMaster(master) && this.isAlmacenesHomonymLeftSwitchMode(master)) {
+            const hid = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
+            if (hid != null) {
+              universe.add(hid);
+              if (anyDetailOn) {
+                idsToAdd.add(hid);
+              }
+            }
+          }
+          let next = this.userSystemPermissionIds.filter((id) => !universe.has(id) || idsToAdd.has(id));
+          for (const id of idsToAdd) {
+            if (!next.includes(id)) {
+              next = [...next, id];
+            }
+          }
+          this.userSystemPermissionIds = next;
         }
       } else {
         const catIds = this.getCatalogDetailedIdsForMasterName(master.masterPermissionName);
@@ -1328,8 +1411,14 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         this.rebuildGroupedPermissionsFromRaw();
         if (scope === 'userSystem') {
-          this.syncReadFlagsFromUserSystemPermissions();
-          this.syncMasterLeftSwitchesFromUserSys();
+          if (this.seedFromRolePosInput === true) {
+            this.forceDeriveLeftFromRight = true;
+            this.syncMasterLeftSwitchesFromUserSys();
+            this.forceDeriveLeftFromRight = false;
+          } else {
+            this.syncReadFlagsFromUserSystemPermissions();
+            this.syncMasterLeftSwitchesFromUserSys();
+          }
         } else {
           this.recomputeReadsFromCrud();
         }
@@ -1655,6 +1744,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.syncReadFlagsFromUserSystemPermissions();
     onAfter?.();
     this.syncMasterLeftSwitchesFromUserSys();
+    this.syncReadFlagsFromUserSystemPermissions();
     this.checkForChanges();
   }
 
@@ -2359,13 +2449,91 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     }
   }
 
+  /**
+   * Añade tarjetas de detalle (cards del panel derecho) que existen en la plantilla
+   * rol+posición pero no están en el CRUD guardado del usuario.
+   * Necesario cuando el usuario ya tiene filas CRUD propias pero faltan algunas
+   * tarjetas que el template sí incluye (p. ej. Configuración / Catálogos en Compras).
+   */
+  private hydrateDetailCardsFromRoleTemplate(grouped: MasterPermission[]): MasterPermission[] {
+    if (!Array.isArray(this.roleTemplateCrudRows) || this.roleTemplateCrudRows.length === 0) {
+      return grouped;
+    }
+    const templateGrouped = this.transformData(this.roleTemplateCrudRows);
+    const templateMasterByNorm = new Map<string, MasterPermission>();
+    for (const m of templateGrouped) {
+      const mn = this.normalizar(m.masterPermissionName || '');
+      if (mn) templateMasterByNorm.set(mn, m);
+    }
+
+    return grouped.map((master) => {
+      const mn = this.normalizar(master.masterPermissionName || '');
+      const tMaster = templateMasterByNorm.get(mn);
+      if (!tMaster) return master;
+
+      const existingNorms = new Set(
+        (master.details || []).map((d) => this.normalizar(d.detailedPermissionName || ''))
+      );
+
+      const missingDetails: DetailedPermission[] = [];
+      for (const tDetail of tMaster.details || []) {
+        const dn = this.normalizar(tDetail.detailedPermissionName || '');
+        if (existingNorms.has(dn)) continue;
+        missingDetails.push({
+          detailedPermissionName: tDetail.detailedPermissionName,
+          detailedRead: false,
+          subdetails: (tDetail.subdetails || []).map((sd) => ({
+            subdetailedPermissionName: sd.subdetailedPermissionName,
+            principal: sd.principal
+              ? { ...sd.principal, canRead: false, canCreate: false, canUpdate: false, canDelete: false }
+              : null,
+            children: (sd.children || []).map((c) => ({
+              ...c,
+              canRead: false,
+              canCreate: false,
+              canUpdate: false,
+              canDelete: false,
+            })),
+          })),
+        });
+      }
+      if (missingDetails.length === 0) return master;
+      return { ...master, details: [...(master.details || []), ...missingDetails] };
+    });
+  }
+
+  /**
+   * Modal Usuarios › sucursal › departamentos › Ver permisos: no mostrar el maestro «Administración»
+   * aunque siga en catálogo / plantilla / CRUD (solicitud de negocio).
+   * No aplica al modal de plantilla rol+posición (`scope: 'position'`).
+   */
+  private stripAdministracionMasterFromModalSidebar(grouped: MasterPermission[]): MasterPermission[] {
+    const strippedKeys = new Set<string>();
+    const filtered = grouped.filter((m) => {
+      const n = this.normalizar(m.masterPermissionName || '');
+      if (n.includes('administrac')) {
+        strippedKeys.add(n);
+        return false;
+      }
+      return true;
+    });
+    for (const k of strippedKeys) {
+      this.modalSidebarMasterKeys.delete(k);
+    }
+    return filtered;
+  }
+
   private rebuildGroupedPermissionsFromRaw(): void {
     let next = this.transformData(this.rawData);
     this.unionModalSidebarUniverseFromGrouped(next);
     next = this.mergeCatalogMastersIntoGrouped(next);
     next = this.dedupeGenericComprasWhenComprasDelisonPresent(next);
     next = this.filterDetailsToRoleTemplateUniverse(next);
+    next = this.hydrateDetailCardsFromRoleTemplate(next);
     next = this.hydrateMissingSubdetailsFromRoleTemplate(next);
+    if ((this.scopeInput ?? 'userSystem') === 'userSystem' && this.seedFromRolePosInput === true) {
+      next = this.stripAdministracionMasterFromModalSidebar(next);
+    }
     this.groupedPermissions = next;
   }
 

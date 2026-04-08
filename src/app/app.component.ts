@@ -1,7 +1,7 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin, of, Subscription } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { AuthService } from './services/auth.service';
 import { SignalsService } from './services/signals.service';
 
@@ -12,9 +12,11 @@ import { SignalsService } from './services/signals.service';
   imports: [RouterOutlet],
   template: '<router-outlet></router-outlet>',
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'bi-aug-24';
   private lastLoadedBranchId: number | null = null; // Variable para rastrear la última sucursal cargada
+  /** Cancela GET guard/guardAdvanced anteriores si cambia la sucursal antes de que respondan. */
+  private permissionsLoadSub: Subscription | null = null;
 
   private authService = inject(AuthService);
   private signalsService = inject(SignalsService);
@@ -41,6 +43,11 @@ export class AppComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.permissionsLoadSub?.unsubscribe();
+    this.permissionsLoadSub = null;
+  }
+
   private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {
     // Si los permisos ya existen y no han cambiado las condiciones, no recargar.
     if (this.authService.getUserPermissions() && Object.keys(this.authService.getUserPermissions()).length > 0) {
@@ -49,36 +56,48 @@ export class AppComponent implements OnInit {
       }
     }
 
-    this.authService.getUserId(email).subscribe((userId) => {
-      if (isAdvanced && idBranch > 0) {
-        forkJoin({
-          basic: this.authService.fetchUserPermissions(userId),
-          advanced: this.authService.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
-            catchError(() => of({ permissions: {} }))
-          ),
-        }).subscribe({
-          next: ({ basic, advanced }) => {
+    this.permissionsLoadSub?.unsubscribe();
+    const branchSnapshot = idBranch;
+
+    this.permissionsLoadSub = this.authService
+      .getUserId(email)
+      .pipe(
+        switchMap((userId) => {
+          if (isAdvanced && idBranch != null && idBranch > 0) {
+            return forkJoin({
+              basic: this.authService.fetchUserPermissions(userId),
+              advanced: this.authService.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
+                catchError(() => of({ permissions: {} }))
+              ),
+            }).pipe(
+              map(({ basic, advanced }) => ({ mode: 'advanced' as const, basic, advanced }))
+            );
+          }
+          return this.authService
+            .fetchUserPermissions(userId)
+            .pipe(map((data: any) => ({ mode: 'basic' as const, data })));
+        })
+      )
+      .subscribe({
+        next: (result) => {
+          if (this.signalsService.getBranchSelectedBySidebar()() !== branchSnapshot) {
+            return;
+          }
+          if (result.mode === 'advanced') {
+            const { basic, advanced } = result;
             const adv = advanced?.permissions;
             this.authService.setMenuUserPermissions(basic.permissions);
-            if (adv && Object.keys(adv).length > 0) {
-              this.authService.setUserPermissions(adv);
-            } else {
-              this.authService.setUserPermissions(basic.permissions);
-            }
-            this.lastLoadedBranchId = idBranch;
-          },
-          error: (error) => console.error('Error fetching permissions:', error),
-        });
-      } else {
-        this.authService.fetchUserPermissions(userId).subscribe({
-          next: (data: any) => {
+            const merged = this.authService.mergeGuardAdvancedIntoBase(basic.permissions, adv);
+            this.authService.setUserPermissions(merged);
+          } else {
+            const data = result.data;
             this.authService.setUserPermissions(data.permissions);
             this.authService.setMenuUserPermissions(data.permissions);
-            this.lastLoadedBranchId = idBranch;
-          },
-          error: (error) => console.error('Error fetching user permissions:', error),
-        });
-      }
-    });
+          }
+          this.lastLoadedBranchId = branchSnapshot;
+          this.signalsService.bumpGuardRefreshTick();
+        },
+        error: (error) => console.error('Error fetching permissions:', error),
+      });
   }
 }

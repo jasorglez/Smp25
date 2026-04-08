@@ -104,11 +104,8 @@ export class ComploginComponent implements OnInit, OnDestroy {
                 const adv = advanced?.permissions;
                 if (basic?.permissions) {
                   this.auth.setMenuUserPermissions(basic.permissions);
-                }
-                if (adv && Object.keys(adv).length > 0) {
-                  this.auth.setUserPermissions(adv);
-                } else if (basic?.permissions) {
-                  this.auth.setUserPermissions(basic.permissions);
+                  const merged = this.auth.mergeGuardAdvancedIntoBase(basic.permissions, adv);
+                  this.auth.setUserPermissions(merged);
                 }
                 return null;
               })
@@ -205,11 +202,8 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     const adv = advanced?.permissions;
                     if (basic?.permissions) {
                       this.auth.setMenuUserPermissions(basic.permissions);
-                    }
-                    if (adv && Object.keys(adv).length > 0) {
-                      this.auth.setUserPermissions(adv);
-                    } else if (basic?.permissions) {
-                      this.auth.setUserPermissions(basic.permissions);
+                      const merged = this.auth.mergeGuardAdvancedIntoBase(basic.permissions, adv);
+                      this.auth.setUserPermissions(merged);
                     }
                     this.router.navigate(['/main']);
                   },

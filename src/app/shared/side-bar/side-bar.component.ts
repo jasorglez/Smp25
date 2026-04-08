@@ -1,4 +1,4 @@
-import { Component, effect } from '@angular/core';
+import { Component, effect, Signal } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
@@ -24,6 +24,9 @@ import { alerts } from 'app/helpers/alerts';
   styleUrl: './side-bar.component.scss',
 })
 export class SideBarComponent {
+  /** Fuerza reevaluación de *ngIf del menú tras recargar `guard` / `guardAdvanced` en sesión. */
+  readonly guardUiTick: Signal<number>;
+
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
 
@@ -62,6 +65,7 @@ export class SideBarComponent {
     private signalsService: SignalsService,
     private conventionsService: ConventionsService
   ) {
+    this.guardUiTick = this.signalsService.guardRefreshTick;
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
       if (shouldUpdate) {
@@ -87,6 +91,42 @@ export class SideBarComponent {
         }, 50);
       }
     });
+  }
+
+  /**
+   * Tras armar `branchData` (incl. «Todas las sucursales»), elige sucursal activa:
+   * conserva la ya seleccionada (p. ej. applybranch tras login) si sigue en la lista;
+   * si no, primera sucursal concreta.
+   */
+  private pickBranchAfterListLoad(): { id: number; name: string } | null {
+    if (!this.branchData?.length) {
+      return null;
+    }
+    const preferredRaw = this.signalsService.getBranchSelectedBySidebar()();
+    if (preferredRaw != null && preferredRaw !== 0) {
+      const preferredId = Number(preferredRaw);
+      if (!Number.isNaN(preferredId)) {
+        const found = this.branchData.find((b) => b.id === preferredId);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
+  }
+
+  private async applyPickedBranch(chosen: { id: number; name: string }): Promise<void> {
+    this.selectedBranchId = String(chosen.id);
+    this.signalsService.setBranchSelectedBySidebar(Number(chosen.id));
+    this.signalsService.setBranchNameSelectedBySidebar(chosen.name);
+    this.trackingService.setContract(this.selectedBranchId);
+    setTimeout(() => {
+      const sel = document.getElementById('branchs') as HTMLSelectElement;
+      if (sel) {
+        sel.value = this.selectedBranchId;
+      }
+    });
+    await this.getpermissionxContracts();
   }
 
   async ngOnInit() {
@@ -204,21 +244,9 @@ error: (error) => {
             name: 'Todas las sucursales',
           });
 
-          // branchData[0] = "Todas las sucursales" (ID negativo) → seleccionar la primera real (índice 1)
-          const defaultBranch = this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
-          if (defaultBranch) {
-            this.selectedBranchId = String(defaultBranch.id);
-
-            this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
-            this.signalsService.setBranchNameSelectedBySidebar(defaultBranch.name);
-            this.trackingService.setContract(this.selectedBranchId);
-
-            setTimeout(() => {
-              const sel = document.getElementById('branchs') as HTMLSelectElement;
-              if (sel) sel.value = this.selectedBranchId;
-            });
-
-            await this.getpermissionxContracts();
+          const chosen = this.pickBranchAfterListLoad();
+          if (chosen) {
+            await this.applyPickedBranch(chosen);
           }
         },
         (error) => {
@@ -245,25 +273,9 @@ error: (error) => {
               name: 'Todas las sucursales',
             });
 
-            // Por defecto la primera sucursal concreta (índice 1), no «Todas».
-            const defaultBranch =
-              this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
-
-            if (defaultBranch) {
-              this.selectedBranchId = String(defaultBranch.id);
-
-              this.signalsService.setBranchSelectedBySidebar(
-                Number(this.selectedBranchId)
-              );
-              this.signalsService.setBranchNameSelectedBySidebar(defaultBranch.name);
-              this.trackingService.setContract(this.selectedBranchId);
-
-              setTimeout(() => {
-                const sel = document.getElementById('branchs') as HTMLSelectElement;
-                if (sel) sel.value = this.selectedBranchId;
-              });
-
-              await this.getpermissionxContracts();
+            const chosen = this.pickBranchAfterListLoad();
+            if (chosen) {
+              await this.applyPickedBranch(chosen);
             }
           },
           (error) => {
