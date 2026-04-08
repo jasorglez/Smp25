@@ -770,7 +770,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           values: ['Normal', 'Urgente']
         },
       },
-      {
+
+     /* {
         field: 'comment',
         headerName: 'Observaciones',
         width: 160,
@@ -788,10 +789,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           return true;
         },
         cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
-      },
+      },*/
+
       {
-        headerName: '💬',
-        width: 60,
+        headerName: 'Comentarios💬',
+        width: 140,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,

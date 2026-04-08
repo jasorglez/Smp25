@@ -387,14 +387,15 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         headerName: 'Tipo Prioridad3',
         width: 150
       },
-      {
+    /*  {
         field: 'comment',
         headerName: 'Observation',
         width: 200
-      },
+      }, */
+
       {
-        headerName: '💬',
-        width: 60,
+        headerName: 'Comentarios💬',
+        width: 140,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
