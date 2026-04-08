@@ -5,7 +5,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { ItemCommentsService, ItemComment } from 'app/services/item-comments.service';
 import { SignalsService } from 'app/services/signals.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-item-comments-cell-renderer',
@@ -159,6 +159,7 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   panelOpenUp = false;
   windowHeight = 0;
   private readonly PANEL_HEIGHT = 420;
+  private openSub?: Subscription;
 
   agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number }): void {
     this.currentUserId   = this.signalsService.getIdUSer()();
@@ -167,10 +168,19 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.documentType    = params.documentType || '';
     this.idDocument      = params.idDocument || 0;
     this.loadComments();
+
+    // Escucha si algún componente externo quiere abrir este chat
+    this.openSub = this.commentsService.openChatFor$.subscribe(req => {
+      if (req.documentType === this.documentType &&
+          req.idDocument === this.idDocument &&
+          String(req.numArticle) === String(this.numArticle)) {
+        this.openChatCentered();
+      }
+    });
   }
 
   refresh(params: ICellRendererParams): boolean { return false; }
-  ngOnDestroy(): void { this.showChat = false; }
+  ngOnDestroy(): void { this.showChat = false; this.openSub?.unsubscribe(); }
 
   loadComments() {
     if (!this.documentType || !this.idDocument || !this.numArticle) return;
@@ -188,6 +198,15 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.panelOpenUp = spaceBelow < this.PANEL_HEIGHT;
     this.panelTop  = clickY + 4;
     this.panelLeft = Math.min(clickX, window.innerWidth - 310);
+    this.showChat = true;
+  }
+
+  /** Abre el chat centrado en pantalla (sin evento de click) */
+  openChatCentered() {
+    this.windowHeight = window.innerHeight;
+    this.panelOpenUp = false;
+    this.panelTop  = Math.max(60, (this.windowHeight - this.PANEL_HEIGHT) / 2);
+    this.panelLeft = Math.max(10, (window.innerWidth - 310) / 2);
     this.showChat = true;
   }
 

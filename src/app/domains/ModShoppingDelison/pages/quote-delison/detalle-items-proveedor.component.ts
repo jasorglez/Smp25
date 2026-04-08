@@ -17,6 +17,7 @@ import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
+import { ItemCommentsService } from 'app/services/item-comments.service';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -198,26 +199,6 @@ pdfMake.vfs = pdfFonts.vfs;
       </div>
     </div>
 
-    <!-- Modal Cambio de Especificaciones -->
-    <div *ngIf="showEspecificacionesModal" class="modal-backdrop-inline">
-      <div class="modal-box-inline" (click)="$event.stopPropagation()">
-        <div class="modal-header-inline" style="background: #fd7e14;">
-          <span><i class="bi bi-pencil-square me-2"></i>Cambio de Especificaciones</span>
-          <button type="button" class="btn-close btn-close-white" (click)="cancelEspecificaciones()"></button>
-        </div>
-        <div class="modal-body-inline">
-          <label class="form-label small fw-semibold">Describe el cambio <span class="text-danger">*</span></label>
-          <textarea class="form-control form-control-sm" [(ngModel)]="especificacionesText"
-            rows="4" placeholder="Escribe aquí el detalle del cambio de especificaciones..."></textarea>
-        </div>
-        <div class="modal-footer-inline">
-          <button type="button" class="btn btn-sm btn-secondary" (click)="cancelEspecificaciones()">Cancelar</button>
-          <button type="button" class="btn btn-sm btn-warning" (click)="confirmEspecificaciones()" [disabled]="!especificacionesText?.trim()">
-            <i class="bi bi-check-lg me-1"></i>Aceptar
-          </button>
-        </div>
-      </div>
-    </div>
   `,
   styles: [`
     .detail-grid-container {
@@ -344,10 +325,7 @@ export class DetalleItemsProveedorComponent {
 
   typeocValues: string[] = [];
 
-  // Modal cambio de especificaciones
-  showEspecificacionesModal: boolean = false;
-  especificacionesText: string = '';
-  private _especificacionesNode: any = null;
+  private itemCommentsService = inject(ItemCommentsService);
 
   // Modal compra autorizada en otra fecha
   showFechaPostponeModal: boolean = false;
@@ -591,9 +569,12 @@ export class DetalleItemsProveedorComponent {
     }
 
     if (event.column.getColId() === 'typeOC' && event.newValue === 'CAMBIO DE ESPECIFICACIONES') {
-      this._especificacionesNode = event.node;
-      this.especificacionesText = event.data.comment || '';
-      this.showEspecificacionesModal = true;
+      const numArticulo = String(event.data.numArticulo || '');
+      this.itemCommentsService.openChatFor$.next({
+        documentType: 'REQ',
+        idDocument: this.requisitionId ?? 0,
+        numArticle: numArticulo
+      });
     }
 
     if (event.column.getColId() === 'typeOC' && event.newValue === 'COMPRA AUTORIZADA EN OTRA FECHA') {
@@ -606,41 +587,6 @@ export class DetalleItemsProveedorComponent {
     this.updateTotal();
   }
 
-  cancelEspecificaciones() {
-    // Revertir la selección si no había texto previo
-    if (!this._especificacionesNode?.data?.comment) {
-      this._especificacionesNode.data.typeOC = '';
-      this.gridApi.refreshCells({ rowNodes: [this._especificacionesNode], force: true });
-    }
-    this.showEspecificacionesModal = false;
-    this.especificacionesText = '';
-    this._especificacionesNode = null;
-  }
-
-  confirmEspecificaciones() {
-    if (!this.especificacionesText?.trim()) return;
-    const texto = this.especificacionesText.trim();
-    const numArticulo = this._especificacionesNode.data.numArticulo;
-
-    this._especificacionesNode.data.comment = texto;
-    this.gridApi.refreshCells({ rowNodes: [this._especificacionesNode], force: true });
-    this.showEspecificacionesModal = false;
-    this.especificacionesText = '';
-    this._especificacionesNode = null;
-
-    // Propagar comment a la REQ original
-    if (this.requisitionId && numArticulo) {
-      this.ocandreqsService.getReqItems(this.requisitionId).subscribe({
-        next: (items: any[]) => {
-          const match = (Array.isArray(items) ? items : [])
-            .find((i: any) => String(i.numArticle || i.numarticle) === String(numArticulo));
-          if (match?.id) {
-            this.ocandreqsService.updateReqItem(String(match.id), { ...match, comment: texto }).subscribe();
-          }
-        }
-      });
-    }
-  }
 
   cancelFechaPostpone() {
     if (!this._fechaPostponeNode?.data?.datePostpone) {
@@ -1076,8 +1022,8 @@ export class DetalleItemsProveedorComponent {
       },
 
       {
-        headerName: '💬',
-        width: 60,
+        headerName: 'Comentarios💬',
+        width: 140,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,

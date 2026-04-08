@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
@@ -20,6 +20,9 @@ export interface ItemComment {
 export class ItemCommentsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+
+  /** Emite cuando un componente externo quiere abrir el chat de un ítem específico */
+  readonly openChatFor$ = new Subject<{ documentType: string; idDocument: number; numArticle: string }>();
 
   getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
