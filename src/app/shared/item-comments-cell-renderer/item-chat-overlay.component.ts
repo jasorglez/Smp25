@@ -19,16 +19,19 @@ import { SignalsService } from 'app/services/signals.service';
         </div>
         <div class="chat-messages">
           <div *ngIf="!comments.length" class="chat-empty">Sin comentarios aún</div>
-          <div *ngFor="let c of comments" class="chat-bubble" [class.chat-bubble-own]="c.idUser === currentUserId">
+          <div *ngFor="let c of comments" class="chat-bubble"
+               [class.chat-bubble-own]="c.idUser === currentUserId"
+               [class.chat-bubble-alert]="isAlertMsg(c.text)">
             <div class="chat-bubble-meta">
-              <span class="chat-user">{{ c.userName }}</span>
+              <span class="chat-user" [class.chat-user-alert]="isAlertMsg(c.text)">{{ c.userName }}</span>
               <span class="chat-date">{{ formatDate(c.createdAt) }}</span>
               <button *ngIf="c.idUser === currentUserId && editingId !== c.id"
                       class="btn-edit" (click)="startEdit(c)">
                 <i class="bi bi-pencil-fill"></i>
               </button>
             </div>
-            <div *ngIf="editingId !== c.id" class="chat-text">{{ c.text }}</div>
+            <div *ngIf="editingId !== c.id" class="chat-text"
+                 [class.chat-text-alert]="isAlertMsg(c.text)">{{ c.text }}</div>
             <div *ngIf="editingId === c.id" class="chat-edit-row">
               <textarea class="form-control form-control-sm" [(ngModel)]="editingText" rows="2"
                         (click)="$event.stopPropagation()"></textarea>
@@ -90,6 +93,9 @@ import { SignalsService } from 'app/services/signals.service';
     .btn-edit { background: none; border: none; cursor: pointer; color: #aaa; font-size: 9px; padding: 0; }
     .btn-edit:hover { color: #0d6efd; }
     .chat-text { color: #333; white-space: pre-wrap; font-size: 10px; }
+    .chat-bubble-alert { background: #fff0f0; border: 1px solid #f5c6c6; }
+    .chat-user-alert { color: #c0392b !important; font-weight: 700; }
+    .chat-text-alert { color: #c0392b; font-weight: 700; font-size: 11px; letter-spacing: 0.3px; }
     .chat-edit-row { display: flex; flex-direction: column; gap: 4px; }
     .chat-edit-actions { display: flex; gap: 4px; }
     .chat-input-row { padding: 10px; border-top: 1px solid #dee2e6; flex-shrink: 0; }
@@ -192,6 +198,10 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       if (idx !== -1) this.comments[idx] = { ...this.comments[idx], text: updated.text };
       this.cancelEdit();
     } finally { this.saving = false; }
+  }
+
+  isAlertMsg(text: string): boolean {
+    return text?.trim() === 'CAMBIO DE ESPECIFICACIONES';
   }
 
   formatDate(d?: string): string {
