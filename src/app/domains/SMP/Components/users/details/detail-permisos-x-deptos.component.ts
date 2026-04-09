@@ -1114,6 +1114,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     if (email === environment.root) {
       return true;
     }
-    return this.authService.hasDetailedPermission('users-setup', 'permissions');
+    return this.authService.hasUsersMenuPermissionsAccess();
   }
 }

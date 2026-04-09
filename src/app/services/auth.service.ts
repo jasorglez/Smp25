@@ -401,6 +401,8 @@ export class AuthService {
   // ─── Permisos ───────────────────────────────────────────────────────────────
 
   private userPermissions: any;
+  /** Árbol básico global de UserSystemPermissions; no depende de sucursal. */
+  private baseUserSystemPermissions: any = null;
 
   /**
    * Jerarquía de `GET .../UserSystemPermissions/guard/{userId}` (tabla UserSystem / permisos maestros).
@@ -434,6 +436,51 @@ export class AuthService {
   }
 
   /**
+   * Regla única del permiso efectivo de sesión.
+   * - `idBranch === 0` o inválido: usa `guard` básico.
+   * - sucursal concreta / Todas las sucursales (id negativo): usa `guardAdvanced`
+   *   y lo mezcla con el árbol base.
+   * - `preferUserSystemGuard`: fuerza árbol básico (Permisos maestros).
+   */
+  fetchEffectivePermissionsTree(
+    userId: number,
+    idBranch: number | null | undefined,
+    preferUserSystemGuard = false
+  ): Observable<any> {
+    const branch = idBranch != null ? Number(idBranch) : NaN;
+    const useAdvanced =
+      !preferUserSystemGuard && !Number.isNaN(branch) && branch !== 0;
+
+    if (!useAdvanced) {
+      return this.fetchUserPermissions(userId).pipe(
+        tap((data: any) => {
+          this.baseUserSystemPermissions = data?.permissions ?? {};
+        }),
+        map((data: any) => data?.permissions ?? {})
+      );
+    }
+
+    return this.fetchUserPermissionsAdvanced(userId, branch).pipe(
+      switchMap((advancedData: any) => {
+        const advanced = advancedData?.permissions;
+        return this.fetchUserPermissions(userId).pipe(
+          tap((basicData: any) => {
+            this.baseUserSystemPermissions = basicData?.permissions ?? {};
+          }),
+          map((basicData: any) =>
+            this.mergeGuardAdvancedIntoBase(basicData?.permissions ?? {}, advanced)
+          )
+        );
+      })
+    );
+  }
+
+  applyEffectivePermissionsTree(tree: any): void {
+    this.setUserPermissions(tree);
+    this.setMenuUserPermissions(tree);
+  }
+
+  /**
    * Vuelve a pedir el árbol de permisos del usuario de la sesión (misma lógica que AppComponent)
    * y actualiza `userPermissions`. Útil tras cambios en UserSystemPermissions / CRUD sin recargar la página.
    *
@@ -455,12 +502,8 @@ export class AuthService {
     if (options?.preferUserSystemGuard === true) {
       return this.getUserId(email).pipe(
         switchMap((userId) =>
-          this.fetchUserPermissions(userId).pipe(
-            tap((data: any) => {
-              this.setUserPermissions(data.permissions);
-              this.setMenuUserPermissions(data.permissions);
-            }),
-            map((data: any) => data.permissions)
+          this.fetchEffectivePermissionsTree(userId, 0, true).pipe(
+            tap((tree) => this.applyEffectivePermissionsTree(tree))
           )
         ),
         tap(() => {
@@ -479,30 +522,11 @@ export class AuthService {
     const idBranch = !Number.isNaN(override) && override !== 0 ? override : sidebarBranch;
 
     return this.getUserId(email).pipe(
-      switchMap((userId) => {
-        if (!Number.isNaN(idBranch) && idBranch !== 0) {
-          return this.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
-            switchMap((data: any) => {
-              const perms = data?.permissions;
-              return this.fetchUserPermissions(userId).pipe(
-                tap((basicData: any) => {
-                  this.setMenuUserPermissions(basicData.permissions);
-                  const merged = this.mergeGuardAdvancedIntoBase(basicData.permissions, perms);
-                  this.setUserPermissions(merged);
-                }),
-                map((basicData: any) => this.mergeGuardAdvancedIntoBase(basicData.permissions, perms))
-              );
-            })
-          );
-        }
-        return this.fetchUserPermissions(userId).pipe(
-          tap((data: any) => {
-            this.setUserPermissions(data.permissions);
-            this.setMenuUserPermissions(data.permissions);
-          }),
-          map((data: any) => data.permissions)
-        );
-      }),
+      switchMap((userId) =>
+        this.fetchEffectivePermissionsTree(userId, idBranch).pipe(
+          tap((tree) => this.applyEffectivePermissionsTree(tree))
+        )
+      ),
       tap(() => {
         this.signalsService.bumpGuardRefreshTick();
         try {
@@ -659,13 +683,16 @@ export class AuthService {
    * o un maestro cuyo identificador combine setup + usuario.
    */
   hasUsersMenuWarehousesAccess(): boolean {
-    if (this.hasDetailedPermission('users-setup', 'warehouses')) {
+    const baseTree = this.baseUserSystemPermissions;
+    if (baseTree?.['users-setup']?.active === true &&
+        baseTree?.['users-setup']?.children?.['warehouses']?.active === true) {
       return true;
     }
-    if (this.hasDetailedPermission('users-setup', 'almacenes')) {
+    if (baseTree?.['users-setup']?.active === true &&
+        baseTree?.['users-setup']?.children?.['almacenes']?.active === true) {
       return true;
     }
-    const perms = this.userPermissions;
+    const perms = baseTree ?? this.userPermissions;
     if (!perms || typeof perms !== 'object') {
       return false;
     }
@@ -699,13 +726,16 @@ export class AuthService {
    * tiene el detalle «Departamento» bajo Setup Usuarios (claves `department` / `departamento` u homólogos en el guard).
    */
   hasUsersMenuDepartmentAccess(): boolean {
-    if (this.hasDetailedPermission('users-setup', 'department')) {
+    const baseTree = this.baseUserSystemPermissions;
+    if (baseTree?.['users-setup']?.active === true &&
+        baseTree?.['users-setup']?.children?.['department']?.active === true) {
       return true;
     }
-    if (this.hasDetailedPermission('users-setup', 'departamento')) {
+    if (baseTree?.['users-setup']?.active === true &&
+        baseTree?.['users-setup']?.children?.['departamento']?.active === true) {
       return true;
     }
-    const perms = this.userPermissions;
+    const perms = baseTree ?? this.userPermissions;
     if (!perms || typeof perms !== 'object') {
       return false;
     }
@@ -740,10 +770,12 @@ export class AuthService {
    * Operador: detalle «Security» bajo Setup Usuarios (UserSystem / guard).
    */
   hasUsersMenuSecurityAccess(): boolean {
-    if (this.hasDetailedPermission('users-setup', 'security')) {
+    const baseTree = this.baseUserSystemPermissions;
+    if (baseTree?.['users-setup']?.active === true &&
+        baseTree?.['users-setup']?.children?.['security']?.active === true) {
       return true;
     }
-    const perms = this.userPermissions;
+    const perms = baseTree ?? this.userPermissions;
     if (!perms || typeof perms !== 'object') {
       return false;
     }
@@ -762,6 +794,43 @@ export class AuthService {
       for (const [detKey, detRaw] of Object.entries(masterChildren as Record<string, unknown>)) {
         const dk = String(detKey).toLowerCase();
         if (dk.includes('security') || dk.includes('seguridad')) {
+          if ((detRaw as { active?: boolean })?.active === true) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Operador: detalle «Permisos» bajo Setup Usuarios (UserSystem / guard).
+   */
+  hasUsersMenuPermissionsAccess(): boolean {
+    const baseTree = this.baseUserSystemPermissions;
+    if (baseTree?.['users-setup']?.active === true &&
+        baseTree?.['users-setup']?.children?.['permissions']?.active === true) {
+      return true;
+    }
+    const perms = baseTree ?? this.userPermissions;
+    if (!perms || typeof perms !== 'object') {
+      return false;
+    }
+    for (const [masterKey, masterRaw] of Object.entries(perms)) {
+      const mk = String(masterKey).toLowerCase();
+      const isSetupUsersMaster =
+        mk === 'users-setup' || (mk.includes('setup') && mk.includes('usuario'));
+      if (!isSetupUsersMaster) {
+        continue;
+      }
+      const master = masterRaw as Record<string, unknown>;
+      const masterChildren = master['children'];
+      if (master?.['active'] !== true || !masterChildren || typeof masterChildren !== 'object') {
+        continue;
+      }
+      for (const [detKey, detRaw] of Object.entries(masterChildren as Record<string, unknown>)) {
+        const dk = String(detKey).toLowerCase();
+        if (dk.includes('permission') || dk.includes('permiso')) {
           if ((detRaw as { active?: boolean })?.active === true) {
             return true;
           }

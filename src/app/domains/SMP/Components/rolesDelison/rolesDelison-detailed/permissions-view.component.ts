@@ -86,7 +86,6 @@ export class PermissionsViewComponent implements OnInit {
          console.log("new data", this.rawData);
          this.groupedPermissions = this.transformData(this.rawData);
        });
-    this.groupedPermissions = this.transformData(this.rawData);
   }
 
   checkForChanges() {
@@ -256,7 +255,11 @@ export class PermissionsViewComponent implements OnInit {
       );
       this.notSavedChanges = false;
       this.trackingService.addLog(this.trackingService.getnameComp(),'Update/Add Registros en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
+      // Fuerza relectura local y re-evaluación global de permisos/guards dependientes.
       this.obtenerDatos(this.idRole, this.idPosicion);
+      this.signalsService.setRefresSecurity(true);
+      this.signalsService.setRefresCantidadPermisos(true);
+      this.signalsService.bumpGuardRefreshTick();
 
     } catch (error) {
       console.error("Error al guardar los permisos:", error);

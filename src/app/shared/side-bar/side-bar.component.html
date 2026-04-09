@@ -21,9 +21,9 @@
     <select
       id="root"
       (change)="onRootsSelected($event)"
-      (focus)="expandTemporarily()"
-      (blur)="collapseAfterInteraction()"
-      (click)="expandTemporarily()"
+      (focus)="beginSelectInteraction()"
+      (blur)="onSidebarControlBlur()"
+      (mousedown)="beginSelectInteraction()"
       class="form-select mb-2"
       [value]="selectedRoot || ''"
       [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('company' | translate)) : ''"
@@ -39,9 +39,9 @@
     <select
       id="branchs"
       (change)="onBranchSelected($event)"
-      (focus)="expandTemporarily()"
-      (blur)="collapseAfterInteraction()"
-      (click)="expandTemporarily()"
+      (focus)="beginSelectInteraction()"
+      (blur)="onSidebarControlBlur()"
+      (mousedown)="beginSelectInteraction()"
       class="form-select mb-2"
       [value]="selectedBranchId"
       [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('branchs' | translate)) : ''"
@@ -57,9 +57,9 @@
 <select
         id="contracts"
         (change)="onContractsSelected($event)"
-        (focus)="expandTemporarily()"
-        (blur)="collapseAfterInteraction()"
-        (click)="expandTemporarily()"
+        (focus)="beginSelectInteraction()"
+        (blur)="onSidebarControlBlur()"
+        (mousedown)="beginSelectInteraction()"
         class="form-select mb-2"
         [value]="selectedContractId"
         [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('contract' | translate)) : ''"
@@ -86,9 +86,9 @@
 <select
         id="project"
         (change)="onProjectSelected($event)"
-        (focus)="expandTemporarily()"
-        (blur)="collapseAfterInteraction()"
-        (click)="expandTemporarily()"
+        (focus)="beginSelectInteraction()"
+        (blur)="onSidebarControlBlur()"
+        (mousedown)="beginSelectInteraction()"
         class="form-select mb-2"
         [value]="selectedProjectId"
         [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('projects' | translate)) : ''"
@@ -104,7 +104,7 @@
     </span>
 
     <ul class="nav flex-column">
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
+      <li class="nav-item" *ngIf="authService.hasMenuMasterPermission('dashboard')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/dashboardgrales']"
@@ -119,7 +119,7 @@
 
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('indicators')"
+        *ngIf="authService.hasMenuMasterPermission('indicators')"
       >
 <a
           class="nav-link d-flex align-items-center"
@@ -135,7 +135,7 @@
 
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('shopping')"
+        *ngIf="authService.hasMenuMasterPermission('shopping')"
       >
 <a
           class="nav-link d-flex align-items-center"
@@ -150,7 +150,7 @@
       </li>
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('shoppingDelison')"
+        *ngIf="authService.hasMenuMasterPermission('shoppingDelison')"
       >
 <a
           class="nav-link d-flex align-items-center"
@@ -165,7 +165,7 @@
       </li>
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('shoppingTD')"
+        *ngIf="authService.hasMenuMasterPermission('shoppingTD')"
       >
 <a
           class="nav-link d-flex align-items-center"
@@ -181,7 +181,7 @@
 
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('warehouses')"
+        *ngIf="authService.hasMenuMasterPermission('warehouses')"
       >
 <a
           class="nav-link d-flex align-items-center"
@@ -196,7 +196,7 @@
       </li>
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('warehousesTD')"
+        *ngIf="authService.hasMenuMasterPermission('warehousesTD')"
       >
 <a
           class="nav-link d-flex align-items-center"
@@ -212,7 +212,7 @@
 
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('maintenance')"
+        *ngIf="authService.hasMenuMasterPermission('maintenance')"
       >
 <a
           class="nav-link d-flex align-items-center"
@@ -226,7 +226,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('hr')">
+      <li class="nav-item" *ngIf="authService.hasMenuMasterPermission('hr')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procreshuman']"
@@ -239,7 +239,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('sales')">
+      <li class="nav-item" *ngIf="authService.hasMenuMasterPermission('sales')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procsales']"
@@ -252,7 +252,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')">
+      <li class="nav-item" *ngIf="authService.hasMenuMasterPermission('projects')">
        <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/projects']"
@@ -264,7 +264,7 @@
        </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')">
+      <li class="nav-item" *ngIf="authService.hasMenuMasterPermission('setup')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/smp']"

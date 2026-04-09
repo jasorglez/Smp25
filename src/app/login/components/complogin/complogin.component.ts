@@ -16,8 +16,6 @@ import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { forkJoin, of } from 'rxjs';
-import { switchMap, tap, catchError, map } from 'rxjs/operators';
 import { environment } from '@env/environment';
 
 @Component({
@@ -89,42 +87,6 @@ export class ComploginComponent implements OnInit, OnDestroy {
     const storedEmail = this.signalsService.getemailChoose();
     if (storedEmail) {
       this.emailcapt = storedEmail;
-      const branchAtInit = this.signalsService.getBranchSelectedBySidebar()();
-      const isAdv = this.signalsService.getIsAdvanced();
-      this.auth.getUserId(this.emailcapt).pipe(
-        switchMap((userId) => {
-          if (isAdv && branchAtInit != null && branchAtInit !== 0) {
-            return forkJoin({
-              basic: this.auth.fetchUserPermissions(userId),
-              advanced: this.auth.fetchUserPermissionsAdvanced(userId, branchAtInit).pipe(
-                catchError(() => of({ permissions: {} }))
-              ),
-            }).pipe(
-              map(({ basic, advanced }) => {
-                const adv = advanced?.permissions;
-                if (basic?.permissions) {
-                  this.auth.setMenuUserPermissions(basic.permissions);
-                  const merged = this.auth.mergeGuardAdvancedIntoBase(basic.permissions, adv);
-                  this.auth.setUserPermissions(merged);
-                }
-                return null;
-              })
-            );
-          }
-          return this.auth.fetchUserPermissions(userId).pipe(
-            tap((permissionsData: any) => {
-              if (permissionsData?.permissions) {
-                this.auth.setUserPermissions(permissionsData.permissions);
-                this.auth.setMenuUserPermissions(permissionsData.permissions);
-              }
-            })
-          );
-        })
-      ).subscribe({
-        error: (err) => {
-          console.error('Error fetching permissions on init:', err);
-        },
-      });
     }
   }
 
@@ -188,45 +150,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
               }
 
               const userId = datauser.id;
-              const isAdvancedLocal = !!datauser.advanced;
-              const branchIdLocal = datauser.applybranch ?? this.idBranch;
-
-              if (branchIdLocal != null && branchIdLocal !== 0) {
-                forkJoin({
-                  basic: this.auth.fetchUserPermissions(userId),
-                  advanced: this.auth.fetchUserPermissionsAdvanced(userId, branchIdLocal).pipe(
-                    catchError(() => of({ permissions: {} }))
-                  ),
-                }).subscribe({
-                  next: ({ basic, advanced }) => {
-                    const adv = advanced?.permissions;
-                    if (basic?.permissions) {
-                      this.auth.setMenuUserPermissions(basic.permissions);
-                      const merged = this.auth.mergeGuardAdvancedIntoBase(basic.permissions, adv);
-                      this.auth.setUserPermissions(merged);
-                    }
-                    this.router.navigate(['/main']);
-                  },
-                  error: (permError) => {
-                    console.error('Error fetching advanced permissions:', permError);
-                    this.isLoading = false;
-                  },
-                });
-              } else {
-                this.auth.fetchUserPermissions(userId).subscribe({
-                  next: (permissionsData: any) => {
-                    if (permissionsData && permissionsData.permissions) {
-                      this.auth.setUserPermissions(permissionsData.permissions);
-                      this.auth.setMenuUserPermissions(permissionsData.permissions);
-                    }
-                    this.router.navigate(['/main']);
-                  },
-                  error: (permError) => {
-                    console.error('Error fetching permissions:', permError);
-                    this.isLoading = false;
-                  },
-                });
-              }
+              this.router.navigate(['/main']);
             }
           },
           error: (error) => {
