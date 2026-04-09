@@ -7,6 +7,7 @@ import { forkJoin, lastValueFrom } from 'rxjs';
 import { TimeService } from 'app/services/time.service';
 import { alerts } from 'app/helpers/alerts';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 // --- Interfaces para una mejor definición de tipos ---
 interface CrudPermission {
@@ -53,6 +54,7 @@ export class PermissionsViewComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
+  private authService = inject(AuthService);
 
   idRole: number;
   idPosicion: number;
@@ -86,7 +88,6 @@ export class PermissionsViewComponent implements OnInit {
          console.log("new data", this.rawData);
          this.groupedPermissions = this.transformData(this.rawData);
        });
-    this.groupedPermissions = this.transformData(this.rawData);
   }
 
   checkForChanges() {
@@ -256,7 +257,12 @@ export class PermissionsViewComponent implements OnInit {
       );
       this.notSavedChanges = false;
       this.trackingService.addLog(this.trackingService.getnameComp(),'Update/Add Registros en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
+      // Fuerza relectura local y re-evaluación global de permisos/guards dependientes.
       this.obtenerDatos(this.idRole, this.idPosicion);
+      this.signalsService.setRefresSecurity(true);
+      this.signalsService.setRefresCantidadPermisos(true);
+      // Recargar guard para que el sidebar refleje los cambios de permisos
+      this.authService.reloadCurrentSessionGuard().subscribe();
 
     } catch (error) {
       console.error("Error al guardar los permisos:", error);

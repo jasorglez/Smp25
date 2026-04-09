@@ -68,15 +68,12 @@ export class MasterPermissionsGuard implements CanActivate {
               .pipe(map((p) => p.permissions))
       ),
       map((permissionsTree) => {
-        this.permissionService.setUserPermissions(permissionsTree);
-        const hasMasterPermission = this.permissionService.hasMasterPermission(
-          requiredPermissions.master
-        );
+        const hasMasterPermission =
+          permissionsTree?.[requiredPermissions.master]?.active === true;
         const hasDetailedPermission = requiredPermissions.detailed
-          ? this.permissionService.hasDetailedPermission(
-              requiredPermissions.master,
+          ? permissionsTree?.[requiredPermissions.master]?.children?.[
               requiredPermissions.detailed
-            )
+            ]?.active === true
           : true;
 
         if (hasMasterPermission && hasDetailedPermission) {

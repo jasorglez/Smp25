@@ -26,7 +26,7 @@ import { environment } from '@env/environment';
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-        <strong>Departamentos de: {{ userName }} ({{ branchName }})</strong>
+        <strong>Departamentos de putos: {{ userName }} ({{ branchName }})</strong>
         <div class="d-flex">
           <button
             class="btn btn-primary ms-1"
@@ -1007,6 +1007,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       this.hasWarehouseChanges = false;
       this.signalsService.setRefresCantidadPermisos(true);
       this.obternerDatos();
+      // Recargar guard para que el sidebar refleje los nuevos permisos del usuario
+      this.authService.reloadCurrentSessionGuard({ idBranchOverride: this.branchId }).subscribe();
     } catch (error) {
       console.error(error);
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
@@ -1044,6 +1046,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           this.obternerDatos();
           this.signalsService.setRefresCantidadPermisos(true);
           this.selectedWarehouse = null;
+          // Recargar guard para que el sidebar refleje la eliminación del departamento
+          this.authService.reloadCurrentSessionGuard({ idBranchOverride: this.branchId }).subscribe();
         });
       }
     });
@@ -1114,6 +1118,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     if (email === environment.root) {
       return true;
     }
-    return this.authService.hasDetailedPermission('users-setup', 'permissions');
+    return this.authService.hasUsersMenuPermissionsAccess();
   }
 }

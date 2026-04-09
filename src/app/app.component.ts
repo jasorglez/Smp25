@@ -29,8 +29,8 @@ export class AppComponent implements OnInit, OnDestroy {
       const isAdvanced = this.signalsService.getIsAdvanced();
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-      // Solo cargamos permisos si tenemos el email y, en caso de ser avanzado, el idBranch.
-      if (email && (!isAdvanced || (isAdvanced && idBranch))) {
+      // Esperar sucursal seleccionada evita pintar el árbol global y luego corregirlo "a destiempo".
+      if (email && idBranch != null) {
         this.loadPermissions(email, isAdvanced, idBranch);
       }
     });
@@ -52,7 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {
     // Si los permisos ya existen y no han cambiado las condiciones, no recargar.
     if (this.authService.getUserPermissions() && Object.keys(this.authService.getUserPermissions()).length > 0) {
-      if (!isAdvanced || (isAdvanced && idBranch === this.lastLoadedBranchId)) {
+      if (idBranch === this.lastLoadedBranchId) {
         return;
       }
     }
@@ -63,38 +63,18 @@ export class AppComponent implements OnInit, OnDestroy {
     this.permissionsLoadSub = this.authService
       .getUserId(email)
       .pipe(
-        switchMap((userId) => {
-          if (isAdvanced && idBranch != null && idBranch > 0) {
-            return forkJoin({
-              basic: this.authService.fetchUserPermissions(userId),
-              advanced: this.authService.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
-                catchError(() => of({ permissions: {} }))
-              ),
-            }).pipe(
-              map(({ basic, advanced }) => ({ mode: 'advanced' as const, basic, advanced }))
-            );
-          }
-          return this.authService
-            .fetchUserPermissions(userId)
-            .pipe(map((data: any) => ({ mode: 'basic' as const, data })));
-        })
+        switchMap((userId) =>
+          this.authService.fetchEffectivePermissionsTree(userId, idBranch).pipe(
+            catchError(() => of({} as any))
+          )
+        )
       )
       .subscribe({
-        next: (result) => {
+        next: (tree) => {
           if (this.signalsService.getBranchSelectedBySidebar()() !== branchSnapshot) {
             return;
           }
-          if (result.mode === 'advanced') {
-            const { basic, advanced } = result;
-            const adv = advanced?.permissions;
-            this.authService.setMenuUserPermissions(basic.permissions);
-            const merged = this.authService.mergeGuardAdvancedIntoBase(basic.permissions, adv);
-            this.authService.setUserPermissions(merged);
-          } else {
-            const data = result.data;
-            this.authService.setUserPermissions(data.permissions);
-            this.authService.setMenuUserPermissions(data.permissions);
-          }
+          this.authService.applyEffectivePermissionsTree(tree);
           this.lastLoadedBranchId = branchSnapshot;
           this.signalsService.bumpGuardRefreshTick();
         },

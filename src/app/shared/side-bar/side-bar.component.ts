@@ -11,9 +11,10 @@ import { RootService } from 'app/services/root.service';
 import { UsersService } from 'app/services/users.service';
 import { SharedModule } from '../shared.module';
 import { FormsModule } from '@angular/forms';
-import { EMPTY, map, tap } from 'rxjs';
+import { EMPTY, lastValueFrom, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
 import { ConventionsService } from 'app/services/conventions.service';
+import { MenuService } from 'app/services/menu.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -30,6 +31,7 @@ export class SideBarComponent {
 
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
+  private isInteractingWithSelect = false;
   companyLogoSrc = this.defaultCompanyLogo;
 
   selectedRoot: string = '';
@@ -54,6 +56,8 @@ export class SideBarComponent {
 
   private rootAdministrator: number[] = [];
 
+  sidebarMenus: { identifier: string; permissionName: string; route: string; icon: string }[] = [];
+
   constructor(
     public translateService: TraductorService,
     public trackingService: TrackingService,
@@ -65,7 +69,8 @@ export class SideBarComponent {
     public projectService: ProjectsService,
     private userService: UsersService,
     private signalsService: SignalsService,
-    private conventionsService: ConventionsService
+    private conventionsService: ConventionsService,
+    private menuService: MenuService
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
     effect(async () => {
@@ -128,7 +133,24 @@ export class SideBarComponent {
         sel.value = this.selectedBranchId;
       }
     });
+    await this.reloadGuardForSelectedBranch();
     await this.getpermissionxContracts();
+  }
+
+  private async reloadGuardForSelectedBranch(): Promise<void> {
+    const branchId = Number(this.selectedBranchId);
+    if (!Number.isFinite(branchId) || branchId === 0) {
+      return;
+    }
+    try {
+      await lastValueFrom(
+        this.authService.reloadCurrentSessionGuard({
+          idBranchOverride: branchId,
+        })
+      );
+    } catch (error) {
+      console.error('Error al recargar permisos por sucursal en sidebar:', error);
+    }
   }
 
   async ngOnInit() {
@@ -168,6 +190,7 @@ error: (error) => {
   }
 
   onRootsSelected(event: Event): void {
+    this.finishSelectInteraction();
     const target = event.target as HTMLSelectElement;
     this.selectedRoot = target.value;
     if (this.selectedRoot) {
@@ -185,6 +208,7 @@ error: (error) => {
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
       //    this.getpermissionxContracts(parseInt(this.selectedRoot));
       this.getpermissionxBranchs(parseInt(this.selectedRoot));
+      this.loadSidebarMenus(parseInt(this.selectedRoot));
       this.getHeadersCompanys(this.selectedRoot);
     }
   }
@@ -208,6 +232,7 @@ error: (error) => {
           // Llamar a getpermissionxContracts con el primer elemento
           //   this.getpermissionxContracts(parseInt(this.selectedRoot));
           this.getpermissionxBranchs(parseInt(this.selectedRoot));
+          this.loadSidebarMenus(parseInt(this.selectedRoot));
           // Forzar la actualización del select
           setTimeout(() => {
             const selectElement = document.getElementById(
@@ -291,6 +316,7 @@ error: (error) => {
   }
 
   async onContractsSelected(event: Event) {
+    this.finishSelectInteraction();
     const target = event.target as HTMLSelectElement;
     this.selectedContractId = target.value;
     if (this.selectedContractId) {
@@ -311,6 +337,7 @@ error: (error) => {
   }
 
   async onBranchSelected(event: Event) {
+    this.finishSelectInteraction();
     const target = event.target as HTMLSelectElement;
     this.selectedBranchId = target.value;
     if (this.selectedBranchId) {
@@ -327,6 +354,7 @@ error: (error) => {
       if (branchMeta) {
         this.signalsService.setBranchNameSelectedBySidebar(branchMeta.name);
       }
+      await this.reloadGuardForSelectedBranch();
       await this.getpermissionxContracts();
       // Borro la signal de project para resetear el dato
     }
@@ -362,6 +390,7 @@ error: (error) => {
   } 
 
   async onProjectSelected(event: Event) {
+    this.finishSelectInteraction();
     const target = event.target as HTMLSelectElement;
     this.selectedProjectId = target.value;
     if (this.selectedProjectId) {
@@ -488,6 +517,7 @@ error: (error) => {
   }
 
   async onCpSelected(event: Event) {
+    this.finishSelectInteraction();
     const target = event.target as HTMLSelectElement;
     this.trackingService.setPlatform(parseInt(target.value));
     this.selectedCProcessId = parseInt(target.value, 10);
@@ -510,6 +540,7 @@ error: (error) => {
   }
 
   async onPlataformSelected(event: Event) {
+    this.finishSelectInteraction();
     const target = event.target as HTMLSelectElement;
 
     //this.trackingService.setPlatform(parseInt(target.value)) ;
@@ -671,6 +702,22 @@ error: (error) => {
     return EMPTY;
   }
 
+  loadSidebarMenus(idCompany: number): void {
+    this.menuService.getSidebarMenus(idCompany).subscribe({
+      next: (menus) => { this.sidebarMenus = menus; },
+      error: (err) => console.error('Error cargando menus del sidebar:', err)
+    });
+  }
+
+  onMenuItemClick(menuName: string): void {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Elección del menu ${menuName}`,
+      'Menu Side Bar',
+      ''
+    );
+  }
+
 toggleSidebar() {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
     this.isTemporarilyExpanded = false;
@@ -690,8 +737,27 @@ toggleSidebar() {
   collapseAfterInteraction() {
     if (this.isSidebarCollapsed && this.isTemporarilyExpanded) {
       setTimeout(() => {
+        if (this.isInteractingWithSelect) {
+          return;
+        }
         this.isTemporarilyExpanded = false;
       }, 200); // Pequeño delay para permitir la interacción
     }
+  }
+  beginSelectInteraction() {
+    this.isInteractingWithSelect = true;
+    this.expandTemporarily();
+  }
+
+  onSidebarControlBlur() {
+    if (this.isInteractingWithSelect) {
+      return;
+    }
+    this.collapseAfterInteraction();
+  }
+
+  private finishSelectInteraction() {
+    this.isInteractingWithSelect = false;
+    this.collapseAfterInteraction();
   }
 }
