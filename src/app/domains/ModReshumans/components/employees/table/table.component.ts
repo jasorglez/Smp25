@@ -30,6 +30,7 @@ import { RolesService } from 'app/services/roles.service';
 import { AuthService } from 'app/services/auth.service';
 import { UsersService } from 'app/services/users.service';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
+import { PermitionsService } from 'app/services/permitions.service';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
@@ -64,6 +65,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private rolesService = inject(RolesService);
   private usersService = inject(UsersService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
+  private permitionsService = inject(PermitionsService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   id: number;
@@ -1981,6 +1983,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       (row) => row.__modified && !row.__isNew
     );
     const branchChangedRows = modifiedRows.filter((row) => this.didBranchChange(row));
+    const deptoPosChangedRows = modifiedRows.filter((row) => this.didDeptoPosChange(row));
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -2000,6 +2003,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       console.log('[SYNC] branchChangedRows:', branchChangedRows.length, branchChangedRows.map(r => ({ id: r.id, name: r.name, oldBranch: this.getOriginalBranchId(r), newBranch: r.idBranch })));
       for (const row of branchChangedRows) {
         await this.syncUserPrincipalBranch(row);
+      }
+      for (const row of deptoPosChangedRows) {
+        await this.syncUserDeptoPosPermission(row);
       }
 
       // Determinar qué ID vamos a seleccionar después de recargar
@@ -2147,6 +2153,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       if (!Number.isFinite(id) || id <= 0) continue;
       this.originalRowsById.set(id, {
         idBranch: Number(row?.idBranch ?? 0) || 0,
+        idDepto: Number(row?.idDepto ?? 0) || 0,
+        idPosition: Number(row?.idPosition ?? 0) || 0,
         email: String(row?.email ?? '').trim(),
         employeeCode: String(row?.employeeCode ?? '').trim(),
         name: String(row?.name ?? '').trim(),
@@ -2168,6 +2176,30 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     if (!Number.isFinite(id) || id <= 0) return 0;
     const original = this.originalRowsById.get(id);
     return Number(original?.idBranch ?? 0) || 0;
+  }
+
+  private didDeptoPosChange(row: any): boolean {
+    const id = Number(row?.id);
+    if (!Number.isFinite(id) || id <= 0) return false;
+    const original = this.originalRowsById.get(id);
+    if (!original) return false;
+    const curDepto = Number(row?.idDepto ?? 0) || 0;
+    const curPos = Number(row?.idPosition ?? 0) || 0;
+    const origDepto = Number(original.idDepto ?? 0) || 0;
+    const origPos = Number(original.idPosition ?? 0) || 0;
+    return (curDepto > 0 && curDepto !== origDepto) || (curPos > 0 && curPos !== origPos);
+  }
+
+  private getOriginalDepto(row: any): number {
+    const id = Number(row?.id);
+    if (!Number.isFinite(id) || id <= 0) return 0;
+    return Number(this.originalRowsById.get(id)?.idDepto ?? 0) || 0;
+  }
+
+  private getOriginalPosition(row: any): number {
+    const id = Number(row?.id);
+    if (!Number.isFinite(id) || id <= 0) return 0;
+    return Number(this.originalRowsById.get(id)?.idPosition ?? 0) || 0;
   }
 
   private normalizeMatchString(value: any): string {
@@ -2266,14 +2298,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     if (newBranchId <= 0 || oldBranchId <= 0 || newBranchId === oldBranchId) return;
 
     try {
-      // Solo usamos Security API — evitamos SMP que puede tener problemas
       const rawPermissions = await lastValueFrom(
         this.usersxpermissionsService
           .getUsersxPermissionsGeneral('branch', idUser)
           .pipe(catchError(() => of([])))
       );
       const branchPermissions = this.toUsersArray(rawPermissions);
-      console.log('[SYNC] branchPermissions for user', idUser, ':', branchPermissions);
 
       const oldRow = branchPermissions.find((p: any) =>
         Number(p?.idPermission ?? p?.IdPermission ?? 0) === oldBranchId
@@ -2282,7 +2312,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         Number(p?.idPermission ?? p?.IdPermission ?? 0) === newBranchId
       );
 
-      // 1. Eliminar el permiso de la sucursal anterior
+      // 1. Eliminar la sucursal anterior de la cascada
       const oldRowId = Number(oldRow?.id ?? oldRow?.Id ?? 0) || 0;
       if (oldRowId > 0) {
         await lastValueFrom(
@@ -2292,7 +2322,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         );
       }
 
-      // 2. Agregar el permiso de la nueva sucursal si no existe
+      // 2. Agregar la nueva sucursal si aún no existe
       if (!newRow) {
         await lastValueFrom(
           this.usersxpermissionsService
@@ -2307,7 +2337,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         );
       }
 
-      // 3. Marcar nueva sucursal como principal
+      // 3. Marcar la nueva sucursal como principal
       await lastValueFrom(
         this.usersxpermissionsService
           .setPrincipal(idUser, newBranchId)
@@ -2324,6 +2354,69 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     if (userIds.length === 0) return;
     for (const idUser of userIds) {
       await this.syncSingleUserPrincipalBranch(idUser, row);
+    }
+  }
+
+  private async syncSingleUserDeptoPosPermission(idUser: number, row: any): Promise<void> {
+    const newDepto = Number(row?.idDepto ?? 0) || 0;
+    const newPos = Number(row?.idPosition ?? 0) || 0;
+    const oldDepto = this.getOriginalDepto(row);
+    const oldPos = this.getOriginalPosition(row);
+    const branchId = Number(row?.idBranch ?? 0) || 0;
+    const oldBranchId = this.getOriginalBranchId(row) || branchId;
+
+    if (newDepto <= 0 || newPos <= 0) return;
+    if (oldDepto <= 0 || oldPos <= 0) return;
+    if (newDepto === oldDepto && newPos === oldPos) return;
+
+    try {
+      // Obtener los combos existentes para verificar si el nuevo ya existe
+      const rawCombos = await lastValueFrom(
+        this.permitionsService.getRolYPosicion(idUser, branchId).pipe(catchError(() => of([])))
+      );
+      const combos: any[] = Array.isArray(rawCombos) ? rawCombos
+        : Array.isArray(rawCombos?.data) ? rawCombos.data
+        : [];
+
+      const newComboExists = combos.some((c: any) =>
+        Number(c?.idRole ?? c?.IdRole ?? 0) === newDepto &&
+        Number(c?.idPosicion ?? c?.IdPosicion ?? 0) === newPos
+      );
+
+      // 1. Eliminar el combo anterior de la cascada
+      await lastValueFrom(
+        this.permitionsService.deleteRoles(idUser, oldBranchId, oldDepto, oldPos)
+          .pipe(catchError(() => of(null)))
+      );
+
+      // 2. Agregar el nuevo combo solo si no existe ya
+      if (!newComboExists) {
+        await lastValueFrom(
+          this.permitionsService.addPermitionsDetailBydescription({
+            idUser,
+            idBranch: branchId,
+            idRole: newDepto,
+            idPosicion: newPos,
+            active: true,
+          }).pipe(catchError(() => of(null)))
+        );
+      }
+
+      // 3. Marcar el nuevo combo como principal
+      await lastValueFrom(
+        this.permitionsService.setPrincipal(idUser, branchId, newDepto, newPos)
+          .pipe(catchError(() => of(null)))
+      );
+    } catch (error) {
+      console.error('Error sincronizando departamento/posición del usuario:', error);
+    }
+  }
+
+  private async syncUserDeptoPosPermission(row: any): Promise<void> {
+    const userIds = await this.resolveUserIdsForEmployee(row);
+    if (userIds.length === 0) return;
+    for (const idUser of userIds) {
+      await this.syncSingleUserDeptoPosPermission(idUser, row);
     }
   }
 

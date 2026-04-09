@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.57 (08 Abril 2026) - colores requisicion desde typeOC de COTIZs',
+  version: '3.62 (08 Abril 2026) - sync depto/pos nivel 3: sustituye, no añade duplicado',
 };
 
