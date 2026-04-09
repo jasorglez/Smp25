@@ -1,1 +1,10 @@
 // Purchase Order Delison Component Styles
+
+:host ::ng-deep .small-text-ag-grid .ag-header-cell-label {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+:host ::ng-deep .small-text-ag-grid .ag-header-cell-text {
+  white-space: normal;
+}

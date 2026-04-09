@@ -66,7 +66,9 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
-    filter: true
+    filter: true,
+    wrapHeaderText: true,
+    autoHeaderHeight: true
   };
 
   constructor() {
@@ -254,7 +256,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   // ==================== GRID CONFIG ====================
 
   public gridOptions: any = {
-    headerHeight: 35,
+    headerHeight: 56,
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
@@ -291,7 +293,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       {
         field: 'countrow',
         headerName: 'Artículos',
-        width: 90,
+        width: 140,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: { onClick: (node: any) => this.toggleCascade(node) },
         valueGetter: params => params.data?.countrow || 0,
@@ -301,7 +303,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       {
         field: 'pdf',
         headerName: 'PDF',
-        width: 60,
+        width: 100,
         cellRenderer: PdfButtonCellRendererPurchaseOrderComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleReportCascade(node),
@@ -330,13 +332,13 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       {
         field: 'fechaCreate',
         headerName: 'Fecha Creación',
-        width: 140,
+        width: 155,
         editable: false
       },
       {
         field: 'fechaSupply',
         headerName: 'Fecha Entrega',
-        width: 140,
+        width: 155,
         editable: false
       },
       {
@@ -349,7 +351,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       {
         field: 'typeOc',
         headerName: 'Tipo OC',
-        width: 120,
+        width: 130,
         filter: true,
         editable: false
       },
@@ -374,7 +376,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       {
         field: 'total',
         headerName: 'Total OC',
-        width: 140,
+        width: 150,
         editable: false,
         valueFormatter: (params: any) => {
           const v = params.value || 0;
