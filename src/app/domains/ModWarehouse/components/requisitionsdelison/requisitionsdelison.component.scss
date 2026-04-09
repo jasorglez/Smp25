@@ -14,3 +14,12 @@
 .expanded-pink {
   background-color: #fce4ec !important;
 }
+
+:host ::ng-deep .small-text-ag-grid .ag-header-cell-label {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+:host ::ng-deep .small-text-ag-grid .ag-header-cell-text {
+  white-space: normal;
+}

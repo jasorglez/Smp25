@@ -78,6 +78,7 @@ export class ProductoTerminadoComponent {
   
     // Datos del catálogo jerárquico
     treeData: any[] = [];
+    visibleTreeData: any[] = [];
     selectedRowData: any = null;
     selectedNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
     selectedColumnContext: 'category' | 'family' | 'subfamily' | null = null; // Columna clickeada
@@ -131,6 +132,9 @@ export class ProductoTerminadoComponent {
         // Restaurar estado de expansión
         this.restoreExpansionState();
 
+        // Refrescar filas visibles incluso si no hay estado previo guardado
+        this.refreshVisibleRows();
+
         console.log('✅ Catálogo cargado correctamente');
 
       } catch (error) {
@@ -155,7 +159,10 @@ export class ProductoTerminadoComponent {
     // Construir estructura plana para 3 columnas con control de expansión
     private buildTreeStructure(categories: any[], families: any[], subfamilies: any[]) {
       this.treeData = [];
-  
+      console.log('🌳 buildTreeStructure - categorías:', categories.length, '| familias raw:', families.length, '| subfamilias raw:', subfamilies.length);
+      if (families.length > 0) console.log('🔍 Ejemplo familia[0]:', JSON.stringify(families[0]));
+      if (categories.length > 0) console.log('🔍 Ejemplo categoria[0]:', JSON.stringify(categories[0]));
+
       // Agregar categorías (nivel 1) - siempre visibles
       categories.forEach(category => {
         const categoryNode = {
@@ -166,9 +173,10 @@ export class ProductoTerminadoComponent {
           isVisible: true
         };
         this.treeData.push(categoryNode);
-  
+
         // Buscar familias de esta categoría (nivel 2)
         const categoryFamilies = families.filter(family => family.parentId === category.id);
+        console.log(`  📦 Categoría "${category.description}" (id=${category.id}) → ${categoryFamilies.length} familias`);
   
         categoryFamilies.forEach(family => {
           const familyNode = {
@@ -256,19 +264,34 @@ export class ProductoTerminadoComponent {
               const description = params.data.description;
               const hasCounter = description.includes('(') && description.includes(')');
               const displayText = hasCounter ? description : `${description} (${this.getFamilyCountForCategory(params.data.originalId)})`;
-  
-              return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px; color: #2196f3; font-weight: bold;">${chevron}</span> ${displayText}`;
+
+              const container = document.createElement('span');
+              container.style.pointerEvents = 'none';
+              container.style.userSelect = 'none';
+              const toggle = document.createElement('span');
+              toggle.className = 'chevron-icon';
+              toggle.setAttribute('data-action', 'toggle');
+              toggle.style.cursor = 'pointer';
+              toggle.style.marginRight = '5px';
+              toggle.style.color = '#2196f3';
+              toggle.style.fontWeight = 'bold';
+              toggle.style.pointerEvents = 'none';
+              toggle.textContent = chevron;
+
+              const text = document.createElement('span');
+              text.style.pointerEvents = 'none';
+              text.textContent = ` ${displayText}`;
+
+              container.appendChild(toggle);
+              container.appendChild(text);
+              return container;
             }
             return '';
           },
           onCellClicked: (event: any) => {
             if (this.isDoubleClicking) return;
-
-            // Actualizar contexto de columna al hacer clic
             this.selectedColumnContext = 'category';
-
-            if (event.event.target.classList.contains('chevron-icon') ||
-                event.event.target.getAttribute('data-action') === 'toggle') {
+            if (event.data?.nodeLevel === 'category') {
               this.toggleCategoryExpansion(event.data);
             }
           }
@@ -282,18 +305,33 @@ export class ProductoTerminadoComponent {
               const childCount = this.getSubfamilyCountForFamily(params.data.originalId);
               const isExpanded = params.data.isExpanded || false;
               const chevron = isExpanded ? '▼' : '▶';
-              return `<span class="chevron-icon" data-action="toggle" style="cursor: pointer; margin-right: 5px; color: #2196f3; font-weight: bold;">${chevron}</span> ${params.data.description} (${childCount})`;
+              const container = document.createElement('span');
+              container.style.pointerEvents = 'none';
+              container.style.userSelect = 'none';
+              const toggle = document.createElement('span');
+              toggle.className = 'chevron-icon';
+              toggle.setAttribute('data-action', 'toggle');
+              toggle.style.cursor = 'pointer';
+              toggle.style.marginRight = '5px';
+              toggle.style.color = '#2196f3';
+              toggle.style.fontWeight = 'bold';
+              toggle.style.pointerEvents = 'none';
+              toggle.textContent = chevron;
+
+              const text = document.createElement('span');
+              text.style.pointerEvents = 'none';
+              text.textContent = ` ${params.data.description} (${childCount})`;
+
+              container.appendChild(toggle);
+              container.appendChild(text);
+              return container;
             }
             return '';
           },
           onCellClicked: (event: any) => {
             if (this.isDoubleClicking) return;
-
-            // Actualizar contexto de columna al hacer clic
             this.selectedColumnContext = 'family';
-
-            if (event.event.target.classList.contains('chevron-icon') ||
-                event.event.target.getAttribute('data-action') === 'toggle') {
+            if (event.data?.nodeLevel === 'family') {
               this.toggleFamilyExpansion(event.data);
             }
           }
@@ -702,15 +740,34 @@ export class ProductoTerminadoComponent {
     flattenTreeData(): any[] {
       return this.treeData.filter(item => item.isVisible);
     }
+
+    private isChevronToggleClick(event: any): boolean {
+      const target = event?.event?.target as HTMLElement | null;
+      if (!target) return false;
+      return !!target.closest('.chevron-icon,[data-action="toggle"]');
+    }
+
+    private refreshVisibleRows(): void {
+      this.visibleTreeData = this.flattenTreeData();
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.visibleTreeData);
+        this.gridApi.refreshCells({ force: true });
+        this.gridApi.redrawRows();
+      }
+    }
   
     // Métodos para manejar expand/collapse
     toggleCategoryExpansion(categoryData: any) {
+      console.log('🔽 toggleCategoryExpansion llamado, originalId:', categoryData?.originalId);
       const category = this.treeData.find(item =>
         item.nodeLevel === 'category' && item.originalId === categoryData.originalId
       );
-  
+      console.log('🔽 category encontrada:', !!category, '| treeData total:', this.treeData.length);
+
       if (category) {
         category.isExpanded = !category.isExpanded;
+        const childFamilies = this.treeData.filter(item => item.nodeLevel === 'family' && item.parentCategoryId === category.originalId);
+        console.log('🔽 familias hijas en treeData:', childFamilies.length, '| isExpanded ahora:', category.isExpanded);
   
         // Mostrar/ocultar familias de esta categoría
         this.treeData.forEach(item => {
@@ -738,9 +795,7 @@ export class ProductoTerminadoComponent {
         });
   
         // Refrescar el grid
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.flattenTreeData());
-        }
+        this.refreshVisibleRows();
       }
     }
   
@@ -760,9 +815,7 @@ export class ProductoTerminadoComponent {
         });
   
         // Refrescar el grid
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.flattenTreeData());
-        }
+        this.refreshVisibleRows();
       }
     }
   
@@ -1215,11 +1268,6 @@ export class ProductoTerminadoComponent {
       });
   
       // Refrescar grid
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      }
+      this.refreshVisibleRows();
     }
   }
-
-
-

@@ -140,6 +140,8 @@ export class RequisitionsDelisonComponent implements OnInit {
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
+    wrapHeaderText: true,
+    autoHeaderHeight: true,
     suppressKeyboardEvent: (params) => {
       if (params.event.key === 'Enter' && params.editing) {
         this.enterPressed = true;
@@ -433,7 +435,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   public gridOptions: any = {
-    headerHeight: 35,
+    headerHeight: 56,
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
@@ -634,7 +636,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'requisitionNumber',
         headerName: '# Requisicion',
-        width: 120,
+        width: 150,
         filter: true,
         editable: false,
         cellStyle: (params: any) => {
@@ -652,7 +654,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'requestDate',
         headerName: 'Fecha solicitud',
-        width: 130,
+        width: 155,
         editable: (params: any) => !params.data?.__isNew && !!this.idBranch,
         cellEditor: 'agDateCellEditor',
         valueGetter: (params: any) =>
@@ -813,7 +815,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'articlesCount',
         headerName: 'Articulos que solicita',
-        width: 100,
+        width: 165,
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Art'),
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
@@ -876,7 +878,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'column8',
         headerName: 'Cumplimiento Requisicion',
-        width: 180,
+        width: 210,
         cellRenderer: (params: any) => {
           const totalItems = params.data.detailData ? params.data.detailData.length : 0;
           const savedItems = params.data.detailData ? params.data.detailData.filter((item: any) => item.saved === true).length : 0;

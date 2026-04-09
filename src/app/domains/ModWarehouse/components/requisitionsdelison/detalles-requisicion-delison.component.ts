@@ -29,7 +29,8 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
         <strong>Artículos de la Requisición</strong>
         <div class="d-flex gap-2">
         
-       <button class="btn btn-primary btn-sm me-2" (click)="addItem()" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create')">
+       <button class="btn btn-primary btn-sm me-2" (click)="addItem()" [disabled]="hasProviderAssigned" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create')"
+          [title]="hasProviderAssigned ? 'No se puede agregar: la cotización ya tiene proveedor asignado' : ''">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
         
