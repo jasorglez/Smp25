@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.67 (09 Abril 2026) - fix: reloadCurrentSessionGuard tras guardar/eliminar depto y tras guardar roles',
+  version: '3.68 (09 Abril 2026) - Compras Delison dinámicos vía detailedpermissions (route/icon/showAsTab)',
 };
 
