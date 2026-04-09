@@ -480,7 +480,7 @@ export class AuthService {
 
     return this.getUserId(email).pipe(
       switchMap((userId) => {
-        if (isAdvanced && idBranch > 0) {
+        if (idBranch > 0) {
           return this.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
             switchMap((data: any) => {
               const perms = data?.permissions;

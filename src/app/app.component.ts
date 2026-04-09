@@ -29,8 +29,8 @@ export class AppComponent implements OnInit, OnDestroy {
       const isAdvanced = this.signalsService.getIsAdvanced();
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-      // Solo cargamos permisos si tenemos el email y, en caso de ser avanzado, el idBranch.
-      if (email && (!isAdvanced || (isAdvanced && idBranch))) {
+      // Cargamos permisos siempre que tengamos email. La sucursal filtra qué módulos aparecen.
+      if (email) {
         this.loadPermissions(email, isAdvanced, idBranch);
       }
     });
@@ -52,7 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {
     // Si los permisos ya existen y no han cambiado las condiciones, no recargar.
     if (this.authService.getUserPermissions() && Object.keys(this.authService.getUserPermissions()).length > 0) {
-      if (!isAdvanced || (isAdvanced && idBranch === this.lastLoadedBranchId)) {
+      if (idBranch === this.lastLoadedBranchId) {
         return;
       }
     }
@@ -64,7 +64,7 @@ export class AppComponent implements OnInit, OnDestroy {
       .getUserId(email)
       .pipe(
         switchMap((userId) => {
-          if (isAdvanced && idBranch != null && idBranch > 0) {
+          if (idBranch != null && idBranch > 0) {
             return forkJoin({
               basic: this.authService.fetchUserPermissions(userId),
               advanced: this.authService.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
