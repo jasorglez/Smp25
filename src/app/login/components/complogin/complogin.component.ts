@@ -191,42 +191,9 @@ export class ComploginComponent implements OnInit, OnDestroy {
               const isAdvancedLocal = !!datauser.advanced;
               const branchIdLocal = datauser.applybranch ?? this.idBranch;
 
-              if (isAdvancedLocal && branchIdLocal != null && branchIdLocal !== 0) {
-                forkJoin({
-                  basic: this.auth.fetchUserPermissions(userId),
-                  advanced: this.auth.fetchUserPermissionsAdvanced(userId, branchIdLocal).pipe(
-                    catchError(() => of({ permissions: {} }))
-                  ),
-                }).subscribe({
-                  next: ({ basic, advanced }) => {
-                    const adv = advanced?.permissions;
-                    if (basic?.permissions) {
-                      this.auth.setMenuUserPermissions(basic.permissions);
-                      const merged = this.auth.mergeGuardAdvancedIntoBase(basic.permissions, adv);
-                      this.auth.setUserPermissions(merged);
-                    }
-                    this.router.navigate(['/main']);
-                  },
-                  error: (permError) => {
-                    console.error('Error fetching advanced permissions:', permError);
-                    this.isLoading = false;
-                  },
-                });
-              } else {
-                this.auth.fetchUserPermissions(userId).subscribe({
-                  next: (permissionsData: any) => {
-                    if (permissionsData && permissionsData.permissions) {
-                      this.auth.setUserPermissions(permissionsData.permissions);
-                      this.auth.setMenuUserPermissions(permissionsData.permissions);
-                    }
-                    this.router.navigate(['/main']);
-                  },
-                  error: (permError) => {
-                    console.error('Error fetching permissions:', permError);
-                    this.isLoading = false;
-                  },
-                });
-              }
+              // No pre-cargar permisos aquí — app.component los carga ya con guardAdvanced
+              // filtrado por sucursal. Pre-cargarlos aquí causa flash de permisos globales en primer login.
+              this.router.navigate(['/main']);
             }
           },
           error: (error) => {
