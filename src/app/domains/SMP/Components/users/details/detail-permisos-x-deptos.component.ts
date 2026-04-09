@@ -26,7 +26,7 @@ import { environment } from '@env/environment';
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-        <strong>Departamentos de: {{ userName }} ({{ branchName }})</strong>
+        <strong>Departamentos de putos: {{ userName }} ({{ branchName }})</strong>
         <div class="d-flex">
           <button
             class="btn btn-primary ms-1"

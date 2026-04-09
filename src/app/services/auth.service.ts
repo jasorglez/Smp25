@@ -439,6 +439,7 @@ export class AuthService {
    *
    * @param options.idBranchOverride Si el modal guardó permisos para otra sucursal que la del sidebar,
    *        pasar esa sucursal para que `guardAdvanced` coincida con lo guardado (p. ej. Almacenes).
+   *        También puede ser negativa para la opción "Todas las sucursales".
    * @param options.preferUserSystemGuard Si es true, usa solo `guard/{userId}` (tabla UserSystem / Permisos maestros).
    *        Útil tras guardar desde el modal solo `updateUserPermissions`: `guardAdvanced` sigue leyendo CrudPermissions
    *        y no refleja el cambio hasta F5; el menú (p. ej. pestaña Sucursales) debe alinearse con UserSystem.
@@ -472,15 +473,14 @@ export class AuthService {
         })
       );
     }
-    const isAdvanced = this.signalsService.getIsAdvanced();
     const sidebarBranch = Number(this.signalsService.getBranchSelectedBySidebar()());
     const override =
       options?.idBranchOverride != null ? Number(options.idBranchOverride) : NaN;
-    const idBranch = !Number.isNaN(override) && override > 0 ? override : sidebarBranch;
+    const idBranch = !Number.isNaN(override) && override !== 0 ? override : sidebarBranch;
 
     return this.getUserId(email).pipe(
       switchMap((userId) => {
-        if (idBranch > 0) {
+        if (!Number.isNaN(idBranch) && idBranch !== 0) {
           return this.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
             switchMap((data: any) => {
               const perms = data?.permissions;
