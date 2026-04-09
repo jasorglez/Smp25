@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.65 (08 Abril 2026) - fix: login no pre-carga permisos globales, app.component maneja todo con guardAdvanced',
+  version: '3.67 (09 Abril 2026) - fix: reloadCurrentSessionGuard tras guardar/eliminar depto y tras guardar roles',
 };
 

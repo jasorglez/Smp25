@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { EMPTY, lastValueFrom, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
 import { ConventionsService } from 'app/services/conventions.service';
+import { MenuService } from 'app/services/menu.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -55,6 +56,8 @@ export class SideBarComponent {
 
   private rootAdministrator: number[] = [];
 
+  sidebarMenus: { identifier: string; permissionName: string; route: string; icon: string }[] = [];
+
   constructor(
     public translateService: TraductorService,
     public trackingService: TrackingService,
@@ -66,7 +69,8 @@ export class SideBarComponent {
     public projectService: ProjectsService,
     private userService: UsersService,
     private signalsService: SignalsService,
-    private conventionsService: ConventionsService
+    private conventionsService: ConventionsService,
+    private menuService: MenuService
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
     effect(async () => {
@@ -204,6 +208,7 @@ error: (error) => {
       this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
       //    this.getpermissionxContracts(parseInt(this.selectedRoot));
       this.getpermissionxBranchs(parseInt(this.selectedRoot));
+      this.loadSidebarMenus(parseInt(this.selectedRoot));
       this.getHeadersCompanys(this.selectedRoot);
     }
   }
@@ -227,6 +232,7 @@ error: (error) => {
           // Llamar a getpermissionxContracts con el primer elemento
           //   this.getpermissionxContracts(parseInt(this.selectedRoot));
           this.getpermissionxBranchs(parseInt(this.selectedRoot));
+          this.loadSidebarMenus(parseInt(this.selectedRoot));
           // Forzar la actualización del select
           setTimeout(() => {
             const selectElement = document.getElementById(
@@ -694,6 +700,22 @@ error: (error) => {
 
   private loadPermissions() {
     return EMPTY;
+  }
+
+  loadSidebarMenus(idCompany: number): void {
+    this.menuService.getSidebarMenus(idCompany).subscribe({
+      next: (menus) => { this.sidebarMenus = menus; },
+      error: (err) => console.error('Error cargando menus del sidebar:', err)
+    });
+  }
+
+  onMenuItemClick(menuName: string): void {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Elección del menu ${menuName}`,
+      'Menu Side Bar',
+      ''
+    );
   }
 
 toggleSidebar() {
