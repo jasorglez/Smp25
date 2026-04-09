@@ -31,6 +31,10 @@ export class MenuService {
   getSidebarMenus(idCompany: number): Observable<{ identifier: string; permissionName: string; route: string; icon: string }[]> {
     return this.http.get<any[]>(`${environment.urlSecurity}/MenuXCompany/${idCompany}/sidebar`, { headers: this.trackingService.getHeaders() });
   }
+  getTabMenus(masterIdentifier: string): Observable<{ masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number }[]> {
+    return this.http.get<any[]>(`${environment.urlSecurity}/DetailedPermissions/tabs/${masterIdentifier}`, { headers: this.trackingService.getHeaders() });
+  }
+
   updateMenu(idCompany: number, permissions: any[]): Observable<any> {
     return this.http.put(`${environment.urlSecurity}/MenuXCompany/${idCompany}`, permissions, { headers: this.trackingService.getHeaders() });
   }
