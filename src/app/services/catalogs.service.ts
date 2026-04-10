@@ -1,7 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { TrackingService } from './tracking.service';
 
 @Injectable({
@@ -36,7 +37,19 @@ export class CatalogsService {
   }  
   
   getCatalogsVigente(idRoot: number, type: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+    return this.http
+      .get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsVigente?idCompany=${idRoot}&type=${type}`, {
+        headers: this.trackingService.getHeaders()
+      })
+      .pipe(
+        catchError((err: HttpErrorResponse) => {
+          // Compat: APIs antiguas devolvían 404 sin filas; lista vacía es válida.
+          if (err.status === 404) {
+            return of([]);
+          }
+          return throwError(() => err);
+        })
+      );
   }
 
   getPermissionxprocess(id: number): Observable<any[]> {

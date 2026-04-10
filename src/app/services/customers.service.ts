@@ -1,8 +1,8 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { TrackingService } from './tracking.service';
 import { environment } from '@env/environment';
-import { forkJoin, Observable, of } from 'rxjs';
+import { forkJoin, Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ICustomer } from 'app/interface/icustomer';
 
@@ -222,7 +222,32 @@ export class CustomersService {
     return this.http.delete(`${environment.urlAdministration}/CustomerCreditsDelison/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  /**
+   * Listado de proveedores para AG Grid. Si el API desplegado no tiene `providers-for-grid` (404),
+   * usa `cusorprov` (mismos datos base) y adapta vigente/autorización.
+   */
   getProvidersForGrid(idRoot: number): Observable<any> {
-    return this.http.get(`${environment.urlAdministration}/Customer/providers-for-grid/${idRoot}`, { headers: this.trackingService.getHeaders() });
+    const headers = this.trackingService.getHeaders();
+    const primary = `${environment.urlAdministration}/Customer/providers-for-grid/${idRoot}`;
+    return this.http.get(primary, { headers }).pipe(
+      catchError((err: HttpErrorResponse) => {
+        if (err.status === 404) {
+          const fallback = `${environment.urlAdministration}/Customer/cusorprov?idCompany=${idRoot}&type=PROVIDERS`;
+          return this.http.get(fallback, { headers }).pipe(
+            map((rows: any) => this.mapCusorprovToProvidersGrid(rows))
+          );
+        }
+        return throwError(() => err);
+      })
+    );
+  }
+
+  private mapCusorprovToProvidersGrid(rows: any): any[] {
+    const arr = Array.isArray(rows) ? rows : [];
+    return arr.map((c: any) => ({
+      ...c,
+      Vigente: c.vigente === true || c.active === true,
+      autorizacion: c.porAutorizar === true || c.autorizacion === true
+    }));
   }
 }
