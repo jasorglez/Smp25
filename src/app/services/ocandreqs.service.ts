@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { TrackingService } from './tracking.service';
 
 @Injectable({
@@ -32,8 +33,32 @@ export class OcAndReqsService {
     return this.http.delete<any[]>(`${environment.urlWarehouse}/Ocandreq/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getReqItems(idRequisition: number): Observable<any> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Detailsreqoc/${idRequisition}`, { headers: this.trackingService.getHeaders() });
+  /**
+   * Detalle de líneas (requisición / COTIZ / OC). El API a veces devuelve array plano y a veces objeto envuelto.
+   */
+  private normalizeDetailsreqocList(raw: unknown): any[] {
+    if (raw == null) {
+      return [];
+    }
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    if (typeof raw === 'object') {
+      const o = raw as Record<string, unknown>;
+      for (const key of ['data', 'project', 'items', 'result', 'records', 'value']) {
+        const v = o[key];
+        if (Array.isArray(v)) {
+          return v;
+        }
+      }
+    }
+    return [];
+  }
+
+  getReqItems(idRequisition: number): Observable<any[]> {
+    return this.http
+      .get(`${environment.urlWarehouse}/Detailsreqoc/${idRequisition}`, { headers: this.trackingService.getHeaders() })
+      .pipe(map((raw) => this.normalizeDetailsreqocList(raw)));
   }
 
   addReqItem(data: any): Observable<any> {

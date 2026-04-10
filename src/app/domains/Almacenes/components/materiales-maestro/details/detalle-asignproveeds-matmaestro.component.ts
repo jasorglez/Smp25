@@ -189,6 +189,24 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       },
 
     {
+      field: 'campo7',
+      headerName: 'Por autorizar',
+      editable: false,
+      width: 110,
+      cellRenderer: 'agCheckboxCellRenderer',
+      valueGetter: (params: any) => {
+        const v = params.data?.campo7;
+        if (v === true || v === 1) {
+          return true;
+        }
+        if (typeof v === 'string') {
+          return v === '1' || v.toLowerCase() === 'true';
+        }
+        return false;
+      },
+    },
+
+    {
         field: 'idTabla',
         headerName: 'Proveedor',
         editable: true,
@@ -698,7 +716,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       campo4: '',              // Medidas
       campo5: '',              // Peso/Volumen
       campo6: '',              // Caducidad/Garantía
-      campo7: false,           // Campo oculto
+      campo7: false,           // Por autorizar
       campo9: 0,               // Precio unitario
       campo10: branchId,       // ID sucursal (del sidebar)
       branchName,              // Nombre de sucursal (del sidebar)

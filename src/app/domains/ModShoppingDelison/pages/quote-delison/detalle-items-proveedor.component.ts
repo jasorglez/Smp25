@@ -59,7 +59,7 @@ pdfMake.vfs = pdfFonts.vfs;
         <button class="btn btn-sm btn-outline-secondary" type="button" (click)="fileInput.click()" [disabled]="ocGenerated" title="Cargar PDF">
           <i class="bi bi-upload"></i>
         </button>
-        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="generatePlaceholderPdf()" title="Ver PDF">
+        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="generatePlaceholderPdf()" [disabled]="ocGenerated" title="Ver PDF">
           <i class="bi bi-file-earmark-pdf text-danger"></i>
         </button>
         <input type="date" class="form-control form-control-sm" [(ngModel)]="fechaProveedor" [disabled]="ocGenerated" style="width: 140px;">
@@ -326,6 +326,8 @@ export class DetalleItemsProveedorComponent {
 
   typeocValues: string[] = [];
 
+  private readonly AUTHORIZED_TYPES = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+
   private itemCommentsService = inject(ItemCommentsService);
 
   // Modal compra autorizada en otra fecha
@@ -371,6 +373,10 @@ export class DetalleItemsProveedorComponent {
 
   onGridReady(params: any) {
     this.gridApi = params.api;
+    // Si la OC ya estaba generada al momento de montar el grid, bloquearlo ahora
+    if (this.ocGenerated) {
+      this.lockGrid();
+    }
   }
 
   async loadProviders(): Promise<void> {
@@ -414,6 +420,7 @@ export class DetalleItemsProveedorComponent {
       numArticulo: item.recurrent === 'Nuevo' ? '' : (item.numArticle || (index + 1)),
       articulo: item.article || '',
       codigoExterno: '',
+      proveedorXTablaId: 0,
       costoUnitario: item.price || 0,
       compraMinima: 1,
       tiempoEntrega: '',
@@ -456,8 +463,12 @@ export class DetalleItemsProveedorComponent {
         const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
         if (match) {
           row.codigoExterno = match.campo11 || '';
+          row.proveedorXTablaId = match.id || 0;
+          row.proveedorXTablaObj = match;
         } else {
           row.codigoExterno = '';
+          row.proveedorXTablaId = 0;
+          row.proveedorXTablaObj = null;
           if (row.idSupplie) missing.push(row);
         }
       });
@@ -721,9 +732,15 @@ export class DetalleItemsProveedorComponent {
 
     try {
       await this.saveCotizOrOC('COTIZ');
+      // Misma fila de pedimento que el detalle de artículos: bloquear edición allí
+      this.setArticulosPedimentoLocked(true);
       // Si hay artículos sin asignación proveedor-material, crearlas ahora
       if (this.rowsMissingProvider.length > 0) {
         await this.createMissingProviderAssignments();
+      }
+      // Re-mapear IDs tras loadSavedItems (reconstruye rowData con proveedorXTablaId=0)
+      if (this.selectedProviderId) {
+        await this.fetchAndMapProviderAssignments(this.selectedProviderId);
       }
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
@@ -738,11 +755,16 @@ export class DetalleItemsProveedorComponent {
         this.ocandreqsService.lockRequisition(requisitionId, true).subscribe();
       }
 
+      // Eliminar asignaciones proveedor-material de filas no autorizadas
+      await this.deleteUnauthorizedProviderAssignments();
+
       await alerts.ocCotizSaved(this.savedCotizFolio);
 
-      // Si TODAS las filas tienen typeOC → generar OC automáticamente
-      const allRowsHaveTypeOC = this.rowData.length > 0 && this.rowData.every(row => !!(row.typeOC && row.typeOC.trim() !== ''));
-      if (allRowsHaveTypeOC) {
+      // Si hay al menos una fila con tipo OC autorizado → generar OC (solo esas filas van al detalle; ver saveCotizOrOC('OC'))
+      const hasAuthorizedForOc =
+        this.rowData.length > 0 &&
+        this.rowData.some((row) => this.AUTHORIZED_TYPES.includes(row.typeOC));
+      if (hasAuthorizedForOc) {
         this.savingChanges = false;
         await this.generateOC();
         return;
@@ -766,7 +788,9 @@ export class DetalleItemsProveedorComponent {
 
     try {
       const folio = await this.saveCotizOrOC('OC');
+      await this.clearPorAutorizarForOcRows();
       this.ocGenerated = true; // 🔒 Bloquear todo una vez generada la OC
+      this.lockGrid();
       await alerts.ocGenerated(folio);
     } catch (error: any) {
       console.error('❌ Error generando OC:', error);
@@ -815,13 +839,22 @@ export class DetalleItemsProveedorComponent {
     };
 
     const created: any = await lastValueFrom(this.ocandreqsService.addOcAndReq(ocPayload));
-    const newOcId = created.id;
+    const newOcId = Number(created?.id ?? created?.data?.id ?? created?.project?.id);
+    if (!Number.isFinite(newOcId) || newOcId <= 0) {
+      console.error('addOcAndReq: respuesta sin id válido', created);
+      throw new Error('No se obtuvo id de la orden / movimiento en el servidor');
+    }
 
     // Leer datos DIRECTO del grid para capturar valores editados
     const gridRows: any[] = [];
     this.gridApi.forEachNode((node: any) => gridRows.push(node.data));
 
-    const details = gridRows.map((row: any) => ({
+    // Para OC solo incluir filas con typeOC autorizado
+    const rowsForDetails = type === 'OC'
+      ? gridRows.filter((row: any) => this.AUTHORIZED_TYPES.includes(row.typeOC))
+      : gridRows;
+
+    const details = rowsForDetails.map((row: any) => ({
       idMovement: newOcId,
       idSupplie: row.idSupplie || 0,
       idProvider: this.selectedProviderId,
@@ -849,6 +882,19 @@ export class DetalleItemsProveedorComponent {
         await lastValueFrom(this.ocandreqsService.addReqItem(details[i]));
       }
       console.log('✅ Todos los artículos guardados correctamente');
+
+      if (type === 'OC' && details.length > 0) {
+        const totalSum = details.reduce(
+          (s, d) => s + (parseFloat(String(d.quantity)) || 0) * (parseFloat(String(d.price)) || 0),
+          0
+        );
+        await lastValueFrom(this.ocandreqsService.setCountItem(newOcId, details.length)).catch((e) =>
+          console.warn('⚠️ setCountItem OC:', e)
+        );
+        await lastValueFrom(this.ocandreqsService.setTotal(newOcId, totalSum)).catch((e) =>
+          console.warn('⚠️ setTotal OC:', e)
+        );
+      }
     } catch (itemError) {
       console.error('❌ Error guardando artículos, haciendo rollback del OC id=', newOcId, itemError);
       await lastValueFrom(this.ocandreqsService.deleteOcAndReq(newOcId)).catch(() => {});
@@ -870,14 +916,18 @@ export class DetalleItemsProveedorComponent {
     const slotSuffix = this.providerField === 'idProvider' ? '-A-' :
                        this.providerField === 'idProvider2' ? '-B-' : '-C-';
     try {
-      // Consultar COTIZ y OC en paralelo para determinar estado
+      // Consultar COTIZ (typeReference=delison) y OC (typeReference=branch por idReq) en paralelo
+      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const reqId    = this.params.data.requisitionId || 0;
       const [cotizData, ocData] = await Promise.all([
         lastValueFrom(this.ocandreqsService.getOcAndReqs('delison', cotizacionId, 'COTIZ')),
-        lastValueFrom(this.ocandreqsService.getOcAndReqs('delison', cotizacionId, 'OC'))
+        lastValueFrom(this.ocandreqsService.getOcAndReqs('branch', idBranch, 'OC'))
       ]);
 
       const cotizList = Array.isArray(cotizData) ? cotizData : [];
-      const ocList    = Array.isArray(ocData)    ? ocData    : [];
+      // Filtrar OCs que correspondan a esta requisición y slot
+      const ocList = (Array.isArray(ocData) ? ocData : [])
+        .filter((c: any) => Number(c.idReq) === Number(reqId));
 
       // Verificar si ya existe OC para este slot → candado total
       const existingOC = ocList
@@ -886,6 +936,8 @@ export class DetalleItemsProveedorComponent {
       if (existingOC) {
         this.ocGenerated = true;
         this.cotizacionSaved = true;
+        this.lockGrid();
+        this.setArticulosPedimentoLocked(true);
       }
 
       // Tomar COTIZ más reciente del slot
@@ -911,6 +963,10 @@ export class DetalleItemsProveedorComponent {
           this.fechaProveedor = String(existing.datesupply).substring(0, 10);
         }
         await this.loadSavedItems(existing.id);
+        if (existing.idProvider) {
+          await this.fetchAndMapProviderAssignments(existing.idProvider);
+        }
+        this.setArticulosPedimentoLocked(true);
       }
     } catch (err) {
       console.error('Error cargando COTIZ existente:', err);
@@ -928,6 +984,7 @@ export class DetalleItemsProveedorComponent {
         numArticulo: item.recurrent === 'Nuevo' ? '' : (item.numArticle || ''),
         articulo: item.description || item.nameArticle || '',
         codigoExterno: item.observation || '',
+        proveedorXTablaId: 0,
         costoUnitario: item.price || 0,
         compraMinima: item.compraMinima || 1,
         tiempoEntrega: item.tiempoEntrega || '',
@@ -959,7 +1016,7 @@ export class DetalleItemsProveedorComponent {
         campo4: 'NA',
         campo5: 'NA',
         campo6: 'NA',
-        campo7: false,
+        campo7: true,
         campo11: '',
         campo9: 0,
         campo10: branchId,
@@ -970,6 +1027,8 @@ export class DetalleItemsProveedorComponent {
       };
       try {
         const created: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
+        row.proveedorXTablaId = created?.id || 0;
+        row.proveedorXTablaObj = created || null;
         console.log(`✅ Asignación creada: Material ${row.idSupplie} → Proveedor ${this.selectedProviderId}`);
 
         // Crear automáticamente el detalle de sucursal si hay sucursal seleccionada
@@ -1045,7 +1104,7 @@ export class DetalleItemsProveedorComponent {
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
-        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
+        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId, locked: this.ocGenerated }),
       },
 
       {
@@ -1083,6 +1142,11 @@ export class DetalleItemsProveedorComponent {
    
     ];
 
+    // Si la OC ya fue generada, bloquear todas las columnas sin importar cuántas veces se reconstruya
+    if (this.ocGenerated) {
+      this._colDefs = this._colDefs.map(col => ({ ...col, editable: false }));
+    }
+
     return this._colDefs;
   }
 
@@ -1094,10 +1158,100 @@ export class DetalleItemsProveedorComponent {
     stopEditingWhenCellsLoseFocus: true,
     tooltipShowDelay: 400,
     onCellEditingStarted: () => {
-      // Si la OC ya fue generada, cancelar inmediatamente cualquier edición
       if (this.ocGenerated) {
         this.gridApi?.stopEditing(true);
       }
     }
   };
+
+  /** API puede devolver campo7 como bool, 1/0 o string. */
+  private porAutorizarActivo(obj: any): boolean {
+    if (!obj || obj.campo7 === undefined || obj.campo7 === null) {
+      return false;
+    }
+    const v = obj.campo7;
+    if (v === true || v === 1) {
+      return true;
+    }
+    if (typeof v === 'string') {
+      return v === '1' || v.toLowerCase() === 'true';
+    }
+    return false;
+  }
+
+  private async clearPorAutorizarForOcRows(): Promise<void> {
+    const rowsToUpdate = this.rowData.filter(
+      (row) =>
+        this.AUTHORIZED_TYPES.includes(row.typeOC) &&
+        row.proveedorXTablaId > 0 &&
+        this.porAutorizarActivo(row.proveedorXTablaObj)
+    );
+    for (const row of rowsToUpdate) {
+      try {
+        const updated = { ...row.proveedorXTablaObj, campo7: false };
+        await lastValueFrom(this.providersService.updateProviderXTable(row.proveedorXTablaId, updated));
+        row.proveedorXTablaObj = { ...row.proveedorXTablaObj, campo7: false };
+        console.log(`✅ Por autorizar desmarcado: ProveedorXTabla id=${row.proveedorXTablaId} (${row.articulo})`);
+      } catch (e) {
+        console.error(`❌ Error desmarcando Por autorizar para ${row.articulo}:`, e);
+      }
+    }
+  }
+
+  private async fetchAndMapProviderAssignments(providerId: number): Promise<void> {
+    try {
+      const assignments: any = await lastValueFrom(this.providersService.getProvidersXTable(providerId, 'MATERIAL'));
+      const list: any[] = Array.isArray(assignments)
+        ? assignments
+        : Array.isArray(assignments?.data)
+          ? assignments.data
+          : Array.isArray(assignments?.project)
+            ? assignments.project
+            : [];
+      this.rowData.forEach(row => {
+        const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
+        if (match) {
+          row.proveedorXTablaId = match.id || 0;
+          row.proveedorXTablaObj = match;
+        }
+      });
+    } catch (e) {
+      console.error('Error cargando asignaciones de proveedor:', e);
+    }
+  }
+
+  private async deleteUnauthorizedProviderAssignments(): Promise<void> {
+    const toDelete = this.rowData.filter(row =>
+      row.typeOC &&
+      !this.AUTHORIZED_TYPES.includes(row.typeOC) &&
+      row.proveedorXTablaId
+    );
+    for (const row of toDelete) {
+      try {
+        await lastValueFrom(this.providersService.deleteProviderXTable(row.proveedorXTablaId));
+        console.log(`✅ Asignación eliminada: ProveedorXTabla id=${row.proveedorXTablaId} (${row.articulo} — ${row.typeOC})`);
+        row.proveedorXTablaId = 0;
+      } catch (error) {
+        console.error(`❌ Error eliminando asignación para ${row.articulo}:`, error);
+      }
+    }
+  }
+
+  /** Comparte `node.data` con `DetalleItemsPedimentosComponent`: al tener COTIZ/OC ya no se editan artículos del pedimento. */
+  private setArticulosPedimentoLocked(locked: boolean): void {
+    const d = this.params?.node?.data as { articulosPedimentoLocked?: boolean } | undefined;
+    if (d) {
+      d.articulosPedimentoLocked = locked;
+    }
+  }
+
+  private lockGrid() {
+    if (!this.gridApi) return;
+    // Reconstruir colDefs con editable:false hardcoded y aplicarlos al grid
+    this._colDefs = null;
+    const lockedDefs = this.colDefs.map(col => ({ ...col, editable: false }));
+    this.gridApi.setGridOption('columnDefs', lockedDefs);
+    this.gridApi.setGridOption('suppressClickEdit', true);
+    this.gridApi.refreshCells({ force: true });
+  }
 }
