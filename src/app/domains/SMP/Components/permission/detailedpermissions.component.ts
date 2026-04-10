@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { SignalsService } from 'app/services/signals.service';
 import { DetailedPermissionsService } from 'app/services/detailedPermissions.service';
 import { SubDetailedPermissionsComponent } from './subdetailedpermissions.component';
+import { IconPickerCellEditorComponent } from './icon-picker-cell-editor.component';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -17,6 +18,7 @@ import { alerts } from 'app/helpers/alerts';
     CommonModule,
     AgGridAngular,
     SubDetailedPermissionsComponent,
+    IconPickerCellEditorComponent,
   ],
   templateUrl: './detailedpermissions.component.html',
   styles: `
@@ -39,32 +41,62 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
   public masterId!: number;
   public hasChanges = false;
 
-  private readonly enterNavEditableColumns = ['permissionName', 'identifier', 'comment'];
+  private readonly enterNavEditableColumns = ['permissionName', 'identifier', 'route', 'tab_order', 'comment'];
   private enterKeyAdvanceNextColumn = false;
 
+  public readonly bootstrapIcons = [
+    'bi bi-houses', 'bi bi-boxes', 'bi bi-box-seam', 'bi bi-journal-text',
+    'bi bi-gear-fill', 'bi bi-gear', 'bi bi-people-fill', 'bi bi-person-bounding-box',
+    'bi bi-cash-coin', 'bi bi-stopwatch', 'bi bi-list-task', 'bi bi-cart-fill',
+    'bi bi-file-earmark-person-fill', 'bi bi-archive-fill', 'bi bi-shop',
+    'bi bi-wallet2', 'bi bi-graph-up', 'bi bi-pc-display-horizontal',
+    'bi bi-arrow-bar-down', 'bi bi-arrow-bar-up', 'bi bi-building-fill-gear',
+    'bi bi-globe2', 'bi bi-box-arrow-in-right', 'bi bi-person-fill',
+    'bi bi-shield-fill', 'bi bi-bar-chart-fill', 'bi bi-clipboard-data',
+    'bi bi-truck', 'bi bi-tools', 'bi bi-wrench-adjustable',
+    'bi bi-calculator', 'bi bi-currency-dollar', 'bi bi-file-earmark-text',
+    'bi bi-calendar3', 'bi bi-clock', 'bi bi-bell-fill',
+  ];
+
   public colDefs: ColDef[] = [
-    { field: 'id', editable: false,
-        width: 70,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        }, },
-    { field: 'permissionName', headerName: 'Nombre del Permiso',  flex: 2 , editable: true},
-    { field: 'identifier', headerName: 'Identificador', flex: 2 , editable: true},
-    { field: 'comment', headerName: 'Comentario', flex: 3, editable: true },
-    { 
-      field: 'detail', 
-      headerName: 'Detalles', 
-      flex: 3,
-      cellRenderer: (params: ICellRendererParams) => {
-        return '<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver SubDetalles</span>';
-      }
+    {
+      field: 'id', editable: false, width: 60,
+      filter: 'agNumberColumnFilter',
+      filterParams: { filterOptions: ['equals'] },
+    },
+    { field: 'permissionName', headerName: 'Nombre', flex: 2, editable: true },
+    { field: 'identifier',     headerName: 'Identificador', flex: 2, editable: true },
+    {
+      field: 'route', headerName: 'Ruta', flex: 2, editable: true,
     },
     {
-      field: 'active',
-      headerName: 'Activo',
-      flex: 1,
-      cellRenderer: (params: ICellRendererParams) => params.value ? 'Sí' : 'No'
+      field: 'icon', headerName: 'Icono', flex: 2, editable: true,
+      cellEditor: IconPickerCellEditorComponent,
+      cellEditorPopup: true,
+      cellRenderer: (params: ICellRendererParams) => {
+        if (!params.value) return '';
+        return `<i class="${params.value}" style="font-size:14px;margin-right:4px;"></i><small>${params.value}</small>`;
+      },
+    },
+    {
+      field: 'showAsTab', headerName: 'Tab', width: 60, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: { values: [true, false] },
+      cellRenderer: (params: ICellRendererParams) => params.value ? '✅' : '—',
+    },
+    {
+      field: 'tab_order', headerName: 'Orden', width: 70, editable: true,
+      cellEditor: 'agNumberCellEditor',
+    },
+    { field: 'comment', headerName: 'Comentario', flex: 3, editable: true },
+    {
+      field: 'detail', headerName: 'SubDetalles', width: 90,
+      cellRenderer: (params: ICellRendererParams) =>
+        '<span style="cursor:pointer;text-decoration:underline;color:#0d6efd;">Ver</span>',
+    },
+    {
+      field: 'active', headerName: 'Activo', width: 70,
+      cellRenderer: (params: ICellRendererParams) => params.value ? 'Sí' : 'No',
     },
   ];
 
@@ -277,7 +309,12 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
           permissionName: row.permissionName,
           comment: row.comment,
           identifier: row.identifier,
-          active: row.active
+          active: row.active,
+          route: row.route ?? null,
+          icon: row.icon ?? null,
+          showAsTab: row.showAsTab ?? false,
+          tab_order: row.tab_order ?? null,
+          principalSubIdentifier: row.principalSubIdentifier ?? null,
         };
         await lastValueFrom(this.detailedPermissionsService.updateDetailedPermissions(row.id, payload));
       }

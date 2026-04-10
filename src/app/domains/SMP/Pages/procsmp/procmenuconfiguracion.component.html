@@ -1,0 +1,46 @@
+<div class="col-md-12">
+   <div class="card">
+      <div class="card-header p-2">
+         <span class="visually-hidden" aria-hidden="true">{{ guardUiTick() }}</span>
+         <ul class="nav nav-pills">
+
+            <!-- Tabs exclusivos de root (no tienen entrada en detailedpermissions) -->
+            <li class="nav-item" *ngIf="isRoot">
+               <a class="nav-link green-tab" routerLink="corporativos" routerLinkActive="active">
+                  <i class="bi bi-globe2"></i> Corporativos
+               </a>
+            </li>
+            <li class="nav-item" *ngIf="isRoot">
+               <a class="nav-link green-tab" routerLink="root" routerLinkActive="active">
+                  <i class="bi bi-building-fill-gear"></i> {{ 'root' | translate }}
+               </a>
+            </li>
+            <li class="nav-item" *ngIf="isRoot">
+               <a class="nav-link green-tab" routerLink="login" routerLinkActive="active">
+                  <i class="bi bi-box-arrow-in-right"></i> Login
+               </a>
+            </li>
+            <li class="nav-item" *ngIf="isRoot">
+               <a class="nav-link green-tab" routerLink="menu" routerLinkActive="active">
+                  <i class="bi bi-building-fill-gear"></i> {{ 'menu' | translate }}
+               </a>
+            </li>
+
+            <!-- Tabs basados en permisos (dinámicos) -->
+            <ng-container *ngFor="let tab of tabMenus">
+               <li class="nav-item"
+                   *ngIf="isRoot || (tab.principalSubIdentifier
+                     ? authService.hasSubDetailedPermission(tab.masterIdentifier, tab.identifier, tab.principalSubIdentifier)
+                     : authService.hasDetailedPermission(tab.masterIdentifier, tab.identifier))">
+                  <a class="nav-link green-tab setup-dark-tab" [routerLink]="tab.route" routerLinkActive="active">
+                     <i [class]="tab.icon"></i> {{ tab.permissionName }}
+                  </a>
+               </li>
+            </ng-container>
+
+         </ul>
+
+         <router-outlet></router-outlet>
+      </div>
+   </div>
+</div>

@@ -35,6 +35,10 @@ export class MenuService {
     return this.http.get<any[]>(`${environment.urlSecurity}/DetailedPermissions/tabs/${masterIdentifier}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getSubTabMenus(detailedIdentifier: string): Observable<{ detailedIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; tabOrder: number }[]> {
+    return this.http.get<any[]>(`${environment.urlSecurity}/SubDetailedPermissions/tabs/${detailedIdentifier}`, { headers: this.trackingService.getHeaders() });
+  }
+
   updateMenu(idCompany: number, permissions: any[]): Observable<any> {
     return this.http.put(`${environment.urlSecurity}/MenuXCompany/${idCompany}`, permissions, { headers: this.trackingService.getHeaders() });
   }

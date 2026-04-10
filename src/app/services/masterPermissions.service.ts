@@ -23,8 +23,8 @@ export class MasterPermissionsService {
     return this.http.put(`${environment.urlSecurity}/MasterPermissions/${id}`, permissions, { headers: this.trackingService.getHeaders() });
   }
 
-  addMasterPermissions(data: any): Observable<any> {
-    return this.http.post(`${environment.urlSecurity}/MasterPermissions`, data, { headers: this.trackingService.getHeaders() });
+  addMasterPermissions(data: any, idCompany: number = 0): Observable<any> {
+    return this.http.post(`${environment.urlSecurity}/MasterPermissions?idCompany=${idCompany}`, data, { headers: this.trackingService.getHeaders() });
   }
   deleteMasterPermissions(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSecurity}/MasterPermissions/${id}`, { headers: this.trackingService.getHeaders() });

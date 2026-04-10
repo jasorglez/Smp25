@@ -9,6 +9,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { DetailedPermissionsComponent } from './detailedpermissions.component';
 import { MasterPermissionsService } from 'app/services/masterPermissions.service';
 import { alerts } from 'app/helpers/alerts';
+import { effect } from '@angular/core';
+import { MaterialIconPickerCellEditorComponent } from './material-icon-picker-cell-editor.component';
 
 @Component({
   selector: 'app-permission',
@@ -16,7 +18,8 @@ import { alerts } from 'app/helpers/alerts';
   imports: [
     CommonModule,
     AgGridAngular,
-    DetailedPermissionsComponent
+    DetailedPermissionsComponent,
+    MaterialIconPickerCellEditorComponent,
   ],
   templateUrl: './permission.component.html',
   styles: `
@@ -41,7 +44,7 @@ export class PermissionComponent implements OnInit {
   selectedPermission: any = null;
 
   /** Columnas editables en orden: Enter pasa a la siguiente. */
-  private readonly enterNavEditableColumns = ['permissionName', 'identifier', 'comment'];
+  private readonly enterNavEditableColumns = ['permissionName', 'identifier', 'route', 'comment'];
   private enterKeyAdvanceNextColumn = false;
 
   public colDefs: ColDef[] = [
@@ -55,24 +58,33 @@ export class PermissionComponent implements OnInit {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
-    { field: 'permissionName', headerName: 'Nombre del Permiso', flex: 2 , editable: true},
-    { field: 'identifier', headerName: 'Identificador', flex: 2 ,  editable: true},
-    { field: 'comment', headerName: 'Comentario', flex: 3 ,  editable: true},
-    { 
-      field: 'detail', 
-      headerName: 'Detalles', 
-      flex: 3,
+    { field: 'permissionName', headerName: 'Nombre', flex: 2, editable: true },
+    { field: 'identifier',     headerName: 'Identificador', flex: 2, editable: true },
+    { field: 'route',          headerName: 'Ruta', flex: 2, editable: true },
+    {
+      field: 'icon', headerName: 'Icono', flex: 2, editable: true,
+      cellEditor: MaterialIconPickerCellEditorComponent,
+      cellEditorPopup: true,
       cellRenderer: (params: ICellRendererParams) => {
-        return '<span style="cursor: pointer; text-decoration: underline; color: #0d6efd;">Ver Detalles</span>';
-      }
+        if (!params.value) return '';
+        return `<span class="material-icons" style="font-size:16px;vertical-align:middle;margin-right:4px;">${params.value}</span><small>${params.value}</small>`;
+      },
     },
     {
-      field: 'active',
-      headerName: 'Activo',
-      width: 90,
-      editable: true,
-      cellRenderer: 'agCheckboxCellRenderer',
-      cellEditor: 'agCheckboxCellEditor',
+      field: 'showInSidebar', headerName: 'Sidebar', width: 75, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: { values: [true, false] },
+      cellRenderer: (params: ICellRendererParams) => params.value ? '✅' : '—',
+    },
+    { field: 'comment', headerName: 'Comentario', flex: 3, editable: true },
+    {
+      field: 'detail', headerName: 'Detalles', width: 80,
+      cellRenderer: (params: ICellRendererParams) =>
+        '<span style="cursor:pointer;text-decoration:underline;color:#0d6efd;">Ver Detalles</span>',
+    },
+    {
+      field: 'active', headerName: 'Activo', width: 70,
+      cellRenderer: (params: ICellRendererParams) => params.value ? 'Sí' : 'No',
     },
   ];
 
@@ -161,7 +173,13 @@ export class PermissionComponent implements OnInit {
   };
 
 
-  constructor(private menuService: MenuService, private signalsService: SignalsService, private masterPermissionsService: MasterPermissionsService) {}
+  idCompany: number = 0;
+
+  constructor(private menuService: MenuService, private signalsService: SignalsService, private masterPermissionsService: MasterPermissionsService) {
+    effect(() => {
+      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+    });
+  }
 
   ngOnInit(): void {
     this.refreshData();
@@ -170,17 +188,17 @@ export class PermissionComponent implements OnInit {
   refreshData() {
     this.rowData$ = this.masterPermissionsService.getMasterPermissions().pipe(
       map((data: any[]) => {
-        console.log(data);
-        return data.map((item) => {
-          return {
-            id: item.id,
-            permissionName: item.permissionName,
-            identifier: item.identifier,
-            active: item.active,
-            comment: item.comment,
-            detailData: item.detailedPermissions || [],
-          };
-        });
+        return data.map((item) => ({
+          id: item.id,
+          permissionName: item.permissionName,
+          identifier: item.identifier,
+          active: item.active,
+          comment: item.comment,
+          route: item.route ?? null,
+          icon: item.icon ?? null,
+          showInSidebar: item.showInSidebar ?? false,
+          detailData: item.detailedPermissions || [],
+        }));
       })
     );
   }
@@ -309,10 +327,12 @@ export class PermissionComponent implements OnInit {
           comment: row.comment,
           identifier: row.identifier,
           active: row.active,
+          route: row.route ?? null,
+          icon: row.icon ?? null,
+          showInSidebar: row.showInSidebar ?? false,
           detailedPermissions: row.detailData || []
         };
-        console.log(payload);  
-        promises.push(firstValueFrom(this.masterPermissionsService.addMasterPermissions(payload)));
+        promises.push(firstValueFrom(this.masterPermissionsService.addMasterPermissions(payload, this.idCompany)));
       }
 
       // Update
@@ -323,6 +343,9 @@ export class PermissionComponent implements OnInit {
           comment: row.comment,
           identifier: row.identifier,
           active: row.active,
+          route: row.route ?? null,
+          icon: row.icon ?? null,
+          showInSidebar: row.showInSidebar ?? false,
           detailedPermissions: row.detailData || []
         };
         promises.push(firstValueFrom(this.masterPermissionsService.updateMasterPermissions(row.id, payload)));
