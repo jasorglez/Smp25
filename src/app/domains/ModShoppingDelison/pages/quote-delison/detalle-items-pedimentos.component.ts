@@ -4,6 +4,7 @@ import { ICellRendererAngularComp, AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { SignalsService } from 'app/services/signals.service';
 import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
@@ -14,19 +15,24 @@ import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell
   imports: [CommonModule, AgGridModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="detail-grid-container">
+      <div *ngIf="articulosLocked"
+           style="background:#e7f3ff; border:1px solid #90caf9; border-radius:6px; padding:5px 12px; margin-bottom:5px; flex-shrink:0; display:flex; align-items:center; gap:8px;">
+        <i class="bi bi-lock-fill text-primary" style="font-size:1rem;"></i>
+        <span class="small fw-semibold text-dark">Cotización de proveedor guardada — no puede modificarse la solicitud de artículos en este pedimento.</span>
+      </div>
       <!-- Barra de botones CRUD -->
       <div style="margin-bottom: 5px; display: flex; justify-content: flex-end; align-items: center; flex-shrink: 0;">
         <div class="d-flex gap-1">
-          <button class="btn btn-primary btn-xs position-relative" (click)="save()" [disabled]="!hasUnsavedChanges">
+          <button class="btn btn-primary btn-xs position-relative" (click)="save()" [disabled]="articulosLocked || !hasUnsavedChanges">
             <i class="bi bi-floppy"></i> Guardar
             <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-                  *ngIf="hasUnsavedChanges">
+                  *ngIf="hasUnsavedChanges && !articulosLocked">
             </span>
           </button>
-          <button class="btn btn-warning btn-xs" (click)="revert()">
+          <button class="btn btn-warning btn-xs" (click)="revert()" [disabled]="articulosLocked">
             <i class="bi bi-arrow-clockwise"></i> Deshacer
           </button>
-          <button class="btn btn-danger btn-xs" (click)="delete()" [disabled]="!selectedRow">
+          <button class="btn btn-danger btn-xs" (click)="delete()" [disabled]="articulosLocked || !selectedRow">
             <i class="bi bi-trash"></i> Eliminar
           </button>
         </div>
@@ -70,6 +76,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   private context: any;
   private gridApi!: GridApi;
   private ocAndReqsService = inject(OcAndReqsService);
+  private signalsService = inject(SignalsService);
 
   // Cache para evitar re-renderizado
   private _colDefs: ColDef[] | null = null;
@@ -78,6 +85,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   originalRowData: any[] = [];
   hasUnsavedChanges: boolean = false;
   selectedRow: any = null;
+  /** true si ya hay COTIZ guardada en proveedor (mismo `node.data` que `DetalleItemsProveedorComponent`). */
+  articulosLocked: boolean = false;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   // IDs necesarios para las operaciones de API
@@ -91,15 +100,64 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     this.cotizacionId = params.data.cotizacionId || 0;
     this.requisitionId = params.data.requisitionId || 0;
     this.numeroPedimentoRaw = params.data.numeroPedimentoRaw || 0;
+    this.articulosLocked = !!(params.data as any).articulosPedimentoLocked;
+    this._colDefs = null;
     this.buildRowData();
+    void this.hydrateArticulosLockIfNeeded();
   }
 
-  refresh(): boolean {
-    return true; // No destruir el componente cuando el padre hace refreshCells
+  /** Si ya hay COTIZ/OC en cualquier slot (p. ej. tras F5 sin abrir proveedor), alinear el candado con el servidor. */
+  private async hydrateArticulosLockIfNeeded(): Promise<void> {
+    if (this.articulosLocked || !this.cotizacionId) return;
+    try {
+      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const reqId = this.requisitionId || 0;
+      const [cotizData, ocData] = await Promise.all([
+        firstValueFrom(this.ocAndReqsService.getOcAndReqs('delison', this.cotizacionId, 'COTIZ')),
+        firstValueFrom(this.ocAndReqsService.getOcAndReqs('branch', idBranch, 'OC'))
+      ]);
+      const cotizList = Array.isArray(cotizData) ? cotizData : [];
+      const ocList = (Array.isArray(ocData) ? ocData : []).filter((c: any) => Number(c.idReq) === Number(reqId));
+      const slotSuffixes = ['-A-', '-B-', '-C-'];
+      const hasAnyCotiz = cotizList.some((c: any) => slotSuffixes.some(s => c.folio?.includes(s)));
+      const hasAnyOc = ocList.some((c: any) => slotSuffixes.some(s => c.folio?.includes(s)));
+      if (hasAnyCotiz || hasAnyOc) {
+        const d = this.params?.node?.data as { articulosPedimentoLocked?: boolean } | undefined;
+        if (d) {
+          d.articulosPedimentoLocked = true;
+        }
+        this.articulosLocked = true;
+        this._colDefs = null;
+        if (this.gridApi) {
+          this.gridApi.setGridOption('columnDefs', this.colDefs);
+          this.gridApi.setGridOption('suppressClickEdit', true);
+          this.gridApi.refreshCells({ force: true });
+        }
+      }
+    } catch (e) {
+      console.warn('hydrateArticulosLockIfNeeded', e);
+    }
+  }
+
+  refresh(params?: ICellRendererParams): boolean {
+    if (params) {
+      this.params = params;
+      this.articulosLocked = !!(params.data as any).articulosPedimentoLocked;
+      this._colDefs = null;
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+        this.gridApi.setGridOption('suppressClickEdit', this.articulosLocked);
+        this.gridApi.refreshCells({ force: true });
+      }
+    }
+    return true;
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    if (this.articulosLocked) {
+      this.gridApi.setGridOption('suppressClickEdit', true);
+    }
   }
 
   buildRowData() {
@@ -140,6 +198,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   }
 
   delete() {
+    if (this.articulosLocked) return;
     if (this.selectedRow) {
       this.rowData = this.rowData.filter(item => item !== this.selectedRow);
       this.selectedRow = null;
@@ -148,6 +207,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   }
 
   async save() {
+    if (this.articulosLocked) return;
     const changedItems = this.rowData.filter(item => item.__modified);
     if (changedItems.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -216,6 +276,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   }
 
   revert() {
+    if (this.articulosLocked) return;
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     if (this.gridApi) {
@@ -228,6 +289,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
    * Solo actualiza el estado local. Los cambios se persisten al hacer clic en Guardar.
    */
   onPedimentoToggle(rowData: any, newValue: boolean) {
+    if (this.articulosLocked) return;
     rowData.pedimento = newValue;
     rowData.__modified = true;
     this.hasUnsavedChanges = true;
@@ -399,7 +461,11 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
-        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
+        cellRendererParams: () => ({
+          documentType: 'REQ',
+          idDocument: this.requisitionId,
+          locked: this.articulosLocked
+        }),
       },
       {
         field: 'pedimento',
@@ -409,6 +475,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
           const isChecked = params.value === true;
           const icon = isChecked ? '✓' : '○';
           const color = isChecked ? '#28a745' : '#6c757d';
+          const locked = this.articulosLocked;
 
           const container = document.createElement('div');
           container.style.cssText = 'display: flex; align-items: center; justify-content: center; gap: 5px;';
@@ -416,11 +483,18 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = isChecked;
-          checkbox.style.cssText = 'cursor: pointer; width: 13px; height: 13px;';
+          checkbox.disabled = locked;
+          checkbox.style.cssText = locked
+            ? 'cursor: not-allowed; width: 13px; height: 13px; opacity: 0.65;'
+            : 'cursor: pointer; width: 13px; height: 13px;';
 
-          checkbox.addEventListener('change', () => {
-            this.onPedimentoToggle(params.data, checkbox.checked);
-          });
+          if (!locked) {
+            checkbox.addEventListener('change', () => {
+              this.onPedimentoToggle(params.data, checkbox.checked);
+            });
+          } else {
+            checkbox.addEventListener('click', (e) => e.preventDefault());
+          }
 
           const span = document.createElement('span');
           span.style.cssText = `color: ${color}; font-weight: bold;`;
@@ -435,8 +509,11 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
             ? { textAlign: 'center', backgroundColor: '#d4edda' }
             : { textAlign: 'center', backgroundColor: '#f8f9fa' };
         },
-        tooltipValueGetter: (params: any) => {
-          return params.value === true
+        tooltipValueGetter: (p: any) => {
+          if (this.articulosLocked) {
+            return 'Cotización ya guardada: no puede cambiar solicitud de artículos.';
+          }
+          return p.value === true
             ? 'Item solicitado en este pedimento'
             : 'Item de contexto (no solicitado). Click para agregar al pedimento.';
         }

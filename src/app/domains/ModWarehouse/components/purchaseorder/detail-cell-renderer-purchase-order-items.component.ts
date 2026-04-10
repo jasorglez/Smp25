@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -65,7 +65,7 @@ import { alerts } from 'app/helpers/alerts';
     }
   `]
 })
-export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
+export class DetailCellRendererPurchaseOrderItemsComponent {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -80,42 +80,60 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  ngOnInit() {
-    this.loadData();
-  }
-
   agInit(params: ICellRendererParams): void {
     this.params = params;
-    this.context = params.context;
+    this.context =
+      params.context ?? (params as any).api?.getGridOption?.('context');
     this.productos = this.context?.productos || [];
     this.proveedores = this.context?.proveedores || [];
     this.loadData();
   }
 
   loadData() {
-    if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
-      const purchaseOrderId = this.params.data.id;
-      this.context.ITEMS.load(purchaseOrderId, (data: any[]) => {
-        this.rowData = data.map(item => ({
+    const purchaseOrderId = this.params?.data?.id;
+    if (purchaseOrderId == null || purchaseOrderId === '') {
+      return;
+    }
+    if (!this.context?.ITEMS?.load) {
+      console.warn('[OC ítems] Sin ITEMS.load en context', this.context);
+      return;
+    }
+    this.context.ITEMS.load(Number(purchaseOrderId), (data: any[]) => {
+      this.rowData = (data || []).map((item) => {
+        const q = parseFloat(String(item.quantity ?? 0)) || 0;
+        const p = parseFloat(String(item.price ?? 0)) || 0;
+        const tRaw = item.total;
+        const t =
+          tRaw != null && tRaw !== ''
+            ? parseFloat(String(tRaw)) || 0
+            : q * p;
+        return {
           ...item,
+          quantity: q,
+          price: p,
+          total: t,
           __isNew: false,
           __modified: false
-        }));
-        this.recalcTotal();
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
-        // Update the count in master grid
-        if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
-          this.context.ITEMS.updateCount(purchaseOrderId, this.rowData.length);
-        }
+        };
       });
-    }
+      this.recalcTotal();
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      if (this.context?.ITEMS?.updateCount) {
+        this.context.ITEMS.updateCount(Number(purchaseOrderId), this.rowData.length);
+      }
+    });
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+    if (this.rowData?.length) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    } else {
+      this.loadData();
+    }
   }
 
   get colDefs(): ColDef[] {

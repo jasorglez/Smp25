@@ -58,6 +58,9 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   proveedores: any[] = [];
   branchesLoaded    = false;
 
+  /** Contexto del grid maestro: AG Grid lo inyecta en params.context del detalle (ITEMS.load, proveedores…). */
+  gridContext: Record<string, unknown> = {};
+
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
@@ -143,9 +146,44 @@ export class PurchaseOrderDelisonComponent implements OnInit {
 
   loadProviders() {
     this.providersService.getProviders(this.idRoot).subscribe({
-      next: (data: any) => { this.proveedores = Array.isArray(data) ? data : []; },
+      next: (data: any) => {
+        this.proveedores = Array.isArray(data) ? data : [];
+        this.patchGridContext();
+      },
       error: () => {}
     });
+  }
+
+  private patchGridContext(): void {
+    this.gridContext = { ...this.gridContext, proveedores: this.proveedores };
+    this.gridApi?.setGridOption('context', this.gridContext);
+  }
+
+  private buildInitialGridContext(): void {
+    this.gridContext = {
+      componentParent: this,
+      proveedores: this.proveedores,
+      productos: [],
+      ITEMS: {
+        load: (ocId: number, callback: (data: any[]) => void) => {
+          this.ocAndReqsService.getReqItems(ocId).subscribe({
+            next: (data: any[]) => callback(Array.isArray(data) ? data : []),
+            error: (err) => {
+              console.error('[Órdenes compra] getReqItems falló', { ocId, err });
+              callback([]);
+            }
+          });
+        },
+        save: () => {},
+        delete: () => {},
+        updateCount: (ocId: number, count: number) => {
+          this.updateOcCount(ocId, count);
+        },
+        updateTotal: (ocId: number, total: number) => {
+          this.updateOcTotal(ocId, total);
+        }
+      }
+    };
   }
 
   getProviderName(idProvider: number): string {
@@ -391,29 +429,13 @@ export class PurchaseOrderDelisonComponent implements OnInit {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    this.buildInitialGridContext();
+    this.gridApi.setGridOption('context', this.gridContext);
 
     this.gridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (p: any) => { p.successCallback([]); },
-      context: {
-        componentParent: this,
-        proveedores: this.proveedores,
-        productos: [],
-        ITEMS: {
-          load: (ocId: number, callback: (data: any[]) => void) => {
-            this.ocAndReqsService.getReqItems(ocId).subscribe({
-              next: (data: any) => callback(Array.isArray(data) ? data : []),
-              error: () => callback([])
-            });
-          },
-          save: () => {},
-          delete: () => {},
-          updateCount: (ocId: number, count: number) => {
-            this.updateOcCount(ocId, count);
-          },
-          updateTotal: (ocId: number, total: number) => {
-            this.updateOcTotal(ocId, total);
-          }
-        }
+      // El detalle lo carga el cell renderer con ITEMS.load (no el sub-grid por defecto).
+      getDetailRowData: (p: any) => {
+        p.successCallback([]);
       }
     });
   }

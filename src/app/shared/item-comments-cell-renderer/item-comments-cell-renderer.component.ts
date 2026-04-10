@@ -10,7 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div (click)="openChat()" style="cursor:pointer; display:flex; align-items:center; gap:4px;">
+    <div (click)="openChat()" [style.cursor]="locked ? 'default' : 'pointer'" style="display:flex; align-items:center; gap:4px;" [style.opacity]="locked ? '0.4' : '1'">
       <i class="bi bi-chat-dots" [style.color]="count ? '#0d6efd' : '#aaa'"></i>
       <span *ngIf="count" style="font-size:11px; color:#0d6efd; font-weight:600;">{{ count }}</span>
       <span *ngIf="!count" style="font-size:11px; color:#aaa;">+</span>
@@ -25,11 +25,13 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   numArticle = '';
   documentType = '';
   idDocument = 0;
+  locked = false;
 
-  agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number }): void {
+  agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number; locked?: boolean }): void {
     this.numArticle   = String(params.data?.numArticulo || params.data?.numeroArticulo || params.data?.numArticle || '');
     this.documentType = params.documentType || '';
     this.idDocument   = params.idDocument   || 0;
+    this.locked       = params.locked       || false;
     this.loadCount();
   }
 
@@ -45,6 +47,7 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   }
 
   openChat() {
+    if (this.locked) return;
     this.commentsService.openChatFor$.next({
       documentType: this.documentType,
       idDocument:   this.idDocument,
