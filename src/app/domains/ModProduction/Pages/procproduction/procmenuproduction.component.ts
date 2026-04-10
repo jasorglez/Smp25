@@ -6,12 +6,13 @@ import { MenuService } from 'app/services/menu.service';
 import { SignalsService } from 'app/services/signals.service';
 
 @Component({
-  selector: 'app-procreshuman',
+  selector: 'app-procmenuproduction',
   standalone: true,
   imports: [RouterModule, DomainsModule],
-  templateUrl: './procshoppingDelison.component.html',
+  templateUrl: './procmenuproduction.component.html',
+  styleUrl: './procmenuproduction.component.scss',
 })
-export class ProcShoppingDelisonComponent implements OnInit {
+export class ProcmenuprodcutionComponent implements OnInit {
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
@@ -19,14 +20,14 @@ export class ProcShoppingDelisonComponent implements OnInit {
   tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number }[] = [];
 
   ngOnInit() {
-    this.signalsService.setCatalogSelected('SHOPPINGDELISON');
+    this.signalsService.setCatalogSelected('PRODUCTION');
     this.loadTabMenus();
   }
 
   loadTabMenus() {
-    this.menuService.getTabMenus('shoppingDelison').subscribe({
+    this.menuService.getTabMenus('production').subscribe({
       next: (tabs) => { this.tabMenus = tabs; },
-      error: (err) => console.error('Error loading tab menus:', err)
+      error: (err) => console.error('Error loading Production tab menus:', err)
     });
   }
 }

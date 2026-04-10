@@ -26,158 +26,20 @@ export const routes: Routes = [
           import('./pages/welcome/welcome.component').then((m) => m.WelcomeComponent),
       },
       {
-        path: 'proceswar',
-        loadComponent: () =>
-          import(
-            './domains/ModWarehouse/pages/procwareh/procwareh.component'
-          ).then((w) => w.ProcwarehComponent),
-        canActivate: [MasterPermissionsGuard],
-        data: { permissions: { master: 'shopping' } },
-        children: [
-          { path: '', redirectTo: 'Warehouse', pathMatch: 'full' },
-          ...SharedModule.getRoutes(),
-          {
-            path: 'warehouses',
-            loadComponent: () =>
-              import(
-                './domains/ModWarehouse/components/warehouses/warehouses.component'
-              ).then((w) => w.WarehousesComponent),
-            canDeactivate: [UnsavedChangesGuard],
-          },
-          {
-            path: 'page02typemat',
-            loadComponent: () =>
-              import(
-                './domains/ModWarehouse/pages/page02typemat/page02typemat.component'
-              ).then((p) => p.Page02typematComponent),
-            children: [
-              { path: '', redirectTo: 'materialsMaster', pathMatch: 'full' },
-              ...SharedModule.getRoutes(),
-              /*  
-                           {
-                          path: 'materials',
-                             loadComponent: () =>
-                               import(
-                                 './domains/Warehouse/components/materials/materials.component'
-                               ).then((s) => s.MaterialsComponent),
-                             data: { type: 'PRODSALES' }, // Paso el Parámetro para materials
-                             canDeactivate: [UnsavedChangesGuard],
-                           },*/
-              {
-                path: 'materialsMaster',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/materials/materials.component'
-                  ).then((m) => m.MaterialsComponent),
-                data: { type: 'CONSUMABLE' }, // Paso el Parámetro para materials
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'materials',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/detailMaterials/detailMaterials.component'
-                  ).then((m) => m.DetailMaterialsComponent),
-                data: { type: 'CONSUMABLE' }, // Paso el Parámetro para materials
-                canDeactivate: [UnsavedChangesGuard],
-              },
-            ],
-          },
-          {
-            path: 'raw-materials',
-            loadComponent: () =>
-              import(
-                './domains/ModWarehouse/components/raw-materials/raw-materials.component'
-              ).then((s) => s.RawMaterialsComponent)
-          },
-
-          {
-            path: 'purchaseorder',
-            loadComponent: () => import('./domains/ModWarehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
-            canDeactivate: [UnsavedChangesGuard],
-          },
-
-          {
-            path: 'entrances',
-            loadComponent: () => import('./domains/ModWarehouse/components/entrances/entrances.component').then((i) => i.EntrancesComponent),
-            canDeactivate: [UnsavedChangesGuard],
-          },
-
-          {
-            path: 'outings-st',
-            loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then((i) => i.InandoutStComponent),
-            canDeactivate: [UnsavedChangesGuard],
-            data: { movementType: 'OUT' }
-          },
-
-          {
-            path: 'requisitions',
-            loadComponent: () => import('./domains/ModWarehouse/components/requisitions/requisitions.component').then((r) => r.RequisitionsComponent),
-            canDeactivate: [UnsavedChangesGuard],
-          },
-
-          {
-            path: 'catalogs',
-            loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then((s) => s.CatalogsComponent),
-            canDeactivate: [UnsavedChangesGuard],
-            children: [
-              {
-                path: ':section',
-                loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
-              },
-              /*{
-                path: 'MATERIALES2',
-                loadComponent: () => import('./domains/ModWarehouse/components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
-              },*/
-            ],
-          },
-
-          {
-            path: 'page03',
-            loadComponent: () =>
-              import('./domains/ModWarehouse/pages/pages03/pages03.component').then(
-                (p) => p.Pages03Component
-              ),
-            children: [
-              { path: '', redirectTo: 'providers', pathMatch: 'full' },
-              ...SharedModule.getRoutes(),
-              {
-                path: 'providers',
-                loadComponent: () =>
-                  import(
-                    './domains/ModWarehouse/components/providers/providers.component'
-                  ).then((e) => e.ProvidersComponent),
-                data: { type: 'PROVIDERS' }, // Parámetro para proveedores
-                canDeactivate: [UnsavedChangesGuard],
-              },
-              {
-                path: 'historical',
-                loadComponent: () =>
-                  import(
-                    './domains/ModAdmon/components/historical/historical.component'
-                  ).then((e) => e.HistoricalComponent),
-              },
-            ],
-          },
-          {
-            path: 'setupwh',
-            loadComponent: () =>
-              import(
-                './domains/ModWarehouse/components/configwarehouse/configwarehouse.component'
-              ).then((r) => r.ConfigwarehouseComponent),
-          },
-        ],
-      },
-      {
         path: 'almacenes',
         loadComponent: () =>
           import(
-            './domains/Almacenes/pages/procalmacenes/procalmacenes.component'
-          ).then((a) => a.ProcalmacenesComponent),
+            './domains/Almacenes/pages/procalmacenes/procmenualmacen.component'
+          ).then((a) => a.ProcmenualmacenComponent),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'warehouses' } },
         children: [
           { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
+          {
+            path: 'warehouses',
+            loadComponent: () => import('./domains/ModWarehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
+            canDeactivate: [UnsavedChangesGuard],
+          },
           {
             path: 'materia-prima',
             loadComponent: () =>
@@ -654,8 +516,8 @@ export const routes: Routes = [
       {
         path: 'smp',
         loadComponent: () =>
-          import('./domains/SMP/Pages/procsmp/proccsmp.component').then(
-            (s) => s.ProccsmpComponent
+          import('./domains/SMP/Pages/procsmp/procmenuconfiguracion.component').then(
+            (s) => s.ProcmenuconfiguracionComponent
           ),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'setup' } },
@@ -1799,8 +1661,8 @@ export const routes: Routes = [
         path: 'procreshuman',
         loadComponent: () =>
           import(
-            './domains/ModReshumans/pages/procreshuman/procreshuman.component'
-          ).then((h) => h.ProcreshumanComponent),
+            './domains/ModReshumans/pages/procreshuman/procmenurechuman.component'
+          ).then((h) => h.ProcmenurehumanComponent),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'hr' } },
         children: [
@@ -2198,8 +2060,8 @@ export const routes: Routes = [
         path: 'shoppingDelison',
         loadComponent: () =>
           import(
-            './domains/ModShoppingDelison/pages/procshoppingDelison.component'
-          ).then((a) => a.ProcShoppingDelisonComponent),
+            './domains/ModShoppingDelison/pages/procmenucompras.component'
+          ).then((a) => a.ProcmenucomprasComponent),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'shoppingDelison' } },
         children: [
@@ -2300,6 +2162,27 @@ export const routes: Routes = [
               import(
                 './domains/ModShoppingDelison/pages/subPages/configSubPage/configSubPage.component'
               ).then((c) => c.configShoppingDelisonComponent),
+          },
+        ],
+      },
+      {
+        path: 'produccion',
+        loadComponent: () =>
+          import(
+            './domains/ModProduction/Pages/procproduction/procmenuproduction.component'
+          ).then((p) => p.ProcmenuprodcutionComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'production' } },
+        children: [
+          { path: '', redirectTo: 'molienda', pathMatch: 'full' },
+          {
+            path: 'molienda',
+            loadComponent: () =>
+              import(
+                './domains/ModProduction/Components/molienda/molienda.component'
+              ).then((m) => m.MoliendaComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'production', detailed: 'molienda_princ' } },
           },
         ],
       },

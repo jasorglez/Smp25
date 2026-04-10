@@ -9,6 +9,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { DetailedPermissionsService } from 'app/services/detailedPermissions.service';
 import { alerts } from 'app/helpers/alerts';
 import { SubDetailedPermissionsService } from 'app/services/subDetailedPermissions.service';
+import { IconPickerCellEditorComponent } from './icon-picker-cell-editor.component';
 
 @Component({
   selector: 'app-detailed-permission',
@@ -16,6 +17,7 @@ import { SubDetailedPermissionsService } from 'app/services/subDetailedPermissio
   imports: [
     CommonModule,
     AgGridAngular,
+    IconPickerCellEditorComponent,
   ],
   templateUrl: './detailedpermissions.component.html',
   styles: `
@@ -34,7 +36,7 @@ import { SubDetailedPermissionsService } from 'app/services/subDetailedPermissio
 export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAngularComp {
   public rowData: any[] = [];
   public gridApi!: GridApi;
-  gridHeight: string = '200px';
+  gridHeight: string = '60vh';
   public masterId!: number;
   public subMasterId!: number;
   public hasChanges = false;
@@ -43,25 +45,47 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
     'subPermissionName',
     'identifier',
     'description',
+    'route',
+    'tab_order',
     'comment',
   ];
   private enterKeyAdvanceNextColumn = false;
 
   public colDefs: ColDef[] = [
-    { field: 'id', editable: false,
-        width: 70,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        }, },
-    { field: 'subPermissionName', headerName: 'Nombre del Permiso',  flex: 2 , editable: true},
-    { field: 'identifier', headerName: 'Identificador', flex: 2, editable: true },
-    { field: 'description', headerName: 'Description', flex: 2, editable: true },
+    {
+      field: 'id', editable: false, width: 60,
+      filter: 'agNumberColumnFilter',
+      filterParams: { filterOptions: ['equals'] },
+    },
+    { field: 'subPermissionName', headerName: 'Nombre', flex: 4, editable: true },
+    { field: 'identifier',        headerName: 'Identificador', flex: 3, editable: true },
+    { field: 'description', headerName: 'Tipo Menu', width: 120, editable: true },
+    {
+      field: 'route', headerName: 'Ruta', flex: 2, editable: true,
+    },
+    {
+      field: 'icon', headerName: 'Icono', flex: 2, editable: true,
+      cellEditor: IconPickerCellEditorComponent,
+      cellEditorPopup: true,
+      cellRenderer: (params: ICellRendererParams) => {
+        if (!params.value) return '';
+        return `<i class="${params.value}" style="font-size:14px;margin-right:4px;"></i><small>${params.value}</small>`;
+      },
+    },
+    {
+      field: 'showAsTab', headerName: 'Tab', width: 60, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: { values: [true, false] },
+      cellRenderer: (params: ICellRendererParams) => params.value ? '✅' : '—',
+    },
+    {
+      field: 'tab_order', headerName: 'Orden', width: 70, editable: true,
+      cellEditor: 'agNumberCellEditor',
+    },
     { field: 'comment', headerName: 'Comentario', flex: 3, editable: true },
     {
-      field: 'active',
-      headerName: 'Activo',
-      flex: 1,
+      field: 'active', headerName: 'Activo', width: 70,
+      cellRenderer: (params: ICellRendererParams) => params.value ? 'Sí' : 'No',
     },
   ];
 
@@ -205,7 +229,7 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
       idDetailedPermission: this.subMasterId,
       subPermissionName: '',
       identifier: '',
-      description: '',
+      description: 'Principal',
       active: true,
       comment: '',
       __isNew: true
@@ -242,9 +266,13 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
           subPermissionName: row.subPermissionName,
           identifier: row.identifier,
           description: row.description,
-          active: row.active
+          active: row.active,
+          route: row.route ?? null,
+          icon: row.icon ?? null,
+          showAsTab: row.showAsTab ?? false,
+          tab_order: row.tab_order ?? null,
+          comment: row.comment ?? null,
         };
-        console.log(payload);
         await lastValueFrom(this.subDetailedPermissionsService.addSubDetailedPermissions(payload));
       }
 
@@ -256,7 +284,12 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
           subPermissionName: row.subPermissionName,
           identifier: row.identifier,
           description: row.description,
-          active: row.active
+          active: row.active,
+          route: row.route ?? null,
+          icon: row.icon ?? null,
+          showAsTab: row.showAsTab ?? false,
+          tab_order: row.tab_order ?? null,
+          comment: row.comment ?? null,
         };
         await lastValueFrom(this.subDetailedPermissionsService.updateSubDetailedPermissions(row.id, payload));
       }
