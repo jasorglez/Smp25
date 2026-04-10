@@ -76,7 +76,7 @@ pdfMake.vfs = pdfFonts.vfs;
         <button type="button" class="btn btn-sm btn-danger" (click)="deleteItem()" [disabled]="ocGenerated" title="Eliminar">
           <i class="bi bi-trash"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-primary ms-2" (click)="generateOC()" [disabled]="generatingOC || !cotizacionSaved || ocGenerated" title="Generar Orden de Compra">
+        <button *ngIf="false" type="button" class="btn btn-sm btn-primary ms-2" (click)="generateOC()" [disabled]="generatingOC || !cotizacionSaved || ocGenerated || !hasRowsWithTypeOC" title="Generar Orden de Compra">
           <span *ngIf="generatingOC" class="spinner-border spinner-border-sm me-1"></span>
           <i *ngIf="!generatingOC" class="bi bi-file-earmark-check me-1"></i>
           {{ generatingOC ? 'Generando...' : 'Generar OC' }}
@@ -311,6 +311,7 @@ export class DetalleItemsProveedorComponent {
   savingChanges: boolean = false;
   generatingOC: boolean = false;
   ocGenerated: boolean = false; // true = ya existe OC → candado total
+  hasRowsWithTypeOC: boolean = false; // true = al menos una fila tiene typeOC → habilita Generar OC
 
   // Modal nuevo proveedor
   showNewProviderModal: boolean = false;
@@ -425,6 +426,7 @@ export class DetalleItemsProveedorComponent {
       datePostpone: ''
     }));
     this.updateTotal();
+    this.updateHasRowsWithTypeOC();
   }
 
   async onProviderChange() {
@@ -585,6 +587,10 @@ export class DetalleItemsProveedorComponent {
       this.showFechaPostponeModal = true;
     }
 
+    if (event.column.getColId() === 'typeOC') {
+      this.updateHasRowsWithTypeOC();
+    }
+
     this.updateTotal();
   }
 
@@ -613,6 +619,10 @@ export class DetalleItemsProveedorComponent {
 
   updateTotal() {
     this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0);
+  }
+
+  updateHasRowsWithTypeOC() {
+    this.hasRowsWithTypeOC = this.rowData.some(row => !!(row.typeOC && row.typeOC.trim() !== ''));
   }
 
   onFileSelected(event: any) {
@@ -727,10 +737,16 @@ export class DetalleItemsProveedorComponent {
       if (requisitionId) {
         this.ocandreqsService.lockRequisition(requisitionId, true).subscribe();
       }
-      const msg = isEditing
-        ? `✅ Cotización editada: ${this.savedCotizFolio}`
-        : `✅ Cotización creada: ${this.savedCotizFolio}`;
-      alert(msg);
+
+      await alerts.ocCotizSaved(this.savedCotizFolio);
+
+      // Si TODAS las filas tienen typeOC → generar OC automáticamente
+      const allRowsHaveTypeOC = this.rowData.length > 0 && this.rowData.every(row => !!(row.typeOC && row.typeOC.trim() !== ''));
+      if (allRowsHaveTypeOC) {
+        this.savingChanges = false;
+        await this.generateOC();
+        return;
+      }
     } catch (error: any) {
       console.error('❌ Error guardando cotización:', error);
       alert('Error al guardar la cotización. Intente de nuevo.');
@@ -751,7 +767,7 @@ export class DetalleItemsProveedorComponent {
     try {
       const folio = await this.saveCotizOrOC('OC');
       this.ocGenerated = true; // 🔒 Bloquear todo una vez generada la OC
-      alert(`✅ Orden de Compra generada: ${folio}`);
+      await alerts.ocGenerated(folio);
     } catch (error: any) {
       console.error('❌ Error generando OC:', error);
       alert('Error al generar la Orden de Compra. Intente de nuevo.');
@@ -925,6 +941,7 @@ export class DetalleItemsProveedorComponent {
       }));
       this.gridApi?.setGridOption('rowData', this.rowData);
       this.updateTotal();
+      this.updateHasRowsWithTypeOC();
     } catch (err) {
       console.error('❌ Error cargando items guardados:', err);
     }

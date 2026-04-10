@@ -334,6 +334,46 @@ export class alerts{
 	Función para actualizar el progreso del loading
 	=============================================*/
 
+	/** Modal minimalista: cotización guardada (flujo compras Delison). */
+	static ocCotizSaved(folio: string) {
+		return Swal.fire({
+			icon: 'success',
+			title: 'Datos actualizados',
+			text: `Cotización ${folio} guardada correctamente.`,
+			confirmButtonText: 'Aceptar',
+			confirmButtonColor: '#16a34a',
+			customClass: {
+				container:     'swal-over-modal',
+				popup:         'oc-minimal-popup',
+				title:         'oc-minimal-title',
+				htmlContainer: 'oc-minimal-text',
+				confirmButton: 'oc-minimal-btn oc-minimal-btn--success',
+			},
+			showClass: { popup: 'oc-fadeIn' },
+			hideClass: { popup: 'oc-fadeOut' },
+		});
+	}
+
+	/** Modal minimalista: OC generada (flujo compras Delison). */
+	static ocGenerated(folio: string) {
+		return Swal.fire({
+			icon: 'success',
+			title: 'Orden de compra generada',
+			text: `La orden ${folio} fue creada exitosamente.`,
+			confirmButtonText: 'Aceptar',
+			confirmButtonColor: '#2563eb',
+			customClass: {
+				container:     'swal-over-modal',
+				popup:         'oc-minimal-popup',
+				title:         'oc-minimal-title',
+				htmlContainer: 'oc-minimal-text',
+				confirmButton: 'oc-minimal-btn oc-minimal-btn--primary',
+			},
+			showClass: { popup: 'oc-fadeIn' },
+			hideClass: { popup: 'oc-fadeOut' },
+		});
+	}
+
 	static updateLoadingProgress(title: string, text: string, progress: number) {
 		const progressBar = `
 			<div style="width: 100%; background-color: #f0f0f0; border-radius: 10px; overflow: hidden; margin-top: 20px;">

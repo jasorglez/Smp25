@@ -350,3 +350,35 @@ body {
 .mp-dark-pills .nav-link.active i {
   color: #ffffff !important;
 }
+// ─── OC Minimal Modals (Compras Delison) ──────────────────────────────────────
+.oc-minimal-popup {
+  border-radius: 10px !important;
+  padding: 28px 32px 24px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.12) !important;
+  max-width: 380px !important;
+}
+.oc-minimal-title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  padding: 0 0 4px !important;
+}
+.oc-minimal-text {
+  font-size: .875rem !important;
+  color: #64748b !important;
+  margin: 0 !important;
+}
+.oc-minimal-btn {
+  font-size: .85rem !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  padding: 7px 22px !important;
+  border: none !important;
+  cursor: pointer !important;
+  &--success { background: #16a34a !important; color: #fff !important; }
+  &--primary  { background: #2563eb !important; color: #fff !important; }
+}
+@keyframes ocFadeIn  { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes ocFadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.96); } }
+.oc-fadeIn  { animation: ocFadeIn  .18s ease both; }
+.oc-fadeOut { animation: ocFadeOut .15s ease both; }
