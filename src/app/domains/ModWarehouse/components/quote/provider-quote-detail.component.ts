@@ -152,14 +152,14 @@ export class ProviderQuoteDetailComponent implements OnInit {
         this.isLocked = cotizMaster.idOc > 0 || cotizMaster.locked === true;
         console.log('COTIZ locked status:', this.isLocked, 'idOc:', cotizMaster.idOc);
 
-        const items: any[] = await lastValueFrom(
-          this.ocAndReqsService.getReqItems(this.cotizId)
-        );
-
-        console.log('COTIZ items loaded:', items);
+        const [items, measures]: [any[], any[]] = await Promise.all([
+          lastValueFrom(this.ocAndReqsService.getReqItems(this.cotizId)),
+          lastValueFrom(this.catalogsService.getMeasures()).catch(() => [])
+        ]);
 
         this.rowData = items.map((item: any) => {
           const producto = this.productos.find((p: any) => p.id === (item.idSupplie || item.id_supplie));
+          const measure  = (measures as any[]).find((m: any) => m.id === (producto?.idMedida || item.idMedida));
           return {
             id: item.id,
             idMovement: item.idMovement || item.id_movement,
@@ -167,6 +167,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
             idProvider: item.idProvider || item.id_provider,
             productName: producto ? producto.description : `Producto ${item.idSupplie || item.id_supplie}`,
             productCode: producto ? producto.code : (item.idSupplie || item.id_supplie),
+            unit: measure?.description || producto?.measure || '',
             quantity: item.quantity || 0,
             price: item.price || 0,
             total: (item.quantity || 0) * (item.price || 0),
@@ -265,6 +266,13 @@ export class ProviderQuoteDetailComponent implements OnInit {
         field: 'quantity',
         headerName: 'Cantidad Req',
         width: 100,
+        editable: false,
+        cellStyle: { backgroundColor: '#f8f9fa', textAlign: 'center' }
+      },
+      {
+        field: 'unit',
+        headerName: 'Unidad',
+        width: 90,
         editable: false,
         cellStyle: { backgroundColor: '#f8f9fa', textAlign: 'center' }
       },
@@ -586,18 +594,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
       }
       if (!fechaSolicitud) fechaSolicitud = this.formatDateShort(new Date().toISOString());
 
-      // ── Unidades de medida ────────────────────────────────────────────
-      let measures: any[] = [];
-      try {
-        measures = await lastValueFrom(this.catalogsService.getMeasures()) as any[];
-      } catch { /* no crítico */ }
-
-      // Enriquecer items con unidad
-      const itemsConUnidad = this.rowData.map((item: any) => {
-        const producto = (this.productos || []).find((p: any) => p.id === item.idSupplie);
-        const measure  = measures.find((m: any) => m.id === (producto?.idMedida || item.idMedida));
-        return { ...item, unit: measure?.description || producto?.measure || '' };
-      });
+      // unit ya viene en rowData desde loadProviderQuoteData
+      const itemsConUnidad = this.rowData;
 
       // ── Fecha del documento (encabezado) ─────────────────────────────
       const today = this.formatDateShort(new Date().toISOString());
@@ -776,7 +774,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
         })
       };
 
-      pdfMake.createPdf(docDefinition).open();
+      const filename = `Solicitud-Cotizacion-${cotizFolio || this.quoteData?.folio || 'SC'}.pdf`;
+      pdfMake.createPdf(docDefinition).download(filename);
 
     } catch (error) {
       console.error('Error generando el reporte PDF:', error);

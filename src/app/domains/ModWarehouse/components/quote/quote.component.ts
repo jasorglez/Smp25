@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, NgZone } from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -24,6 +24,8 @@ import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { PresupuestoService } from 'app/services/presupuesto.service';
+import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
@@ -61,6 +63,9 @@ private quotesService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
   private setupService = inject(SetupService);
   private prefixSetupService = inject(PrefixSetupService);
+  private presupuestoService = inject(PresupuestoService);
+  private cuentasContablesService = inject(CuentasContablesService);
+  private ngZone = inject(NgZone);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -99,6 +104,7 @@ private lastProcessedQuote: number = null;
   expandedProviderNumber: number | null = null;
 
   // Catálogos Master
+  cuentasContables: any[] = [];
   proveedores: any[] = [];
   departamentos: any[] = [];
   ubicaciones: any[] = [];
@@ -160,6 +166,7 @@ private lastProcessedQuote: number = null;
       this.lastProcessedQuote = currentQuote;
 
       if (this.idRoot) {
+        this.obtenerCuentas();
         this.getSetupData().then(() => {
           this.idReference = this.projectOrBranch ? this.idProject : this.idBranch;
 
@@ -297,6 +304,21 @@ public gridOptions: any = {
         headerName: 'Solicitante',
         editable: (params) => !params.data?.locked,
         width: 190,
+      },
+      {
+        field: 'idCuenta',
+        headerName: 'Cuenta Presupuestal',
+        editable: (params) => !params.data?.locked,
+        width: 200,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [null, ...this.cuentasContables.map(c => c.id)],
+        }),
+        valueFormatter: (params) => {
+          if (!params.value) return '-- Sin cuenta --';
+          const found = this.cuentasContables.find(c => c.id === params.value);
+          return found ? `${found.codigo} - ${found.nombre}` : params.value;
+        },
       },
 {
   field: 'idReq',
@@ -647,10 +669,20 @@ public gridOptions: any = {
       );
   }
 
-obtenerProveedores() {
+obtenerCuentas() {
+    this.cuentasContablesService.getHojas(this.idRoot).subscribe({
+      next: (data) => { this.cuentasContables = data; },
+      error: (err) => console.error('Error cargando cuentas contables:', err)
+    });
+  }
+
+  obtenerProveedores() {
     this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe(
       (data: any) => {
-        this.proveedores = data;
+        this.proveedores = (data || []).map((p: any) => ({
+          ...p,
+          name: p.company || p.nameContact || p.namecontact || 'Sin nombre'
+        }));
         console.log('Proveedores cargados:', this.proveedores.length);
         // If master data was already loaded, now load COTIZ info
         if (this.pendingCotizLoad && this.masterRowData.length > 0) {
@@ -994,6 +1026,7 @@ obtenerProveedores() {
       typeOc: 'INSUMOS',
       active: true,
       idReq: null,
+      idCuenta: null,
       proveedor1Count: 0,
       proveedor2Count: 0,
       proveedor3Count: 0,
@@ -1045,15 +1078,51 @@ obtenerProveedores() {
       (row) => row.__modified && !row.__isNew
     );
 
+    // ── Validación presupuestal ──────────────────────────────────────────────
+    if (this.typeReference === 'project' && this.idProject && this.idRoot) {
+      const rowsConCuenta = [...newRows, ...modifiedRows].filter(r => r.idCuenta);
+      for (const row of rowsConCuenta) {
+        // Total de todos los detalles de la cotización (suma de todos los proveedores)
+        const detalles = [
+          ...(row.proveedor1Data ?? []),
+          ...(row.proveedor2Data ?? []),
+          ...(row.proveedor3Data ?? [])
+        ];
+        const totalCotizacion = detalles.reduce((sum: number, d: any) =>
+          sum + (Number(d.total ?? 0) || (Number(d.quantity ?? 0) * Number(d.price ?? 0))), 0);
+
+        if (totalCotizacion > 0) {
+          try {
+            const { saldo } = await lastValueFrom(
+              this.presupuestoService.getSaldoDisponible(this.idRoot, this.idProject, row.idCuenta)
+            );
+            if (totalCotizacion > saldo) {
+              const cuenta = this.cuentasContables.find(c => c.id === row.idCuenta);
+              const nombreCuenta = cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : `Cuenta #${row.idCuenta}`;
+              const excedente = totalCotizacion - saldo;
+              const confirm = await alerts.confirmAlert(
+                'Presupuesto Superado',
+                `La cotización ${row.folio} excede el saldo disponible en "${nombreCuenta}".\n\nSaldo disponible: $${saldo.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\nMonto cotización: $${totalCotizacion.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\nExcedente: $${excedente.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n\n¿Desea continuar de todos modos?`,
+                'warning',
+                'Continuar de todos modos'
+              );
+              if (!confirm.isConfirmed) return;
+            }
+          } catch {
+            // Si no hay presupuesto configurado, continuar sin bloquear
+          }
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Quote - Datos para agregar:', cleanedData);
       return this.quotesService.addOcAndReq(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Quote - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.quotesService.updateOcAndReq(row.id, cleanedData);
     });
 
@@ -1215,9 +1284,11 @@ createQuote(idQuote: number, action: string) {
 
     // Si no hay cotización creada, abrir modal de selección para crearla
     console.log('No existing COTIZ found, opening provider selection modal to create new one');
-    this.selectedProviderSlot = providerNumber;
-    this.selectedProviderId = null;
-    this.showProviderModal = true;
+    this.ngZone.run(() => {
+      this.selectedProviderSlot = providerNumber;
+      this.selectedProviderId = null;
+      this.showProviderModal = true;
+    });
   }
 
 // Confirmar selección de proveedor desde el modal

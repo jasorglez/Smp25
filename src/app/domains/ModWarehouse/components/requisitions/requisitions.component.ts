@@ -1172,14 +1172,19 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   loadRequisitionItems(requisitionId: number, successCallback: any) {
-    this.requisitionsService.getReqItems(requisitionId).subscribe({
-      next: (data: any) => {
-        successCallback(data);
-      },
-      error: (error) => {
-        console.error('Error loading requisition items:', error);
-        successCallback([]);
-      }
+    Promise.all([
+      lastValueFrom(this.requisitionsService.getReqItems(requisitionId)),
+      lastValueFrom(this.catalogsService.getMeasures()).catch(() => [])
+    ]).then(([items, measures]: [any[], any[]]) => {
+      const enriched = items.map((item: any) => {
+        const producto = this.productos.find((p: any) => p.id === (item.idSupplie || item.id_supplie));
+        const measure  = measures.find((m: any) => m.id === (producto?.idMedida || item.idMedida));
+        return { ...item, unit: measure?.description || producto?.measure || '' };
+      });
+      successCallback(enriched);
+    }).catch((error) => {
+      console.error('Error loading requisition items:', error);
+      successCallback([]);
     });
   }
 

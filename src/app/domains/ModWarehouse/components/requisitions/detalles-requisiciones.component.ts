@@ -121,6 +121,13 @@ export class DetallesRequisicionesComponent implements OnInit {
         }
       },
       {
+        field: 'unit',
+        headerName: 'Unidad',
+        editable: false,
+        width: 90,
+        cellStyle: { backgroundColor: '#f8f9fa', textAlign: 'center' }
+      },
+      {
         field: 'dateuse',
         headerName: 'Fecha de uso',
         editable: () => !this.isLocked,
