@@ -437,12 +437,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       {
         field: 'tipo',
         headerName: 'Tipo',
-        width: 130
-      },
-      {
-        field: 'proveedorInterno',
-        headerName: 'Proveedor Interno',
-        width: 200
+        width: 130,
+        hide: true
       },
       {
         field: 'tipoPrioridad',

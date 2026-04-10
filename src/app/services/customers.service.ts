@@ -1,8 +1,9 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { TrackingService } from './tracking.service';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { forkJoin, Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ICustomer } from 'app/interface/icustomer';
 
 @Injectable({
@@ -33,6 +34,77 @@ export class CustomersService {
     //const apiUrl = `${environment.urlAdministration}/Customer/branch/${id}?type=${type}`;      
     //alert(apiUrl)  
     return this.http.get(`${environment.urlAdministration}/Customer/cusorprov?idCompany=${id}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  /** id (string en JSON) → por_autorizar; no filtra por type (evita cusorprov vacío por mismatch en BD). */
+  getAutorizacionFlags(idCompany: number): Observable<Record<string, boolean>> {
+    return this.http.get<Record<string, boolean>>(
+      `${environment.urlAdministration}/Customer/autorizacion-flags?idCompany=${idCompany}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  /**
+   * Flags por id (matprov). Orden: POST body → GET ?ids= → GET por compañía → GET /Customer/{id:int} por fila.
+   * POST primero evita que un GET pase por error a /Customer/{id} si el API aún no distingue rutas (400 en id).
+   */
+  getAutorizacionFlagsByIds(ids: number[], idCompany: number): Observable<Record<string, boolean>> {
+    const uniq = [...new Set(ids.filter((n) => Number.isFinite(n) && n > 0))];
+    if (uniq.length === 0) {
+      return of({});
+    }
+    const base = `${environment.urlAdministration}/Customer/autorizacion-flags-by-ids`;
+    const headers = this.trackingService.getHeaders();
+
+    let params = new HttpParams();
+    uniq.forEach((id) => (params = params.append('ids', String(id))));
+
+    return this.http.post<Record<string, boolean>>(base, uniq, { headers }).pipe(
+      catchError(() =>
+        this.http.get<Record<string, boolean>>(base, { params, headers })
+      ),
+      catchError(() =>
+        this.getAutorizacionFlags(idCompany).pipe(
+          map((full) => this.pickAutorizacionForIds(full, uniq))
+        )
+      ),
+      catchError(() =>
+        forkJoin(
+          uniq.map((id) =>
+            this.getCustomerById(id).pipe(
+              map((c: any) => ({
+                id,
+                val: !!(c?.autorizacion ?? c?.porAutorizar ?? c?.PorAutorizar),
+              })),
+              catchError(() => of({ id, val: false }))
+            )
+          )
+        ).pipe(
+          map((rows) => {
+            const out: Record<string, boolean> = {};
+            rows.forEach((r) => {
+              out[String(r.id)] = r.val;
+            });
+            return out;
+          })
+        )
+      )
+    );
+  }
+
+  private pickAutorizacionForIds(
+    full: Record<string, boolean> | null | undefined,
+    ids: number[]
+  ): Record<string, boolean> {
+    const want = new Set(ids.map(String));
+    const src = full && typeof full === 'object' && !Array.isArray(full) ? full : {};
+    const out: Record<string, boolean> = {};
+    for (const k of Object.keys(src)) {
+      if (want.has(k)) {
+        out[k] = !!(src as any)[k];
+      }
+    }
+    return out;
   }
 
   getCustomersByCompany(root : number, type: string) {
@@ -82,6 +154,8 @@ export class CustomersService {
   }
 
   deleteCustomer(id: number): Observable<any> {
+    console.log('🔍 deleteCustomer - Eliminando ID:', id, 'URL:', `${environment.urlAdministration}/Customer/${id}`);
+    console.log('🔍 deleteCustomer - Headers:', this.trackingService.getHeaders());
     return this.http.delete<any[]>(`${environment.urlAdministration}/Customer/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
@@ -146,5 +220,9 @@ export class CustomersService {
 
   deleteAbonoCustomer(id: number): Observable<any> {
     return this.http.delete(`${environment.urlAdministration}/CustomerCreditsDelison/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getProvidersForGrid(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/Customer/providers-for-grid/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 }

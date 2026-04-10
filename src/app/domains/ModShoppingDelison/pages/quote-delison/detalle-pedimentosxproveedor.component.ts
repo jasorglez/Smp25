@@ -101,6 +101,20 @@ export class DetailCellRendererPedimentosComponent {
     });
   }
 
+  /**
+   * `solicit` en COTIZ a veces llega como "Sin seleccionar" aunque `idProvider` sea válido;
+   * si no, el valueGetter prefería ese texto sobre el fallback por id.
+   */
+  private providerCellLabel(name: unknown, id: number | undefined, emptyLabel: string): string {
+    const n = name != null && String(name).trim() !== '' ? String(name).trim() : '';
+    const bad = !n || n.toLowerCase() === 'sin seleccionar';
+    if (!bad) {
+      return n;
+    }
+    const num = Number(id);
+    return Number.isFinite(num) && num > 0 ? `Prov. ${num}` : emptyLabel;
+  }
+
   get colDefs(): ColDef[] {
     return [
       {
@@ -166,11 +180,11 @@ export class DetailCellRendererPedimentosComponent {
         width: 210,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor A'),
+          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor 1'),
           icon: 'bi-person-badge',
-          title: 'Ver/Editar Proveedor A'
+          title: 'Ver/Editar Proveedor 1'
         },
-        valueGetter: (params: any) => params.data?.name_idProvider || (params.data?.idProvider > 0 ? `Prov. ${params.data.idProvider}` : 'Proveedor A'),
+        valueGetter: (params: any) => this.providerCellLabel(params.data?.name_idProvider, params.data?.idProvider, 'Proveedor 1'),
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
       },
 
@@ -180,11 +194,11 @@ export class DetailCellRendererPedimentosComponent {
         width: 210,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor B'),
+          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor 2'),
           icon: 'bi-person-badge',
-          title: 'Ver/Editar Proveedor B'
+          title: 'Ver/Editar Proveedor 2'
         },
-        valueGetter: (params: any) => params.data?.name_idProvider2 || (params.data?.idProvider2 > 0 ? `Prov. ${params.data.idProvider2}` : 'Proveedor B'),
+        valueGetter: (params: any) => this.providerCellLabel(params.data?.name_idProvider2, params.data?.idProvider2, 'Proveedor 2'),
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer' }
       },
 
@@ -194,11 +208,11 @@ export class DetailCellRendererPedimentosComponent {
         width: 210,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor C'),
+          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor 3'),
           icon: 'bi-person-badge',
-          title: 'Ver/Editar Proveedor C'
+          title: 'Ver/Editar Proveedor 3'
         },
-        valueGetter: (params: any) => params.data?.name_idProvider3 || (params.data?.idProvider3 > 0 ? `Prov. ${params.data.idProvider3}` : 'Proveedor C'),
+        valueGetter: (params: any) => this.providerCellLabel(params.data?.name_idProvider3, params.data?.idProvider3, 'Proveedor 3'),
         cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
       },
 
@@ -417,10 +431,10 @@ export class DetailCellRendererPedimentosComponent {
       });
 
       // Establecer el tipo de detalle como reporte
-      // Por defecto usamos idProvider (Proveedor A), pero se puede modificar
+      // Por defecto usamos idProvider (Proveedor 1), pero se puede modificar
       node.data.detailType = 'report';
       node.data.reportProviderField = 'idProvider';
-      node.data.reportProviderLabel = 'Proveedor A';
+      node.data.reportProviderLabel = 'Proveedor 1';
 
       // Guardar el ID de la fila expandida
       this.expandedRowId = node.id;

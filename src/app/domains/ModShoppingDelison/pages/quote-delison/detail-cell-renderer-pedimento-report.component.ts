@@ -78,7 +78,7 @@ export class DetailCellRendererPedimentoReportComponent {
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.pedimentoData = params.data;
-    this.providerLabel = params.data?.reportProviderLabel || 'Proveedor A';
+    this.providerLabel = params.data?.reportProviderLabel || 'Proveedor 1';
     this.providerField = params.data?.reportProviderField || 'idProvider';
     this.generateReport();
   }

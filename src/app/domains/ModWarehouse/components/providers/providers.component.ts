@@ -17,10 +17,12 @@ import {
   concat,
   EMPTY,
   lastValueFrom,
+  of,
   toArray,
   throwError,
   map,
-  Observable
+  Observable,
+  switchMap
 } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
@@ -37,6 +39,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from 'app/domains/ModAdmon/components/radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { InegiService } from 'app/services/inegi.service';
@@ -86,6 +89,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private branchesService = inject(BranchsService);
   authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
+  private sucursalByMpService = inject(SucursalByMaterialProveedorService);
 
   invited: boolean = false;
 
@@ -445,6 +449,19 @@ export class ProvidersComponent implements CanComponentDeactivate {
         field: 'vigente',
         headerName: 'Activo',
         editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+      },
+
+      {
+        field: 'autorizacion',
+        headerName: 'Por autorizar',
+        width: 130,
+        editable: false,
+        sortable: false,
+        filter: false,
+        cellRenderer: this.createAutorizacionCheckboxRenderer(),
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
       },
 
       {
@@ -767,6 +784,65 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
 
 
+  /** Respuesta POST/GET de flags: objeto plano id → bool (tolerante a envoltorios). */
+  private normalizeFlagPayload(raw: unknown): Record<string, boolean> {
+    if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+      return {};
+    }
+    const o = raw as Record<string, unknown>;
+    const inner = (o['data'] ?? o['result'] ?? o) as Record<string, unknown>;
+    if (inner == null || typeof inner !== 'object' || Array.isArray(inner)) {
+      return {};
+    }
+    const out: Record<string, boolean> = {};
+    for (const k of Object.keys(inner)) {
+      const v = inner[k];
+      out[k] = v === true || v === 1 || v === '1';
+    }
+    return out;
+  }
+
+  /**
+   * matprov puede devolver `autorizacion`, `porAutorizar` o `por_autorizar`; en SQL a veces llega como 0/1.
+   */
+  private readPorAutorizarFlag(data: any): boolean {
+    if (!data) return false;
+    const v =
+      data.autorizacion ??
+      data.porAutorizar ??
+      data.PorAutorizar ??
+      data.por_autorizar;
+    if (v === undefined || v === null || v === '') return false;
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'number') return v !== 0;
+    const s = String(v).trim().toLowerCase();
+    if (s === 'true' || s === '1' || s === 'yes') return true;
+    if (s === 'false' || s === '0' || s === 'no') return false;
+    return false;
+  }
+
+  /** Solo lectura: refleja «Por autorizar»; no se alterna desde el grid. */
+  private createAutorizacionCheckboxRenderer(): (params: any) => HTMLElement {
+    return (params: any): HTMLElement => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText =
+        'display:flex;align-items:center;justify-content:center;height:100%;width:100%;';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.title = 'Por autorizar (no editable aquí)';
+      cb.checked =
+        params.data?.autorizacion === true ||
+        params.data?.autorizacion === 1 ||
+        this.readPorAutorizarFlag(params.data);
+      cb.disabled = true;
+      cb.style.cursor = 'default';
+
+      wrap.appendChild(cb);
+      return wrap;
+    };
+  }
+
   createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
     return (params: any): HTMLElement => {
       const div = document.createElement('div');
@@ -825,33 +901,67 @@ export class ProvidersComponent implements CanComponentDeactivate {
       this.trackingService.getEmail());
 
     return new Promise((resolve) => {
-      this.materialsService
-        .getProvidersxmaterials(this.idRoot)
-        .subscribe({
-          next: (data: any) => {
-            // Limpiar emails basura que vienen de la BD (como '*', caracteres sueltos)
-            if (Array.isArray(data)) {
-              data.forEach(row => {
-                if (row.email) {
-                  const trimmed = row.email.toString().trim();
-                  // Si el email es un solo carácter no alfanumérico (como '*'), limpiarlo
-                  if (trimmed.length <= 1 && !/[a-zA-Z0-9]/.test(trimmed)) {
-                    row.email = '';
-                  }
-                }
-              });
+      // Usar el endpoint de Tracking que mapea active -> vigente correctamente
+      this.customerService
+        .getProvidersForGrid(this.idRoot)
+        .pipe(
+          switchMap((grid) => {
+            const data: any[] = Array.isArray(grid) ? grid : [];
+            const ids = [
+              ...new Set(
+                data
+                  .map((r: any) => Number(r.id))
+                  .filter((n: number) => Number.isFinite(n) && n > 0)
+              ),
+            ];
+            if (ids.length === 0) {
+              return of({ data, flags: {} as Record<string, boolean> });
             }
-            this.rowData = data;
+            return this.customerService.getAutorizacionFlagsByIds(ids, this.idRoot).pipe(
+              map((flags) => ({ data, flags })),
+              catchError((err) => {
+                console.warn('No se pudieron cargar por_autorizar desde Tracking; solo matprov.', err);
+                return of({ data, flags: {} as Record<string, boolean> });
+              })
+            );
+          })
+        )
+        .subscribe({
+          next: ({ data, flags }) => {
+            const flagMap = this.normalizeFlagPayload(flags);
 
-            // Actualizar el filterList después de cargar los datos
+            const merged: any[] = data.map((row: any) => {
+              let next = { ...row };
+              if (next.email) {
+                const trimmed = next.email.toString().trim();
+                if (trimmed.length <= 1 && !/[a-zA-Z0-9]/.test(trimmed)) {
+                  next = { ...next, email: '' };
+                }
+              }
+              const id = Number(next.id);
+              const key = Number.isFinite(id) ? String(id) : '';
+              const fromApi =
+                key !== '' && flagMap[key] !== undefined ? flagMap[key] : undefined;
+              const autorizacion =
+                fromApi !== undefined ? !!fromApi : this.readPorAutorizarFlag(next);
+              return { ...next, autorizacion };
+            });
+
+            this.rowData = merged;
             this.updateContactFilterList();
-            
+            setTimeout(() => {
+              try {
+                this.gridApi?.refreshCells({ force: true });
+              } catch {
+                /* grid aún no listo */
+              }
+            }, 0);
             resolve(true);
           },
           error: (error) => {
             console.error('Error obteniendo datos:', error);
             resolve(false);
-          }
+          },
         });
     });
 
@@ -1133,6 +1243,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       total: 0,
       radio: 0,
       vigente: true,
+      autorizacion: true,
       NumCliente: 0,
       latitud: '',
       longitud: '',
@@ -1325,10 +1436,75 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }, 100);
   }
 
+  /** Quita vínculos en Warehouse (subfamilias, ProveedorXTabla, sucursales por material) antes de borrar el Customer. */
+  private async deleteWarehouseLinksForProvider(providerId: number): Promise<void> {
+    try {
+      const subRows: any = await lastValueFrom(
+        this.providersService.getSubfamilyxProviderByProvider(providerId)
+      );
+      const subList = Array.isArray(subRows) ? subRows : [];
+      for (const row of subList) {
+        const sid = row?.id;
+        if (sid != null && Number(sid) > 0) {
+          try {
+            await lastValueFrom(this.providersService.deleteSubfamilyxProvider(Number(sid)));
+          } catch (e) {
+            console.warn('No se pudo eliminar SubfamilyxProvider', sid, e);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('getSubfamilyxProviderByProvider', e);
+    }
+
+    const types = ['MATERIAL', 'CONTACT', 'BANK'];
+    for (const type of types) {
+      let list: any;
+      try {
+        list = await lastValueFrom(this.providersService.getProvidersXTable(providerId, type));
+      } catch {
+        continue;
+      }
+      const rows = Array.isArray(list) ? list : [];
+      for (const row of rows) {
+        const pxtId = row?.id;
+        if (pxtId == null || Number(pxtId) <= 0) continue;
+        if (type === 'MATERIAL') {
+          try {
+            const sucs: any = await lastValueFrom(
+              this.sucursalByMpService.getSucursalByMaterial(Number(pxtId))
+            );
+            const sl = Array.isArray(sucs) ? sucs : [];
+            for (const s of sl) {
+              if (s?.id != null) {
+                try {
+                  await lastValueFrom(
+                    this.sucursalByMpService.deleteSucursalByMaterial(Number(s.id))
+                  );
+                } catch (e) {
+                  console.warn('deleteSucursalByMaterial', s?.id, e);
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('getSucursalByMaterial', pxtId, e);
+          }
+        }
+        try {
+          await lastValueFrom(this.providersService.deleteProviderXTable(Number(pxtId)));
+        } catch (e) {
+          console.warn('deleteProviderXTable', pxtId, e);
+        }
+      }
+    }
+  }
+
   async deleteEntry() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminar Proveedores`, 'Menu Administracion Proveedores ',
       this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
+    console.log('🔍 deleteEntry - selectedNodes:', selectedNodes.length);
+    
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
@@ -1339,66 +1515,63 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
+    console.log('🔍 deleteEntry - selectedData:', selectedData);
+    
+    const id = Number(selectedData?.id);
+    console.log('🔍 deleteEntry - id:', id, 'isFinite:', Number.isFinite(id));
+    
+    if (!Number.isFinite(id) || id <= 0) {
+      alerts.basicAlert('Eliminar entrada', 'Identificador de proveedor no válido.', 'error');
+      return;
+    }
 
-    // Validar que el préstamo sea 0 o no exista
-    if (selectedData.total && selectedData.total !== 0) {
+    const creditTotal = Number(selectedData?.total);
+    if (Number.isFinite(creditTotal) && creditTotal !== 0) {
       alerts.basicAlert(
         'Error al eliminar',
-        'No se puede eliminar mientras tenga notas activas',
+        'No se puede eliminar mientras tenga saldo o notas de crédito distintas de cero.',
         'error'
       );
       return;
     }
 
-    // Validar que el proveedor no esté siendo usado en materiales
+    const confirm = await alerts.confirmAlert(
+      'Eliminar proveedor',
+      `Se eliminará permanentemente el proveedor "${selectedData.company || selectedData.nameContact || id}" y sus vínculos en almacén (materiales, contactos, bancos). ¿Continuar?`,
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirm.isConfirmed) {
+      return;
+    }
+
     try {
-      const materialsData: any = await lastValueFrom(
-        this.providersService.getProvidersXTable(selectedData.id, 'MATERIAL')
-      );
-
-      if (materialsData && materialsData.length > 0) {
-        alerts.basicAlert(
-          'No se puede eliminar',
-          `Este proveedor está siendo utilizado en ${materialsData.length} material(es). No se puede eliminar.`,
-          'error'
-        );
-        return;
-      }
-    } catch (error) {
-      console.error('Error verificando uso del proveedor:', error);
-      alerts.basicAlert(
-        'Error',
-        'Error al verificar si el proveedor está en uso.',
+      console.log('🔍 deleteEntry - Eliminando proveedor con ID:', id);
+      console.log('🔍 deleteEntry - idRoot:', this.idRoot, 'idCompany:', this.idCompany);
+      await this.deleteWarehouseLinksForProvider(id);
+      console.log('🔍 deleteEntry - Warehouse links eliminados');
+      
+      console.log('🔍 deleteEntry - Llamando deleteCustomer con ID:', id);
+      const response = await lastValueFrom(this.customerService.deleteCustomer(id));
+      console.log('🔍 deleteEntry - deleteCustomer response:', response);
+      console.log('🔍 deleteEntry - deleteCustomer completado');
+      
+      await alerts.basicAlert('Eliminar entrada', 'Proveedor eliminado correctamente.', 'success');
+      await this.obtenerDatos();
+      this.notSavedChanges = false;
+      this.selectedRowData = null;
+    } catch (error: any) {
+      console.error('🔍 deleteEntry - Error:', error);
+      console.error('🔍 deleteEntry - Error status:', error?.status);
+      console.error('🔍 deleteEntry - Error statusText:', error?.statusText);
+      console.error('🔍 deleteEntry - Error error:', error?.error);
+      console.error('🔍 deleteEntry - Error message:', error?.message);
+      await alerts.basicAlert(
+        'Eliminar entrada',
+        error?.error?.message || error?.message || 'Error al eliminar el proveedor en el servidor.',
         'error'
       );
-      return;
     }
-
-    const id = selectedData.id;
-    selectedData.active = 0;
-    this.customerService
-      .deleteCustomer(id)
-      .pipe(
-        catchError((error) => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
-            'error'
-          );
-          console.error(error);
-          return EMPTY;
-        })
-      )
-      .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
-        this.obtenerDatos();
-        this.notSavedChanges = false;
-        this.selectedRowData = null;
-      });
   }
 
   revert() {
@@ -1413,6 +1586,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     delete cleanedData.typeProvider; // Solo para visualización, no va a BD
     delete cleanedData.tipoProveedorRows; // Solo para reconstruir grid, no va a BD
     delete cleanedData.detailType; // Propiedad interna del grid
+    cleanedData.active = cleanedData.vigente === true;
     // NO incluir 'type' para evitar actualizarlo en ediciones
     // El 'type' solo se debe incluir al agregar nuevos registros
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {

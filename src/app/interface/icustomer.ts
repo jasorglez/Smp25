@@ -16,6 +16,8 @@ export interface ICustomer {
   total: number;
   radio: number;
   vigente: boolean;
+  /** Columna «Por autorizar» en catálogo (campo `autorizacion` en API). */
+  autorizacion?: boolean;
   NumCliente: number;
   latitud: string;
   longitud: string;
