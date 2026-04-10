@@ -2183,6 +2183,63 @@ export const routes: Routes = [
               ).then((m) => m.MoliendaComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'production', detailed: 'molienda_princ' } },
+            children: [
+              { path: '', redirectTo: 'clarificacion', pathMatch: 'full' },
+              {
+                path: 'clarificacion',
+                loadComponent: () =>
+                  import('./domains/ModProduction/Components/molienda/clarificacion/clarificacion.component')
+                    .then((m) => m.ClarificacionComponent),
+              },
+              {
+                path: 'moliendauno',
+                loadComponent: () =>
+                  import('./domains/ModProduction/Components/molienda/moliendauno/moliendauno.component')
+                    .then((m) => m.MoliendaUnoComponent),
+              },
+              {
+                path: 'moliendados',
+                loadComponent: () =>
+                  import('./domains/ModProduction/Components/molienda/moliendados/moliendados.component')
+                    .then((m) => m.MoliendaDosComponent),
+              },
+            ],
+          },
+          {
+            path: 'preparacionuno',
+            loadComponent: () =>
+              import(
+                './domains/ModProduction/Components/preparacion1/preparacion1.component'
+              ).then((m) => m.Preparacion1Component),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'production', detailed: 'preparacion1' } },
+          },
+          {
+            path: 'preparaciondos',
+            loadComponent: () =>
+              import(
+                './domains/ModProduction/Components/preparacion2/preparacion2.component'
+              ).then((m) => m.Preparacion2Component),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'production', detailed: 'preparacion2' } },
+          },
+          {
+            path: 'cerveza',
+            loadComponent: () =>
+              import(
+                './domains/ModProduction/Components/cerveza/cerveza.component'
+              ).then((m) => m.CervezaComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'production', detailed: 'cerveza' } },
+          },
+          {
+            path: 'envasado',
+            loadComponent: () =>
+              import(
+                './domains/ModProduction/Components/envasado/envasado.component'
+              ).then((m) => m.EnvasadoComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'production', detailed: 'envasado' } },
           },
         ],
       },
