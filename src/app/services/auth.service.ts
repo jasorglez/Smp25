@@ -50,12 +50,8 @@ export class AuthService {
   idBranch: number;
   isAdvanced: boolean = false;
 
-  // Timers para el manejo de expiración del token
-  private sessionWarningTimer: any = null;
+  // Timer de cierre al expirar el JWT (sin modal de advertencia previa).
   private sessionExpireTimer: any = null;
-
-  // Minutos antes de expirar para mostrar la advertencia
-  private readonly WARNING_BEFORE_EXPIRY_MS = 2 * 60 * 1000; // 2 minutos
 
   /** Cierre por inactividad (sin eventos de usuario en el documento). */
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -97,35 +93,7 @@ export class AuthService {
       return;
     }
 
-    const msUntilWarning = msUntilExpiry - this.WARNING_BEFORE_EXPIRY_MS;
-
-    if (msUntilWarning > 0) {
-      // Programar advertencia 2 minutos antes de expirar (recalcular tiempo restante al abrir: el
-      // valor msUntilExpiry de login queda obsoleto y rompía el contador y el cierre coordinado).
-      this.sessionWarningTimer = setTimeout(() => {
-        this.ngZone.run(() => {
-          const t = localStorage.getItem('token');
-          const exp = t ? this.getTokenExpiry(t) : null;
-          const msLeft = exp ? exp - Date.now() : 0;
-          if (msLeft <= 0) {
-            this.logout();
-            return;
-          }
-          this.showSessionWarning(msLeft);
-        });
-      }, msUntilWarning);
-    } else {
-      this.ngZone.run(() => {
-        const msLeft = Math.max(0, msUntilExpiry);
-        if (msLeft <= 0) {
-          this.logout();
-          return;
-        }
-        this.showSessionWarning(msLeft);
-      });
-    }
-
-    // Programar cierre de sesión automático al expirar
+    // Programar cierre de sesión automático al expirar (sin alerta "Sesión por expirar")
     this.sessionExpireTimer = setTimeout(() => {
       this.ngZone.run(() => {
         Swal.close();
@@ -217,52 +185,6 @@ export class AuthService {
     void this.logout();
   }
 
-  // ─── Muestra alerta de advertencia con cuenta regresiva ───
-  private showSessionWarning(msRemaining: number): void {
-    if (msRemaining <= 0) {
-      void this.logout();
-      return;
-    }
-    const secondsRemaining = Math.floor(msRemaining / 1000);
-
-    let timerInterval: any;
-
-    Swal.fire({
-      title: '⏰ Sesión por expirar',
-      html: `Tu sesión cerrará en <strong id="swal-countdown">${secondsRemaining}</strong> segundos.<br><br>Pulsa <strong>Continuar sesión</strong> para seguir trabajando, o espera al fin del contador para cerrar sesión.`,
-      icon: 'warning',
-      showCancelButton: false,
-      confirmButtonText: 'Continuar sesión',
-      confirmButtonColor: '#3085d6',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      timer: msRemaining,
-      timerProgressBar: true,
-      didOpen: () => {
-        const countdownEl = document.getElementById('swal-countdown');
-        let remaining = secondsRemaining;
-        timerInterval = setInterval(() => {
-          remaining--;
-          if (countdownEl) countdownEl.textContent = String(remaining > 0 ? remaining : 0);
-        }, 1000);
-      },
-      willClose: () => {
-        clearInterval(timerInterval);
-      }
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Renovar temporizadores JWT + inactividad sin cerrar sesión (mismo token hasta su exp real).
-        this.clearSessionTimers();
-        this.startSessionTimers();
-        return;
-      }
-      // Cierre por temporizador del modal: JWT agotado en la práctica
-      if (result.dismiss === Swal.DismissReason.timer) {
-        void this.logout();
-      }
-    });
-  }
-
   // ─── Decodifica el JWT y retorna la fecha de expiración en ms ───
   private getTokenExpiry(token: string): number | null {
     try {
@@ -280,10 +202,6 @@ export class AuthService {
 
   // ─── Limpia los timers existentes ───
   clearSessionTimers(): void {
-    if (this.sessionWarningTimer) {
-      clearTimeout(this.sessionWarningTimer);
-      this.sessionWarningTimer = null;
-    }
     if (this.sessionExpireTimer) {
       clearTimeout(this.sessionExpireTimer);
       this.sessionExpireTimer = null;
