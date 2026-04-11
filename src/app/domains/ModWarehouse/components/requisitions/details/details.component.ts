@@ -43,7 +43,6 @@ export class RequisitionsDetailsComponent {
 
 
   ngOnInit() {
-    this.obtenerDatos();
     this.obtenerProductos();
   }
 
@@ -113,59 +112,57 @@ public gridOptions: any = {
   },
 };
 
-  get colMaster(): ColDef[] {
-    return [
-      {
-        field: 'idSupplie', headerName: 'Producto', editable: true, flex: 3, cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.productos ? this.productos.map(item => item.id) : [],
+  public colMaster: ColDef[] = [
+    {
+      field: 'idSupplie', headerName: 'Producto', editable: true, flex: 3, cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({
+        values: this.productos ? this.productos.map(item => item.id) : [],
+      }),
+      valueFormatter: (params) => {
+        const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;
+        return foundItem ? `${foundItem.description}` : params.value;
+      }
+    },
+    { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1 },
+    {
+      field: 'dateuse',
+      headerName: 'Fecha de uso',
+      editable: true,
+      flex: 2,
+      cellDataType: 'dateString',
+      valueFormatter: (params) => {
+        if (params.value) {
+          return params.value.split('T')[0];
+        }
+        return '';
+      }
+    },
+    { field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
+      cellEditorParams: {
+        maxLength: 100,
+        cols: 50,
+        rows: 3,
+        onKeyDown: (event: KeyboardEvent) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.stopPropagation();
+          }
         },
-        valueFormatter: (params) => {
-          const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;
-          return foundItem ? `${foundItem.description}` : params.value;
+      },
+      onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
+        if (!event.node.group) {
+          this.modalServiceTable.showModal({
+            params: event,
+            value: event.value,
+          });
         }
       },
-      { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1 },
-      {
-        field: 'dateuse',
-        headerName: 'Fecha de uso',
-        editable: true,
-        flex: 2,
-        cellDataType: 'dateString',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value.split('T')[0];
-          }
-          return '';
-        }
-      },
-      { field: 'comment', headerName: 'Comentarios', editable: false, filter: true, flex: 2, cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
-            }
-          },
-        },
-        onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          if (!event.node.group) {
-            this.modalServiceTable.showModal({
-              params: event,
-              value: event.value,
-            });
-          }
-        },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value;
-          }
+      cellRenderer: (params: ICellRendererParams) => {
+        if (params.node.group) {
           return params.value;
-        }},
-    ]
-  };
+        }
+        return params.value;
+      }},
+  ];
 
   obtenerDatos() {
     this.requisitionsService.getReqItems(this.idRequisition).subscribe((data: any) => {

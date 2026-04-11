@@ -24,12 +24,12 @@ export class DetallesRequisicionesComponent implements OnInit {
   tempIdCounter: number = 0;
   productos: any[] = [];
   isLocked: boolean = false; // True when requisition is assigned to a QUOTE
+  colDefs: ColDef[] = [];
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    // Load initial data
-    this.loadData();
+    // agInit already handles data loading — nothing needed here
   }
 
   agInit(params: ICellRendererParams): void {
@@ -41,6 +41,7 @@ export class DetallesRequisicionesComponent implements OnInit {
     console.log('🔍 Detail Renderer - productos array:', this.productos);
     console.log('🔍 Detail Renderer - productos length:', this.productos.length);
     console.log('🔒 Detail Renderer - isLocked:', this.isLocked, 'locked:', params.data?.locked);
+    this.colDefs = this.buildColDefs();
     this.loadData();
   }
 
@@ -65,11 +66,9 @@ export class DetallesRequisicionesComponent implements OnInit {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    // Ensure columnDefs are updated with loaded products
-    this.gridApi.setGridOption('columnDefs', this.colDefs);
   }
 
-  get colDefs(): ColDef[] {
+  private buildColDefs(): ColDef[] {
     return [
       {
         headerName: '#',

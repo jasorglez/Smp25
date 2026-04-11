@@ -265,9 +265,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     });
   }
 
-  get colMaster(): ColDef[] {
-    return [
-      {
+  public colMaster: ColDef[] = [{
         field: 'countItem',
         headerName: 'Items',
         width: 60,
@@ -330,11 +328,9 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         editable: (params) => !params.data?.locked,
         width: 190,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.departamentos
-            ? this.departamentos.map((item) => item.id)
-            : [],
-        },
+        cellEditorParams: () => ({
+          values: this.departamentos ? this.departamentos.map((item) => item.id) : [],
+        }),
         valueFormatter: (params) => {
           const foundItem = this.departamentos
             ? this.departamentos.find((item) => item.id === params.value)
@@ -403,21 +399,19 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           return params.value;
         },
       },
-    ];
-  }
+  ];
 
   // Column Definitions: Defines the columns to be displayed.
-  get colDetails(): ColDef[] {
-    return [
+  public colDetails: ColDef[] = [
       {
         field: 'idSupplie',
         headerName: 'Producto',
         editable: true,
         flex: 3,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.productos ? this.productos.map((item) => item.id) : [],
-        },
+        }),
         valueFormatter: (params) => {
           const foundItem = this.productos
             ? this.productos.find((item) => item.id === params.value)
@@ -477,8 +471,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           return params.value;
         },
       },
-    ];
-  }
+  ];
 
   // ==================== MASTER METHODS ====================
 
