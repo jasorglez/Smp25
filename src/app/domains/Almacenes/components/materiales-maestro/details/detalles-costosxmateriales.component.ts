@@ -4,6 +4,7 @@ import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { CellFocusedEvent, CellClickedEvent, ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, CellKeyDownEvent, Column, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ICellRendererParams } from 'ag-grid-community';
 import { FamilySubFamily } from 'app/services/familySubFamily.service';
+import { SignalsService } from 'app/services/signals.service';
 import { FormulaEditorComponent } from '../formula-editor.component';
 import { Parser } from 'expr-eval';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -89,10 +90,11 @@ import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
     }
   `]
 })
-export class DetailCellRendererCostosComponent implements ICellRendererAngularComp {
+export class DetallesCostosxmaterialesComponent implements ICellRendererAngularComp {
   private currencyPipe = inject(CurrencyPipe);
   private rawMaterialsService = inject(RawMaterialsService);
   private materiaByCatalogService = inject(MateriaByCatalogService);
+  private signalsService = inject(SignalsService);
   @ViewChild('formulaBar') formulaBar!: ElementRef<HTMLInputElement>;
 
   public params!: ICellRendererParams;
@@ -220,20 +222,18 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   };
   public costosColumnDefs: ColDef[] = [];
   constructor() {
-    effect(() => {
-       this.onUndo()
-       setTimeout(() => {
-        this.updatePinnedRowTotals();
-      }, 1200); 
-    });
+    // ✅ Efecto removido - causaba múltiples recargas de datos
   }
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.materialName = params.data.articulo || 'N/A';
-    this.idRoot = params.context.idRoot;
+    // ✅ Usar signal para idRoot (como hace el componente de Proveedores)
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.data = params.data;
-    this.idSelect = params.context.select;
-    console.log('ID Root en Costos:', params.context);
+    // ✅ Usar params.data.id para el select (como hace el componente de Proveedores)
+    this.idSelect = params.data.id;
+    console.log('ID Root en Costos (desde signal):', this.idRoot);
+    console.log('Select en Costos (desde data.id):', this.idSelect);
     this.obtenerDatos();
     this.familias(this.data);
     this.familiasVigentes(this.data);
@@ -252,6 +252,7 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
         headerName: 'Check', 
         field: 'check', 
         editable: true, 
+        width: 80,
         cellRenderer: 'agCheckboxCellRenderer', 
         cellStyle: { textAlign: 'center', paddingTop: '0px', paddingBottom: '0px' },        
         showDisabledCheckboxes: true,
@@ -277,14 +278,15 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   },
 
   valueFormatter: (params) => {
+    // ✅ Si el backend ya devolvió el nombre del artículo, usarlo directamente
+    if (params.data?.articulo) return params.data.articulo;
+
     const raw = params.value;
 
     // Normalizar a valor "id"
     const val = (raw && typeof raw === 'object')
       ? (raw.value ?? raw.id)
       : raw;
-
-    console.log('Valor en valueFormatter:', val);
 
     // Buscar usando la misma lista que el editor
     const fam = this.familiasVigente?.find(f => f.id === val);
@@ -762,37 +764,46 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
           await lastValueFrom(
             concat(...addObservables, ...updateObservables).pipe(toArray())
           );
-          /*
-          // Determinar qué ID vamos a seleccionar después de recargar
-          if (modifiedRows.length > 0) {
-            // Si hay filas modificadas, guardamos el ID de la última modificada
-            this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
-          } else if (newRows.length > 0) {
-            // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
-            this.lastEditedRowId = 'SELECT_MAX_ID';
-          }
-          */
+
           alerts.basicAlert(
             'Datos actualizados',
             'Se han actualizado los datos correctamente.',
             'success'
           );
 
-          await this.obtenerDatos(); // Esperar a que se actualicen los datos
+          // ✅ Opción C: NO recargar datos del servidor para evitar sobrescribir el valor calculado
+          // await this.obtenerDatos(); // ELIMINADO - causaba duplicación del costo
+          
+          // ✅ Calcular el total de costos
+          const totalCosto = this.costosRowData.reduce((sum, row) => {
+            if (row.idCatalog === 'Totales') return sum;
+            return sum + (Number(row.costoTot) || 0);
+          }, 0);
+
+          // ✅ El backend ya recalcula y guarda el costo automáticamente en cada CRUD de MateriaByCatalog
+          
+          // ✅ Actualizar el campo costo en el grid maestro (solo en memoria)
+          const materialId = this.params?.data?.id;
+          if (this.params && this.params.data && this.params.context && this.params.context.mainGridApi) {
+            const mainGridApi = this.params.context.mainGridApi;
+            if (mainGridApi && !mainGridApi.isDestroyed()) {
+              mainGridApi.forEachNode((node: any) => {
+                if (node.data && node.data.id === materialId) {
+                  node.data.costo = totalCosto;
+                  console.log('✅ Costo actualizado en grid maestro:', totalCosto);
+                  mainGridApi.refreshCells({
+                    rowNodes: [node],
+                    columns: ['costo'],
+                    force: true
+                  });
+                }
+              });
+            }
+          }
+          
           this.updatePinnedRowTotals();
           this.familiasVigentes(this.data);
-          /*
-          // Seleccionar la fila apropiada después de recargar
-          if (this.lastEditedRowId) {
-            if (this.lastEditedRowId === 'SELECT_MAX_ID') {
-              // Encontrar el ID máximo en los datos actuales
-              const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
-              this.selectRowById(maxId);
-            } else {
-              this.selectRowById(this.lastEditedRowId);
-            }
-            this.lastEditedRowId = null; // Resetear el ID
-          }*/
+
         } catch (error) {
           console.error(error);
           alerts.basicAlert(
@@ -816,8 +827,32 @@ export class DetailCellRendererCostosComponent implements ICellRendererAngularCo
   onUndo() { 
     this.familias(this.data);
     this.familiasVigentes(this.data);
-    this.obtenerDatos();
-    this.updatePinnedRowTotals();
+    this.obtenerDatos().then(() => {
+      // ✅ Calcular el total de costos y actualizar en el padre
+      const totalCosto = this.costosRowData.reduce((sum, row) => {
+        if (row.idCatalog === 'Totales') return sum;
+        return sum + (Number(row.costoTot) || 0);
+      }, 0);
+      
+      if (this.params && this.params.data && this.params.context && this.params.context.mainGridApi) {
+        const mainGridApi = this.params.context.mainGridApi;
+        if (mainGridApi && !mainGridApi.isDestroyed()) {
+          const materialId = this.params.data.id;
+          mainGridApi.forEachNode((node: any) => {
+            if (node.data && node.data.id === materialId) {
+              node.data.costo = totalCosto;
+              console.log('✅ Costo actualizado en maestro (undo):', totalCosto);
+              mainGridApi.refreshCells({
+                rowNodes: [node],
+                columns: ['costo'],
+                force: true
+              });
+            }
+          });
+        }
+      }
+      this.updatePinnedRowTotals();
+    });
   }
 
   onCellValueChanged(params: any) {
