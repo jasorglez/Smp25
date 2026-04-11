@@ -598,16 +598,18 @@ export class DetalleItemsProveedorComponent {
           if (result.isConfirmed) {
             this.rowsMissingProvider = missing;
             await this.createMissingProviderAssignments();
+            this.hasUnsavedChanges = true;
           } else {
             this.selectedProviderId = null;
             this.selectedProviderObj = null;
             this.rowData.forEach(row => { row.codigoExterno = ''; });
             this.gridApi?.setGridOption('rowData', this.rowData);
           }
+        } else {
+          this.hasUnsavedChanges = true;
         }
       }
       
-      this.hasUnsavedChanges = true;
       this.showNewProviderModal = false;
     } catch (error) {
       console.error('❌ Error creando proveedor:', error);
@@ -831,9 +833,18 @@ export class DetalleItemsProveedorComponent {
     this.gridApi?.stopEditing();
     this.generatingOC = true;
 
-    try {
+try {
       const folio = await this.saveCotizOrOC('OC');
       await this.clearPorAutorizarForOcRows();
+      if (this.selectedProviderId) {
+        try {
+          const customer: any = await lastValueFrom(this.customersService.getCustomerById(this.selectedProviderId));
+          customer.autorizacion = false;
+          await lastValueFrom(this.customersService.updateCustomer(this.selectedProviderId, customer));
+        } catch (e) {
+          console.warn('Error actualizando autorizacion:', e);
+        }
+      }
       this.ocGenerated = true; // 🔒 Bloquear todo una vez generada la OC
       this.lockGrid();
       await alerts.ocGenerated(folio);
