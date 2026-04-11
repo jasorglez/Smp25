@@ -30,6 +30,13 @@ export class RequisitionsDetailsComponent {
 
   constructor() {
     effect(() => {
+      const root = this.signalsService.getRootSelectedBySidebar()();
+      if (root && root !== this.idCompany) {
+        this.idCompany = root;
+        this.obtenerProductos();
+      }
+    });
+    effect(() => {
       this.idRequisition = this.signalsService.getIdRequisition()();
       console.log(this.idRequisition);
       if (this.idRequisition == null) {
@@ -38,12 +45,11 @@ export class RequisitionsDetailsComponent {
       else {
         this.obtenerDatos();
       }
-    })
+    });
   }
 
 
   ngOnInit() {
-    this.obtenerProductos();
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -62,6 +68,7 @@ export class RequisitionsDetailsComponent {
   productos: any;
   id: string = null;
   idRequisition: number = null;
+  idCompany: number = null;
   private tempIdCounter: number = 0;
 
 
@@ -125,6 +132,13 @@ public gridOptions: any = {
     },
     { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1 },
     {
+      field: 'idSupplie', headerName: 'Unidad', editable: false, flex: 1,
+      valueGetter: (params) => {
+        const producto = this.productos?.find(p => p.id === params.data?.idSupplie);
+        return producto?.measure || '';
+      }
+    },
+    {
       field: 'dateuse',
       headerName: 'Fecha de uso',
       editable: true,
@@ -172,7 +186,7 @@ public gridOptions: any = {
   }
 
   obtenerProductos() {
-    this.materialsService.getMaterials2Fields(1).subscribe(
+    this.materialsService.getMaterials2Fields(this.idCompany).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
         console.log(this.productos);
