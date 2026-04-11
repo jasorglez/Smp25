@@ -66,6 +66,14 @@ export class MaterialsService {
     );
   }
 
+  updateMaterialCosto(id: number, costo: number): Observable<any> {
+    return this.http.put(
+      `${environment.urlWarehouse}/Material/costo/${id}`,
+      { costo },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getMaterials2Fields(id: number) {
     return this.http.get(
       `${environment.urlWarehouse}/Material/2fields?idCompany=${id}`,

@@ -2208,20 +2208,33 @@ export const routes: Routes = [
           {
             path: 'preparacionuno',
             loadComponent: () =>
-              import(
-                './domains/ModProduction/Components/preparacion1/preparacion1.component'
-              ).then((m) => m.Preparacion1Component),
+              import('./domains/ModProduction/Components/preparacion1/preparacion1.component')
+                .then((m) => m.Preparacion1Component),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'production', detailed: 'preparacion1' } },
+            children: [
+              { path: '', redirectTo: 'principal', pathMatch: 'full' },
+              { path: 'principal',  loadComponent: () => import('./domains/ModProduction/Components/preparacion1/principal/principal.component').then(m => m.Prep1PrincipalComponent) },
+              { path: 'jarabe',     loadComponent: () => import('./domains/ModProduction/Components/preparacion1/jarabe/jarabe.component').then(m => m.JarabeComponent) },
+              { path: 'refresco',   loadComponent: () => import('./domains/ModProduction/Components/preparacion1/refresco/refresco.component').then(m => m.RefrescoComponent) },
+              { path: 'sidras',     loadComponent: () => import('./domains/ModProduction/Components/preparacion1/sidras/sidras.component').then(m => m.SidrasComponent) },
+              { path: 'alcoholes',  loadComponent: () => import('./domains/ModProduction/Components/preparacion1/alcoholes/alcoholes.component').then(m => m.AlcoholesComponent) },
+              { path: 'cocteles',   loadComponent: () => import('./domains/ModProduction/Components/preparacion1/cocteles/cocteles.component').then(m => m.CoctelesComponent) },
+              { path: 'vinos',      loadComponent: () => import('./domains/ModProduction/Components/preparacion1/vinos/vinos.component').then(m => m.VinosComponent) },
+              { path: 'licores',    loadComponent: () => import('./domains/ModProduction/Components/preparacion1/licores/licores.component').then(m => m.LicoresComponent) },
+            ],
           },
           {
             path: 'preparaciondos',
             loadComponent: () =>
-              import(
-                './domains/ModProduction/Components/preparacion2/preparacion2.component'
-              ).then((m) => m.Preparacion2Component),
+              import('./domains/ModProduction/Components/preparacion2/preparacion2.component')
+                .then((m) => m.Preparacion2Component),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'production', detailed: 'preparacion2' } },
+            children: [
+              { path: '', redirectTo: 'preparacion', pathMatch: 'full' },
+              { path: 'preparacion', loadComponent: () => import('./domains/ModProduction/Components/preparacion2/preparacion/preparacion.component').then(m => m.PreparacionComponent) },
+            ],
           },
           {
             path: 'cerveza',

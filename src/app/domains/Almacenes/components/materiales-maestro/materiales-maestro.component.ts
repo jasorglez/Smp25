@@ -8,7 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { DetalleAsignProveedsMaestroComponent } from './details/detalle-asignproveeds-matmaestro.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
-import { DetailCellRendererCostosComponent } from './details/detail-cell-renderer-costos.component';
+import { DetallesCostosxmaterialesComponent } from './details/detalles-costosxmateriales.component';
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { DetallesSucursalesProveedorComponent } from './details/detalles-sucursalesproveedor.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
@@ -37,7 +37,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
     DetalleAsignProveedsMaestroComponent,
     DetailCellRendererFamiliaComponent,
     DetailCellRendererSucursalComponent,
-    DetailCellRendererCostosComponent,
+    DetallesCostosxmaterialesComponent,
     DetailCellRendererSubfamiliaComponent,
     DetallesSucursalesProveedorComponent,
     DetailCellRendererParametrosComponent,
@@ -101,6 +101,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   // Cache para evitar re-renderizado
   private _colMaster: ColDef[] | null = null;
   private _gridOptions: any = null;
+  private _detailParams: any = null; // Cache del objeto detailCellRendererParams
+  private _isOpeningDetail = false; // Flag para evitar re-renders durante apertura de detalle
 
   // Modal de agregar/editar material
   showMaterialModal = false;
@@ -133,14 +135,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      if (this.idRoot) {
+      const newIdRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (newIdRoot && newIdRoot !== this.idRoot) {
+        this.idRoot = newIdRoot;
         this.loadCatalogs();
         this.loadMaterials();
-        // ✅ Actualizar el contexto del grid cuando cambia idRoot,
-        //    solo si el grid ya está listo.
-        if (this.gridApi)
-          this.updateGridContext();
       }
     });
   }
@@ -281,7 +280,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererProveedores: DetalleAsignProveedsMaestroComponent,
     detailCellRendererFamilia: DetailCellRendererFamiliaComponent,
     detailCellRendererSucursal: DetailCellRendererSucursalComponent,
-    detailCellRendererCostos: DetailCellRendererCostosComponent,
+    detailCellRendererCostos: DetallesCostosxmaterialesComponent,
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
     detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent,
     detailCellRendererParametros: DetailCellRendererParametrosComponent,
@@ -748,9 +747,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     event.node.setSelected(true);
     this.data = event.data;
     this.idSelect = event.data.id; // Asignar el ID seleccionado
-    // Actualizar el contexto del grid con los datos recién seleccionados
-    // para que los detail renderers reciban la información correcta.
-    this.updateGridContext();
     console.log('Fila seleccionada:', this.data);
 
     const colId = event.column.getColId();
@@ -765,6 +761,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return;
         }
       }
+      
+      // Marcar que se está abriendo un detalle para evitar re-renders
+      this._isOpeningDetail = true;
 
       const node = event.node;
       const api = event.api;
@@ -827,8 +826,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     // Cargar estado de columnas desde localStorage
     this.loadColumnState();
 
-    // Configurar master-detail después de que el grid esté listo
-    this.updateGridContext();
+    // Configurar master-detail SOLO la primera vez
+    if (!this._detailParams) {
+      this.updateGridContext();
+    }
   }
 
   // Guardar estado de columnas (pin, orden, visibilidades) en localStorage
@@ -870,29 +871,46 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   updateGridContext() {
     if (!this.gridApi) return;
 
-    this.gridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (params) => {
-        params.successCallback(params.data.detailData);
-      },
-      context: {
-        idRoot: this.idRoot, // Pasar idRoot al detail renderer
-        data: this.data,
-        select: this.idSelect, // Pasar los datos de materiales por tabla
-        componentParent: this, // Referencia al componente padre
-        mainGridApi: this.gridApi, // Pasar la API del grid principal
-        MATERIAL: {
-          load: (materialId: number, type: string, callback: (data: any[]) => void) => {
-            this.loadMaterialXTableData(materialId, type, callback);
-          },
-          save: (materialId: number, data: any[], type: string) => {
-            this.saveMaterialDetailsById(materialId, data, type);
-          },
-          delete: (params: any, callback: () => void) => {
-            this.deleteDetailRow(params, callback, 'MATERIAL');
+    if (!this._detailParams) {
+      // Primera vez: crear el objeto y registrarlo en AG Grid
+      this._detailParams = {
+        getDetailRowData: (params: any) => {
+          params.successCallback(params.data.detailData);
+        },
+        context: {
+          idRoot: this.idRoot,
+          data: this.data,
+          select: this.idSelect,
+          componentParent: this,
+          mainGridApi: this.gridApi,
+          MATERIAL: {
+            load: (materialId: number, type: string, callback: (data: any[]) => void) => {
+              this.loadMaterialXTableData(materialId, type, callback);
+            },
+            save: (materialId: number, data: any[], type: string) => {
+              this.saveMaterialDetailsById(materialId, data, type);
+            },
+            delete: (params: any, callback: () => void) => {
+              this.deleteDetailRow(params, callback, 'MATERIAL');
+            }
           }
         }
+      };
+      this.gridApi.setGridOption('detailCellRendererParams', this._detailParams);
+    } else {
+      // Solo actualizar si hay cambios reales
+      const hasChanges = 
+        this._detailParams.context.idRoot !== this.idRoot ||
+        this._detailParams.context.select !== this.idSelect ||
+        this._detailParams.context.data !== this.data;
+      
+      if (hasChanges) {
+        this._detailParams.context.idRoot = this.idRoot;
+        this._detailParams.context.data = this.data;
+        this._detailParams.context.select = this.idSelect;
+        this._detailParams.context.mainGridApi = this.gridApi;
       }
-    });
+    }
   }
 
   // Método para actualizar el subfamilyCount de un material específico
