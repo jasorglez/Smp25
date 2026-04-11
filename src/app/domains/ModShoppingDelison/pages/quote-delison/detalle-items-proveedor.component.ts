@@ -554,7 +554,7 @@ export class DetalleItemsProveedorComponent {
       email: this.newProvider.email,
       type: 'PROVIDERS',
       typeIntOrExt: 'Externo',
-      vigente: false,
+      vigente: true,
       active: true
     };
 
@@ -562,6 +562,51 @@ export class DetalleItemsProveedorComponent {
       const created: any = await this.customersService.addCustomer(payload).toPromise();
       await this.loadProviders();
       this.selectedProviderId = created?.id ?? null;
+      this.selectedProviderObj = this.providers.find(p => p.id === this.selectedProviderId) || null;
+      const providerName = this.getSelectedProviderName();
+      this.params.node.data[this.providerField] = this.selectedProviderId;
+      this.params.node.data['name_' + this.providerField] = providerName;
+      this.params.api?.refreshCells({ rowNodes: [this.params.node], columns: [this.providerField], force: true });
+      
+      this.rowsMissingProvider = [];
+      if (this.selectedProviderId) {
+        const assignments: any = await lastValueFrom(
+          this.providersService.getProvidersXTable(this.selectedProviderId, 'MATERIAL')
+        );
+        const list: any[] = Array.isArray(assignments) ? assignments : [];
+        const missing: any[] = [];
+        this.rowData.forEach(row => {
+          const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
+          if (!match && row.idSupplie) {
+            missing.push(row);
+          } else if (match) {
+            row.codigoExterno = match.campo11 || '';
+            row.proveedorXTablaId = match.id || 0;
+            row.proveedorXTablaObj = match;
+          }
+        });
+        this.gridApi?.setGridOption('rowData', this.rowData);
+
+        if (missing.length > 0) {
+          const nombres = missing.map((r: any) => `• ${r.articulo}`).join('\n');
+          const result = await alerts.confirmAlert(
+            'Sin Código Externo',
+            `Este proveedor no tiene Código Externo para:\n${nombres}\n\n¿Desea continuar con la cotización? Al guardar se creará la asignación automáticamente.`,
+            'warning',
+            'Sí, continuar'
+          );
+          if (result.isConfirmed) {
+            this.rowsMissingProvider = missing;
+            await this.createMissingProviderAssignments();
+          } else {
+            this.selectedProviderId = null;
+            this.selectedProviderObj = null;
+            this.rowData.forEach(row => { row.codigoExterno = ''; });
+            this.gridApi?.setGridOption('rowData', this.rowData);
+          }
+        }
+      }
+      
       this.hasUnsavedChanges = true;
       this.showNewProviderModal = false;
     } catch (error) {
