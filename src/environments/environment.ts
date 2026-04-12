@@ -28,7 +28,6 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-
   urlSecurity: 'https://endpoints.biapp.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
@@ -60,28 +59,31 @@ export const environment = {
     private_key: '	9bb18cadc7bbafd5bd7fb4c2cea3ffb503b0900a',
   },
 
-  urlLogin: 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
+  urlLogin:
+    'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  urlGetUser: 'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
+  urlGetUser:
+    'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
   urlFiles: 'gs://beapp-501d1.appspot.com',
 
   urlProfile: './assets/img/profile.png',
 
-  adminFiles: 'http://localhost/sistemas-angular/marketplace/src/assets/img/index.php?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
+  adminFiles:
+    'http://localhost/sistemas-angular/marketplace/src/assets/img/index.php?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  deleteFiles: 'http://localhost/sistemas-angular/marketplace/src/assets/img/delete.php?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
+  deleteFiles:
+    'http://localhost/sistemas-angular/marketplace/src/assets/img/delete.php?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
+  urlRefreshToken:
+    'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
   mercadoPago: {
     // Produccion (ACTIVO)
-     publicKey: 'APP_USR-ffba3d82-7423-4dbc-9012-4ca0571dae19', //Produccion
+    publicKey: 'APP_USR-ffba3d82-7423-4dbc-9012-4ca0571dae19', //Produccion
     // Pruebas (descomenta esta linea y comenta la de Produccion para cambiar manualmente)
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.09 (11 Abril 2026 21:11) - Maestro-Detalle Pedidos: working - button renderer',
+  version: '5.07 (07 Abril 2026 14:09) - sistema de licencias: trial 15 dias, banner aviso, bloqueo y watermark PDF',
 };
-
-
