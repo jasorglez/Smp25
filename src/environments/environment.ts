@@ -45,6 +45,9 @@ export const environment = {
   urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
+  //urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
+  urlProduction: 'http://localhost:5051/api',
+
   urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
 
   root: 'root@bi2.mx',
@@ -70,6 +73,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.78 (11 Abril 2026) - feat: masterpermissions grid con columnas route/icon(Material)/showInSidebar editables',
+  version: '3.79 (11 Abril 2026) - feat: jarabe conectado al backend Production API',
 };
 

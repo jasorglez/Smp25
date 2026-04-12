@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { SignalsService } from 'app/services/signals.service';
+import { PreparacionService } from 'app/services/preparacion.service';
 import { DetalleWrapperComponent } from './detalle-wrapper.component';
 import { alerts } from 'app/helpers/alerts';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-jarabe',
@@ -15,7 +16,7 @@ import { alerts } from 'app/helpers/alerts';
   template: `
     <div class="container-fluid h-100 p-3">
       <div style="display: flex; height: calc(100vh - 120px);">
-        
+
         <!-- Botones CRUD lateral izquierdo -->
         <div style="display: flex; flex-direction: column; gap: 5px; margin-right: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; height: fit-content;">
           <button class="btn btn-sm btn-success" (click)="addLote()" title="Agregar">
@@ -66,7 +67,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class JarabeComponent implements OnInit {
 
-  private signalsService = inject(SignalsService);
+  private preparacionService = inject(PreparacionService);
   private gridApi!: GridApi;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
@@ -90,7 +91,7 @@ export class JarabeComponent implements OnInit {
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 400,
-    isRowMaster: (dataItem: any) => true,
+    isRowMaster: (_dataItem: any) => true,
     detailCellRenderer: DetalleWrapperComponent,
     onRowClicked: (event: any) => {
       const clickedColumn = event.column?.getColId();
@@ -113,161 +114,98 @@ export class JarabeComponent implements OnInit {
     this.loadData();
   }
 
-  loadData() {
-    this.rowData = [
-      {
-        id: 1,
-        lote: 'LOTE-001-2024',
-        articulo: 'JARABE DE ALTA FRUCTOSA',
-        fechaElaboracion: '2024-01-15',
-        preparacion: 5,
-        cantidad: 1000,
-        observaciones: 'PRODUCCIÓN ESTÁNDAR',
-        historialGastos: 5,
-        adicional: 'N/A',
-        activom: true,
-        detailType: null,
-        isExpanded: false,
-        preparacionData: [
-          { id: 1, ingrediente: 'AZÚCAR REFINADA', prep: 'Disolución', coreccion: 'BRIX 65%', parametros: 'Temperatura 40°C, agitación constante', parametrosData: [
-            { id: 1, parametro1: 65.5, parametro2: 7.0, parametro3: 65.0, parametro4: 7.2, parametro5: 'VERIFICAR BRIX FINAL' },
-            { id: 2, parametro1: 40.0, parametro2: 7.0, parametro3: 40.5, parametro4: 7.1, parametro5: 'TEMPERATURA CRÍTICA' }
-          ]},
-          { id: 2, ingrediente: 'AGUA PURIFICADA', prep: 'Hervor', coreccion: 'pH 7.0', parametros: '100°C por 15 minutos', parametrosData: [
-            { id: 1, parametro1: 0.0, parametro2: 7.0, parametro3: 0.0, parametro4: 7.0, parametro5: 'AGUA PURA VERIFICADA' }
-          ]},
-          { id: 3, ingrediente: 'ÁCIDO CÍTRICO', prep: 'Incorporación', coreccion: 'pH 3.5', parametros: 'Adición lenta con agitación', parametrosData: [
-            { id: 1, parametro1: 3.5, parametro2: 2.5, parametro3: 3.6, parametro4: 3.4, parametro5: 'CONTROLAR PH LENTAMENTE' }
-          ]},
-          { id: 4, ingrediente: 'BENZOATO DE SODIO', prep: 'Disolución', coreccion: 'Conservante 0.1%', parametros: 'Diluir en agua tibia', parametrosData: []},
-          { id: 5, ingrediente: 'COLORANTE CARAMELO', prep: 'Incorporación', coreccion: 'Color café claro', parametros: 'Gotas según tonalidad', parametrosData: []}
-        ],
-        historialData: [
-          { id: 1, fechaSalida: '2024-01-20', quienUso: 'JUAN PÉREZ', cantidadSalida: 250, cantidadExistencia: 750, loteProductoUso: 'LOTE-001-2024', nombreIngreso: 'INGRESO-001', numeroReporte: 'REP-001-2024', adicional: 'SALIDA PARA PRODUCCIÓN' },
-          { id: 2, fechaSalida: '2024-01-25', quienUso: 'MARÍA GARCÍA', cantidadSalida: 100, cantidadExistencia: 650, loteProductoUso: 'LOTE-001-2024', nombreIngreso: 'INGRESO-002', numeroReporte: 'REP-002-2024', adicional: 'MUESTRAS DE CALIDAD' }
-        ],
-        __isNew: false,
-        __modified: false,
-        saved: true
-      },
-      {
-        id: 2,
-        lote: 'LOTE-002-2024',
-        articulo: 'JARABE DE MAÍZ',
-        fechaElaboracion: '2024-01-20',
-        preparacion: 3,
-        cantidad: 500,
-        observaciones: 'LOTE PEQUEÑO',
-        historialGastos: 3,
-        adicional: 'ESPECIAL',
-        activom: true,
-        detailType: null,
-        isExpanded: false,
-        preparacionData: [
-          { id: 1, ingrediente: 'ALMIDÓN DE MAÍZ', prep: 'Disolución', coreccion: 'VIS 30', parametros: 'Mezclado en frío', parametrosData: [
-            { id: 1, parametro1: 30.0, parametro2: 6.5, parametro3: 30.5, parametro4: 6.8, parametro5: 'VISCOSIDAD ALTA' }
-          ]},
-          { id: 2, ingrediente: 'AGUA POTABLE', prep: 'Hervor', coreccion: 'pH 6.5', parametros: '95°C por 10 min', parametrosData: [
-            { id: 1, parametro1: 95.0, parametro2: 6.5, parametro3: 95.0, parametro4: 6.5, parametro5: 'ESTERILIZAR AGUA' }
-          ]},
-          { id: 3, ingrediente: 'ENZIMAS ALFA', prep: 'Incorporación', coreccion: 'ACTIVACIÓN', parametros: '60°C por 2 horas', parametrosData: [
-            { id: 1, parametro1: 60.0, parametro2: 5.5, parametro3: 62.0, parametro4: 5.2, parametro5: 'TIEMPO DE ACTIVACIÓN' }
-          ]}
-        ],
-        historialData: [
-          { id: 1, fechaSalida: '2024-02-01', quienUso: 'CARLOS LÓPEZ', cantidadSalida: 150, cantidadExistencia: 350, loteProductoUso: 'LOTE-002-2024', nombreIngreso: 'INGRESO-003', numeroReporte: 'REP-003-2024', adicional: 'ENVÍO A CLIENTE' }
-        ],
-        __isNew: false,
-        __modified: false,
-        saved: true
-      },
-      {
-        id: 3,
-        lote: 'LOTE-003-2024',
-        articulo: 'JARABE INVERTIDO',
-        fechaElaboracion: '2024-02-01',
-        preparacion: 8,
-        cantidad: 2000,
-        observaciones: 'ALTA DEMANDA',
-        historialGastos: 4,
-        adicional: 'PREMIUM',
-        activom: true,
-        detailType: null,
-        isExpanded: false,
-        preparacionData: [
-          { id: 1, ingrediente: 'SACAROSA PURA', prep: 'Disolución', coreccion: 'BRIX 65°', parametros: '50°C con agitación', parametrosData: [
-            { id: 1, parametro1: 65.0, parametro2: 7.0, parametro3: 65.5, parametro4: 7.0, parametro5: 'JARABE ESTÁNDAR' }
-          ]},
-          { id: 2, ingrediente: 'ÁCIDO CLorhÍDRICO', prep: 'Incorporación', coreccion: 'pH 2.0', parametros: 'Gotas controladas', parametrosData: [
-            { id: 1, parametro1: 2.0, parametro2: 1.5, parametro3: 2.1, parametro4: 2.0, parametro5: 'MUY ÁCIDO - CONTROLAR' }
-          ]},
-          { id: 3, ingrediente: 'HIDRÓXIDO DE SODIO', prep: 'Neutralización', coreccion: 'pH 5.5', parametros: 'Lento hasta pH final', parametrosData: [
-            { id: 1, parametro1: 5.5, parametro2: 2.0, parametro3: 5.4, parametro4: 5.5, parametro5: 'NEUTRALIZACIÓN COMPLETA' }
-          ]}
-        ],
-        historialData: [
-          { id: 1, fechaSalida: '2024-02-05', quienUso: 'ANA MARTÍNEZ', cantidadSalida: 500, cantidadExistencia: 1500, loteProductoUso: 'LOTE-003-2024', nombreIngreso: 'INGRESO-004', numeroReporte: 'REP-004-2024', adicional: 'PRIMERA SALIDA' }
-        ],
-        __isNew: false,
-        __modified: false,
-        saved: true
-      },
-      {
-        id: 4,
-        lote: 'LOTE-004-2024',
-        articulo: 'JARABE DE GLUCOSA',
-        fechaElaboracion: '2024-02-10',
-        preparacion: 2,
-        cantidad: 750,
-        observaciones: 'PENDIENTE CONTROL',
-        historialGastos: 2,
-        adicional: 'ESTANDAR',
-        activom: false,
-        detailType: null,
-        isExpanded: false,
-        preparacionData: [
-          { id: 1, ingrediente: 'GLUCOSA CRISTALINA', prep: 'Disolución', coreccion: 'BRIX 45°', parametros: 'Agua tibia 35°C', parametrosData: [
-            { id: 1, parametro1: 45.0, parametro2: 7.0, parametro3: 45.2, parametro4: 6.9, parametro5: 'DISOLVER EN AGUA TIBIA' }
-          ]},
-          { id: 2, ingrediente: 'PRESERVANTE', prep: 'Incorporación', coreccion: '0.05%', parametros: 'Mezcla homogénea', parametrosData: []}
-        ],
-        historialData: [],
-        __isNew: false,
-        __modified: false,
-        saved: true
-      },
-      {
-        id: 5,
-        lote: 'LOTE-005-2024',
-        articulo: 'JARABE DE SACAROSA',
-        fechaElaboracion: '2024-02-15',
-        preparacion: 6,
-        cantidad: 1500,
-        observaciones: 'EN PROCESO',
-        historialGastos: 5,
-        adicional: 'ORGÁNICO',
-        activom: true,
-        detailType: null,
-        isExpanded: false,
-        preparacionData: [
-          { id: 1, ingrediente: 'AZÚCAR ORGÁNICA', prep: 'Disolución', coreccion: 'BRIX 60°', parametros: '40°C sin agitadores metálicos', parametrosData: [
-            { id: 1, parametro1: 60.0, parametro2: 7.0, parametro3: 60.5, parametro4: 6.8, parametro5: 'PRODUCTO ORGÁNICO' }
-          ]},
-          { id: 2, ingrediente: 'AGUA PURIFICADA', prep: 'Hervor', coreccion: 'pH 7.0', parametros: '100°C por 20 min', parametrosData: [
-            { id: 1, parametro1: 100.0, parametro2: 7.0, parametro3: 100.0, parametro4: 7.0, parametro5: 'ESTERILIZACIÓN COMPLETA' }
-          ]},
-          { id: 3, ingrediente: 'EXTRACTO DE VAINILLA', prep: 'Incorporación', coreccion: 'AROMA', parametros: '1mL por kg', parametrosData: [
-            { id: 1, parametro1: 0.0, parametro2: 5.5, parametro3: 0.0, parametro4: 5.5, parametro5: 'AROMA NATURAL' }
-          ]}
-        ],
-        historialData: [
-          { id: 1, fechaSalida: '2024-02-20', quienUso: 'PEDRO SÁNCHEZ', cantidadSalida: 200, cantidadExistencia: 1300, loteProductoUso: 'LOTE-005-2024', nombreIngreso: 'INGRESO-005', numeroReporte: 'REP-005-2024', adicional: 'ÚLTIMA SALIDA DEL LOTE' }
-        ],
-        __isNew: false,
-        __modified: false,
-        saved: true
+  async loadData() {
+    try {
+      const items = await lastValueFrom(this.preparacionService.getAll());
+      this.rowData = items.map(item => this.mapPreparacion(item));
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
       }
-    ];
+    } catch (error) {
+      console.error('Error loading preparaciones:', error);
+      this.rowData = [];
+    }
+  }
+
+  private mapPreparacion(item: any): any {
+    return {
+      id: item.id,
+      lote: item.lote || '',
+      articulo: item.articulo || '',
+      fechaElaboracion: item.fecha || '',
+      preparacion: item.preparacionCount || 0,
+      cantidad: item.cantidad || 0,
+      observaciones: item.observaciones || '',
+      historialGastos: item.historialCount || 0,
+      adicional: item.adicional || '',
+      activom: item.active !== false,
+      detailType: null,
+      isExpanded: false,
+      preparacionData: [],
+      historialData: [],
+      __isNew: false,
+      __modified: false,
+      saved: true
+    };
+  }
+
+  private mapDetalle(item: any): any {
+    return {
+      id: item.id,
+      idPreparacion: item.idPreparacion,
+      ingrediente: item.ingrediente || '',
+      prep: item.prep || '',
+      coreccion: item.correccion || '',
+      parametros: item.parametros || '',
+      parametrosData: [],
+      __isNew: false,
+      __modified: false
+    };
+  }
+
+  private mapParams(item: any): any {
+    return {
+      id: item.id,
+      idDetalle: item.idDetalle,
+      parametro1: item.parametro1,
+      parametro2: item.parametro2,
+      parametro3: item.parametro3,
+      parametro4: item.parametro4,
+      parametro5: item.parametro5 || '',
+      __isNew: false,
+      __modified: false
+    };
+  }
+
+  private mapHistorial(item: any): any {
+    return {
+      id: item.id,
+      idPreparacion: item.idPreparacion,
+      fechaSalida: item.fechaSalida || '',
+      quienUso: item.quienUs || '',
+      cantidadSalida: item.cantidadSalida || 0,
+      cantidadExistencia: item.cantidadExistencia || 0,
+      loteProductoUso: item.loteProductoUso || '',
+      nombreIngreso: item.nombreIngreso || '',
+      numeroReporte: item.numeroReporte || '',
+      adicional: item.adicional || '',
+      __isNew: false,
+      __modified: false
+    };
+  }
+
+  private toApiPayload(item: any): any {
+    return {
+      lote: item.lote,
+      articulo: item.articulo,
+      fecha: item.fechaElaboracion || null,
+      preparacionCount: item.preparacion || 0,
+      cantidad: item.cantidad || 0,
+      observaciones: item.observaciones,
+      historialCount: item.historialGastos || 0,
+      adicional: item.adicional,
+      active: item.activom !== false
+    };
   }
 
   private _colDefs: ColDef[] = [];
@@ -285,7 +223,7 @@ export class JarabeComponent implements OnInit {
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
-   
+
       {
         field: 'lote',
         headerName: 'Lote',
@@ -444,16 +382,32 @@ export class JarabeComponent implements OnInit {
     this.gridApi = params.api;
 
     this.gridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (params: any) => {
-        const detailData = params.data.detailType === 'preparacion' 
-          ? params.data.preparacionData || [] 
-          : params.data.historialData || [];
-        params.successCallback(detailData);
+      getDetailRowData: async (detailParams: any) => {
+        try {
+          if (detailParams.data.detailType === 'preparacion') {
+            const detalles = await lastValueFrom(this.preparacionService.getDetalles(detailParams.data.id));
+            const mapped = await Promise.all(detalles.map(async (d: any) => {
+              const det = this.mapDetalle(d);
+              const paramsList = await lastValueFrom(this.preparacionService.getParams(d.id));
+              det.parametrosData = paramsList.map((p: any) => this.mapParams(p));
+              return det;
+            }));
+            detailParams.successCallback(mapped);
+          } else {
+            const historial = await lastValueFrom(this.preparacionService.getHistorial(detailParams.data.id));
+            detailParams.successCallback(historial.map((h: any) => this.mapHistorial(h)));
+          }
+        } catch (error) {
+          console.error('Error loading detail data:', error);
+          detailParams.successCallback([]);
+        }
       },
       context: {
         componentParent: this
       }
     });
+
+    this.loadData();
   }
 
   toggleCascade(node: any, type: string) {
@@ -574,14 +528,18 @@ export class JarabeComponent implements OnInit {
 
     if (!result.isConfirmed) return;
 
-    this.rowData = this.rowData.filter(row => row.id !== selectedItem.id);
-    this.gridApi.setGridOption('rowData', this.rowData);
-    this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
-
-    alerts.basicAlert('Eliminado', 'Lote eliminado correctamente', 'success');
+    try {
+      await lastValueFrom(this.preparacionService.delete(selectedItem.id));
+      this.rowData = this.rowData.filter(row => row.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
+      alerts.basicAlert('Eliminado', 'Lote eliminado correctamente', 'success');
+    } catch (error) {
+      alerts.basicAlert('Error', 'Ocurrió un error al eliminar el lote.', 'error');
+    }
   }
 
-  saveChanges() {
+  async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
     const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
 
@@ -599,26 +557,37 @@ export class JarabeComponent implements OnInit {
       return;
     }
 
-    this.rowData.forEach(item => {
-      if (item.__isNew || item.__modified) {
+    try {
+      for (const item of newItems) {
+        const payload = this.toApiPayload(item);
+        const created = await lastValueFrom(this.preparacionService.create(payload));
+        item.id = created.id;
         item.__isNew = false;
         item.__modified = false;
         item.saved = true;
       }
-    });
 
-    this.hasUnsavedChanges = false;
-    this.gridApi.redrawRows();
+      for (const item of modifiedItems) {
+        const payload = this.toApiPayload(item);
+        await lastValueFrom(this.preparacionService.update(item.id, payload));
+        item.__modified = false;
+        item.saved = true;
+      }
 
-    const totalSaved = newItems.length + modifiedItems.length;
-    alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} lote(s) exitosamente.`, 'success');
+      this.hasUnsavedChanges = false;
+      this.gridApi.redrawRows();
+
+      const totalSaved = newItems.length + modifiedItems.length;
+      alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} lote(s) exitosamente.`, 'success');
+    } catch (error) {
+      alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios.', 'error');
+    }
   }
 
-  discardChanges() {
+  async discardChanges() {
     if (this.hasUnsavedChanges) {
-      this.loadData();
+      await this.loadData();
       this.hasUnsavedChanges = false;
-      this.gridApi.setGridOption('rowData', this.rowData);
       this.gridApi.redrawRows();
       alerts.basicAlert('Deshacer', 'Cambios descartados', 'info');
     } else {
