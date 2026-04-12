@@ -35,9 +35,8 @@ export class CustomersService {
     return this.http.get(`${environment.urlAdministration}/Customer/cusorprov?idCompany=${id}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getCustomersByCompany(root : number, type: string) {
-    const apiUrl = `${environment.urlAdministration}/Customer/company?idCompany=${root}&Type=${type}`;
-    return this.http.get(apiUrl, { headers: this.trackingService.getHeaders() });
+  getCustomersByCompany(idCompany: number, type: string = 'CUSTOMERS') {
+    return this.http.get(`${environment.urlAdministration}/Customer/company?idCompany=${idCompany}&Type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
   // Clientes configurados para facturación electrónica

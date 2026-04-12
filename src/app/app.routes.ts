@@ -346,81 +346,36 @@ export const routes: Routes = [
         data: { permissions: { master: 'administration' } },
       },
       {
-        path: 'indicgrals',
+        path: 'logistica',
         loadComponent: () =>
           import(
-            './domains/Indicadores/pages/procindicgrals/procindicgrals.component'
-          ).then((a) => a.ProcindicgralsComponent),
+            './domains/Logistica/pages/procmenulogistica/procmenulogistica.component'
+          ).then((l) => l.ProcmenulogisticaComponent),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'indicators' } },
         children: [
-          { path: '', redirectTo: 'indicad01', pathMatch: 'full' },
+          { path: '', redirectTo: 'clientes', pathMatch: 'full' },
+          ...SharedModule.getRoutes(),
           {
-            path: 'indicad01',
+            path: 'clientes',
             loadComponent: () =>
               import(
-                './domains/Indicadores/pages/procindic01/procindic01.component'
-              ).then((a) => a.Procindic01Component),
-            children: [
-              { path: '', redirectTo: 'convenios', pathMatch: 'full' },
-              ...SharedModule.getRoutes(),
-              {
-                path: 'issues',
-                loadComponent: () =>
-                  import(
-                    './domains/Indicadores/components/ind01/issues/issues.component'
-                  ).then((a) => a.IssuesComponent),
-              },
-              {
-                path: 'alternatives',
-                loadComponent: () =>
-                  import(
-                    './domains/Indicadores/components/ind01/alternatives/alternatives.component'
-                  ).then((a) => a.AlternativesComponent),
-              },
-              {
-                path: 'controlchanges',
-                loadComponent: () =>
-                  import(
-                    './domains/Indicadores/components/ind01/controlchanges/controlchanges.component'
-                  ).then((a) => a.ControlChangesComponent),
-              },
-              {
-                path: 'riskmatrix',
-                loadComponent: () =>
-                  import(
-                    './domains/Indicadores/components/ind01/riskmatrix/riskmatrix.component'
-                  ).then((a) => a.RiskmatrixComponent),
-              },
-              {
-                path: 'timeinactives',
-                loadComponent: () =>
-                  import(
-                    './domains/Indicadores/components/ind01/timeinactives/timeinactives.component'
-                  ).then((a) => a.TimeinactivesComponent),
-              },
-              {
-                path: 'stakeholders',
-                loadComponent: () =>
-                  import(
-                    './domains/Indicadores/components/ind01/stakeholders/stakeholders.component'
-                  ).then((a) => a.StakeholdersComponent),
-              },
-            ],
+                './domains/Logistica/components/clientes/clientes.component'
+              ).then((c) => c.ClientesLogisticaComponent),
           },
           {
-            path: 'indicad02',
+            path: 'productos',
             loadComponent: () =>
               import(
-                './domains/Indicadores/pages/procindic02/procindic02.component'
-              ).then((a) => a.Procindic02Component),
+                './domains/Logistica/components/productos/productos.component'
+              ).then((m) => m.MaterialsComponent),
           },
           {
-            path: 'indicad03',
+            path: 'pedidos',
             loadComponent: () =>
               import(
-                './domains/Indicadores/pages/procindic03/procindic03.component'
-              ).then((a) => a.Procindic03Component),
+                './domains/Logistica/components/pedidos/pedidos.component'
+              ).then((p) => p.PedidosLogisticaComponent),
           },
         ],
       },

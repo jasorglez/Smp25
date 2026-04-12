@@ -360,10 +360,11 @@ export class CustomersComponent implements CanComponentDeactivate {
           }
 
           params.data[params.colDef.field] = normalizedValue;
+          params.data.company = normalizedValue;
           return true;
         },
       },
-      {
+{
         field: 'company',
         headerName: 'Compania',
         editable: (params) => {
@@ -374,17 +375,17 @@ export class CustomersComponent implements CanComponentDeactivate {
         },
         width: 250,
         filterParams: {
-          // can be 'windows' or 'mac'
           defaultToNothingSelected: true,
-          //excelMode: 'mac',
         },
         suppressMovable: true,
         filter: true,
         valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
+          const upperValue = params.newValue.toUpperCase();
+          params.data[params.colDef.field] = upperValue;
+          params.data.nameContact = upperValue;
           return true;
         }
-      
+       
       },
       {
         field: 'total',
@@ -407,7 +408,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       },
       {
         field: 'idTypecop',
-        headerName: this.type == 'CUSTOMERS'? 'Tipo cliente' : 'Tipo proveedor',
+        headerName: this.type == 'CUSTOMERS' ? 'Tipo cliente' : 'Tipo proveedor',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
@@ -423,10 +424,11 @@ export class CustomersComponent implements CanComponentDeactivate {
           };
         },
         valueFormatter: (params) => {
+          if (!params.value) return 'DISTRIBUIDOR';
           const foundItem = this.Typecop
             ? this.Typecop.find((item) => item.id === params.value)
             : null;
-          return foundItem ? `${foundItem.description}` : params.value;
+          return foundItem ? `${foundItem.description}` : 'DISTRIBUIDOR';
         },
       },
 
@@ -879,13 +881,18 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    if (!this.idRoot) {
+      alerts.basicAlert('Error', 'Debe seleccionar una empresa primero', 'error');
+      return;
+    }
+    
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
       idRoot: this.idRoot,
       idBranch: this.idBranch,
       nameContact: '',
-      company: '',
+      company: '', // Se sincronizará con nameContact
       phone: '',
       rfc: '',
       city: '',
@@ -900,7 +907,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       NumCliente: 0,
       latitud: '',
       longitud: '',
-      idTypecop: 0,
+      idTypecop: 1,
       fiscalRegime: '',
       usoCfdi: 'G03',
       type: this.type,
@@ -936,7 +943,7 @@ export class CustomersComponent implements CanComponentDeactivate {
 
   async saveChanges() {
     const isValid = this.rowData.every(
-      (item) => item.idBranch && (item.nameContact || item.company) && (this.type == 'PROVIDERS') || (this.type == 'CUSTOMERS' && item.idTypecop)
+      (item) => item.idBranch && (item.nameContact || item.company)
     );
     if (!isValid) {
       alerts.basicAlert(

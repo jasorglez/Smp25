@@ -515,6 +515,33 @@ error: (error) => {
     );
   }
 
+  clienteproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Cliente',
+      'Menu Side Bar',
+      ''
+    );
+  }
+
+  productosproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Productos',
+      'Menu Side Bar',
+      ''
+    );
+  }
+
+  pedidosproc() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Pedidos',
+      'Menu Side Bar',
+      ''
+    );
+  }
+
   PepOper() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),

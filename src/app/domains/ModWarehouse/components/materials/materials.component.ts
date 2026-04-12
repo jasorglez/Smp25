@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, signal } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, input, signal } from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
   CellDoubleClickedEvent,
@@ -51,16 +51,41 @@ declare const bootstrap: any; // Añadir declaración para Bootstrap
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss',
 })
-export class MaterialsComponent implements CanComponentDeactivate {
-  type: string = '';
+export class MaterialsComponent implements CanComponentDeactivate, OnInit {
+  typeMaterial = input<string>('');
+  idRootInput = input<number>(0);
+  
+  private type: string = '';
+  
+  private initialized = false;
 
   constructor(private router: Router) {
     this.route.data.subscribe((data) => {
-      this.type = data['type']; // 'SALES' or 'CONSUMABLE'
+      this.type = this.typeMaterial() || data['type'] || '';
     });
 
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      let newIdRoot = this.signalsService.getRootSelectedBySidebar()();
+      let newBranchSelect = this.signalsService.getBranchSelectedBySidebar()();
+      
+      if ((!newIdRoot || newIdRoot === null || newIdRoot === undefined) && this.idRootInput() > 0) {
+        newIdRoot = this.idRootInput();
+        newBranchSelect = this.idRootInput();
+      }
+      
+      if (!newIdRoot || newIdRoot === null || newIdRoot === undefined) {
+        console.warn('MaterialsComponent: idRoot es undefined/null, esperando datos del sidebar...');
+        return;
+      }
+      
+      if (this.initialized && this.idRoot === newIdRoot) {
+        return;
+      }
+      
+      this.idRoot = newIdRoot;
+      this.branchSelect = newBranchSelect;
+      this.initialized = true;
+      console.log('MaterialsComponent: idRoot configurado:', this.idRoot, 'branchSelect:', this.branchSelect);
       this.obtenerDatos();
       this.obtenerMedidas();
       this.obtenerFamilias();
@@ -69,6 +94,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.obtenerProveedores();
       this.obtenerUbicaciones();
     });
+  }
+  
+  ngOnInit() {
+    const initialRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (initialRoot) {
+      this.initialized = true;
+    }
   }
 
   @HostListener('window:beforeunload', ['$event'])

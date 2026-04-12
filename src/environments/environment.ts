@@ -28,27 +28,28 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  urlSecurity: 'https://bi2.com.mx/api', // 5003
+
+  urlSecurity: 'https://endpoints.biapp.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
-  urlSmp: 'https://bi2.com.mx/smp/api', // 5004
+  urlSmp: 'https://endpoints.biapp.com.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
 
-  urlBpi: 'https://bi2.com.mx/bpi/api', // 5005
+  urlBpi: 'https://endpoints.biapp.com.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://bi2.com.mx/warehouse/api', // 5007
+  urlWarehouse: 'https://endpoints.biapp.com.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  urlAdministration: 'https://bi2.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://endpoints.biapp.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
-  urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
+  urlNotifications: 'https://endpoints.biapp.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlChatBot: 'https://bi2.com.mx/telegram/api',
+  urlChatBot: 'https://endpoints.biapp.com.mx/telegram/api',
   //urlChatBot: 'http://localhost:5232/api',
 
-  urlMantenimiento: 'https://bi2.com.mx/maintenance/api',
+  urlMantenimiento: 'https://endpoints.biapp.com.mx/maintenance/api',
 
   root: 'root@bi2.mx',
 
@@ -80,7 +81,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.07 (07 Abril 2026 14:09) - sistema de licencias: trial 15 dias, banner aviso, bloqueo y watermark PDF',
+  version: '5.09 (11 Abril 2026 21:11) - Maestro-Detalle Pedidos: working - button renderer',
 };
 
 

@@ -15,7 +15,6 @@ import { TrackingService } from 'app/services/tracking.service';
 import { PdfGeneratorService } from 'app/services/pdf-generator.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { alerts } from 'app/helpers/alerts';
-import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/timeinactives/time-editor.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Pipe, PipeTransform } from '@angular/core';
 import { MaterialsService } from 'app/services/materials.service';
@@ -250,11 +249,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // Lista de empleados para el select
   public employees: any[] = [];
-
-  // Componentes personalizados para AG-Grid
-  components = {
-    timeEditor: TimeEditorComponent
-  };
 
   // PDF
   inputData: any;
@@ -1517,9 +1511,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       field: 'startTime',
       headerName: 'Inicio',
       width: 105,
-      //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
       }
@@ -1528,9 +1520,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       field: 'endTime',
       headerName: 'Término',
       width: 105,
-      //editable: () => !this.signalsService.getClosedReport()(),
       editable: true,
-      cellEditor: 'timeEditor',
       valueFormatter: (params) => {
         return params.value ? params.value.substring(0, 5) : '';
       }
