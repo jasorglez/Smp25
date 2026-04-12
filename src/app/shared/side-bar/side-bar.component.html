@@ -131,22 +131,6 @@
 
       <li
         class="nav-item"
-        *ngIf="authService.hasMasterPermission('indicators')"
-      >
-<a
-          class="nav-link d-flex align-items-center"
-          [routerLink]="['/indicgrals']"
-          routerLinkActive="active-link"
-          (click)="Indicadores()"
-          [matTooltip]="isSidebarCollapsed ? ('indicators' | translate) : ''"
-          matTooltipPosition="right"
-        >
-          <mat-icon>bar_chart</mat-icon> <span>{{ "indicators" | translate }}</span>
-        </a>
-      </li>
-
-      <li
-        class="nav-item"
         *ngIf="authService.hasMasterPermission('administration')"
       >
 <a
@@ -158,6 +142,19 @@
           matTooltipPosition="right"
         >
           <mat-icon>menu_book</mat-icon> <span>{{ "admins" | translate }}</span>
+        </a>
+      </li>
+
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('indicators')">
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/logistica']"
+          routerLinkActive="active-link"
+          (click)="Indicadores()"
+          [matTooltip]="isSidebarCollapsed ? ('logistic' | translate) : ''"
+          matTooltipPosition="right"
+        >
+          <mat-icon>local_shipping</mat-icon> <span>{{ "logistic" | translate }}</span>
         </a>
       </li>
 

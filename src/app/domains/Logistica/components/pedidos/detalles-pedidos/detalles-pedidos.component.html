@@ -1,0 +1,57 @@
+<div class="container-fluid p-2">
+  <!-- Botones del detalle (arriba, alineados a la derecha) -->
+  <div class="d-flex justify-content-end gap-2 mb-2">
+    <button type="button" class="btn btn-primary btn-sm" (click)="addItem()" [disabled]="isLocked">
+      <i class="bi bi-plus-lg"></i> Agregar
+    </button>
+    <button type="button" class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="isLocked || !hasUnsavedChanges">
+      <i class="bi bi-floppy"></i> Guardar
+      <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+        *ngIf="hasUnsavedChanges">
+      </span>
+    </button>
+    <button type="button" class="btn btn-warning btn-sm" (click)="discardChanges()" [disabled]="isLocked || !hasUnsavedChanges">
+      <i class="bi bi-arrow-clockwise"></i> Deshacer
+    </button>
+    <button type="button" class="btn btn-danger btn-sm" (click)="deleteSelectedItem()" [disabled]="isLocked">
+      <i class="bi bi-trash"></i> Eliminar
+    </button>
+  </div>
+  <!-- Grid de detalles -->
+  <ag-grid-angular
+    style="width: 100%;"
+    [style.height]="'200px'"
+    class="ag-theme-quartz small-text-ag-grid"
+    [rowData]="rowData"
+    [columnDefs]="colDefs"
+    [defaultColDef]="gridOptions?.defaultColDef"
+    [rowSelection]="'single'"
+    [animateRows]="true"
+    [gridOptions]="gridOptions"
+    (gridReady)="onGridReady($event)"
+    (cellValueChanged)="onCellValueChanged($event)"
+    [localeText]="AG_GRID_LOCALE_ES">
+  </ag-grid-angular>
+</div>
+
+<!-- Modal Nueva Plataforma -->
+<div class="modal" tabindex="-1" [style.display]="showPlataformaModal ? 'block' : 'none'" style="background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva Plataforma</h5>
+        <button type="button" class="btn-close" (click)="closePlataformaModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Descripción *</label>
+          <input type="text" class="form-control" [(ngModel)]="newPlataforma.description" placeholder="Nombre de la plataforma">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closePlataformaModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveNewPlataforma()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>

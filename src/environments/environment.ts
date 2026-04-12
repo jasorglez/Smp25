@@ -27,7 +27,8 @@ export const environment = {
   // urlBpi        : 'https://bi2.centralus.cloudapp.azure.com/bpi/api',
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
-  urlSecurity: 'https://endpoints.biapp.com.mx/api', // 5003
+
+  urlSecurity: 'https://bi2.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
   urlSmp: 'https://endpoints.biapp.com.mx/smp/api', // 5004
@@ -84,6 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version:
-    '5.08 (09 Abril 2026 10:05) - sistema de licencias: trial 15 dias, banner aviso, bloqueo y watermark PDF',
+  version: '5.07 (07 Abril 2026 14:09) - sistema de licencias: trial 15 dias, banner aviso, bloqueo y watermark PDF',
 };

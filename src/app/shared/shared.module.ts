@@ -11,14 +11,6 @@ export const sharedRoutes: Routes = [
   { 
     path: 'conventions', 
     loadComponent: () => import('../domains/ModProjects/components/projects/conventions/conventions.component').then(a => a.ConventionsComponent)
-  },
-  { 
-    path: 'advances', 
-    loadComponent: () => import('../domains/Indicadores/components/ind01/advances/advances.component').then(a => a.AdvancesComponent)
-  },
-  { 
-    path: 'workprograms',
-    loadComponent: () => import('../domains/Indicadores/components/ind01/workprograms/workprograms.component').then(a => a.WorkprogramsComponent)
   }
 ];
 

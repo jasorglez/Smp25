@@ -1,0 +1,24 @@
+<div class="col-md-12">
+  <div class="card">
+    <div class="card-header p-2">
+      <ul class="nav nav-pills">
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="clientes" routerLinkActive="active">
+            <i class="bi bi-people-fill"></i> {{ 'customer' | translate }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="productos" routerLinkActive="active">
+            <i class="bi bi-box-seam"></i> {{ 'product' | translate }}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="pedidos" routerLinkActive="active">
+            <i class="bi bi-cart-fill"></i> {{ 'order' | translate }}
+          </a>
+        </li>
+      </ul>
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

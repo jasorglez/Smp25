@@ -1,0 +1,42 @@
+<div class="col-12">
+  <div class="row">
+    <!-- Botones del lado izquierdo (vertical/hacia abajo) -->
+    <div class="col-auto">
+      <div class="d-flex flex-column gap-1">
+        <button type="button" class="btn btn-primary ms-1 me-1" (click)="add()">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()">
+          <i class="bi bi-floppy"></i>
+          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasUnsavedChanges">
+          </span>
+        </button>
+        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertChanges()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-danger ms-1 me-1" (click)="delete()">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Grid del lado derecho -->
+    <div class="col">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{ height: gridHeight }"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="rowData"
+        [columnDefs]="colMaster"
+        [defaultColDef]="defaultColDef"
+        [rowSelection]="rowSelection"
+        [animateRows]="true"
+        [gridOptions]="gridOptions"
+        (gridReady)="onGridReady($event)"
+        (selectionChanged)="onSelectionChanged($event)"
+        (cellValueChanged)="onCellValueChanged($event)"
+        [localeText]="AG_GRID_LOCALE_ES">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>

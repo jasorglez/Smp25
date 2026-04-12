@@ -1,0 +1,26 @@
+:host {
+  display: block;
+}
+
+.container-fluid {
+  padding: 8px;
+}
+
+::ng-deep .ag-theme-quartz {
+  --ag-header-height: 30px;
+  --ag-row-height: 28px;
+  --ag-font-size: 11px;
+}
+
+::ng-deep .small-text-ag-grid {
+  font-size: 11px;
+}
+
+::ng-deep .small-text-ag-grid .ag-header-cell-text {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+::ng-deep .small-text-ag-grid .ag-cell-value {
+  font-size: 11px;
+}
