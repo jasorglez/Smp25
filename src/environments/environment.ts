@@ -28,7 +28,7 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  urlSecurity: 'https://bi2.com.mx/api', // 5003
+  urlSecurity: 'https://endpoints.biapp.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
   urlSmp: 'https://endpoints.biapp.com.mx/smp/api', // 5004
