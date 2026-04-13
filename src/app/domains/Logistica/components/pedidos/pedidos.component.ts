@@ -19,12 +19,15 @@ import { TrackingService } from 'app/services/tracking.service';
 import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { DetallesPedidosComponent } from './detalles-pedidos/detalles-pedidos.component';
+import { DetallesClientesComponent } from './detalles-clientes/detalles-clientes.component';
 import { NumArticulosRendererComponent } from './pedidos-button-num-articulos.component';
+import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
+import { PdfButtonCellRendererComponent } from 'app/domains/ModAdmon/components/egresos-palacio/pdf-button-cell-renderer.component';
 
 @Component({
   selector: 'app-pedidos-logistica',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetallesPedidosComponent, NumArticulosRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, DetallesPedidosComponent, DetallesClientesComponent, NumArticulosRendererComponent, ButtonCellRendererExpenditureComponent, PdfButtonCellRendererComponent],
   templateUrl: './pedidos.component.html',
   styleUrls: ['./pedidos.component.scss'],
 })
@@ -54,6 +57,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
   private gridApi: GridApi;
   private _colMaster: ColDef[] = [];
+  private clientesList: any[] = [];
   public components = {
     detallesPedidosRenderer: DetallesPedidosComponent
   };
@@ -73,6 +77,12 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     animateRows: true,
     masterDetail: true,
     detailCellRenderer: DetallesPedidosComponent,
+    detailCellRendererSelector: (params: any) => {
+      if (params.data?.detailType === 'clientes') {
+        return { component: DetallesClientesComponent };
+      }
+      return undefined;
+    },
     detailRowHeight: 280,
     isRowMaster: (dataItem: any) => true,
     getRowClass: (params: any) => {
@@ -110,15 +120,40 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   async loadData() {
     if (!this.idCompany) return;
 
-    this.pedidosService.getPedidosByCompany(this.idCompany).subscribe({
-      next: (response: any) => {
-        // El backend devuelve { data: [...], count: n }
-        const pedidos = response.data || response || [];
-        this.rowData = pedidos.map((pedido: any) => ({
-          ...pedido,
-          detailData: [],
-          visible: true
-        }));
+    this.setupDetailParams();
+
+    forkJoin({
+      pedidos: this.pedidosService.getPedidosByCompany(this.idCompany),
+      detalles: this.pedidosService.getDetallesByCompany(this.idCompany),
+      clientes: this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS')
+    }).subscribe({
+      next: (results: any) => {
+        const pedidosList = results.pedidos?.data || results.pedidos || [];
+        const detallesList = results.detalles?.data || results.detalles || [];
+        this.clientesList = results.clientes?.data || results.clientes || [];
+
+        // Agrupar detalles por pedidoId
+        const detallesByPedido = new Map<number, any[]>();
+        for (const d of detallesList) {
+          if (!detallesByPedido.has(d.idPedido)) detallesByPedido.set(d.idPedido, []);
+          detallesByPedido.get(d.idPedido)!.push(d);
+        }
+
+        // Calcular clientes únicos por pedido para mostrar en Items
+        this.rowData = pedidosList.map((pedido: any) => {
+          const detallesDePedido = detallesByPedido.get(pedido.id) || [];
+          const uniqueClientIds = [...new Set(detallesDePedido.map((d: any) => d.idCliente).filter(Boolean))];
+          const clientesLabel = uniqueClientIds.length;
+
+          return { ...pedido, clientesLabel, detailData: [], visible: true };
+        });
+
+        queueMicrotask(() => {
+          if (this.gridApi) {
+            this.gridApi.setFilterModel(null);
+            this.gridApi.onFilterChanged();
+          }
+        });
       },
       error: (error) => {
         console.error('Error loading pedidos:', error);
@@ -129,7 +164,11 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    
+    this.setupDetailParams();
+  }
+
+  private setupDetailParams(): void {
+    if (!this.gridApi) return;
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params: any) => {
         const detailData = params.data?.detailData || [];
@@ -177,6 +216,41 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
     this._colMaster = [
       {
+        field: 'id',
+        colId: 'id',
+        headerName: 'ID',
+        hide: true,
+        filter: 'agTextColumnFilter',
+        suppressColumnsToolPanel: true,
+      },
+      {
+        field: 'itemsBtn',
+        headerName: 'Items',
+        editable: false,
+        width: 90,
+        cellRenderer: ButtonCellRendererExpenditureComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleDetalleClientes(node),
+          icon: 'bi-people',
+        },
+        valueGetter: (params) => params.data?.clientesLabel ?? 0,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+      },
+      {
+        field: 'pdfReport',
+        headerName: 'PDF',
+        editable: false,
+        width: 70,
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.generatePedidoPDF(node),
+          icon: 'bi-file-earmark-pdf',
+          iconColor: '#dc3545',
+          title: 'Generar PDF del pedido'
+        },
+        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
+      },
+      {
         field: 'numero',
         headerName: 'Número',
         editable: true,
@@ -203,12 +277,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         cellRenderer: NumArticulosRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
-            console.log('🖱️ NumArticulosRenderer onClick - node.id:', node.data?.id);
             const parent = (window as any).pedidosComponent;
             if (parent && typeof parent.toggleDetalle === 'function') {
               parent.toggleDetalle(node);
             } else {
-              // Fallback: direct expand
               node.setExpanded(!node.expanded);
             }
           }
@@ -397,34 +469,87 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     return confirmExitIfUnsaved(this.hasUnsavedChanges);
   }
 
+  /** Igual que Proveedores: filtro equals sobre `id` (texto: sirve para id numérico y `temp_*`). */
+  private buildIdEqualsFilterModel(id: string | number | undefined | null): Record<string, unknown> | null {
+    if (id === undefined || id === null) {
+      return null;
+    }
+    return {
+      id: { filterType: 'text', type: 'equals', filter: String(id) },
+    };
+  }
+
   toggleDetalle(node: any) {
     const api = this.gridApi;
-    const isCurrentlyExpanded = node.expanded && node.data.detailType === 'pedidos';
+    const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'pedidos';
 
     if (isCurrentlyExpanded) {
-      node.setExpanded(false);
-      node.data.detailType = null;
       api.forEachNode((n: any) => {
-        n.setRowHeight(undefined);
+        if (n.expanded) {
+          n.setExpanded(false);
+        }
       });
-      api.onRowHeightChanged();
+      if (node.data) {
+        node.data.detailType = null;
+      }
+      api.setFilterModel(null);
+      api.onFilterChanged();
     } else {
       api.forEachNode((n: any) => {
-        if (n.id !== node.id) {
-          n.setRowHeight(0);
+        if (n.expanded) {
+          n.setExpanded(false);
+        }
+        if (n.data) {
+          n.data.detailType = null;
         }
       });
 
-      if (node.expanded && node.data.detailType !== 'pedidos') {
-        node.setExpanded(false);
+      api.setFilterModel(null);
+      api.onFilterChanged();
+
+      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
+      if (filterModel) {
+        api.setFilterModel(filterModel);
+        api.onFilterChanged();
       }
 
-      node.data.detailType = 'pedidos';
-      api.onRowHeightChanged();
+      if (node.data) {
+        node.data.detailType = 'pedidos';
+      }
 
       setTimeout(() => {
         node.setExpanded(true);
       }, 0);
+    }
+  }
+
+  toggleDetalleClientes(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'clientes';
+
+    if (isCurrentlyExpanded) {
+      api.forEachNode((n: any) => {
+        if (n.expanded) n.setExpanded(false);
+      });
+      if (node.data) node.data.detailType = null;
+      api.setFilterModel(null);
+      api.onFilterChanged();
+    } else {
+      api.forEachNode((n: any) => {
+        if (n.expanded) n.setExpanded(false);
+        if (n.data) n.data.detailType = null;
+      });
+      api.setFilterModel(null);
+      api.onFilterChanged();
+
+      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
+      if (filterModel) {
+        api.setFilterModel(filterModel);
+        api.onFilterChanged();
+      }
+
+      if (node.data) node.data.detailType = 'clientes';
+      setTimeout(() => node.setExpanded(true), 0);
     }
   }
 
@@ -454,6 +579,11 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             detalles = [data.data];
           }
         }
+        // Agregar clienteName para el agrupamiento en el grid de detalles
+        detalles = detalles.map(d => ({
+          ...d,
+          clienteName: this.clientesList.find((c: any) => c.id == d.idCliente)?.name || d.idCliente || '-'
+        }));
         successCallback(detalles);
       },
       error: (error) => {
@@ -475,7 +605,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           const dataToSend = {
             idPedido: idPedido,
             idCliente: row.idCliente,
-            idProducto: row.idProducto,
+            producto: row.producto,
             cantidad: row.cantidad || 1,
             plataforma: row.plataforma,
             aplicaimpuestos: row.aplicaimpuestos,
@@ -494,7 +624,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             id: row.id,
             idPedido: idPedido,
             idCliente: row.idCliente,
-            idProducto: row.idProducto,
+            producto: row.producto,
             cantidad: row.cantidad || 1,
             plataforma: row.plataforma,
             aplicaimpuestos: row.aplicaimpuestos,
@@ -508,41 +638,129 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           await lastValueFrom(this.pedidosService.updateDetalle(row.id, dataToSend));
         }
 
-        // Calcular y actualizar el total del pedido
-        const allDetalles = [...newRows, ...modifiedRows];
-        let totalPedido = 0;
-        for (const row of allDetalles) {
-          const cantidad = row.cantidad || 0;
-          const venta = row.venta || 0;
-          const impuesto = row.impuesto || 0;
-          const subtotal = cantidad * venta;
-          const montoImpuesto = subtotal * (impuesto / 100);
-          totalPedido += subtotal + montoImpuesto;
-        }
-
-        // Actualizar el total en el pedido
-        await lastValueFrom(this.pedidosService.updatePedido(idPedido, { total: totalPedido }));
-
-        // Actualizar el valor en el grid
-        if (this.gridApi) {
-          this.gridApi.forEachNode((node: any) => {
-            if (node.data && node.data.id === idPedido) {
-              node.data.total = totalPedido;
-              this.gridApi.refreshCells({
-                rowNodes: [node],
-                columns: ['total'],
-                force: true
-              });
-            }
-          });
-        }
-
         resolve();
       } catch (error) {
         console.error('Error saving detalles:', error);
         reject(error);
       }
     });
+  }
+
+  async generatePedidoPDF(node: any): Promise<void> {
+    const pedido = node.data;
+    if (!pedido) return;
+
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Cargar detalles del pedido
+      let detalles: any[] = [];
+      try {
+        const response: any = await lastValueFrom(this.pedidosService.getDetallesByPedido(pedido.id));
+        detalles = response?.data ? (Array.isArray(response.data) ? response.data : [response.data]) : [];
+      } catch { detalles = []; }
+
+      const getClienteName = (idCliente: number) => {
+        const found = this.clientesList.find((c: any) => c.id == idCliente);
+        return found ? found.name : (idCliente || '-');
+      };
+
+      const fechaStr = pedido.fecha
+        ? new Date(pedido.fecha).toLocaleDateString('es-MX')
+        : '-';
+
+      const currency = (val: number) =>
+        val ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val) : '$0.00';
+
+      const totalPedido = detalles.reduce((sum: number, d: any) => {
+        const subtotal = (d.cantidad || 0) * (d.venta || 0);
+        return sum + subtotal + subtotal * ((d.impuesto || 0) / 100);
+      }, 0);
+
+      const tableBody: any[] = [
+        [
+          { text: 'Cliente', style: 'tableHeader' },
+          { text: 'Producto', style: 'tableHeader' },
+          { text: 'Cant.', style: 'tableHeader' },
+          { text: 'Plataforma', style: 'tableHeader' },
+          { text: 'Costo', style: 'tableHeader' },
+          { text: 'Venta', style: 'tableHeader' },
+          { text: 'Imp.%', style: 'tableHeader' },
+          { text: 'Total', style: 'tableHeader' },
+          { text: 'Estado', style: 'tableHeader' },
+        ],
+        ...detalles.map((d: any) => {
+          const sub = (d.cantidad || 0) * (d.venta || 0);
+          const total = sub + sub * ((d.impuesto || 0) / 100);
+          return [
+            { text: getClienteName(d.idCliente), fontSize: 8 },
+            { text: d.producto || '-', fontSize: 8 },
+            { text: d.cantidad || 0, alignment: 'center', fontSize: 8 },
+            { text: d.plataforma || '-', fontSize: 8 },
+            { text: currency(d.costo), alignment: 'right', fontSize: 8 },
+            { text: currency(d.venta), alignment: 'right', fontSize: 8 },
+            { text: (d.impuesto || 0) + '%', alignment: 'center', fontSize: 8 },
+            { text: currency(total), alignment: 'right', fontSize: 8 },
+            { text: d.estado || '-', fontSize: 8 },
+          ];
+        }),
+        [
+          { text: 'TOTAL', colSpan: 7, bold: true, alignment: 'right', fontSize: 9 },
+          {}, {}, {}, {}, {}, {},
+          { text: currency(totalPedido), bold: true, alignment: 'right', fontSize: 9 },
+          {}
+        ]
+      ];
+
+      const docDefinition: any = {
+        pageOrientation: 'landscape',
+        pageMargins: [30, 40, 30, 40],
+        content: [
+          { text: `Pedido #${pedido.numero || pedido.id}`, style: 'title' },
+          { text: ' ' },
+          {
+            columns: [
+              { text: `Fecha: ${fechaStr}`, style: 'info' },
+              { text: `Número de artículos: ${detalles.length}`, style: 'info' },
+              { text: `Total: ${currency(totalPedido)}`, style: 'info', bold: true },
+            ]
+          },
+          pedido.comentario ? { text: `Comentario: ${pedido.comentario}`, style: 'info', margin: [0, 4, 0, 0] } : {},
+          { text: ' ' },
+          { text: 'Detalles del Pedido', style: 'sectionTitle' },
+          { text: ' ' },
+          detalles.length > 0
+            ? {
+                table: {
+                  headerRows: 1,
+                  widths: ['*', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+                  body: tableBody
+                },
+                layout: 'lightHorizontalLines'
+              }
+            : { text: 'Sin detalles registrados.', italics: true, color: '#999' }
+        ],
+        styles: {
+          title: { fontSize: 16, bold: true, color: '#1a237e' },
+          sectionTitle: { fontSize: 11, bold: true, color: '#333' },
+          info: { fontSize: 9, color: '#444' },
+          tableHeader: { bold: true, fontSize: 9, fillColor: '#e3f2fd', color: '#1a237e' }
+        }
+      };
+
+      const pdf = pdfMake.createPdf(docDefinition);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`Pedido_${pedido.numero || pedido.id}.pdf`);
+      }
+
+    } catch (error) {
+      console.error('Error generando PDF del pedido:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el PDF del pedido', 'error');
+    }
   }
 
   private deleteDetalleRow(contextParams: any, doneCallback: () => void, count?: number) {

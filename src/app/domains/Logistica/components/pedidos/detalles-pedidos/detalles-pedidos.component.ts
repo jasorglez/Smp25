@@ -9,11 +9,12 @@ import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { lastValueFrom } from 'rxjs';
+import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
 
 @Component({
   selector: 'app-detalles-pedidos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, ProductoAutocompleteEditorComponent],
   templateUrl: './detalles-pedidos.component.html',
   styleUrls: ['./detalles-pedidos.component.scss']
 })
@@ -31,6 +32,7 @@ export class DetallesPedidosComponent implements OnInit {
   clientes: any[] = [];
   productos: any[] = [];
   plataformas: any[] = [];
+  productoSuggestions: string[] = [];
   isLocked: boolean = false;
 
   showPlataformaModal: boolean = false;
@@ -50,6 +52,24 @@ export class DetallesPedidosComponent implements OnInit {
     this.loadProductos();
     this.loadPlataformas();
     this.loadData();
+    this.loadProductoSuggestions();
+  }
+
+  private loadProductoSuggestions(): void {
+    const idCompany = this.context?.idCompany;
+    if (!idCompany || !this.context?.pedidosService) return;
+    this.context.pedidosService.getDetallesByCompany(idCompany).subscribe({
+      next: (response: any) => {
+        const detalles: any[] = response?.data || response || [];
+        const unique = [...new Set(
+          detalles
+            .map((d: any) => d.producto)
+            .filter((p: any) => p && p.trim() !== '')
+        )] as string[];
+        this.productoSuggestions = unique.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      },
+      error: () => { this.productoSuggestions = []; }
+    });
   }
 
   private loadClientes() {
@@ -60,6 +80,7 @@ export class DetallesPedidosComponent implements OnInit {
           this.clientes = data?.data || data || [];
           if (this.gridApi) {
             this.gridApi.setGridOption('columnDefs', this.colDefs);
+            this.gridApi.refreshCells({ force: true });
           }
         },
         error: (error) => {
@@ -139,24 +160,23 @@ get colDefs(): ColDef[] {
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
-
       {
         field: 'idCliente',
         headerName: 'Cliente',
         editable: () => !this.isLocked,
         width: 200,
         cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.clientes.map(item => item.id),
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
-            const found = this.clientes.find(item => item.id === value);
+            const found = this.clientes.find(item => item.id == value);
             return found ? found.name : value;
           }
-        },
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const found = this.clientes.find(item => item.id === params.value);
+          const found = this.clientes.find(item => item.id == params.value);
           return found ? found.name : params.value;
         },
         valueSetter: (params: any) => {
@@ -165,26 +185,16 @@ get colDefs(): ColDef[] {
         }
       },
       {
-        field: 'idProducto',
+        field: 'producto',
         headerName: 'Producto',
         editable: () => !this.isLocked,
         width: 250,
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: this.productos.map(item => item.id),
-          valueListMaxHeight: 220,
-          formatValue: (value: any) => {
-            const found = this.productos.find(item => item.id === value);
-            return found ? found.description : value;
-          }
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.productos.find(item => item.id === params.value);
-          return found ? found.description : params.value;
-        },
+        cellEditor: ProductoAutocompleteEditorComponent,
+        cellEditorParams: () => ({
+          suggestions: this.productoSuggestions
+        }),
         valueSetter: (params: any) => {
-          params.data.idProducto = params.newValue;
+          params.data.producto = params.newValue;
           return true;
         }
       },
@@ -363,6 +373,8 @@ get colDefs(): ColDef[] {
     domLayout: 'normal',
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: true,
+    /** Popups (editores, selects) fuera del viewport para evitar recortes en master-detail */
+    popupParent: typeof document !== 'undefined' ? document.body : undefined,
     onCellValueChanged: (event: any) => {
       console.log('🔄 Cell changed:', event.colDef.field, event.newValue);
       event.data.__modified = true;
