@@ -216,6 +216,19 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#e3f2fd' }
       },
       {
+        field: 'total',
+        headerName: 'Total',
+        editable: false,
+        width: 130,
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+          }
+          return '$0.00';
+        },
+        cellStyle: { backgroundColor: '#d4edda', fontWeight: 'bold' }
+      },
+      {
         field: 'comentario',
         headerName: 'Comentario',
         editable: true,
@@ -468,6 +481,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             aplicaimpuestos: row.aplicaimpuestos,
             costo: row.costo || 0,
             venta: row.venta || 0,
+            impuesto: row.impuesto || 0,
             estado: row.estado || 'SOLICITADO',
             comentario: row.comentario,
             active: row.active ?? true,
@@ -486,11 +500,41 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             aplicaimpuestos: row.aplicaimpuestos,
             costo: row.costo || 0,
             venta: row.venta || 0,
+            impuesto: row.impuesto || 0,
             estado: row.estado || 'SOLICITADO',
             comentario: row.comentario,
             active: row.active,
           };
           await lastValueFrom(this.pedidosService.updateDetalle(row.id, dataToSend));
+        }
+
+        // Calcular y actualizar el total del pedido
+        const allDetalles = [...newRows, ...modifiedRows];
+        let totalPedido = 0;
+        for (const row of allDetalles) {
+          const cantidad = row.cantidad || 0;
+          const venta = row.venta || 0;
+          const impuesto = row.impuesto || 0;
+          const subtotal = cantidad * venta;
+          const montoImpuesto = subtotal * (impuesto / 100);
+          totalPedido += subtotal + montoImpuesto;
+        }
+
+        // Actualizar el total en el pedido
+        await lastValueFrom(this.pedidosService.updatePedido(idPedido, { total: totalPedido }));
+
+        // Actualizar el valor en el grid
+        if (this.gridApi) {
+          this.gridApi.forEachNode((node: any) => {
+            if (node.data && node.data.id === idPedido) {
+              node.data.total = totalPedido;
+              this.gridApi.refreshCells({
+                rowNodes: [node],
+                columns: ['total'],
+                force: true
+              });
+            }
+          });
         }
 
         resolve();
@@ -510,15 +554,22 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       }
       doneCallback();
     } else {
-      this.pedidosService.deleteDetalle(rowId).subscribe({
-        next: () => {
+      alerts.confirmAlert(
+        '¿Eliminar detalle?',
+        '¿Está seguro que desea eliminar este registro?',
+        'warning',
+        'Sí, eliminar'
+      ).then(async (result) => {
+        if (!result.isConfirmed) return;
+
+        try {
+          await lastValueFrom(this.pedidosService.deleteDetalle(rowId));
           alerts.basicAlert('Eliminado', 'Detalle eliminado correctamente', 'success');
           if (contextParams.api) {
             contextParams.api.applyTransaction({ remove: [contextParams.data] });
           }
           doneCallback();
-        },
-        error: (err) => {
+        } catch (err) {
           console.error('Error deleting detalle:', err);
           alerts.basicAlert('Error', 'No se pudo eliminar el detalle', 'error');
         }

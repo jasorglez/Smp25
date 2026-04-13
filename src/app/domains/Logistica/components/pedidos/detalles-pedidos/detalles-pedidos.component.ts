@@ -277,23 +277,62 @@ get colDefs(): ColDef[] {
         }
       },
       {
+        field: 'impuesto',
+        headerName: 'Impuesto %',
+        editable: () => !this.isLocked,
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value + '%';
+          }
+          return '0%';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          params.data.impuesto = isNaN(val) ? 0 : val;
+          return true;
+        }
+      },
+      {
+        field: 'total',
+        headerName: 'Total',
+        editable: false,
+        width: 120,
+        valueGetter: (params) => {
+          const cantidad = params.data.cantidad || 0;
+          const venta = params.data.venta || 0;
+          const impuesto = params.data.impuesto || 0;
+          const subtotal = cantidad * venta;
+          const montoImpuesto = subtotal * (impuesto / 100);
+          return subtotal + montoImpuesto;
+        },
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+          }
+          return '$0.00';
+        },
+        cellStyle: { backgroundColor: '#d4edda', fontWeight: 'bold' }
+      },
+      {
         field: 'estado',
         headerName: 'Estado',
         editable: () => !this.isLocked,
         width: 120,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['SOLICITADO', 'EN PROCESO', 'ENVIADO', 'ENTREGADO', 'CANCELADO']
+          values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO']
         },
         valueSetter: (params: any) => {
           params.data.estado = params.newValue;
           return true;
         },
         cellStyle: (params) => {
-          if (params.value === 'ENTREGADO') return { backgroundColor: '#d4edda' };
+          if (params.value === 'RECIBIDO') return { backgroundColor: '#d4edda' };
           if (params.value === 'CANCELADO') return { backgroundColor: '#f8d7da' };
-          if (params.value === 'ENVIADO') return { backgroundColor: '#cce5ff' };
-          if (params.value === 'EN PROCESO') return { backgroundColor: '#fff3cd' };
+          if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
+          if (params.value === 'REVENDIDO') return { backgroundColor: '#fff3cd' };
           return { backgroundColor: '#e2e3e5' };
         }
       },
