@@ -241,6 +241,63 @@ get colDefs(): ColDef[] {
         }
       },
       {
+        field: 'costo',
+        headerName: 'Costo',
+        editable: () => !this.isLocked,
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+          }
+          return '$0.00';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          params.data.costo = isNaN(val) ? 0 : val;
+          return true;
+        }
+      },
+      {
+        field: 'venta',
+        headerName: 'Venta',
+        editable: () => !this.isLocked,
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+          }
+          return '$0.00';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          params.data.venta = isNaN(val) ? 0 : val;
+          return true;
+        }
+      },
+      {
+        field: 'estado',
+        headerName: 'Estado',
+        editable: () => !this.isLocked,
+        width: 120,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['SOLICITADO', 'EN PROCESO', 'ENVIADO', 'ENTREGADO', 'CANCELADO']
+        },
+        valueSetter: (params: any) => {
+          params.data.estado = params.newValue;
+          return true;
+        },
+        cellStyle: (params) => {
+          if (params.value === 'ENTREGADO') return { backgroundColor: '#d4edda' };
+          if (params.value === 'CANCELADO') return { backgroundColor: '#f8d7da' };
+          if (params.value === 'ENVIADO') return { backgroundColor: '#cce5ff' };
+          if (params.value === 'EN PROCESO') return { backgroundColor: '#fff3cd' };
+          return { backgroundColor: '#e2e3e5' };
+        }
+      },
+      {
         field: 'comentario',
         headerName: 'Comentario',
         editable: () => !this.isLocked,

@@ -466,6 +466,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             cantidad: row.cantidad || 1,
             plataforma: row.plataforma,
             aplicaimpuestos: row.aplicaimpuestos,
+            costo: row.costo || 0,
+            venta: row.venta || 0,
+            estado: row.estado || 'SOLICITADO',
             comentario: row.comentario,
             active: row.active ?? true,
           };
@@ -481,6 +484,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             cantidad: row.cantidad || 1,
             plataforma: row.plataforma,
             aplicaimpuestos: row.aplicaimpuestos,
+            costo: row.costo || 0,
+            venta: row.venta || 0,
+            estado: row.estado || 'SOLICITADO',
             comentario: row.comentario,
             active: row.active,
           };
