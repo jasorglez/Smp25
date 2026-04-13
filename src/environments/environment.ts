@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.07 (13 Abril 2026 10:56) Modulo Logistica',
+  version: '5.08 (13 Abril 2026 19:11) Demos Ventas',
 };

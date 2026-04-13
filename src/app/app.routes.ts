@@ -1806,6 +1806,13 @@ export const routes: Routes = [
                 './domains/ModSales/components/cursos/cursos.component'
               ).then((c) => c.CursosComponent),
           },
+          {
+            path: 'demos',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/demos/demos.component'
+              ).then((d) => d.DemosComponent),
+          },
         ],
       },
       {
