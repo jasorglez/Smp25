@@ -16,6 +16,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
         [columnDefs]="colDefs"
+        [defaultColDef]="defaultColDef"
         [gridOptions]="gridOptions"
         (gridReady)="onGridReady($event)"
         [localeText]="AG_GRID_LOCALE_ES">
@@ -27,20 +28,35 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   private context: any;
+  private pedidoNumero: any = '-';
 
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+  };
 
   public gridOptions: any = {
     headerHeight: 28,
     rowHeight: 26,
     animateRows: true,
     groupDefaultExpanded: 0,
+    groupIncludeFooter: true,
+    getRowStyle: (params: any) => {
+      if (params.node?.footer) return { backgroundColor: '#d4edda', fontWeight: 'bold' };
+      return null;
+    },
     autoGroupColumnDef: {
       headerName: 'Cliente',
       minWidth: 200,
       pinned: 'left',
-      cellRendererParams: { suppressCount: false }
+      cellRendererParams: {
+        suppressCount: false,
+        footerValueGetter: (params: any) => `Total — ${params.value}`,
+      },
     },
     popupParent: typeof document !== 'undefined' ? document.body : undefined,
   };
@@ -58,43 +74,60 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       minWidth: 150,
     },
     {
+      headerName: 'Pedido',
+      width: 100,
+      valueGetter: (params) => params.node?.group ? null : this.pedidoNumero,
+    },
+    {
       field: 'cantidad',
       headerName: 'Cantidad',
       width: 90,
       type: 'numericColumn',
+      valueFormatter: (params) => params.node?.group ? '' : (params.value ?? ''),
     },
     {
       field: 'plataforma',
       headerName: 'Plataforma',
       width: 130,
+      valueFormatter: (params) => params.node?.group ? '' : (params.value ?? ''),
     },
     {
       field: 'costo',
       headerName: 'Costo',
       width: 110,
       type: 'numericColumn',
-      valueFormatter: (params) => params.value
-        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
-        : '$0.00',
+      aggFunc: 'sum',
+      valueFormatter: (params) => {
+        if (params.node?.group && !params.node?.footer) return '';
+        return params.value != null
+          ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+          : '$0.00';
+      },
     },
     {
       field: 'venta',
       headerName: 'Venta',
       width: 110,
       type: 'numericColumn',
-      valueFormatter: (params) => params.value
-        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
-        : '$0.00',
+      aggFunc: 'sum',
+      valueFormatter: (params) => {
+        if (params.node?.group && !params.node?.footer) return '';
+        return params.value != null
+          ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+          : '$0.00';
+      },
     },
     {
       field: 'estado',
       headerName: 'Estado',
       width: 120,
+      valueFormatter: (params) => params.node?.group ? '' : (params.value ?? ''),
       cellStyle: (params) => {
-        if (params.value === 'RECIBIDO') return { backgroundColor: '#d4edda' };
-        if (params.value === 'CANCELADO') return { backgroundColor: '#f8d7da' };
+        if (params.node?.group) return {};
+        if (params.value === 'RECIBIDO')   return { backgroundColor: '#d4edda' };
+        if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
         if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
-        if (params.value === 'REVENDIDO') return { backgroundColor: '#fff3cd' };
+        if (params.value === 'REVENDIDO')  return { backgroundColor: '#fff3cd' };
         return { backgroundColor: '#e2e3e5' };
       }
     },
@@ -103,6 +136,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.context = params.context;
+    this.pedidoNumero = params.data?.numero ?? '-';
     this.loadData();
   }
 

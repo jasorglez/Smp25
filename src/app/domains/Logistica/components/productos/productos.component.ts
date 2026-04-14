@@ -5,6 +5,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SignalsService } from 'app/services/signals.service';
 import { PedidosService } from 'app/services/pedidos.service';
+import { CustomersService } from 'app/services/customers.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'storeComponent',
@@ -17,12 +19,15 @@ export class MaterialsComponent {
 
   private signalsService = inject(SignalsService);
   private pedidosService = inject(PedidosService);
+  private customersService = inject(CustomersService);
 
   idcompany: number = null;
   rowData: any[] = [];
-  gridHeight: string = '85vh';
+  gridHeight: string = '82vh';
+  activeFilter: string | null = null;
 
   private gridApi: GridApi;
+  private allData: any[] = [];
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -49,8 +54,31 @@ export class MaterialsComponent {
     {
       field: 'producto',
       headerName: 'Producto',
+      filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
       flex: 2,
       minWidth: 200,
+    },
+    {
+      field: 'clienteName',
+      headerName: 'Cliente',
+      flex: 2,
+      minWidth: 160,
+      filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
+    },
+    {
+      field: 'pedidoNumero',
+      headerName: 'Pedido',
+      width: 100,
+      filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
     },
     {
       field: 'costo',
@@ -85,6 +113,18 @@ export class MaterialsComponent {
           : '$0.00',
       cellStyle: { textAlign: 'right' },
     },
+    {
+      field: 'estado',
+      headerName: 'Estado',
+      width: 120,
+      cellStyle: (params) => {
+        if (params.value === 'RECIBIDO')   return { backgroundColor: '#d4edda' };
+        if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
+        if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
+        if (params.value === 'REVENDIDO')  return { backgroundColor: '#fff3cd' };
+        return { backgroundColor: '#e2e3e5' };
+      },
+    },
   ];
 
   constructor() {
@@ -101,17 +141,50 @@ export class MaterialsComponent {
     this.gridApi = params.api;
   }
 
+  setFilter(estado: string | null): void {
+    this.activeFilter = estado;
+    this.applyFilter();
+  }
+
+  private applyFilter(): void {
+    this.rowData = this.activeFilter
+      ? this.allData.filter(d => d.estado === this.activeFilter)
+      : [...this.allData];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+  }
+
   private loadData(): void {
     if (!this.idcompany) return;
-    this.pedidosService.getDetallesByCompany(this.idcompany).subscribe({
-      next: (response: any) => {
-        this.rowData = response?.data || response || [];
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
+    forkJoin({
+      detalles: this.pedidosService.getDetallesByCompany(this.idcompany),
+      pedidos:  this.pedidosService.getPedidosByCompany(this.idcompany),
+      clientes: this.customersService.getCustomersByCompany(this.idcompany, 'CUSTOMERS'),
+    }).subscribe({
+      next: (results: any) => {
+        const detallesList: any[] = results.detalles?.data || results.detalles || [];
+        const pedidosList:  any[] = results.pedidos?.data  || results.pedidos  || [];
+        const clientesList: any[] = results.clientes?.data || results.clientes || [];
+
+        const pedidosMap  = new Map(pedidosList.map((p: any) => [p.id, p]));
+        const clientesMap = new Map(clientesList.map((c: any) => [c.id, c]));
+
+        this.allData = detallesList.map((d: any) => {
+          const pedido  = pedidosMap.get(d.idPedido);
+          const cliente = clientesMap.get(d.idCliente);
+          return {
+            ...d,
+            clienteName:  cliente?.name  || d.idCliente || '-',
+            pedidoNumero: pedido?.numero || d.idPedido  || '-',
+          };
+        });
+
+        this.applyFilter();
+
       },
       error: (e) => {
-        console.error('Error cargando detalles de pedidos:', e);
+        console.error('Error cargando productos:', e);
         this.rowData = [];
       },
     });

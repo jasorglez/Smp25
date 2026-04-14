@@ -19,7 +19,14 @@ export const routes: Routes = [
     path: '',
     component: MainPageComponent,
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: '', redirectTo: '/login', pathMatch: 'full' },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./pages/dashboard-home/dashboard-home.component').then(
+            (m) => m.DashboardHomeComponent
+          ),
+      },
       {
         path: 'proceswar',
         loadComponent: () =>
