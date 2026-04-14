@@ -22,6 +22,7 @@ export class MaterialsComponent {
   private customersService = inject(CustomersService);
 
   idcompany: number = null;
+  idBranch: number = null;
   rowData: any[] = [];
   gridHeight: string = '82vh';
   activeFilter: string | null = null;
@@ -130,8 +131,13 @@ export class MaterialsComponent {
   constructor() {
     effect(() => {
       const currentRoot = this.signalsService.getRootSelectedBySidebar()();
+      const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (currentRoot && currentRoot !== this.idcompany) {
         this.idcompany = currentRoot;
+        this.idBranch = currentBranch;
+        this.loadData();
+      } else if (currentRoot && currentBranch && currentBranch !== this.idBranch) {
+        this.idBranch = currentBranch;
         this.loadData();
       }
     });
@@ -160,22 +166,26 @@ export class MaterialsComponent {
     forkJoin({
       detalles: this.pedidosService.getDetallesByCompany(this.idcompany),
       pedidos:  this.pedidosService.getPedidosByCompany(this.idcompany),
-      clientes: this.customersService.getCustomersByCompany(this.idcompany, 'CUSTOMERS'),
+      clientes: this.idBranch
+        ? this.customersService.getCustomers(this.idBranch, 'CUSTOMERS')
+        : this.customersService.getCustomersByCompany(this.idcompany, 'CUSTOMERS'),
     }).subscribe({
       next: (results: any) => {
         const detallesList: any[] = results.detalles?.data || results.detalles || [];
         const pedidosList:  any[] = results.pedidos?.data  || results.pedidos  || [];
         const clientesList: any[] = results.clientes?.data || results.clientes || [];
 
-        const pedidosMap  = new Map(pedidosList.map((p: any) => [p.id, p]));
-        const clientesMap = new Map(clientesList.map((c: any) => [c.id, c]));
+        const key = (v: any) => (v === undefined || v === null ? null : String(v));
+        const pedidosMap  = new Map(pedidosList.map((p: any) => [key(p.id), p]));
+        const clientesMap = new Map(clientesList.map((c: any) => [key(c.id), c]));
 
         this.allData = detallesList.map((d: any) => {
-          const pedido  = pedidosMap.get(d.idPedido);
-          const cliente = clientesMap.get(d.idCliente);
+          const pedido  = pedidosMap.get(key(d.idPedido));
+          const cliente = clientesMap.get(key(d.idCliente));
           return {
             ...d,
-            clienteName:  cliente?.name  || d.idCliente || '-',
+            // Igual que en el 2º nivel: el nombre viene del endpoint de clientes
+            clienteName:  cliente?.nameContact || cliente?.company || cliente?.name || cliente?.Description || '-',
             pedidoNumero: pedido?.numero || d.idPedido  || '-',
           };
         });

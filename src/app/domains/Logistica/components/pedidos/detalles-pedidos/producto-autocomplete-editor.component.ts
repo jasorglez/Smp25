@@ -23,7 +23,7 @@ import { ICellEditorParams } from 'ag-grid-community';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div style="position: relative; width: 250px;">
+    <div style="position: relative; width: 250px;" (mousedown)="$event.stopPropagation()">
       <input
         #inputRef
         type="text"
@@ -45,6 +45,17 @@ export class ProductoAutocompleteEditorComponent
   private zone = inject(NgZone);
   private renderer = inject(Renderer2);
 
+  private params!: ICellEditorParams & {
+    suggestions: string[];
+    ignoreFirstEnterNavigation?: boolean;
+  };
+
+  /**
+   * Al abrir Producto justo después de Enter en Cliente, a veces el mismo Enter llega al input
+   * y cerraba la celda. Solo ignoramos ese primer Enter cuando el grid indicó que la edición empezó con Enter.
+   */
+  private ignoreNextEnterToCantidad = false;
+
   value: string = '';
   suggestions: string[] = [];
   filtered: string[] = [];
@@ -58,16 +69,22 @@ export class ProductoAutocompleteEditorComponent
     }
   };
 
-  agInit(params: ICellEditorParams & { suggestions: string[] }): void {
+  agInit(params: ICellEditorParams & { suggestions: string[]; ignoreFirstEnterNavigation?: boolean }): void {
+    this.params = params;
     this.value = params.value || '';
     this.suggestions = params.suggestions || [];
+    const ek = params.eventKey;
+    this.ignoreNextEnterToCantidad =
+      ek === 'Enter' || ek === 'NumpadEnter' || params.ignoreFirstEnterNavigation === true;
+  }
+
+  /** El grid llama esto cuando el popup ya está montado; aquí el foco es fiable (editor como popup). */
+  afterGuiAttached(): void {
+    this.scheduleFocus();
   }
 
   ngAfterViewInit(): void {
-    setTimeout(() => {
-      this.inputRef?.nativeElement?.focus();
-      this.inputRef?.nativeElement?.select();
-    }, 0);
+    this.scheduleFocus();
     window.addEventListener('scroll', this.scrollOrResize, true);
     window.addEventListener('resize', this.scrollOrResize);
   }
@@ -76,6 +93,27 @@ export class ProductoAutocompleteEditorComponent
     window.removeEventListener('scroll', this.scrollOrResize, true);
     window.removeEventListener('resize', this.scrollOrResize);
     this.removeOverlay();
+  }
+
+  /** El grid puede re-enfocar la celda; reforzamos foco en el input. */
+  focusIn(): void {
+    this.scheduleFocus();
+  }
+
+  private scheduleFocus(): void {
+    const run = (): boolean => {
+      const el = this.inputRef?.nativeElement;
+      if (!el) return false;
+      el.focus({ preventScroll: true });
+      el.select?.();
+      return true;
+    };
+    setTimeout(() => {
+      if (!run()) {
+        setTimeout(() => run(), 10);
+      }
+    }, 0);
+    requestAnimationFrame(() => run());
   }
 
   getValue(): string {
@@ -126,6 +164,37 @@ export class ProductoAutocompleteEditorComponent
   }
 
   onKeyDown(event: KeyboardEvent): void {
+    // Sin esto, con el desplegable cerrado el grid recibe el keydown y no deja escribir en el input.
+    if (event.key !== 'Tab') {
+      event.stopPropagation();
+    }
+
+    if (event.key === 'Enter' || event.key === 'NumpadEnter') {
+      if (this.ignoreNextEnterToCantidad) {
+        this.ignoreNextEnterToCantidad = false;
+        event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      // Si hay sugerencia resaltada con flechas, aplicarla antes de salir (valor síncrono para getValue)
+      if (this.showDropdown && this.overlayRoot && this.activeIndex >= 0) {
+        this.value = this.filtered[this.activeIndex];
+        this.showDropdown = false;
+        this.filtered = [];
+        this.removeOverlay();
+      }
+      const rowIndex = this.params.node.rowIndex;
+      const api = this.params.api;
+      this.params.stopEditing();
+      setTimeout(() => {
+        if (rowIndex != null) {
+          api.setFocusedCell(rowIndex, 'cantidad');
+          api.startEditingCell({ rowIndex, colKey: 'cantidad' });
+        }
+      }, 0);
+      return;
+    }
+
     if (!this.showDropdown || !this.overlayRoot) return;
 
     if (event.key === 'ArrowDown') {
@@ -136,9 +205,6 @@ export class ProductoAutocompleteEditorComponent
       this.activeIndex = Math.max(this.activeIndex - 1, -1);
       this.highlightActiveInOverlay();
       event.preventDefault();
-    } else if (event.key === 'Enter' && this.activeIndex >= 0) {
-      this.selectItem(this.filtered[this.activeIndex]);
-      event.stopPropagation();
     } else if (event.key === 'Escape') {
       this.zone.run(() => {
         this.showDropdown = false;

@@ -48,6 +48,25 @@ export class DetallesPedidosComponent implements OnInit {
   showPlataformaModal: boolean = false;
   newPlataforma: any = {};
 
+  /** Enter visto en captura (popup Rich Select no dispara cellKeyDown del grid) */
+  private sawEnterDuringEdit = false;
+  private enterCapture?: (ev: KeyboardEvent) => void;
+
+  /** Un frame: abrir Producto tras Enter en Cliente; el editor ignora el Enter “fantasma” en el input */
+  skipFirstEnterOnProductoEditor = false;
+
+  /** Secuencia de navegación con Enter entre columnas editables */
+  private readonly NEXT_EDIT_COL: Record<string, string> = {
+    'clienteName': 'producto',
+    'producto':    'cantidad',
+    'cantidad':    'plataforma',
+    'plataforma':  'costo',
+    'costo':       'venta',
+    'venta':       'impuesto',
+    'impuesto':    'estado',
+    'estado':      'comentario'
+  };
+
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
@@ -240,7 +259,8 @@ get colDefs(): ColDef[] {
         width: 250,
         cellEditor: ProductoAutocompleteEditorComponent,
         cellEditorParams: () => ({
-          suggestions: this.productoSuggestions
+          suggestions: this.productoSuggestions,
+          ignoreFirstEnterNavigation: this.skipFirstEnterOnProductoEditor
         }),
         valueSetter: (params: any) => {
           params.data.producto = params.newValue;
@@ -425,10 +445,69 @@ get colDefs(): ColDef[] {
     suppressRowTransform: true,
     /** Popups (editores, selects) fuera del viewport para evitar recortes en master-detail */
     popupParent: typeof document !== 'undefined' ? document.body : undefined,
-    onCellValueChanged: (event: any) => {
-      console.log('🔄 Cell changed:', event.colDef.field, event.newValue);
-      event.data.__modified = true;
-      this.hasUnsavedChanges = true;
+    onCellEditingStarted: (event: any) => {
+      if (this.isLocked) return;
+      this.sawEnterDuringEdit = false;
+      if (this.enterCapture) {
+        window.removeEventListener('keydown', this.enterCapture, true);
+        this.enterCapture = undefined;
+      }
+      this.enterCapture = (ev: KeyboardEvent) => {
+        if (ev.key === 'Enter') this.sawEnterDuringEdit = true;
+      };
+      window.addEventListener('keydown', this.enterCapture, true);
+    },
+    onCellEditingStopped: (event: any) => {
+      if (this.enterCapture) {
+        window.removeEventListener('keydown', this.enterCapture, true);
+        this.enterCapture = undefined;
+      }
+
+      if (this.isLocked) return;
+
+      const colId = event.column?.getColId?.() ?? event.colDef?.field;
+      const nextColId = this.NEXT_EDIT_COL[colId];
+      if (!nextColId) return;
+
+      const browserEvent = event.event as Event | undefined;
+      if (browserEvent instanceof MouseEvent) {
+        this.sawEnterDuringEdit = false;
+        return;
+      }
+
+      const ke = browserEvent instanceof KeyboardEvent ? browserEvent : undefined;
+      if (ke?.key === 'Tab' || ke?.key === 'Escape') {
+        this.sawEnterDuringEdit = false;
+        return;
+      }
+
+      const keyboardEnter = ke?.key === 'Enter';
+      const capturedEnter = this.sawEnterDuringEdit;
+      this.sawEnterDuringEdit = false;
+
+      // clienteName usa RichSelect: requiere value change + Enter capturado
+      if (colId === 'clienteName') {
+        if (!capturedEnter || !event.valueChanged) return;
+      } else {
+        if (!keyboardEnter && !capturedEnter) return;
+      }
+
+      const rowIndex = event.node?.rowIndex;
+      if (rowIndex == null || !this.gridApi) return;
+
+      if (nextColId === 'producto') {
+        setTimeout(() => {
+          this.skipFirstEnterOnProductoEditor = true;
+          this.gridApi.setFocusedCell(rowIndex, 'producto');
+          this.gridApi.startEditingCell({ rowIndex, colKey: 'producto' });
+          queueMicrotask(() => { this.skipFirstEnterOnProductoEditor = false; });
+        }, 0);
+      } else {
+        setTimeout(() => {
+          this.gridApi.setFocusedCell(rowIndex, nextColId);
+          this.gridApi.startEditingCell({ rowIndex, colKey: nextColId });
+        }, 0);
+      }
     }
   };
 
@@ -506,6 +585,63 @@ get colDefs(): ColDef[] {
     if (!isValid) {
       alerts.basicAlert('Validación', 'Todos los detalles deben tener cliente', 'warning');
       return;
+    }
+
+    // Validación: cliente + producto + plataforma duplicados en el mismo pedido
+    const normalizeKeyPart = (v: any) => String(v ?? '').trim().toUpperCase();
+    const groups = new Map<string, any[]>();
+    for (const r of this.rowData) {
+      const clienteKey = normalizeKeyPart(r?.idCliente);
+      const productoKey = normalizeKeyPart(r?.producto);
+      const plataformaKey = normalizeKeyPart(r?.plataforma);
+      if (!clienteKey || !productoKey || !plataformaKey) continue;
+      const key = `${clienteKey}||${productoKey}||${plataformaKey}`;
+      const arr = groups.get(key) ?? [];
+      arr.push(r);
+      groups.set(key, arr);
+    }
+
+    const duplicates = [...groups.values()].filter(arr => arr.length > 1);
+    if (duplicates.length > 0) {
+      const msg =
+        'Este cliente ya está registrado con este producto en la misma plataforma.\n\n' +
+        '¿Quieres aumentar la cantidad (sumar) y eliminar duplicados?';
+
+      const result = await alerts.confirmAlert(
+        'Duplicado detectado',
+        msg,
+        'warning',
+        'Sí, aumentar cantidad'
+      );
+
+      if (!result?.isConfirmed) return;
+
+      // Merge: suma cantidades y elimina duplicados (en UI y backend si aplica)
+      for (const arr of duplicates) {
+        const keep = arr.find(r => !r.__isNew && r?.id) ?? arr[0];
+        const totalCantidad = arr.reduce((sum, r) => sum + (Number(r?.cantidad) || 0), 0);
+        keep.cantidad = totalCantidad > 0 ? totalCantidad : 1;
+        keep.__modified = true;
+
+        for (const r of arr) {
+          if (r === keep) continue;
+          // Si ya existía en backend, lo eliminamos para evitar duplicados
+          if (!r.__isNew && r?.id && this.context?.pedidosService?.deleteDetalle) {
+            try {
+              await lastValueFrom(this.context.pedidosService.deleteDetalle(r.id));
+            } catch (e) {
+              console.error('Error eliminando duplicado:', e);
+            }
+          }
+          this.rowData = this.rowData.filter(x => x !== r);
+        }
+      }
+
+      this.hasUnsavedChanges = true;
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.refreshCells({ force: true });
+      }
     }
 
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
