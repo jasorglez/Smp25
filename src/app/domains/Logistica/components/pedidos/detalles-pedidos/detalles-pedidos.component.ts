@@ -5,11 +5,15 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { lastValueFrom } from 'rxjs';
 import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-detalles-pedidos',
@@ -25,6 +29,7 @@ export class DetallesPedidosComponent implements OnInit {
   private customersService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
   private catalogadmonService = inject(CatalogadmonService);
+  private sanitizer = inject(DomSanitizer);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -34,6 +39,11 @@ export class DetallesPedidosComponent implements OnInit {
   plataformas: any[] = [];
   productoSuggestions: string[] = [];
   isLocked: boolean = false;
+
+  // PDF view
+  detailType: string = 'pedidos';
+  pdfUrl: SafeResourceUrl | null = null;
+  private originalPdfUrl: string | null = null;
 
   showPlataformaModal: boolean = false;
   newPlataforma: any = {};
@@ -48,11 +58,27 @@ export class DetallesPedidosComponent implements OnInit {
     this.params = params;
     this.context = params.context;
     this.isLocked = params.data?.locked === true;
-    this.loadClientes();
-    this.loadProductos();
-    this.loadPlataformas();
-    this.loadData();
-    this.loadProductoSuggestions();
+    this.detailType = params.data?.detailType || 'pedidos';
+
+    if (this.detailType === 'pdf') {
+      this.generateReport();
+    } else {
+      this.loadClientes();
+      this.loadProductos();
+      this.loadPlataformas();
+      this.loadData();
+      this.loadProductoSuggestions();
+    }
+  }
+
+  private async generateReport(): Promise<void> {
+    const componentParent = this.context?.componentParent;
+    if (typeof componentParent?.generatePedidoPDF !== 'function') {
+      console.error('generatePedidoPDF is not available in detail renderer context.');
+      return;
+    }
+
+    await componentParent.generatePedidoPDF(this.params?.node);
   }
 
   private loadProductoSuggestions(): void {

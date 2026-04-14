@@ -124,10 +124,10 @@ const GRAY  = '#555555';
       border-top: 2px solid #0d6efd;
     }
     .pdf-frame-wrap {
-      height: 840px;
+      height: 2300px;
       border: 1px solid #dee2e6;
       border-radius: 4px;
-      overflow: hidden;
+      overflow: auto;
     }
     .autocomplete-list {
       position: absolute;

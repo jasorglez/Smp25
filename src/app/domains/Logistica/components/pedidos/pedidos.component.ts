@@ -18,6 +18,8 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 import { DetallesPedidosComponent } from './detalles-pedidos/detalles-pedidos.component';
 import { DetallesClientesComponent } from './detalles-clientes/detalles-clientes.component';
 import { NumArticulosRendererComponent } from './pedidos-button-num-articulos.component';
@@ -37,6 +39,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   private trackingService = inject(TrackingService);
   private customersService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
   
   ngOnInit() {
     (window as any).pedidosComponent = this;
@@ -83,7 +87,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       }
       return undefined;
     },
-    detailRowHeight: 280,
+    detailRowHeight: 620,
     isRowMaster: (dataItem: any) => true,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
@@ -182,6 +186,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         trackingService: this.trackingService,
         customersService: this.customersService,
         materialsService: this.materialsService,
+        rootService: this.rootService,
+        base64EncodeService: this.base64EncodeService,
         CONCEPTS: {
           load: (idPedido: number, callback: (data: any[]) => void) => {
             this.loadDetallesData(idPedido, callback);
@@ -243,10 +249,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         width: 70,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.generatePedidoPDF(node),
+          onClick: (node: any) => this.toggleDetallePdf(node),
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
-          title: 'Generar PDF del pedido'
+          title: 'Ver PDF del pedido'
         },
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
@@ -387,6 +393,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
       for (const row of modifiedRows) {
         const dataToSend = {
+          id: row.id,
           idCompany: row.idCompany,
           numero: row.numero,
           fecha: row.fecha,
@@ -396,7 +403,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         await lastValueFrom(this.pedidosService.updatePedido(row.id, dataToSend));
       }
 
-      alerts.basicAlert('Guardado', 'Pedidos guardados correctamente', 'success');
+      alerts.toastAlert('Pedidos guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
       this.newlyAddedRows = [];
       
@@ -520,6 +527,28 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       setTimeout(() => {
         node.setExpanded(true);
       }, 0);
+    }
+  }
+
+  toggleDetallePdf(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'pdf';
+
+    if (isCurrentlyExpanded) {
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+      if (node.data) node.data.detailType = null;
+      api.setFilterModel(null);
+      api.onFilterChanged();
+    } else {
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); if (n.data) n.data.detailType = null; });
+      api.setFilterModel(null);
+      api.onFilterChanged();
+
+      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
+      if (filterModel) { api.setFilterModel(filterModel); api.onFilterChanged(); }
+
+      if (node.data) node.data.detailType = 'pdf';
+      setTimeout(() => node.setExpanded(true), 0);
     }
   }
 
