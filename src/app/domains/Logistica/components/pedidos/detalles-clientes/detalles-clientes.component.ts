@@ -43,8 +43,8 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
     headerHeight: 28,
     rowHeight: 26,
     animateRows: true,
-    groupDefaultExpanded: 0,
-    groupIncludeFooter: true,
+    groupDefaultExpanded: -1,
+    groupTotalRow: 'bottom',
     getRowStyle: (params: any) => {
       if (params.node?.footer) return { backgroundColor: '#d4edda', fontWeight: 'bold' };
       return null;
@@ -55,7 +55,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       pinned: 'left',
       cellRendererParams: {
         suppressCount: false,
-        footerValueGetter: (params: any) => `Total — ${params.value}`,
+        totalValueGetter: (params: any) => `Total — ${params.value}`,
       },
     },
     popupParent: typeof document !== 'undefined' ? document.body : undefined,
@@ -134,6 +134,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
   ];
 
   agInit(params: ICellRendererParams): void {
+    console.log('[DetallesClientes] agInit called — params.data:', params.data, 'context:', params.context);
     this.params = params;
     this.context = params.context;
     this.pedidoNumero = params.data?.numero ?? '-';
@@ -142,24 +143,37 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
+    console.log('[DetallesClientes] onGridReady — rowData.length:', this.rowData.length);
     if (this.rowData.length > 0) {
+      console.log('[DetallesClientes] onGridReady — rowData already loaded, setting it now');
       this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.refreshClientSideRowModel('group');
     }
   }
 
   private loadData(): void {
+    console.log('[DetallesClientes] loadData — context:', this.context, 'CONCEPTS:', this.context?.CONCEPTS);
     if (this.context?.CONCEPTS?.load) {
       const pedidoId = this.params.data.id;
+      console.log('[DetallesClientes] calling CONCEPTS.load with pedidoId:', pedidoId);
       this.context.CONCEPTS.load(pedidoId, (data: any[]) => {
+        console.log('[DetallesClientes] data received — count:', data.length, 'gridApi set?:', !!this.gridApi, 'sample:', data[0]);
         this.rowData = data;
         if (this.gridApi) {
+          console.log('[DetallesClientes] calling setGridOption rowData + refreshClientSideRowModel');
           this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.refreshClientSideRowModel('group');
+        } else {
+          console.warn('[DetallesClientes] gridApi is null when data arrived — rowData stored, waiting for onGridReady');
         }
       });
+    } else {
+      console.warn('[DetallesClientes] context.CONCEPTS.load is not available — context:', this.context);
     }
   }
 
   refresh(): boolean {
+    this.loadData();
     return true;
   }
 }

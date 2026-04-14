@@ -49,6 +49,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   idCompany: number = null;
+  idBranch: number = null;
   rowData: any[] = [];
   selectedRowData: any = null;
   hasUnsavedChanges: boolean = false;
@@ -86,7 +87,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       if (params.data?.detailType === 'clientes') {
         return { component: DetallesClientesComponent };
       }
-      return undefined;
+      // 'pedidos' y 'pdf' usan el mismo renderer de detalle
+      return { component: DetallesPedidosComponent };
     },
     detailRowAutoHeight: true,
     isRowMaster: (dataItem: any) => true,
@@ -115,10 +117,28 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   constructor() {
     effect(() => {
       const currentRoot = this.signalsService.getRootSelectedBySidebar()();
+      const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (currentRoot && currentRoot !== this.idCompany) {
         this.idCompany = currentRoot;
+        this.idBranch = currentBranch;
         this.loadData();
+      } else if (currentRoot && currentBranch && currentBranch !== this.idBranch) {
+        this.idBranch = currentBranch;
+        this.refreshClientesList();
       }
+    });
+  }
+
+  private refreshClientesList(): void {
+    const clientes$ = this.idBranch
+      ? this.customersService.getCustomers(this.idBranch, 'CUSTOMERS')
+      : this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS');
+    clientes$.subscribe({
+      next: (data: any) => {
+        this.clientesList = data?.data || data || [];
+        if (this.gridApi) this.gridApi.refreshCells({ force: true });
+      },
+      error: () => { this.clientesList = []; }
     });
   }
 
@@ -130,7 +150,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     forkJoin({
       pedidos: this.pedidosService.getPedidosByCompany(this.idCompany),
       detalles: this.pedidosService.getDetallesByCompany(this.idCompany),
-      clientes: this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS')
+      clientes: this.idBranch
+        ? this.customersService.getCustomers(this.idBranch, 'CUSTOMERS')
+        : this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS')
     }).subscribe({
       next: (results: any) => {
         const pedidosList = results.pedidos?.data || results.pedidos || [];
@@ -181,6 +203,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       },
       context: {
         idCompany: this.idCompany,
+        idBranch: this.idBranch,
         componentParent: this,
         gridApi: this.gridApi,
         pedidosService: this.pedidosService,
@@ -568,6 +591,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   }
 
   toggleDetalleClientes(node: any) {
+    console.log('[toggleDetalleClientes] called — node.id:', node.id, 'node.data.id:', node.data?.id, 'expanded:', node.expanded, 'detailType:', node.data?.detailType);
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'clientes';
 
@@ -593,7 +617,11 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       }
 
       if (node.data) node.data.detailType = 'clientes';
-      setTimeout(() => node.setExpanded(true), 0);
+      console.log('[toggleDetalleClientes] about to expand — detailType now:', node.data?.detailType);
+      setTimeout(() => {
+        console.log('[toggleDetalleClientes] setTimeout — calling setExpanded(true), detailType:', node.data?.detailType);
+        node.setExpanded(true);
+      }, 0);
     }
   }
 
@@ -626,7 +654,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         // Agregar clienteName para el agrupamiento en el grid de detalles
         detalles = detalles.map(d => ({
           ...d,
-          clienteName: this.clientesList.find((c: any) => c.id == d.idCliente)?.name || d.idCliente || '-'
+          clienteName: (() => {
+            const c = this.clientesList.find((c: any) => c.id == d.idCliente);
+            return c?.nameContact || c?.company || '';
+          })()
         }));
         successCallback(detalles);
       },

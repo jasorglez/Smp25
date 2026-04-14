@@ -98,15 +98,33 @@ export class DetallesPedidosComponent implements OnInit {
     });
   }
 
+  private resolveClienteName(idCliente: number): string {
+    const found = this.clientes.find((c: any) => c.id == idCliente);
+    return found?.nameContact || found?.company || '';
+  }
+
   private loadClientes() {
+    const idBranch = this.context?.componentParent?.idBranch || this.context?.idBranch;
     const idCompany = this.context?.idCompany;
-    if (idCompany) {
-      this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS').subscribe({
+    const request$ = idBranch
+      ? this.customersService.getCustomers(idBranch, 'CUSTOMERS')
+      : this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS');
+    if (idBranch || idCompany) {
+      request$.subscribe({
         next: (data: any) => {
           this.clientes = data?.data || data || [];
+          // Re-resolver nombres ahora que clientes está cargado
+          if (this.rowData.length > 0) {
+            this.rowData = this.rowData.map(item => ({
+              ...item,
+              clienteName: this.resolveClienteName(item.idCliente) || item.clienteName || ''
+            }));
+            if (this.gridApi) {
+              this.gridApi.setGridOption('rowData', this.rowData);
+            }
+          }
           if (this.gridApi) {
             this.gridApi.setGridOption('columnDefs', this.colDefs);
-            this.gridApi.refreshCells({ force: true });
           }
         },
         error: (error) => {
@@ -159,6 +177,7 @@ export class DetallesPedidosComponent implements OnInit {
       this.context.CONCEPTS.load(pedidoId, (data: any[]) => {
         this.rowData = data.map(item => ({
           ...item,
+          clienteName: this.resolveClienteName(item.idCliente) || item.clienteName || '',
           __isNew: false,
           __modified: false
         }));
@@ -175,6 +194,7 @@ export class DetallesPedidosComponent implements OnInit {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+    this.gridApi.refreshCells({ columns: ['clienteName'], force: true });
   }
 
 get colDefs(): ColDef[] {
@@ -187,26 +207,29 @@ get colDefs(): ColDef[] {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
-        field: 'idCliente',
+        field: 'clienteName',
         headerName: 'Cliente',
         editable: () => !this.isLocked,
         width: 200,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.clientes.map(item => item.id),
+          values: this.clientes
+            .map(item => item.Description || item.nameContact || item.company || item.name || item.description)
+            .filter(Boolean),
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
-            const found = this.clientes.find(item => item.id == value);
-            return found ? found.name : value;
+            return value || '';
           }
         }),
         valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.clientes.find(item => item.id == params.value);
-          return found ? found.name : params.value;
+          return params.data?.clienteName || params.value || '';
         },
         valueSetter: (params: any) => {
-          params.data.idCliente = params.newValue;
+          const found = this.clientes.find(item =>
+            (item.Description || item.nameContact || item.company || item.name || item.description) === params.newValue
+          );
+          params.data.idCliente = found?.id ?? params.data.idCliente;
+          params.data.clienteName = params.newValue;
           return true;
         }
       },
@@ -420,6 +443,7 @@ get colDefs(): ColDef[] {
       id: tempId,
       idPedido: this.params.data.id,
       idCliente: 0,
+      clienteName: '',
       idProducto: 0,
       cantidad: 1,
       plataforma: '',
@@ -439,7 +463,7 @@ get colDefs(): ColDef[] {
       this.gridApi.ensureIndexVisible(lastRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: 'idCliente'
+        colKey: 'clienteName'
       });
     }, 0);
   }
