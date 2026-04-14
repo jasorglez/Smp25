@@ -4,6 +4,8 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { alerts } from 'app/helpers/alerts';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detalles-clientes',
@@ -11,9 +13,21 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   imports: [CommonModule, AgGridModule],
   template: `
     <div style="height: 280px; padding: 4px;">
+      <div class="d-flex justify-content-end gap-2 mb-1">
+        <button type="button"
+          class="btn btn-success btn-sm position-relative"
+          (click)="saveChanges()"
+          [disabled]="!hasUnsavedChanges">
+          <i class="bi bi-floppy"></i> Guardar
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasUnsavedChanges">
+          </span>
+        </button>
+      </div>
       <ag-grid-angular
         style="width: 100%; height: 100%;"
-        class="ag-theme-quartz small-text-ag-grid"
+        class="ag-theme-quartz small-text-ag-grid detalles-clientes-grid"
         [rowData]="rowData"
         [columnDefs]="colDefs"
         [defaultColDef]="defaultColDef"
@@ -31,6 +45,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
   private pedidoNumero: any = '-';
 
   rowData: any[] = [];
+  hasUnsavedChanges: boolean = false;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   public defaultColDef: ColDef = {
@@ -43,8 +58,10 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
     headerHeight: 28,
     rowHeight: 26,
     animateRows: true,
-    groupDefaultExpanded: -1,
-    groupTotalRow: 'bottom',
+    // Como estaba antes: grupos colapsados por default
+    groupDefaultExpanded: 0,
+    // Footer por grupo (no total global al final)
+    groupIncludeFooter: true,
     getRowStyle: (params: any) => {
       if (params.node?.footer) return { backgroundColor: '#d4edda', fontWeight: 'bold' };
       return null;
@@ -55,10 +72,18 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       pinned: 'left',
       cellRendererParams: {
         suppressCount: false,
-        totalValueGetter: (params: any) => `Total — ${params.value}`,
+        footerValueGetter: (params: any) => `Total — ${params.value}`,
       },
     },
     popupParent: typeof document !== 'undefined' ? document.body : undefined,
+    onCellValueChanged: (event: any) => {
+      // Solo aplica a filas de datos (no grupo/footer)
+      if (event?.node?.group || event?.node?.footer) return;
+      if (event?.colDef?.field !== 'estado') return;
+      if (!event?.data) return;
+      event.data.__modified = true;
+      this.hasUnsavedChanges = true;
+    },
   };
 
   public colDefs: ColDef[] = [
@@ -122,6 +147,11 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       headerName: 'Estado',
       width: 120,
       valueFormatter: (params) => params.node?.group ? '' : (params.value ?? ''),
+      editable: (params) => !params.node?.group && !params.node?.footer,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO']
+      },
       cellStyle: (params) => {
         if (params.node?.group) return {};
         if (params.value === 'RECIBIDO')   return { backgroundColor: '#d4edda' };
@@ -158,7 +188,8 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       console.log('[DetallesClientes] calling CONCEPTS.load with pedidoId:', pedidoId);
       this.context.CONCEPTS.load(pedidoId, (data: any[]) => {
         console.log('[DetallesClientes] data received — count:', data.length, 'gridApi set?:', !!this.gridApi, 'sample:', data[0]);
-        this.rowData = data;
+        this.rowData = (data || []).map((r: any) => ({ ...r, __modified: false }));
+        this.hasUnsavedChanges = false;
         if (this.gridApi) {
           console.log('[DetallesClientes] calling setGridOption rowData + refreshClientSideRowModel');
           this.gridApi.setGridOption('rowData', this.rowData);
@@ -172,7 +203,65 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
     }
   }
 
-  refresh(): boolean {
+  private buildPayload(row: any) {
+    return {
+      id: row.id,
+      idPedido: row.idPedido,
+      idCliente: row.idCliente,
+      producto: row.producto,
+      cantidad: row.cantidad || 1,
+      plataforma: row.plataforma,
+      aplicaimpuestos: row.aplicaimpuestos,
+      costo: row.costo || 0,
+      venta: row.venta || 0,
+      impuesto: row.impuesto || 0,
+      estado: row.estado,
+      comentario: row.comentario,
+      active: row.active ?? true,
+    };
+  }
+
+  async saveChanges(): Promise<void> {
+    if (!this.hasUnsavedChanges) return;
+    if (!this.context?.pedidosService?.updateDetalle) return;
+
+    const dirty = (this.rowData || []).filter((r: any) => r?.__modified && r?.id);
+    if (dirty.length === 0) {
+      this.hasUnsavedChanges = false;
+      return;
+    }
+
+    try {
+      for (const row of dirty) {
+        await lastValueFrom(this.context.pedidosService.updateDetalle(row.id, this.buildPayload(row)));
+        row.__modified = false;
+      }
+      this.hasUnsavedChanges = false;
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ force: true });
+      }
+      alerts.toastAlert('Estado actualizado correctamente', 'success');
+    } catch (err) {
+      console.error('[DetallesClientes] Error saving changes:', err);
+      alerts.basicAlert('Error', 'No se pudo actualizar el estado', 'error');
+    }
+  }
+
+  refresh(params: ICellRendererParams): boolean {
+    // Cuando el master-detail reusa el renderer, AG Grid llama refresh con nuevos params.
+    // Si no actualizamos params/context aquí, se queda mostrando el pedido anterior.
+    this.params = params;
+    this.context = params.context;
+    this.pedidoNumero = params.data?.numero ?? '-';
+
+    // Limpia para evitar “flash” de datos viejos mientras carga
+    this.rowData = [];
+    this.hasUnsavedChanges = false;
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.refreshClientSideRowModel('group');
+    }
+
     this.loadData();
     return true;
   }

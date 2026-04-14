@@ -34,6 +34,13 @@
       (click)="setFilter('REVENDIDO')">
       Revendido
     </button>
+    <button class="btn btn-sm"
+      [style.background-color]="activeFilter === 'SOLICITADO' ? '#6c757d' : '#e2e3e5'"
+      [style.color]="activeFilter === 'SOLICITADO' ? 'white' : '#383d41'"
+      [style.border]="'1px solid #6c757d'"
+      (click)="setFilter('SOLICITADO')">
+      Solicitado
+    </button>
   </div>
 
   <ag-grid-angular

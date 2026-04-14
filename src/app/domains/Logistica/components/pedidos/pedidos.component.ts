@@ -90,7 +90,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       // 'pedidos' y 'pdf' usan el mismo renderer de detalle
       return { component: DetallesPedidosComponent };
     },
-    detailRowAutoHeight: true,
+    // Altura fija para evitar que el detalle quede en 0px
+    detailRowHeight: 620,
     isRowMaster: (dataItem: any) => true,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
@@ -529,40 +530,27 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'pedidos';
 
     if (isCurrentlyExpanded) {
-      api.forEachNode((n: any) => {
-        if (n.expanded) {
-          n.setExpanded(false);
-        }
-      });
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
       if (node.data) {
         node.data.detailType = null;
       }
+      // Quitar filtro para volver a ver todos los pedidos
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
-      api.forEachNode((n: any) => {
-        if (n.expanded) {
-          n.setExpanded(false);
-        }
-        if (n.data) {
-          n.data.detailType = null;
-        }
-      });
-
-      api.setFilterModel(null);
-      api.onFilterChanged();
-
-      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
-      if (filterModel) {
-        api.setFilterModel(filterModel);
-        api.onFilterChanged();
-      }
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); if (n.data) n.data.detailType = null; });
 
       if (node.data) {
         node.data.detailType = 'pedidos';
       }
 
       setTimeout(() => {
+        // Mostrar únicamente el pedido clickeado
+        const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
+        if (filterModel) {
+          api.setFilterModel(filterModel);
+          api.onFilterChanged();
+        }
         node.setExpanded(true);
       }, 0);
     }
@@ -575,15 +563,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     if (isCurrentlyExpanded) {
       api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
       if (node.data) node.data.detailType = null;
-      api.setFilterModel(null);
-      api.onFilterChanged();
     } else {
       api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); if (n.data) n.data.detailType = null; });
-      api.setFilterModel(null);
-      api.onFilterChanged();
-
-      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
-      if (filterModel) { api.setFilterModel(filterModel); api.onFilterChanged(); }
 
       if (node.data) node.data.detailType = 'pdf';
       setTimeout(() => node.setExpanded(true), 0);
@@ -600,6 +581,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         if (n.expanded) n.setExpanded(false);
       });
       if (node.data) node.data.detailType = null;
+      // Quitar filtro para volver a ver todos los pedidos
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
@@ -607,19 +589,20 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         if (n.expanded) n.setExpanded(false);
         if (n.data) n.data.detailType = null;
       });
-      api.setFilterModel(null);
-      api.onFilterChanged();
-
-      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
-      if (filterModel) {
-        api.setFilterModel(filterModel);
-        api.onFilterChanged();
-      }
 
       if (node.data) node.data.detailType = 'clientes';
       console.log('[toggleDetalleClientes] about to expand — detailType now:', node.data?.detailType);
       setTimeout(() => {
         console.log('[toggleDetalleClientes] setTimeout — calling setExpanded(true), detailType:', node.data?.detailType);
+        // Mostrar únicamente el pedido clickeado
+        const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
+        if (filterModel) {
+          api.setFilterModel(filterModel);
+          api.onFilterChanged();
+        }
+
+        // Fuerza recreación del detalle (evita cache de renderer/datos del pedido anterior)
+        api.redrawRows({ rowNodes: [node] });
         node.setExpanded(true);
       }, 0);
     }

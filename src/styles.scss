@@ -32,6 +32,62 @@ body {
   border: 2px solid #e67e00 !important;
 }
 
+/* Bordes solo para el grid de Clientes (2do nivel en Pedidos) */
+.ag-theme-quartz.detalles-clientes-grid {
+  --ag-border-color: rgba(0, 0, 0, 0.12);
+  --ag-wrapper-border: solid 1px var(--ag-border-color);
+  --ag-row-border: solid 1px var(--ag-border-color);
+  /* Header sin bordes */
+  --ag-header-row-border: none;
+  --ag-footer-row-border: solid 1px var(--ag-border-color);
+  --ag-column-border: solid 1px var(--ag-border-color);
+  --ag-pinned-column-border: solid 1px var(--ag-border-color);
+  --ag-header-column-border: none;
+}
+
+.ag-theme-quartz.detalles-clientes-grid .ag-root-wrapper {
+  border: 1px solid var(--ag-border-color);
+}
+
+.ag-theme-quartz.detalles-clientes-grid .ag-row {
+  border-bottom: 1px solid var(--ag-border-color) !important;
+  box-shadow: none !important;
+}
+
+.ag-theme-quartz.detalles-clientes-grid .ag-header-row {
+  border-bottom: none !important;
+}
+
+.ag-theme-quartz.detalles-clientes-grid .ag-cell,
+.ag-theme-quartz.detalles-clientes-grid .ag-header-cell {
+  border-right: 1px solid var(--ag-border-color) !important;
+}
+
+/* Algunas versiones de Quartz no muestran border en .ag-row; forzamos en celdas */
+.ag-theme-quartz.detalles-clientes-grid .ag-cell {
+  border-bottom: 1px solid var(--ag-border-color) !important;
+  box-shadow: none !important;
+}
+
+.ag-theme-quartz.detalles-clientes-grid .ag-cell:last-child,
+.ag-theme-quartz.detalles-clientes-grid .ag-header-cell:last-child {
+  border-right: none !important;
+}
+
+/* Header: quitar separadores verticales/horizontales */
+.ag-theme-quartz.detalles-clientes-grid .ag-header-cell {
+  border-right: none !important;
+  border-bottom: none !important;
+}
+
+/* Separador entre la columna agrupada (Cliente, pinned) y el resto */
+.ag-theme-quartz.detalles-clientes-grid .ag-pinned-left-header,
+.ag-theme-quartz.detalles-clientes-grid .ag-pinned-left-cols-container,
+.ag-theme-quartz.detalles-clientes-grid .ag-pinned-left-floating-top,
+.ag-theme-quartz.detalles-clientes-grid .ag-pinned-left-floating-bottom {
+  border-right: 1px solid var(--ag-border-color) !important;
+}
+
 // DHTMLX Gantt CSS
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 
