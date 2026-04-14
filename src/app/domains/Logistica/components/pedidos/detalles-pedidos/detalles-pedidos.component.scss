@@ -8,8 +8,21 @@
 
 ::ng-deep .ag-theme-quartz {
   --ag-header-height: 30px;
-  --ag-row-height: 28px;
+  --ag-row-height: 30px;
   --ag-font-size: 11px;
+}
+
+::ng-deep .ag-theme-quartz .ag-sticky-bottom,
+::ng-deep .ag-theme-quartz .ag-sticky-bottom-viewport,
+::ng-deep .ag-theme-quartz .ag-sticky-bottom-container,
+::ng-deep .ag-theme-quartz .ag-pinned-left-sticky-bottom,
+::ng-deep .ag-theme-quartz .ag-pinned-right-sticky-bottom,
+::ng-deep .ag-theme-quartz .ag-sticky-bottom-full-width-container {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 ::ng-deep .small-text-ag-grid {

@@ -77,8 +77,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
   public gridOptions: any = {
     headerHeight: 24,
-    rowHeight: 24,
+    rowHeight: 26,
     animateRows: true,
+    suppressRowTransform: true,
     masterDetail: true,
     detailCellRenderer: DetallesPedidosComponent,
     detailCellRendererSelector: (params: any) => {
@@ -87,7 +88,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       }
       return undefined;
     },
-    detailRowHeight: 620,
+    detailRowAutoHeight: true,
     isRowMaster: (dataItem: any) => true,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
@@ -259,7 +260,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       {
         field: 'numero',
         headerName: 'Número',
-        editable: true,
+        editable: false,
         flex: 1,
         minWidth: 120,
       },
@@ -344,6 +345,20 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     this.hasUnsavedChanges = true;
   }
 
+  private getNextPedidoNumero(): string {
+    const maxSequence = this.rowData.reduce((max, row) => {
+      const numero = String(row?.numero || '').trim().toUpperCase();
+      const match = numero.match(/^PED-(\d+)$/);
+
+      if (!match) return max;
+
+      const sequence = parseInt(match[1], 10);
+      return Number.isNaN(sequence) ? max : Math.max(max, sequence);
+    }, 0);
+
+    return `PED-${String(maxSequence + 1).padStart(3, '0')}`;
+  }
+
   add() {
     if (!this.gridApi) {
       console.error('Grid API not initialized');
@@ -355,7 +370,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     const newPedido = {
       id: tempId,
       idCompany: this.idCompany,
-      numero: '',
+      numero: this.getNextPedidoNumero(),
       fecha: new Date().toISOString().split('T')[0],
       comentario: '',
       active: true,
@@ -370,7 +385,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     setTimeout(() => {
       this.gridApi.startEditingCell({
         rowIndex: 0,
-        colKey: 'numero',
+        colKey: 'fecha',
       });
     }, 0);
   }

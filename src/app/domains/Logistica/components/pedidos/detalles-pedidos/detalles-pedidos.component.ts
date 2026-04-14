@@ -393,12 +393,13 @@ get colDefs(): ColDef[] {
 
   public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 28,
+    rowHeight: 30,
     animateRows: true,
     rowSelection: 'single',
-    domLayout: 'normal',
+    domLayout: 'autoHeight',
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: true,
+    suppressRowTransform: true,
     /** Popups (editores, selects) fuera del viewport para evitar recortes en master-detail */
     popupParent: typeof document !== 'undefined' ? document.body : undefined,
     onCellValueChanged: (event: any) => {

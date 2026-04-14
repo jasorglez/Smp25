@@ -2,6 +2,30 @@
   display: block;
 }
 
+/* Overrides específicos para el grid Quartz de Pedidos (evita “hairlines”) */
+::ng-deep .ag-theme-quartz {
+  --ag-header-height: 24px;
+  --ag-row-height: 26px;
+  --ag-font-size: 11px;
+  --ag-row-border: none;
+  --ag-header-row-border: none;
+  --ag-footer-row-border: none;
+  --ag-pinned-row-border: none;
+}
+
+::ng-deep .ag-theme-quartz .ag-row {
+  border-bottom: none !important;
+}
+
+::ng-deep .ag-theme-quartz .ag-details-row,
+::ng-deep .ag-theme-quartz .ag-details-cell,
+::ng-deep .ag-theme-quartz .ag-full-width-row,
+::ng-deep .ag-theme-quartz .ag-full-width-container {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 .container-fluid {
   height: 100%;
 }
