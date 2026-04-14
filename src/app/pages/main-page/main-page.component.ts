@@ -27,7 +27,7 @@ export class MainPageComponent implements OnInit {
       const newBranchId = this.signalsService.getBranchSelectedBySidebar()();
       const isAdvanced = this.signalsService.getIsAdvanced();
       if (this.initialBranchId !== undefined && this.initialBranchId !== newBranchId && isAdvanced) {
-        this.router.navigateByUrl('/main'); // Navega a la ruta base del 'main' layout
+        this.router.navigateByUrl('/dashboard'); // Navega a la ruta base del 'main' layout
       }
     });
   }

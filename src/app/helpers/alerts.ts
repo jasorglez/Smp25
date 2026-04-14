@@ -125,6 +125,21 @@ export class alerts{
 	}
 
 	/*=============================================
+	Toast: aparece y desaparece solo (sin botón OK)
+	=============================================*/
+
+	static toastAlert(title: string, icon: SweetAlertIcon, timer: number = 2500) {
+		return Swal.mixin({
+			toast: true,
+			position: 'top-end',
+			showConfirmButton: false,
+			timer,
+			timerProgressBar: true,
+			customClass: { container: 'swal-over-modal' },
+		}).fire({ title, icon });
+	}
+
+	/*=============================================
 	Función para mostrar loading (no se puede cerrar)
 	=============================================*/
 

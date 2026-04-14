@@ -49,6 +49,12 @@ getPedidosByCompany(idCompany: number): Observable<any> {
   }
 
   // Métodos para Detalles de Pedido
+  getDetallesByCompany(idCompany: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/DetallesPedidos/by-company/${idCompany}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
   getDetallesByPedido(idPedido: number): Observable<any> {
     return this.http.get<any>(`${environment.urlAdministration}/DetallesPedidos/by-pedido/${idPedido}`, {
       headers: this.trackingService.getHeaders(),

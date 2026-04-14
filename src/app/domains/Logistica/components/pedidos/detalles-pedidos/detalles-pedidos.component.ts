@@ -5,15 +5,20 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { lastValueFrom } from 'rxjs';
+import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-detalles-pedidos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, ProductoAutocompleteEditorComponent],
   templateUrl: './detalles-pedidos.component.html',
   styleUrls: ['./detalles-pedidos.component.scss']
 })
@@ -24,6 +29,7 @@ export class DetallesPedidosComponent implements OnInit {
   private customersService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
   private catalogadmonService = inject(CatalogadmonService);
+  private sanitizer = inject(DomSanitizer);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -31,7 +37,13 @@ export class DetallesPedidosComponent implements OnInit {
   clientes: any[] = [];
   productos: any[] = [];
   plataformas: any[] = [];
+  productoSuggestions: string[] = [];
   isLocked: boolean = false;
+
+  // PDF view
+  detailType: string = 'pedidos';
+  pdfUrl: SafeResourceUrl | null = null;
+  private originalPdfUrl: string | null = null;
 
   showPlataformaModal: boolean = false;
   newPlataforma: any = {};
@@ -46,10 +58,44 @@ export class DetallesPedidosComponent implements OnInit {
     this.params = params;
     this.context = params.context;
     this.isLocked = params.data?.locked === true;
-    this.loadClientes();
-    this.loadProductos();
-    this.loadPlataformas();
-    this.loadData();
+    this.detailType = params.data?.detailType || 'pedidos';
+
+    if (this.detailType === 'pdf') {
+      this.generateReport();
+    } else {
+      this.loadClientes();
+      this.loadProductos();
+      this.loadPlataformas();
+      this.loadData();
+      this.loadProductoSuggestions();
+    }
+  }
+
+  private async generateReport(): Promise<void> {
+    const componentParent = this.context?.componentParent;
+    if (typeof componentParent?.generatePedidoPDF !== 'function') {
+      console.error('generatePedidoPDF is not available in detail renderer context.');
+      return;
+    }
+
+    await componentParent.generatePedidoPDF(this.params?.node);
+  }
+
+  private loadProductoSuggestions(): void {
+    const idCompany = this.context?.idCompany;
+    if (!idCompany || !this.context?.pedidosService) return;
+    this.context.pedidosService.getDetallesByCompany(idCompany).subscribe({
+      next: (response: any) => {
+        const detalles: any[] = response?.data || response || [];
+        const unique = [...new Set(
+          detalles
+            .map((d: any) => d.producto)
+            .filter((p: any) => p && p.trim() !== '')
+        )] as string[];
+        this.productoSuggestions = unique.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      },
+      error: () => { this.productoSuggestions = []; }
+    });
   }
 
   private loadClientes() {
@@ -60,6 +106,7 @@ export class DetallesPedidosComponent implements OnInit {
           this.clientes = data?.data || data || [];
           if (this.gridApi) {
             this.gridApi.setGridOption('columnDefs', this.colDefs);
+            this.gridApi.refreshCells({ force: true });
           }
         },
         error: (error) => {
@@ -139,24 +186,23 @@ get colDefs(): ColDef[] {
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
-
       {
         field: 'idCliente',
         headerName: 'Cliente',
         editable: () => !this.isLocked,
         width: 200,
         cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.clientes.map(item => item.id),
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
-            const found = this.clientes.find(item => item.id === value);
+            const found = this.clientes.find(item => item.id == value);
             return found ? found.name : value;
           }
-        },
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const found = this.clientes.find(item => item.id === params.value);
+          const found = this.clientes.find(item => item.id == params.value);
           return found ? found.name : params.value;
         },
         valueSetter: (params: any) => {
@@ -165,26 +211,16 @@ get colDefs(): ColDef[] {
         }
       },
       {
-        field: 'idProducto',
+        field: 'producto',
         headerName: 'Producto',
         editable: () => !this.isLocked,
         width: 250,
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
-          values: this.productos.map(item => item.id),
-          valueListMaxHeight: 220,
-          formatValue: (value: any) => {
-            const found = this.productos.find(item => item.id === value);
-            return found ? found.description : value;
-          }
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.productos.find(item => item.id === params.value);
-          return found ? found.description : params.value;
-        },
+        cellEditor: ProductoAutocompleteEditorComponent,
+        cellEditorParams: () => ({
+          suggestions: this.productoSuggestions
+        }),
         valueSetter: (params: any) => {
-          params.data.idProducto = params.newValue;
+          params.data.producto = params.newValue;
           return true;
         }
       },
@@ -241,6 +277,102 @@ get colDefs(): ColDef[] {
         }
       },
       {
+        field: 'costo',
+        headerName: 'Costo',
+        editable: () => !this.isLocked,
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+          }
+          return '$0.00';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          params.data.costo = isNaN(val) ? 0 : val;
+          return true;
+        }
+      },
+      {
+        field: 'venta',
+        headerName: 'Venta',
+        editable: () => !this.isLocked,
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+          }
+          return '$0.00';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          params.data.venta = isNaN(val) ? 0 : val;
+          return true;
+        }
+      },
+      {
+        field: 'impuesto',
+        headerName: 'Impuesto %',
+        editable: () => !this.isLocked,
+        width: 100,
+        type: 'numericColumn',
+        valueFormatter: (params) => {
+          if (params.value) {
+            return params.value + '%';
+          }
+          return '0%';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          params.data.impuesto = isNaN(val) ? 0 : val;
+          return true;
+        }
+      },
+      {
+        field: 'total',
+        headerName: 'Total',
+        editable: false,
+        width: 120,
+        valueGetter: (params) => {
+          const cantidad = params.data.cantidad || 0;
+          const venta = params.data.venta || 0;
+          const impuesto = params.data.impuesto || 0;
+          const subtotal = cantidad * venta;
+          const montoImpuesto = subtotal * (impuesto / 100);
+          return subtotal + montoImpuesto;
+        },
+        valueFormatter: (params) => {
+          if (params.value) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
+          }
+          return '$0.00';
+        },
+        cellStyle: { backgroundColor: '#d4edda', fontWeight: 'bold' }
+      },
+      {
+        field: 'estado',
+        headerName: 'Estado',
+        editable: () => !this.isLocked,
+        width: 120,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO']
+        },
+        valueSetter: (params: any) => {
+          params.data.estado = params.newValue;
+          return true;
+        },
+        cellStyle: (params) => {
+          if (params.value === 'RECIBIDO') return { backgroundColor: '#d4edda' };
+          if (params.value === 'CANCELADO') return { backgroundColor: '#f8d7da' };
+          if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
+          if (params.value === 'REVENDIDO') return { backgroundColor: '#fff3cd' };
+          return { backgroundColor: '#e2e3e5' };
+        }
+      },
+      {
         field: 'comentario',
         headerName: 'Comentario',
         editable: () => !this.isLocked,
@@ -267,6 +399,8 @@ get colDefs(): ColDef[] {
     domLayout: 'normal',
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: true,
+    /** Popups (editores, selects) fuera del viewport para evitar recortes en master-detail */
+    popupParent: typeof document !== 'undefined' ? document.body : undefined,
     onCellValueChanged: (event: any) => {
       console.log('🔄 Cell changed:', event.colDef.field, event.newValue);
       event.data.__modified = true;

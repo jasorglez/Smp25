@@ -7,94 +7,30 @@ import {
   RendererFactory2,
 } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
-import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
+import { AgGridModule } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
-import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
-import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { lastValueFrom } from 'rxjs';
 import {
   CellDoubleClickedEvent,
-  IFilterComp,
   ColDef,
   GridApi,
   GridReadyEvent,
-  ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
-import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { CommonModule } from '@angular/common';
 import { FamilyModalService } from './services/family-modal.service';
 import { SubfamilyModalService } from './services/subfamily-modal.service';
 import { MeasureModalService } from './services/measure-modal.service';
-import { MaterialDetailRendererComponent } from './material-detail-renderer.component';
 import { PdfMaterialsDistributionComponent } from './pdf-materials-distribution.component';
-
-@Component({
-  selector: 'custom-group-renderer',
-  standalone: true,
-  template: `
-    <div class="ag-group-row">
-      <span
-        class="ag-group-expanded"
-        [class.ag-group-contracted]="!params.node.expanded"
-        (click)="onToggleExpand()"
-      ></span>
-      <span>{{ displayText }}</span>
-    </div>
-  `,
-  styles: [`
-    .ag-group-row {
-      display: flex;
-      align-items: center;
-    }
-    .ag-group-expanded {
-      width: 12px;
-      height: 12px;
-      margin-right: 4px;
-      cursor: pointer;
-      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><path d="M4 6L0 2h8z"/></svg>') no-repeat center;
-      background-size: 12px;
-    }
-    .ag-group-contracted {
-      transform: rotate(-90deg);
-    }
-  `]
-})
-export class CustomGroupRendererComponent implements ICellRendererAngularComp {
-  params: any;
-  displayText: string = '';
-
-  agInit(params: any): void {
-    this.params = params;
-    const field = params.node.rowGroupColumn?.getColDef()?.field;
-    if (field === 'familiaDescription') {
-      this.displayText = `Familia: ${params.value}`;
-    } else if (field === 'subfamiliaDescription') {
-      this.displayText = `Subfamilia: ${params.value}`;
-    } else {
-      this.displayText = params.value;
-    }
-  }
-
-  onToggleExpand(): void {
-    this.params.node.setExpanded(!this.params.node.expanded);
-  }
-
-  refresh(params: any): boolean {
-    this.params = params;
-    return true;
-  }
-}
 
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfMaterialsDistributionComponent],
   templateUrl: './materials.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {
@@ -122,7 +58,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
   selectedRowData: any = null;
   showSavingsTab: boolean = false;
   authorizedPass: boolean = false;
-  private lastEditedRowId: number | string | null = null;
   newlyAddedRows: string[] = [];
   unitsCatalog: any[] = [];
   selectedImage: string = '';
@@ -135,7 +70,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private tempIdCounter: number = 0;
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
-  private materialsService = inject(MaterialsService);
   private catalogsService = inject(CatalogsService);
   private familyModalService = inject(FamilyModalService);
   private subfamilyModalService = inject(SubfamilyModalService);
@@ -144,7 +78,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   showPdfReport: boolean = false;
   showPdfMoneyReport: boolean = false;
-  private savedRowData: any[] | null = null;
 
   // Variables para modal de familia
   showFamilyModal: boolean = false;
@@ -164,51 +97,16 @@ export class MaterialsComponent implements CanComponentDeactivate {
   // Caché para columnas del maestro (evita parpadeo/re-renderizado)
   private _colMaster: ColDef[] = [];
 
-  components = {
-    multiLineEditor: MultiLineEditorComponent,
-    autocompleteEditor: AutocompleteEditorComponent,
-    customGroupRenderer: CustomGroupRendererComponent,
-  };
+  components = {};
 
   public defaultColDef: ColDef = {
     sortable: true,
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
+    enableRowGroup: false,
     flex: 1,
   };
-  private cleanDataForServer(data: any, isNew: boolean = false): any {
-    const cleanedData = { ...data };
-
-    // Eliminar siempre estos campos internos
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-
-    // Solo eliminar id para registros nuevos (tiene id temporal)
-    if (isNew || (cleanedData.id && cleanedData.id.toString().startsWith('temp_'))) {
-      delete cleanedData.id;
-    }
-
-    // Eliminar campos de la vista que no existen en la tabla
-    delete cleanedData.familiaDescription;
-    delete cleanedData.subfamiliaDescription;
-    delete cleanedData.materialDescription;
-    delete cleanedData.existencia;
-
-    // Mapear campos requeridos por el servidor
-    cleanedData.description = data.materialDescription || '';
-    cleanedData.barCode = data.barcode || '';
-
-    // Asegurar que los IDs de familia y subfamilia estén presentes
-    cleanedData.idFamilia = data.idFamilia || null;
-    cleanedData.idSubfamilia = data.idSubfamilia || null;
-    cleanedData.idMedida = data.idMedida || null;
-    cleanedData.idCompany = this.idcompany;
-
-    return cleanedData;
-  }
-
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
 
@@ -226,9 +124,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
       if (rootChanged && currentRoot) {
         this.idcompany = currentRoot;
         this.obtenerDatos();
-        this.obtenerUnidades();
-        this.obtenerFamilias();
-        this.obtenerSubfamilias();
       }
     });
 
@@ -262,69 +157,21 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.onMeasureCreated(measureData);
     });
   }
-  obtenerDatos(){
-    return this.materialsService.getAllMaterialsxFamilyview(this.idcompany).subscribe(
-      (data: any) => {
-        this.rowData = data;
-      },
-      (error) => console.error('Error fetching data:', error)
-    );
-  }
-
-  obtenerUnidades(){
-    return this.catalogsService.getUnits(this.idcompany).subscribe(
-      (data: any) => {
-        this.unitsCatalog = data;
-        this.refreshColumnCache();
-      },
-      (error) => console.error('Error fetching data:', error)
-    );
-  }
-
-  obtenerFamilias() {
-    return this.catalogsService.getCatalogs(this.idcompany, 'FAMILY').subscribe(
-      (data: any) => {
-        this.familiasCatalog = data;
-        this.refreshColumnCache();
-      },
-      (error) => console.error('Error fetching familias:', error)
-    );
-  }
-
-  obtenerSubfamilias() {
-    return this.catalogsService.getCatalogs(this.idcompany, 'SUBFAMILY').subscribe(
-      (data: any) => {
-        this.subfamiliasCatalog = data;
-        this.subfamiliasFiltered = data;
-        this.refreshColumnCache();
-      },
-      (error) => console.error('Error fetching subfamilias:', error)
-    );
-  }
-
-  // Filtra subfamilias por el parentId de la familia seleccionada
-  filtrarSubfamiliasPorFamilia(idFamilia: number) {
-    if (idFamilia) {
-      this.subfamiliasFiltered = this.subfamiliasCatalog.filter(s => s.parentId === idFamilia);
-    } else {
-      this.subfamiliasFiltered = this.subfamiliasCatalog;
+  obtenerDatos(): void {
+    this.rowData = [];
+    this._colMaster = [];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.setGridOption('columnDefs', this.colMaster);
     }
   }
-  
 
- 
   public gridOptions: any = {
     stopEditingWhenCellsLoseFocus: false,
-    headerHeight: 50,
-    rowHeight: 20,
-    groupDefaultExpanded: -1,
+    headerHeight: 40,
+    rowHeight: 32,
     suppressDragLeaveHidesColumns: true,
-    suppressMakeColumnVisibleAfterUnGroup: true,
-    rowBuffer: 20,
-    // Full-width row para distribución
-    isFullWidthRow: (params: any) => !!params.rowNode.data?.__isDistDetail,
-    fullWidthCellRenderer: MaterialDetailRendererComponent,
-    getRowHeight: (params: any) => params.node.data?.__isDistDetail ? 420 : 20,
+    rowBuffer: 10,
     context: { componentParent: this },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -372,39 +219,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
-    // Si cambió idFamilia, actualizar familiaDescription y filtrar subfamilias
-    if (event.column.getColId() === 'idFamilia') {
-      const familia = this.familiasCatalog.find(f => f.id === event.newValue);
-      if (familia) {
-        event.data.familiaDescription = familia.description;
-      }
-      // Filtrar subfamilias por la familia seleccionada
-      this.filtrarSubfamiliasPorFamilia(event.newValue);
-      // Limpiar subfamilia si no pertenece a la nueva familia
-      const subfamiliaActual = this.subfamiliasFiltered.find(s => s.id === event.data.idSubfamilia);
-      if (!subfamiliaActual) {
-        event.data.idSubfamilia = this.subfamiliasFiltered.length > 0 ? this.subfamiliasFiltered[0].id : null;
-        event.data.subfamiliaDescription = this.subfamiliasFiltered.length > 0 ? this.subfamiliasFiltered[0].description : '';
-      }
-      // Refrescar caché de columnas para actualizar dropdown de subfamilias
-      this.refreshColumnCache();
-    }
-
-    // Si cambió idSubfamilia, actualizar subfamiliaDescription
-    if (event.column.getColId() === 'idSubfamilia') {
-      const subfamilia = this.subfamiliasFiltered.find(s => s.id === event.newValue);
-      if (subfamilia) {
-        event.data.subfamiliaDescription = subfamilia.description;
-      }
-    }
-
     event.data.__modified = true;
     this.notSavedChanges = true;
-
-    // Refrescar la fila para actualizar el agrupamiento visual
-    if (event.column.getColId() === 'idFamilia' || event.column.getColId() === 'idSubfamilia') {
-      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-    }
   }
 
   onMasterGridReady(params: GridReadyEvent) {
@@ -417,28 +233,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
   }
 
-  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-    const colId = event.column.getColId();
-    const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
-
-    if (colId === 'picture' && selectedRowData.picture) {
-      if (this.notSavedChanges) {
-        alerts.basicAlert('Cambios sin guardar', 'Guarde los cambios antes de ver la imagen.', 'warning');
-        return;
-      }
-      this.selectedImage = selectedRowData.picture;
-      // Open modal using Bootstrap
-      const modal = new (window as any).bootstrap.Modal(document.getElementById('imageModal'));
-      modal.show();
-      return;
-    }
-
-    this.notSavedChanges = true;
-
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
-    this.selectedRowData = selectedRowData;
+  async onCellDoubleClicked(_event: CellDoubleClickedEvent): Promise<void> {
+    /* Vista solo frontend: sin acciones extra al doble clic */
   }
   async activateLoansTab() {
     if (!this.isOpen || this.showSavingsTab) {
@@ -469,286 +265,69 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   get colMaster(): ColDef[] {
-    // Si ya tenemos columnas cacheadas, devolverlas para evitar re-renderizado
     if (this._colMaster.length > 0) {
       return this._colMaster;
     }
 
-    // Construir y cachear las columnas solo la primera vez
     this._colMaster = [
       {
-        field: 'familiaDescription',
-        headerName: 'Familia (Grupo)',
-        rowGroup: true,
-        hide: true,
-      },
-      {
-        field: 'subfamiliaDescription',
-        headerName: 'Subfamilia (Grupo)',
-        rowGroup: true,
-        hide: true,
-      },
-      {
-        field: 'idFamilia',
-        headerName: 'Familia',
+        field: 'producto',
+        headerName: 'Producto',
         editable: true,
-        width: 120,
-        cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: () => {
-          return {
-            options: [
-              ...this.familiasCatalog.map(f => ({
-                id: f.id,
-                description: f.description,
-                valueAddition: f.valueAddition || '',
-                valueAddition2: f.valueAddition2 || ''
-              })),
-              {
-                id: -999,
-                description: '➕ Agregar nueva familia...',
-                valueAddition: '-999',
-                valueAddition2: '➕ Agregar nueva familia...'
-              }
-            ]
-          };
-        },
-        onCellValueChanged: (event: any) => {
-          if (event.newValue === -999) {
-            // Usuario seleccionó "Agregar nueva familia"
-            event.data.idFamilia = event.oldValue || null;
-            this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-            this.familyModalService.openModal({ idCompany: this.idcompany });
-          }
-        },
-        cellRenderer: (params: any) => {
-          const value = params.value;
-          if (value === -999) return '';
-          const familia = this.familiasCatalog.find(f => f.id === value);
-          const displayText = familia ? familia.description : (value || '');
-
-          const container = document.createElement('div');
-          container.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; cursor: pointer;';
-          container.textContent = displayText;
-
-          container.addEventListener('mouseenter', (e) => {
-            if (familia) {
-              const rect = (e.target as HTMLElement).getBoundingClientRect();
-              this.showCellTooltip(familia, rect);
-            }
-          });
-
-          container.addEventListener('mouseleave', () => {
-            this.hideCellTooltip();
-          });
-
-          return container;
-        },
+        flex: 2,
+        minWidth: 200,
       },
       {
-        field: 'idSubfamilia',
-        headerName: 'Subfamilia',
+        field: 'costo',
+        headerName: 'Costo',
         editable: true,
-        width: 120,
-        cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: (params: any) => {
-          // Filtrar subfamilias según la familia seleccionada en la fila
-          const idFamiliaSeleccionada = params.data.idFamilia;
-
-          if (idFamiliaSeleccionada) {
-            const subfamiliasFiltradas = this.subfamiliasCatalog
-              .filter(s => s.parentId === idFamiliaSeleccionada)
-              .map(s => ({
-                id: s.id,
-                description: s.description,
-                valueAddition: s.valueAddition || '',
-                valueAddition2: s.valueAddition2 || ''
-              }));
-
-            return {
-              options: [
-                ...subfamiliasFiltradas,
-                {
-                  id: -999,
-                  description: '➕ Agregar nueva subfamilia...',
-                  valueAddition: '-999',
-                  valueAddition2: '➕ Agregar nueva subfamilia...'
-                }
-              ]
-            };
-          }
-
-          return { options: [] };
-        },
-        onCellValueChanged: (event: any) => {
-          if (event.newValue === -999) {
-            // Usuario seleccionó "Agregar nueva subfamilia"
-            const idFamilia = event.data.idFamilia;
-            if (!idFamilia) {
-              alerts.basicAlert('Error', 'Primero debe seleccionar una familia.', 'warning');
-              return;
-            }
-            const familia = this.familiasCatalog.find(f => f.id === idFamilia);
-            event.data.idSubfamilia = event.oldValue || null;
-            this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
-            this.subfamilyModalService.openModal({
-              idCompany: this.idcompany,
-              parentId: idFamilia,
-              parentDescription: familia?.description || ''
-            });
-          }
-        },
-        cellRenderer: (params: any) => {
-          const value = params.value;
-          if (value === -999) return '';
-          const subfamilia = this.subfamiliasCatalog.find(s => s.id === value);
-          const displayText = subfamilia ? subfamilia.description : (value || '');
-
-          const container = document.createElement('div');
-          container.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; cursor: pointer;';
-          container.textContent = displayText;
-
-          container.addEventListener('mouseenter', (e) => {
-            if (subfamilia) {
-              const rect = (e.target as HTMLElement).getBoundingClientRect();
-              this.showCellTooltip(subfamilia, rect);
-            }
-          });
-
-          container.addEventListener('mouseleave', () => {
-            this.hideCellTooltip();
-          });
-
-          return container;
-        },
-      },
-      {
-        field: 'insumo',
-        headerName: 'Insumo',
-        editable: true,
-        width: 150,
-      },
-      {
-        field: 'idMedida',
-        headerName: 'Unidad',
-        editable: true,
-        width: 130,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({
-          values: [
-            ...this.unitsCatalog.map((u: any) => u.description),
-            '➕ Agregar nueva unidad...'
-          ]
-        }),
-        valueGetter: (params: any) => {
-          if (!params.data?.idMedida) return '';
-          const unit = this.unitsCatalog.find((u: any) => Number(u.id) === Number(params.data.idMedida));
-          return unit ? unit.description : '';
-        },
-        valueSetter: (params: any) => {
-          if (params.newValue === '➕ Agregar nueva unidad...') {
-            setTimeout(() => this.measureModalService.openModal({ idCompany: this.idcompany }), 0);
-            return false;
-          }
-          const unit = this.unitsCatalog.find((u: any) => u.description === params.newValue);
-          if (unit) {
-            params.data.idMedida = Number(unit.id);
-            params.data.unidadDescription = unit.description;
-            return true;
-          }
-          return false;
-        },
-      },
-      {
-        field: 'materialDescription',
-        headerName: 'Descripción del Material',
-        editable: true,
-        width: 600,
-        wrapText: true,
-        autoHeight: true,
-        cellStyle: { 'white-space': 'normal', 'line-height': '1.4', 'padding-top': '4px', 'padding-bottom': '4px' },
-      },
-      {
-        field: 'barcode',
-        headerName: 'Código de Barras',
-        editable: true,
-        width: 150,
-        valueFormatter: (params: any) => (params.value === 'N/A' || params.value === 'n/a') ? '' : (params.value || ''),
-      },
-
-      {
-        field: 'quantity',
-        headerName: 'Cantidad',
-        editable: true,
-        width: 90,
+        flex: 1,
+        minWidth: 120,
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
-        valueParser: (params: any) => Number(params.newValue),
-        valueFormatter: (params: any) => params.value != null ? Number(params.value).toFixed(4) : '0.0000',
-      },
-
-          {
-        headerName: 'Dist.',
-        width: 60,
-        editable: false,
-        cellStyle: { textAlign: 'center', cursor: 'pointer' },
-        cellRenderer: (params: any) => {
-          const isNew = typeof params.data?.id === 'string';
-          return isNew
-            ? `<span style="color:#ccc;font-size:1rem;"><i class="bi bi-calendar3"></i></span>`
-            : `<span title="Distribución" style="color:#0d6efd;font-size:1rem;"><i class="bi bi-calendar3"></i></span>`;
+        valueParser: (params: any) => {
+          const v = parseFloat(String(params.newValue).replace(/,/g, ''));
+          return Number.isFinite(v) ? v : 0;
         },
-        onCellClicked: (params: any) => {
-          if (typeof params.data?.id === 'string') return;
-          this.toggleDetail(params.node);
+        valueFormatter: (p: any) =>
+          p.value != null && p.value !== ''
+            ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(p.value))
+            : '',
+      },
+      {
+        field: 'venta',
+        headerName: 'Venta',
+        editable: true,
+        flex: 1,
+        minWidth: 120,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        valueParser: (params: any) => {
+          const v = parseFloat(String(params.newValue).replace(/,/g, ''));
+          return Number.isFinite(v) ? v : 0;
         },
-      },
-
-      {
-        field: 'existencia',
-        headerName: 'Existencia',
-        editable: false,
-        width: 100,
-        valueGetter: () => 0,
+        valueFormatter: (p: any) =>
+          p.value != null && p.value !== ''
+            ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(p.value))
+            : '',
       },
       {
-        field: 'costoMN',
-        headerName: 'Costo MN',
+        field: 'impuesto',
+        headerName: 'Impuesto',
         editable: true,
-        width: 100,
-        valueFormatter: (params) => params.value ? `$${params.value.toFixed(2)}` : '$0.00',
-      },
-      {
-        field: 'ventaMN',
-        headerName: 'Venta MN',
-        editable: true,
-        width: 100,
-        valueFormatter: (params) => params.value ? `$${params.value.toFixed(2)}` : '$0.00',
-      },
-      {
-        field: 'stockMin',
-        headerName: 'Stock Mínimo',
-        editable: true,
-        width: 120,
-      },
-      {
-        field: 'stockMax',
-        headerName: 'Stock Máximo',
-        editable: true,
-        width: 120,
-      },
-
-      {
-        field: 'picture',
-        headerName: 'Imagen',
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.value) {
-            return `<img src="${params.value}" style="width: 50px; height: 50px; object-fit: cover;" />`;
-          }
-          return '';
+        flex: 1,
+        minWidth: 120,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        valueParser: (params: any) => {
+          const v = parseFloat(String(params.newValue).replace(/,/g, ''));
+          return Number.isFinite(v) ? v : 0;
         },
-        width: 80,
+        valueFormatter: (p: any) =>
+          p.value != null && p.value !== ''
+            ? `${Number(p.value).toFixed(2)} %`
+            : '',
       },
-  
     ];
 
     return this._colMaster;
@@ -773,41 +352,14 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   addMasterRow() {
-    // Si hay una distribución abierta, cerrarla primero
-    if (this.savedRowData) {
-      this.rowData = [...this.savedRowData];
-      this.savedRowData = null;
-      this.gridApi?.setGridOption('rowData', this.rowData);
-    }
     const tempId = `temp_${this.tempIdCounter++}`;
-
-    // Obtener familia por defecto y filtrar subfamilias
-    const defaultFamilia = this.familiasCatalog.length > 0 ? this.familiasCatalog[0] : null;
-    if (defaultFamilia) {
-      this.filtrarSubfamiliasPorFamilia(defaultFamilia.id);
-      this.refreshColumnCache();
-    }
-    const defaultSubfamilia = this.subfamiliasFiltered.length > 0 ? this.subfamiliasFiltered[0] : null;
-
     const newItem = {
       id: tempId,
       idCompany: this.idcompany,
-      insumo: '',
-      materialDescription: '',
-      idFamilia: defaultFamilia?.id || null,
-      familiaDescription: defaultFamilia?.description || '',
-      idSubfamilia: defaultSubfamilia?.id || null,
-      subfamiliaDescription: defaultSubfamilia?.description || '',
-      idMedida: null,
-      barcode: '',
-      picture: '',
-      costoMN: 0,
-      ventaMN: 0,
-      typeMaterial: 'CONSUMABLE',
-      stockMin: 1,
-      stockMax: 30,
-      quantity: 0,
-      active: true,
+      producto: '',
+      costo: 0,
+      venta: 0,
+      impuesto: 0,
       __isNew: true,
     };
 
@@ -817,100 +369,32 @@ export class MaterialsComponent implements CanComponentDeactivate {
     this.gridApi.setGridOption('rowData', this.rowData);
 
     setTimeout(() => {
-      const firstRowIndex = 0;
-
-      this.gridApi.ensureIndexVisible(firstRowIndex);
-
+      this.gridApi.ensureIndexVisible(0);
       this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'insumo'
+        rowIndex: 0,
+        colKey: 'producto',
       });
     }, 0);
   }
 
   async saveMasterChanges() {
-    /*const isValid = this.rowData.every(
-      (item) => item.barCode && item.description && item.idMedida && item.date
-    );
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar los campos obligatorios antes de guardar.',
-        'error'
-      );
-      return;
-    }*/
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables: Promise<any>[] = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row, true); // isNew = true
-      console.log('Nuevo material:', cleanedData);
-      return lastValueFrom(this.materialsService.addMaterial(cleanedData));
+    this.rowData.forEach((row) => {
+      delete row.__isNew;
+      delete row.__modified;
     });
-
-    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row, false); // isNew = false
-      console.log('Actualizar material ID:', row.id, cleanedData);
-      return lastValueFrom(this.materialsService.updateMaterial(row.id, cleanedData));
-    });
-
-    try {
-      const allResponses = await Promise.all([
-        ...addObservables,
-        ...updateObservables,
-      ]);
-
-      //console.log('Promise.all completado. Respuestas:', allResponses);
-      for (const response of allResponses) {
-        // Verificar si es una nueva creación comparando con los IDs temporales
-        const correspondingNewRow = newRows.find(
-          (row) => !row.id || row.id.toString().startsWith('temp_')
-        );
-
-      }
-
-      // Determinar qué ID vamos a seleccionar después de recargar
-      if (modifiedRows.length > 0) {
-        // Si hay filas modificadas, guardamos el ID de la última modificada
-        this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
-      } else if (newRows.length > 0) {
-        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
-        this.lastEditedRowId = 'SELECT_MAX_ID';
-      }
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-
-      await this.obtenerDatos(); // Esperar a que se actualicen los datos
-
-      // Seleccionar la fila apropiada después de recargar
-      if (this.lastEditedRowId) {
-        if (this.lastEditedRowId === 'SELECT_MAX_ID') {
-          // Encontrar el ID máximo en los datos actuales
-          const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
-          this.selectRowById(maxId);
-        } else {
-          this.selectRowById(this.lastEditedRowId);
-        }
-        this.lastEditedRowId = null; // Resetear el ID
-      }
-    } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
-    }
+    this.notSavedChanges = false;
+    this.newlyAddedRows = [];
+    alerts.basicAlert(
+      'Vista previa',
+      'Los datos solo están en pantalla. La persistencia en servidor se conectará después.',
+      'info'
+    );
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Guardar (solo frontend) — Materiales',
+      'Menu Proyectos Materiales',
+      this.trackingService.getEmail()
+    );
   }
 
   deleteMasterEntry() {
@@ -925,53 +409,26 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
-
-    // Validar que el préstamo sea 0 o no exista
-    /*if (selectedData.loan && selectedData.loan !== 0) {
-      alerts.basicAlert(
-        'Error al eliminar',
-        'No se puede eliminar el empleado mientras tenga préstamos activos',
-        'error'
-      );
-      return;
-    }*/
-
     const id = selectedData.id;
-    selectedData.active = 0;
     alerts
       .confirmAlert(
-        'Eliminar un Material',
-        '¿Está seguro que desea eliminar este material?',
+        'Eliminar fila',
+        '¿Está seguro que desea eliminar esta fila?',
         'warning',
         'Sí, eliminar'
       )
       .then((result) => {
         if (result.isConfirmed) {
-          this.materialsService
-            .deleteMaterial(id)
-            .pipe(
-              catchError((error) => {
-                alerts.basicAlert(
-                  'Eliminar material',
-                  'Error al eliminar el material.',
-                  'error'
-                );
-                console.error(error);
-                return EMPTY;
-              })
-            )
-            .subscribe(() => {
-              alerts.basicAlert(
-                'Material eliminado',
-                'El material se eliminó correctamente',
-                'success'
-              );
-              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Materiales', 'Menu Administracion Materiales',  this.trackingService.getEmail());
-              this.obtenerDatos();
-              this.notSavedChanges = false;
-              this.selectedRowData = null;
-            });
+          this.rowData = this.rowData.filter((r) => r.id !== id);
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.notSavedChanges = false;
+          this.selectedRowData = null;
+          this.trackingService.addLog(
+            this.trackingService.getnameComp(),
+            'Eliminar fila (solo frontend) — Materiales',
+            'Menu Proyectos Materiales',
+            this.trackingService.getEmail()
+          );
         }
       });
   }
@@ -980,25 +437,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     this.obtenerDatos();
     this.notSavedChanges = false;
     this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro en Materiales', 'Menu Administracion Materiales',  this.trackingService.getEmail());
-  }
-
-  private selectRowById(id: number | string) {
-    // Dar tiempo al grid para que se actualice
-    setTimeout(() => {
-      this.gridApi.forEachNode((node) => {
-        // Convertir ambos IDs a número para la comparación
-        const nodeId =
-          typeof node.data.id === 'string'
-            ? parseInt(node.data.id)
-            : node.data.id;
-        const searchId = typeof id === 'string' ? parseInt(id) : id;
-
-        if (nodeId === searchId) {
-          node.setSelected(true);
-          this.gridApi.ensureNodeVisible(node, 'middle');
-        }
-      });
-    }, 100);
   }
 
   onAdd() {
@@ -1178,51 +616,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
   }
 
-  // ==================== CASCADA DISTRIBUCIÓN (full-width row) ====================
-
-  toggleDetail(node: any) {
-    if (!this.gridApi) return;
-
-    // Si ya hay una distribución abierta para esta misma fila → cerrar
-    const existing = this.rowData.find(r => r.__isDistDetail);
-    if (existing && existing.__materialId === node.data.id) {
-      this.collapseDetail();
-      return;
-    }
-
-    // Si hay distribución de otra fila abierta → restaurar primero
-    if (this.savedRowData) {
-      this.rowData = [...this.savedRowData];
-      this.savedRowData = null;
-    }
-
-    this.savedRowData = [...this.rowData];
-
-    const distRow = {
-      __isDistDetail: true,
-      __materialId:   node.data.id,
-      idCompany:      node.data.idCompany ?? this.idcompany,
-      description:    node.data.materialDescription || node.data.description || '',
-      unit:           node.data.unidadDescription || '',
-      quantity:       Number(node.data.quantity || 0),
-      id:             `__dist_${node.data.id}`,
-    };
-
-    const idx = this.rowData.findIndex(r => r.id === node.data.id);
-    this.rowData = [
-      this.rowData[idx],
-      distRow,
-    ];
-    this.gridApi.setGridOption('rowData', this.rowData);
-  }
-
-  collapseDetail() {
-    if (!this.savedRowData || !this.gridApi) return;
-    this.rowData = this.savedRowData;
-    this.savedRowData = null;
-    this.gridApi.setGridOption('rowData', this.rowData);
-  }
-
   // ==================== PDF REPORTE GENERAL ====================
 
   togglePdfReport() {
@@ -1296,25 +689,40 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onFamilyCreated(familyData: { id: number; description: string }) {
-    // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
     this.familiasCatalog = [...this.familiasCatalog, { id: familyData.id, description: familyData.description }];
-    this.refreshColumnCache();
-
-    // Asignar a la fila seleccionada
-    const selectedNodes = this.gridApi?.getSelectedNodes();
-    if (selectedNodes && selectedNodes.length > 0) {
-      const selectedRow = selectedNodes[0];
-      selectedRow.setDataValue('idFamilia', familyData.id);
-      selectedRow.setDataValue('familiaDescription', familyData.description);
-      this.notSavedChanges = true;
-    }
-
-    if (this.gridApi) {
-      this.gridApi.refreshCells({ columns: ['idFamilia'], force: true });
-    }
-
-    // Recargar lista completa en background
     this.obtenerFamilias();
+  }
+
+  /** Catálogos para modales (la grilla ya no usa familias/subfamilias). */
+  obtenerFamilias(): void {
+    if (!this.idcompany) return;
+    this.catalogsService.getCatalogs(this.idcompany, 'FAMILY').subscribe({
+      next: (data: any) => {
+        this.familiasCatalog = data;
+      },
+      error: (e) => console.error('Error fetching familias:', e),
+    });
+  }
+
+  obtenerSubfamilias(): void {
+    if (!this.idcompany) return;
+    this.catalogsService.getCatalogs(this.idcompany, 'SUBFAMILY').subscribe({
+      next: (data: any) => {
+        this.subfamiliasCatalog = data;
+        this.subfamiliasFiltered = data;
+      },
+      error: (e) => console.error('Error fetching subfamilias:', e),
+    });
+  }
+
+  obtenerUnidades(): void {
+    if (!this.idcompany) return;
+    this.catalogsService.getUnits(this.idcompany).subscribe({
+      next: (data: any) => {
+        this.unitsCatalog = data;
+      },
+      error: (e) => console.error('Error fetching units:', e),
+    });
   }
 
   // ==================== MÉTODOS PARA EL MODAL DE SUBFAMILIA ====================
@@ -1381,27 +789,15 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onSubfamilyCreated(subfamilyData: { id: number; description: string; parentId: number }) {
-    // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
-    this.subfamiliasCatalog = [...this.subfamiliasCatalog, { id: subfamilyData.id, description: subfamilyData.description, parentId: subfamilyData.parentId }];
-    this.subfamiliasFiltered = [...this.subfamiliasFiltered, { id: subfamilyData.id, description: subfamilyData.description, parentId: subfamilyData.parentId }];
-    this.refreshColumnCache();
-
-    // Asignar a la fila seleccionada (si coincide la familia)
-    const selectedNodes = this.gridApi?.getSelectedNodes();
-    if (selectedNodes && selectedNodes.length > 0) {
-      const selectedRow = selectedNodes[0];
-      if (selectedRow.data.idFamilia === subfamilyData.parentId) {
-        selectedRow.setDataValue('idSubfamilia', subfamilyData.id);
-        selectedRow.setDataValue('subfamiliaDescription', subfamilyData.description);
-        this.notSavedChanges = true;
-      }
-    }
-
-    if (this.gridApi) {
-      this.gridApi.refreshCells({ columns: ['idSubfamilia'], force: true });
-    }
-
-    // Recargar lista completa en background
+    this.subfamiliasCatalog = [
+      ...this.subfamiliasCatalog,
+      {
+        id: subfamilyData.id,
+        description: subfamilyData.description,
+        parentId: subfamilyData.parentId,
+      },
+    ];
+    this.subfamiliasFiltered = [...this.subfamiliasFiltered];
     this.obtenerSubfamilias();
   }
 
@@ -1457,23 +853,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onMeasureCreated(measureData: { id: number; description: string }) {
-    // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
     this.unitsCatalog = [...this.unitsCatalog, { id: measureData.id, description: measureData.description }];
-    this.refreshColumnCache();
-
-    // Asignar a la fila seleccionada
-    const selectedNodes = this.gridApi?.getSelectedNodes();
-    if (selectedNodes && selectedNodes.length > 0) {
-      const selectedRow = selectedNodes[0];
-      selectedRow.setDataValue('idMedida', measureData.id);
-      this.notSavedChanges = true;
-    }
-
-    if (this.gridApi) {
-      this.gridApi.refreshCells({ columns: ['idMedida'], force: true });
-    }
-
-    // Recargar lista completa en background
     this.obtenerUnidades();
   }
 }

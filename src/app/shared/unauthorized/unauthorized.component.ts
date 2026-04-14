@@ -18,6 +18,6 @@ export class UnauthorizedComponent {
       'Usted no está autorizado a visitar esta página',
       'error'
     );
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/logistica']);
   }
 }

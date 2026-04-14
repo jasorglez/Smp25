@@ -93,19 +93,16 @@ const GRAY  = '#555555';
             {{ cotizacion?.numCotizacion ? 'Cotización ' + cotizacion.numCotizacion : 'Cotización' }}
             — {{ cotizacion?.nombreProspecto }}
           </span>
-          <div *ngIf="isLoadingPdf" class="spinner-border spinner-border-sm text-danger ms-2" role="status">
-            <span class="visually-hidden">Generando PDF...</span>
-          </div>
+          <div *ngIf="isLoadingPdf" class="spinner-border spinner-border-sm text-danger ms-2"></div>
           <button class="btn btn-sm btn-outline-primary ms-auto"
                   (click)="abrirModalCorreo()"
-                  [disabled]="isLoadingPdf || isSendingEmail"
-                  title="Enviar cotización por correo">
+                  [disabled]="isLoadingPdf || isSendingEmail">
             <span *ngIf="isSendingEmail" class="spinner-border spinner-border-sm me-1"></span>
             <i *ngIf="!isSendingEmail" class="bi bi-envelope me-1"></i>
             {{ isSendingEmail ? 'Enviando...' : 'Enviar por correo' }}
           </button>
         </div>
-        <div style="height:954px; border:1px solid #dee2e6; border-radius:4px; overflow:hidden;">
+        <div class="pdf-frame-wrap">
           <iframe *ngIf="pdfUrl && !isLoadingPdf"
                   [src]="pdfUrl"
                   style="width:100%; height:100%; border:none;">
@@ -116,104 +113,21 @@ const GRAY  = '#555555';
         </div>
       </ng-container>
 
-      <!-- ══ MODAL CORREO ══ -->
-      <div *ngIf="showEmailModal" class="modal-backdrop-custom" (click)="cerrarModalCorreo()"></div>
-      <div *ngIf="showEmailModal" class="modal-correo-card shadow-lg">
-        <div class="modal-correo-header">
-          <i class="bi bi-envelope-fill me-2"></i>
-          <span class="fw-semibold">Enviar cotización por correo</span>
-          <button type="button" class="btn-close ms-auto btn-close-white" (click)="cerrarModalCorreo()"></button>
-        </div>
-        <div class="modal-correo-body">
-
-          <!-- Para -->
-          <div class="mb-3 position-relative">
-            <label class="form-label small fw-semibold">Para <span class="text-danger">*</span></label>
-            <input class="form-control form-control-sm"
-                   [(ngModel)]="emailPara"
-                   (ngModelChange)="filtrarSugerencias($event, 'para')"
-                   (blur)="limpiarSugerencias('para')"
-                   placeholder="destinatario@empresa.com"
-                   autocomplete="off">
-            <ul *ngIf="sugerenciasPara.length" class="autocomplete-list">
-              <li *ngFor="let s of sugerenciasPara"
-                  (mousedown)="seleccionarSugerencia(s, 'para')">{{ s }}</li>
-            </ul>
-          </div>
-
-          <!-- CC -->
-          <div class="mb-3 position-relative">
-            <label class="form-label small fw-semibold">CC</label>
-            <input class="form-control form-control-sm"
-                   [(ngModel)]="emailCc"
-                   (ngModelChange)="filtrarSugerencias($event, 'cc')"
-                   (blur)="limpiarSugerencias('cc')"
-                   placeholder="copia@empresa.com"
-                   autocomplete="off">
-            <ul *ngIf="sugerenciasCc.length" class="autocomplete-list">
-              <li *ngFor="let s of sugerenciasCc"
-                  (mousedown)="seleccionarSugerencia(s, 'cc')">{{ s }}</li>
-            </ul>
-          </div>
-
-          <!-- Asunto (solo lectura) -->
-          <div class="mb-3">
-            <label class="form-label small fw-semibold">Asunto</label>
-            <input class="form-control form-control-sm bg-light" readonly
-                   [value]="'Cotización ' + cotizacion?.numCotizacion + ' — ' + (cotizacion?.empresaProspecto || cotizacion?.nombreProspecto)">
-          </div>
-
-        </div>
-        <div class="modal-correo-footer">
-          <button class="btn btn-sm btn-secondary" (click)="cerrarModalCorreo()">Cancelar</button>
-          <button class="btn btn-sm btn-primary" (click)="enviarPorCorreo()" [disabled]="!emailPara || isSendingEmail">
-            <span *ngIf="isSendingEmail" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!isSendingEmail" class="bi bi-send me-1"></i>
-            {{ isSendingEmail ? 'Enviando...' : 'Enviar' }}
-          </button>
-        </div>
-      </div>
+      <!-- Modal correo se renderiza en document.body via TS (escapa el transform de AG Grid) -->
 
     </div>
   `,
   styles: [`
     .detail-container {
-      padding: 12px 16px;
+      padding: 8px 12px;
       background-color: #f0f8ff;
       border-top: 2px solid #0d6efd;
     }
-    .modal-backdrop-custom {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.45);
-      z-index: 1050;
-    }
-    .modal-correo-card {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 480px; max-width: 95vw;
-      background: #fff;
-      border-radius: 8px;
-      z-index: 1060;
-      overflow: hidden;
-    }
-    .modal-correo-header {
-      background: #1a5a9a;
-      color: #fff;
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-    }
-    .modal-correo-body {
-      padding: 16px;
-    }
-    .modal-correo-footer {
-      padding: 10px 16px;
-      background: #f8f9fa;
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      border-top: 1px solid #dee2e6;
+    .pdf-frame-wrap {
+      height: 2300px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      overflow: auto;
     }
     .autocomplete-list {
       position: absolute;
@@ -473,18 +387,86 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (!this.rowData.length) this.cargarItems();
   }
 
+  // ── Modal correo — renderizado en document.body para escapar transform de AG Grid ──
+  private emailModalEl: HTMLElement | null = null;
+
   async abrirModalCorreo() {
     const idCompany = this.context?.idCompany;
     this.emailHistorial = idCompany ? await this.svc.getEmailHistorial(idCompany) : [];
     this.emailPara      = this.signalsSvc.profile.emailUser() ?? '';
     this.emailCc        = '';
-    this.sugerenciasPara = [];
-    this.sugerenciasCc   = [];
-    this.showEmailModal  = true;
+
+    this.removeEmailModal();
+
+    const asunto = `Cotización ${this.cotizacion?.numCotizacion ?? ''} — ${this.cotizacion?.empresaProspecto || this.cotizacion?.nombreProspecto || ''}`;
+
+    // Backdrop
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1055;';
+    backdrop.onclick = () => this.cerrarModalCorreo();
+
+    // Card
+    const card = document.createElement('div');
+    card.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-width:95vw;background:#fff;border-radius:8px;z-index:1056;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.25);font-family:inherit;';
+
+    card.innerHTML = `
+      <div style="background:#1a5a9a;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+        <i class="bi bi-envelope-fill"></i>
+        <span style="font-weight:600;">Enviar cotización por correo</span>
+        <button id="em-close" style="margin-left:auto;background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <div style="padding:16px;">
+        <div style="margin-bottom:12px;">
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;">Para *</label>
+          <input id="em-para" class="form-control form-control-sm" placeholder="destinatario@empresa.com" value="${this.emailPara}" autocomplete="off">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;">CC</label>
+          <input id="em-cc" class="form-control form-control-sm" placeholder="copia@empresa.com (opcional)" autocomplete="off">
+        </div>
+        <div style="margin-bottom:4px;">
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;">Asunto</label>
+          <input class="form-control form-control-sm" style="background:#f8f9fa;" readonly value="${asunto}">
+        </div>
+      </div>
+      <div style="padding:10px 16px;background:#f8f9fa;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #dee2e6;">
+        <button id="em-cancel" class="btn btn-sm btn-secondary">Cancelar</button>
+        <button id="em-send"   class="btn btn-sm btn-primary"><i class="bi bi-send me-1"></i>Enviar</button>
+      </div>
+    `;
+
+    const wrap = document.createElement('div');
+    wrap.appendChild(backdrop);
+    wrap.appendChild(card);
+    document.body.appendChild(wrap);
+    this.emailModalEl = wrap;
+
+    // Eventos
+    card.querySelector('#em-close')!.addEventListener('click',  () => this.cerrarModalCorreo());
+    card.querySelector('#em-cancel')!.addEventListener('click', () => this.cerrarModalCorreo());
+    card.querySelector('#em-send')!.addEventListener('click', async () => {
+      const para = (document.getElementById('em-para') as HTMLInputElement)?.value?.trim();
+      const cc   = (document.getElementById('em-cc')   as HTMLInputElement)?.value?.trim() ?? '';
+      if (!para) { alert('El campo "Para" es requerido'); return; }
+      this.emailPara = para;
+      this.emailCc   = cc;
+      this.cerrarModalCorreo();
+      await this.enviarPorCorreo();
+    });
+
+    setTimeout(() => (document.getElementById('em-para') as HTMLInputElement)?.focus(), 50);
   }
 
   cerrarModalCorreo() {
     this.showEmailModal = false;
+    this.removeEmailModal();
+  }
+
+  private removeEmailModal() {
+    if (this.emailModalEl) {
+      document.body.removeChild(this.emailModalEl);
+      this.emailModalEl = null;
+    }
   }
 
   filtrarSugerencias(valor: string, campo: 'para' | 'cc') {

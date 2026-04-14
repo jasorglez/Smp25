@@ -556,7 +556,7 @@ export class ClientesLogisticaComponent implements CanComponentDeactivate {
     try {
       const responses = await lastValueFrom(concat(...addObservables, ...updateObservables).pipe(toArray()));
       if (modifiedRows.length > 0) { this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id; } else if (newRows.length > 0) { this.lastEditedRowId = 'SELECT_MAX_ID'; }
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.toastAlert('Datos actualizados correctamente', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       await this.obtenerDatos();

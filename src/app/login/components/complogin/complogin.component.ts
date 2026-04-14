@@ -212,7 +212,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     if (permissionsData && permissionsData.permissions) {
                       this.auth.setUserPermissions(permissionsData.permissions);
                     }
-                    this.router.navigate(['/main']);
+                    this.router.navigate(['/dashboard']);
                   },
                   error: (permError) => {
                     console.error('Error fetching advanced permissions:', permError);
@@ -225,7 +225,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     if (permissionsData && permissionsData.permissions) {
                       this.auth.setUserPermissions(permissionsData.permissions);
                     }
-                    this.router.navigate(['/main']);
+                    this.router.navigate(['/dashboard']);
                   },
                   error: (permError) => {
                     console.error('Error fetching permissions:', permError);

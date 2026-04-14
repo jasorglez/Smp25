@@ -1,189 +1,50 @@
-<div class="row p-3">
-  <div class="col-12 py-3">
-    <!-- Botones y grid principal -->
-    <div class="row mb-3">
-      <nav class="col-auto d-flex flex-column align-items-start">
-        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="onAdd()">
-          <i class="bi bi-plus"></i>
-        </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="onEdit()" >
-          <i class="bi bi-floppy"></i>
-          <span
-            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-              *ngIf="notSavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
-        </button>
-        <button type="button" class="btn btn-warning ms-1 me-1 mb-2"  (click)="revertMasterData()">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-        <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="onDelete()"><i class="bi bi-trash"></i>
-        </button>
-        <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" (click)="togglePdfReport()"
-                title="Reporte PDF de Distribución (Cantidades)">
-          <i class="bi bi-file-earmark-pdf"></i>
-        </button>
-        <button type="button" class="btn btn-success ms-1 me-1 mb-2" (click)="showPdfMoneyReport = true"
-                title="Reporte PDF Erogaciones ($)">
-          <i class="bi bi-currency-dollar"></i>
-        </button>
-      </nav>
-
-    <div class="col">
-      <div class="row">
-        <ag-grid-angular
-        style="width: 100%;"
-        [ngStyle]="{'height': gridHeight}"
-        class="ag-theme-quartz small-text-ag-grid"
-        [rowData]="rowData"
-        [columnDefs]="colMaster"
-        (selectionChanged)="onMasterSelectionChanged($event)"
-        [gridOptions]="gridOptions"
-        (cellValueChanged)="onMasterCellValueChanged($event)"
-        (rowSelected)="onMasterRowSelected($event)"
-        (gridReady)="onMasterGridReady($event)"
-        [pagination]="false"
-        (cellDoubleClicked)="onCellDoubleClicked($event)"
-        [components]="components"
-        >
-      </ag-grid-angular>
-      <!-- PDF Cantidades — genera en nueva pestaña y se destruye solo -->
-      <app-pdf-materials-distribution
-        *ngIf="showPdfReport"
-        [idCompany]="idcompany"
-        mode="newTab"
-        reportType="quantity"
-        (closed)="showPdfReport = false">
-      </app-pdf-materials-distribution>
-
-      <!-- PDF Erogaciones ($) — genera en nueva pestaña y se destruye solo -->
-      <app-pdf-materials-distribution
-        *ngIf="showPdfMoneyReport"
-        [idCompany]="idcompany"
-        mode="newTab"
-        reportType="money"
-        (closed)="showPdfMoneyReport = false">
-      </app-pdf-materials-distribution>
-
-      </div>
-    </div>
+<div class="col-12 p-2">
+  <div class="d-flex gap-2 mb-2 flex-wrap">
+    <button class="btn btn-sm"
+      [class.btn-secondary]="activeFilter !== null"
+      [class.btn-dark]="activeFilter === null"
+      (click)="setFilter(null)">
+      Todos
+    </button>
+    <button class="btn btn-sm"
+      [style.background-color]="activeFilter === 'RECIBIDO' ? '#28a745' : '#d4edda'"
+      [style.color]="activeFilter === 'RECIBIDO' ? 'white' : '#155724'"
+      [style.border]="'1px solid #28a745'"
+      (click)="setFilter('RECIBIDO')">
+      Recibido
+    </button>
+    <button class="btn btn-sm"
+      [style.background-color]="activeFilter === 'CANCELADO' ? '#dc3545' : '#f8d7da'"
+      [style.color]="activeFilter === 'CANCELADO' ? 'white' : '#721c24'"
+      [style.border]="'1px solid #dc3545'"
+      (click)="setFilter('CANCELADO')">
+      Cancelado
+    </button>
+    <button class="btn btn-sm"
+      [style.background-color]="activeFilter === 'ALMACENADO' ? '#0d6efd' : '#cce5ff'"
+      [style.color]="activeFilter === 'ALMACENADO' ? 'white' : '#004085'"
+      [style.border]="'1px solid #0d6efd'"
+      (click)="setFilter('ALMACENADO')">
+      Almacenado
+    </button>
+    <button class="btn btn-sm"
+      [style.background-color]="activeFilter === 'REVENDIDO' ? '#ffc107' : '#fff3cd'"
+      [style.color]="activeFilter === 'REVENDIDO' ? '#212529' : '#856404'"
+      [style.border]="'1px solid #ffc107'"
+      (click)="setFilter('REVENDIDO')">
+      Revendido
+    </button>
   </div>
+
+  <ag-grid-angular
+    style="width: 100%;"
+    [ngStyle]="{ height: gridHeight }"
+    class="ag-theme-quartz small-text-ag-grid"
+    [rowData]="rowData"
+    [columnDefs]="colDefs"
+    [defaultColDef]="defaultColDef"
+    [gridOptions]="gridOptions"
+    (gridReady)="onGridReady($event)"
+    [localeText]="AG_GRID_LOCALE_ES">
+  </ag-grid-angular>
 </div>
-
-<!-- Modal for image viewing -->
-<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="imageModalLabel">Vista de Imagen</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body text-center">
-        <img *ngIf="selectedImage" [src]="selectedImage" class="img-fluid" alt="Material Image" />
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal para agregar nueva familia -->
-<div class="modal fade" [class.show]="showFamilyModal" [style.display]="showFamilyModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="familyModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title" id="familyModalLabel">
-          <i class="bi bi-plus-circle me-2"></i>Agregar Nueva Familia
-        </h5>
-        <button type="button" class="btn-close btn-close-white" (click)="closeFamilyModal()" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form>
-          <div class="mb-3">
-            <label for="familyDescription" class="form-label">Descripción <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="familyDescription" [(ngModel)]="newFamily.description" name="familyDescription" required>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeFamilyModal()">
-          <i class="bi bi-x-circle me-1"></i>Cancelar
-        </button>
-        <button type="button" class="btn btn-success" (click)="saveNewFamily()" [disabled]="!newFamily.description">
-          <i class="bi bi-floppy me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Backdrop del modal de familia -->
-<div class="modal-backdrop fade" [class.show]="showFamilyModal" [style.display]="showFamilyModal ? 'block' : 'none'"></div>
-
-<!-- Modal para agregar nueva subfamilia -->
-<div class="modal fade" [class.show]="showSubfamilyModal" [style.display]="showSubfamilyModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="subfamilyModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title" id="subfamilyModalLabel">
-          <i class="bi bi-plus-circle me-2"></i>Agregar Nueva Subfamilia
-        </h5>
-        <button type="button" class="btn-close btn-close-white" (click)="closeSubfamilyModal()" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form>
-          <div class="mb-3">
-            <label class="form-label">Familia Padre</label>
-            <input type="text" class="form-control" [value]="selectedParentFamilyDescription" disabled>
-          </div>
-          <div class="mb-3">
-            <label for="subfamilyDescription" class="form-label">Descripción <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="subfamilyDescription" [(ngModel)]="newSubfamily.description" name="subfamilyDescription" required>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeSubfamilyModal()">
-          <i class="bi bi-x-circle me-1"></i>Cancelar
-        </button>
-        <button type="button" class="btn btn-info text-white" (click)="saveNewSubfamily()" [disabled]="!newSubfamily.description">
-          <i class="bi bi-floppy me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Backdrop del modal de subfamilia -->
-<div class="modal-backdrop fade" [class.show]="showSubfamilyModal" [style.display]="showSubfamilyModal ? 'block' : 'none'"></div>
-
-<!-- Modal para agregar nueva unidad -->
-<div class="modal fade" [class.show]="showMeasureModal" [style.display]="showMeasureModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="measureModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title" id="measureModalLabel">
-          <i class="bi bi-plus-circle me-2"></i>Agregar Nueva Unidad
-        </h5>
-        <button type="button" class="btn-close" (click)="closeMeasureModal()" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form>
-          <div class="mb-3">
-            <label for="measureDescription" class="form-label">Descripción <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="measureDescription" [(ngModel)]="newMeasure.description" name="measureDescription" required placeholder="Ej: KG, LT, PZA...">
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeMeasureModal()">
-          <i class="bi bi-x-circle me-1"></i>Cancelar
-        </button>
-        <button type="button" class="btn btn-warning" (click)="saveNewMeasure()" [disabled]="!newMeasure.description">
-          <i class="bi bi-floppy me-1"></i>Guardar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Backdrop del modal de unidad -->
-<div class="modal-backdrop fade" [class.show]="showMeasureModal" [style.display]="showMeasureModal ? 'block' : 'none'"></div>

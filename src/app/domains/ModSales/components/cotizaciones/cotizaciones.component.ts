@@ -97,7 +97,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     suppressDragLeaveHidesColumns: true,
     rowSelection: 'single',
     masterDetail: true,
-    detailRowHeight: 1080,
+    detailRowHeight: 2400,
     isRowMaster: () => true,
     detailCellRenderer: DetalleItemsCotizacionComponent,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },

@@ -19,7 +19,14 @@ export const routes: Routes = [
     path: '',
     component: MainPageComponent,
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: '', redirectTo: '/login', pathMatch: 'full' },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./pages/dashboard-home/dashboard-home.component').then(
+            (m) => m.DashboardHomeComponent
+          ),
+      },
       {
         path: 'proceswar',
         loadComponent: () =>
@@ -1805,6 +1812,13 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/cursos/cursos.component'
               ).then((c) => c.CursosComponent),
+          },
+          {
+            path: 'demos',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/demos/demos.component'
+              ).then((d) => d.DemosComponent),
           },
         ],
       },
