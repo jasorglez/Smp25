@@ -872,14 +872,14 @@ export class EgresosPalacioComponent {
         autoHeight: true,
         cellStyle: { 'white-space': 'normal', 'line-height': '1.4' },
         cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: {
+        cellEditorParams: () => ({
           options: this.expenses.map(obj => ({
             id: obj.id,
             description: `${obj.codigo} - ${obj.nombre}`,
             valueAddition: obj.codigo || '',
             valueAddition2: obj.nombre || ''
           }))
-        },
+        }),
         valueFormatter: (params) => {
           const foundItem = this.expenses
             ? this.expenses.find((item) => item.id === params.value)
