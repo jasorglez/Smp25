@@ -6,7 +6,8 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SignalsService } from 'app/services/signals.service';
 import { PedidosService } from 'app/services/pedidos.service';
 import { CustomersService } from 'app/services/customers.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, lastValueFrom } from 'rxjs';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'storeComponent',
@@ -26,6 +27,7 @@ export class MaterialsComponent {
   rowData: any[] = [];
   gridHeight: string = '82vh';
   activeFilter: string | null = null;
+  hasUnsavedChanges: boolean = false;
 
   private gridApi: GridApi;
   private allData: any[] = [];
@@ -42,6 +44,14 @@ export class MaterialsComponent {
     rowHeight: 28,
     animateRows: true,
     rowSelection: 'single',
+    onCellValueChanged: (event: any) => {
+      event.data.__modified = true;
+      this.hasUnsavedChanges = true;
+      // Refrescar el color del estado inmediatamente
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['estado'], force: true });
+      }
+    }
   };
 
   public colDefs: ColDef[] = [
@@ -117,7 +127,16 @@ export class MaterialsComponent {
     {
       field: 'estado',
       headerName: 'Estado',
-      width: 120,
+      width: 140,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO']
+      },
+      valueSetter: (params: any) => {
+        params.data.estado = params.newValue;
+        return true;
+      },
       cellStyle: (params) => {
         if (params.value === 'RECIBIDO')   return { backgroundColor: '#d4edda' };
         if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
@@ -184,19 +203,64 @@ export class MaterialsComponent {
           const cliente = clientesMap.get(key(d.idCliente));
           return {
             ...d,
-            // Igual que en el 2º nivel: el nombre viene del endpoint de clientes
             clienteName:  cliente?.nameContact || cliente?.company || cliente?.name || cliente?.Description || '-',
             pedidoNumero: pedido?.numero || d.idPedido  || '-',
+            __modified: false,
           };
         });
 
         this.applyFilter();
-
+        this.hasUnsavedChanges = false;
       },
       error: (e) => {
         console.error('Error cargando productos:', e);
         this.rowData = [];
       },
     });
+  }
+
+  async saveChanges(): Promise<void> {
+    const modified = this.allData.filter(r => r.__modified);
+    if (modified.length === 0) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      return;
+    }
+
+    alerts.showLoading('Guardando...', 'Actualizando estados');
+    try {
+      for (const row of modified) {
+        await lastValueFrom(this.pedidosService.updateDetalle(row.id, {
+          id:              row.id,
+          idPedido:        row.idPedido,
+          idCliente:       row.idCliente,
+          producto:        row.producto,
+          cantidad:        row.cantidad        || 1,
+          plataforma:      row.plataforma,
+          aplicaimpuestos: row.aplicaimpuestos,
+          costo:           row.costo           || 0,
+          venta:           row.venta           || 0,
+          impuesto:        row.impuesto        || 0,
+          estado:          row.estado          || 'SOLICITADO',
+          comentario:      row.comentario,
+          active:          row.active,
+        }));
+        row.__modified = false;
+      }
+      alerts.closeLoading();
+      this.hasUnsavedChanges = false;
+      alerts.toastAlert('Estados actualizados correctamente', 'success');
+    } catch (error) {
+      alerts.closeLoading();
+      console.error('Error guardando cambios:', error);
+      alerts.basicAlert('Error', 'No se pudieron guardar los cambios', 'error');
+    }
+  }
+
+  revertChanges(): void {
+    if (!this.hasUnsavedChanges) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por deshacer', 'info');
+      return;
+    }
+    this.loadData();
   }
 }

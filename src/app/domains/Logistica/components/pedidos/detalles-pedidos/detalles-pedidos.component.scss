@@ -37,3 +37,9 @@
 ::ng-deep .small-text-ag-grid .ag-cell-value {
   font-size: 11px;
 }
+
+/* Celda inline editando → amarillo */
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-cell-inline-editing {
+  background: #ffeaa0 !important;
+  border: 2px solid #f0a500 !important;
+}

@@ -59,7 +59,7 @@ export class DetallesPedidosComponent implements OnInit {
   private readonly NEXT_EDIT_COL: Record<string, string> = {
     'clienteName': 'producto',
     'producto':    'cantidad',
-    'cantidad':    'plataforma',
+    'cantidad':    'costo',
     'plataforma':  'costo',
     'costo':       'venta',
     'venta':       'impuesto',
@@ -231,6 +231,10 @@ get colDefs(): ColDef[] {
         editable: () => !this.isLocked,
         width: 200,
         cellEditor: 'agRichSelectCellEditor',
+           filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
         cellEditorParams: () => ({
           values: this.clientes
             .map(item => item.Description || item.nameContact || item.company || item.name || item.description)
@@ -256,6 +260,10 @@ get colDefs(): ColDef[] {
         field: 'producto',
         headerName: 'Producto',
         editable: () => !this.isLocked,
+           filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
         width: 250,
         cellEditor: ProductoAutocompleteEditorComponent,
         cellEditorParams: () => ({
@@ -274,6 +282,7 @@ get colDefs(): ColDef[] {
         editable: () => !this.isLocked,
         width: 90,
         type: 'numericColumn',
+        suppressKeyboardEvent: (params: any) => params.event.key === 'Enter' && params.editing,
         valueSetter: (params: any) => {
           const val = parseInt(params.newValue);
           params.data.cantidad = isNaN(val) || val < 1 ? 1 : val;
@@ -299,23 +308,6 @@ get colDefs(): ColDef[] {
             return false;
           }
           params.data.plataforma = params.newValue;
-          return true;
-        }
-      },
-      {
-        field: 'aplicaimpuestos',
-        headerName: 'Aplica Impuestos',
-        editable: () => !this.isLocked,
-        width: 130,
-        cellRenderer: (params: ICellRendererParams) => {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.checked = params.value === true || params.value === 1 || params.value === '1';
-          checkbox.style.cursor = 'pointer';
-          return checkbox;
-        },
-        valueSetter: (params: any) => {
-          params.data.aplicaimpuestos = params.newValue;
           return true;
         }
       },
@@ -356,17 +348,47 @@ get colDefs(): ColDef[] {
         }
       },
       {
+        field: 'aplicaimpuestos',
+        headerName: 'Aplica Impuestos',
+        editable: false,
+        width: 130,
+        cellStyle: { cursor: this.isLocked ? 'not-allowed' : 'pointer', textAlign: 'center' },
+        cellRenderer: (params: ICellRendererParams) => {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = params.value === true || params.value === 1 || params.value === '1';
+          checkbox.style.pointerEvents = 'none';
+          checkbox.style.cursor = 'inherit';
+          return checkbox;
+        },
+        onCellClicked: (params: any) => {
+          if (this.isLocked) return;
+          // Asegurar que cualquier celda en edición haya confirmado su valor antes de leer venta
+          params.api.stopEditing();
+          const checked = !(params.data.aplicaimpuestos === true || params.data.aplicaimpuestos === 1 || params.data.aplicaimpuestos === '1');
+          const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
+          const venta = parseFloat(params.node.data.venta) || 0;
+          const cantidad = parseFloat(params.node.data.cantidad) || 0;
+          params.data.aplicaimpuestos = checked;
+          params.data.impuesto = checked ? cantidad * venta * defaultImpuesto / 100 : 0;
+          if (checked) params.data.plataforma = 'TEMU';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          params.api.refreshCells({
+            rowNodes: [params.node],
+            columns: ['aplicaimpuestos', 'plataforma', 'impuesto', 'total'],
+            force: true
+          });
+        }
+      },
+      {
         field: 'impuesto',
-        headerName: 'Impuesto %',
+        headerName: 'Impuesto',
         editable: () => !this.isLocked,
         width: 100,
         type: 'numericColumn',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value + '%';
-          }
-          return '0%';
-        },
+        valueFormatter: (params) =>
+          new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value || 0),
         valueSetter: (params: any) => {
           const val = parseFloat(params.newValue);
           params.data.impuesto = isNaN(val) ? 0 : val;
@@ -382,9 +404,7 @@ get colDefs(): ColDef[] {
           const cantidad = params.data.cantidad || 0;
           const venta = params.data.venta || 0;
           const impuesto = params.data.impuesto || 0;
-          const subtotal = cantidad * venta;
-          const montoImpuesto = subtotal * (impuesto / 100);
-          return subtotal + montoImpuesto;
+          return (cantidad * venta) + impuesto;
         },
         valueFormatter: (params) => {
           if (params.value) {
@@ -525,8 +545,11 @@ get colDefs(): ColDef[] {
       clienteName: '',
       idProducto: 0,
       cantidad: 1,
-      plataforma: '',
+      plataforma: 'TEMU',
       aplicaimpuestos: false,
+      impuesto: 0,
+      costo: 0,
+      venta: 0,
       comentario: '',
       active: true,
       __isNew: true,
@@ -671,6 +694,17 @@ get colDefs(): ColDef[] {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+
+    const col = event.column?.getColId?.() ?? event.colDef?.field;
+    if ((col === 'venta' || col === 'cantidad') && event.data.aplicaimpuestos) {
+      const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
+      const venta = parseFloat(event.data.venta) || 0;
+      const cantidad = parseFloat(event.data.cantidad) || 0;
+      event.data.impuesto = cantidad * venta * defaultImpuesto / 100;
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['impuesto', 'total'], force: true });
+      }
+    }
   }
 
   refreshByParent() {

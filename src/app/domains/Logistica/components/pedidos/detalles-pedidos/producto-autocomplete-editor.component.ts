@@ -32,7 +32,7 @@ import { ICellEditorParams } from 'ag-grid-community';
         (keydown)="onKeyDown($event)"
         (blur)="onInputBlur($event)"
         class="ag-input-field-input"
-        style="width: 100%; height: 28px; border: 1px solid #2196f3; outline: none; padding: 0 4px; font-size: 11px; box-sizing: border-box;"
+        style="width: 100%; height: 28px; border: 2px solid #f0a500; outline: none; padding: 0 4px; font-size: 11px; box-sizing: border-box; background: #ffeaa0;"
       />
     </div>
   `,
@@ -55,6 +55,8 @@ export class ProductoAutocompleteEditorComponent
    * y cerraba la celda. Solo ignoramos ese primer Enter cuando el grid indicó que la edición empezó con Enter.
    */
   private ignoreNextEnterToCantidad = false;
+  /** true cuando el editor se abrió presionando una tecla de carácter (no F2/doble-click) */
+  private charPressInitiated = false;
 
   value: string = '';
   suggestions: string[] = [];
@@ -71,11 +73,22 @@ export class ProductoAutocompleteEditorComponent
 
   agInit(params: ICellEditorParams & { suggestions: string[]; ignoreFirstEnterNavigation?: boolean }): void {
     this.params = params;
-    this.value = params.value || '';
     this.suggestions = params.suggestions || [];
+
+    // eventKey: tecla que disparó la edición ('Enter', 'F2', 'a', 'b', null, …)
     const ek = params.eventKey;
     this.ignoreNextEnterToCantidad =
       ek === 'Enter' || ek === 'NumpadEnter' || params.ignoreFirstEnterNavigation === true;
+
+    // Si el usuario empezó escribiendo un carácter, usarlo como valor inicial (AG Grid 32: charPress → eventKey)
+    const isCharPress = ek != null && ek.length === 1;
+    if (isCharPress) {
+      this.value = ek!;
+      this.charPressInitiated = true;
+    } else {
+      this.value = params.value || '';
+      this.charPressInitiated = false;
+    }
   }
 
   /** El grid llama esto cuando el popup ya está montado; aquí el foco es fiable (editor como popup). */
@@ -105,7 +118,13 @@ export class ProductoAutocompleteEditorComponent
       const el = this.inputRef?.nativeElement;
       if (!el) return false;
       el.focus({ preventScroll: true });
-      el.select?.();
+      if (this.charPressInitiated) {
+        // Cursor al final para que el usuario siga escribiendo
+        el.selectionStart = el.value.length;
+        el.selectionEnd = el.value.length;
+      } else {
+        el.select?.();
+      }
       return true;
     };
     setTimeout(() => {
@@ -121,7 +140,7 @@ export class ProductoAutocompleteEditorComponent
   }
 
   isPopup(): boolean {
-    return true;
+    return false;
   }
 
   onInputBlur(event: FocusEvent): void {

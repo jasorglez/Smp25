@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.09 (14 Abril 2026 14:50) Logistica - Productos',
+  version: '5.09 (14 Abril 2026 18:51) Logistica - Productos',
 };
