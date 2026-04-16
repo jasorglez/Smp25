@@ -563,9 +563,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
       const logoBase64 = rootResponse.picture
         ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture)
         : '';
-      const watermarkBase64 = rootResponse.picture3
-        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
-        : null;
+      const watermarkBase64 = null;
 
       // ── Datos del proveedor ───────────────────────────────────────────
       let contacto = '';
