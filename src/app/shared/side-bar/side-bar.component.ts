@@ -1,4 +1,4 @@
-import { Component, effect, Signal } from '@angular/core';
+import { Component, computed, effect, Signal } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
@@ -28,6 +28,9 @@ export class SideBarComponent {
   /** Fuerza reevaluación de *ngIf del menú tras recargar `guard` / `guardAdvanced` en sesión. */
   readonly guardUiTick: Signal<number>;
   readonly defaultCompanyLogo = './assets/img/default.png';
+
+  /** Computed que fuerza re-evaulation del *ngIf para cada menú cuando guardUiTick cambia */
+  readonly permissionRefreshTick: Signal<number>;
 
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
@@ -73,6 +76,7 @@ export class SideBarComponent {
     private menuService: MenuService
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
+    this.permissionRefreshTick = computed(() => this.guardUiTick()); // Depende de guardUiTick
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
       if (shouldUpdate) {
@@ -81,14 +85,22 @@ export class SideBarComponent {
         }
     });
 
+    // 🔄 Recargar menús cuando cambian permisos (guardUiTick bump)
+    effect(() => {
+      this.guardUiTick(); // Observar cambios de permisos
+      if (this.selectedRoot) {
+        this.loadSidebarMenus(parseInt(this.selectedRoot));
+      }
+    });
+
     // 🔄 Effect para sincronización bidireccional Grid → Sidebar
     effect(() => {
       const selectedProjectFromSignal = this.signalsService.getProjectSelectedBySidebar()();
-      
+
       // Actualizar el ComboBox visual solo si es diferente al valor actual
       if (selectedProjectFromSignal && selectedProjectFromSignal.toString() !== this.selectedProjectId) {
         this.selectedProjectId = selectedProjectFromSignal.toString();
-        
+
         // Forzar actualización del DOM del select
         setTimeout(() => {
           const selectElement = document.getElementById('project') as HTMLSelectElement;

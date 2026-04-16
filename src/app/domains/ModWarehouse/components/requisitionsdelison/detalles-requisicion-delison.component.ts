@@ -51,8 +51,22 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
           </span>
         </button>
 
-           <ng-container *ngFor="let btn of dynamicButtons">
-          <button *ngIf="actionMap[btn.identifier]"
+        <!-- Botón MultiGuardar (Hardcodeado con validación de permisos) -->
+        <button *ngIf="authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Mul')"
+                class="btn btn-info btn-sm position-relative"
+                (click)="saveMultiGuardar()"
+                [title]="'Generar múltiples pedimentos de compra'"
+                [disabled]="!hasPedimentoSelection">
+          <i class="bi bi-file-earmark-pdf"></i> MultiGuardar
+          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasPedimentoSelection">
+            <span class="visually-hidden">Hay artículos seleccionados</span>
+          </span>
+        </button>
+
+        <!-- Botones Dinámicos (otros) -->
+        <ng-container *ngFor="let btn of dynamicButtons">
+          <button *ngIf="actionMap[btn.identifier] && btn.identifier !== 'Req_Mul'"
                   class="btn btn-info btn-sm position-relative"
                   (click)="actionMap[btn.identifier]()"
                   [title]="btn.description || btn.name">

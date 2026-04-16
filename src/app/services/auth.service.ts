@@ -409,6 +409,27 @@ export class AuthService {
    *        Útil tras guardar desde el modal solo `updateUserPermissions`: `guardAdvanced` sigue leyendo CrudPermissions
    *        y no refleja el cambio hasta F5; el menú (p. ej. pestaña Sucursales) debe alinearse con UserSystem.
    */
+  /** Reload agresivo que fuerza refetch sin caché después de cambios de permisos */
+  forceReloadPermissions(options?: {
+    idBranchOverride?: number | null;
+    preferUserSystemGuard?: boolean;
+  }): Observable<any> {
+    // Primero recarga normal
+    return this.reloadCurrentSessionGuard(options).pipe(
+      // Luego recarga nuevamente después de un pequeño delay para asegurar que el servidor procesó cambios
+      switchMap(() =>
+        new Promise<any>(resolve => {
+          setTimeout(() => {
+            this.reloadCurrentSessionGuard(options).subscribe(
+              result => resolve(result),
+              err => resolve(null) // No fallar en el segundo reload
+            );
+          }, 300);
+        })
+      )
+    );
+  }
+
   reloadCurrentSessionGuard(options?: {
     idBranchOverride?: number | null;
     preferUserSystemGuard?: boolean;

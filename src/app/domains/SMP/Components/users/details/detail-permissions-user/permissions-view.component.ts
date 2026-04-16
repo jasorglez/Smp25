@@ -2843,15 +2843,17 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         });
       }
 
-      // Menú lateral / guards: tras tener el modal al día; reload de sesión ya hace bump interno.
+      // Menú lateral / guards: tras tener el modal al día; reload agresivo de sesión
       if (scope === 'userSystem' && sameSessionUser) {
         try {
+          console.log('🔄 Forzando reload de permisos...');
           await lastValueFrom(
-            this.authService.reloadCurrentSessionGuard({
+            this.authService.forceReloadPermissions({
               idBranchOverride: this.branchId,
               ...(userSysDirty ? { preferUserSystemGuard: true as const } : {}),
             })
           );
+          console.log('✅ Reload completado');
         } catch (err) {
           console.error(
             'Error al actualizar permisos del menú lateral tras guardar',
