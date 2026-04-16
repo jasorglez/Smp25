@@ -389,7 +389,7 @@ export class PresupuestoComponent implements OnInit {
       id_project:          this.idProject,
       idCompany:           this.idCompany,
       numrevision,
-      usuario_responsable: this.signalsService.profile.emailUser() ?? undefined,
+      usuario_responsable: this.signalsService.profile.emailUser() || this.trackingService.getEmail() || undefined,
       active:              true
     };
 
@@ -506,7 +506,7 @@ export class PresupuestoComponent implements OnInit {
           motivo,
           fecha_inicio:        this.selectedPresupuesto!.fecha_inicio,
           fecha_fin:           this.selectedPresupuesto!.fecha_fin,
-          usuario_responsable: this.signalsService.profile.emailUser() ?? undefined,
+          usuario_responsable: this.signalsService.profile.emailUser() || this.trackingService.getEmail() || undefined,
           vigente:             true,
           active:              true
         }));
@@ -799,15 +799,22 @@ export class PresupuestoComponent implements OnInit {
     const p = this.selectedPresupuesto!;
     const fmt = (v: number) =>
       new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v);
-    const nMeses = mesesCols.length || 1;
+
+    // Solo mostrar meses que tienen algún monto registrado en cualquier línea
+    const mesesConDatos = mesesCols.filter(m =>
+      Array.from(mesMap.values()).some(mm => (mm.get(`${m.anio}-${m.num}`) ?? 0) > 0)
+    );
+    const activeCols = mesesConDatos.length > 0 ? mesesConDatos : mesesCols.slice(0, 1);
+
+    const nMeses = activeCols.length;
     const nFixed = 4;
     const totalCols = nFixed + nMeses;
 
-    // Anchos dinámicos — TABLOID landscape (1224pt) menos márgenes 20+20 = 1184pt usables
+    // Columnas fijas con ancho en pt; columnas de meses con '*' para que pdfmake
+    // distribuya el espacio restante automáticamente sin desbordar la página.
+    const PAGE_W = 1224;
     const fixedWidths = [38, 75, 75, 115];
-    const usable = 1184;
-    const monthW = Math.max(42, Math.floor((usable - fixedWidths.reduce((a, b) => a + b, 0)) / nMeses));
-    const widths = [...fixedWidths, ...mesesCols.map(() => monthW)];
+    const widths = [...fixedWidths, ...activeCols.map(() => '*')];
 
     // Fila de encabezado
     const thStyle = { bold: true, fontSize: 7, color: '#FFFFFF', fillColor: '#2D5F8A', alignment: 'center' };
@@ -816,7 +823,7 @@ export class PresupuestoComponent implements OnInit {
       { text: 'PROYECTO',         ...thStyle },
       { text: 'CLASIFICACION',    ...thStyle },
       { text: 'SUBCLASIFICACION', ...thStyle },
-      ...mesesCols.map(m => ({ text: m.label.toUpperCase(), ...thStyle }))
+      ...activeCols.map(m => ({ text: m.label.toUpperCase(), ...thStyle }))
     ];
 
     // Filas de datos + totales por mes
@@ -826,7 +833,7 @@ export class PresupuestoComponent implements OnInit {
       const clasificacion   = parent ? parent.nombre : '';
       const subclasificacion = l.cuenta_nombre || l.descripcion || '';
 
-      const monthCells = mesesCols.map((m, i) => {
+      const monthCells = activeCols.map((m, i) => {
         const mm = mesMap.get(l.id as number);
         const amount = mm?.get(`${m.anio}-${m.num}`) ?? 0;
         monthTotals[i] += amount;
@@ -847,20 +854,24 @@ export class PresupuestoComponent implements OnInit {
     const monthAccum = monthTotals.map(t => { running += t; return running; });
     const grandTotal = running;
 
+    // Usar Array.from para generar objetos independientes: Array(n).fill({}) reutiliza
+    // la misma referencia y pdfmake falla al asignar _calcWidth en cada celda.
+    const ph = (n: number) => Array.from({ length: n }, () => ({}));
     const empty = (n: number) =>
-      Array(n).fill({ text: '', border: [false, false, false, false] });
+      Array.from({ length: n }, () => ({ text: '', border: [false, false, false, false] }));
 
     const makeLabelRow = (label: string, values: number[], fillColor = '#D9E1F2') => [
       { text: label, colSpan: nFixed, alignment: 'right', bold: true, fontSize: 7, fillColor },
-      ...Array(nFixed - 1).fill({}),
+      ...ph(nFixed - 1),
       ...values.map(v => ({ text: fmt(v), fontSize: 7, bold: true, alignment: 'right', fillColor }))
     ];
 
+    // Label ocupa nFixed cols, total ocupa nMeses cols — suma exacta = totalCols
     const makeTotalRow = (label: string, total: number, fillColor = '#FFD700') => [
-      { text: label, colSpan: nFixed + 1, alignment: 'right', bold: true, fontSize: 8, fillColor },
-      ...Array(nFixed).fill({}),
-      { text: fmt(total), fontSize: 8, bold: true, alignment: 'right', fillColor, colSpan: nMeses - 1 > 0 ? nMeses - 1 : 1 },
-      ...Array(Math.max(0, nMeses - 2)).fill({})
+      { text: label, colSpan: nFixed, alignment: 'right', bold: true, fontSize: 7, fillColor },
+      ...ph(nFixed - 1),
+      { text: fmt(total), colSpan: nMeses, fontSize: 7, bold: true, alignment: 'right', fillColor },
+      ...ph(nMeses - 1)
     ];
 
     const body = [
@@ -876,7 +887,7 @@ export class PresupuestoComponent implements OnInit {
         { text: '', style: 'td' },
         { text: 'Ingreso', style: 'td' },
         { text: 'Facturación Mensual', style: 'td' },
-        ...mesesCols.map(() => ({ text: '', style: 'td' }))
+        ...activeCols.map(() => ({ text: '', style: 'td' }))
       ],
       makeLabelRow('Acumulado $', new Array(nMeses).fill(0), '#D9E1F2'),
       empty(totalCols),
@@ -886,8 +897,7 @@ export class PresupuestoComponent implements OnInit {
     ];
 
     return {
-      pageSize: 'TABLOID',
-      pageOrientation: 'landscape',
+      pageSize: { width: PAGE_W, height: 792 },  // TABLOID landscape explícito (evita lookup por string)
       pageMargins: [20, 65, 20, 20],
       header: this.buildPresupuestoPdfHeader(logoBase64, p),
       content: [{

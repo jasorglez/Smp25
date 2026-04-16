@@ -448,10 +448,13 @@ export class ReporteOperativoSinIvaComponent {
               ),
             ),
           ]);
+          const isCash = cuenta.cash === true;
+          const corte  = (resCorte  as any)?.data?.saldoInicial ?? 0;
+          const actual = (resActual as any)?.data?.saldoInicial ?? 0;
           return {
             concepto: cuenta.nameAccount || '',
-            importeCorte: (resCorte as any)?.data?.saldoInicial ?? 0,
-            importeActual: (resActual as any)?.data?.saldoInicial ?? 0,
+            importeCorte: isCash ? Math.abs(corte)  : corte,
+            importeActual: isCash ? Math.abs(actual) : actual,
           };
         } catch {
           return {

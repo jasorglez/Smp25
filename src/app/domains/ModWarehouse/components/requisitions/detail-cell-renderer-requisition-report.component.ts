@@ -144,9 +144,7 @@ export class DetailCellRendererRequisitionReportComponent {
         ? await this.base64EncodeService.convertImageToBase64(companyData.picture)
         : '';
 
-      const watermarkBase64 = companyData?.picture3
-        ? await this.base64EncodeService.convertImageToBase64(companyData.picture3)
-        : null;
+      const watermarkBase64 = null;
 
       // Artículos de la requisición
       let articulos: any[] = [];
