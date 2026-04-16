@@ -174,7 +174,13 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           const uniqueClientIds = [...new Set(detallesDePedido.map((d: any) => d.idCliente).filter(Boolean))];
           const clientesLabel = uniqueClientIds.length;
 
-          return { ...pedido, clientesLabel, detailData: [], visible: true };
+          // Total (nivel 1) = suma de la columna "venta" de todos los detalles del pedido (nivel 2)
+          const totalVenta = detallesDePedido.reduce((sum: number, d: any) => sum + (Number(d?.venta) || 0), 0);
+
+          // Número de artículos (cantidad de detalles)
+          const numArticulos = detallesDePedido.length;
+
+          return { ...pedido, total: totalVenta, clientesLabel, numArticulos, detailData: [], visible: true };
         });
 
         queueMicrotask(() => {
@@ -226,6 +232,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           },
           updateCount: (idPedido: number, count: number) => {
             this.updatePedidoNumArticulos(idPedido, count);
+          },
+          updateTotalVenta: (idPedido: number, totalVenta: number) => {
+            this.updatePedidoTotalVenta(idPedido, totalVenta);
           }
         }
       }
@@ -259,7 +268,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         field: 'itemsBtn',
         headerName: 'Items',
         editable: false,
-        width: 90,
+        minWidth: 100,
         cellRenderer: ButtonCellRendererExpenditureComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleDetalleClientes(node),
@@ -272,7 +281,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         field: 'pdfReport',
         headerName: 'PDF',
         editable: false,
-        width: 70,
+        minWidth: 80,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleDetallePdf(node),
@@ -286,7 +295,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         field: 'pdfTicket',
         headerName: 'Ticket',
         editable: false,
-        width: 70,
+        minWidth: 90,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.generateTicketPDF(node),
@@ -300,7 +309,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         field: 'pdfTicketCliente',
         headerName: 'T.Cliente',
         editable: false,
-        width: 80,
+        minWidth: 110,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.openClienteModal(node),
@@ -319,7 +328,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       filterParams: {
         defaultToNothingSelected: true,
       },
-        minWidth: 120,
+        minWidth: 130,
       },
       {
         field: 'fecha',
@@ -330,7 +339,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       filterParams: {
         defaultToNothingSelected: true,
       },
-        minWidth: 120,
+        minWidth: 130,
         valueFormatter: (params) => {
           if (!params.value) return '';
           const date = new Date(params.value);
@@ -339,9 +348,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       },
       {
         field: 'numArticulos',
-        headerName: 'Número Materiales',
+        headerName: 'Articulos',
         editable: false,
-        width: 140,
+        minWidth: 110,
         cellRenderer: NumArticulosRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
@@ -359,7 +368,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         field: 'total',
         headerName: 'Total',
         editable: false,
-        width: 130,
+        minWidth: 100,
         valueFormatter: (params) => {
           if (params.value) {
             return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value);
@@ -369,10 +378,21 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#d4edda', fontWeight: 'bold' }
       },
       {
+        field: 'banco',
+        headerName: 'Banco',
+        editable: false,
+        minWidth: 120,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          defaultToNothingSelected: true,
+        },
+        cellStyle: { backgroundColor: '#f0f0f0' }
+      },
+      {
         colId: 'totalPagarBanco',
         headerName: 'Total banco',
         editable: false,
-        width: 170,
+        minWidth: 120,
         valueGetter: (params) => params.data?.totalPagarBanco ?? params.data?.total ?? 0,
         valueFormatter: (params) => {
           const value = params.value ?? 0;
@@ -391,7 +411,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         field: 'active',
         headerName: 'Activo',
         editable: true,
-        width: 100,
+        minWidth: 100,
         cellRenderer: (params: ICellRendererParams) => {
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
@@ -475,6 +495,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           fecha: row.fecha,
           comentario: row.comentario,
           active: row.active,
+          banco: row.banco,
+          totalPagarBanco: row.totalPagarBanco,
         };
         await lastValueFrom(this.pedidosService.createPedido(dataToSend));
       }
@@ -487,6 +509,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           fecha: row.fecha,
           comentario: row.comentario,
           active: row.active,
+          banco: row.banco,
+          totalPagarBanco: row.totalPagarBanco,
         };
         await lastValueFrom(this.pedidosService.updatePedido(row.id, dataToSend));
       }
@@ -670,6 +694,20 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         }
       });
     }
+  }
+
+  private updatePedidoTotalVenta(idPedido: number, totalVenta: number) {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node: any) => {
+      if (node.data && node.data.id === idPedido) {
+        node.data.total = totalVenta;
+        this.gridApi.refreshCells({
+          rowNodes: [node],
+          columns: ['total', 'totalPagarBanco'],
+          force: true,
+        });
+      }
+    });
   }
 
   private loadDetallesData(idPedido: number, successCallback: any) {

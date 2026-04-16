@@ -9,6 +9,8 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
+import { AdministrationService } from 'app/services/administration.service';
+import { PedidosService } from 'app/services/pedidos.service';
 import { lastValueFrom } from 'rxjs';
 import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -29,6 +31,8 @@ export class DetallesPedidosComponent implements OnInit {
   private customersService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
   private catalogadmonService = inject(CatalogadmonService);
+  private administrationService = inject(AdministrationService);
+  private pedidosService = inject(PedidosService);
   private sanitizer = inject(DomSanitizer);
 
   rowData: any[] = [];
@@ -48,6 +52,14 @@ export class DetallesPedidosComponent implements OnInit {
   showPlataformaModal: boolean = false;
   newPlataforma: any = {};
 
+  // Modal Banco
+  showBancoModal: boolean = false;
+  selectedBanco: string = '';
+  totalBanco: number | null = null;
+  bancos: any[] = [];
+  hasBancoInfo: boolean = false;
+  bancoModalTitle: string = 'Agregar Total Banco';
+
   /** Enter visto en captura (popup Rich Select no dispara cellKeyDown del grid) */
   private sawEnterDuringEdit = false;
   private enterCapture?: (ev: KeyboardEvent) => void;
@@ -59,9 +71,8 @@ export class DetallesPedidosComponent implements OnInit {
   private readonly NEXT_EDIT_COL: Record<string, string> = {
     'clienteName': 'producto',
     'producto':    'cantidad',
-    'cantidad':    'costo',
-    'plataforma':  'costo',
-    'costo':       'venta',
+    'cantidad':    'venta',
+    'plataforma':  'venta',
     'venta':       'impuesto',
     'impuesto':    'estado',
     'estado':      'comentario'
@@ -71,6 +82,7 @@ export class DetallesPedidosComponent implements OnInit {
 
   ngOnInit() {
     this.loadData();
+    this.loadBancos();
   }
 
   agInit(params: ICellRendererParams): void {
@@ -79,12 +91,17 @@ export class DetallesPedidosComponent implements OnInit {
     this.isLocked = params.data?.locked === true;
     this.detailType = params.data?.detailType || 'pedidos';
 
+    // Detectar si ya tiene banco e información
+    this.hasBancoInfo = !!(params.data?.banco || params.data?.totalPagarBanco);
+    this.bancoModalTitle = this.hasBancoInfo ? 'Editar Total Banco' : 'Agregar Total Banco';
+
     if (this.detailType === 'pdf') {
       this.generateReport();
     } else {
       this.loadClientes();
       this.loadProductos();
       this.loadPlataformas();
+      this.loadBancos();
       this.loadData();
       this.loadProductoSuggestions();
     }
@@ -190,6 +207,18 @@ export class DetallesPedidosComponent implements OnInit {
     }
   }
 
+  private loadBancos() {
+    this.administrationService.getBanks().subscribe({
+      next: (data: any) => {
+        this.bancos = data?.Bankdata || data || [];
+      },
+      error: (error) => {
+        console.error('Error loading bancos:', error);
+        this.bancos = [];
+      }
+    });
+  }
+
   loadData() {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const pedidoId = this.params.data.id;
@@ -203,6 +232,7 @@ export class DetallesPedidosComponent implements OnInit {
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
+        this.notifyTotalVentaToParent();
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
           this.context.CONCEPTS.updateCount(pedidoId, this.rowData.length);
         }
@@ -316,6 +346,7 @@ get colDefs(): ColDef[] {
         headerName: 'Costo',
         editable: () => !this.isLocked,
         width: 100,
+        hide: true,
         type: 'numericColumn',
         valueFormatter: (params) => {
           if (params.value) {
@@ -559,6 +590,7 @@ get colDefs(): ColDef[] {
     this.rowData = [...this.rowData, newItem];
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
+    this.notifyTotalVentaToParent();
 
     setTimeout(() => {
       const lastRowIndex = this.rowData.length - 1;
@@ -589,6 +621,7 @@ get colDefs(): ColDef[] {
         this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
         this.gridApi.setGridOption('rowData', this.rowData);
         this.hasUnsavedChanges = true;
+        this.notifyTotalVentaToParent();
       }, newCount);
     }
   }
@@ -696,6 +729,9 @@ get colDefs(): ColDef[] {
     this.hasUnsavedChanges = true;
 
     const col = event.column?.getColId?.() ?? event.colDef?.field;
+    if (col === 'venta') {
+      this.notifyTotalVentaToParent();
+    }
     if ((col === 'venta' || col === 'cantidad') && event.data.aplicaimpuestos) {
       const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
       const venta = parseFloat(event.data.venta) || 0;
@@ -704,6 +740,15 @@ get colDefs(): ColDef[] {
       if (this.gridApi) {
         this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['impuesto', 'total'], force: true });
       }
+    }
+  }
+
+  private notifyTotalVentaToParent(): void {
+    const pedidoId = this.params?.data?.id;
+    if (!pedidoId) return;
+    const sumVenta = (this.rowData || []).reduce((sum, r) => sum + (Number(r?.venta) || 0), 0);
+    if (this.context?.CONCEPTS?.updateTotalVenta) {
+      this.context.CONCEPTS.updateTotalVenta(pedidoId, sumVenta);
     }
   }
 
@@ -758,5 +803,72 @@ get colDefs(): ColDef[] {
   onPlataformaCreated(plataformaData: { id: number; description: string }) {
     this.plataformas = [...this.plataformas, { id: plataformaData.id, description: plataformaData.description }];
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+  }
+
+  openBancoModal() {
+    this.showBancoModal = true;
+    // Si ya tiene banco, precargar los valores para editar
+    if (this.hasBancoInfo) {
+      this.selectedBanco = this.params?.data?.banco || '';
+      this.totalBanco = this.params?.data?.totalPagarBanco || null;
+    } else {
+      this.selectedBanco = '';
+      this.totalBanco = null;
+    }
+    document.body.classList.add('modal-open');
+  }
+
+  closeBancoModal() {
+    this.showBancoModal = false;
+    this.selectedBanco = '';
+    this.totalBanco = null;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveBancoTotal() {
+    if (!this.selectedBanco || !this.totalBanco) {
+      alerts.basicAlert('Error', 'Selecciona un banco e ingresa el total.', 'error');
+      return;
+    }
+
+    try {
+      // Preparar datos para guardar en BD
+      const pedidoId = this.params?.data?.id;
+      if (!pedidoId) {
+        alerts.basicAlert('Error', 'No se encontró el ID del pedido', 'error');
+        return;
+      }
+
+      const dataToSend = {
+        id: pedidoId,
+        idCompany: this.params.data.idCompany,
+        numero: this.params.data.numero,
+        fecha: this.params.data.fecha,
+        comentario: this.params.data.comentario,
+        active: this.params.data.active,
+        banco: this.selectedBanco,
+        totalPagarBanco: this.totalBanco,
+      };
+
+      // Guardar en BD
+      await lastValueFrom(this.pedidosService.updatePedido(pedidoId, dataToSend));
+
+      // Actualizar la fila en memoria
+      if (this.params && this.params.data) {
+        this.params.data.banco = this.selectedBanco;
+        this.params.data.totalPagarBanco = this.totalBanco;
+
+        // Refrescar la fila en el grid
+        if (this.context?.gridApi) {
+          this.context.gridApi.refreshCells({ rowNodes: [this.params.node], force: true });
+        }
+      }
+
+      alerts.basicAlert('Éxito', `Total de $${this.totalBanco} agregado para ${this.selectedBanco}`, 'success');
+      this.closeBancoModal();
+    } catch (error) {
+      console.error('Error guardando banco y total:', error);
+      alerts.basicAlert('Error', 'No se pudieron guardar los datos', 'error');
+    }
   }
 }
