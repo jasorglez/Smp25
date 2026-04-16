@@ -1,10 +1,12 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { PreparacionService } from 'app/services/preparacion.service';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-historial-jarabe',
@@ -62,6 +64,7 @@ import { alerts } from 'app/helpers/alerts';
   `]
 })
 export class HistorialJarabeComponent implements OnInit, OnChanges {
+  private preparacionService = inject(PreparacionService);
 
   @Input() params: any;
   private internalParams: any;
@@ -345,15 +348,20 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
 
     if (!result.isConfirmed) return;
 
-    this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
-    this.originalRowData = this.originalRowData.filter(item => item.id !== selectedItem.id);
-    this.gridApi.setGridOption('rowData', this.rowData);
-    this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
-
-    alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+    try {
+      await lastValueFrom(this.preparacionService.deleteHistorial(selectedItem.id));
+      this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+      this.originalRowData = this.originalRowData.filter(item => item.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
+      this.updateParentCount();
+      alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+    } catch (error) {
+      alerts.basicAlert('Error', 'Ocurrió un error al eliminar el registro.', 'error');
+    }
   }
 
-  saveChanges() {
+  async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
     const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
 
@@ -362,20 +370,64 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.rowData.forEach(item => {
-      if (item.__isNew || item.__modified) {
+    const idPreparacion = this.internalParams?.data?.id;
+
+    try {
+      for (const item of newItems) {
+        const payload = {
+          idPreparacion,
+          fechaSalida: item.fechaSalida || null,
+          quienUs: item.quienUso,
+          cantidadSalida: item.cantidadSalida,
+          cantidadExistencia: item.cantidadExistencia,
+          loteProductoUso: item.loteProductoUso,
+          nombreIngreso: item.nombreIngreso,
+          numeroReporte: item.numeroReporte,
+          adicional: item.adicional
+        };
+        const created = await lastValueFrom(this.preparacionService.createHistorial(payload));
+        item.id = created.id;
         item.__isNew = false;
         item.__modified = false;
         item.saved = true;
       }
-    });
 
-    this.hasUnsavedChanges = false;
-    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-    this.gridApi.redrawRows();
+      for (const item of modifiedItems) {
+        const payload = {
+          idPreparacion,
+          fechaSalida: item.fechaSalida || null,
+          quienUs: item.quienUso,
+          cantidadSalida: item.cantidadSalida,
+          cantidadExistencia: item.cantidadExistencia,
+          loteProductoUso: item.loteProductoUso,
+          nombreIngreso: item.nombreIngreso,
+          numeroReporte: item.numeroReporte,
+          adicional: item.adicional
+        };
+        await lastValueFrom(this.preparacionService.updateHistorial(item.id, payload));
+        item.__modified = false;
+        item.saved = true;
+      }
 
-    const totalSaved = newItems.length + modifiedItems.length;
-    alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} item(s) exitosamente.`, 'success');
+      this.hasUnsavedChanges = false;
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.gridApi.redrawRows();
+      this.updateParentCount();
+
+      const totalSaved = newItems.length + modifiedItems.length;
+      alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} registro(s) exitosamente.`, 'success');
+    } catch (error) {
+      alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios.', 'error');
+    }
+  }
+
+  private updateParentCount() {
+    if (this.internalParams?.node) {
+      this.internalParams.node.data.historialGastos = this.rowData.length;
+      if (this.internalParams.api) {
+        this.internalParams.api.refreshCells({ rowNodes: [this.internalParams.node], force: true });
+      }
+    }
   }
 
   discardChanges() {

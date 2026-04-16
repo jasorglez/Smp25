@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -6,6 +6,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { ParametrosComponent } from './parametros.component';
+import { PreparacionService } from 'app/services/preparacion.service';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detalle-jarabe',
@@ -63,6 +65,8 @@ import { ParametrosComponent } from './parametros.component';
   `]
 })
 export class DetalleJarabeComponent implements OnInit, OnChanges {
+  private preparacionService = inject(PreparacionService);
+
   @Input() params: any;
   private internalParams: any;
   private gridApi!: GridApi;
@@ -273,15 +277,20 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
 
     if (!result.isConfirmed) return;
 
-    this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
-    this.originalRowData = this.originalRowData.filter(item => item.id !== selectedItem.id);
-    this.gridApi.setGridOption('rowData', this.rowData);
-    this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
-
-    alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+    try {
+      await lastValueFrom(this.preparacionService.deleteDetalle(selectedItem.id));
+      this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+      this.originalRowData = this.originalRowData.filter(item => item.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
+      this.updateParentCount();
+      alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+    } catch (error) {
+      alerts.basicAlert('Error', 'Ocurrió un error al eliminar el item.', 'error');
+    }
   }
 
-  saveChanges() {
+  async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
     const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
 
@@ -299,20 +308,44 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.rowData.forEach(item => {
-      if (item.__isNew || item.__modified) {
+    const idPreparacion = this.internalParams?.data?.id;
+
+    try {
+      for (const item of newItems) {
+        const payload = { idPreparacion, ingrediente: item.ingrediente, prep: item.prep, correccion: item.coreccion };
+        const created = await lastValueFrom(this.preparacionService.createDetalle(payload));
+        item.id = created.id;
         item.__isNew = false;
         item.__modified = false;
         item.saved = true;
       }
-    });
 
-    this.hasUnsavedChanges = false;
-    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-    this.gridApi.redrawRows();
+      for (const item of modifiedItems) {
+        const payload = { idPreparacion, ingrediente: item.ingrediente, prep: item.prep, correccion: item.coreccion };
+        await lastValueFrom(this.preparacionService.updateDetalle(item.id, payload));
+        item.__modified = false;
+        item.saved = true;
+      }
 
-    const totalSaved = newItems.length + modifiedItems.length;
-    alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} item(s) exitosamente.`, 'success');
+      this.hasUnsavedChanges = false;
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.gridApi.redrawRows();
+      this.updateParentCount();
+
+      const totalSaved = newItems.length + modifiedItems.length;
+      alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} item(s) exitosamente.`, 'success');
+    } catch (error) {
+      alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios.', 'error');
+    }
+  }
+
+  private updateParentCount() {
+    if (this.internalParams?.node) {
+      this.internalParams.node.data.preparacion = this.rowData.length;
+      if (this.internalParams.api) {
+        this.internalParams.api.refreshCells({ rowNodes: [this.internalParams.node], force: true });
+      }
+    }
   }
 
   discardChanges() {
