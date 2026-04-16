@@ -21,17 +21,13 @@
         <button type="button" class="btn btn-danger ms-1 me-1" (click)="generateAllPedidosPDF()" title="Reporte General PDF (todos los pedidos)">
           <i class="bi bi-file-earmark-pdf-fill"></i>
         </button>
-        <!-- Impuesto % por defecto para nuevos ítems -->
-        <div class="ms-1 me-1 mt-1" style="width: 46px;">
-          <label class="form-label text-center d-block mb-0" style="font-size:9px; color:#555; line-height:1.2;">
-            Imp.%
-          </label>
-          <input type="number" class="form-control form-control-sm text-center p-1"
-            [(ngModel)]="defaultImpuesto"
-            min="0" max="100" step="1"
-            title="Impuesto % por defecto al agregar ítems"
-            style="font-size:11px; height:28px;">
-        </div>
+        <!-- Botón Impuesto % -->
+        <button type="button" class="btn btn-secondary ms-1 me-1 mt-1"
+          (click)="openImpuestoModal()"
+          title="Editar impuesto del pedido"
+          style="width: 46px; padding: 0;">
+          <i class="bi bi-percent"></i>
+        </button>
       </div>
     </div>
     <!-- Grid del lado derecho -->
@@ -101,6 +97,30 @@
         </button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Modal Impuesto -->
+<div class="modal" tabindex="-1" [style.display]="showImpuestoModal ? 'block' : 'none'" style="background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Impuesto %</h5>
+        <button type="button" class="btn-close" (click)="closeImpuestoModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Ingresa el Impuesto % *</label>
+          <input type="number" class="form-control" [(ngModel)]="impuestoTemp"
+            min="0" max="100" step="0.01" placeholder="0.00">
+          <small class="form-text text-muted">Valor entre 0 y 100</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeImpuestoModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveImpuesto()">Guardar</button>
+      </div>
     </div>
   </div>
 </div>

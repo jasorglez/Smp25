@@ -68,6 +68,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   clienteModalPedido: any = null;
   private clienteModalDetalles: any[] = [];
 
+  // Modal Impuesto
+  showImpuestoModal: boolean = false;
+  impuestoTemp: number | null = null;
+
   private gridApi: GridApi;
   private _colMaster: ColDef[] = [];
   private clientesList: any[] = [];
@@ -180,7 +184,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           // Número de artículos (cantidad de detalles)
           const numArticulos = detallesDePedido.length;
 
-          return { ...pedido, total: totalVenta, clientesLabel, numArticulos, detailData: [], visible: true };
+          return { ...pedido, total: totalVenta, clientesLabel, numArticulos, impuesto: pedido.impuesto || 16, detailData: [], visible: true };
         });
 
         queueMicrotask(() => {
@@ -245,8 +249,77 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      // Actualizar defaultImpuesto con el valor del pedido seleccionado
+      this.defaultImpuesto = this.selectedRowData?.impuesto || 16;
     } else {
       this.selectedRowData = null;
+      this.defaultImpuesto = 16; // Restaurar valor por defecto
+    }
+  }
+
+  onImpuestoChanged() {
+    if (this.selectedRowData) {
+      this.selectedRowData.impuesto = this.defaultImpuesto;
+      this.selectedRowData.__modified = true;
+      this.hasUnsavedChanges = true;
+      // Refrescar la fila en el grid
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [this.gridApi.getRowNode(String(this.selectedRowData.id))], columns: ['impuesto'], force: true });
+      }
+    }
+  }
+
+  openImpuestoModal() {
+    if (!this.selectedRowData) {
+      alerts.basicAlert('Error', 'Selecciona un pedido primero', 'error');
+      return;
+    }
+    this.impuestoTemp = this.selectedRowData.impuesto || 16;
+    this.showImpuestoModal = true;
+  }
+
+  closeImpuestoModal() {
+    this.showImpuestoModal = false;
+    this.impuestoTemp = null;
+  }
+
+  async saveImpuesto() {
+    if (this.impuestoTemp === null || this.impuestoTemp === undefined) {
+      alerts.basicAlert('Error', 'Ingresa un valor de impuesto', 'error');
+      return;
+    }
+
+    try {
+      // Actualizar en la BD
+      const dataToSend = {
+        id: this.selectedRowData.id,
+        idCompany: this.selectedRowData.idCompany,
+        numero: this.selectedRowData.numero,
+        fecha: this.selectedRowData.fecha,
+        comentario: this.selectedRowData.comentario,
+        active: this.selectedRowData.active,
+        banco: this.selectedRowData.banco,
+        totalPagarBanco: this.selectedRowData.totalPagarBanco,
+        impuesto: this.impuestoTemp,
+      };
+
+      await lastValueFrom(this.pedidosService.updatePedido(this.selectedRowData.id, dataToSend));
+
+      // Actualizar en la tabla
+      this.selectedRowData.impuesto = this.impuestoTemp;
+      this.defaultImpuesto = this.impuestoTemp;
+      this.selectedRowData.__modified = false;
+
+      // Refrescar la fila
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [this.gridApi.getRowNode(String(this.selectedRowData.id))], columns: ['impuesto'], force: true });
+      }
+
+      alerts.basicAlert('Éxito', `Impuesto actualizado a ${this.impuestoTemp}%`, 'success');
+      this.closeImpuestoModal();
+    } catch (error) {
+      console.error('Error guardando impuesto:', error);
+      alerts.basicAlert('Error', 'No se pudo guardar el impuesto', 'error');
     }
   }
 
@@ -376,6 +449,22 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           return '$0.00';
         },
         cellStyle: { backgroundColor: '#d4edda', fontWeight: 'bold' }
+      },
+      {
+        field: 'impuesto',
+        headerName: 'Imp. %',
+        editable: true,
+        minWidth: 80,
+        type: 'numericColumn',
+        cellStyle: { backgroundColor: '#fff9e6' },
+        valueFormatter: (params) => {
+          return params.value ? params.value.toFixed(2) + '%' : '0.00%';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          params.data.impuesto = isNaN(val) ? 16 : val;
+          return true;
+        }
       },
       {
         field: 'banco',
@@ -511,6 +600,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           active: row.active,
           banco: row.banco,
           totalPagarBanco: row.totalPagarBanco,
+          impuesto: row.impuesto,
         };
         await lastValueFrom(this.pedidosService.updatePedido(row.id, dataToSend));
       }

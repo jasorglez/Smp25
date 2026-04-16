@@ -39,8 +39,8 @@ export const environment = {
   urlWarehouse: 'https://endpoints.biapp.com.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  //urlAdministration: 'https://endpoints.biapp.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
-  urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://endpoints.biapp.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
   urlNotifications: 'https://endpoints.biapp.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
