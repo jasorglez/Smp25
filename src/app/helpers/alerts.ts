@@ -389,4 +389,21 @@ export class alerts{
 		});
 	}
 
+	/** Toast minimalista para errores en Preparación (auto-cierre). */
+	static preparacionErrorToast(text: string, durationMs: number = 3500) {
+		return Swal.fire({
+			icon: 'error',
+			text,
+			toast: true,
+			position: 'top-end',
+			timer: durationMs,
+			timerProgressBar: false,
+			showConfirmButton: false,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'preparacion-error-toast'
+			}
+		});
+	}
+
 }

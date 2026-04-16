@@ -102,22 +102,42 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
   }
 
   loadData(): void {
-    if (!this.internalParams || this.dataLoaded) return;
-    
-    const historialData = this.internalParams?.data?.historialData || [];
-    this.rowData = historialData.map((item: any, index: number) => ({
-      ...item,
-      id: item.id || `temp_${Date.now()}_${index}`,
-      __isNew: item.__isNew || false,
-      __modified: item.__modified || false,
-      saved: item.saved !== false
-    }));
-    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-    this.dataLoaded = true;
+    if (!this.internalParams) return;
 
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-      this.gridApi.redrawRows();
+    const idPreparacion = this.internalParams?.data?.id;
+    if (!idPreparacion || typeof idPreparacion === 'string') return;
+
+    // Cargar directamente desde la API
+    this.loadFromServer(idPreparacion);
+  }
+
+  private async loadFromServer(idPreparacion: number): Promise<void> {
+    try {
+      const historial = await lastValueFrom(this.preparacionService.getHistorial(idPreparacion));
+      this.rowData = historial.map((item: any) => ({
+        id: item.id,
+        idPreparacion: item.idPreparacion,
+        fechaSalida: item.fechaSalida || '',
+        quienUso: item.quienUs || '',
+        cantidadSalida: item.cantidadSalida || 0,
+        cantidadExistencia: item.cantidadExistencia || 0,
+        loteProductoUso: item.loteProductoUso || '',
+        nombreIngreso: item.nombreIngreso || '',
+        numeroReporte: item.numeroReporte || '',
+        adicional: item.adicional || '',
+        __isNew: false,
+        __modified: false
+      }));
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.dataLoaded = true;
+
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.redrawRows();
+      }
+    } catch (error) {
+      console.error('Error loading historial:', error);
+      this.dataLoaded = true;
     }
   }
 
@@ -356,8 +376,20 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
       this.updateParentCount();
       alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
-    } catch (error) {
-      alerts.basicAlert('Error', 'Ocurrió un error al eliminar el registro.', 'error');
+    } catch (error: any) {
+      // Extract error message from backend response
+      let errorMessage = 'Ocurrió un error al eliminar el registro.';
+
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.error) {
+        errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Show minimal toast error notification
+      alerts.preparacionErrorToast(errorMessage);
     }
   }
 
@@ -371,6 +403,12 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
     }
 
     const idPreparacion = this.internalParams?.data?.id;
+
+    // Validar que el ID sea un número real, no temporal
+    if (!idPreparacion || typeof idPreparacion === 'string') {
+      alerts.basicAlert('Error', 'Debe guardar el registro principal antes de agregar historial.', 'warning');
+      return;
+    }
 
     try {
       for (const item of newItems) {
@@ -410,9 +448,10 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       }
 
       this.hasUnsavedChanges = false;
-      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-      this.gridApi.redrawRows();
       this.updateParentCount();
+
+      // Recargar datos desde el servidor
+      await this.reloadFromServer(idPreparacion);
 
       const totalSaved = newItems.length + modifiedItems.length;
       alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} registro(s) exitosamente.`, 'success');
@@ -427,6 +466,37 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       if (this.internalParams.api) {
         this.internalParams.api.refreshCells({ rowNodes: [this.internalParams.node], force: true });
       }
+    }
+  }
+
+  private async reloadFromServer(idPreparacion: number) {
+    try {
+      const historial = await lastValueFrom(this.preparacionService.getHistorial(idPreparacion));
+      this.rowData = historial.map((item: any) => ({
+        id: item.id,
+        idPreparacion: item.idPreparacion,
+        fechaSalida: item.fechaSalida || '',
+        quienUso: item.quienUs || '',
+        cantidadSalida: item.cantidadSalida || 0,
+        cantidadExistencia: item.cantidadExistencia || 0,
+        loteProductoUso: item.loteProductoUso || '',
+        nombreIngreso: item.nombreIngreso || '',
+        numeroReporte: item.numeroReporte || '',
+        adicional: item.adicional || '',
+        __isNew: false,
+        __modified: false
+      }));
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.redrawRows();
+      }
+
+      // Actualizar el contador en el padre
+      this.updateParentCount();
+    } catch (error) {
+      console.error('Error reloading historial:', error);
     }
   }
 

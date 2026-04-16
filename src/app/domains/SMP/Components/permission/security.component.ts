@@ -5,7 +5,7 @@ import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, SelectionChangedE
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { MaterialIconPickerCellEditorComponent } from './material-icon-picker-cell-editor.component';
-import { SecurityDetailsComponent } from './security-details.component';
+import { SecurityMenusComponent } from './security-menus.component';
 
 /** Material Icons disponibles en el select de la columna «Icono». */
 const ICONOS_MATERIAL_OPCIONES: string[] = [
@@ -45,7 +45,7 @@ const ICONOS_MATERIAL_OPCIONES: string[] = [
 @Component({
   selector: 'app-security',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, MaterialIconPickerCellEditorComponent, SecurityDetailsComponent],
+  imports: [CommonModule, AgGridAngular, MaterialIconPickerCellEditorComponent, SecurityMenusComponent],
   templateUrl: './security.component.html',
   styleUrl: './security.component.scss',
 })
@@ -60,7 +60,7 @@ export class SecurityComponent implements OnInit {
   private gridApi!: GridApi;
   private tempId = 0;
 
-  /** Orden al pulsar Enter: de nombre de la sección hasta activo (detalles es solo enlace). */
+  /** Orden al pulsar Enter: de nombre de la sección hasta activo (menus es solo enlace). */
   private readonly enterNavEditableColumns = ['nombreSeccion', 'ruta', 'icono', 'activo'];
   private enterKeyAdvanceNextColumn = false;
 
@@ -129,15 +129,15 @@ export class SecurityComponent implements OnInit {
       },
     },
     {
-      field: 'detalles',
-      headerName: 'Detalles',
+      field: 'menus',
+      headerName: 'Menus',
       flex: 1.2,
       minWidth: 140,
       editable: false,
       sortable: false,
       filter: false,
       cellRenderer: () =>
-        `<span class="security-ver-detalles-link">Ver detalles</span>`,
+        `<span class="security-ver-menus-link">Ver menus</span>`,
     },
     {
       field: 'activo',
@@ -156,9 +156,11 @@ export class SecurityComponent implements OnInit {
     animateRows: true,
     suppressCellFocus: false,
     rowSelection: 'single' as const,
+    popupParent: typeof document !== 'undefined' ? document.body : undefined,
     masterDetail: true,
-    detailRowHeight: 220,
-    detailCellRenderer: SecurityDetailsComponent,
+    // Debe ser suficientemente alto para contener el 2º y 3er nivel sin “aplastarse”.
+    detailRowHeight: 520,
+    detailCellRenderer: SecurityMenusComponent,
     detailCellRendererParams: {
       context: { componentParent: this },
     },
@@ -201,7 +203,7 @@ export class SecurityComponent implements OnInit {
   }
 
   onCellClicked(event: any): void {
-    if (event?.column?.getColId?.() !== 'detalles') return;
+    if (event?.column?.getColId?.() !== 'menus') return;
     const isExpanding = !event.node.expanded;
     event.node.setExpanded(isExpanding);
 
@@ -219,10 +221,10 @@ export class SecurityComponent implements OnInit {
     }
   }
 
-  /** Llamado desde el panel de detalle para marcar cambios. */
+  /** Llamado desde el 2º nivel para marcar cambios (solo memoria). */
   markChangesFromDetail(): void {
     this.tieneCambiosPendientes = true;
-    // refrescar la celda “Detalles” si hiciera falta (texto fijo, pero mantiene patrón)
+    // refrescar la celda “Menus” si hiciera falta (texto fijo, pero mantiene patrón)
     this.gridApi?.refreshCells({ force: true });
   }
 
@@ -233,7 +235,7 @@ export class SecurityComponent implements OnInit {
       nombreSeccion: '',
       ruta: '',
       icono: 'shield',
-      detalles: '',
+      menus: [],
       activo: true,
     };
     this.rowData = [nueva, ...this.rowData];
@@ -293,7 +295,33 @@ export class SecurityComponent implements OnInit {
         nombreSeccion: 'Acceso general',
         ruta: '/security/general',
         icono: 'verified_user',
-        detalles: 'Configuración de ejemplo (solo frontend)',
+        menus: [
+          {
+            id: 1,
+            nombreMenu: 'Dashboard',
+            ruta: '/security/general/dashboard',
+            icono: 'dashboard',
+            orden: 1,
+            subdetalle: 0,
+            submenus: [
+              { id: 1, nombreSubmenu: 'Resumen', ruta: '/security/general/dashboard/summary', icono: 'bar_chart', orden: 1, detalles: '', activo: true },
+            ],
+            activo: true,
+          },
+          {
+            id: 2,
+            nombreMenu: 'Usuarios',
+            ruta: '/security/general/users',
+            icono: 'groups',
+            orden: 2,
+            subdetalle: 0,
+            submenus: [
+              { id: 1, nombreSubmenu: 'Listado', ruta: '/security/general/users/list', icono: 'groups', orden: 1, detalles: '', activo: true },
+              { id: 2, nombreSubmenu: 'Roles', ruta: '/security/general/users/roles', icono: 'admin_panel_settings', orden: 2, detalles: '', activo: true },
+            ],
+            activo: true,
+          },
+        ],
         activo: true,
       },
       {
@@ -301,7 +329,20 @@ export class SecurityComponent implements OnInit {
         nombreSeccion: 'Sesiones',
         ruta: '/security/sessions',
         icono: 'lock',
-        detalles: '',
+        menus: [
+          {
+            id: 1,
+            nombreMenu: 'Sesiones activas',
+            ruta: '/security/sessions/active',
+            icono: 'visibility',
+            orden: 1,
+            subdetalle: 0,
+            submenus: [
+              { id: 1, nombreSubmenu: 'Detalle', ruta: '/security/sessions/active/detail', icono: 'visibility', orden: 1, detalles: '', activo: true },
+            ],
+            activo: true,
+          },
+        ],
         activo: true,
       },
     ];
@@ -313,6 +354,27 @@ interface SecurityRow {
   nombreSeccion: string;
   ruta: string;
   icono: string;
+  menus: SecurityMenuRow[];
+  activo: boolean;
+}
+
+export interface SecurityMenuRow {
+  id: number | string;
+  nombreMenu: string;
+  ruta: string;
+  icono: string;
+  orden: number;
+  subdetalle: number;
+  submenus: SecuritySubmenuRow[];
+  activo: boolean;
+}
+
+export interface SecuritySubmenuRow {
+  id: number | string;
+  nombreSubmenu: string;
+  ruta: string;
+  icono: string;
+  orden: number;
   detalles: string;
   activo: boolean;
 }
