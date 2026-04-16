@@ -552,16 +552,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         width: 190,
         cellEditor: 'agSelectCellEditor',
-        onCellValueChanged: (params) => {
-          const newRolId = params.newValue;
-          if (newRolId && newRolId !== params.oldValue) {
-            // Llama al método que recarga las posiciones válidas para ese rol
-            this.getPoscionesbyRole(newRolId);
-          }
-        },
         cellEditorParams: (params) => {
           return {
-            values: this.catalogRoles 
+            values: this.catalogRoles
               ? this.catalogRoles.map(item => item.id)
               : []
           };
@@ -1133,12 +1126,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         width: 190,
         cellEditor: 'agSelectCellEditor',
-        onCellValueChanged: (params) => {
-          const newRolId = params.newValue;
-          if (newRolId && newRolId !== params.oldValue) {
-            this.getPoscionesbyRole(newRolId);
-          }
-        },
         cellEditorParams: (params) => {
           return {
             values: this.catalogRoles
@@ -1605,18 +1592,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       return;
     }
 
-    const isValid = rowsToSave.every(
+    const invalidRow = rowsToSave.find(
       (item) =>
-        item.name &&
-        item.idBranch &&
-        (item.employeeCode || item.email) &&
-        item.idDepto &&
-        item.idPosition
+        !item.name ||
+        !item.idBranch ||
+        !item.idDepto ||
+        !item.idPosition
     );
-    if (!isValid) {
+    if (invalidRow) {
+      const missing: string[] = [];
+      if (!invalidRow.name)       missing.push('Nombre');
+      if (!invalidRow.idBranch)   missing.push('Sucursal');
+      if (!invalidRow.idDepto)    missing.push('Departamento');
+      if (!invalidRow.idPosition) missing.push('Posición');
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar los campos obligatorios antes de guardar.',
+        'Campos incompletos',
+        `Faltan: ${missing.join(', ')}`,
         'error'
       );
       return;

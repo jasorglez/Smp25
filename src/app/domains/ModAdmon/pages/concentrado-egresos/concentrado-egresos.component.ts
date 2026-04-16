@@ -253,10 +253,11 @@ export class ConcentradoEgresosComponent {
         code: c.codigo || c.code || '',
       }));
 
-      // Mapear cuentas bancarias
+      // Mapear cuentas bancarias (preservar cash para filtrar efectivo)
       const accountsArray = Array.isArray(accountsData) ? accountsData : [];
       this.accounts = accountsArray.map((a: any) => ({
         id: a.id,
+        cash: a.cash === true,
         label: a.nameAccount
           ? `${a.nameAccount} - ${a.bankName}`
           : a.number || a.description || '',
@@ -293,8 +294,16 @@ export class ConcentradoEgresosComponent {
       'Diciembre',
     ];
 
-    // Filtrar por rango de fechas
+    // IDs de cuentas de efectivo (cash=true) — se excluyen del concentrado
+    const cashAccountIds = new Set(
+      this.accounts.filter((a) => a.cash).map((a) => a.id)
+    );
+
+    // Filtrar por rango de fechas y excluir cuentas de efectivo
     const filtered = this.egresos.filter((egreso) => {
+      const accountId = egreso.idAccount ?? egreso.id_account;
+      if (cashAccountIds.has(accountId)) return false;
+
       const fechaStr = egreso.date || egreso.dateStamped;
       if (!fechaStr) return false;
 
