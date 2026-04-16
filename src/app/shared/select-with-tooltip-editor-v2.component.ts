@@ -24,8 +24,9 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
     this.selectedValue = params.value;
 
     // Abrir dropdown inmediatamente
-    if (params.eGridCell) {
-      const cellRect = params.eGridCell.getBoundingClientRect();
+    const cellEl: HTMLElement = params.eGridCell || params.eParentOfValue;
+    if (cellEl) {
+      const cellRect = cellEl.getBoundingClientRect();
 
       this.dropdownService.openDropdown(
         cellRect,
@@ -33,19 +34,23 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
         this.selectedValue,
         (value) => {
           // Callback cuando se selecciona una opción
-          // Verificar si hay un callback personalizado para valores especiales
           if (params.onSpecialValue && params.specialValues?.includes(value)) {
             this.shouldCloseOnDestroy = false;
             if (this.params.stopEditing) {
-              this.params.stopEditing(true); // Cancelar sin guardar
+              this.params.stopEditing(true);
             }
-            // Llamar callback personalizado
             params.onSpecialValue(value, this.params);
             return;
           }
 
           this.selectedValue = value;
           this.shouldCloseOnDestroy = false;
+
+          // Actualizar el valor directamente en el nodo aunque el editor ya haya sido
+          // detenido por stopEditingWhenCellsLoseFocus al robar el foco el input de búsqueda
+          if (params.node && params.column) {
+            params.node.setDataValue(params.column.getColId(), value);
+          }
 
           if (this.params.stopEditing) {
             this.params.stopEditing();
@@ -60,8 +65,6 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
         }
       );
 
-      // NO cerrar el dropdown en ngOnDestroy porque AG Grid destruye el componente inmediatamente
-      // El dropdown se cerrará solo cuando el usuario seleccione una opción o haga click fuera
       this.shouldCloseOnDestroy = false;
     }
   }

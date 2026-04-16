@@ -6,10 +6,23 @@
   padding: 8px;
 }
 
-::ng-deep .ag-theme-quartz {
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid {
   --ag-header-height: 30px;
-  --ag-row-height: 28px;
+  --ag-row-height: 30px;
   --ag-font-size: 11px;
+}
+
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-sticky-bottom,
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-sticky-bottom-viewport,
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-sticky-bottom-container,
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-pinned-left-sticky-bottom,
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-pinned-right-sticky-bottom,
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-sticky-bottom-full-width-container {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 ::ng-deep .small-text-ag-grid {
@@ -23,4 +36,10 @@
 
 ::ng-deep .small-text-ag-grid .ag-cell-value {
   font-size: 11px;
+}
+
+/* Celda inline editando → amarillo */
+::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-cell-inline-editing {
+  background: #ffeaa0 !important;
+  border: 2px solid #f0a500 !important;
 }

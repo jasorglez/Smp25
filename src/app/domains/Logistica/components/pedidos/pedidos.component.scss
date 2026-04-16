@@ -2,6 +2,41 @@
   display: block;
 }
 
+/* Bordes solo para el cuerpo del grid principal (sin header) */
+::ng-deep .ag-theme-quartz.pedidos-main-grid {
+  --ag-header-height: 24px;
+  --ag-row-height: 26px;
+  --ag-font-size: 11px;
+  --ag-border-color: rgba(0, 0, 0, 0.12);
+  --ag-row-border: solid 1px var(--ag-border-color);
+  --ag-footer-row-border: solid 1px var(--ag-border-color);
+  --ag-pinned-row-border: solid 1px var(--ag-border-color);
+  /* Header sin borde */
+  --ag-header-row-border: none;
+  --ag-header-column-border: none;
+}
+
+::ng-deep .ag-theme-quartz.pedidos-main-grid .ag-row {
+  border-bottom: 1px solid var(--ag-border-color) !important;
+}
+
+::ng-deep .ag-theme-quartz.pedidos-main-grid .ag-details-row,
+::ng-deep .ag-theme-quartz.pedidos-main-grid .ag-details-cell,
+::ng-deep .ag-theme-quartz.pedidos-main-grid .ag-full-width-row,
+::ng-deep .ag-theme-quartz.pedidos-main-grid .ag-full-width-container {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Verticales solo en cuerpo (no en header) */
+::ng-deep .ag-theme-quartz.pedidos-main-grid .ag-center-cols-container .ag-cell {
+  border-right: 1px solid var(--ag-border-color) !important;
+}
+::ng-deep .ag-theme-quartz.pedidos-main-grid .ag-center-cols-container .ag-cell:last-child {
+  border-right: none !important;
+}
+
 .container-fluid {
   height: 100%;
 }

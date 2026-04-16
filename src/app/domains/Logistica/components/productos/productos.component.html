@@ -1,50 +1,79 @@
 <div class="col-12 p-2">
-  <div class="d-flex gap-2 mb-2 flex-wrap">
-    <button class="btn btn-sm"
-      [class.btn-secondary]="activeFilter !== null"
-      [class.btn-dark]="activeFilter === null"
-      (click)="setFilter(null)">
-      Todos
-    </button>
-    <button class="btn btn-sm"
-      [style.background-color]="activeFilter === 'RECIBIDO' ? '#28a745' : '#d4edda'"
-      [style.color]="activeFilter === 'RECIBIDO' ? 'white' : '#155724'"
-      [style.border]="'1px solid #28a745'"
-      (click)="setFilter('RECIBIDO')">
-      Recibido
-    </button>
-    <button class="btn btn-sm"
-      [style.background-color]="activeFilter === 'CANCELADO' ? '#dc3545' : '#f8d7da'"
-      [style.color]="activeFilter === 'CANCELADO' ? 'white' : '#721c24'"
-      [style.border]="'1px solid #dc3545'"
-      (click)="setFilter('CANCELADO')">
-      Cancelado
-    </button>
-    <button class="btn btn-sm"
-      [style.background-color]="activeFilter === 'ALMACENADO' ? '#0d6efd' : '#cce5ff'"
-      [style.color]="activeFilter === 'ALMACENADO' ? 'white' : '#004085'"
-      [style.border]="'1px solid #0d6efd'"
-      (click)="setFilter('ALMACENADO')">
-      Almacenado
-    </button>
-    <button class="btn btn-sm"
-      [style.background-color]="activeFilter === 'REVENDIDO' ? '#ffc107' : '#fff3cd'"
-      [style.color]="activeFilter === 'REVENDIDO' ? '#212529' : '#856404'"
-      [style.border]="'1px solid #ffc107'"
-      (click)="setFilter('REVENDIDO')">
-      Revendido
-    </button>
-  </div>
+  <div class="d-flex gap-2">
 
-  <ag-grid-angular
-    style="width: 100%;"
-    [ngStyle]="{ height: gridHeight }"
-    class="ag-theme-quartz small-text-ag-grid"
-    [rowData]="rowData"
-    [columnDefs]="colDefs"
-    [defaultColDef]="defaultColDef"
-    [gridOptions]="gridOptions"
-    (gridReady)="onGridReady($event)"
-    [localeText]="AG_GRID_LOCALE_ES">
-  </ag-grid-angular>
+    <!-- Botones CRUD izquierda (vertical) -->
+    <div class="d-flex flex-column gap-1">
+      <button type="button" class="btn btn-success ms-1" (click)="saveChanges()"
+        [disabled]="!hasUnsavedChanges" title="Guardar cambios de Estado">
+        <i class="bi bi-floppy"></i>
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="hasUnsavedChanges" style="position:relative;display:inline-block;width:8px;height:8px;background:#dc3545;border-radius:50%;margin-left:4px;vertical-align:top;">
+        </span>
+      </button>
+      <button type="button" class="btn btn-warning ms-1" (click)="revertChanges()"
+        [disabled]="!hasUnsavedChanges" title="Deshacer cambios">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+
+    <!-- Filtros + Grid -->
+    <div class="flex-grow-1">
+      <div class="d-flex gap-2 mb-2 flex-wrap">
+        <button class="btn btn-sm"
+          [class.btn-secondary]="activeFilter !== null"
+          [class.btn-dark]="activeFilter === null"
+          (click)="setFilter(null)">
+          Todos
+        </button>
+        <button class="btn btn-sm"
+          [style.background-color]="activeFilter === 'RECIBIDO' ? '#28a745' : '#d4edda'"
+          [style.color]="activeFilter === 'RECIBIDO' ? 'white' : '#155724'"
+          [style.border]="'1px solid #28a745'"
+          (click)="setFilter('RECIBIDO')">
+          Recibido
+        </button>
+        <button class="btn btn-sm"
+          [style.background-color]="activeFilter === 'CANCELADO' ? '#dc3545' : '#f8d7da'"
+          [style.color]="activeFilter === 'CANCELADO' ? 'white' : '#721c24'"
+          [style.border]="'1px solid #dc3545'"
+          (click)="setFilter('CANCELADO')">
+          Cancelado
+        </button>
+        <button class="btn btn-sm"
+          [style.background-color]="activeFilter === 'ALMACENADO' ? '#0d6efd' : '#cce5ff'"
+          [style.color]="activeFilter === 'ALMACENADO' ? 'white' : '#004085'"
+          [style.border]="'1px solid #0d6efd'"
+          (click)="setFilter('ALMACENADO')">
+          Almacenado
+        </button>
+        <button class="btn btn-sm"
+          [style.background-color]="activeFilter === 'REVENDIDO' ? '#ffc107' : '#fff3cd'"
+          [style.color]="activeFilter === 'REVENDIDO' ? '#212529' : '#856404'"
+          [style.border]="'1px solid #ffc107'"
+          (click)="setFilter('REVENDIDO')">
+          Revendido
+        </button>
+        <button class="btn btn-sm"
+          [style.background-color]="activeFilter === 'SOLICITADO' ? '#6c757d' : '#e2e3e5'"
+          [style.color]="activeFilter === 'SOLICITADO' ? 'white' : '#383d41'"
+          [style.border]="'1px solid #6c757d'"
+          (click)="setFilter('SOLICITADO')">
+          Solicitado
+        </button>
+      </div>
+
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{ height: gridHeight }"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="rowData"
+        [columnDefs]="colDefs"
+        [defaultColDef]="defaultColDef"
+        [gridOptions]="gridOptions"
+        (gridReady)="onGridReady($event)"
+        [localeText]="AG_GRID_LOCALE_ES">
+      </ag-grid-angular>
+    </div>
+
+  </div>
 </div>

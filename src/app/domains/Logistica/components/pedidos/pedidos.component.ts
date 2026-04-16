@@ -18,6 +18,8 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 import { DetallesPedidosComponent } from './detalles-pedidos/detalles-pedidos.component';
 import { DetallesClientesComponent } from './detalles-clientes/detalles-clientes.component';
 import { NumArticulosRendererComponent } from './pedidos-button-num-articulos.component';
@@ -37,6 +39,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   private trackingService = inject(TrackingService);
   private customersService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
   
   ngOnInit() {
     (window as any).pedidosComponent = this;
@@ -45,6 +49,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   idCompany: number = null;
+  idBranch: number = null;
   rowData: any[] = [];
   selectedRowData: any = null;
   hasUnsavedChanges: boolean = false;
@@ -54,6 +59,14 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   newlyAddedRows: string[] = [];
   detalleContext: any = null;
   expandedRowId: number | null = null;
+  defaultImpuesto: number = 16;
+
+  // Modal ticket individual por cliente
+  showClienteModal: boolean = false;
+  selectedClienteId: number | null = null;
+  clienteModalList: { id: number; name: string }[] = [];
+  clienteModalPedido: any = null;
+  private clienteModalDetalles: any[] = [];
 
   private gridApi: GridApi;
   private _colMaster: ColDef[] = [];
@@ -73,17 +86,13 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
   public gridOptions: any = {
     headerHeight: 24,
-    rowHeight: 24,
+    rowHeight: 26,
     animateRows: true,
+    suppressRowTransform: true,
     masterDetail: true,
     detailCellRenderer: DetallesPedidosComponent,
-    detailCellRendererSelector: (params: any) => {
-      if (params.data?.detailType === 'clientes') {
-        return { component: DetallesClientesComponent };
-      }
-      return undefined;
-    },
-    detailRowHeight: 280,
+    // Altura fija para evitar que el detalle quede en 0px
+    detailRowHeight: 620,
     isRowMaster: (dataItem: any) => true,
     getRowClass: (params: any) => {
       if (params.node.isSelected()) {
@@ -110,10 +119,28 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   constructor() {
     effect(() => {
       const currentRoot = this.signalsService.getRootSelectedBySidebar()();
+      const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (currentRoot && currentRoot !== this.idCompany) {
         this.idCompany = currentRoot;
+        this.idBranch = currentBranch;
         this.loadData();
+      } else if (currentRoot && currentBranch && currentBranch !== this.idBranch) {
+        this.idBranch = currentBranch;
+        this.refreshClientesList();
       }
+    });
+  }
+
+  private refreshClientesList(): void {
+    const clientes$ = this.idBranch
+      ? this.customersService.getCustomers(this.idBranch, 'CUSTOMERS')
+      : this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS');
+    clientes$.subscribe({
+      next: (data: any) => {
+        this.clientesList = data?.data || data || [];
+        if (this.gridApi) this.gridApi.refreshCells({ force: true });
+      },
+      error: () => { this.clientesList = []; }
     });
   }
 
@@ -125,7 +152,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     forkJoin({
       pedidos: this.pedidosService.getPedidosByCompany(this.idCompany),
       detalles: this.pedidosService.getDetallesByCompany(this.idCompany),
-      clientes: this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS')
+      clientes: this.idBranch
+        ? this.customersService.getCustomers(this.idBranch, 'CUSTOMERS')
+        : this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS')
     }).subscribe({
       next: (results: any) => {
         const pedidosList = results.pedidos?.data || results.pedidos || [];
@@ -176,12 +205,15 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       },
       context: {
         idCompany: this.idCompany,
+        idBranch: this.idBranch,
         componentParent: this,
         gridApi: this.gridApi,
         pedidosService: this.pedidosService,
         trackingService: this.trackingService,
         customersService: this.customersService,
         materialsService: this.materialsService,
+        rootService: this.rootService,
+        base64EncodeService: this.base64EncodeService,
         CONCEPTS: {
           load: (idPedido: number, callback: (data: any[]) => void) => {
             this.loadDetallesData(idPedido, callback);
@@ -243,18 +275,50 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         width: 70,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => this.generatePedidoPDF(node),
+          onClick: (node: any) => this.toggleDetallePdf(node),
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
-          title: 'Generar PDF del pedido'
+          title: 'Ver PDF del pedido'
         },
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
+        field: 'pdfTicket',
+        headerName: 'Ticket',
+        editable: false,
+        width: 70,
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.generateTicketPDF(node),
+          icon: 'bi-receipt',
+          iconColor: '#1565c0',
+          title: 'Ticket por cliente (sin costo)'
+        },
+        cellStyle: { backgroundColor: '#e3f2fd', textAlign: 'center' }
+      },
+      {
+        field: 'pdfTicketCliente',
+        headerName: 'T.Cliente',
+        editable: false,
+        width: 80,
+        cellRenderer: PdfButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.openClienteModal(node),
+          icon: 'bi-person-badge',
+          iconColor: '#6a1b9a',
+          title: 'Ticket individual por cliente'
+        },
+        cellStyle: { backgroundColor: '#f3e5f5', textAlign: 'center' }
+      },
+      {
         field: 'numero',
         headerName: 'Número',
-        editable: true,
+        editable: false,
         flex: 1,
+           filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
         minWidth: 120,
       },
       {
@@ -262,6 +326,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         headerName: 'Fecha',
         editable: true,
         flex: 1,
+           filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
         minWidth: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
@@ -350,6 +418,20 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     this.hasUnsavedChanges = true;
   }
 
+  private getNextPedidoNumero(): string {
+    const maxSequence = this.rowData.reduce((max, row) => {
+      const numero = String(row?.numero || '').trim().toUpperCase();
+      const match = numero.match(/^PED-(\d+)$/);
+
+      if (!match) return max;
+
+      const sequence = parseInt(match[1], 10);
+      return Number.isNaN(sequence) ? max : Math.max(max, sequence);
+    }, 0);
+
+    return `PED-${String(maxSequence + 1).padStart(3, '0')}`;
+  }
+
   add() {
     if (!this.gridApi) {
       console.error('Grid API not initialized');
@@ -361,7 +443,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     const newPedido = {
       id: tempId,
       idCompany: this.idCompany,
-      numero: '',
+      numero: this.getNextPedidoNumero(),
       fecha: new Date().toISOString().split('T')[0],
       comentario: '',
       active: true,
@@ -376,7 +458,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     setTimeout(() => {
       this.gridApi.startEditingCell({
         rowIndex: 0,
-        colKey: 'numero',
+        colKey: 'fecha',
       });
     }, 0);
   }
@@ -399,6 +481,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
       for (const row of modifiedRows) {
         const dataToSend = {
+          id: row.id,
           idCompany: row.idCompany,
           numero: row.numero,
           fecha: row.fecha,
@@ -408,7 +491,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         await lastValueFrom(this.pedidosService.updatePedido(row.id, dataToSend));
       }
 
-      alerts.basicAlert('Guardado', 'Pedidos guardados correctamente', 'success');
+      alerts.toastAlert('Pedidos guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
       this.newlyAddedRows = [];
       
@@ -496,46 +579,49 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'pedidos';
 
     if (isCurrentlyExpanded) {
-      api.forEachNode((n: any) => {
-        if (n.expanded) {
-          n.setExpanded(false);
-        }
-      });
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
       if (node.data) {
         node.data.detailType = null;
       }
+      // Quitar filtro para volver a ver todos los pedidos
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
-      api.forEachNode((n: any) => {
-        if (n.expanded) {
-          n.setExpanded(false);
-        }
-        if (n.data) {
-          n.data.detailType = null;
-        }
-      });
-
-      api.setFilterModel(null);
-      api.onFilterChanged();
-
-      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
-      if (filterModel) {
-        api.setFilterModel(filterModel);
-        api.onFilterChanged();
-      }
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); if (n.data) n.data.detailType = null; });
 
       if (node.data) {
         node.data.detailType = 'pedidos';
       }
 
       setTimeout(() => {
+        // Mostrar únicamente el pedido clickeado
+        const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
+        if (filterModel) {
+          api.setFilterModel(filterModel);
+          api.onFilterChanged();
+        }
         node.setExpanded(true);
       }, 0);
     }
   }
 
+  toggleDetallePdf(node: any) {
+    const api = this.gridApi;
+    const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'pdf';
+
+    if (isCurrentlyExpanded) {
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+      if (node.data) node.data.detailType = null;
+    } else {
+      api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); if (n.data) n.data.detailType = null; });
+
+      if (node.data) node.data.detailType = 'pdf';
+      setTimeout(() => node.setExpanded(true), 0);
+    }
+  }
+
   toggleDetalleClientes(node: any) {
+    console.log('[toggleDetalleClientes] called — node.id:', node.id, 'node.data.id:', node.data?.id, 'expanded:', node.expanded, 'detailType:', node.data?.detailType);
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data?.detailType === 'clientes';
 
@@ -544,6 +630,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         if (n.expanded) n.setExpanded(false);
       });
       if (node.data) node.data.detailType = null;
+      // Quitar filtro para volver a ver todos los pedidos
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
@@ -551,17 +638,22 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         if (n.expanded) n.setExpanded(false);
         if (n.data) n.data.detailType = null;
       });
-      api.setFilterModel(null);
-      api.onFilterChanged();
-
-      const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
-      if (filterModel) {
-        api.setFilterModel(filterModel);
-        api.onFilterChanged();
-      }
 
       if (node.data) node.data.detailType = 'clientes';
-      setTimeout(() => node.setExpanded(true), 0);
+      console.log('[toggleDetalleClientes] about to expand — detailType now:', node.data?.detailType);
+      setTimeout(() => {
+        console.log('[toggleDetalleClientes] setTimeout — calling setExpanded(true), detailType:', node.data?.detailType);
+        // Mostrar únicamente el pedido clickeado
+        const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
+        if (filterModel) {
+          api.setFilterModel(filterModel);
+          api.onFilterChanged();
+        }
+
+        // Fuerza recreación del detalle (evita cache de renderer/datos del pedido anterior)
+        api.redrawRows({ rowNodes: [node] });
+        node.setExpanded(true);
+      }, 0);
     }
   }
 
@@ -594,7 +686,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         // Agregar clienteName para el agrupamiento en el grid de detalles
         detalles = detalles.map(d => ({
           ...d,
-          clienteName: this.clientesList.find((c: any) => c.id == d.idCliente)?.name || d.idCliente || '-'
+          clienteName: (() => {
+            const c = this.clientesList.find((c: any) => c.id == d.idCliente);
+            return c?.nameContact || c?.company || '';
+          })()
         }));
         successCallback(detalles);
       },
@@ -667,6 +762,15 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
       (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
+      // Logo de la empresa
+      let logoBase64: string | null = null;
+      try {
+        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
+        if (rootData?.picture) {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        }
+      } catch { /* sin logo */ }
+
       // Cargar detalles del pedido
       let detalles: any[] = [];
       try {
@@ -676,40 +780,41 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
       const getClienteName = (idCliente: number) => {
         const found = this.clientesList.find((c: any) => c.id == idCliente);
-        return found ? found.name : (idCliente || '-');
+        return found?.nameContact || found?.company || found?.name || String(idCliente || '-');
       };
 
-      const fechaStr = pedido.fecha
-        ? new Date(pedido.fecha).toLocaleDateString('es-MX')
-        : '-';
-
+      const fechaStr = pedido.fecha ? new Date(pedido.fecha).toLocaleDateString('es-MX') : '-';
       const currency = (val: number) =>
-        val ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val) : '$0.00';
+        new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val || 0);
 
       const totalPedido = detalles.reduce((sum: number, d: any) => {
-        const subtotal = (d.cantidad || 0) * (d.venta || 0);
-        return sum + subtotal + subtotal * ((d.impuesto || 0) / 100);
+        const sub = (d.cantidad || 0) * (d.venta || 0);
+        return sum + sub + (d.impuesto || 0);
       }, 0);
+
+      const logoCell = logoBase64
+        ? { image: logoBase64, width: 60, alignment: 'left' as const }
+        : { text: '', width: 60 };
 
       const tableBody: any[] = [
         [
-          { text: 'Cliente', style: 'tableHeader' },
-          { text: 'Producto', style: 'tableHeader' },
-          { text: 'Cant.', style: 'tableHeader' },
+          { text: 'Cliente',    style: 'tableHeader' },
+          { text: 'Producto',   style: 'tableHeader' },
+          { text: 'Cant.',      style: 'tableHeader' },
           { text: 'Plataforma', style: 'tableHeader' },
-          { text: 'Costo', style: 'tableHeader' },
-          { text: 'Venta', style: 'tableHeader' },
-          { text: 'Imp.%', style: 'tableHeader' },
-          { text: 'Total', style: 'tableHeader' },
-          { text: 'Estado', style: 'tableHeader' },
+          { text: 'Costo',      style: 'tableHeader' },
+          { text: 'Venta',      style: 'tableHeader' },
+          { text: 'Imp.%',      style: 'tableHeader' },
+          { text: 'Total',      style: 'tableHeader' },
+          { text: 'Estado',     style: 'tableHeader' },
         ],
         ...detalles.map((d: any) => {
           const sub = (d.cantidad || 0) * (d.venta || 0);
-          const total = sub + sub * ((d.impuesto || 0) / 100);
+          const total = sub + (d.impuesto || 0);
           return [
             { text: getClienteName(d.idCliente), fontSize: 8 },
             { text: d.producto || '-', fontSize: 8 },
-            { text: d.cantidad || 0, alignment: 'center', fontSize: 8 },
+            { text: String(d.cantidad || 0), alignment: 'center', fontSize: 8 },
             { text: d.plataforma || '-', fontSize: 8 },
             { text: currency(d.costo), alignment: 'right', fontSize: 8 },
             { text: currency(d.venta), alignment: 'right', fontSize: 8 },
@@ -728,21 +833,29 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
       const docDefinition: any = {
         pageOrientation: 'landscape',
-        pageMargins: [30, 40, 30, 40],
-        content: [
-          { text: `Pedido #${pedido.numero || pedido.id}`, style: 'title' },
-          { text: ' ' },
-          {
-            columns: [
-              { text: `Fecha: ${fechaStr}`, style: 'info' },
-              { text: `Número de artículos: ${detalles.length}`, style: 'info' },
-              { text: `Total: ${currency(totalPedido)}`, style: 'info', bold: true },
-            ]
+        pageMargins: [30, 55, 30, 35],
+        header: () => ({
+          margin: [30, 10, 30, 0],
+          table: {
+            widths: ['auto', '*', 'auto'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: `Pedido #${pedido.numero || pedido.id}`, style: 'headerTitle' },
+                  { text: `Fecha: ${fechaStr}   |   Items: ${detalles.length}   |   Total: ${currency(totalPedido)}`, fontSize: 8, color: '#555', alignment: 'center' }
+                ]
+              },
+              { text: new Date().toLocaleDateString('es-MX'), fontSize: 8, color: '#888', alignment: 'right', margin: [0, 6, 0, 0] }
+            ]]
           },
-          pedido.comentario ? { text: `Comentario: ${pedido.comentario}`, style: 'info', margin: [0, 4, 0, 0] } : {},
-          { text: ' ' },
-          { text: 'Detalles del Pedido', style: 'sectionTitle' },
-          { text: ' ' },
+          layout: 'noBorders'
+        }),
+        content: [
+          pedido.comentario
+            ? { text: `Comentario: ${pedido.comentario}`, style: 'info', margin: [0, 0, 0, 8] }
+            : { text: '' },
+          { text: 'Detalles del Pedido', style: 'sectionTitle', margin: [0, 0, 0, 4] },
           detalles.length > 0
             ? {
                 table: {
@@ -755,23 +868,626 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             : { text: 'Sin detalles registrados.', italics: true, color: '#999' }
         ],
         styles: {
-          title: { fontSize: 16, bold: true, color: '#1a237e' },
+          headerTitle:  { fontSize: 14, bold: true, color: '#1a237e', alignment: 'center' },
           sectionTitle: { fontSize: 11, bold: true, color: '#333' },
-          info: { fontSize: 9, color: '#444' },
-          tableHeader: { bold: true, fontSize: 9, fillColor: '#e3f2fd', color: '#1a237e' }
-        }
+          info:         { fontSize: 9, color: '#444' },
+          tableHeader:  { bold: true, fontSize: 9, fillColor: '#e3f2fd', color: '#1a237e' }
+        },
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'center', fontSize: 8, color: '#999', margin: [0, 8, 0, 0]
+        })
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`Pedido_${pedido.numero || pedido.id}.pdf`);
-      }
+      try { pdf.open(); } catch { pdf.download(`Pedido_${pedido.numero || pedido.id}.pdf`); }
 
     } catch (error) {
       console.error('Error generando PDF del pedido:', error);
       alerts.basicAlert('Error', 'No se pudo generar el PDF del pedido', 'error');
+    }
+  }
+
+  async generateTicketPDF(node: any): Promise<void> {
+    const pedido = node.data;
+    if (!pedido) return;
+
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Logo
+      let logoBase64: string | null = null;
+      try {
+        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
+        if (rootData?.picture) {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        }
+      } catch { /* sin logo */ }
+
+      // Detalles del pedido
+      let detalles: any[] = [];
+      try {
+        const response: any = await lastValueFrom(this.pedidosService.getDetallesByPedido(pedido.id));
+        detalles = response?.data ? (Array.isArray(response.data) ? response.data : [response.data]) : [];
+      } catch { detalles = []; }
+
+      const getClienteName = (idCliente: number) => {
+        const found = this.clientesList.find((c: any) => c.id == idCliente);
+        return found?.nameContact || found?.company || found?.name || String(idCliente || '-');
+      };
+
+      const fechaStr = pedido.fecha ? new Date(pedido.fecha).toLocaleDateString('es-MX') : '-';
+      const currency = (val: number) =>
+        new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val || 0);
+
+      // Agrupar ítems por cliente
+      const clienteMap = new Map<number, any[]>();
+      for (const d of detalles) {
+        const key = Number(d.idCliente) || 0;
+        if (!clienteMap.has(key)) clienteMap.set(key, []);
+        clienteMap.get(key)!.push(d);
+      }
+
+      // Ordenar clientes por nombre
+      const clientesOrdenados = [...clienteMap.entries()].sort((a, b) =>
+        getClienteName(a[0]).localeCompare(getClienteName(b[0]))
+      );
+
+      const logoCell = logoBase64
+        ? { image: logoBase64, width: 60, alignment: 'left' as const }
+        : { text: '', width: 60 };
+
+      // Total general del pedido
+      const grandTotal = detalles.reduce((sum: number, d: any) => {
+        const sub = (d.cantidad || 0) * (d.venta || 0);
+        return sum + sub + (d.impuesto || 0);
+      }, 0);
+
+      // Construir contenido agrupado por cliente
+      const content: any[] = [];
+
+      if (pedido.comentario) {
+        content.push({ text: `Comentario: ${pedido.comentario}`, style: 'info', margin: [0, 0, 0, 8] });
+      }
+
+      for (const [idCliente, items] of clientesOrdenados) {
+        const nombreCliente = getClienteName(idCliente);
+        const subtotalCliente = items.reduce((sum: number, d: any) => {
+          const sub = (d.cantidad || 0) * (d.venta || 0);
+          return sum + sub + (d.impuesto || 0);
+        }, 0);
+
+        // Encabezado del cliente
+        content.push({
+          table: {
+            widths: ['*', 'auto'],
+            body: [[
+              { text: nombreCliente, style: 'clienteHeader' },
+              { text: currency(subtotalCliente), style: 'clienteHeader', alignment: 'right' as const }
+            ]]
+          },
+          layout: 'noBorders',
+          margin: [0, 10, 0, 2]
+        });
+
+        // Tabla de ítems del cliente (sin columna Costo)
+        const rows: any[] = items.map((d: any) => {
+          const sub = (d.cantidad || 0) * (d.venta || 0);
+          const total = sub + (d.impuesto || 0);
+          return [
+            { text: d.producto || '-', fontSize: 8 },
+            { text: String(d.cantidad || 0), alignment: 'center', fontSize: 8 },
+            { text: d.plataforma || '-', fontSize: 8 },
+            { text: currency(d.venta), alignment: 'right', fontSize: 8 },
+            { text: (d.impuesto || 0) + '%', alignment: 'center', fontSize: 8 },
+            { text: currency(total), alignment: 'right', bold: true, fontSize: 8 },
+            { text: d.estado || '-', fontSize: 8 },
+          ];
+        });
+
+        content.push({
+          table: {
+            headerRows: 1,
+            widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+            body: [
+              [
+                { text: 'Producto',   style: 'tableHeader' },
+                { text: 'Cant.',      style: 'tableHeader' },
+                { text: 'Plataforma', style: 'tableHeader' },
+                { text: 'Venta',      style: 'tableHeader' },
+                { text: 'Imp.%',      style: 'tableHeader' },
+                { text: 'Total',      style: 'tableHeader' },
+                { text: 'Estado',     style: 'tableHeader' },
+              ],
+              ...rows,
+              [
+                { text: 'SUBTOTAL', colSpan: 5, bold: true, alignment: 'right', fontSize: 8, fillColor: '#f5f5f5' },
+                {}, {}, {}, {},
+                { text: currency(subtotalCliente), bold: true, alignment: 'right', fontSize: 8, fillColor: '#f5f5f5' },
+                { text: '', fillColor: '#f5f5f5' }
+              ]
+            ]
+          },
+          layout: 'lightHorizontalLines',
+          margin: [0, 0, 0, 4]
+        });
+      }
+
+      // Total general
+      content.push({ text: ' ', margin: [0, 6, 0, 0] });
+      content.push({
+        table: {
+          widths: ['*', 'auto'],
+          body: [[
+            { text: 'TOTAL GENERAL', bold: true, fontSize: 11, alignment: 'right', color: '#1a237e' },
+            { text: currency(grandTotal), bold: true, fontSize: 11, alignment: 'right', color: '#1a237e' }
+          ]]
+        },
+        layout: {
+          hLineWidth: (i: number) => (i === 0 || i === 1) ? 2 : 0,
+          vLineWidth: () => 0,
+          hLineColor: () => '#1a237e'
+        }
+      });
+
+      const docDef: any = {
+        pageOrientation: 'portrait',
+        pageSize: 'A4',
+        pageMargins: [30, 60, 30, 35],
+        header: () => ({
+          margin: [30, 10, 30, 0],
+          table: {
+            widths: ['auto', '*', 'auto'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: `Ticket — Pedido #${pedido.numero || pedido.id}`, style: 'headerTitle' },
+                  { text: `Fecha: ${fechaStr}   |   Clientes: ${clientesOrdenados.length}   |   Items: ${detalles.length}`, fontSize: 8, color: '#555', alignment: 'center' }
+                ]
+              },
+              { text: new Date().toLocaleDateString('es-MX'), fontSize: 8, color: '#888', alignment: 'right', margin: [0, 6, 0, 0] }
+            ]]
+          },
+          layout: 'noBorders'
+        }),
+        content,
+        styles: {
+          headerTitle:  { fontSize: 13, bold: true, color: '#1a237e', alignment: 'center' },
+          clienteHeader:{ fontSize: 10, bold: true, color: '#ffffff', fillColor: '#1565c0', margin: [4, 3, 4, 3] },
+          info:         { fontSize: 9, color: '#444' },
+          tableHeader:  { bold: true, fontSize: 8, fillColor: '#e3f2fd', color: '#1a237e' }
+        },
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'center', fontSize: 8, color: '#999', margin: [0, 8, 0, 0]
+        })
+      };
+
+      const pdf = pdfMake.createPdf(docDef);
+      try { pdf.open(); } catch { pdf.download(`Ticket_${pedido.numero || pedido.id}.pdf`); }
+
+    } catch (error) {
+      console.error('Error generando ticket PDF:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el ticket', 'error');
+    }
+  }
+
+  // ─── Modal ticket individual por cliente ─────────────────────────────────
+
+  async openClienteModal(node: any): Promise<void> {
+    const pedido = node.data;
+    if (!pedido) return;
+
+    // Cargar detalles del pedido para extraer clientes únicos
+    let detalles: any[] = [];
+    try {
+      const response: any = await lastValueFrom(this.pedidosService.getDetallesByPedido(pedido.id));
+      detalles = response?.data ? (Array.isArray(response.data) ? response.data : [response.data]) : [];
+    } catch { detalles = []; }
+
+    if (detalles.length === 0) {
+      alerts.basicAlert('Sin ítems', 'Este pedido no tiene detalles registrados', 'info');
+      return;
+    }
+
+    const getClienteName = (id: number) => {
+      const found = this.clientesList.find((c: any) => c.id == id);
+      return found?.nameContact || found?.company || found?.name || String(id || '-');
+    };
+
+    const uniqueIds = [...new Set(detalles.map((d: any) => Number(d.idCliente)).filter(id => id > 0))];
+
+    this.clienteModalPedido   = pedido;
+    this.clienteModalDetalles = detalles;
+    this.clienteModalList     = uniqueIds
+      .map(id => ({ id, name: getClienteName(id) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.selectedClienteId    = null;
+    this.showClienteModal     = true;
+  }
+
+  closeClienteModal(): void {
+    this.showClienteModal     = false;
+    this.selectedClienteId    = null;
+    this.clienteModalList     = [];
+    this.clienteModalDetalles = [];
+    this.clienteModalPedido   = null;
+  }
+
+  async printSelectedCliente(): Promise<void> {
+    if (this.selectedClienteId === null) {
+      alerts.basicAlert('Sin selección', 'Por favor seleccione un cliente', 'warning');
+      return;
+    }
+
+    // Guardar referencias antes de cerrar el modal
+    const pedido   = this.clienteModalPedido;
+    const detalles = this.clienteModalDetalles;
+    const cliente  = this.clienteModalList.find(c => c.id === this.selectedClienteId)!;
+
+    this.closeClienteModal();
+    await this.generateClienteTicketPDF(pedido, cliente, detalles);
+  }
+
+  private async generateClienteTicketPDF(
+    pedido: any,
+    cliente: { id: number; name: string },
+    allDetalles: any[]
+  ): Promise<void> {
+    const items = allDetalles.filter(d =>
+      Number(d.idCliente) === cliente.id && d.estado === 'RECIBIDO'
+    );
+    if (items.length === 0) {
+      alerts.basicAlert('Sin ítems', `${cliente.name} no tiene ítems con estado RECIBIDO en este pedido`, 'info');
+      return;
+    }
+
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Logo
+      let logoBase64: string | null = null;
+      try {
+        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
+        if (rootData?.picture) {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        }
+      } catch { /* sin logo */ }
+
+      const fechaStr = pedido.fecha ? new Date(pedido.fecha).toLocaleDateString('es-MX') : '-';
+      const currency = (val: number) =>
+        new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val || 0);
+
+      const totalCliente = items.reduce((sum: number, d: any) => {
+        const sub = (d.cantidad || 0) * (d.venta || 0);
+        return sum + sub + (d.impuesto || 0);
+      }, 0);
+
+      const logoCell = logoBase64
+        ? { image: logoBase64, width: 60, alignment: 'left' as const }
+        : { text: '', width: 60 };
+
+      const rows: any[] = items.map((d: any) => {
+        const sub = (d.cantidad || 0) * (d.venta || 0);
+        const total = sub + (d.impuesto || 0);
+        return [
+          { text: d.producto || '-', fontSize: 8 },
+          { text: String(d.cantidad || 0), alignment: 'center', fontSize: 8 },
+          { text: d.plataforma || '-', fontSize: 8 },
+          { text: currency(d.venta), alignment: 'right', fontSize: 8 },
+          { text: (d.impuesto || 0) + '%', alignment: 'center', fontSize: 8 },
+          { text: currency(total), alignment: 'right', bold: true, fontSize: 8 },
+          { text: d.estado || '-', fontSize: 8 },
+        ];
+      });
+
+      const content: any[] = [];
+
+      if (pedido.comentario) {
+        content.push({ text: `Comentario: ${pedido.comentario}`, fontSize: 9, color: '#444', italics: true, margin: [0, 0, 0, 8] });
+      }
+
+      // Encabezado del cliente
+      content.push({
+        table: {
+          widths: ['*', 'auto'],
+          body: [[
+            { text: cliente.name, fontSize: 11, bold: true, color: '#ffffff', fillColor: '#6a1b9a', margin: [4, 3, 4, 3] },
+            { text: currency(totalCliente), fontSize: 11, bold: true, color: '#ffffff', fillColor: '#6a1b9a', alignment: 'right', margin: [4, 3, 4, 3] }
+          ]]
+        },
+        layout: 'noBorders',
+        margin: [0, 0, 0, 4]
+      });
+
+      // Tabla de ítems (sin Costo)
+      content.push({
+        table: {
+          headerRows: 1,
+          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          body: [
+            [
+              { text: 'Producto',   style: 'tableHeader' },
+              { text: 'Cant.',      style: 'tableHeader' },
+              { text: 'Plataforma', style: 'tableHeader' },
+              { text: 'Venta',      style: 'tableHeader' },
+              { text: 'Imp.%',      style: 'tableHeader' },
+              { text: 'Total',      style: 'tableHeader' },
+              { text: 'Estado',     style: 'tableHeader' },
+            ],
+            ...rows,
+            [
+              { text: 'TOTAL', colSpan: 5, bold: true, alignment: 'right', fontSize: 9, fillColor: '#ede7f6' },
+              {}, {}, {}, {},
+              { text: currency(totalCliente), bold: true, alignment: 'right', fontSize: 9, fillColor: '#ede7f6' },
+              { text: '', fillColor: '#ede7f6' }
+            ]
+          ]
+        },
+        layout: 'lightHorizontalLines'
+      });
+
+      const docDef: any = {
+        pageOrientation: 'portrait',
+        pageSize: 'A4',
+        pageMargins: [30, 60, 30, 35],
+        header: () => ({
+          margin: [30, 10, 30, 0],
+          table: {
+            widths: ['auto', '*', 'auto'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: `Ticket — Pedido #${pedido.numero || pedido.id}`, fontSize: 13, bold: true, color: '#6a1b9a', alignment: 'center' },
+                  { text: `Cliente: ${cliente.name}   |   Fecha: ${fechaStr}`, fontSize: 8, color: '#555', alignment: 'center' }
+                ]
+              },
+              { text: new Date().toLocaleDateString('es-MX'), fontSize: 8, color: '#888', alignment: 'right', margin: [0, 6, 0, 0] }
+            ]]
+          },
+          layout: 'noBorders'
+        }),
+        content,
+        styles: {
+          tableHeader: { bold: true, fontSize: 8, fillColor: '#ede7f6', color: '#4a148c' }
+        },
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'center', fontSize: 8, color: '#999', margin: [0, 8, 0, 0]
+        })
+      };
+
+      const pdf = pdfMake.createPdf(docDef);
+      try { pdf.open(); } catch {
+        pdf.download(`Ticket_${pedido.numero || pedido.id}_${cliente.name}.pdf`);
+      }
+
+    } catch (error) {
+      console.error('Error generando ticket cliente:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el ticket', 'error');
+    }
+  }
+
+  async generateAllPedidosPDF(): Promise<void> {
+    if (!this.idCompany) {
+      alerts.basicAlert('Sin empresa', 'Seleccione una empresa primero', 'warning');
+      return;
+    }
+    if (!this.rowData.length) {
+      alerts.basicAlert('Sin pedidos', 'No hay pedidos para generar el reporte', 'info');
+      return;
+    }
+
+    alerts.showLoading('Generando reporte...', 'Cargando todos los pedidos y sus items');
+
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Logo de la empresa
+      let logoBase64: string | null = null;
+      try {
+        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
+        if (rootData?.picture) {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        }
+      } catch { /* sin logo */ }
+
+      // Cargar todos los detalles de la empresa en una sola llamada
+      let todosDetalles: any[] = [];
+      try {
+        const resp: any = await lastValueFrom(this.pedidosService.getDetallesByCompany(this.idCompany));
+        const raw = resp?.data ?? resp ?? [];
+        todosDetalles = Array.isArray(raw) ? raw : [raw];
+      } catch { todosDetalles = []; }
+
+      // Índice detalles por idPedido
+      const detallesPorPedido = new Map<number, any[]>();
+      for (const d of todosDetalles) {
+        const key = Number(d.idPedido);
+        if (!detallesPorPedido.has(key)) detallesPorPedido.set(key, []);
+        detallesPorPedido.get(key)!.push(d);
+      }
+
+      const currency = (v: number) =>
+        new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
+
+      const clienteName = (idCliente: number) => {
+        const c = this.clientesList.find((x: any) => x.id == idCliente);
+        return c?.nameContact || c?.company || c?.name || String(idCliente || '-');
+      };
+
+      // Ordenar pedidos por fecha ascendente
+      const pedidosOrdenados = [...this.rowData].sort(
+        (a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime()
+      );
+
+      const logoCell = logoBase64
+        ? { image: logoBase64, width: 60, alignment: 'left' as const }
+        : { text: '', width: 60 };
+
+      let grandTotal = 0;
+      const content: any[] = [];
+
+      for (const pedido of pedidosOrdenados) {
+        const items = detallesPorPedido.get(Number(pedido.id)) || [];
+        const fechaStr = pedido.fecha ? new Date(pedido.fecha).toLocaleDateString('es-MX') : '-';
+
+        const totalPedido = items.reduce((sum: number, d: any) => {
+          const sub = (d.cantidad || 0) * (d.venta || 0);
+          return sum + sub + (d.impuesto || 0);
+        }, 0);
+        grandTotal += totalPedido;
+
+        // Encabezado del pedido
+        content.push({
+          table: {
+            widths: ['*'],
+            body: [[{
+              text: `Pedido: ${pedido.numero || pedido.id}   |   Fecha: ${fechaStr}   |   Items: ${items.length}   |   Total: ${currency(totalPedido)}`,
+              style: 'pedidoHeader'
+            }]]
+          },
+          layout: 'noBorders',
+          margin: [0, 10, 0, 2]
+        });
+
+        if (pedido.comentario) {
+          content.push({
+            text: `Comentario: ${pedido.comentario}`,
+            style: 'comentario',
+            margin: [0, 0, 0, 4]
+          });
+        }
+
+        if (items.length === 0) {
+          content.push({
+            text: 'Sin items registrados.',
+            italics: true,
+            color: '#999',
+            fontSize: 8,
+            margin: [0, 2, 0, 4]
+          });
+        } else {
+          const rows: any[] = items.map((d: any) => {
+            const sub = (d.cantidad || 0) * (d.venta || 0);
+            const tot = sub + (d.impuesto || 0);
+            return [
+              { text: clienteName(d.idCliente), fontSize: 7 },
+              { text: d.producto || '-', fontSize: 7 },
+              { text: String(d.cantidad || 0), alignment: 'center', fontSize: 7 },
+              { text: d.plataforma || '-', fontSize: 7 },
+              { text: currency(d.costo), alignment: 'right', fontSize: 7 },
+              { text: currency(d.venta), alignment: 'right', fontSize: 7 },
+              { text: (d.impuesto || 0) + '%', alignment: 'center', fontSize: 7 },
+              { text: currency(tot), alignment: 'right', fontSize: 7, bold: true },
+              { text: d.estado || '-', fontSize: 7 },
+            ];
+          });
+
+          content.push({
+            table: {
+              headerRows: 1,
+              widths: ['*', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+              body: [
+                [
+                  { text: 'Cliente',    style: 'tableHeader' },
+                  { text: 'Producto',   style: 'tableHeader' },
+                  { text: 'Cant.',      style: 'tableHeader' },
+                  { text: 'Plataforma', style: 'tableHeader' },
+                  { text: 'Costo',      style: 'tableHeader' },
+                  { text: 'Venta',      style: 'tableHeader' },
+                  { text: 'Imp.%',      style: 'tableHeader' },
+                  { text: 'Total',      style: 'tableHeader' },
+                  { text: 'Estado',     style: 'tableHeader' },
+                ],
+                ...rows,
+                [
+                  { text: 'SUBTOTAL PEDIDO', colSpan: 7, bold: true, alignment: 'right', fontSize: 8, fillColor: '#f5f5f5' },
+                  {}, {}, {}, {}, {}, {},
+                  { text: currency(totalPedido), bold: true, alignment: 'right', fontSize: 8, fillColor: '#f5f5f5' },
+                  { text: '', fillColor: '#f5f5f5' }
+                ]
+              ]
+            },
+            layout: 'lightHorizontalLines',
+            margin: [0, 0, 0, 4]
+          });
+        }
+      }
+
+      // Total general al final del documento
+      content.push({ text: ' ', margin: [0, 8, 0, 0] });
+      content.push({
+        table: {
+          widths: ['*', 'auto'],
+          body: [[
+            { text: 'TOTAL GENERAL DE TODOS LOS PEDIDOS', bold: true, fontSize: 12, alignment: 'right', color: '#1a237e' },
+            { text: currency(grandTotal), bold: true, fontSize: 12, alignment: 'right', color: '#1a237e' }
+          ]]
+        },
+        layout: {
+          hLineWidth: (i: number) => (i === 0 || i === 1) ? 2 : 0,
+          vLineWidth: () => 0,
+          hLineColor: () => '#1a237e'
+        },
+        margin: [0, 0, 0, 0]
+      });
+
+      const docDef: any = {
+        pageOrientation: 'landscape',
+        pageMargins: [30, 60, 30, 35],
+        header: () => ({
+          margin: [30, 10, 30, 0],
+          table: {
+            widths: ['auto', '*', 'auto'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: 'Reporte General de Pedidos', fontSize: 13, bold: true, color: '#1a237e', alignment: 'center' },
+                  { text: `Total de pedidos: ${pedidosOrdenados.length}   |   Generado: ${new Date().toLocaleDateString('es-MX')}`, fontSize: 8, color: '#555', alignment: 'center' }
+                ]
+              },
+              { text: '', width: 60 }
+            ]]
+          },
+          layout: 'noBorders'
+        }),
+        content,
+        styles: {
+          pedidoHeader:{ fontSize: 10, bold: true, color: '#ffffff', fillColor: '#1a237e', padding: [6, 5, 6, 5] },
+          comentario:  { fontSize: 8, color: '#555', italics: true },
+          tableHeader: { bold: true, fontSize: 8, fillColor: '#e3f2fd', color: '#1a237e' }
+        },
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'center',
+          fontSize: 8,
+          color: '#999',
+          margin: [0, 10, 0, 0]
+        })
+      };
+
+      alerts.closeLoading();
+      const pdf = pdfMake.createPdf(docDef);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`Reporte_General_Pedidos.pdf`);
+      }
+
+    } catch (error) {
+      alerts.closeLoading();
+      console.error('Error generando PDF general:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el reporte general', 'error');
     }
   }
 

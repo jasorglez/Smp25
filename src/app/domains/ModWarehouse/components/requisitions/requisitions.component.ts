@@ -326,7 +326,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       {
         field: 'idDepartament',
-        headerName: 'Departamento Solicita',
+        headerName: 'Departamento Solicita1',
         editable: (params) => !params.data?.locked,
         width: 190,
         cellEditor: 'agSelectCellEditor',
@@ -519,8 +519,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   obtenerDepartamentos() {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.departamentos = data;
+      (data: any) => {
+        this.departamentos = data?.data ?? data ?? [];
         console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)

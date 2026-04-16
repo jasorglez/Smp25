@@ -5,11 +5,15 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { lastValueFrom } from 'rxjs';
 import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
+import pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-detalles-pedidos',
@@ -25,6 +29,7 @@ export class DetallesPedidosComponent implements OnInit {
   private customersService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
   private catalogadmonService = inject(CatalogadmonService);
+  private sanitizer = inject(DomSanitizer);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -35,8 +40,32 @@ export class DetallesPedidosComponent implements OnInit {
   productoSuggestions: string[] = [];
   isLocked: boolean = false;
 
+  // PDF view
+  detailType: string = 'pedidos';
+  pdfUrl: SafeResourceUrl | null = null;
+  private originalPdfUrl: string | null = null;
+
   showPlataformaModal: boolean = false;
   newPlataforma: any = {};
+
+  /** Enter visto en captura (popup Rich Select no dispara cellKeyDown del grid) */
+  private sawEnterDuringEdit = false;
+  private enterCapture?: (ev: KeyboardEvent) => void;
+
+  /** Un frame: abrir Producto tras Enter en Cliente; el editor ignora el Enter “fantasma” en el input */
+  skipFirstEnterOnProductoEditor = false;
+
+  /** Secuencia de navegación con Enter entre columnas editables */
+  private readonly NEXT_EDIT_COL: Record<string, string> = {
+    'clienteName': 'producto',
+    'producto':    'cantidad',
+    'cantidad':    'costo',
+    'plataforma':  'costo',
+    'costo':       'venta',
+    'venta':       'impuesto',
+    'impuesto':    'estado',
+    'estado':      'comentario'
+  };
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -48,11 +77,27 @@ export class DetallesPedidosComponent implements OnInit {
     this.params = params;
     this.context = params.context;
     this.isLocked = params.data?.locked === true;
-    this.loadClientes();
-    this.loadProductos();
-    this.loadPlataformas();
-    this.loadData();
-    this.loadProductoSuggestions();
+    this.detailType = params.data?.detailType || 'pedidos';
+
+    if (this.detailType === 'pdf') {
+      this.generateReport();
+    } else {
+      this.loadClientes();
+      this.loadProductos();
+      this.loadPlataformas();
+      this.loadData();
+      this.loadProductoSuggestions();
+    }
+  }
+
+  private async generateReport(): Promise<void> {
+    const componentParent = this.context?.componentParent;
+    if (typeof componentParent?.generatePedidoPDF !== 'function') {
+      console.error('generatePedidoPDF is not available in detail renderer context.');
+      return;
+    }
+
+    await componentParent.generatePedidoPDF(this.params?.node);
   }
 
   private loadProductoSuggestions(): void {
@@ -72,15 +117,33 @@ export class DetallesPedidosComponent implements OnInit {
     });
   }
 
+  private resolveClienteName(idCliente: number): string {
+    const found = this.clientes.find((c: any) => c.id == idCliente);
+    return found?.nameContact || found?.company || '';
+  }
+
   private loadClientes() {
+    const idBranch = this.context?.componentParent?.idBranch || this.context?.idBranch;
     const idCompany = this.context?.idCompany;
-    if (idCompany) {
-      this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS').subscribe({
+    const request$ = idBranch
+      ? this.customersService.getCustomers(idBranch, 'CUSTOMERS')
+      : this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS');
+    if (idBranch || idCompany) {
+      request$.subscribe({
         next: (data: any) => {
           this.clientes = data?.data || data || [];
+          // Re-resolver nombres ahora que clientes está cargado
+          if (this.rowData.length > 0) {
+            this.rowData = this.rowData.map(item => ({
+              ...item,
+              clienteName: this.resolveClienteName(item.idCliente) || item.clienteName || ''
+            }));
+            if (this.gridApi) {
+              this.gridApi.setGridOption('rowData', this.rowData);
+            }
+          }
           if (this.gridApi) {
             this.gridApi.setGridOption('columnDefs', this.colDefs);
-            this.gridApi.refreshCells({ force: true });
           }
         },
         error: (error) => {
@@ -133,6 +196,7 @@ export class DetallesPedidosComponent implements OnInit {
       this.context.CONCEPTS.load(pedidoId, (data: any[]) => {
         this.rowData = data.map(item => ({
           ...item,
+          clienteName: this.resolveClienteName(item.idCliente) || item.clienteName || '',
           __isNew: false,
           __modified: false
         }));
@@ -149,6 +213,7 @@ export class DetallesPedidosComponent implements OnInit {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+    this.gridApi.refreshCells({ columns: ['clienteName'], force: true });
   }
 
 get colDefs(): ColDef[] {
@@ -161,26 +226,33 @@ get colDefs(): ColDef[] {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
-        field: 'idCliente',
+        field: 'clienteName',
         headerName: 'Cliente',
         editable: () => !this.isLocked,
         width: 200,
         cellEditor: 'agRichSelectCellEditor',
+           filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
         cellEditorParams: () => ({
-          values: this.clientes.map(item => item.id),
+          values: this.clientes
+            .map(item => item.Description || item.nameContact || item.company || item.name || item.description)
+            .filter(Boolean),
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
-            const found = this.clientes.find(item => item.id == value);
-            return found ? found.name : value;
+            return value || '';
           }
         }),
         valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.clientes.find(item => item.id == params.value);
-          return found ? found.name : params.value;
+          return params.data?.clienteName || params.value || '';
         },
         valueSetter: (params: any) => {
-          params.data.idCliente = params.newValue;
+          const found = this.clientes.find(item =>
+            (item.Description || item.nameContact || item.company || item.name || item.description) === params.newValue
+          );
+          params.data.idCliente = found?.id ?? params.data.idCliente;
+          params.data.clienteName = params.newValue;
           return true;
         }
       },
@@ -188,10 +260,15 @@ get colDefs(): ColDef[] {
         field: 'producto',
         headerName: 'Producto',
         editable: () => !this.isLocked,
+           filter: 'agSetColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
         width: 250,
         cellEditor: ProductoAutocompleteEditorComponent,
         cellEditorParams: () => ({
-          suggestions: this.productoSuggestions
+          suggestions: this.productoSuggestions,
+          ignoreFirstEnterNavigation: this.skipFirstEnterOnProductoEditor
         }),
         valueSetter: (params: any) => {
           params.data.producto = params.newValue;
@@ -205,6 +282,7 @@ get colDefs(): ColDef[] {
         editable: () => !this.isLocked,
         width: 90,
         type: 'numericColumn',
+        suppressKeyboardEvent: (params: any) => params.event.key === 'Enter' && params.editing,
         valueSetter: (params: any) => {
           const val = parseInt(params.newValue);
           params.data.cantidad = isNaN(val) || val < 1 ? 1 : val;
@@ -230,23 +308,6 @@ get colDefs(): ColDef[] {
             return false;
           }
           params.data.plataforma = params.newValue;
-          return true;
-        }
-      },
-      {
-        field: 'aplicaimpuestos',
-        headerName: 'Aplica Impuestos',
-        editable: () => !this.isLocked,
-        width: 130,
-        cellRenderer: (params: ICellRendererParams) => {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.checked = params.value === true || params.value === 1 || params.value === '1';
-          checkbox.style.cursor = 'pointer';
-          return checkbox;
-        },
-        valueSetter: (params: any) => {
-          params.data.aplicaimpuestos = params.newValue;
           return true;
         }
       },
@@ -287,17 +348,47 @@ get colDefs(): ColDef[] {
         }
       },
       {
+        field: 'aplicaimpuestos',
+        headerName: 'Aplica Impuestos',
+        editable: false,
+        width: 130,
+        cellStyle: { cursor: this.isLocked ? 'not-allowed' : 'pointer', textAlign: 'center' },
+        cellRenderer: (params: ICellRendererParams) => {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = params.value === true || params.value === 1 || params.value === '1';
+          checkbox.style.pointerEvents = 'none';
+          checkbox.style.cursor = 'inherit';
+          return checkbox;
+        },
+        onCellClicked: (params: any) => {
+          if (this.isLocked) return;
+          // Asegurar que cualquier celda en edición haya confirmado su valor antes de leer venta
+          params.api.stopEditing();
+          const checked = !(params.data.aplicaimpuestos === true || params.data.aplicaimpuestos === 1 || params.data.aplicaimpuestos === '1');
+          const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
+          const venta = parseFloat(params.node.data.venta) || 0;
+          const cantidad = parseFloat(params.node.data.cantidad) || 0;
+          params.data.aplicaimpuestos = checked;
+          params.data.impuesto = checked ? cantidad * venta * defaultImpuesto / 100 : 0;
+          if (checked) params.data.plataforma = 'TEMU';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          params.api.refreshCells({
+            rowNodes: [params.node],
+            columns: ['aplicaimpuestos', 'plataforma', 'impuesto', 'total'],
+            force: true
+          });
+        }
+      },
+      {
         field: 'impuesto',
-        headerName: 'Impuesto %',
+        headerName: 'Impuesto',
         editable: () => !this.isLocked,
         width: 100,
         type: 'numericColumn',
-        valueFormatter: (params) => {
-          if (params.value) {
-            return params.value + '%';
-          }
-          return '0%';
-        },
+        valueFormatter: (params) =>
+          new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value || 0),
         valueSetter: (params: any) => {
           const val = parseFloat(params.newValue);
           params.data.impuesto = isNaN(val) ? 0 : val;
@@ -313,9 +404,7 @@ get colDefs(): ColDef[] {
           const cantidad = params.data.cantidad || 0;
           const venta = params.data.venta || 0;
           const impuesto = params.data.impuesto || 0;
-          const subtotal = cantidad * venta;
-          const montoImpuesto = subtotal * (impuesto / 100);
-          return subtotal + montoImpuesto;
+          return (cantidad * venta) + impuesto;
         },
         valueFormatter: (params) => {
           if (params.value) {
@@ -367,18 +456,78 @@ get colDefs(): ColDef[] {
 
   public gridOptions: any = {
     headerHeight: 30,
-    rowHeight: 28,
+    rowHeight: 30,
     animateRows: true,
     rowSelection: 'single',
-    domLayout: 'normal',
+    domLayout: 'autoHeight',
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: true,
+    suppressRowTransform: true,
     /** Popups (editores, selects) fuera del viewport para evitar recortes en master-detail */
     popupParent: typeof document !== 'undefined' ? document.body : undefined,
-    onCellValueChanged: (event: any) => {
-      console.log('🔄 Cell changed:', event.colDef.field, event.newValue);
-      event.data.__modified = true;
-      this.hasUnsavedChanges = true;
+    onCellEditingStarted: (event: any) => {
+      if (this.isLocked) return;
+      this.sawEnterDuringEdit = false;
+      if (this.enterCapture) {
+        window.removeEventListener('keydown', this.enterCapture, true);
+        this.enterCapture = undefined;
+      }
+      this.enterCapture = (ev: KeyboardEvent) => {
+        if (ev.key === 'Enter') this.sawEnterDuringEdit = true;
+      };
+      window.addEventListener('keydown', this.enterCapture, true);
+    },
+    onCellEditingStopped: (event: any) => {
+      if (this.enterCapture) {
+        window.removeEventListener('keydown', this.enterCapture, true);
+        this.enterCapture = undefined;
+      }
+
+      if (this.isLocked) return;
+
+      const colId = event.column?.getColId?.() ?? event.colDef?.field;
+      const nextColId = this.NEXT_EDIT_COL[colId];
+      if (!nextColId) return;
+
+      const browserEvent = event.event as Event | undefined;
+      if (browserEvent instanceof MouseEvent) {
+        this.sawEnterDuringEdit = false;
+        return;
+      }
+
+      const ke = browserEvent instanceof KeyboardEvent ? browserEvent : undefined;
+      if (ke?.key === 'Tab' || ke?.key === 'Escape') {
+        this.sawEnterDuringEdit = false;
+        return;
+      }
+
+      const keyboardEnter = ke?.key === 'Enter';
+      const capturedEnter = this.sawEnterDuringEdit;
+      this.sawEnterDuringEdit = false;
+
+      // clienteName usa RichSelect: requiere value change + Enter capturado
+      if (colId === 'clienteName') {
+        if (!capturedEnter || !event.valueChanged) return;
+      } else {
+        if (!keyboardEnter && !capturedEnter) return;
+      }
+
+      const rowIndex = event.node?.rowIndex;
+      if (rowIndex == null || !this.gridApi) return;
+
+      if (nextColId === 'producto') {
+        setTimeout(() => {
+          this.skipFirstEnterOnProductoEditor = true;
+          this.gridApi.setFocusedCell(rowIndex, 'producto');
+          this.gridApi.startEditingCell({ rowIndex, colKey: 'producto' });
+          queueMicrotask(() => { this.skipFirstEnterOnProductoEditor = false; });
+        }, 0);
+      } else {
+        setTimeout(() => {
+          this.gridApi.setFocusedCell(rowIndex, nextColId);
+          this.gridApi.startEditingCell({ rowIndex, colKey: nextColId });
+        }, 0);
+      }
     }
   };
 
@@ -393,10 +542,14 @@ get colDefs(): ColDef[] {
       id: tempId,
       idPedido: this.params.data.id,
       idCliente: 0,
+      clienteName: '',
       idProducto: 0,
       cantidad: 1,
-      plataforma: '',
+      plataforma: 'TEMU',
       aplicaimpuestos: false,
+      impuesto: 0,
+      costo: 0,
+      venta: 0,
       comentario: '',
       active: true,
       __isNew: true,
@@ -412,7 +565,7 @@ get colDefs(): ColDef[] {
       this.gridApi.ensureIndexVisible(lastRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: 'idCliente'
+        colKey: 'clienteName'
       });
     }, 0);
   }
@@ -457,6 +610,63 @@ get colDefs(): ColDef[] {
       return;
     }
 
+    // Validación: cliente + producto + plataforma duplicados en el mismo pedido
+    const normalizeKeyPart = (v: any) => String(v ?? '').trim().toUpperCase();
+    const groups = new Map<string, any[]>();
+    for (const r of this.rowData) {
+      const clienteKey = normalizeKeyPart(r?.idCliente);
+      const productoKey = normalizeKeyPart(r?.producto);
+      const plataformaKey = normalizeKeyPart(r?.plataforma);
+      if (!clienteKey || !productoKey || !plataformaKey) continue;
+      const key = `${clienteKey}||${productoKey}||${plataformaKey}`;
+      const arr = groups.get(key) ?? [];
+      arr.push(r);
+      groups.set(key, arr);
+    }
+
+    const duplicates = [...groups.values()].filter(arr => arr.length > 1);
+    if (duplicates.length > 0) {
+      const msg =
+        'Este cliente ya está registrado con este producto en la misma plataforma.\n\n' +
+        '¿Quieres aumentar la cantidad (sumar) y eliminar duplicados?';
+
+      const result = await alerts.confirmAlert(
+        'Duplicado detectado',
+        msg,
+        'warning',
+        'Sí, aumentar cantidad'
+      );
+
+      if (!result?.isConfirmed) return;
+
+      // Merge: suma cantidades y elimina duplicados (en UI y backend si aplica)
+      for (const arr of duplicates) {
+        const keep = arr.find(r => !r.__isNew && r?.id) ?? arr[0];
+        const totalCantidad = arr.reduce((sum, r) => sum + (Number(r?.cantidad) || 0), 0);
+        keep.cantidad = totalCantidad > 0 ? totalCantidad : 1;
+        keep.__modified = true;
+
+        for (const r of arr) {
+          if (r === keep) continue;
+          // Si ya existía en backend, lo eliminamos para evitar duplicados
+          if (!r.__isNew && r?.id && this.context?.pedidosService?.deleteDetalle) {
+            try {
+              await lastValueFrom(this.context.pedidosService.deleteDetalle(r.id));
+            } catch (e) {
+              console.error('Error eliminando duplicado:', e);
+            }
+          }
+          this.rowData = this.rowData.filter(x => x !== r);
+        }
+      }
+
+      this.hasUnsavedChanges = true;
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.refreshCells({ force: true });
+      }
+    }
+
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const pedidoId = this.params.data.id;
       await this.context.CONCEPTS.save(pedidoId, { detalles: this.rowData });
@@ -484,6 +694,17 @@ get colDefs(): ColDef[] {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+
+    const col = event.column?.getColId?.() ?? event.colDef?.field;
+    if ((col === 'venta' || col === 'cantidad') && event.data.aplicaimpuestos) {
+      const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
+      const venta = parseFloat(event.data.venta) || 0;
+      const cantidad = parseFloat(event.data.cantidad) || 0;
+      event.data.impuesto = cantidad * venta * defaultImpuesto / 100;
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['impuesto', 'total'], force: true });
+      }
+    }
   }
 
   refreshByParent() {
