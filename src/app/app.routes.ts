@@ -615,6 +615,13 @@ export const routes: Routes = [
                   ).then((p) => p.PermissionComponent),
               },
               {
+                path: 'security',
+                loadComponent: () =>
+                  import(
+                    './domains/SMP/Components/permission/security.component'
+                  ).then((p) => p.SecurityComponent),
+              },
+              {
                 path: 'columnHider',
                 loadComponent: () =>
                   import('./domains/SMP/Components/columnHider/columnHider.component').then(

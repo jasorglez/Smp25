@@ -44,6 +44,7 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
   private readonly enterNavEditableColumns = [
     'subPermissionName',
     'identifier',
+    'tipo',
     'description',
     'route',
     'tab_order',
@@ -59,6 +60,16 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
     },
     { field: 'subPermissionName', headerName: 'Nombre', flex: 4, editable: true },
     { field: 'identifier',        headerName: 'Identificador', flex: 3, editable: true },
+    {
+      field: 'tipo',
+      headerName: 'Tipo',
+      width: 130,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['Principal', 'Boton', 'Columna', 'SubColumna', 'Cascada'],
+      },
+    },
     { field: 'description', headerName: 'Tipo Menu', width: 120, editable: true },
     {
       field: 'route', headerName: 'Ruta', flex: 2, editable: true,
@@ -229,6 +240,7 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
       idDetailedPermission: this.subMasterId,
       subPermissionName: '',
       identifier: '',
+      tipo: 'Principal',
       description: 'Principal',
       active: true,
       comment: '',
@@ -265,6 +277,7 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
           idDetailedPermission: row.idDetailedPermission,
           subPermissionName: row.subPermissionName,
           identifier: row.identifier,
+          tipo: row.tipo,
           description: row.description,
           active: row.active,
           route: row.route ?? null,
@@ -283,6 +296,7 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
           idDetailedPermission: row.idDetailedPermission,
           subPermissionName: row.subPermissionName,
           identifier: row.identifier,
+          tipo: row.tipo,
           description: row.description,
           active: row.active,
           route: row.route ?? null,
