@@ -1417,8 +1417,12 @@ export class StakeholderExpendComponent {
       );
 
       const mainDocument = mainDocumentResponse[0];
+
+      // Preservar idProject desde el grid: puede tener un valor no guardado aún en BD
+      const rowNode = this.gridApi?.getRowNode(expenditureId.toString());
       const updatedDocument = {
         ...mainDocument,
+        idProject: rowNode?.data?.idProject ?? mainDocument.idProject,
         subtotal: subtotal,
         tax: tax,
         total: total,

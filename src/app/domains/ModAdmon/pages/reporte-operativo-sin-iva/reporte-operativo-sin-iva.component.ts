@@ -813,7 +813,7 @@ export class ReporteOperativoSinIvaComponent {
         aportacionBanco: data.aportacionBanco,
         aportacionEfectivo: data.aportacionEfectivo,
         retornoInversion: data.retornoInversion,
-        totalUtilidad: data.aportacionBanco + data.aportacionEfectivo + data.retornoInversion,
+        totalUtilidad: data.retornoInversion - data.aportacionBanco - data.aportacionEfectivo,
       }))
       .sort((a, b) => a.socio.localeCompare(b.socio));
 

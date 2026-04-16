@@ -16,7 +16,7 @@ export const environment = {
     messagingSenderId: '151993360357',
   },
 
-  production: false,
+  production: true,
   //aqui juego con las base de datos
   urlFirebase: 'https://beapp-501d1-default-rtdb.firebaseio.com/',
 
