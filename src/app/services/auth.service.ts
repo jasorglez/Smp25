@@ -485,9 +485,9 @@ export class AuthService {
           merged[masterKey],
           advancedPermissions[masterKey]
         );
-      } else {
-        merged[masterKey] = this.deactivatePermissionSubtree(merged[masterKey]);
       }
+      // Si el master está en el árbol base (rol) pero no en advanced (depto/sucursal),
+      // se conserva activo: los permisos del rol son aditivos, no restrictivos.
     }
     for (const masterKey of Object.keys(advancedPermissions)) {
       if (!Object.prototype.hasOwnProperty.call(merged, masterKey)) {

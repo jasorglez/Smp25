@@ -70,6 +70,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.78 (11 Abril 2026) - feat: masterpermissions grid con columnas route/icon(Material)/showInSidebar editables',
+  version: '3.78 (14 Abril 2026) - feat: masterpermissions grid con columnas route/icon(Material)/showInSidebar editables',
 };
 
