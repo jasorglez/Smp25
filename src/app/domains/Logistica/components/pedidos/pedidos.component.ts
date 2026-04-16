@@ -301,6 +301,18 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#d4edda', fontWeight: 'bold' }
       },
       {
+        colId: 'totalPagarBanco',
+        headerName: 'Total banco',
+        editable: false,
+        width: 170,
+        valueGetter: (params) => params.data?.totalPagarBanco ?? params.data?.total ?? 0,
+        valueFormatter: (params) => {
+          const value = params.value ?? 0;
+          return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+        },
+        cellStyle: { backgroundColor: '#e7f1ff', fontWeight: 'bold' }
+      },
+      {
         field: 'comentario',
         headerName: 'Comentario',
         editable: true,
