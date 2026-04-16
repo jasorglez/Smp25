@@ -51,13 +51,18 @@ import { TypexPrefixesService } from 'app/services/typexprefixes.service';
           </span>
         </button>
 
-           <button class="btn btn-info btn-sm position-relative" (click)="saveMultiGuardar()" *ngIf="authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Mul')">
-          <i class="bi bi-files"></i> MultiGuardar
-          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="hasPedimentoSelection">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
-        </button>
+           <ng-container *ngFor="let btn of dynamicButtons">
+          <button *ngIf="actionMap[btn.identifier]"
+                  class="btn btn-info btn-sm position-relative"
+                  (click)="actionMap[btn.identifier]()"
+                  [title]="btn.description || btn.name">
+            <i [class]="btn.icon || 'bi bi-gear'"></i> {{ btn.name || btn.identifier }}
+            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="badgeMap[btn.identifier] && badgeMap[btn.identifier]()">
+              <span class="visually-hidden">Acción pendiente</span>
+            </span>
+          </button>
+        </ng-container>
         </div>
       </div>
 
@@ -181,6 +186,18 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
+  }
+
+  readonly actionMap: Record<string, () => void> = {
+    'Req_Mul': () => this.saveMultiGuardar(),
+  };
+
+  readonly badgeMap: Record<string, () => boolean> = {
+    'Req_Mul': () => this.hasPedimentoSelection,
+  };
+
+  get dynamicButtons(): any[] {
+    return this.authService.getActiveSubDetailedByTipo('shoppingDelison', 'requisitions', 'Boton');
   }
 
   rowData: any[] = [];
@@ -806,7 +823,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'pedimiento',
         headerName: 'Pedimiento',
-        width: 100,
+        width: 120,
+        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Ped'),
         editable: true,
         cellRenderer: (params: any) => {
           const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
@@ -841,6 +859,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'pedimentoNumber',
         headerName: 'Pedimento #',
+        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_PeN'),
         width: 140,
         editable: false,
         cellRenderer: (params: any) => {

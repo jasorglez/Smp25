@@ -1,10 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { PreparacionService } from 'app/services/preparacion.service';
+import { SignalsService } from 'app/services/signals.service';
+import { BranchsService } from 'app/services/branchs.service';
 import { DetalleWrapperComponent } from './detalle-wrapper.component';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
@@ -68,14 +70,27 @@ import { lastValueFrom } from 'rxjs';
 export class JarabeComponent implements OnInit {
 
   private preparacionService = inject(PreparacionService);
+  private signalsService = inject(SignalsService);
+  private branchsService = inject(BranchsService);
   private gridApi!: GridApi;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
   hasRowSelected: boolean = false;
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
+  userBranches: string[] = [];
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+  constructor() {
+    effect(() => {
+      const idUser = this.signalsService.idUser();
+      const idCompany = this.signalsService.getRootSelectedBySidebar()();
+      if (idUser && idCompany) {
+        this.loadUserBranches();
+      }
+    });
+  }
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -114,6 +129,31 @@ export class JarabeComponent implements OnInit {
     this.loadData();
   }
 
+  async loadUserBranches() {
+    try {
+      const idUser = this.signalsService.idUser();
+      const idCompany = this.signalsService.getRootSelectedBySidebar()();
+      if (!idUser || !idCompany) return;
+
+      const branches = await lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany));
+
+      const list: any[] = Array.isArray(branches)
+        ? branches
+        : (branches as any)?.project ?? [];
+
+      this.userBranches = list
+        .map((b: any) => b?.name || b?.Name || '')
+        .filter(n => n.trim());
+
+      this._colDefs = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+      }
+    } catch (error) {
+      console.error('Error loading user branches:', error);
+    }
+  }
+
   async loadData() {
     try {
       const items = await lastValueFrom(this.preparacionService.getAll());
@@ -132,6 +172,7 @@ export class JarabeComponent implements OnInit {
       id: item.id,
       lote: item.lote || '',
       articulo: item.articulo || '',
+      sucursal: item.sucursal || '',
       fechaElaboracion: item.fecha || '',
       preparacion: item.preparacionCount || 0,
       cantidad: item.cantidad || 0,
@@ -198,6 +239,7 @@ export class JarabeComponent implements OnInit {
     return {
       lote: item.lote,
       articulo: item.articulo,
+      sucursal: item.sucursal,
       fecha: item.fechaElaboracion || null,
       preparacionCount: item.preparacion || 0,
       cantidad: item.cantidad || 0,
@@ -245,6 +287,22 @@ export class JarabeComponent implements OnInit {
         cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
           params.data.articulo = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+      {
+        field: 'sucursal',
+        headerName: 'Sucursal',
+        width: 160,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => {
+          return { values: this.userBranches };
+        },
+        valueSetter: (params) => {
+          params.data.sucursal = params.newValue ?? '';
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -472,10 +530,13 @@ export class JarabeComponent implements OnInit {
     const today = new Date();
     const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+    const sucursalActual = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
+
     const newItem = {
       id: tempId,
       lote: '',
       articulo: '',
+      sucursal: sucursalActual,
       fechaElaboracion: fecha,
       preparacion: 0,
       cantidad: 0,

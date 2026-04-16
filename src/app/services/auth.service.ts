@@ -765,6 +765,15 @@ export class AuthService {
     return section?.active === true && subSection?.active === true && subSubSection?.active === true;
   }
 
+  getActiveSubDetailedByTipo(masterKey: string, detailedKey: string, tipo: string): any[] {
+    const section = this.userPermissions?.[masterKey];
+    const subSection = section?.children?.[detailedKey];
+    if (section?.active !== true || subSection?.active !== true || !subSection?.children) return [];
+    return Object.values(subSection.children).filter(
+      (item: any) => item?.active === true && (item?.tipo ?? '').toLowerCase() === tipo.toLowerCase()
+    );
+  }
+
   getCrudPermission(
     masterPermissionKey: string,
     detailedPermissionKey: string,

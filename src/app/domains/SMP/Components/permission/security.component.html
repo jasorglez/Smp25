@@ -1,0 +1,54 @@
+<div class="security-page col-12">
+  <div class="security-toolbar">
+    <button type="button" class="security-btn security-btn--primary" (click)="crear()" title="Nueva fila">
+      <i class="bi bi-plus-lg"></i>
+      Crear
+    </button>
+    <button
+      type="button"
+      class="security-btn security-btn--success"
+      (click)="guardar()"
+      [disabled]="!tieneCambiosPendientes"
+      title="Fijar cambios en memoria (solo en este navegador)">
+      <i class="bi bi-floppy"></i>
+      Guardar
+      <span class="security-badge" *ngIf="tieneCambiosPendientes" aria-hidden="true"></span>
+    </button>
+    <button
+      type="button"
+      class="security-btn security-btn--danger"
+      (click)="eliminar()"
+      [disabled]="!filaSeleccionada"
+      title="Eliminar fila seleccionada">
+      <i class="bi bi-trash"></i>
+      Eliminar
+    </button>
+    <button
+      type="button"
+      class="security-btn security-btn--muted"
+      (click)="deshacer()"
+      [disabled]="!tieneCambiosPendientes"
+      title="Volver al último guardado en memoria">
+      <i class="bi bi-arrow-counterclockwise"></i>
+      Deshacer cambios
+    </button>
+  </div>
+
+  <div class="security-grid-card">
+    <ag-grid-angular
+      class="ag-theme-quartz security-ag"
+      style="width: 100%"
+      [ngStyle]="{ height: gridHeight }"
+      [rowData]="rowData"
+      [columnDefs]="colDefs"
+      [defaultColDef]="defaultColDef"
+      [gridOptions]="gridOptions"
+      [localeText]="localeEs"
+      (gridReady)="onGridReady($event)"
+      (cellValueChanged)="onCellValueChanged()"
+      (cellClicked)="onCellClicked($event)"
+      (cellEditingStopped)="onCellEditingStopped($event)"
+      (selectionChanged)="onSelectionChanged($event)">
+    </ag-grid-angular>
+  </div>
+</div>
