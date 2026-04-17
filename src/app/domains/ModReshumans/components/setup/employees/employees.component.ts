@@ -75,7 +75,6 @@ export class EmployeesComponent {
         ...this.hrData, // conserva id u otros campos
         ...values       // actualiza con valores nuevos
       };
-     console.log(this.isNew)
       if (!this.isNew) {
         // Actualizar datos existentes
         this.hrService.updateHRManagementData(this.idBranch, this.hrData).subscribe({
@@ -89,7 +88,6 @@ export class EmployeesComponent {
         });
         return;
       }else{
-        console.log(values)
         // Insertar nuevos datos
         const payload = {
           active: true,
@@ -99,7 +97,6 @@ export class EmployeesComponent {
           discount1: true,
           discount2: true
         };
-        console.log(payload)
       
         this.hrService.addHRManagementData(payload).subscribe({
           next: () => {

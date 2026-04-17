@@ -99,7 +99,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     // Suscribirse a confirmaciones de guardado del servicio de modales
     this.modalSubscription = this.modalService.saveConfirmed$.subscribe(data => {
-      console.log('💾 DetailCellRenderer - Recibido evento de guardado:', data);
       this.handleModalSave(data);
     });
 
@@ -119,12 +118,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // Cargar datos directamente desde getFinalProduct (sin jerarquía)
   async loadCatalogData() {
-    console.log('🔍 loadCatalogData - Parámetros:', {
-      idRoot: this.idRoot,
-      idFamilia: this.idFamilia,
-      materialId: this.materialId,
-      materialName: this.materialName
-    });
 
     if (!this.idRoot || !this.idFamilia) {
       console.warn('❌ idRoot o idFamilia es null, no se pueden cargar datos');
@@ -132,16 +125,13 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     }
 
     try {
-      console.log('📡 Cargando productos finales desde getFinalProduct...');
 
       // Cargar productos finales desde el endpoint
       const finalProducts = await lastValueFrom(
         this.materialsService.getFinalProduct(this.idRoot)
       );
 
-      console.log('✅ Productos finales recibidos:', finalProducts.length);
       if (finalProducts.length > 0) {
-        console.log('🔍 Ejemplo de producto:', finalProducts[0]);
       }
 
       // Asignar directamente como filas planas
@@ -152,7 +142,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         isLoadingSeUsa: true
       }));
 
-      console.log('📋 TreeData asignado (filas planas):', this.treeData.length);
 
       // Cargar el estado "Se usa aquí" para todas las filas
       await this.loadSeUsaAquiStatus();
@@ -360,7 +349,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   handleModalSave(data: any) {
     // Método mantenido por compatibilidad con modal service pero no usado
-    console.log('💾 handleModalSave - No implementado para estructura plana:', data);
   }
 
   // Modal handlers removed - not used in flat structure
@@ -375,19 +363,15 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       // Filtrar productos con cambios en "Se usa aquí"
       const productsToSave = this.treeData.filter(item => item.__seUsaAquiModified);
 
-      console.log(`💾 Guardando cambios...`);
-      console.log(`   - Productos con cambios: ${productsToSave.length}`);
 
       // Guardar cambios de "Se usa aquí" (MaterialxFinalProduct)
       for (const product of productsToSave) {
         const originalValue = product.__originalSeUsaAqui ?? false;
         const currentValue = product.seUsaAqui;
 
-        console.log(`   Procesando "${product.presentation}": ${originalValue} → ${currentValue}`);
 
         if (currentValue === true && originalValue === false) {
           // Agregar relación
-          console.log(`   ➕ Agregando material a producto ${product.originalId}`);
           await lastValueFrom(
             this.materialsService.addMaterialToFinalProduct(
               this.materialId,
@@ -397,7 +381,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
           );
         } else if (currentValue === false && originalValue === true) {
           // Eliminar relación
-          console.log(`   ➖ Eliminando material de producto ${product.originalId}`);
           await lastValueFrom(
             this.materialsService.removeMaterialFromFinalProduct(
               this.materialId,
@@ -417,7 +400,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
       // Notificar al componente padre para actualizar "Donde usa"
       if (this.params?.context?.componentParent?.updateSubfamilyCount) {
-        console.log(`📢 Notificando al padre para actualizar "Donde usa" del material ${this.materialId}`);
         this.params.context.componentParent.updateSubfamilyCount(this.materialId);
       }
     } catch (error: any) {
@@ -447,12 +429,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // Cargar el estado "Se usa aquí" para todas las filas
   private async loadSeUsaAquiStatus() {
-    console.log('🔍 Cargando estado "Se usa aquí" para todos los productos...');
 
-    console.log(`📊 Total de productos a verificar: ${this.treeData.length}`);
 
     if (this.treeData.length === 0) {
-      console.log('⚠️ No hay productos para verificar');
       return;
     }
 
@@ -464,7 +443,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         );
         product.seUsaAqui = exists;
         product.isLoadingSeUsa = false;
-        console.log(`✅ Producto "${product.presentation}" (ID=${product.originalId}): ${exists ? 'SÍ se usa' : 'NO se usa'}`);
       } catch (error) {
         console.error(`❌ Error al verificar producto "${product.presentation}":`, error);
         product.seUsaAqui = false;
@@ -475,14 +453,12 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     // Esperar a que todas las consultas terminen
     await Promise.all(promises);
 
-    console.log('✅ Estado "Se usa aquí" cargado para todos los productos');
 
     // Reordenar: items marcados primero
     this.reorderMarkedItemsFirst();
 
     // IMPORTANTE: Guardar copia para revertir cambios DESPUÉS de cargar todo
     this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
-    console.log('📋 Copia de seguridad creada para Deshacer');
 
     // Refrescar el grid para mostrar los checkboxes actualizados
     if (this.gridApi) {
@@ -494,26 +470,21 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // Reordenar para que items marcados aparezcan primero
   private reorderMarkedItemsFirst() {
-    console.log('🔄 Reordenando productos: marcados primero...');
 
     // Separar productos marcados y no marcados
     const markedProducts = this.treeData.filter(item => item.seUsaAqui === true);
     const unmarkedProducts = this.treeData.filter(item => item.seUsaAqui !== true);
 
-    console.log(`📌 Productos marcados: ${markedProducts.length}`);
-    console.log(`📋 Productos no marcados: ${unmarkedProducts.length}`);
 
     // Reordenar: marcados primero, luego no marcados
     this.treeData = [...markedProducts, ...unmarkedProducts];
 
-    console.log('✅ Reordenamiento completado');
   }
 
   // Expandir automáticamente grupos que contienen items marcados
   private expandGroupsWithMarkedItems() {
     if (!this.gridApi) return;
 
-    console.log('📂 Expandiendo grupos con items marcados...');
 
     // Obtener combinaciones únicas de category + flavor que tienen items marcados
     const groupsToExpand = new Set<string>();
@@ -527,7 +498,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       }
     });
 
-    console.log(`🔓 Grupos a expandir: ${groupsToExpand.size}`);
 
     // Usar setTimeout para asegurar que el grid ya procesó los datos
     setTimeout(() => {
@@ -536,7 +506,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
           // Para grupos de nivel 1 (categoría)
           if (node.level === 0 && groupsToExpand.has(node.key)) {
             node.setExpanded(true);
-            console.log(`  ✅ Expandido: ${node.key} (Nivel 1 - Categoría)`);
           }
           // Para grupos de nivel 2 (sabor)
           else if (node.level === 1) {
@@ -545,7 +514,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
             const groupKey = `${parentKey}|${node.key}`;
             if (groupsToExpand.has(groupKey)) {
               node.setExpanded(true);
-              console.log(`  ✅ Expandido: ${node.key} (Nivel 2 - Sabor)`);
             }
           }
         }
@@ -559,12 +527,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     const newValue = params.newValue;
     const oldValue = params.oldValue;
 
-    console.log(`🔄 Checkbox cambiado para "${product.presentation}":`, {
-      oldValue,
-      newValue,
-      materialId: this.materialId,
-      productId: product.originalId
-    });
 
     // Si no cambió realmente, no hacer nada
     if (newValue === oldValue) {
@@ -582,7 +544,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     // Actualizar el estado de "hasUnsavedChanges"
     this.hasUnsavedChanges = true;
 
-    console.log(`📝 Cambio marcado localmente (no guardado aún)`);
 
     // NO refrescar el grid aquí para evitar perder el estado editable
     // El reordenamiento y expansión se harán solo al guardar o al cargar inicial

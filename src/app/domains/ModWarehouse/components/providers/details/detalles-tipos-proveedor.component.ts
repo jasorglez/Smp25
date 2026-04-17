@@ -124,16 +124,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       width: 80,
       onCellValueChanged: async (params: any) => {
         // 🔍 DEBUG: Cambio en checkbox VIGENTE
-        console.log('═══════════════════════════════════════════');
-        console.log('✓ CHECKBOX VIGENTE (ACTIVO) CAMBIÓ:');
-        console.log('   Valor anterior:', params.oldValue);
-        console.log('   Valor nuevo:', params.newValue);
-        console.log('   ID:', params.data.id);
-        console.log('   Categoría:', params.data.categoria);
-        console.log('   Familia:', params.data.familia);
-        console.log('   Subfamilia:', params.data.subfamilia);
-        console.log('   Principal:', params.data.principal);
-        console.log('═══════════════════════════════════════════');
 
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
@@ -280,7 +270,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
             )
             .map(row => row.subfamilia);
 
-          console.log('🔍 Combinaciones existentes para', `${categoriaSeleccionada}/${familiaSeleccionada}:`, existingCombinations);
 
           // Filtrar subfamilias que NO estén en las combinaciones existentes
           subfamiliasFiltradas = subfamiliasFiltradas
@@ -292,7 +281,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
               valueAddition2: s.valueAddition2
             }));
 
-          console.log('✅ Subfamilias disponibles:', subfamiliasFiltradas.length);
 
           return { options: subfamiliasFiltradas };
         }
@@ -333,16 +321,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       width: 80,
       onCellValueChanged: async (params: any) => {
         // 🔍 DEBUG: Cambio en checkbox PRINCIPAL
-        console.log('═══════════════════════════════════════════');
-        console.log('★ CHECKBOX PRINCIPAL CAMBIÓ:');
-        console.log('   Valor anterior:', params.oldValue);
-        console.log('   Valor nuevo:', params.newValue);
-        console.log('   ID:', params.data.id);
-        console.log('   Categoría:', params.data.categoria);
-        console.log('   Familia:', params.data.familia);
-        console.log('   Subfamilia:', params.data.subfamilia);
-        console.log('   Vigente:', params.data.vigente);
-        console.log('═══════════════════════════════════════════');
 
         // Guardar ID de la fila modificada para restaurar focus
         const modifiedRowId = params.data.id;
@@ -432,7 +410,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       return undefined;
     },
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
 
       // Obtener todas las columnas
       const allColumnIds: string[] = [];
@@ -440,12 +417,10 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
 
       // Autoajustar todas las columnas al contenido (skipHeader=false incluye header en el cálculo)
       params.api.autoSizeColumns(allColumnIds, false);
 
-      console.log('Autosize completed');
     }
   };
 
@@ -472,13 +447,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       this.familias = familias || [];
       this.subfamilias = subfamilias || [];
 
-      console.log('Catálogos cargados:', {
-        categorias: this.categorias.length,
-        familias: this.familias.length,
-        subfamilias: this.subfamilias.length
-      });
 
-      console.log('Provider Types cargados:', providerTypes);
 
       // Convertir datos del endpoint a formato del grid
       this.rowData = (providerTypes as any[]).map((item: any) => ({
@@ -606,19 +575,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
 
     // 🔍 DEBUG: Mostrar datos de la fila seleccionada
     if (this.selectedRow) {
-      console.log('═══════════════════════════════════════════');
-      console.log('📍 FILA SELECCIONADA:');
-      console.log('   ID:', this.selectedRow.id);
-      console.log('   Categoría:', this.selectedRow.categoria);
-      console.log('   Familia:', this.selectedRow.familia);
-      console.log('   Subfamilia:', this.selectedRow.subfamilia);
-      console.log('   Vigente (activo):', this.selectedRow.vigente);
-      console.log('   Principal:', this.selectedRow.principal);
-      console.log('   idSubfamily:', this.selectedRow.idSubfamily);
-      console.log('   __originalSubfamilia:', this.selectedRow.__originalSubfamilia);
-      console.log('   __isNew:', this.selectedRow.__isNew);
-      console.log('   __modified:', this.selectedRow.__modified);
-      console.log('═══════════════════════════════════════════');
     }
   }
 
@@ -679,7 +635,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
 
     // Si la fila existe en BD, hacer soft delete
     try {
-      console.log('Eliminando registro ID:', this.selectedRow.id);
 
       await new Promise((resolve, reject) => {
         this.providersService.deleteSubfamilyxProvider(this.selectedRow.id).subscribe({
@@ -693,7 +648,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
 
       // ✅ Si ya no quedan registros, limpiar typeProvider en el grid padre
       if (this.rowData.length === 0) {
-        console.log('⚠️ No quedan registros - limpiando typeProvider en ProvidersComponent');
 
         try {
           const providerData: any = await new Promise((resolve, reject) => {
@@ -723,7 +677,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
             });
           }
 
-          console.log('✅ typeProvider limpiado en grid padre');
 
         } catch (error) {
           console.error('❌ Error al limpiar typeProvider:', error);
@@ -785,15 +738,12 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       return;
     }
 
-    console.log('Datos a guardar:', this.rowData);
 
     try {
       // Separar filas nuevas y modificadas
       const newRows = this.rowData.filter(row => row.__isNew);
       const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-      console.log('Filas nuevas:', newRows.length);
-      console.log('Filas modificadas:', modifiedRows.length);
 
       // Procesar filas nuevas (POST)
       for (const row of newRows) {
@@ -812,7 +762,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
           principal: row.principal || false
         };
 
-        console.log('Creando registro:', dataToCreate);
         await new Promise((resolve, reject) => {
           this.providersService.addSubfamilyxProvider(dataToCreate).subscribe({
             next: resolve,
@@ -839,7 +788,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
           principal: row.principal || false
         };
 
-        console.log('Actualizando registro ID:', row.id, dataToUpdate);
         await new Promise((resolve, reject) => {
           this.providersService.updateSubfamilyxProvider(row.id, dataToUpdate).subscribe({
             next: resolve,
@@ -859,7 +807,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       // Si solo hubo modificaciones, limpiar flags localmente
       // ✅ SOLUCIÓN PROBLEMA 1: Siempre recargar datos desde servidor después de guardar
       // Esto asegura que los datos estén sincronizados y evita problemas de mapeo
-      console.log('🔄 Recargando datos del servidor después de guardar...');
 
       // Recargar datos desde el servidor
       const providerTypes: any = await new Promise((resolve, reject) => {
@@ -869,7 +816,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         });
       });
 
-      console.log('📊 Datos recibidos del servidor:', providerTypes);
 
       // Mapear datos correctamente
       this.rowData = (providerTypes || []).map((item: any) => ({
@@ -892,7 +838,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         return (a.id || 0) - (b.id || 0);
       });
 
-      console.log('✅ Datos mapeados correctamente:', this.rowData);
 
       // Actualizar el grid
       this.gridApi?.setGridOption('rowData', this.rowData);
@@ -904,7 +849,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       const hasNoPrincipal = !principalRow;
 
       if (hasNoPrincipal) {
-        console.log('⚠️ No hay registro principal - limpiando typeProvider en ProvidersComponent');
 
         try {
           // Consultar con getCustomerById
@@ -926,7 +870,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
             });
           });
 
-          console.log('✅ typework limpiado exitosamente en DB Administration.Customer');
 
           // Actualizar los datos locales
           this.params.data.typework = '';
@@ -939,7 +882,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
               columns: ['typeProvider'],
               force: true
             });
-            console.log('✅ Grid padre refrescado - columna typeProvider limpiada');
           }
 
         } catch (error) {
@@ -951,21 +893,13 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         const isComplete = principalRow.categoria && principalRow.familia && principalRow.subfamilia;
 
         if (!isComplete) {
-          console.log('⚠️ El registro principal está incompleto. No se actualizará el campo typeProvider en el grid padre.');
-          console.log('   Categoría:', principalRow.categoria || '(vacío)');
-          console.log('   Familia:', principalRow.familia || '(vacío)');
-          console.log('   Subfamilia:', principalRow.subfamilia || '(vacío)');
           // No actualizar typeProvider pero continuar con el resto del flujo
         } else {
           const tipoProveedorConcatenado = `${principalRow.categoria}/${principalRow.familia}/${principalRow.subfamilia}`;
 
-          console.log('🔍 OBTENIENDO DATOS DEL PROVIDER');
-          console.log('🔍 Tipo concatenado:', tipoProveedorConcatenado);
-          console.log('🔍 ID del Provider:', this.params.data.id);
 
           try {
             // Consultar con getCustomerById
-            console.log('\n📡 Consultando getCustomerById(' + this.params.data.id + ')...');
             const providerData: any = await new Promise((resolve, reject) => {
               this.customersService.getCustomerById(this.params.data.id).subscribe({
                 next: resolve,
@@ -973,15 +907,11 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
               });
             });
 
-            console.log('✅ Respuesta de getCustomerById:', providerData);
-            console.log('📊 typework actual:', providerData?.typework);
 
             // Actualizar solo el campo typework
             providerData.typework = tipoProveedorConcatenado;
-            console.log('📝 Actualizando typework a:', tipoProveedorConcatenado);
 
             // Guardar con updateCustomer
-            console.log('💾 Guardando en DB Administration.Customer...');
             await new Promise((resolve, reject) => {
               this.customersService.updateCustomer(this.params.data.id.toString(), providerData).subscribe({
                 next: resolve,
@@ -989,7 +919,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
               });
             });
 
-            console.log('✅ typework actualizado exitosamente en DB Administration.Customer');
 
             // ✅ SOLUCIÓN PROBLEMA 2: Actualizar los datos locales Y refrescar el grid padre
             this.params.data.typework = tipoProveedorConcatenado;
@@ -1003,7 +932,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
                 columns: ['typeProvider'],
                 force: true
               });
-              console.log('✅ Grid padre refrescado - columna typeProvider actualizada visualmente');
             }
 
           } catch (error) {
@@ -1024,16 +952,10 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       if (this.gridApi && selectedRow) {
         let rowToSelect = null;
 
-        console.log('🔍 Buscando tipo proveedor para restaurar...', {
-          selectedRowId,
-          selectedRowCombination,
-          totalRows: this.rowData.length
-        });
 
         // Intentar encontrar por ID original (si no era temporal)
         if (selectedRowId && !String(selectedRowId).startsWith('temp_')) {
           rowToSelect = this.rowData.find(r => r.id === selectedRowId);
-          console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
         }
 
         // Si no se encontró, buscar por combinación categoria/familia/subfamilia
@@ -1041,24 +963,20 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
           rowToSelect = this.rowData.find(r =>
             `${r.categoria}|${r.familia}|${r.subfamilia}` === selectedRowCombination
           );
-          console.log('Búsqueda por combinación:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
         }
 
         // Si se encontró la fila, seleccionarla
         if (rowToSelect) {
           const rowIndex = this.rowData.indexOf(rowToSelect);
-          console.log('📍 Índice de la fila:', rowIndex);
 
           // Intentar obtener el rowNode - si falla, iterar todos los nodos
           let rowNode = this.gridApi.getDisplayedRowAtIndex(rowIndex);
 
           if (!rowNode) {
-            console.log('⚠️ No se pudo obtener por índice, iterando todos los nodos...');
             // Iterar sobre todos los nodos para encontrar el correcto
             this.gridApi.forEachNode((node) => {
               if (node.data && node.data.id === rowToSelect.id) {
                 rowNode = node;
-                console.log('✅ Nodo encontrado iterando:', node.rowIndex);
               }
             });
           }
@@ -1066,7 +984,6 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
           if (rowNode) {
             rowNode.setSelected(true);
             this.gridApi.ensureIndexVisible(rowNode.rowIndex!, 'middle');
-            console.log('✅ Fila restaurada después de guardar:', rowToSelect);
           } else {
             console.error('❌ No se pudo obtener el rowNode');
           }

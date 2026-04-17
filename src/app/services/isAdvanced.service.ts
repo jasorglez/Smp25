@@ -66,9 +66,7 @@ export class AuthService {
 
         // Verificar si el correo electrónico está verificado
         if (result.user.emailVerified) {
-          console.log('El correo electrónico ha sido verificado.');
         } else {
-          console.log('El correo electrónico aún no ha sido verificado.');
         }
         return result.user;
       } else {
@@ -101,7 +99,6 @@ export class AuthService {
 
       await signOut(this.auth);
     } catch (error) {
-      console.log(error);
     }
   }
 
@@ -128,7 +125,6 @@ export class AuthService {
         })
       );
 
-      console.log('Usuario eliminado exitosamente.');
     } catch (error) {
       console.error('Error al eliminar el usuario:', error);
       throw error; // Re-lanza el error para que pueda ser manejado por el componente
@@ -153,7 +149,6 @@ export class AuthService {
         })
       );
 
-      console.log(`Contraseña actualizada para el correo ${email}`);
     } catch (error) {
       console.error('Error al actualizar la contraseña:', error);
       throw error; // Re-lanza el error para que pueda ser manejado por el componente

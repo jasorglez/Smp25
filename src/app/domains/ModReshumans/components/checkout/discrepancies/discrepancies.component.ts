@@ -283,7 +283,6 @@ export default class DiscrepanciesComponent implements OnInit {
       this.rowData = [];
       
       this.rowData = data;
-      console.log(this.rowData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Diferencias de Checador', 'Menu Recursos Humanos Diferencias de Checador',  this.trackingService.getEmail());
       // Esperar a que el grid se actualice y luego ajustar las columnas
       setTimeout(() => {
@@ -353,14 +352,12 @@ export default class DiscrepanciesComponent implements OnInit {
   obtenerCatalogoDiscrepancias(idCompany: number) {
     this.clockService.getCatalogsDiscrepancies(idCompany).subscribe((data: any) => {
       this.catalogoDiscrepancias = data;
-      console.log(this.catalogoDiscrepancias);
     });
   }
 
   saveChanges() {
     // Filtrar solo las filas modificadas
     const modifiedRows = this.rowData.filter(row => row.__modified);
-    console.log(modifiedRows);
 
     if (modifiedRows.length === 0) {
       alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');

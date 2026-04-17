@@ -496,12 +496,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             m => !usedMaterialIds.includes(m.id)
           );
 
-          console.log('🔧 SelectWithTooltipEditorV2 params:', {
-            totalMaterials: this.materials?.length || 0,
-            usedMaterials: usedMaterialIds.length,
-            availableMaterials: availableMaterials.length,
-            currentRowId: params.data.id
-          });
 
           return {
             showAbbreviation: false,
@@ -549,7 +543,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             // Pre-cargar proveedores para el nuevo material
             const type = params.data.intorext || 'Externo';
             this.loadProviders(selectedMaterial.id, type).then(() => {
-              console.log(`✅ Proveedores pre-cargados para material ${selectedMaterial.id} tipo ${type}`);
             });
 
             // Refrescar las celdas para mostrar el articleNumber actualizado y limpiar proveedor
@@ -670,7 +663,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             const materialId = params.data.idSupplie || params.data.materialId || 0;
             if (materialId > 0) {
               this.loadProviders(materialId, params.newValue).then(() => {
-                console.log(`✅ Proveedores pre-cargados para material ${materialId} tipo ${params.newValue}`);
               });
             }
 
@@ -710,7 +702,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           // Buscar proveedores en el caché (clave solo por material)
           const providers = this.providersCache.get(`${materialId}`) || [];
 
-          console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo: ${type}, Proveedores en caché: ${providers.length}`);
 
           return {
             options: providers.map(p => {
@@ -728,7 +719,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           const type = params.data.intorext || 'Externo';
 
           if (materialId > 0) {
-            console.log(`🔄 Pre-cargando proveedores para material ${materialId} tipo ${type}`);
             await this.loadProviders(materialId, type);
           }
         },
@@ -758,7 +748,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
                 params.data.nameProvider = dashIdx !== -1
                   ? selectedProvider.providerName.substring(dashIdx + 3).trim()
                   : (selectedProvider.providerName || '').trim();
-                console.log(`✅ Proveedor seleccionado: ${params.data.nameProvider}`);
               }
             }
 
@@ -1217,14 +1206,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('🔵 ========== INICIANDO CREACIÓN DE COTIZACIÓN ==========');
 
       // 2. Obtener datos de la requisición original
       const requisicionOriginal = this.params.data;
-      console.log('📋 Requisición original:', requisicionOriginal);
-      console.log('   ID:', requisicionOriginal.id);
-      console.log('   Sucursal (idReference):', requisicionOriginal.idReference);
-      console.log('   Folio:', requisicionOriginal.requisitionNumber);
 
       // 3. Consultar cuántas cotizaciones ya existen para esta requisición
       const cotizacionesExistentes: any = await firstValueFrom(
@@ -1234,8 +1218,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       const numCotizaciones = Array.isArray(cotizacionesExistentes) ? cotizacionesExistentes.length : 0;
       const siguienteNumeroPedimento = numCotizaciones + 1;
 
-      console.log('📊 Cotizaciones existentes:', numCotizaciones);
-      console.log('🔢 Siguiente número de pedimento:', siguienteNumeroPedimento);
 
       // 4. Obtener el prefijo de la sucursal para generar el folio
       const prefixData: any = await firstValueFrom(
@@ -1245,8 +1227,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       const siguienteConsecutivo = (prefixData.consecutive || 0) + 1;
       const folioCotizacion = `${prefixData.prefix || ''}${siguienteConsecutivo}`;
 
-      console.log('📝 Prefijo obtenido:', prefixData);
-      console.log('📄 Folio de la cotización:', folioCotizacion);
 
       // 5. Crear el maestro de la cotización
       const maestroCotizacion = {
@@ -1283,27 +1263,20 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         active: true
       };
 
-      console.log('📤 ========== MAESTRO COTIZACIÓN - DATA A ENVIAR ==========');
-      console.log(JSON.stringify(maestroCotizacion, null, 2));
 
       // Crear el maestro en la BD
       const cotizacionCreada: any = await firstValueFrom(
         this.ocAndReqsService.addOcAndReq(maestroCotizacion)
       );
 
-      console.log('✅ Cotización creada:', cotizacionCreada);
       const idCotizacion = cotizacionCreada.id || cotizacionCreada.ID;
 
       if (!idCotizacion) {
         throw new Error('No se pudo obtener el ID de la cotización creada');
       }
 
-      console.log('🆔 ID de cotización creada:', idCotizacion);
 
       // 6. Crear snapshot de TODOS los artículos de la requisición, marcando cuáles fueron solicitados
-      console.log('📦 Creando snapshot completo de la cotización...');
-      console.log(`   Total de items en requisición: ${this.rowData.length}`);
-      console.log(`   Items seleccionados para este pedimento: ${checkedItems.length}`);
 
       // Crear Set de IDs seleccionados para búsqueda rápida
       const selectedIds = new Set(checkedItems.map(item => item.id));
@@ -1338,14 +1311,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
         };
 
-        console.log(`📤 ${fueSeleccionado ? '✓ SOLICITADO' : '○ Snapshot'}: ${item.nameArticle || item.article}`);
 
         await firstValueFrom(
           this.ocAndReqsService.addReqItem(detallePayload)
         );
       }
 
-      console.log('✅ Snapshot completo creado con marcas de selección');
 
       // 7. Actualizar el consecutivo del prefijo
       const updatedPrefixData = {
@@ -1360,7 +1331,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.typexPrefixesService.updatePrefix('branch', requisicionOriginal.idReference, updatedPrefixData)
       );
 
-      console.log('✅ Consecutivo actualizado');
 
       // 8. Actualizar la columna "Pedimento #" de los items seleccionados
       checkedItems.forEach(item => {
@@ -1376,7 +1346,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       });
 
       // 9. ✅ GUARDAR los items actualizados en la base de datos
-      console.log('📤 Guardando items de requisición con pedimentoNumber actualizado...');
 
       for (const item of checkedItems) {
         const updatePayload = {
@@ -1407,18 +1376,15 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
         };
 
-        console.log(`📤 Actualizando item ${item.id} con pedimentoNum: ${item.pedimentoNumber} (pedimento: false)`);
 
         await firstValueFrom(
           this.ocAndReqsService.updateReqItem(item.id.toString(), updatePayload)
         );
       }
 
-      console.log('✅ Items actualizados en la base de datos');
 
       // 10. ✅ Actualizar el detailData en el maestro para refrescar "Cumplimiento Pedimento"
       if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
-        console.log('📊 Actualizando detailData en el maestro después de Multiguardar');
         this.context.ITEMS.save(this.requisitionId, this.rowData, false);
       }
 
@@ -1430,7 +1396,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s). Pedimento #${siguienteNumeroPedimento}`;
       alerts.basicAlert('Cotización Creada', message, 'success');
 
-      console.log('✅ ========== COTIZACIÓN CREADA EXITOSAMENTE ==========');
 
     } catch (error) {
       console.error('❌ Error al crear cotización:', error);
@@ -1493,8 +1458,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('💾 Guardando datos del nuevo artículo en la fila...');
-    console.log('📋 Datos del formulario:', this.newArticle);
 
     // Guardar los datos del formulario en la fila actual
     // idSupplie = 0 indica que es un artículo nuevo (no recurrente)
@@ -1557,12 +1520,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       );
 
       if (!Array.isArray(cotizaciones) || cotizaciones.length === 0) {
-        console.log('📋 No hay pedimentos existentes para propagar cambios');
         return;
       }
 
-      console.log(`🔄 Propagando cambios a ${cotizaciones.length} pedimento(s)...`);
-      console.log(`   Nuevos items: ${newItems.length}, Modificados: ${modifiedItems.length}`);
 
       // 2. Para cada cotización, propagar cambios
       for (const cotizacion of cotizaciones) {
@@ -1586,7 +1546,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           });
 
           if (alreadyExists) {
-            console.log(`   ⏭️ Item "${nameArticle}" ya existe en cotización ${cotizacionId}, omitiendo`);
             continue;
           }
 
@@ -1617,7 +1576,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           };
 
           await firstValueFrom(this.ocAndReqsService.addReqItem(payload));
-          console.log(`   ✅ Nuevo item "${nameArticle}" agregado a cotización ${cotizacionId}`);
         }
 
         // 4. Actualizar observaciones de items modificados
@@ -1632,7 +1590,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           });
 
           if (!matchingItem) {
-            console.log(`   ⚠️ No se encontró item "${nameArticle}" en cotización ${cotizacionId}`);
             continue;
           }
 
@@ -1669,11 +1626,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           await firstValueFrom(
             this.ocAndReqsService.updateReqItem(matchingItem.id.toString(), updatePayload)
           );
-          console.log(`   ✅ Observaciones de "${nameArticle}" actualizadas en cotización ${cotizacionId}`);
         }
       }
 
-      console.log('✅ Propagación a pedimentos completada');
 
     } catch (error) {
       console.error('❌ Error al propagar cambios a pedimentos:', error);
@@ -1690,7 +1645,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('🔄 Generando PDF para requisición:', this.requisitionData.id);
 
     try {
       // Usar el servicio receiptsDelisonService para generar el PDF como Blob
@@ -1705,7 +1659,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Crear nueva URL para el blob
         this.originalPdfUrl = URL.createObjectURL(blob);
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl);
-        console.log('✅ PDF generado y cargado en el iframe');
       } else {
         console.error('⚠️ El servicio no retornó un Blob');
         this.pdfUrl = null;

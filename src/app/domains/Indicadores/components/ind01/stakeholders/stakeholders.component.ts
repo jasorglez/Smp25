@@ -93,7 +93,6 @@ export class StakeholdersComponent {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      console.log(this.idProject);
       if (this.idProject == null) {
         this.rowData = [];
         alerts.basicAlert('Stakeholders', 'Debe elegir un proyecto primero.', 'error');
@@ -175,7 +174,6 @@ export class StakeholdersComponent {
         } else if (type === 'COMPANY') {
           this.companias = data; // Almacenar en companias
         }
-        console.log(type === 'PROVIDER' ? this.proveedores : this.companias);
         // Forzar la actualización de la grid
         if (this.gridApi) {
           this.gridApi.setGridOption('columnDefs', this.columnDefs);
@@ -189,7 +187,6 @@ export class StakeholdersComponent {
     this.providersService.getProviders(this.idRoot).subscribe(
       (data: Providers[]) => {
         this.providersAllList = data;
-        console.log(this.proveedores);
       },
       (error) => console.error('Error fetching work programs:', error)
     );
@@ -383,7 +380,6 @@ export class StakeholdersComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }

@@ -88,7 +88,6 @@ export class IncomesAndExpensesService {
   }
 
   getExcelEgresos(Mes: string, idCompany: number, Type: string): Observable<any> {
-    console.log("---",Mes, idCompany, Type)
     return this.http.post<any>(
       environment.urlAdministration +
       `/Incomeandexpense/ProcesadorExcelEgresos?Mes=${Mes}&idCompany=${idCompany}&Type=${Type}`,

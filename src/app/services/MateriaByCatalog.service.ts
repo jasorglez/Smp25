@@ -18,7 +18,6 @@ export class MateriaByCatalogService {
   }
 
   addMateriaByCatalog(data: any) {
-    console.log('data service', data);
     return this.http.post(`${environment.urlWarehouse}/MateriaByCatalog`, data, { headers: this.trackingService.getHeaders() });
   }
 

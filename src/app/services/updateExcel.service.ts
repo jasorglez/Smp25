@@ -91,11 +91,9 @@ export class UpdateExcelService {
   loadEmployees() {
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = -idRoot; // Convertir a negativo como se solicita
-    console.log(idRoot)
     this.employeesService.getEmployees(idBranch).subscribe({
       next: (response: any) => {
         this.employees =response
-        console.log(this.employees)
       },
       error: (error) => {
         console.error('Error al cargar empleados:', error);
@@ -176,7 +174,6 @@ export class UpdateExcelService {
             
         this.UpdateExcel({ data: this.data }).subscribe({
         next: (res) => {
-          console.log('Respuesta del backend:', res);
         },
         error: (err) => {
           console.error('Error al actualizar Excel:', err);
@@ -189,7 +186,6 @@ export class UpdateExcelService {
   }
 
   UpdateExcel(data: any): Observable<any> {
-    console.log(data)
   return this.http.post(
     `${environment.urlSmp}/UpdateExcel/procesar`,
     data,
@@ -234,7 +230,6 @@ export class UpdateExcelService {
       dateEnd: dateEnd,
       seleccionados: seleccionados.map(String) 
     };
-    console.log('Datos enviados a processAndDownloadCuadExter:', dateRange);
 
     return this.http.post(
       `${environment.urlSmp}/UpdateExcel/process-and-download-cuadexter`,

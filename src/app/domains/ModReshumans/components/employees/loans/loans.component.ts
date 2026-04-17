@@ -133,7 +133,6 @@ export class EmployeesxLoansComponent {
       .getLoansByEmployee(this.idEmployee, 'PRESTAMO')
       .subscribe(
         (maestroRowData: any[]) => {
-          console.log('Datos de préstamos cargados:', maestroRowData);
           if (!maestroRowData || maestroRowData.length === 0) {
             this.maestroRowData = this.detalleRowData = [];
           } else {
@@ -599,13 +598,11 @@ export class EmployeesxLoansComponent {
   }
 
   onMasterCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
   }
 
   onDetailCellValueChanged($event) {
-    console.log('Dato cambiado:', $event.data);
     $event.data.__modified = true;
     this.detailNotSavedChanges = true;
   }

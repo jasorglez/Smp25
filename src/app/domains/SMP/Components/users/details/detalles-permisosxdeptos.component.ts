@@ -395,7 +395,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   getCRUD(idPosicion: number): Promise<any[]> {
     return new Promise((resolve, reject) => {
       this.rolesService.getCatalogCRUD(idPosicion).subscribe({
-        next: (data: any) => { console.log(data); resolve(data || []); },
+        next: (data: any) => {resolve(data || []); },
         error: (error) => {
           if (error.status === 404) resolve([]);
           else { console.error('Error fetching posiciones:', error); reject(error); }
@@ -580,7 +580,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       delete cleanedData.posicionesDisponibles;
       observables.push(this.permitionsService.addPermitionsDetailBydescription(cleanedData));
 
-      console.log(this.rolesDefinidos);
       if (this.rolesDefinidos && this.rolesDefinidos.length > 0) {
         const detailObservables = this.rolesDefinidos.map((permiso) => {
           const detailData = {
@@ -597,7 +596,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             canDelete: permiso.canDelete,
             active: permiso.active,
           };
-          console.log(detailData);
           return this.permitionsService.addPermitionsDetail(detailData);
         });
         observables.push(...detailObservables);
@@ -705,7 +703,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
 
     if (colId === 'idRole') {
       const roleId = event.data.idRole;
-      console.log(event.data);
       this.catalogPosiciones = roleId ? await this.getPoscionesbyRole(roleId) : [];
     }
 

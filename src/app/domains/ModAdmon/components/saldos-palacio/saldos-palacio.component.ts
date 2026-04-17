@@ -357,7 +357,6 @@ export class SaldosPalacioComponent {
           // 404 significa "no hay datos", no es un error real
           if (error.status === 404) {
             this.saldoData = [];
-            console.log('No hay cuentas bancarias para esta empresa');
           } else {
             // Otros errores sí son problemas reales
             console.error('Error al cargar cuentas bancarias:', error);

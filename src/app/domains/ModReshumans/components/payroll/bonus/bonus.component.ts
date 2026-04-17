@@ -244,7 +244,6 @@ export class BonusComponent implements CanComponentDeactivate {
     this.catalogsService.getCatalogs(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogos = data;
-        console.log("------ Catalogo", data);
       },
       (error) => console.error('Error fetching measures:', error)
     );
@@ -254,7 +253,6 @@ export class BonusComponent implements CanComponentDeactivate {
     this.catalogsService.getCatalogsVigente(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogosVigentes = data;
-        console.log("------ Catalogo", data);
       },
       (error) => console.error('Error fetching measures:', error)
     );
@@ -262,7 +260,6 @@ export class BonusComponent implements CanComponentDeactivate {
 
   async obtenerBonosEmpleados() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    console.log('Consulta: ', this.fechaInicio, this.fechaFin, this.idBranch);
 
     try {
       const data = await firstValueFrom(
@@ -270,7 +267,6 @@ export class BonusComponent implements CanComponentDeactivate {
       );
       this.rowData = data;
       
-      console.log("---- data de bonos empleados: ", this.rowData);
     } catch (err) {
       console.error('Error al obtener empleados con bonus:', err);
     }
@@ -484,7 +480,6 @@ export class BonusComponent implements CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any) {
-    console.log('---- evento de cambio de celda: ', event);
     event.data.__modified = true;
     this.notSavedChanges = true;
     if (event.colDef.field === 'bonus') {
@@ -555,7 +550,6 @@ export class BonusComponent implements CanComponentDeactivate {
 
 
   async saveChanges() {
-    console.log('---- salvando cambios ', this.rowData);
     const isValid = this.rowData.every((item) => item.employeeName && item.incidenceDate && item.idBonus);
     if (!isValid) {
       alerts.basicAlert(
@@ -571,16 +565,6 @@ export class BonusComponent implements CanComponentDeactivate {
       (row) => row.__modified && !row.__isNew
     );
 
-    console.log('---- rows a guardar: ', newRows);
-    console.log('---- rows modificadas: ', modifiedRows);
-    console.log(
-      '---- rows a eliminar: ',
-      this.rowData.filter((row) => !row.__isNew && !row.__modified)
-    );
-    console.log(
-      '---- rows a eliminar: ',
-      this.rowData.filter((row) => !row.__isNew && !row.__modified).length
-    );
 
     this.cleanedListData = [];
 
@@ -593,9 +577,7 @@ export class BonusComponent implements CanComponentDeactivate {
       const day = ('0' + date.getDate()).slice(-2);
 
       cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
-      console.log('DATOS', cleanedData);
       if (cleanedData != null) this.cleanedListData.push(cleanedData);
-      console.log('Datos por añadir', this.cleanedListData);
       return this.administrationService.addEmployeesBonus(this.cleanedListData);
     });
 
@@ -610,9 +592,7 @@ export class BonusComponent implements CanComponentDeactivate {
       cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
 
       // Log y push
-      console.log('DATOS LIMPIOS POR ACTUALIZAR: ', cleanedData);
       if (cleanedData != null) this.cleanedListData.push(cleanedData);
-    console.log(row.id,cleanedData)
       return this.administrationService.updateEmployeesBonus(
         row.id,
         cleanedData
@@ -737,14 +717,8 @@ export class BonusComponent implements CanComponentDeactivate {
 
   deleteEntry() {
     const selectedRows = this.gridApi.getSelectedRows(); // Obtener los datos de la fila seleccionada
-    console.log(
-      '---- este es el registro seleccionado para eliminar: ',
-      selectedRows
-    );
     if (selectedRows.length > 0) {
       const selectedRow = selectedRows[0];
-      console.log('ID seleccionado:', selectedRow.id);
-      console.log('Fila completa:', selectedRow);
       if (selectedRow.id < 0) {
         alerts.basicAlert(
           'Información',
@@ -766,7 +740,6 @@ export class BonusComponent implements CanComponentDeactivate {
                 .subscribe({
                   next: (data: any) => {
                     this.deleteData = data || null;
-                    console.log(data);
                     if (data.success)
                       alerts.basicAlert(
                         'Eliminado',
@@ -864,8 +837,6 @@ export class BonusComponent implements CanComponentDeactivate {
     await this.obtenerBonosEmpleados();
 
     // Debug opcional
-    console.log('Fecha Inicio:', this.fechaInicio);
-    console.log('Fecha Fin:', this.fechaFin);
   }
 
   getUltimoDiaInicioSemana(desde: Date, diaInicio: number): Date {

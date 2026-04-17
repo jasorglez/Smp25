@@ -293,7 +293,6 @@ export class CatalogTooltipCellComponent implements ICellRendererAngularComp {
 
     // Verificar si se hizo clic en el chevron
     if (target.classList.contains('chevron-icon') || target.getAttribute('data-action') === 'toggle') {
-      console.log('Chevron clicked via cell click!', this.params.data);
       this.toggleExpansion();
     }
   }
@@ -302,29 +301,23 @@ export class CatalogTooltipCellComponent implements ICellRendererAngularComp {
     event.preventDefault();
     event.stopPropagation();
 
-    console.log('Chevron mousedown!', this.params.data);
     this.toggleExpansion();
   }
 
   private toggleExpansion(): void {
-    console.log('toggleExpansion called for', this.nodeLevel);
 
     // Llamar directamente a la API del grid usando el context
     if (this.params && this.params.context) {
       const component = this.params.context.componentParent;
       if (component) {
         if (this.nodeLevel === 'category') {
-          console.log('Calling toggleCategoryExpansion');
           component.toggleCategoryExpansion(this.params.data);
         } else if (this.nodeLevel === 'family') {
-          console.log('Calling toggleFamilyExpansion');
           component.toggleFamilyExpansion(this.params.data);
         }
       } else {
-        console.log('Component parent not found in context');
       }
     } else {
-      console.log('Context not found');
     }
   }
 

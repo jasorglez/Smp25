@@ -230,8 +230,6 @@ export class DetailpayrollComponent implements OnInit{
         this.signalsService.resetRefreshNomina(); // Resetear la señal después de actualizar
       }
       this.loadData();
-      console.log("------------------------------------ Constructor ID PAYROLL: ", this.idPayroll);
-      console.log("-------- entrando a detailpayroll, este es el constructor  ")
 
     }, { allowSignalWrites: true });
 
@@ -240,8 +238,6 @@ export class DetailpayrollComponent implements OnInit{
   ngOnInit() {
       this.idPayroll = this.signalsService.getIdEmployee()();
       this.loadData();
-      console.log("------------------------------------ ngOninit ID PAYROLL: ", this.idPayroll);
-      console.log("-------- entrando a detailpayroll, este es el ngOninit  ");
   }
   
  onCellValueChanged(event: any): void {
@@ -282,7 +278,6 @@ export class DetailpayrollComponent implements OnInit{
 
       this.administrationService.updateRealDiscountNormalPayroll(id, newValue).subscribe(
         (res) => {
-          console.log('Descuento real actualizado correctamente:', res);
           alerts.basicAlert(
             'Actualización exitosa',
             'El descuento real se ha actualizado correctamente.',
@@ -335,7 +330,6 @@ export class DetailpayrollComponent implements OnInit{
     this.payrollService.getDetailsForNormalPayrolls(this.idPayroll).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log("------------------------------------ DETAILPAYROLLSERVICE: ", this.rowData);
         if (this.gridApi) {
           //this.gridApi.sizeColumnsToFit(); // Ajustar columnas al tamaño del contenedor
           // O también puedes usar:

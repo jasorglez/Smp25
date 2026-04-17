@@ -119,7 +119,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-      console.log(this.contactoCatalog)
     });
   }
 
@@ -815,7 +814,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
         .subscribe({
           next: (data: any) => {
             this.contactoCatalog = data;
-            console.log(this.contactoCatalog)
           },
           error: (error) => {
             console.error('Error obteniendo datos:', error);
@@ -1245,12 +1243,10 @@ export class CustomersComponent implements CanComponentDeactivate {s
     // CUSTOMERS -> usa catálogo 'TIPO-CLIENTE' o similar
     // PROVIDERS -> usa catálogo 'TIPO-PROVEEDOR' o similar
     const catalogType = this.type === 'CUSTOMERS' ? 'TIPO-CLIENTE' : 'TIPO-PROVEEDOR';
-    console.log('🔍 Buscando catálogo:', catalogType, 'para idRoot:', this.idRoot);
 
     this.catalogsService.getCatalogsFromAdmon(this.idRoot, catalogType).subscribe(
       (data: Icatalog[]) => {
         this.Typecop = data;
-        console.log('✅ Catálogo cargado:', data);
       },
       (error) => {
         console.error('❌ Error fetching catalog:', error);
@@ -1258,7 +1254,6 @@ export class CustomersComponent implements CanComponentDeactivate {s
         this.catalogsService.getCatalogsVigente(this.idRoot, this.type).subscribe(
           (data2: Icatalog[]) => {
             this.Typecop = data2;
-            console.log('✅ Catálogo alternativo cargado:', data2);
           },
           (error2) => console.error('❌ Error en ambos intentos:', error2)
         );

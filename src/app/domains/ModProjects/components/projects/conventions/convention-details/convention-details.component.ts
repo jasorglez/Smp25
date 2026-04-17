@@ -60,14 +60,12 @@ export class conventionDetailsComponent {
 
   ngOnInit() {
     this.idConvention = this.signalsService.getIdConvention()();
-      console.log(this.idConvention);
       this.loadData();
   }
 
   constructor() {
     effect(() => {
       this.idConvention = this.signalsService.getIdConvention()();
-      console.log(this.idConvention);
       this.loadData();
     });
   }
@@ -129,7 +127,6 @@ export class conventionDetailsComponent {
           } else {
             this.maestroRowData = maestroRowData;
 
-            console.log(this.maestroRowData);
 
             setTimeout(() => {
               if (this.maestroGridApi && this.maestroRowData.length > 0) {
@@ -301,7 +298,6 @@ export class conventionDetailsComponent {
   }
 
   onMasterCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
   }

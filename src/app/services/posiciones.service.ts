@@ -26,13 +26,11 @@ export class PosicionesService {
 
 
     addPosition(data: any): Observable<any> {
-      console.log('DATA EN EL ADD', data)
       return this.http.post(`${environment.urlSecurity}/PosicionDelison/posiciones/`, data, { headers: this.trackingService.getHeaders() });
     }
 
 
     updatePosition(id: string, data: any): Observable<any> {
-      console.log('DATA EN EL UPDATE', data)
       return this.http.put(`${environment.urlSecurity}/PosicionDelison/posiciones/${id}`, data, { headers: this.trackingService.getHeaders() });
     }
 

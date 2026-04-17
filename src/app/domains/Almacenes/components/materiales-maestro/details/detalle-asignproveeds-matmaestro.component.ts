@@ -183,7 +183,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
             if (this.proveedorGridApi) {
               this.proveedorGridApi.refreshCells({ force: true });
             }
-            console.log('✅ Proveedor marcado como principal, los demás desmarcados');
           }
         }
       },
@@ -422,19 +421,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.materialSubfamilyId = params.data.idSubfamilia; // CORRECTO: usar idSubfamilia, no idFamilia
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-    console.log('🔍 Material init - TODOS LOS DATOS:');
-    console.log('📋 params.data completo:', JSON.parse(JSON.stringify(params.data)));
-    console.log('🔑 Campos extraídos:', {
-      materialId: this.materialId,
-      materialName: this.materialName,
-      categoria: params.data.categoria,
-      idCategory: params.data.idCategory,
-      familia: params.data.familia,
-      idFamilia: params.data.idFamilia,
-      subfamilia: params.data.subfamilia,
-      idSubfamilia: this.materialSubfamilyId,
-      idRoot: this.idRoot
-    });
 
     this.loadProviders();
     this.loadBranches();
@@ -537,11 +523,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       const allProviders: any = await this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').toPromise();
       this.providers = allProviders.filter((p: any) => p.vigente === true || p.vigente === 1);
 
-      console.log('📦 Total proveedores vigentes:', this.providers.length);
 
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
-        console.log('🔍 Filtrando proveedores por subfamilyId:', this.materialSubfamilyId);
 
         try {
           // Obtener todos los proveedores y sus subfamilias VIGENTES asociadas
@@ -567,21 +551,17 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
           const results = await Promise.all(providerSubfamilyPromises);
 
-          console.log('📊 Resultados de búsqueda:', results);
 
           // Filtrar solo los proveedores que tienen la subfamilia del material vigente
           const providersWithMatchingSubfamily = results
             .filter(r => r.hasSubfamily);
 
-          console.log('🔑 Proveedores con subfamilia vigente:', providersWithMatchingSubfamily);
 
           // Crear el arreglo filtrado con la información del proveedor y la subfamilia
           this.filteredProviders = this.providers.filter(p => 
             providersWithMatchingSubfamily.some(pm => pm.providerId === p.id)
           );
 
-          console.log('✅ Proveedores filtrados por subfamilia vigente:', this.filteredProviders.length);
-          console.log('📋 Lista de proveedores filtrados:', this.filteredProviders.map(p => this.getProviderDisplayName(p)));
         } catch (error) {
           console.error('❌ Error filtrando proveedores por subfamilia:', error);
           // Si hay error, mostrar todos los proveedores
@@ -590,7 +570,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       } else {
         // Si no hay subfamilia, mostrar todos los proveedores
         this.filteredProviders = this.providers;
-        console.log('⚠️ Material sin subfamilia, mostrando todos los proveedores');
       }
 
       // Ordenar filas por nombre de proveedor A-Z (ahora que filteredProviders ya está listo)
@@ -730,7 +709,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.hasProveedorChanges = true;
 
     if (isFirstProvider) {
-      console.log('✅ Primer proveedor marcado automáticamente como principal');
     }
 
     setTimeout(() => {
@@ -749,7 +727,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         // Guardar los cambios
         await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
 
-        console.log('✅ Proveedores guardados, recargando datos...');
 
         // Esperar un poco para que el servidor procese
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -776,7 +753,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       const parentComponent = this.params.context.componentParent;
       if (typeof parentComponent.updateProviderCount === 'function') {
         parentComponent.updateProviderCount(this.materialId);
-        console.log('✅ Solicitada actualización de providerCount para material:', this.materialId);
       } else {
         console.warn('⚠️ El componente padre no tiene el método updateProviderCount');
       }
@@ -819,7 +795,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       this.params.context.MATERIAL.delete(
         { data: this.selectedProveedor, api: this.proveedorGridApi },
         () => {
-          console.log('✅ Proveedor eliminado, recargando datos...');
           this.loadProveedorData();
           this.selectedProveedor = null;
 

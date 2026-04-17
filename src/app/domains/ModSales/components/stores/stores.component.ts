@@ -83,7 +83,6 @@ export class StoresComponent implements CanComponentDeactivate {
     this.storesService.getStoreList(this.idBranch).subscribe(
       (data) => {
         this.rowData = data;
-        console.log(data);
       },
       (error) => console.error(error)
     );
@@ -327,12 +326,10 @@ export class StoresComponent implements CanComponentDeactivate {
   }
 
   onSelectedRow(event: any) {
-    console.log(event);
     this.id = event.data.id;
   }
 
   onSelectionChanged(event: any) {
-    console.log(event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -342,7 +339,6 @@ export class StoresComponent implements CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }

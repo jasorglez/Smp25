@@ -52,28 +52,7 @@
         {{ item.name }}
       </option>
     </select>
-    <span *ngIf="authService.hasDetailedPermission('principal', 'projects')">
-      <span>Select Contracts</span>
-<select
-        id="contracts"
-        (change)="onContractsSelected($event)"
-        (focus)="beginSelectInteraction()"
-        (blur)="onSidebarControlBlur()"
-        (mousedown)="beginSelectInteraction()"
-        class="form-select mb-2"
-        [value]="selectedContractId"
-        [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('contract' | translate)) : ''"
-        matTooltipPosition="right"
-      >
-        <option selected disabled value="">
-          {{ "contract" | translate }}
-        </option>
-        <option *ngFor="let item of contractData" [value]="'' + item.contractId">
-          {{ item.contract }}
-        </option>
-      </select>
-
-    </span>
+  
 
       <ng-container *ngFor="let menu of sidebarMenus">
         <li class="nav-item" *ngIf="authService.hasMenuMasterPermission(menu.identifier)">

@@ -174,12 +174,6 @@ export class ConcentradoEgresosComponent {
         code: c.codigo || c.code || ''
       }));
 
-      console.log('Datos cargados:', {
-        egresos: this.egresos.length,
-        proyectos: this.projects.length,
-        proveedores: this.providers.length,
-        cuentas: this.cuentasContables.length
-      });
 
       this.processData();
     } catch (error) {

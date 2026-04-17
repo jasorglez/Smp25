@@ -101,8 +101,6 @@ export class MasterPayrollComponent implements OnInit {
         const datos = this.selectFechas.value;
         this.fechaInicio = datos.fechaInicio;
         this.fechaFin = datos.fechaFin;
-        console.log(this.fechaInicio, this.fechaFin)
-  
         this.obtenerDatos(this.fechaInicio, this.fechaFin);
       } else {
         alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
@@ -112,7 +110,6 @@ export class MasterPayrollComponent implements OnInit {
       if (this.idBranch < 0) {
         const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
         this.fechaInicio = primerDiaDelMes.toISOString().split('T')[0];
-        console.log(this.fechaInicio);
       } else if (this.ultimaFecha instanceof Date) {
         const siguienteDia = new Date(this.ultimaFecha);
         siguienteDia.setDate(siguienteDia.getDate() + 1);
@@ -179,10 +176,6 @@ export class MasterPayrollComponent implements OnInit {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log(
-          '---- Masterpayroll component. esto es data desde obtenerDatos(): ',
-          data
-        );
       },
       (error) => {
         this.rowData = [];
@@ -391,7 +384,6 @@ export class MasterPayrollComponent implements OnInit {
             alerts.basicAlert('No encontrado', 'El periodo no existe.', 'error');
             return false;
           }
-          console.log(matched)
           const duplicateExists = this.rowData.some(
             (row, index) =>
               index !== params.node.rowIndex &&
@@ -793,7 +785,6 @@ export class MasterPayrollComponent implements OnInit {
     }
     
     if (event.colDef.field === 'closed') {
-      console.log('Checkbox changed:', event.newValue);
       event.data.__modified = true;
       this.notSavedChanges = true;
       return;
@@ -810,7 +801,6 @@ export class MasterPayrollComponent implements OnInit {
     const relatedBlock = this.blockPeriods.find(
       (block) => block.idBranch === idBranch
     );
-    console.log(relatedBlock)
     if (relatedBlock) {
       rowData.idBlockPeriod = relatedBlock.id;
       rowData.startDate = relatedBlock.startDate;
@@ -874,12 +864,6 @@ export class MasterPayrollComponent implements OnInit {
     //alert("Holaaaaaaaaaaaaa");
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    console.log(
-      'Datos de la fila seleccionada:',
-      selectedRowData,
-      'Columna:',
-      colId
-    );
     this.signalsService.setFechaNomina(selectedRowData.startDate, selectedRowData.endDate);
     this.signalsService.setClosedPayroll(!selectedRowData.closed);
 
@@ -894,7 +878,6 @@ export class MasterPayrollComponent implements OnInit {
           filter: selectedId,
         },
       };
-      console.log(selectedId);
 
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
@@ -1057,7 +1040,6 @@ formatDate(dateStr: string): string {
 
 
   onSelectionChanged(event: any) {
-    console.log(event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -1211,7 +1193,6 @@ formatDate(dateStr: string): string {
   }
 
   onSelectedRow(event: any) {
-    console.log(event);
     this.id = event.data.id;
   }
 
@@ -1246,7 +1227,6 @@ formatDate(dateStr: string): string {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos de la nomina a eliminar:', selectedData);
 
     const id = selectedData.id;
     selectedData.active = 0;
@@ -1296,9 +1276,7 @@ formatDate(dateStr: string): string {
   }
   selectionPayroll(): void {
     if (this.selectedPayrollId !== null) {
-      console.log('ID de nómina seleccionada: ' + this.selectedPayrollId);
     } else {
-      console.log('Por favor, selecciona una nómina.');
     }
   }
 
@@ -1329,7 +1307,7 @@ formatDate(dateStr: string): string {
 
         // Aquí esperamos que el usuario seleccione una nómina
         const onSelect = () => {
-          console.log('ID seleccionado:', this.selectedPayrollId); // Debug
+// Debug
           if (this.selectedPayrollId !== null) {
             resolve(this.selectedPayrollId); // Resolvemos con el ID seleccionado
             modal.hide(); // Cerrar el modal
@@ -1375,7 +1353,6 @@ formatDate(dateStr: string): string {
     this.idBlockPeriodsService.getIdBlockPeriods(idBranch).subscribe(
       (data: any) => {
         this.blockPeriods = data;
-        console.log(this.blockPeriods)
       },
       (error) => console.error('Error fetching data:', error)
     )

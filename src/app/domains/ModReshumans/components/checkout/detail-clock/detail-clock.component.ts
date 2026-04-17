@@ -124,7 +124,6 @@ export default class DetailClockComponent implements OnInit {
        }
      },
      onFirstDataRendered: (params) => {
-       console.log('onFirstDataRendered - autosizing columns...');
 
        // Obtener todas las columnas
        const allColumnIds: string[] = [];
@@ -132,12 +131,10 @@ export default class DetailClockComponent implements OnInit {
          allColumnIds.push(column.getId());
        });
 
-       console.log('Columns to autosize:', allColumnIds);
 
        // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
        params.api.autoSizeColumns(allColumnIds, true);
 
-       console.log('Autosize completed');
      }
    };
  
@@ -335,7 +332,6 @@ export default class DetailClockComponent implements OnInit {
      const selectedNodes = event.api.getSelectedNodes();
      if (selectedNodes.length > 0) {
        this.selectedRowData = selectedNodes[0].data;
-       console.log('ID del empleado seleccionado:', this.selectedRowData.idEmployee);
 
      } else {
        this.selectedRowData = null;
@@ -390,7 +386,6 @@ export default class DetailClockComponent implements OnInit {
        this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
      }
  
-     console.log('Datos ShowCredits:', this.showCreditsTab);
      this.selectedRowData = selectedRowData; // Guardar los datos seleccionados
    }
  
@@ -423,7 +418,6 @@ export default class DetailClockComponent implements OnInit {
        const datos = this.selectFechas.value;
        this.fechaInicio = datos.fechaInicio;
        this.fechaFin = datos.fechaFin;
-       console.log(this.fechaInicio, this.fechaFin)
        this.obtenerDatos(this.fechaInicio, this.fechaFin);
      } else {
        alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');

@@ -117,7 +117,6 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     // Se inicializa vacío, se llenará en agInit
   },
   onFirstDataRendered: (params) => {
-    console.log('onFirstDataRendered - autosizing columns...');
 
     // Obtener todas las columnas
     const allColumnIds: string[] = [];
@@ -125,12 +124,10 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       allColumnIds.push(column.getId());
     });
 
-    console.log('Columns to autosize:', allColumnIds);
 
     // Autoajustar todas las columnas al contenido (skipHeader=false incluye header en el cálculo)
     params.api.autoSizeColumns(allColumnIds, false);
 
-    console.log('Autosize completed');
   }
   };
 
@@ -424,17 +421,10 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         if (this.cuentaGridApi && selectedRow) {
           let rowToSelect = null;
 
-          console.log('🔍 Buscando cuenta para restaurar (sin reload)...', {
-            selectedCuentaId,
-            selectedCuentaFecha,
-            selectedCuentaNumero,
-            totalRows: this.cuentaRowData.length
-          });
 
           // Intentar encontrar por ID original (si no era temporal)
           if (selectedCuentaId && !String(selectedCuentaId).startsWith('temp_')) {
             rowToSelect = this.cuentaRowData.find(r => r.id === selectedCuentaId);
-            console.log('Búsqueda por ID:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
           }
 
           // Si no se encontró, buscar por fecha y número
@@ -443,19 +433,16 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
               r.campo3 === selectedCuentaFecha &&
               r.campo1 === selectedCuentaNumero
             );
-            console.log('Búsqueda por fecha/número:', rowToSelect ? '✅ Encontrado' : '❌ No encontrado');
           }
 
           // Si se encontró la fila, seleccionarla y hacer scroll
           if (rowToSelect) {
             const rowIndex = this.cuentaRowData.indexOf(rowToSelect);
-            console.log('📍 Índice de la fila:', rowIndex);
 
             const rowNode = this.cuentaGridApi.getDisplayedRowAtIndex(rowIndex);
             if (rowNode) {
               rowNode.setSelected(true);
               this.cuentaGridApi.ensureIndexVisible(rowIndex, 'middle');
-              console.log('✅ Fila restaurada después de guardar (sin reload):', rowToSelect);
             } else {
               console.error('❌ No se pudo obtener el rowNode en el índice:', rowIndex);
             }

@@ -515,7 +515,6 @@ export class EmployeesxSavingsComponent {
           responses[0].monto
         ).subscribe(
           (res) => {
-            console.log('Ahorro actualizado correctamente:', res);
             alerts.basicAlert(
               'Ahorro actualizado',
               'El ahorro se ha actualizado correctamente.',
@@ -628,13 +627,11 @@ export class EmployeesxSavingsComponent {
   }
 
   onMasterCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
   }
 
   onDetailCellValueChanged($event) {
-    console.log('Dato cambiado:', $event.data);
     $event.data.__modified = true;
     this.detailNotSavedChanges = true;
   }

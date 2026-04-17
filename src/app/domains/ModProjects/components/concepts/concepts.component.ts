@@ -50,7 +50,6 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
 
       // Solo cargar datos si idCompany tiene un valor válido
       if (this.idCompany) {
-        console.log('✅ idCompany obtenido desde signal:', this.idCompany);
         this.loadData();
       } else {
         console.warn('⚠️ idCompany no está disponible aún');
@@ -61,7 +60,6 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   async ngOnInit(): Promise<void> {
     // ✅ Verificar si idCompany ya está disponible al inicializar
     if (!this.idCompany) {
-      console.log('ℹ️ Esperando a que idCompany esté disponible desde el signal...');
     }
   }
 
@@ -75,7 +73,6 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
     this.tdConceptsService.getTDConcepts(this.idCompany).subscribe({
       next: (data: any[]) => {
         this.rowData = data;
-        console.log('TDConcepts loaded:', data);
       },
       error: (err) => {
         console.error('Error loading TDConcepts:', err);
@@ -252,7 +249,6 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }

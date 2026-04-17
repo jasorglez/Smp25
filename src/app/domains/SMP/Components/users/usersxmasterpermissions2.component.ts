@@ -50,14 +50,12 @@ export class UsersxMasterPermissions2Component {
     // Obtener permisos maestros
     this.permissionService.getMasterPermissions(this.idEmpresa).subscribe((data: any) => {
       this.masterPermissions = data;
-      console.log(this.masterPermissions);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Permisos Maestros', 'Menu Administracion Permisos Maestros',  this.trackingService.getEmail());
     });
 
     // Obtener permisos del usuario
     this.permissionService.getUserPermissions(this.selectedUserId).subscribe((data: any) => {
       this.userPermissions = data.map((perm: any) => perm.permissionId);
-      console.log(data);
     });
   }
 
@@ -84,7 +82,6 @@ export class UsersxMasterPermissions2Component {
       .updateUserPermissions(this.selectedUserId, this.userPermissions)
       .pipe(
         tap(async () => {
-          console.log('Permisos actualizados correctamente');
           alerts.basicAlert('Mensaje', 'Se ha cambiado correctamente el permiso.', 'success');
           // Refrescar el menú lateral (pestañas Sucursales, Empresas, etc.) usando el guard básico
           try {

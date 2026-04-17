@@ -198,7 +198,6 @@ export class ModalCuentaContableComponent implements OnInit {
     if (this.isEdit) {
       payload.id = this.formData.id;
     }
-    console.log('Payload al backend:', JSON.stringify(payload));
 
     if (this.isEdit && this.formData.id) {
       // Actualizar

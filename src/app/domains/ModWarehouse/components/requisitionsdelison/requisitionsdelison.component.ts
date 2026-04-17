@@ -837,7 +837,6 @@ export class RequisitionsDelisonComponent implements OnInit {
               alerts.basicAlert('Información', 'Debe guardar la requisición antes de generar el PDF', 'info');
               return;
             }
-            console.log('🔵 PDF Click detectado desde PdfButtonCellRenderer:', node.data.id);
             this.togglePdfDetail(node);
           },
           icon: 'bi-file-earmark-pdf',

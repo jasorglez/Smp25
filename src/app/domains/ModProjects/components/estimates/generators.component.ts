@@ -135,14 +135,11 @@ export class GeneratorsComponent implements OnChanges {
         if (response && Array.isArray(response)) {
           // El endpoint devuelve directamente un array de empleados
           this.employees = response;
-          console.log('Empleados cargados:', this.employees);
         } else if (response && response.data && Array.isArray(response.data)) {
           // Por si acaso viene encapsulado en un objeto con propiedad data
           this.employees = response.data;
-          console.log('Empleados cargados (desde data):', this.employees);
         } else {
           this.employees = [];
-          console.log('No se encontraron empleados o formato inesperado:', response);
         }
       },
       error: (error) => {
@@ -157,7 +154,6 @@ export class GeneratorsComponent implements OnChanges {
     this.workprogramsService.getFathers(this.project)
       .subscribe((fases: any[]) => {
         this.fases = fases;
-        console.log('Fases cargadas:', this.fases);
       }, (error) => {
         console.error('Error al cargar fases:', error);
         this.fases = [];
@@ -401,15 +397,11 @@ export class GeneratorsComponent implements OnChanges {
     }
     
     // Llamar al servicio para obtener el acumulado
-    console.log('Llamando SumaReporte con:', {
-      selectedResourceId, startDate,  endDate
-    });
     
     this.dailyReportService.SumaReporte(selectedResourceId, startDate, endDate)
       .subscribe({
         next: (result) => {
           item.accumulate = result.Total || 0;
-          console.log(`Acumulado calculado para recurso, fecha ${startDate},  ${endDate}, ${selectedResourceId}: ${item.accumulate}`);
           
           // Actualizar el grid para mostrar el nuevo valor
           if (this.gridApi) {

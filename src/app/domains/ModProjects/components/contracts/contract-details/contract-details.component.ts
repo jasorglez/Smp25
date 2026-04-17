@@ -61,7 +61,6 @@ export class ContractDetailsComponent {
   constructor() {
     effect(() => {
       this.idContract = this.signalsService.getIdContract()();
-      console.log(this.idContract);
       this.loadData();
     });
   }
@@ -103,7 +102,6 @@ export class ContractDetailsComponent {
           } else {
             this.maestroRowData = maestroRowData;
 
-            console.log(this.maestroRowData);
 
             setTimeout(() => {
               if (this.maestroGridApi && this.maestroRowData.length > 0) {
@@ -272,7 +270,6 @@ export class ContractDetailsComponent {
   }
 
   onMasterCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
   }

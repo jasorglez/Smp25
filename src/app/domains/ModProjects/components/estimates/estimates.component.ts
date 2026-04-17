@@ -115,7 +115,6 @@ export class EstimatesComponent {
       .getEstimates(this.contract)
       .subscribe((data: any) => {
         this.rowData = data;
-        console.log(data);
       }, (error) => {
         console.error(error); // Manejo de error
         this.rowData = []; // Retornar un array vacío en caso de error
@@ -149,7 +148,6 @@ export class EstimatesComponent {
     this.workprogramsService.getActivities(this.project)
       .subscribe((activities: any[]) => {
         this.activitiesOptions = activities;
-        console.log('Actividades cargadas:', this.activitiesOptions);
       }, (error) => {
         console.error('Error al cargar actividades:', error);
         this.activitiesOptions = [];
@@ -440,7 +438,6 @@ export class EstimatesComponent {
       .subscribe({
         next: (items: any[]) => {
           this.estimateItems = items || [];
-          console.log('Items de estimación cargados:', this.estimateItems);
         },
         error: (error) => {
           console.error('Error al cargar items de estimación:', error);
@@ -455,7 +452,6 @@ export class EstimatesComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -547,7 +543,6 @@ export class EstimatesComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Datos limpiados para el servidor:', cleanedData);
       // Asignar el ID temporal al campo idEstimacion
       return this.estimatesService.addEstimate(cleanedData);
     });
@@ -876,7 +871,6 @@ export class EstimatesComponent {
 
   // Cambio de valores en items de estimación
   onEstimateItemValueChanged(event: any) {
-    console.log('Item de estimación cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }

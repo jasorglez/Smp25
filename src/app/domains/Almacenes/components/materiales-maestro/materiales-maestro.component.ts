@@ -131,7 +131,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     effect(() => {
       // ✅ Solo ejecutar este effect si NO estamos en modo modal
       if (this.isModalMode) {
-        console.log('⚠️ Effect ignorado porque estamos en modo modal');
         return;
       }
 
@@ -147,9 +146,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   ngOnInit() {
     // ✅ Si estamos en modo modal, usar idRootInput en lugar de signal
     if (this.isModalMode && this.idRootInput) {
-      console.log('🔵 MODO MODAL ACTIVADO');
-      console.log('   filterMaterialId:', this.filterMaterialId);
-      console.log('   idRootInput:', this.idRootInput);
       this.idRoot = this.idRootInput;
       this.loadCatalogs();
       this.loadMaterialByIdFilter();
@@ -160,7 +156,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     // Suscribirse a las solicitudes de modal del servicio
     this.modalSubscription = this.subfamiliaModalService.modalRequest$.subscribe(data => {
-      console.log('🔔 MaterialesMaestro - Recibida solicitud de modal:', data);
       this.handleModalRequest(data);
     });
   }
@@ -182,11 +177,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
       ]);
 
-      console.log('Catalogs loaded:', {
-        categories: this.categories,
-        families: this.families,
-        subfamilies: this.subfamilies
-      });
     } catch (error) {
       console.error('Error loading catalogs:', error);
     }
@@ -214,7 +204,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         this.rowData = data.map(material => ({
           ...material,
         }));
-        console.log('Materials loaded:', data);
         if (this.pendingScrollTarget) {
           setTimeout(() => this.scrollToTarget(), 150);
         }
@@ -236,23 +225,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('📡 Cargando material filtrado...');
-      console.log('   idRoot:', this.idRoot);
-      console.log('   filterMaterialId:', this.filterMaterialId);
-      console.log('   Tipo de filterMaterialId:', typeof this.filterMaterialId);
 
       const allMaterials = await lastValueFrom(
         this.materialsService.getMaterialsxview(this.idRoot)
       );
 
-      console.log('✅ Total materiales recibidos:', allMaterials.length);
-      console.log('📋 Primeros 3 materiales (para debug):', allMaterials.slice(0, 3).map(m => ({ id: m.id, tipo: typeof m.id, nombre: m.articulo })));
 
       // Filtrar el material específico por ID (comparar como números)
       const filteredMaterial = allMaterials.find(m => {
         const match = Number(m.id) === Number(this.filterMaterialId);
         if (match) {
-          console.log('✅ MATCH ENCONTRADO:', m);
         }
         return match;
       });
@@ -261,8 +243,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         this.rowData = [{
           ...filteredMaterial,
         }];
-        console.log('✅ Material filtrado cargado (1 elemento):', this.rowData);
-        console.log('   rowData.length:', this.rowData.length);
       } else {
         console.warn('⚠️ No se encontró material con ID:', this.filterMaterialId);
         console.warn('   IDs disponibles (primeros 10):', allMaterials.slice(0, 10).map(m => m.id));
@@ -344,12 +324,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       },
       onCellValueChanged: (event: any) => {
-        console.log('Cell value changed:', event);
 
         // Convertir vigente a true/false (nunca NULL)
         if (event.colDef.field === 'vigente') {
           event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
-          console.log('Vigente changed to:', event.data.vigente);
         }
 
         event.data.__modified = true;
@@ -740,14 +718,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     const editableColumns = ['insumo', 'articulo', 'fecha'];
     const currentColId = event.column.getColId();
     if (editableColumns.includes(currentColId) && this.gridApi.getEditingCells().length > 0) {
-      console.log('⚠️ Edición en progreso, ignorando onCellClicked');
       return;
     }
 
     event.node.setSelected(true);
     this.data = event.data;
     this.idSelect = event.data.id; // Asignar el ID seleccionado
-    console.log('Fila seleccionada:', this.data);
 
     const colId = event.column.getColId();
     const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
@@ -840,7 +816,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const columnState = this.gridApi.getColumnState();
       const localStorageKey = `materiales_column_state_${this.idRoot}`;
       localStorage.setItem(localStorageKey, JSON.stringify(columnState));
-      console.log('💾 Estado de columnas guardado:', columnState);
     } catch (error) {
       console.error('Error guardando estado de columnas:', error);
     }
@@ -860,7 +835,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           state: columnState,
           applyOrder: true
         });
-        console.log('📂 Estado de columnas cargado:', columnState);
       }
     } catch (error) {
       console.error('Error cargando estado de columnas:', error);
@@ -929,7 +903,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
                 columns: ['subfamilyCount'],
                 force: true
               });
-              console.log(`✅ Actualizado "Donde usa" para material ${materialId}: ${updatedMaterial.subfamilyCount}`);
             }
           });
         }
@@ -956,7 +929,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
                 columns: ['providerCount'],
                 force: true
               });
-              console.log(`✅ Actualizado "Proveedor" para material ${materialId}: ${updatedMaterial.providerCount}`);
             }
           });
         }
@@ -1139,7 +1111,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       // ✅ Si estamos en modo modal, emitir evento y cerrar
       if (this.isModalMode) {
-        console.log('🔵 Modo modal: emitiendo evento onSaveComplete y cerrando modal');
         this.onSaveComplete.emit();
         if (this.activeModal) {
           this.activeModal.close();
@@ -1310,7 +1281,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   // ========== MÉTODOS PARA MODAL DE SUBFAMILIAS ==========
 
   handleModalRequest(data: ModalData) {
-    console.log('📝 MaterialesMaestro - Manejando solicitud de modal:', data);
     this.modalData = data;
     this.modalType = data.type;
     this.modalMode = data.mode;
@@ -1336,12 +1306,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('💾 MaterialesMaestro - Guardando modal:', {
-      type: this.modalType,
-      mode: this.modalMode,
-      form: this.modalForm,
-      parentData: this.modalData?.parentData
-    });
 
     // Preparar datos para enviar al servicio
     const saveData = {

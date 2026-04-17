@@ -78,7 +78,6 @@ export class PdfGeneratorService {
     conceptosData?: any[];
     conceptosCatalog?: any[];
   }) {
-    console.log('Input data for PDF generation:', inputData);
     this.id = inputData.id;
     this.lb = inputData.date;
     this.idReport = inputData.idReport;
@@ -351,14 +350,11 @@ export class PdfGeneratorService {
 
   private processNotasDataLocally() {
     if (!this.notasData || this.notasData.length === 0) {
-      console.log('No hay notasData para procesar');
       this.entrada = [];
       this.numItems = 0;
       return;
     }
 
-    console.log('Procesando notasData localmente:', this.notasData);
-    console.log('typeNotesCatalog disponible:', this.typeNotesCatalog);
 
     // Mapear las notas locales al formato esperado
     this.entrada = this.notasData.map((nota: any) => {
@@ -374,7 +370,6 @@ export class PdfGeneratorService {
     });
 
     this.numItems = this.entrada.length;
-    console.log('Notas procesadas para PDF:', this.entrada);
   }
 
   private async bucleDatos() {
@@ -609,7 +604,6 @@ private processMaterialesData(): string[][] {
 
   this.materialesData.forEach(material => {
     const materialSeleccionado = this.catalogMateriales.find(m => m.id === material.idResource);
-    console.log('Material seleccionado:', materialSeleccionado);
     const nombre = materialSeleccionado ? materialSeleccionado.description : 'Sin nombre';
     const cantidad = material.quantity ?? 0;
     const unidadMaterial = this.unitsCatalog.find(u => u.id === materialSeleccionado.idMedida);
@@ -1131,7 +1125,6 @@ private processMaterialesData(): string[][] {
     return this.catalogsService.getTypeNote(this.idcompany).subscribe(
       (data: any) => {
         this.typeNotesCatalog = data;
-        console.log('Catálogo de tipos de nota obtenido:', this.typeNotesCatalog);
       },
       (error) => console.error('Error fetching type notes:', error)
     );

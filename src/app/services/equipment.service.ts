@@ -48,7 +48,6 @@ export class EquipmentService {
   }
 
   updateEquipment(id: string, data: any): Observable<any> {
-    console.log('Updating equipment with ID:', id, 'and data:', data);
     return this.http.put<any[]>(
       `${environment.urlSmp}/Equipment/${id}`,
       data,

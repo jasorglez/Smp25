@@ -72,7 +72,6 @@ export default class DetailClock2Component implements OnInit {
 
     // Suscribirse a los cambios del formulario completo
     this.justificanteForm.valueChanges.subscribe(values => {
-      console.log('Estado actual del formulario:', values);
     });
 
     // Inicializar el día de la semana con la fecha actual
@@ -118,7 +117,6 @@ export default class DetailClock2Component implements OnInit {
       this.diaFin = fecha
     });
     this.justificanteForm.valueChanges.subscribe(values => {
-      console.log('Estado actual del formulario:', values);
     });
   }
 
@@ -215,7 +213,6 @@ export default class DetailClock2Component implements OnInit {
       }
     },
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
 
       // Obtener todas las columnas
       const allColumnIds: string[] = [];
@@ -223,12 +220,10 @@ export default class DetailClock2Component implements OnInit {
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
 
       // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
       params.api.autoSizeColumns(allColumnIds, true);
 
-      console.log('Autosize completed');
     }
   };
 
@@ -377,18 +372,8 @@ export default class DetailClock2Component implements OnInit {
 
             // DEBUG: Log para ver los datos de entrada
             const dateGroup = params.node.key;
-            console.log(`=== CALCULANDO HORAS PARA FECHA: ${dateGroup} ===`);
             
             // Mostrar todos los registros sin filtrar
-            console.log('Registros originales:', groupData.map(node => ({
-              id: node.data.id,
-              type: node.data.type,
-              checkTime: node.data.checkTime,
-              realHourBySystem: node.data.realHourBySystem,
-              valid: node.data.valid,
-              holiday: node.data.holiday,
-              minuteDiscount: node.data.minuteDiscount
-            })));
 
             // Filtrar y ordenar registros válidos
             const validRecords = [...groupData]
@@ -399,7 +384,6 @@ export default class DetailClock2Component implements OnInit {
                 const isValidRecord = record.valid === true || record.holiday === true;
                 const shouldInclude = hasValidTime && isValidRecord;
                 
-                console.log(`Registro ${record.id}: hasValidTime=${hasValidTime}, isValidRecord=${isValidRecord}, incluir=${shouldInclude}`);
                 return shouldInclude;
               })
               .sort((a, b) => {
@@ -415,13 +399,6 @@ export default class DetailClock2Component implements OnInit {
                 return normalizeTime(timeA).localeCompare(normalizeTime(timeB));
               });
 
-            console.log('Registros después del filtro y ordenamiento:', validRecords.map(node => ({
-              id: node.data.id,
-              type: node.data.type,
-              hora: node.data.realHourBySystem || node.data.checkTime,
-              valid: node.data.valid,
-              holiday: node.data.holiday
-            })));
 
             // Calcular horas trabajadas con lógica mejorada para pares IN/OUT
             const usedRecords = new Set();
@@ -435,7 +412,6 @@ export default class DetailClock2Component implements OnInit {
               const hora = record.realHourBySystem || record.checkTime;
               if (!hora) continue;
 
-              console.log(`Procesando registro ${record.id}: ${record.type} a las ${hora}`);
 
               if (record.type === 'IN') {
                 // Buscar el próximo OUT que no haya sido usado
@@ -449,7 +425,6 @@ export default class DetailClock2Component implements OnInit {
                     if (outHora) {
                       const hoursWorked = this.calculateTimeDifference(hora, outHora);
                       totalHours += hoursWorked;
-                      console.log(`  -> Par encontrado: IN ${hora} - OUT ${outHora} = ${hoursWorked} horas (total acumulado: ${totalHours})`);
                       
                       // Marcar ambos registros como usados
                       usedRecords.add(record.id);
@@ -461,11 +436,9 @@ export default class DetailClock2Component implements OnInit {
                 
                 // Si no encontramos OUT para este IN
                 if (!usedRecords.has(record.id)) {
-                  console.log(`  -> IN sin OUT correspondiente: ${hora}`);
                 }
               } else if (record.type === 'OUT' && !usedRecords.has(record.id)) {
                 // OUT sin IN previo - buscar hacia atrás
-                console.log(`  -> OUT sin IN previo: ${hora}, buscando hacia atrás...`);
                 for (let j = i - 1; j >= 0; j--) {
                   const inRecord = validRecords[j].data;
                   
@@ -476,7 +449,6 @@ export default class DetailClock2Component implements OnInit {
                     if (inHora) {
                       const hoursWorked = this.calculateTimeDifference(inHora, hora);
                       totalHours += hoursWorked;
-                      console.log(`  -> IN anterior encontrado: ${inHora} - OUT ${hora} = ${hoursWorked} horas (total acumulado: ${totalHours})`);
                       
                       // Marcar ambos registros como usados
                       usedRecords.add(record.id);
@@ -504,8 +476,6 @@ export default class DetailClock2Component implements OnInit {
             totalDiscountHours = discountMinutes / 60;
             const netHours = Math.max(totalDiscountHours);
 
-            console.log(`RESUMEN - Total horas: ${totalHours}, Descuentos: ${totalDiscountHours}, Neto: ${netHours}`);
-            console.log(`=== FIN CÁLCULO PARA FECHA: ${dateGroup} ===`);
 
             return this.formatHours(totalHours);
           }
@@ -671,7 +641,6 @@ export default class DetailClock2Component implements OnInit {
   obtenerCatalogo(idCompany: number) {
     this.clockService.getCatalogs(idCompany).subscribe((data: any) => {
       this.catalogoAll = data;
-      console.log(this.catalogoAll)
     });
   }
 
@@ -696,7 +665,6 @@ export default class DetailClock2Component implements OnInit {
   obtenerCatalogoFestivoVigente(idCompany: number) {
     this.clockService.getCatalogsFestiveVigente(idCompany).subscribe((data: any) => {
       this.catalogoFestiveVigente = data;
-      console.log(this.catalogoFestiveVigente)
     });
   }
 
@@ -705,7 +673,6 @@ export default class DetailClock2Component implements OnInit {
       .checkInOutByEmployee(idEmployee, fechaInicio, fechaFin)
       .subscribe((data: any) => {
         // Asegurarse de que las fechas estén en el formato correcto
-        console.log('Datos obtenidos:', data);
         this.rowData = data.map((item: any) => ({
           ...item,
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
@@ -732,10 +699,6 @@ export default class DetailClock2Component implements OnInit {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      console.log(
-        'ID del empleado seleccionado:',
-        this.selectedRowData.idEmployee
-      );
     } else {
       this.selectedRowData = null;
     }
@@ -873,22 +836,17 @@ export default class DetailClock2Component implements OnInit {
     );
 
     // Mostrar los datos de las filas nuevas que se van a enviar
-    console.log('Filas nuevas que se van a enviar al servidor:');
     newRows.forEach((row, index) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(`Fila nueva ${index + 1}:`, cleanedData);
     });
 
     // Mostrar los datos de las filas modificadas que se van a enviar
-    console.log('Filas modificadas que se van a enviar al servidor:');
     modifiedRows.forEach((row, index) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(`Fila modificada ${index + 1}:`, cleanedData);
     });
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
       return this.clockService.checkInOut(cleanedData);
     });
@@ -1079,7 +1037,6 @@ private cleanDataForServer(data: any): any {
         const procesarDia = (current: Date) => {
           if (current > fechaFin) {
             // Ya terminó el recorrido, ahora sí aplica al grid
-            console.log('Filas que se añaden al grid:', nuevasFilas);
             this.rowData = [...nuevasFilas, ...this.rowData];
             this.gridApi.setGridOption('rowData', this.rowData);
             this.notSavedChanges = true;

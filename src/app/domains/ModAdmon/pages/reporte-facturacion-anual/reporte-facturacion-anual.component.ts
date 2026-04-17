@@ -132,12 +132,6 @@ export class ReporteFacturacionAnualComponent {
         return tipo === 'GASTO' || tipo === 'RETIRO' || tipo === 'UTILIDADES';
       });
 
-      console.log('Datos cargados:', {
-        ingresos: this.ingresos.length,
-        egresos: this.egresos.length,
-        retiros: allData.filter(item => String(item?.type ?? '').toUpperCase() === 'RETIRO').length,
-        utilidades: allData.filter(item => String(item?.type ?? '').toUpperCase() === 'UTILIDADES').length
-      });
 
       this.processData();
     } catch (error) {

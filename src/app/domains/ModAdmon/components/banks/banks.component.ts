@@ -243,7 +243,6 @@ export class BanksComponent implements CanComponentDeactivate {
   }
 
   onSelectionChanged(event: any) {
-    console.log('Viene del OnSelectionChanged', event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;

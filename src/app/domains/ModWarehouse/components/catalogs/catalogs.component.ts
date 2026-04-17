@@ -141,7 +141,6 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       .subscribe(
         (data: any) => {
           this.listsections = data;
-          console.log(this.listsections)
         },
         (error) => {
           if (error.status == 404) this.table = [];
@@ -153,7 +152,6 @@ export class SubatalogsComponent implements CanComponentDeactivate {
   obtenerDatos() {
     /*const catalogType = this.signalsService.getCatalogSelected();
     this.rowData = [];
-    console.log(`Obteniendo datos para tipo: ${catalogType}`);
 
     // Determina qué servicio usar
     const service = this.catalogService;
@@ -165,7 +163,6 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       this.catalogService.getSubfamiliesByParentId(this.idCatalog)
       .subscribe({
         next: (data: any[]) => {this.rowData = data
-          console.log(data)
         },
         error: (err) => this.rowData = []
       });
@@ -175,7 +172,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       this.catalogService.getCatalogs(this.idRoot, 'UNITS')
       .subscribe({
         next: (data: any[]) =>{ this.units = data 
-         console.log(data)},
+},
         error: (err) => console.error(`Error):`, err)
       });
   }
@@ -299,7 +296,6 @@ export class SubatalogsComponent implements CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -406,7 +402,6 @@ export class SubatalogsComponent implements CanComponentDeactivate {
       const cleanedData = this.cleanDataForServer(row);
 
       cleanedData.valueAddition = String(cleanedData.valueAddition);
-      console.log('añadidos', cleanedData.valueAddition);
       return this, this.catalogService.addCatalog(cleanedData);
     });
 

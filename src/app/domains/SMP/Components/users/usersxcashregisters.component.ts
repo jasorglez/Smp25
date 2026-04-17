@@ -72,7 +72,6 @@ export class UsersXCashRegistersComponent {
       users: this.usersxcashregistersService.getDataUsersxPermissions(this.permissionType),
       cashregister: this.cashRegistersService.getCashRegisterList(this.idStore)
     }).subscribe(({ users, cashregister }) => {
-      console.log('Datos enviados a cashregister:', this.idStore);
       
       // Filtrar sucursales por idCompany
       const filteredCashRegisters = cashregister.filter(branch => branch.idStore === this.idStore);
@@ -162,7 +161,6 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {

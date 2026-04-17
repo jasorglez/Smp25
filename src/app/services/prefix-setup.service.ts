@@ -133,7 +133,6 @@ export class PrefixSetupService {
 
       // Concatenar prefijo + consecutivo (sin guion, el usuario lo incluye en el prefijo)
       const folio = `${prefix}${consecutive}`;
-      console.log(`📝 Folio generado para ${documentType}: ${folio}`);
 
       return folio;
     } catch (error) {

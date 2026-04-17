@@ -358,7 +358,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           name: proyecto.name
         }));
 
-        console.log('✅ Cuadrillas externas cargadas:', this.cuadrillasExternas);
       },
       error: (error) => {
         console.error('❌ Error al cargar cuadrillas externas:', error);
@@ -547,7 +546,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
 
-            console.log('Excel generado y descargado exitosamente');
             alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
             this.closeModal();
           },
@@ -583,7 +581,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
               document.body.removeChild(a);
               window.URL.revokeObjectURL(url);
 
-              console.log('Excel generado y descargado exitosamente');
               alerts.basicAlert('Éxito', `Excel generado desde ${this.fechaInicio} hasta ${this.fechaFin}`, 'success');
               this.closeModal();
             },
@@ -611,7 +608,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   async saveMasterChanges() {
 
     const selectedRows = this.gridApi?.getSelectedRows() || [];
-    console.log('💾 Selected rows:', selectedRows.length);
 
     if (selectedRows.length > 1) {
       try {
@@ -622,7 +618,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             closedApp: ot.closedApp || false
           };
 
-          console.log('💾 Guardando OT:', ot.id);
           await firstValueFrom(this.otService.updateOt(Number(ot.id), otDataToSave));
         }
 
@@ -638,7 +633,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     if (!this.selectedOt) {
-      console.log('💾 ERROR: No hay selectedOt');
       return;
     }
 
@@ -648,7 +642,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       closedApp: this.selectedOt.closedApp || false
     };
 
-    console.log('💾 Datos a guardar:', otDataToSave);
 
     this.otService.updateOt(Number(this.selectedOt.id), otDataToSave).subscribe({
       next: (response) => {
@@ -948,7 +941,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             params.data.idResource = foundItem.id;
             return true;
           } else {
-            console.log('Material no encontrado para:', params.newValue);
             return false; // No aceptar valores no válidos
           }
         }
@@ -1022,7 +1014,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
         if (!params.newValue) {
           params.data.idResource = null;
-          console.log('Data después (null):', params.data.idResource);
           return true;
         }
 
@@ -1092,7 +1083,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         return '';
       },
       valueSetter: (params: any) => {
-        console.log(params)
         if (params.newValue) {
           const employee = this.employees.find(emp => emp.name === params.newValue);
           if (employee) {
@@ -1119,7 +1109,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             // Establecer automáticamente la posición
             params.data['position'] = depto ? depto.description : '';
 
-            console.log('Empleado seleccionado:', employee);
             return true;
           }
         }
@@ -1264,21 +1253,15 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       },
       // Convierte la descripción seleccionada de vuelta al ID
       valueSetter: (params) => {
-        console.log('=== VALUE SETTER EQUIPOS ===');
-        console.log('Nuevo valor (descripción):', params.newValue);
-        console.log('Valor anterior:', params.oldValue);
-        console.log('Data antes:', params.data.idResource);
 
         if (!params.newValue) {
           params.data.idResource = null;
-          console.log('Data después (null):', params.data.idResource);
           return true;
         }
 
         const foundItem = this.typeNotesCatalog?.find(item => item.description === params.newValue);
         if (foundItem) {
           params.data.idResource = foundItem.id;
-          console.log('Data después:', params.data.idResource);
           return true;
         } else {
           console.warn('Descripción no válida:', params.newValue);
@@ -1778,24 +1761,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('📸 === USANDO ENDPOINTS DE LOGBOOK SERVICE PARA FOTOGRAFÍAS ===');
 
       // Preparar requests para nuevos registros
       const addRequests = newRows.map((row, index) => {
-        console.log(`📸 === FOTO DATOS ORIGINALES ${index + 1} ===`);
-        console.log(`📸 row.typeNote:`, row.typeNote);
-        console.log(`📸 row.orden:`, row.orden);
-        console.log(`📸 row completo:`, row);
 
         const cleanedData = this.cleanPersonalDataForServer(row);
 
-        console.log(`📸 === FOTO DATOS LIMPIADOS ${index + 1} ===`);
-        console.log(`📸 cleanedData.typeNote:`, cleanedData.typeNote);
-        console.log(`📸 cleanedData.orden:`, cleanedData.orden);
-        console.log(`📸 cleanedData.TypeNote:`, cleanedData.TypeNote);
-        console.log(`📸 cleanedData.Orden:`, cleanedData.Orden);
-        console.log(`📸 cleanedData completo:`, cleanedData);
-        console.log(`📸 JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
 
         return this.logbookService.addDataForOt(cleanedData).toPromise();
       });
@@ -1803,20 +1774,14 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // Preparar requests para registros modificados
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para PUT ${index + 1} (ID: ${row.id}):`, cleanedData);
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
-      console.log(`Ejecutando ${addRequests.length} requests de creación`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
 
       // Ejecutar todos los requests
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
-      console.log('=== RESPUESTAS RECIBIDAS ===');
-      console.log('Número de respuestas:', responses.length);
       responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
       });
 
       // Verificar si las respuestas son exitosas
@@ -1831,7 +1796,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Éxito', 'Cambios de fotografías guardados correctamente', 'success');
       this.autoUpdatePdf()
       this.notSavedFotografiaChanges = false;
@@ -1889,32 +1853,24 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE PARA VIDEOS ===');
 
       // Preparar requests para nuevos registros
       const addRequests = newRows.map((row, index) => {
         const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para POST video ${index + 1}:`, cleanedData);
         return this.logbookService.addDataForOt(cleanedData).toPromise();
       });
 
       // Preparar requests para registros modificados
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para PUT video ${index + 1} (ID: ${row.id}):`, cleanedData);
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
-      console.log(`Ejecutando ${addRequests.length} requests de creación de videos`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización de videos`);
 
       // Ejecutar todos los requests
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
-      console.log('=== RESPUESTAS RECIBIDAS PARA VIDEOS ===');
-      console.log('Número de respuestas:', responses.length);
       responses.forEach((response, index) => {
-        console.log(`Respuesta video ${index + 1}:`, response);
       });
 
       // Verificar si las respuestas son exitosas
@@ -1929,7 +1885,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO DE VIDEOS ===');
       alerts.basicAlert('Éxito', 'Cambios de videos guardados correctamente', 'success');
       this.autoUpdatePdf()
       this.notSavedVideoChanges = false;
@@ -1991,9 +1946,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    console.log('=== INTENTANDO ELIMINAR FOTOGRAFÍA ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
 
     alerts.confirmAlert(
       'Eliminar fotografía',
@@ -2058,9 +2010,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    console.log('=== INTENTANDO ELIMINAR VIDEO ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
 
     alerts.confirmAlert(
       'Eliminar video',
@@ -2616,7 +2565,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const hace7DiasStr = hace7Dias.toISOString().split('T')[0];
     const semana = this.obtenerNumeroSemana(hoy);
     const mes = this.obtenerAnoMes(hoy);
-    console.log("fechas", hoyStr, hace7DiasStr)
     this.myForm = this.formBuilder.group({
       opcionSeleccionada: ['', Validators.required],
       seleccionNumerica: this.formBuilder.array([]),
@@ -2732,14 +2680,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         if (response && Array.isArray(response)) {
           // El endpoint devuelve directamente un array de empleados
           this.employees = response;
-          console.log('Empleados cargados:', this.employees);
         } else if (response && response.data && Array.isArray(response.data)) {
           // Por si acaso viene encapsulado en un objeto con propiedad data
           this.employees = response.data;
-          console.log('Empleados cargados (desde data):', this.employees);
         } else {
           this.employees = [];
-          console.log('No se encontraron empleados o formato inesperado:', response);
         }
       },
       error: (error) => {
@@ -2753,42 +2698,32 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // Configurar listeners de SignalR para sistema reactivo multi-usuario
   private setupSignalRListeners(): void {
-    console.log('🎧 Configurando listeners del componente ordenes...');
 
     // Escuchar actualizaciones de texto/reportes
     this.signalrService.textUpdate$.subscribe(logbookData => {
 
       if (logbookData && this.shouldUpdateForLogbook(logbookData)) {
-        console.log('📝 Nuevo reporte recibido para esta OT:', logbookData);
         this.handleDailyReportUpdate(logbookData);
       } else if (logbookData) {
-        console.log('📝 Reporte recibido pero no es para la OT actual. IdOt del evento:', logbookData.IdOt || logbookData.idOt, 'OT actual:', this.selectedOt?.id);
       }
     });
 
     // Escuchar actualizaciones de fotos
     this.signalrService.photoUpdate$.subscribe(photoData => {
-      console.log('📸 COMPONENTE RECIBIÓ photoUpdate$:', photoData);
       if (photoData && this.shouldUpdateForLogbook(photoData)) {
-        console.log('📸 Nueva foto recibida para esta OT:', photoData);
         this.handlePhotoUpdate(photoData);
       } else if (photoData) {
-        console.log('📸 Foto recibida pero no es para la OT actual. IdOt del evento:', photoData.IdOt || photoData.idOt, 'OT actual:', this.selectedOt?.id);
       }
     });
 
     // Escuchar nuevos reportes diarios
     this.signalrService.newDailyReport$.subscribe(reportData => {
-      console.log('📊 COMPONENTE RECIBIÓ newDailyReport$:', reportData);
       if (reportData && this.shouldUpdateForDailyReport(reportData)) {
-        console.log('📊 Nuevo reporte diario recibido para esta OT:', reportData);
         this.handleDailyReportUpdate(reportData);
       } else if (reportData) {
-        console.log('📊 Reporte diario recibido pero no es para la OT actual. IdOt del evento:', reportData.IdOt || reportData.idOt, 'OT actual:', this.selectedOt?.id);
       }
     });
 
-    console.log('✅ Listeners del componente configurados correctamente');
 
   }
 
@@ -2806,7 +2741,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // Manejar actualizaciones de fotos en tiempo real
   private handlePhotoUpdate(photoData: any): void {
-    console.log('✅ Actualizando fotos por SignalR...');
 
     // Si hay un reporte seleccionado, recargar sus fotos
     if (this.selectedReporteId) {
@@ -2831,11 +2765,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // Manejar actualizaciones de reportes diarios en tiempo real
   private handleDailyReportUpdate(reportData: any): void {
-    console.log('✅ Actualizando reportes diarios por SignalR...');
 
     // 🚫 Ignorar notificaciones si estamos guardando datos (evitar duplicación)
     if (this.isSavingData) {
-      console.log('⏭️ Ignorando notificación de SignalR porque estamos guardando datos');
       return;
     }
 
@@ -2870,7 +2802,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       this.obtenerTodasLasOTs();
     } else {
-      console.log('Usuario solo puede ver OTs del proyecto actual');
       this.obtenerOTsDelProyectoActual();
     }
   }
@@ -2987,7 +2918,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           this.trackingService.getEmail()
         );
       } else {
-        console.log('No hay proyectos disponibles, obteniendo del proyecto actual');
         this.obtenerOTsDelProyectoActual();
       }
     } catch (error) {
@@ -3041,7 +2971,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         node.key === this.lastExpandedProjectId!.toString()
       );
       if (previousProjectNode) {
-        console.log('🔍 Colapsando proyecto anterior:', this.lastExpandedProjectId);
         this.gridApi.setRowNodeExpanded(previousProjectNode, false);
       }
     }
@@ -3053,16 +2982,13 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       );
 
       if (newProjectNode) {
-        console.log('🔍 Expandiendo proyecto seleccionado:', selectedProjectId);
         this.gridApi.setRowNodeExpanded(newProjectNode, true);
         this.lastExpandedProjectId = selectedProjectId;
 
       } else {
-        console.log('🔍 No se encontró nodo de grupo para proyecto:', selectedProjectId);
       }
     } else {
       // 3. Si no hay proyecto seleccionado, colapsar todo
-      console.log('🔍 Sin proyecto seleccionado - colapsando todos los grupos');
       this.gridApi.collapseAll();
       this.lastExpandedProjectId = null;
     }
@@ -3083,15 +3009,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           const numero = parseInt(select[1], 10);
           this.cuadrillaSelect = `${numero}`;
         }
-        console.log('📋 CuadrillaSelect final:', this.cuadrillaSelect);
       } else {
-        console.log('📋 WARNING: No se encontró cuadrilla para idProject:', selectedRows[0].idProject);
       }
 
       // Actualizar la OT seleccionada para mostrar en la vista previa
       // Si hay múltiples selecciones, usar la primera para la vista previa
       this.selectedOt = selectedRows[0];
-      console.log('📋 selectedOt actualizada a:', this.selectedOt);
       this.activeTab = 'reportes'; // Resetear a la primera pestaña
 
       // 🔄 SINCRONIZACIÓN BIDIRECCIONAL: Grid → Sidebar
@@ -3103,7 +3026,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // Si el proyecto de la OT seleccionada es diferente al del sidebar,
       // el 'effect' se encargará de recargar los catálogos. Debemos esperar a que termine.
       if (selectedProjectId && selectedProjectId !== currentSidebarProject) {
-        console.log(`🔄 Sincronización Grid → Sidebar: ${currentSidebarProject} → ${selectedProjectId}`);
         this.isSelectionDrivenChange = true; // <-- AVISAR AL EFFECT QUE EL CAMBIO ES INTERNO
         this.signalsService.setProjectSelectedBySidebar(selectedProjectId);
         this.idProject = selectedProjectId; // Actualizar el ID de proyecto localmente
@@ -3118,12 +3040,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             return of(null); // Retornar observable vacío para continuar el flujo
           })
         ).subscribe(() => {
-          console.log('✅ Catálogo de conceptos procesado. Procediendo a cargar datos de pestañas.');
           this.loadTabDetails(selectedRows[0]);
         });
       } else {
         // 🚀 Si el proyecto no cambió, cargamos los detalles inmediatamente sin esperar
-        console.log('🔄 Proyecto no cambió, cargando datos de pestañas inmediatamente.');
         this.loadTabDetails(selectedRows[0]);
       }
     } else {
@@ -3165,7 +3085,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     if (!detectedProject) {
       // Podríamos mostrar una alerta aquí si fuera necesario
     } else {
-      console.log('✅ Proyecto detectado:', detectedProject);
     }
 
     // Cargar reportes diarios para esta OT
@@ -3272,35 +3191,26 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   }
 
   onMasterCellValueChanged(event: any) {
-    console.log('🔧 Master cell changed:', event.colDef.field, 'new value:', event.newValue, 'old value:', event.oldValue);
-    console.log('🔧 Event data:', event.data);
-    console.log('🔧 Current selectedOt:', this.selectedOt);
 
     const selectedRows = this.gridApi?.getSelectedRows() || [];
-    console.log('🔧 Selected rows count:', selectedRows.length);
 
     // Si hay múltiples filas seleccionadas, aplicar el cambio a todas
     if (selectedRows.length > 1) {
       selectedRows.forEach(row => {
         if (event.colDef.field === 'area') {
           row.area = event.newValue;
-          console.log('🔧 Updated area for OT:', row.id, 'to:', event.newValue);
         }
         if (event.colDef.field === 'closed') {
           row.closed = event.newValue;
-          console.log('🔧 Updated closed for OT:', row.id, 'to:', event.newValue);
         }
         if (event.colDef.field === 'closedApp') {
           row.closedApp = event.newValue;
-          console.log('🔧 Updated closedApp for OT:', row.id, 'to:', event.newValue);
         }
         if (event.colDef.field === 'cdc') {
           row.cdc = event.newValue;
-          console.log('🔧 Updated cdc for OT:', row.id, 'to:', event.newValue);
         }
         if (event.colDef.field === 'otNumber') {
           row.otNumber = event.newValue;
-          console.log('🔧 Updated otNumber for OT:', row.id, 'to:', event.newValue);
         }
       });
 
@@ -3322,15 +3232,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Lógica original para una sola fila
     if (event.colDef.field === 'area') {
-      console.log('🔧 AREA cambió - Nuevo valor:', event.newValue);
       if (this.selectedOt && event.data.id === this.selectedOt.id) {
         this.selectedOt.area = event.newValue;
-        console.log('🔧 selectedOt.area actualizado a:', this.selectedOt.area);
       }
     }
 
     if (event.colDef.field === 'closed') {
-      console.log('🔧 CLOSED cambió - Nuevo valor:', event.newValue);
 
       // Solo proceder si se está marcando como cerrado (true)
       if (event.newValue === true) {
@@ -3385,10 +3292,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     if (event.colDef.field === 'closedApp') {
-      console.log('🔧 CLOSED APP cambió - Nuevo valor:', event.newValue);
       if (this.selectedOt && event.data.id === this.selectedOt.id) {
         this.selectedOt.closedApp = event.newValue;
-        console.log('🔧 selectedOt.closedApp actualizado a:', this.selectedOt.closedApp);
       }
     }
 
@@ -3400,10 +3305,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     if (event.colDef.field === 'otNumber') {
-      console.log('🔧 OT NUMBER cambió - Nuevo valor:', event.newValue);
       if (this.selectedOt && event.data.id === this.selectedOt.id) {
         this.selectedOt.otNumber = event.newValue;
-        console.log('🔧 selectedOt.otNumber actualizado a:', this.selectedOt.otNumber);
       }
     }
 
@@ -3422,17 +3325,13 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Navegar si el doble click es en la columna "OT" o "Resultados"
     if (column && column.colDef && (column.colDef.field === 'otNumber')) {
-      console.log(`Navigating to OT details from ${column.colDef.field} column...`);
       if (rowData && rowData.id) {
-        console.log('Navigating with ID:', rowData.id);
         this.router.navigate(['/projects/ot/details', rowData.id]);
       } else {
-        console.log('No ID found in row data');
       }
     } else {
       // Si no es una columna de navegación, iniciar la edición estándar de la celda.
       // Esto permite que los checkboxes se editen con un solo clic y otras celdas con doble clic.
-      console.log('Not a navigation column, starting edit for field:', column?.colDef?.field);
       if (event.api && event.colDef.editable) {
         event.api.startEditingCell({ rowIndex: event.rowIndex, colKey: event.column.getColId() });
       }
@@ -3459,7 +3358,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           this.onProjectChanged(params);
         } else {
           // Usuario canceló, revertir el cambio
-          console.log('Cambio de proyecto cancelado por el usuario');
           params.data.idProject = params.oldValue;
           params.api.refreshCells({ rowNodes: [params.node], force: true });
         }
@@ -3468,28 +3366,21 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   }
 
   onProjectChanged(params: any) {
-    console.log('Project changed for OT:', params.data);
-    console.log('New project ID:', params.newValue);
-    console.log('Old project ID:', params.oldValue);
 
     const otId = params.data.id;
     const updatedOtData = { ...params.data };
     const newProjectId = params.newValue;
     const oldProjectId = params.oldValue;
 
-    console.log('Updating OT with ID:', otId);
-    console.log('Updated data:', updatedOtData);
 
     // Primero actualizar la OT
     this.otService.updateOt(otId, updatedOtData).subscribe({
       next: (response: any) => {
-        console.log('OT updated successfully:', response);
 
         // Luego actualizar todos los registros del logbook asociados a esta OT
         // Pasamos el oldProjectId para que el backend pueda mapear correctamente los workprograms
         this.logbookService.updateProjectForOt(otId, newProjectId, oldProjectId).subscribe({
           next: (logbookResponse: any) => {
-            console.log('Logbook records updated successfully:', logbookResponse);
 
             const oldProject = this.projectsList.find(p => p.id === params.oldValue);
             const newProject = this.projectsList.find(p => p.id === params.newValue);
@@ -3526,7 +3417,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
                   const numero = parseInt(select[1], 10);
                   this.cuadrillaSelect = `${numero}`;
                 }
-                console.log('📋 CuadrillaSelect actualizada a:', this.cuadrillaSelect);
               }
 
               this.reloadLogbookData();
@@ -3578,7 +3468,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   // Métodos para pestañas y vista previa
   setActiveTab(tab: string) {
     this.activeTab = tab;
-    console.log('Pestaña activa:', tab);
     if (tab === 'conceptos' && this.selectedOt) {
       this.obtenerConceptos(this.selectedOt.idProject).subscribe();
     }
@@ -3622,8 +3511,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const sidebarProjectName = sidebarProject?.name || '';
     const otProjectName = otProject?.name || '';
     const hasPermission = this.authService.hasDetailedPermission('projects', 'get-all-ot');
-    console.log('  - Sidebar Project Name:', sidebarProjectName);
-    console.log('  - OT Project Name:', otProjectName);
 
     // Validar que ambos proyectos coincidan
     if (!hasPermission) {
@@ -3633,7 +3520,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         'warning'
       );
     } else {
-      console.log('✅ Los proyectos coinciden correctamente');
     }
 
     this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
@@ -3641,7 +3527,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
-    console.log(reporte)
     const id: number = Number(this.selectedReporteId);
     //this.updateExcelService.UpdateOT(id)
     this.signalsService.setClosedReport(reporte.close)
@@ -3680,14 +3565,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.originalUrl = null;
     }
 
-    console.log('Reporte seleccionado:', {
-      id: this.selectedReporteId,
-      fecha: this.selectedReporteFecha,
-      tipo: this.selectedReporteTipo,
-      horaInicio: this.selectedReporteHoraInicio,
-      horaTermino: this.selectedReporteHoraTermino
-    });
-    console.log('Datos completos del reporte:', reporte);
   }
 
   getReporteRowClass = (params: any) => {
@@ -3709,7 +3586,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       fecha: fotografia.fecha || '',
       url: fotografia.imageUrl || fotografia.url || '' // Use imageUrl from grid or fallback to url
     };
-    console.log('Fotografía seleccionada:', this.selectedFotografia);
   }
 
   selectVideo(video: any) {
@@ -3815,7 +3691,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       this.dailyReportService.updateDailyReport(data.id, updatedReport).subscribe({
         next: (response) => {
-          console.log('Campo actualizado:', field);
         },
         error: (error) => {
           console.error('Error al actualizar campo:', error);
@@ -3867,7 +3742,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       __isNew: true
     };
 
-    console.log('Agregando nuevo reporte:', newReporte);
     this.reportesDiarios = [newReporte, ...this.reportesDiarios];
     this.notSavedChanges = true;
 
@@ -3890,7 +3764,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.trackingService.getEmail()
     );
 
-    console.log('=== INICIO DEBUG SAVE CHANGES ===');
 
     const newRows = this.reportesDiarios.filter(row => row.__isNew);
     const modifiedRows = this.reportesDiarios.filter(row => row.__modified && !row.__isNew);
@@ -3913,38 +3786,26 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // 🚫 Activar flag para ignorar notificaciones de SignalR durante el guardado
       this.isSavingData = true;
 
-      console.log('=== PREPARANDO REQUESTS ===');
 
       const addRequests = newRows.map((row, index) => {
         const cleanedData = this.cleanDataForServer(row);
-        console.log(`Datos limpiados para nueva fila ${index + 1}:`, cleanedData);
         return this.dailyReportService.addDailyReport(cleanedData).toPromise();
       });
 
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanDataForServer(row);
-        console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
         return this.dailyReportService.updateDailyReport(Number(row.id), cleanedData).toPromise();
       });
 
-      console.log(`Ejecutando ${addRequests.length} requests de creación`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
 
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
-      console.log('=== RESPUESTAS RECIBIDAS ===');
-      console.log('Número de respuestas:', responses.length);
       responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
 
         // Verificar estructura de la respuesta
         if (response && typeof response === 'object') {
-          console.log(`- success: ${response.success}`);
-          console.log(`- message: ${response.message}`);
-          console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
 
           if (response.data) {
-            console.log(`- data.id: ${response.data.id}`);
           }
         }
       });
@@ -3961,15 +3822,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
 
       this.notSavedChanges = false;
 
       // Recargar datos desde el servidor
-      console.log('Recargando datos desde el servidor...');
       await this.loadDailyReports();
-      console.log('Datos recargados exitosamente');
 
       // ✅ Desactivar flag después de recargar
       this.isSavingData = false;
@@ -4027,13 +3885,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     try {
       const addRequests = newRows.map((row, index) => {
         const cleanedData = this.cleanDataSinDescripcion(row);
-        console.log(`Datos limpiados para nueva fila ${index + 1}:`, cleanedData);
         return this.logbookService.addDataForOt(cleanedData).toPromise();
       });
 
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanDataSinDescripcion(row);
-        console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
@@ -4041,16 +3897,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
       responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
 
         // Verificar estructura de la respuesta
         if (response && typeof response === 'object') {
-          console.log(`- success: ${response.success}`);
-          console.log(`- message: ${response.message}`);
-          console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
 
           if (response.data) {
-            console.log(`- data.id: ${response.data.id}`);
           }
         }
       });
@@ -4067,15 +3918,12 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.autoUpdatePdf()
       this.notSavedMaterialChanges = false;
 
       // Recargar datos desde el servidor
-      console.log('Recargando datos desde el servidor...');
       await this.loadDailyReports();
-      console.log('Datos recargados exitosamente');
       this.materiales.forEach(item => {
         delete item.__isNew;
         delete item.__modified;
@@ -4132,28 +3980,18 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanDataSinDescripcion(row);
-        console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
-      console.log(`Ejecutando ${addRequests.length} requests de creación`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
 
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
-      console.log('=== RESPUESTAS RECIBIDAS ===');
-      console.log('Número de respuestas:', responses.length);
       responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
 
         // Verificar estructura de la respuesta
         if (response && typeof response === 'object') {
-          console.log(`- success: ${response.success}`);
-          console.log(`- message: ${response.message}`);
-          console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
 
           if (response.data) {
-            console.log(`- data.id: ${response.data.id}`);
           }
         }
       });
@@ -4170,7 +4008,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.autoUpdatePdf()
       this.notSavedEquipoChanges = false;
@@ -4181,9 +4018,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         delete item.__modified;
       });
 
-      console.log('Recargando datos desde el servidor...');
       await this.loadDailyReports();
-      console.log('Datos recargados exitosamente');
 
     } catch (error: any) {
       console.error('=== ERROR DETALLADO ===');
@@ -4282,11 +4117,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   loadPersonalData() {
     if (this.selectedOt) {
       const otId = parseInt(this.selectedOt.id);
-      console.log('Cargando datos de Personal para OT:', otId);
 
       this.logbookService.getInfoByOt(otId, 'PERSONAL').subscribe({
         next: (response) => {
-          console.log('Respuesta de Personal:', response);
           if (response.success && response.data) {
             // Mapear datos del endpoint a la estructura esperada por el ag-grid
             this.personal = response.data.map((item: any) => ({
@@ -4309,7 +4142,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
               this.personalGridApi.redrawRows();
             }
           } else {
-            console.log('No hay datos de Personal o estructura de respuesta diferente:', response);
             this.personal = [];
           }
         },
@@ -4344,13 +4176,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
               // Si había un reporte seleccionado anteriormente, intentar encontrarlo
               if (currentSelectedReporteId) {
                 reporteToSelect = this.reportesDiarios.find(r => r.id === currentSelectedReporteId);
-                console.log('🔄 Preservando selección del reporte ID:', currentSelectedReporteId);
               }
 
               // Si no se encuentra el reporte anterior o no había selección, usar el primero
               if (!reporteToSelect) {
                 reporteToSelect = this.reportesDiarios[0];
-                console.log('📋 Seleccionando primer reporte como fallback');
               }
 
               // Esperar un poco para asegurar que el grid esté completamente renderizado
@@ -4388,21 +4218,14 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     if (!this.selectedReporteId || !this.selectedReporteFecha) {
       console.error('❌ Error: No hay reporte seleccionado');
-      console.log('Detalles:', { selectedReporteId: this.selectedReporteId, selectedReporteFecha: this.selectedReporteFecha });
       alerts.basicAlert('Error', 'Debe seleccionar un reporte diario primero', 'error');
       return;
     }
 
     this.isGeneratingPdf = true;
-    console.log('Generando PDF para:', {
-      otId: this.selectedOt.id,
-      reporteId: this.selectedReporteId,
-      fecha: this.selectedReporteFecha
-    });
 
     try {
       // Preparar los datos para el generador de PDF
-      console.log('Fotografías disponibles para PDF:', this.fotografias);
 
       // Procesar datos de personal para resolver nombres y cargos automáticamente
       const processedPersonalData = this.personal.map(person => {
@@ -4471,9 +4294,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         this.showPdfEmbed = true;
         this.isGeneratingPdf = false;
 
-        console.log('✅ PDF generado exitosamente para vista previa');
-        console.log('📄 URL del PDF:', url);
-        console.log('🖥️ Estado de visualización:', { showPdfEmbed: this.showPdfEmbed, pdfUrl: !!this.pdfUrl });
 
         //alerts.basicAlert('Éxito', 'PDF generado correctamente', 'success');
       });
@@ -4647,7 +4467,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private cleanPhotoDataForServer(data: any): any {
     const cleanedData = { ...data };
 
-    console.log('🖼️ Limpiando datos de fotografía:', cleanedData);
 
     // Eliminar propiedades temporales de control
     delete cleanedData.__isNew;
@@ -4675,7 +4494,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     cleanedData.imageUrl = cleanedData.imageUrl || '';
     cleanedData.imageAzure = cleanedData.imageazure || cleanedData.imageAzure || 'NO FILE';
 
-    console.log('🖼️ Datos de fotografía limpiados:', cleanedData);
 
     return cleanedData;
   }
@@ -4761,11 +4579,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // Método para manejar cambios en el grid de personal
   onPersonalCellValueChanged(event: any) {
-    console.log('=== CAMBIO EN GRID DE PERSONAL ===');
-    console.log('Campo modificado:', event.colDef.field);
-    console.log('Valor anterior:', event.oldValue);
-    console.log('Valor nuevo:', event.newValue);
-    console.log('Dato completo después del cambio:', event.data);
 
     this.notSavedPersonalChanges = true;
 
@@ -4810,11 +4623,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // Método para manejar cambios en el grid de materiales
   onMaterialCellValueChanged(event: any) {
-    console.log('=== CAMBIO EN GRID DE MATERIALES ===');
-    console.log('Campo modificado:', event.colDef.field);
-    console.log('Valor anterior:', event.oldValue);
-    console.log('Valor nuevo:', event.newValue);
-    console.log('Dato completo después del cambio:', event.data);
 
     this.notSavedChangesMaster = true;
 
@@ -5048,32 +4856,24 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('=== USANDO ENDPOINTS DE LOGBOOK SERVICE ===');
 
       // Preparar requests para nuevos registros
       const addRequests = newRows.map((row, index) => {
         const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para POST ${index + 1}:`, cleanedData);
         return this.logbookService.addDataForOt(cleanedData).toPromise();
       });
 
       // Preparar requests para registros modificados
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanPersonalDataForServer(row);
-        console.log(`Datos para PUT ${index + 1} (ID: ${row.id}):`, cleanedData);
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
-      console.log(`Ejecutando ${addRequests.length} requests de creación`);
-      console.log(`Ejecutando ${updateRequests.length} requests de actualización`);
 
       // Ejecutar todos los requests
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
-      console.log('=== RESPUESTAS RECIBIDAS ===');
-      console.log('Número de respuestas:', responses.length);
       responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
       });
 
       // Verificar si las respuestas son exitosas
@@ -5088,7 +4888,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Éxito', 'Cambios de personal guardados correctamente', 'success');
       this.autoUpdatePdf()
       this.notSavedPersonalChanges = false;
@@ -5149,9 +4948,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    console.log('=== INTENTANDO ELIMINAR PERSONAL ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
 
     alerts.confirmAlert(
       'Eliminar personal',
@@ -5188,7 +4984,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   async crearPdfEmbedAutomatico() {
     if (!this.inputData || !this.inputData.id) {
-      console.log('No hay datos disponibles para generar PDF');
       this.showPdfEmbed = false;
       this.isGeneratingPdfEmbed = false;
       return;
@@ -5196,7 +4991,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Verificar si hay datos en la tabla
     if (!this.gestionarDatos || this.gestionarDatos.length === 0) {
-      console.log('No hay datos en la tabla para generar PDF');
       this.showPdfEmbed = false;
       this.isGeneratingPdfEmbed = false;
       return;
@@ -5228,7 +5022,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   obtenerMateriales(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    console.log('Obteniendo materiales para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
         // Procesar los datos del servidor para evitar duplicaciones
@@ -5240,7 +5033,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           __isNew: false,
           __modified: false
         }));
-        console.log('Materiales procesados desde servidor:', this.materiales);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -5248,7 +5040,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   obtenerEquipos(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
-    console.log('Obteniendo equipos para reporte ID:', selectedReporteId);
     this.logbookService.getInfoByReporte(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
         // Procesar los datos del servidor para evitar duplicaciones
@@ -5260,7 +5051,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           __isNew: false,
           __modified: false
         }));
-        console.log('Equipos procesados desde servidor:', this.equipos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -5278,7 +5068,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           __isNew: false,
           __modified: false
         }));
-        console.log('Personal procesado desde servidor:', this.personal);
         //this.updateExcelService.dataPersonal(this.personal)
       },
       (error) => console.error('Error fetching data:', error)
@@ -5330,7 +5119,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           __isNew: false,
           __modified: false
         }));
-        console.log('Notas procesadas desde servidor:', this.notas);
       },
       (error) => {
         console.error('Error fetching data:', error);
@@ -5351,7 +5139,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           __isNew: false,
           __modified: false
         }));
-        console.log('Conceptos procesados desde servidor:', this.conceptos);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -5362,10 +5149,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
       (data: any) => {
         this.catalogMateriales = data;
-        console.log('Catálogo de materiales cargado:', this.catalogMateriales);
         if (this.materialesGridApi) {
           this.materialesGridApi.refreshCells();
-          console.log('Grid de materiales actualizado con catálogo');
         }
       },
       (error) => console.error('Error fetching data:', error)
@@ -5376,12 +5161,10 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.equipmentService.getEquipment(this.idcompany).subscribe(
       (data: any) => {
         this.catalogEquipos = data;
-        console.log('Catálogo de equipos cargado:', this.catalogEquipos);
 
         // Actualizar el grid de equipos si ya está inicializado
         if (this.equiposGridApi) {
           this.equiposGridApi.refreshCells();
-          console.log('Grid de equipos   actualizado con catálogo');
 
         }
       },
@@ -5393,7 +5176,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     this.catalogService.getCatalogsVigente(this.idcompany, 'POSITION').subscribe(
       (data: any) => {
         this.catalogDepartamentos = data;
-        console.log('Departamentos obtenidos:', this.catalogDepartamentos);
       },
       (error) => {
         if (error.status == 404) this.catalogDepartamentos = [];
@@ -5407,7 +5189,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.catalogService.getUnits(this.idcompany).subscribe(
       (data: any) => {
         this.unitsCatalog = data;
-        console.log('Catálogo de unidades obtenido:', this.unitsCatalog);
       },
       (error) => console.error('Error fetching units:', error)
     );
@@ -5417,7 +5198,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.catalogService.getTypeNote(this.idcompany).subscribe(
       (data: any) => {
         this.typeNotesCatalog = data;
-        console.log('Catálogo de tipos de nota obtenido:', this.typeNotesCatalog);
       },
       (error) => console.error('Error fetching type notes:', error)
     );
@@ -5435,7 +5215,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       const detectedProject = this.detectProjectFromData();
 
       if (detectedProject) {
-        console.log('Proyecto detectado automáticamente:', detectedProject);
         return this.workprogramsService.getActivities(parseInt(detectedProject.toString())).pipe(
           tap((data: any) => this.processCatalogConceptos(data))
         );
@@ -5468,7 +5247,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // Opción 1: Desde sidebar (señales)
       const sidebarProject = this.signalsService.getProjectSelectedBySidebar()();
       if (sidebarProject && sidebarProject !== 0) {
-        console.log('Proyecto detectado desde sidebar:', sidebarProject);
         return sidebarProject;
       }
 
@@ -5479,7 +5257,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
         for (const field of possibleFields) {
           if (otData[field] && otData[field] !== 0) {
-            console.log(`Proyecto detectado desde OT seleccionada (campo ${field}):`, otData[field]);
             return parseInt(otData[field].toString());
           }
         }
@@ -5493,7 +5270,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           const firstOtWithProject = this.rowData.find(ot => (ot as any)[field] && (ot as any)[field] !== 0);
           if (firstOtWithProject) {
             const projectId = (firstOtWithProject as any)[field];
-            console.log(`Proyecto detectado desde lista de OTs (campo ${field}):`, projectId);
             return parseInt(projectId.toString());
           }
         }
@@ -5509,7 +5285,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             project.name && project.name.includes('CUADR')
           );
           if (matchedProject) {
-            console.log('Proyecto detectado por correlación:', matchedProject.id);
             return parseInt(matchedProject.id.toString());
           }
         }
@@ -5527,7 +5302,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.projectsService.getProjectListByCompany(this.idcompany).subscribe(
       (data: any) => {
         this.projectsList = data;
-        console.log('Lista de proyectos obtenida:', this.projectsList);
         // Llamar obtenerDatos después de cargar la lista de proyectos
         this.obtenerDatos();
       },
@@ -5626,9 +5400,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    console.log('=== INTENTANDO ELIMINAR MATERIAL ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
 
     alerts.confirmAlert(
       'Eliminar material',
@@ -5637,23 +5408,16 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
-        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
 
         if (selectedData.__isNew) {
-          console.log('Eliminando registro nuevo (solo local)');
           this.materiales = this.materiales.filter(m => m.id !== id);
           this.notSavedMaterialChanges = this.materiales.some(m => m.__isNew);
-          console.log('Material después de eliminación local:', this.materiales);
           alerts.basicAlert('Éxito', 'Material eliminado correctamente', 'success');
         } else {
-          console.log('Eliminando registro existente usando endpoint DELETE');
-          console.log('Enviando DELETE para ID:', id);
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
-              console.log('Respuesta del DELETE:', response);
               this.materiales = this.materiales.filter(m => m.id !== id);
-              console.log('Material después de eliminación del servidor:', this.materiales);
               alerts.basicAlert('Éxito', 'Material eliminado correctamente del servidor', 'success');
             },
             error: (error) => {
@@ -5687,9 +5451,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    console.log('=== INTENTANDO ELIMINAR EQUIPO ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
 
     alerts.confirmAlert(
       'Eliminar equipo',
@@ -5698,23 +5459,16 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
-        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
 
         if (selectedData.__isNew) {
-          console.log('Eliminando registro nuevo (solo local)');
           this.equipos = this.equipos.filter(m => m.id !== id);
           this.notSavedEquipoChanges = this.equipos.some(m => m.__isNew);
-          console.log('Equipo después de eliminación local:', this.equipos);
           alerts.basicAlert('Éxito', 'Equipo eliminado correctamente', 'success');
         } else {
-          console.log('Eliminando registro existente usando endpoint DELETE');
-          console.log('Enviando DELETE para ID:', id);
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
-              console.log('Respuesta del DELETE:', response);
               this.equipos = this.equipos.filter(m => m.id !== id);
-              console.log('Equipo después de eliminación del servidor:', this.equipos);
               alerts.basicAlert('Éxito', 'Equipo eliminado correctamente del servidor', 'success');
             },
             error: (error) => {
@@ -5801,31 +5555,24 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     try {
       const addRequests = newRows.map((row, index) => {
-        console.log(`=== FILA ORIGINAL ${index + 1} ===`, row);
         const cleanedData = this.cleanDataSinDescripcion(row);
-        console.log(`=== DATOS LIMPIADOS ${index + 1} ===`, cleanedData);
-        console.log(`JSON.stringify:`, JSON.stringify(cleanedData, null, 2));
         return this.logbookService.addDataForOt(cleanedData).toPromise();
       });
 
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanDataSinDescripcion(row);
-        console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
       responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
 
         // Verificar estructura de la respuesta
         if (response && typeof response === 'object') {
 
-          console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
 
           if (response.data) {
-            console.log(`- data.id: ${response.data.id}`);
           }
         }
       });
@@ -5842,7 +5589,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.autoUpdatePdf()
       this.notSavedConceptoChanges = false;
@@ -5897,27 +5643,22 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   // Método para actualizar totalPay después de guardar conceptos
   private async updateTotalPayAfterConceptos(): Promise<void> {
     if (!this.selectedReporteId) {
-      console.log('No hay reporte seleccionado para actualizar totalPay');
       return;
     }
 
     try {
-      console.log('🧮 Calculando totalPay para reporte ID:', this.selectedReporteId);
 
       const reporteId = Number(this.selectedReporteId);
       const costResponse = await this.dailyReportService.getReportxCost(reporteId).toPromise();
-      console.log('💰 Respuesta de costo:', costResponse);
 
       if (costResponse && costResponse.total && Array.isArray(costResponse.total) && costResponse.total.length > 0) {
         const calculatedTotal = costResponse.total[0].total;
-        console.log('💵 Total calculado:', calculatedTotal);
 
         // Buscar el reporte actual en el array de reportes diarios
         const currentReport = this.reportesDiarios.find(r => r.id === this.selectedReporteId);
         if (currentReport) {
           // Actualizar el campo paid (que corresponde a totalPay) silenciosamente
           (currentReport as any).paid = calculatedTotal;
-          console.log('✅ TotalPay actualizado en memoria:', calculatedTotal);
 
           // Actualizar en el servidor - AJUSTADO PARA EL NUEVO ENDPOINT
           const updateData = {
@@ -5925,13 +5666,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           };
 
           await this.dailyReportService.updateCostReport(reporteId, updateData).toPromise();
-          console.log('✅ TotalPay actualizado en servidor exitosamente');
 
         } else {
           console.warn('⚠️ No se encontró el reporte actual para actualizar totalPay');
         }
       } else {
-        console.log('ℹ️ No se encontraron totales en la respuesta de costos');
       }
 
     } catch (error) {
@@ -5960,9 +5699,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    console.log('=== INTENTANDO ELIMINAR CONECEPTO ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
 
     alerts.confirmAlert(
       'Eliminar concepto',
@@ -5971,23 +5707,16 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
-        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
 
         if (selectedData.__isNew) {
-          console.log('Eliminando registro nuevo (solo local)');
           this.conceptos = this.conceptos.filter(m => m.id !== id);
           this.notSavedConceptoChanges = this.conceptos.some(m => m.__isNew);
-          console.log('Concepto después de eliminación local:', this.conceptos);
           alerts.basicAlert('Éxito', 'Concepto eliminado correctamente', 'success');
         } else {
-          console.log('Eliminando registro existente usando endpoint DELETE');
-          console.log('Enviando DELETE para ID:', id);
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
-              console.log('Respuesta del DELETE:', response);
               this.conceptos = this.conceptos.filter(m => m.id !== id);
-              console.log('Concepto después de eliminación del servidor:', this.conceptos);
               alerts.basicAlert('Éxito', 'Concepto eliminado correctamente del servidor', 'success');
             },
             error: (error) => {
@@ -6088,26 +5817,18 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       const updateRequests = modifiedRows.map((row, index) => {
         const cleanedData = this.cleanDataForServer(row);
-        console.log(`Datos limpiados para fila modificada ${index + 1}:`, cleanedData);
         return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
       });
 
 
       const responses = await Promise.all([...addRequests, ...updateRequests]);
 
-      console.log('=== RESPUESTAS RECIBIDAS ===');
-      console.log('Número de respuestas:', responses.length);
       responses.forEach((response, index) => {
-        console.log(`Respuesta ${index + 1}:`, response);
 
         // Verificar estructura de la respuesta
         if (response && typeof response === 'object') {
-          console.log(`- success: ${response.success}`);
-          console.log(`- message: ${response.message}`);
-          console.log(`- data: ${response.data ? 'SÍ' : 'NO'}`);
 
           if (response.data) {
-            console.log(`- data.id: ${response.data.id}`);
           }
         }
       });
@@ -6124,7 +5845,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
-      console.log('=== GUARDADO EXITOSO ===');
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.autoUpdatePdf()
       this.notSavedNoteChanges = false;
@@ -6134,9 +5854,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       });
 
       // Recargar datos desde el servidor
-      console.log('Recargando datos desde el servidor...');
       await this.loadDailyReports();
-      console.log('Datos recargados exitosamente');
 
     } catch (error: any) {
       console.error('=== ERROR DETALLADO ===');
@@ -6182,11 +5900,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   onNotasGridReady(params: any) {
     this.notasGridApi = params.api;
-    console.log('Notes grid ready');
   }
 
   onCellValueChangedNota(event: any) {
-    console.log('Cell value changed in notas:', event);
     event.data.__modified = true;
     this.notSavedNoteChanges = true;
   }
@@ -6213,9 +5929,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
-    console.log('=== INTENTANDO ELIMINAR EQUIPO ===');
-    console.log('Registro seleccionado para eliminar:', selectedData);
-    console.log('ID a eliminar:', id);
 
     alerts.confirmAlert(
       'Eliminar nota',
@@ -6224,27 +5937,20 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       'Sí, eliminar'
     ).then((value) => {
       if (value.isConfirmed) {
-        console.log('=== CONFIRMACIÓN DE ELIMINACIÓN ===');
 
         if (selectedData.__isNew) {
-          console.log('Eliminando registro nuevo (solo local)');
           this.notas = this.notas.filter(m => m.id !== id);
           this.notSavedNoteChanges = this.notas.some(m => m.__isNew);
-          console.log('Notas después de eliminación local:', this.notas);
 
           // Limpiar vista previa del PDF para reflejar cambios
           this.clearPdfPreview();
 
           alerts.basicAlert('Éxito', 'Nota eliminada correctamente', 'success');
         } else {
-          console.log('Eliminando registro existente usando endpoint DELETE');
-          console.log('Enviando DELETE para ID:', id);
 
           this.logbookService.deleteDataForOt(Number(id)).subscribe({
             next: (response) => {
-              console.log('Respuesta del DELETE:', response);
               this.notas = this.notas.filter(m => m.id !== id);
-              console.log('Notas después de eliminación del servidor:', this.notas);
 
               // Limpiar vista previa del PDF para reflejar cambios
               this.clearPdfPreview();
@@ -6274,7 +5980,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     }
 
     this.autoUpdateTimeout = setTimeout(() => {
-      console.log('Auto-actualizando PDF tras cambios guardados...');
       this.generatePdfPreview();
     }, 500); // Esperar 500ms antes de regenerar
   }
@@ -6296,13 +6001,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         this.modalServiceTable.updateData(null);
       }
     } catch (error) {
-      console.log('Error al limpiar modal state:', error);
     }
 
     // Cerrar conexión SignalR al destruir el componente
     this.signalrService.stopConnection();
 
-    console.log('OrdenesComponent destruido - modal state limpiado');
   }
 
 
@@ -6385,7 +6088,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     const file = input.files?.[0];
 
     if (file) {
-      console.log('Archivo seleccionado:', file);
 
       // Aquí puedes manejar el archivo, por ejemplo subirlo, procesarlo, etc.
       // this.uploadService.uploadFile(file, this.getSelectedOTs());

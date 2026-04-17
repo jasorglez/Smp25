@@ -52,7 +52,6 @@ export class PosSetupComponent {
       this.nameBranch = this.signalsService.getBranchNameSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.idCustomer = this.signalsService.getIdCustomerFromPOS()();
-      console.log(this.idCustomer);
       this.getCustomers();
       this.getDocumentType();
     });
@@ -69,14 +68,12 @@ export class PosSetupComponent {
     this.customerService.getCustomers(this.idBranch, 'PROVIDERS').subscribe(
       (data: any) => {
         this.customers = data;
-        console.log('this customers',data);
         // Seleccionar el primer cliente si idCustomer es null
         if (this.idCustomer === null && this.customers.length > 0) {
           this.idCustomer = this.customers[0].id; // Seleccionar el primer cliente
           this.signalsService.setIdCustomerFromPOS(this.idCustomer); // Enviar a la signal
         }
         this.getOptions(); // Cargar la configuración del cliente seleccionado
-        console.log(data);
       },
       (error) => console.error('Error fetching customers:', error)
     );
@@ -86,7 +83,6 @@ export class PosSetupComponent {
     this.catalogsService.getDocumentTypes().subscribe(
       (data: any) => {
         this.documentType = data;
-        console.log(data);
       },
       (error) => console.error('Error fetching customers:', error)
     );
@@ -97,7 +93,6 @@ export class PosSetupComponent {
       (data: any) => {
         this.options = data.length > 0 ? data[0] : { printScreen: true, salesExistence: true, consecutive: 0 };
         this.isNew = data.length === 0;
-        console.log(data);
       },
       (error) => console.error('Error fetching pos setup:', error)
     )
@@ -117,7 +112,6 @@ export class PosSetupComponent {
     if(this.isNew) {
       this.posService.addPosSetup(this.options).subscribe(
         (data: any) => {
-          console.log(data);
           alerts.basicAlert('Éxito', 'Configuración guardada correctamente','success');
           this.isNew = false;
         },
@@ -127,7 +121,6 @@ export class PosSetupComponent {
     else {
       this.posService.updatePosSetup(this.idBranch, this.idCustomer, this.options).subscribe(
         (data: any) => {
-          console.log(data);
           alerts.basicAlert('Éxito', 'Configuración actualizada correctamente', 'success');
         },
         (error) => {

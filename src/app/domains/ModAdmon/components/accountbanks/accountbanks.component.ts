@@ -491,7 +491,6 @@ export class AccountbanksComponent implements CanComponentDeactivate {
           // 404 significa "no hay datos", no es un error real
           if (error.status === 404) {
             this.rowMaster = [];
-            console.log('No hay cuentas bancarias para esta empresa');
           } else {
             // Otros errores sí son problemas reales
             console.error('Error al cargar cuentas bancarias:', error);
@@ -631,7 +630,6 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('📤 Datos a enviar al POST:', cleanedData);
       return this.administrationService.addAccountBanks(cleanedData);
     });
 
@@ -776,7 +774,6 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       cleanedData.id = data.id;
     }
 
-    console.log('🔍 CompanyId:', companyId, '| idBussines final:', cleanedData.idBussines);
 
     return cleanedData;
   }

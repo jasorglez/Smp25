@@ -30,27 +30,21 @@ export class ConceptsincomeComponent {
   private route = inject(ActivatedRoute);
 
  ngOnInit() {
-  console.log('Concepts Component Initializing');
   this.idIncExp = this.signalsService.getIdIncomeAndExpense()();
   this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-  console.log('Initial values - idIncExp:', this.idIncExp, 'idRoot:', this.idRoot);
 
   this.getMeasures();
   this.loadSATCatalogs();
 
   if (this.idIncExp) {
-    console.log('Initial load with idIncExp:', this.idIncExp);
     this.getData();
     this.getBillingManagementInfo().then(() => {
-      console.log('Billing info loaded');
     });
   }
 
   this.route.data.subscribe((data) => {
-    console.log('Route data changed:', data);
     this.showform = data['showform'];
     if (this.gridApi) {
-      console.log('Updating grid columns');
       this.gridApi.updateGridOptions({ columnDefs: this.colMaster });
     }
   });
@@ -65,7 +59,6 @@ export class ConceptsincomeComponent {
   this.onGridReady = this.onGridReady.bind(this);
   effect(() => {
     const newId = this.signalsService.getIdIncomeAndExpense()();
-    console.log('Signal changed - new idIncExp:', newId);
     
     this.idIncExp = newId;
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -73,7 +66,6 @@ export class ConceptsincomeComponent {
     this.getMeasures();
     
     if (this.idIncExp) {
-      console.log('Loading data for idIncExp:', this.idIncExp);
       this.getData();
     } else {
       // Clear data when no income/expense is selected
@@ -324,7 +316,6 @@ export class ConceptsincomeComponent {
     this.catalogsService.getCatalogs(this.idRoot, 'MEASURE').subscribe(
       (data: any) => {
         this.measures = data || [];
-        console.log('Medidas:', this.measures);
       },
       (error) => {
         console.error('Error al obtener medidas:', error);
@@ -338,7 +329,6 @@ export class ConceptsincomeComponent {
     this.administrationService.getObjetosImpuesto().subscribe({
       next: (data: any[]) => {
         this.objetosImpuesto = data || [];
-        console.log('Objetos Impuesto loaded:', this.objetosImpuesto.length);
       },
       error: (err) => {
         console.error('Error loading Objetos Impuesto:', err);
@@ -515,16 +505,6 @@ export class ConceptsincomeComponent {
         idBranch: this.storedIdBranch ?? mainDocument.idBranch
       };
 
-      console.log('Datos a actualizar:', {
-        idDocumento: this.idIncExp,
-        documentoOriginal: mainDocument,
-        documentoActualizado: updatedDocument,
-        cambios: {
-          subtotal: `${mainDocument.subtotal} → ${this.subtotal}`,
-          iva: `${mainDocument.tax} → ${this.iva2}`,
-          total: `${mainDocument.total} → ${this.total}`
-        }
-      });
 
       // Enviar actualización (solo el objeto, no el array)
       await lastValueFrom(

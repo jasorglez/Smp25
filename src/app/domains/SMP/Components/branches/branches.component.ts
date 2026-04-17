@@ -623,13 +623,11 @@ export class BranchesComponent implements CanComponentDeactivate {
       ]);
 
       // Asignar permisos para los nuevos Branchs creados
-      console.log(allResponses);
       for (const response of allResponses) {
         // Verificar si es una nueva creación comparando con los IDs temporales
         const correspondingNewRow = newRows.find(
           (row) => !row.id || row.id.toString().startsWith('temp_')
         );
-        console.log(response.id);
 
         // Aquí construyo HRManagement.
         const newItem = {

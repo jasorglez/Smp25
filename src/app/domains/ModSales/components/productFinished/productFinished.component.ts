@@ -487,7 +487,6 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
     return this.materialsService.getMaterials(this.idRoot, 'PRODSALES').subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log(this.rowData)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -891,10 +890,6 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   }
 
   onSubmitLocation() {
-    console.log('Intentando enviar ubicación:', {
-      name: this.newLocationName,
-      idRoot: this.idRoot,
-    });
 
     if (this.newLocationName) {
       this.catalogsService
@@ -906,7 +901,6 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         })
         .subscribe(
           (response) => {
-            console.log('Respuesta del servidor:', response);
             alerts.basicAlert(
               'Éxito',
               'Ubicación añadida correctamente',

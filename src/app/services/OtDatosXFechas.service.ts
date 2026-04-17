@@ -30,7 +30,6 @@ export class DatosXFechasService {
   }
 
   getOTs(idCompany: number, startDate?: Date, endDate?: Date): Observable<any> {
-    console.log('getOTs called with:', { idCompany, startDate, endDate });
     let url = `${environment.urlSmp}/DatosXFechas/OTs/${idCompany}`;
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate.toISOString().split('T')[0]);

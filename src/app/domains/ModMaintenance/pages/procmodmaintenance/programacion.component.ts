@@ -47,6 +47,5 @@ export class ProgramacionComponent implements OnInit {
 
   nuevaProgramacion() {
     // Lógica para abrir un modal o navegar a una nueva página para crear una programación
-    console.log('Iniciando nueva programación...');
   }
 }

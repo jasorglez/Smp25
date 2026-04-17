@@ -398,7 +398,6 @@ export class ConventionsComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -631,7 +630,6 @@ export class ConventionsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Sending data to server:', cleanedData);
       return this.conventionsService.addConvention(cleanedData).pipe(
         catchError((error) => {
           console.error('Error adding agreement:', error);

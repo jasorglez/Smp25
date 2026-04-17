@@ -97,7 +97,6 @@ export class OrdenesComponent {
   obtenerDatos() {
     this.otService.getOtListByProject(this.idProject).subscribe({
       next: (data: any) => {
-        console.log('Datos obtenidos del servicio OT:', data);
         this.rowData = data;
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
@@ -121,7 +120,6 @@ export class OrdenesComponent {
 
   onSelectionChanged(event: any) {
     const selectedRows = this.gridApi.getSelectedRows();
-    console.log('Fila seleccionada:', selectedRows);
   }
 
   onRowDoubleClicked(event: any) {
@@ -178,23 +176,9 @@ export class OrdenesComponent {
   uploadPdf(file: File) {
     this.isUploading = true;
 
-    console.log('=== PDF Upload Process Started ===');
-    console.log('File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: new Date(file.lastModified),
-    });
-    console.log('Project ID being sent:', 760);
-    console.log('Calling OtService.addOtViaPdf with parameters:', {
-      projectId: 760,
-      file: file,
-    });
 
     this.otService.addOtViaPdf(760, file).subscribe({
       next: (response: any) => {
-        console.log('=== PDF Upload Success ===');
-        console.log('Response received:', response);
 
         this.isUploading = false;
 
@@ -213,13 +197,11 @@ export class OrdenesComponent {
         );
 
         // Redirigir a la página de detalles después de un breve delay
-        console.log('Navigating to details page with otId:', response.otId);
         setTimeout(() => {
           this.router.navigate(['/projects/ot/details', response.otId]);
         }, 2000);
       },
       error: (error) => {
-        console.log('=== PDF Upload Error ===');
         console.error('Complete error object:', error);
         console.error('Error status:', error.status);
         console.error('Error statusText:', error.statusText);

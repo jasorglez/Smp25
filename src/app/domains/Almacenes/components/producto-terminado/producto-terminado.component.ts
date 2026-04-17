@@ -103,17 +103,11 @@ export class ProductoTerminadoComponent {
       }
 
       try {
-        console.log('🔄 Cargando datos de Producto Terminado...');
-        console.log('📍 idRoot:', this.idRoot);
 
         // Guardar estado de expansión antes de recargar
         this.saveExpansionState();
 
         // Cargar los 3 tipos de datos en paralelo
-        console.log('📡 Solicitando datos al API:');
-        console.log('   - CATEGORY-PROD (Categorías)');
-        console.log('   - PRESENT-PROD (Presentaciones)');
-        console.log('   - NAME-PROD (Nombres)');
 
         const [categories, families, subfamilies] = await Promise.all([
           lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY-PROD')),
@@ -121,10 +115,6 @@ export class ProductoTerminadoComponent {
           lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'NAME-PROD'))
         ]);
 
-        console.log('✅ Datos recibidos:');
-        console.log('   - Categorías:', categories?.length || 0);
-        console.log('   - Presentaciones:', families?.length || 0);
-        console.log('   - Nombres:', subfamilies?.length || 0);
 
         // Construir estructura jerárquica
         this.buildTreeStructure(categories, families, subfamilies);
@@ -135,7 +125,6 @@ export class ProductoTerminadoComponent {
         // Refrescar filas visibles incluso si no hay estado previo guardado
         this.refreshVisibleRows();
 
-        console.log('✅ Catálogo cargado correctamente');
 
       } catch (error) {
         console.error('❌ Error al cargar datos del catálogo:', error);
@@ -159,10 +148,7 @@ export class ProductoTerminadoComponent {
     // Construir estructura plana para 3 columnas con control de expansión
     private buildTreeStructure(categories: any[], families: any[], subfamilies: any[]) {
       this.treeData = [];
-      console.log('🌳 buildTreeStructure - categorías:', categories.length, '| familias raw:', families.length, '| subfamilias raw:', subfamilies.length);
-      if (families.length > 0) console.log('🔍 Ejemplo familia[0]:', JSON.stringify(families[0]));
-      if (categories.length > 0) console.log('🔍 Ejemplo categoria[0]:', JSON.stringify(categories[0]));
-
+      if (families.length > 0)      if (categories.length > 0)
       // Agregar categorías (nivel 1) - siempre visibles
       categories.forEach(category => {
         const categoryNode = {
@@ -176,7 +162,6 @@ export class ProductoTerminadoComponent {
 
         // Buscar familias de esta categoría (nivel 2)
         const categoryFamilies = families.filter(family => family.parentId === category.id);
-        console.log(`  📦 Categoría "${category.description}" (id=${category.id}) → ${categoryFamilies.length} familias`);
   
         categoryFamilies.forEach(family => {
           const familyNode = {
@@ -376,7 +361,6 @@ export class ProductoTerminadoComponent {
   
     // Cambios en celdas
     onCellValueChanged(event: any) {
-      console.log('Dato cambiado:', event.data);
   
       // Si se cambió la columna vigente
       if (event.colDef.field === 'vigente') {
@@ -388,14 +372,12 @@ export class ProductoTerminadoComponent {
         // 1. Si se desactiva una categoría, desactivar todas sus familias y subfamilias
         if (nodeLevel === 'category' && newValue === false) {
           const categoryId = event.data.originalId;
-          console.log(`❌ Desactivando categoría ${categoryId} - cascada a familias y subfamilias`);
   
           this.treeData.forEach(node => {
             // Desactivar familias de esta categoría
             if (node.nodeLevel === 'family' && node.parentCategoryId === categoryId) {
               node.vigente = false;
               node.__modified = true;
-              console.log(`  ❌ Familia desactivada: ${node.description}`);
   
               // Desactivar subfamilias de esta familia
               const familyId = node.originalId;
@@ -403,7 +385,6 @@ export class ProductoTerminadoComponent {
                 if (subNode.nodeLevel === 'subfamily' && subNode.parentFamilyId === familyId) {
                   subNode.vigente = false;
                   subNode.__modified = true;
-                  console.log(`    ❌ Subfamilia desactivada: ${subNode.description}`);
                 }
               });
             }
@@ -415,13 +396,11 @@ export class ProductoTerminadoComponent {
         // 2. Si se desactiva una familia, desactivar todas sus subfamilias
         if (nodeLevel === 'family' && newValue === false) {
           const familyId = event.data.originalId;
-          console.log(`❌ Desactivando familia ${familyId} - cascada a subfamilias`);
   
           this.treeData.forEach(node => {
             if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
               node.vigente = false;
               node.__modified = true;
-              console.log(`  ❌ Subfamilia desactivada: ${node.description}`);
             }
           });
   
@@ -433,14 +412,12 @@ export class ProductoTerminadoComponent {
         // 3. Si se activa una categoría, activar todas sus familias y subfamilias (cascada hacia abajo)
         if (nodeLevel === 'category' && newValue === true) {
           const categoryId = event.data.originalId;
-          console.log(`✅ Activando categoría ${categoryId} - cascada a familias y subfamilias`);
   
           this.treeData.forEach(node => {
             // Activar familias de esta categoría
             if (node.nodeLevel === 'family' && node.parentCategoryId === categoryId) {
               node.vigente = true;
               node.__modified = true;
-              console.log(`  ✅ Familia activada: ${node.description}`);
   
               // Activar subfamilias de esta familia
               const familyId = node.originalId;
@@ -448,7 +425,6 @@ export class ProductoTerminadoComponent {
                 if (subNode.nodeLevel === 'subfamily' && subNode.parentFamilyId === familyId) {
                   subNode.vigente = true;
                   subNode.__modified = true;
-                  console.log(`    ✅ Subfamilia activada: ${subNode.description}`);
                 }
               });
             }
@@ -461,14 +437,12 @@ export class ProductoTerminadoComponent {
         if (nodeLevel === 'family' && newValue === true) {
           const familyId = event.data.originalId;
           const categoryId = event.data.parentCategoryId;
-          console.log(`✅ Activando familia ${familyId} - activar categoría padre ${categoryId} y subfamilias hijas`);
   
           // Activar categoría padre (hacia arriba)
           this.treeData.forEach(node => {
             if (node.nodeLevel === 'category' && node.originalId === categoryId) {
               node.vigente = true;
               node.__modified = true;
-              console.log(`  ✅ Categoría padre activada: ${node.description}`);
             }
           });
   
@@ -477,7 +451,6 @@ export class ProductoTerminadoComponent {
             if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
               node.vigente = true;
               node.__modified = true;
-              console.log(`  ✅ Subfamilia activada: ${node.description}`);
             }
           });
   
@@ -497,8 +470,6 @@ export class ProductoTerminadoComponent {
           const activeCount = allSubfamilies.filter(sf => sf.vigente === true).length;
           const totalCount = allSubfamilies.length;
   
-          console.log(`📊 Subfamilia ${newValue ? 'activada' : 'desactivada'}: ${event.data.description}`);
-          console.log(`   Subfamilias activas: ${activeCount}/${totalCount}`);
   
           // Buscar la familia padre
           const familyNode = this.treeData.find(node =>
@@ -510,12 +481,10 @@ export class ProductoTerminadoComponent {
   
             // Si TODAS las subfamilias están activas → activar familia padre
             if (activeCount === totalCount && newValue === true) {
-              console.log(`✅ Todas las subfamilias activas → activando familia padre`);
   
               if (!familyNode.vigente) {
                 familyNode.vigente = true;
                 familyNode.__modified = true;
-                console.log(`  ✅ Familia activada: ${familyNode.description}`);
               }
   
               // Verificar si todas las familias de la categoría están activas
@@ -524,17 +493,14 @@ export class ProductoTerminadoComponent {
               );
               const activeFamilies = allFamilies.filter(f => f.vigente === true).length;
   
-              console.log(`   Familias activas: ${activeFamilies}/${allFamilies.length}`);
   
               // Si TODAS las familias están activas → activar categoría
               if (activeFamilies === allFamilies.length) {
-                console.log(`✅ Todas las familias activas → activando categoría padre`);
   
                 this.treeData.forEach(node => {
                   if (node.nodeLevel === 'category' && node.originalId === categoryId && !node.vigente) {
                     node.vigente = true;
                     node.__modified = true;
-                    console.log(`  ✅ Categoría activada: ${node.description}`);
                   }
                 });
               }
@@ -542,12 +508,10 @@ export class ProductoTerminadoComponent {
   
             // Si TODAS las subfamilias están desactivadas → desactivar familia padre
             if (activeCount === 0 && newValue === false) {
-              console.log(`❌ Todas las subfamilias desactivadas → desactivando familia padre`);
   
               if (familyNode.vigente) {
                 familyNode.vigente = false;
                 familyNode.__modified = true;
-                console.log(`  ❌ Familia desactivada: ${familyNode.description}`);
               }
   
               // Verificar si todas las familias de la categoría están desactivadas
@@ -556,17 +520,14 @@ export class ProductoTerminadoComponent {
               );
               const inactiveFamilies = allFamilies.filter(f => f.vigente === false).length;
   
-              console.log(`   Familias desactivadas: ${inactiveFamilies}/${allFamilies.length}`);
   
               // Si TODAS las familias están desactivadas → desactivar categoría
               if (inactiveFamilies === allFamilies.length) {
-                console.log(`❌ Todas las familias desactivadas → desactivando categoría padre`);
   
                 this.treeData.forEach(node => {
                   if (node.nodeLevel === 'category' && node.originalId === categoryId && node.vigente) {
                     node.vigente = false;
                     node.__modified = true;
-                    console.log(`  ❌ Categoría desactivada: ${node.description}`);
                   }
                 });
               }
@@ -588,31 +549,25 @@ export class ProductoTerminadoComponent {
           const activeCount = allFamilies.filter(f => f.vigente === true).length;
           const totalCount = allFamilies.length;
   
-          console.log(`📊 Familia ${newValue ? 'activada' : 'desactivada'}: ${event.data.description}`);
-          console.log(`   Familias activas: ${activeCount}/${totalCount}`);
   
           // Si TODAS las familias están activas → activar categoría padre
           if (activeCount === totalCount && newValue === true) {
-            console.log(`✅ Todas las familias activas → activando categoría padre`);
   
             this.treeData.forEach(node => {
               if (node.nodeLevel === 'category' && node.originalId === categoryId && !node.vigente) {
                 node.vigente = true;
                 node.__modified = true;
-                console.log(`  ✅ Categoría activada: ${node.description}`);
               }
             });
           }
   
           // Si TODAS las familias están desactivadas → desactivar categoría padre
           if (activeCount === 0 && newValue === false) {
-            console.log(`❌ Todas las familias desactivadas → desactivando categoría padre`);
   
             this.treeData.forEach(node => {
               if (node.nodeLevel === 'category' && node.originalId === categoryId && node.vigente) {
                 node.vigente = false;
                 node.__modified = true;
-                console.log(`  ❌ Categoría desactivada: ${node.description}`);
               }
             });
           }
@@ -633,11 +588,9 @@ export class ProductoTerminadoComponent {
       const itemsToUpdate = this.treeData.filter(item => item.__modified);
   
       if (itemsToUpdate.length === 0) {
-        console.log('No hay cambios de vigente para guardar');
         return;
       }
   
-      console.log(`💾 Guardando ${itemsToUpdate.length} cambios de vigente...`);
   
       try {
         // Guardar cada elemento modificado
@@ -658,13 +611,11 @@ export class ProductoTerminadoComponent {
           };
   
           await lastValueFrom(this.catalogsService.updateCatalog(item.originalId, updateData));
-          console.log(`  ✅ Guardado: ${item.description} (vigente: ${item.vigente})`);
   
           // Limpiar el flag de modificado
           delete item.__modified;
         }
   
-        console.log('✅ Todos los cambios de vigente se guardaron correctamente');
         this.notSavedChanges = false;
   
         // Recargar datos para asegurar consistencia
@@ -758,16 +709,13 @@ export class ProductoTerminadoComponent {
   
     // Métodos para manejar expand/collapse
     toggleCategoryExpansion(categoryData: any) {
-      console.log('🔽 toggleCategoryExpansion llamado, originalId:', categoryData?.originalId);
       const category = this.treeData.find(item =>
         item.nodeLevel === 'category' && item.originalId === categoryData.originalId
       );
-      console.log('🔽 category encontrada:', !!category, '| treeData total:', this.treeData.length);
 
       if (category) {
         category.isExpanded = !category.isExpanded;
         const childFamilies = this.treeData.filter(item => item.nodeLevel === 'family' && item.parentCategoryId === category.originalId);
-        console.log('🔽 familias hijas en treeData:', childFamilies.length, '| isExpanded ahora:', category.isExpanded);
   
         // Mostrar/ocultar familias de esta categoría
         this.treeData.forEach(item => {
@@ -846,9 +794,7 @@ export class ProductoTerminadoComponent {
       if (!result.isConfirmed) return;
   
       try {
-        console.log('Eliminando registro ID:', this.selectedRowData.originalId);
         const response = await lastValueFrom(this.catalogsService.deleteCatalog(this.selectedRowData.originalId));
-        console.log('Respuesta del servidor (eliminación):', response);
   
         alerts.basicAlert(
           'Eliminado',
@@ -1011,7 +957,6 @@ export class ProductoTerminadoComponent {
   
       try {
         const response = await lastValueFrom(this.catalogsService.addCatalog(newCategory));
-        console.log('Respuesta del servidor (nueva categoría):', response);
         alerts.basicAlert('Éxito', 'Categoría creada correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
@@ -1054,7 +999,6 @@ export class ProductoTerminadoComponent {
 
       try {
         const response = await lastValueFrom(this.catalogsService.addCatalog(newFamily));
-        console.log('Respuesta del servidor (nuevo sabor):', response);
         alerts.basicAlert('Éxito', 'Sabor creado correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
@@ -1101,7 +1045,6 @@ export class ProductoTerminadoComponent {
 
       try {
         const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
-        console.log('Respuesta del servidor (nueva presentación):', response);
         alerts.basicAlert('Éxito', 'Presentación creada correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
@@ -1139,9 +1082,7 @@ export class ProductoTerminadoComponent {
       });
   
       try {
-        console.log('Actualizando registro ID:', this.editingItem.originalId);
         const response = await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));
-        console.log('Respuesta del servidor (actualización):', response);
         alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
         this.closeModals();
         this.loadCatalogData();
@@ -1169,18 +1110,15 @@ export class ProductoTerminadoComponent {
          active: Number(data.active || 1)
        };
   
-       console.log('Datos enviados al servidor:', cleanData);
        return cleanData;
      }
   
      // Leer tabla DEPARTAMENT cuando se hace click en Materia Prima
      private loadDepartmentsForSubfamily(subfamilyData: any) {
-       console.log('Cargando departamentos para subfamilia:', subfamilyData);
   
        // Usar el servicio de catálogos para obtener departamentos
        this.catalogsService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe({
          next: (departments: any[]) => {
-           console.log('Departamentos obtenidos:', departments);
   
            // Aquí puedes mostrar los departamentos en un modal, alert, o navegar a otra vista
            if (departments && departments.length > 0) {

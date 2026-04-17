@@ -134,7 +134,6 @@ constructor() {
      this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
         this.rowData = data.data;
-        console.log('Roles:', this.rowData);
       },
       (error) => {
         if (error.status == 404) this.rowData = [];
@@ -322,20 +321,15 @@ constructor() {
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    console.log  ('Nuevas filas:', newRows);
 
     // Mostrar los datos de las filas nuevas que se van a enviar
-    console.log('Filas nuevas que se van a enviar al servidor:');
     newRows.forEach((row, index) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(`Fila nueva ${index + 1}:`, cleanedData);
     });
 
     // Mostrar los datos de las filas modificadas que se van a enviar
-    console.log('Filas modificadas que se van a enviar al servidor:');
     modifiedRows.forEach((row, index) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(`Fila modificada ${index + 1}:`, cleanedData);
     });
 
     const addObservables = newRows.map((row) => {
@@ -407,7 +401,6 @@ constructor() {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log("------------ data del rol: ", selectedData);
     const id = selectedData.id;
 
     if (selectedData.isRoot === 1) {
@@ -428,9 +421,7 @@ constructor() {
     ).then((value) => {
       if (value.isConfirmed) {
         // Eliminar el usuario
-        console.log('SelectedData', selectedData);
         selectedData.active = 0;
-        console.log('SelectedData', selectedData);
         this.rolesService.deleteRoles(id).pipe(
           catchError((error) => {
             alerts.basicAlert(

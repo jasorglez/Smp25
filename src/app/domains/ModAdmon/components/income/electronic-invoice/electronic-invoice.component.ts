@@ -517,7 +517,6 @@ ${this.buildConceptsXML()}
 
     this.incomesAndExpensesService.updateIncomesAndExpenses(this.idIncomeExpense, updatedIncome).subscribe({
       next: () => {
-        console.log('UUID actualizado en el registro de ingreso');
         this.signalsService.triggerUpdateIncAndExp();
       },
       error: (err) => {

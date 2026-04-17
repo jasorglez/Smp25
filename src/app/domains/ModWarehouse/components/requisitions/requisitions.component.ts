@@ -247,7 +247,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         next: (data: any) => {
           this.projectOrBranch = data[0].projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-          console.log(this.projectOrBranch);
           resolve(); // Resolvemos la promesa aquí
         },
         error: (err) => {
@@ -492,7 +491,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
             detailType: null,
             detailData: []
           }));
-          console.log(this.typeReference, this.idReference, this.masterRowData);
         },
         (error) => console.error('Error fetching data:', error)
       );
@@ -502,7 +500,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.providersService.getProviders(this.idRoot).subscribe(
       (data: any) => {
         this.proveedores = data;
-        console.log(this.proveedores);
       },
       (error) => console.error('Error fetching requisitions:', error)
     );
@@ -521,7 +518,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.departamentos = data;
-        console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)
     );
@@ -540,7 +536,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.currencyService.getCurrencies(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
-        console.log('Monedas', this.monedas);
       },
       (error) => console.error('Error fetching currencies:', error)
     );
@@ -613,7 +608,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.masterGridApi = params.api;
-    console.log('✅ Master Grid Ready - productos length:', this.productos.length);
 
     // Configurar el context inicial
     this.updateDetailContext();
@@ -690,13 +684,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Master - Datos para agregar:', cleanedData);
       return this.requisitionsService.addOcAndReq(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Master - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.requisitionsService.updateOcAndReq(row.id, cleanedData);
     });
 
@@ -830,7 +822,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
-        console.log('✅ Productos cargados:', this.productos.length);
         // Actualizar el context después de cargar productos
         this.updateDetailContext();
       },
@@ -865,7 +856,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           }
         }
       });
-      console.log('✅ Context actualizado con productos');
     }
   }
 
@@ -918,13 +908,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Details - Datos para agregar:', cleanedData);
       return this.requisitionsService.addReqItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Details - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.requisitionsService.updateReqItem(row.id, cleanedData);
     });
 

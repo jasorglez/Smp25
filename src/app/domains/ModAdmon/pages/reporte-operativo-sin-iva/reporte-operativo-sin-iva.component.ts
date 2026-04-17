@@ -208,13 +208,6 @@ export class ReporteOperativoSinIvaComponent {
       // Cargar transferencias del corporativo (para aportación de socios)
       await this.loadTransferenciasCorporativo();
 
-      console.log('Datos cargados:', {
-        proyectos: this.proyectos.length,
-        ingresos: this.ingresos.length,
-        egresos: this.egresos.length,
-        empresas: this.empresas.length,
-        empresasCorporativo: this.empresasCorporativo.length
-      });
 
       this.processData();
     } catch (error) {

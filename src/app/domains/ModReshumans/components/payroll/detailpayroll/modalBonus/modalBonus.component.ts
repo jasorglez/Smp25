@@ -111,7 +111,6 @@ obtenerEmpleado(): Promise<any> {
     this.catalogsService.getCatalogs(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogos = data;
-        console.log("------ Catalogo", data);
       },
       (error) => console.error('Error fetching measures:', error)
     );
@@ -121,7 +120,6 @@ obtenerEmpleado(): Promise<any> {
     this.catalogsService.getCatalogsVigente(this.idEmpresa, 'BONUS').subscribe(
       (data) => {
         this.bonusCatalogosVigentes = data;
-        console.log("------ Catalogo", data);
       },
       (error) => console.error('Error fetching measures:', error)
     );
@@ -287,9 +285,7 @@ const addObservables = newRows.map((row) => {
       const day = ('0' + date.getDate()).slice(-2);
 
       cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
-      console.log('DATOS', cleanedData);
       if (cleanedData != null) this.cleanedListData.push(cleanedData);
-      console.log('Datos por añadir', this.cleanedListData);
       return this.administrationService.addEmployeesBonus(this.cleanedListData);
     });
     
@@ -304,9 +300,7 @@ const addObservables = newRows.map((row) => {
       cleanedData.incidenceDate = `${year}-${month}-${day}T00:00:00`;
 
       // Log y push
-      console.log('DATOS LIMPIOS POR ACTUALIZAR: ', cleanedData);
       if (cleanedData != null) this.cleanedListData.push(cleanedData);
-    console.log(row.id,cleanedData)
       return this.administrationService.updateEmployeesBonus(
         row.id,
         cleanedData
@@ -406,7 +400,6 @@ const addObservables = newRows.map((row) => {
   onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }

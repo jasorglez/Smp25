@@ -69,20 +69,16 @@ export class DetallesMaterialexprovComponent implements ICellRendererAngularComp
     suppressClickEdit: true,
     rowSelection: 'single',
     onCellDoubleClicked: (event: any) => {
-      console.log('🔵 Doble click en material:', event.data);
       this.openMaterialModal(event.data);
     },
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
 
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
       params.api.autoSizeColumns(allColumnIds, false);
-      console.log('Autosize completed');
     }
   };
 
@@ -162,18 +158,15 @@ async loadMaterialData(onComplete?: () => void) {
         const branches = await lastValueFrom(
           this.branchsService.getBranches(this.idRoot)
         );
-        console.log('📦 Branches cargados:', branches);
         branches.forEach((b: any) => {
           this.branchMap.set(b.id, b.name);
         });
-        console.log('📦 BranchMap:', this.branchMap);
       }
 
       // Cargar materiales reales desde el endpoint
       const materials = await lastValueFrom(
         this.materialsService.getMaterialsByProvider(this.providerId)
       );
-      console.log('📦 Materials (raw):', materials);
 
       // Mapear los datos del endpoint al formato del grid
       this.materialRowData = materials.map((m: any) => ({
@@ -199,7 +192,6 @@ async loadMaterialData(onComplete?: () => void) {
         picture: m.picture
       }));
 
-      console.log('✅ Materiales cargados desde endpoint:', this.materialRowData);
 
       // Refresh grid if exists
       if (this.materialGridApi) {
@@ -225,12 +217,6 @@ async loadMaterialData(onComplete?: () => void) {
 
   // ✅ Método para abrir el modal con MaterialesMaestroComponent
   openMaterialModal(materialData: any) {
-    console.log('🔵 Abriendo modal para editar material:', materialData);
-    console.log('   Material completo:', materialData);
-    console.log('   materialData.id:', materialData.id);
-    console.log('   materialData.idMaterial:', materialData.idMaterial);
-    console.log('   idRoot (params.context):', this.params.context?.idRoot);
-    console.log('   idRoot (local):', this.idRoot);
 
     // ✅ Intentar obtener idRoot de múltiples fuentes
     let rootId = this.params.context?.idRoot || this.idRoot;
@@ -238,7 +224,6 @@ async loadMaterialData(onComplete?: () => void) {
     // Si aún no hay idRoot, intentar obtenerlo de la señal
     if (!rootId) {
       rootId = this.signalsService.getRootSelectedBySidebar()();
-      console.log('   idRoot (señal):', rootId);
     }
 
     if (!rootId) {
@@ -249,7 +234,6 @@ async loadMaterialData(onComplete?: () => void) {
 
     // ✅ Usar idMaterial si existe, si no usar id
     const materialId = materialData.idMaterial || materialData.id;
-    console.log('🔍 ID final a usar:', materialId);
 
     const modalRef = this.modalService.open(MaterialesMaestroComponent, {
       size: 'xl',
@@ -262,14 +246,9 @@ async loadMaterialData(onComplete?: () => void) {
     modalRef.componentInstance.filterMaterialId = materialId;
     modalRef.componentInstance.idRootInput = rootId;
 
-    console.log('✅ Modal configurado con:');
-    console.log('   isModalMode: true');
-    console.log('   filterMaterialId:', materialId);
-    console.log('   idRootInput:', rootId);
 
     // Suscribirse al evento de guardado completo
     modalRef.componentInstance.onSaveComplete.subscribe(() => {
-      console.log('✅ Material guardado, recargando lista de materiales...');
       this.loadMaterialData();
     });
   }

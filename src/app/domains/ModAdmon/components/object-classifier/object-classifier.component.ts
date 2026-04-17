@@ -350,12 +350,6 @@ export class ObjectClassifierComponent implements OnInit {
     const draggedItem = draggedNode.data;
     const targetItem = overNode.data;
 
-    console.log('🔵 Drag End Event:', {
-      draggedItem: `${draggedItem.codigo} (nivel ${draggedItem.nivel})`,
-      targetItem: `${targetItem.codigo} (nivel ${targetItem.nivel})`,
-      draggedId: draggedItem.id,
-      targetId: targetItem.id
-    });
 
     // Validar que el item arrastrado es nivel 4 (P. Específica)
     if (draggedItem.nivel !== 4) {
@@ -379,7 +373,6 @@ export class ObjectClassifierComponent implements OnInit {
 
     // Si ya está en ese padre, no hacer nada
     if (draggedItem.idPadre === targetItem.id) {
-      console.log('⚠️ El item ya pertenece a este padre');
       return;
     }
 
@@ -408,7 +401,6 @@ export class ObjectClassifierComponent implements OnInit {
         idCompany: this.idCompany
       };
 
-      console.log('🔄 Actualizando item:', updateData);
 
       await this.adminService.updateObjectClassification(draggedItem.id, updateData).toPromise();
 
@@ -754,7 +746,6 @@ export class ObjectClassifierComponent implements OnInit {
 
         // Si está cambiando el nivel
         if (nivelOriginal !== nivelNuevo) {
-          console.log(`🔄 Cambiando nivel de ${nivelOriginal} a ${nivelNuevo}`);
 
           // Si está cambiando a nivel 4 (P. Específica), debe tener un padre nivel 3
           if (nivelNuevo === 4) {
@@ -827,10 +818,6 @@ export class ObjectClassifierComponent implements OnInit {
         );
       } else {
         // Actualizar item existente
-        console.log('=== EDITANDO OBJETO DE GASTO ===');
-        console.log('ID a actualizar:', this.modalEditingItem!.id);
-        console.log('Datos del formulario (formData):', formData);
-        console.log('Item original (modalEditingItem):', this.modalEditingItem);
 
         await this.adminService.updateObjectClassification(this.modalEditingItem!.id, formData).toPromise();
 

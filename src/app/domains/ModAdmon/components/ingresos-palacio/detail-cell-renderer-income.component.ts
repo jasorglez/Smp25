@@ -304,13 +304,9 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
     }
 
     // Llamar al endpoint para obtener los catálogos hijos (nivel 3)
-    console.log('=== getCatalogsxParent ===');
-    console.log('idParent (idCustomer):', idCustomer);
-    console.log('idRoot:', this.context.idRoot);
     this.context.catalogadmonService.getCatalogsxSubParent(this.context.idRoot, idCustomer).subscribe({
       next: (data: any[]) => {
         this.catalogosHijos = data || [];
-        console.log('Catálogos hijos cargados:', this.catalogosHijos);
 
         // Actualizar las columnas del grid con los nuevos valores
         if (this.gridApi) {
@@ -332,18 +328,14 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   }
 
   loadContribuyentes() {
-    console.log('🔄 loadContribuyentes iniciado');
     if (this.context && this.context.customerService && this.context.idRoot) {
       this.context.customerService.getCustomersByCompany(this.context.idRoot, 'CUSTOMERS').subscribe({
         next: (data: any[]) => {
           this.contribuyentes = data || [];
-          console.log('✅ Contribuyentes cargados:', this.contribuyentes.length, 'items');
-          console.log('📋 Primeros 3:', this.contribuyentes.slice(0, 3));
 
           // Actualizar las columnas del grid
           if (this.gridApi) {
             this.gridApi.setGridOption('columnDefs', this.colDefs);
-            console.log('✅ Columnas actualizadas en el grid');
           }
         },
         error: (error) => {
@@ -746,15 +738,9 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   }
 
   onCellValueChanged(event: any) {
-    console.log('🔵 onCellValueChanged disparado:', {
-      field: event.colDef.field,
-      oldValue: event.oldValue,
-      newValue: event.newValue
-    });
 
     // Si se seleccionó "Agregar nuevo contribuyente"
     if (event.colDef.field === 'idContribuyente' && event.newValue === -999) {
-      console.log('✅ Detectado: Agregar nuevo contribuyente');
       event.data.idContribuyente = event.oldValue || null;
       if (this.gridApi) {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
@@ -826,17 +812,6 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
 
   private async generateReport() {
     try {
-      console.log('=== Generando Reporte PDF ===');
-      console.log('incomeData completo:', this.incomeData);
-      console.log('incomeData.date (campo Pago):', this.incomeData?.date);
-      console.log('incomeData.idCustomer (catálogo):', this.incomeData?.idCustomer);
-      console.log('incomeData.total:', this.incomeData?.total);
-      console.log('Context disponible:', {
-        hasRootService: !!this.context?.rootService,
-        hasBase64Service: !!this.context?.base64EncodeService,
-        hasIngresosCatalog: !!this.context?.ingresosCatalog,
-        catalogLength: this.context?.ingresosCatalog?.length
-      });
 
       // Verificar que tengamos los servicios necesarios en el contexto
       if (!this.context?.rootService || !this.context?.base64EncodeService || !this.context?.idRoot) {
@@ -1145,7 +1120,6 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   private getCatalogoIngresoText(): string {
     // Usar el texto del catálogo que fue preparado en toggleReportDetail
     if (this.incomeData?.catalogoIngresoTexto) {
-      console.log('Usando catalogoIngresoTexto:', this.incomeData.catalogoIngresoTexto);
       return this.incomeData.catalogoIngresoTexto;
     }
 
@@ -1160,18 +1134,12 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
 
   // Método para abrir el modal de agregar contribuyente
   openAddContribuyenteModal() {
-    console.log('🟢 openAddContribuyenteModal llamado');
-    console.log('📋 Context disponible:', {
-      hasContext: !!this.context,
-      idRoot: this.context?.idRoot
-    });
 
     if (!this.context?.idRoot) {
       console.warn('❌ No se puede abrir modal: falta idRoot');
       return;
     }
 
-    console.log('🚀 Llamando al servicio para abrir modal con idRoot:', this.context.idRoot);
     // Solicitar al servicio que abra el modal en el componente padre
     this.contribuyenteModalService.openModal({
       idRoot: this.context.idRoot
@@ -1264,20 +1232,12 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   private getFilteredConcepts(): any[] {
     if (this.detailType === 'contribution') {
       // Solo conceptos con unidad "CONTRIBUCION"
-      console.log('🔍 Filtrando conceptos para contribución');
-      console.log('🔍 Total rowData:', this.rowData.length);
       this.rowData.forEach((concept, index) => {
-        console.log(`🔍 Concepto ${index}:`, {
-          unit: concept.unit,
-          idContribuyente: concept.idContribuyente,
-          description: concept.description
-        });
       });
 
       const filtered = this.rowData.filter(concept =>
         concept.unit && concept.unit.toUpperCase() === 'CONTRIBUCION'
       );
-      console.log('🔍 Conceptos filtrados:', filtered.length);
       return filtered;
     }
     // Reporte normal: todos los conceptos
@@ -1294,19 +1254,14 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   private getContribuyenteNombre(): string {
     // Buscar en los conceptos filtrados el primer contribuyente
     const filteredConcepts = this.getFilteredConcepts();
-    console.log('🔍 getContribuyenteNombre - Conceptos filtrados:', filteredConcepts.length);
-    console.log('🔍 Primer concepto:', filteredConcepts[0]);
-    console.log('🔍 Array contribuyentes disponibles:', this.contribuyentes.length);
 
     if (filteredConcepts.length > 0) {
       const primerConcepto = filteredConcepts[0];
       const idContribuyente = primerConcepto.idContribuyente;
 
-      console.log('🔍 idContribuyente del primer concepto:', idContribuyente);
 
       if (idContribuyente) {
         const contribuyente = this.contribuyentes.find(c => c.id === idContribuyente);
-        console.log('🔍 Contribuyente encontrado:', contribuyente);
         return contribuyente ? contribuyente.description : 'Sin contribuyente (no encontrado en array)';
       }
       return 'Sin contribuyente (idContribuyente vacío)';

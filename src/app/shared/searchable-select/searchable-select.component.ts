@@ -123,13 +123,6 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
   }
 
   agInit(params: any): void {
-    console.log('🎯 SearchableSelect agInit called:', {
-      value: params.value,
-      options: params.options,
-      optionsCount: params.options?.length || 0,
-      valueField: params.valueField,
-      displayField: params.displayField
-    });
 
     this.params = params;
     this.value = params.value;
@@ -144,10 +137,6 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
       this.allOptions = params.options || [];
       this.filteredOptions = [...this.allOptions];
 
-      console.log('📋 SearchableSelect options loaded:', {
-        allOptionsCount: this.allOptions.length,
-        filteredOptionsCount: this.filteredOptions.length
-      });
 
       // Inicializar el texto de búsqueda con la descripción del valor actual
       const valueField = params.valueField || 'id';

@@ -126,9 +126,7 @@ export class ClockComponent {
   checkInOrOut(type: string) {
     this.clockService.getEmployeeInfo(this.employeeCode, this.clockPassword).subscribe({
       next: (data) => {
-      console.log(data);
         this.getTimeAgain().subscribe(fecha => {
-          console.log(fecha);
           const currentDay = this.currentDayName; // Obtener el día actual almacenado
 
           // Llamar al método para verificar incidentes
@@ -145,7 +143,6 @@ export class ClockComponent {
 
             // Consultar el horario del empleado para el día actual
             this.employeesService.getEmployeeClockByDay(data[0]?.idEmployee, currentDay).subscribe(clockData => {
-              console.log('Horario del empleado para el día actual:', clockData);
 
               // Obtener las horas de entrada
               const entry1 = clockData[0]?.entry1;
@@ -230,7 +227,6 @@ export class ClockComponent {
                   }
 
                   const info = { idEmployee: data[0]?.idEmployee, type: 'IN', timeStamp: fecha, minuteDiscount: minuteDiscount, valid: valid, active: true };
-                  console.log(info);
                   this.clockService.checkInOut(info).subscribe(
                     (clock => {
                       alerts.basicAlert("Entrada marcada exitosamente", `Hola ${data[0]?.name}`, "success");
@@ -256,7 +252,6 @@ export class ClockComponent {
             }
 
             const info = { idEmployee: data[0]?.idEmployee, type: 'OUT', timeStamp: fecha, minuteDiscount: 0, valid: valid, active: true };
-            console.log(info);
             this.clockService.checkInOut(info).subscribe(
               (clock => {
                 alerts.basicAlert("Salida marcada exitosamente", `Adiós ${data[0]?.name}`, "success");
@@ -313,12 +308,9 @@ export class ClockComponent {
       };
 
       // Mostrar en consola las fechas calculadas
-      console.log('startPeriod:', formatLocalDate(startPeriod));
-      console.log('endPeriod:', formatLocalDate(endPeriod));
 
       // Llamar al servicio para verificar incidentes
       this.clockService.checkIncidentsByEmployee(idEmployee, formatLocalDate(startPeriod), formatLocalDate(endPeriod)).subscribe(incidentData => {
-        console.log('Datos de incidentes:', incidentData);
         this.incidentData = incidentData;
         /*         setTimeout(() => {
                   this.incidentData = { Hours: null, PendingOuts: null, Absences: null };

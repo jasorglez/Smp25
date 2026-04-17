@@ -97,7 +97,6 @@ export class ClockComponent {
       });
       return;
     }
-    console.log(values)
     // Insertar nuevos datos
     const payload = {
       active: true,
@@ -107,7 +106,6 @@ export class ClockComponent {
       idBranch: this.idBranch,
       
     };
-    console.log(payload)
 
     this.hrService.addHRManagementData(payload).subscribe({
       next: () => {

@@ -163,11 +163,6 @@ export class ControlFacturacionIngresosComponent {
         name: c.nameContact || c.company || c.name || 'Sin nombre'
       }));
 
-      console.log('Datos cargados:', {
-        ingresos: this.ingresos.length,
-        proyectos: this.projects.length,
-        clientes: this.customers.length
-      });
 
       this.processData();
     } catch (error) {

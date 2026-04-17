@@ -117,7 +117,6 @@ async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
       console.warn('No hay datos en la fila seleccionada');
       return;
     }
-    console.log(event.column)
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro 
@@ -184,7 +183,6 @@ private cleanDataForServer(data: any): any {
     this.familySubFamily.getMasterFamily(this.idRoot).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -194,7 +192,6 @@ private cleanDataForServer(data: any): any {
     this.familySubFamily.getCatalogsFamily(this.idRoot).subscribe(
       (data: any) => {
         this.families = data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -203,7 +200,6 @@ private cleanDataForServer(data: any): any {
     this.catalogsService.getCatalogsVigente(this.idRoot, 'FAM-CAT').subscribe(
       (data: any) => {
         this.familiasVigente = data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );

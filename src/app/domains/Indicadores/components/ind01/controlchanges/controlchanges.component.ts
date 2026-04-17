@@ -50,7 +50,6 @@ export class ControlChangesComponent {
   constructor() {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      console.log(this.idProject);
       if (this.idProject == null) {
         this.rowData = [];
         alerts.basicAlert('Issues', 'Debe elegir un proyecto primero.', 'error');
@@ -308,7 +307,6 @@ export class ControlChangesComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }

@@ -101,7 +101,6 @@ export class StoreComponent implements CanComponentDeactivate {
     this.branchesService.getBrancheswoa(this.idcompany).subscribe(
       (data: any) => {
         this.branchs = data;
-        console.log('Branchs', this.branchs);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -127,7 +126,6 @@ export class StoreComponent implements CanComponentDeactivate {
     this.storesService.getStoreAll().subscribe({
       next: (data: any) => {
         this.rowData = data;
-        console.log(this.rowData);
       },
       error: (error) => {
         if (error.status === 404) this.store = [];
@@ -141,7 +139,6 @@ export class StoreComponent implements CanComponentDeactivate {
         this.storesService.getStoreCompany(this.idcompany).subscribe({
           next: (data: any) => {
             this.rowData = data;
-            console.log(this.rowData);
           },
           error: (error) => {
             if (error.status === 404) this.store = [];
@@ -153,7 +150,6 @@ export class StoreComponent implements CanComponentDeactivate {
     this.storesService.getStoreList(this.idBranch).subscribe({
       next: (data: any) => {
         this.rowData = data;
-        console.log(this.rowData);
       },
       error: (error) => {
         if (error.status === 404) this.store = [];
@@ -165,7 +161,6 @@ export class StoreComponent implements CanComponentDeactivate {
   getStates() {
     this.inegiService.getEstados().subscribe({
       next: (data: { datos: States[] }) => {
-        console.log(data);
         this.estados = data.datos.map((estado) => estado.nom_agee);
         this.estados.unshift('Sin estado');
       },
@@ -228,7 +223,6 @@ export class StoreComponent implements CanComponentDeactivate {
   onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -439,7 +433,6 @@ export class StoreComponent implements CanComponentDeactivate {
 
     const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
       return lastValueFrom(this.storesService.addStore(cleanedData));
     });
@@ -537,7 +530,6 @@ export class StoreComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     if (selectedData.loan && selectedData.loan !== 0) {

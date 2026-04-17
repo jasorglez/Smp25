@@ -96,7 +96,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     };
 
     // 3. Manejo especial para actualización
-    console.log(data);
     if (data.idCaja && !data.idCaja.toString().startsWith('temp_')) {
       cleanedData.id = data.idCaja;
     }
@@ -154,7 +153,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
       this.cashRegistersService.getCashRegisterAll().subscribe({
         next: (data: any) => {
           this.rowData = data;
-          console.log(this.rowData);
         },
         error: (error) => {
           if (error.status === 404) this.store = [];
@@ -169,7 +167,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
           .subscribe({
             next: (data: any) => {
               this.rowData = data;
-              console.log(this.rowData);
             },
             error: (error) => {
               if (error.status === 404) this.store = [];
@@ -205,7 +202,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
       this.storesService.getStoreCompany(this.idcompany).subscribe({
         next: (data: any) => {
           this.storeCatalog = data;
-          console.log(this.storeCatalog);
         },
         error: (error) => {
           console.error('Error fetching states', error);
@@ -215,7 +211,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
       this.storesService.getStoreList(this.idBranch).subscribe({
         next: (data: any) => {
           this.storeCatalog = data;
-          console.log(this.storeCatalog);
         },
         error: (error) => {
           console.error('Error fetching states', error);
@@ -291,7 +286,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
         //alert(this.idStore)
       }
     }
-    console.log('Dato cambiado:', event.data);
     event.data.id = this.idStore;
     event.data.__modified = true;
     this.notSavedChanges = true;
@@ -436,7 +430,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       this.resup = true;
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Cajas Registradoras', 'Menu Administracion Cajas Registradoras',  this.trackingService.getEmail());
       return lastValueFrom(
         this.cashRegistersService.updateCashRegister(cleanedData)
@@ -528,7 +521,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     if (selectedData.loan && selectedData.loan !== 0) {

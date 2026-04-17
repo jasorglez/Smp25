@@ -32,7 +32,6 @@ export class UsersxcompanysComponent {
  constructor() {
   effect(() => {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    console.log('🔄 Effect triggered with idRoot:', this.idRoot);
     
     // Load companies first, then data
     this.obtenerCompanys();
@@ -66,18 +65,15 @@ export class UsersxcompanysComponent {
   private permissionType: string = 'comp-prov';
 
   obtenerDatos() {
-    console.log('📊 Loading user permissions data for user:', this.idUser);
     this.usersxcompanysService
       .getDataUsersxPermissions(this.permissionType)
       .subscribe((data: any) => {
         this.rowData = data.filter((row: any) => row.idUser === this.idUser);
-        console.log('✅ User permissions loaded:', this.rowData);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Contratista', 'Menu Administracion Usuarios por Contratista',  this.trackingService.getEmail());
         
         // Force refresh cells after data is loaded to show company names
         setTimeout(() => {
           if (this.gridApi && Object.keys(this.companys).length > 0) {
-            console.log('🔄 Refreshing cells to show company names');
             this.gridApi.refreshCells();
           }
         }, 100);
@@ -85,16 +81,12 @@ export class UsersxcompanysComponent {
   }
 
   obtenerCompanys() {
-    console.log('🏢 Loading companies for idRoot:', this.idRoot);
     this.providersService.getProviders(this.idRoot).subscribe({
       next: (data: any[]) => {
-        console.log('✅ Companies data received:', data);
         this.companys = data.reduce((acc, dep) => {
           acc[dep.id] = dep.name;
           return acc;
         }, {});
-        console.log('📊 Companies mapped:', this.companys);
-        console.log('🔢 Number of companies:', Object.keys(this.companys).length);
         
         // Force grid refresh after companies are loaded
         if (this.gridApi) {
@@ -105,7 +97,6 @@ export class UsersxcompanysComponent {
         console.error('❌ Error loading companies:', error);
         if (error.status === 404) {
           this.companys = {};
-          console.log('⚠️ No companies found (404)');
         }
       }
     });
@@ -150,16 +141,13 @@ public gridOptions: any = {
         headerName: 'Contratista',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => {
-          console.log('📋 Companies available for dropdown:', this.companys);
           const companyIds = Object.keys(this.companys);
-          console.log('🔢 Company IDs:', companyIds);
           return {
             values: companyIds.sort((a, b) => this.companys[a]?.localeCompare(this.companys[b]) || 0),
           };
         },
         valueFormatter: (params) => {
           const companyName = this.companys[params.value];
-          console.log(`🏢 Formatting company ID ${params.value} -> ${companyName}`);
           return companyName || `ID: ${params.value}`;
         },
         valueSetter: (params) => {
@@ -192,16 +180,9 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event: any) {
-    console.log('📝 Cell value changed:', {
-      field: event.colDef.field,
-      oldValue: event.oldValue,
-      newValue: event.newValue,
-      rowData: event.data
-    });
     
     // Only call enviarCompanyId if the idPermission field changed
     if (event.colDef.field === 'idPermission') {
-      console.log('🏢 Company selection changed, sending company ID');
       // Don't call enviarCompanyId immediately to avoid triggering side effects
       // this.enviarCompanyId();
     }
@@ -209,7 +190,6 @@ public gridOptions: any = {
     event.data.__modified = true;
     this.notSavedChanges = true;
     
-    console.log('🔄 Row marked as modified:', event.data);
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -219,12 +199,10 @@ public gridOptions: any = {
   addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     
-    console.log('➕ Adding new company row. Available companies:', Object.keys(this.companys).length);
     
     // Get first company ID if available, otherwise 0
     const defaultCompanyId = Object.keys(this.companys).length > 0 ? Object.keys(this.companys)[0] : 0;
     
-    console.log('🏢 Default company ID for new row:', defaultCompanyId);
     
     const newItem = {
       id: tempId,
@@ -235,7 +213,6 @@ public gridOptions: any = {
       __isNew: true,
     };
     
-    console.log('📝 New company item created:', newItem);
 
     this.rowData = [newItem, ...this.rowData];
     this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Contratista', 'Menu Administracion Usuarios por Contratista',  this.trackingService.getEmail());

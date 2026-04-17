@@ -24,7 +24,6 @@ export class BranchsService {
     };
 
    // alert('Permission assigned successfully!');
-    console.log('Permission assigned successfully!', permissionData );
     return this.http.post(`${environment.urlSecurity}/Usersxpermission`, permissionData, { headers: this.trackingService.getHeaders() });
   }
 

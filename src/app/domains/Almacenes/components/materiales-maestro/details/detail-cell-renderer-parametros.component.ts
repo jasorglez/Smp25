@@ -85,16 +85,13 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     rowHeight: 20,
     rowSelection: 'single',
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
 
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
       params.api.autoSizeColumns(allColumnIds, false);
-      console.log('Autosize completed');
     }
   };
    private cleanDataForServer(data: any): any {
@@ -128,7 +125,6 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
         // Aceptar que el valor pueda ser un objeto (editor devuelve {value,label})
         const raw = params.value;
         const val = (raw && typeof raw === 'object') ? (raw.value ?? raw.id) : raw;
-        console.log('Valor en valueFormatter:', val);
         const fam = this.parameterVigente?.find(f => f.id === val);
         // Si no encontramos la familia pero el raw es objeto, mostrar su label como respaldo
         if (fam) return fam.description;
@@ -238,7 +234,6 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   agInit(params: any): void {
     this.params = params;
     this.refreshParametros();
-    console.log('////////////////DetailCellRendererParametrosComponent initialized with params:', params);
     this.materialId = params.data.id;
     this.materialName = params.data.articulo;
     this.parameterVigentes();
@@ -259,7 +254,6 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     this.parameterByMaterialDescriptionService.getParameterVigente(9).subscribe(
       (data: any) => {
         this.parameterVigente = data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -268,7 +262,6 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     this.parameterByMaterialDescriptionService.getParameter(9, this.materialId).subscribe(
       (data: any) => {
         this.parameter= data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -299,7 +292,6 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
       this.parameterByMaterialDescriptionService.getParameterByMaterialDescription(this.materialId).subscribe(
         (data: any) => {
             this.parametrosRowData = data;
-          console.log('Datos obtenidos del servidor:', this.parametrosRowData);
 
           // Calcular y almacenar los valores calculados para cada fila
         },

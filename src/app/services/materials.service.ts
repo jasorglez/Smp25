@@ -44,14 +44,12 @@ export class MaterialsService {
   
 
   addMaterial(data: any): Observable<any> {
-    console.log('Adding new material:', data);
     return this.http.post(`${environment.urlWarehouse}/Material`, data, {
       headers: this.trackingService.getHeaders(),
     });
   }
 
   updateMaterial(id: string, data: any): Observable<any> {
-    console.log('Updating material with ID:', id, 'and data:', data);
     return this.http.put<any[]>(
       `${environment.urlWarehouse}/Material/${id}`,
       data,

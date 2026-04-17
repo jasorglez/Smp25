@@ -274,26 +274,21 @@ export class ServicioComponent implements OnInit {
 
   // CORREGIDO: Método de carga de datos
   private loadData() {
-    console.log('🔄 Iniciando carga de datos...');
     this.isLoading = true;
     
     // Simular carga de datos del servidor
     setTimeout(() => {
-      console.log('📦 Obteniendo datos mock...');
       const mockData = this.getMockData();
       
       // Asignar los datos
       this.rowData = [...mockData];
       this.originalData = [...mockData];
       
-      console.log('✅ Datos cargados exitosamente:', this.rowData.length, 'registros');
-      console.log('📊 Datos:', this.rowData);
       
       this.isLoading = false;
       
       // Si el grid ya está inicializado, actualizar
       if (this.gridApi) {
-        console.log('🔄 Actualizando grid con nuevos datos...');
         this.updateGridData();
       }
       
@@ -319,7 +314,6 @@ export class ServicioComponent implements OnInit {
   
   // Filtrar por prioridad desde las tarjetas de estadísticas
   filterByPriority(priority: string) {
-    console.log('🔍 Filtro por prioridad clickeado:', priority);
     this.selectedPriorityFilter = priority;
     
     if (this.gridApi) {
@@ -335,7 +329,6 @@ export class ServicioComponent implements OnInit {
             filter: priority
           }
         };
-        console.log('🎯 Aplicando filtro:', filterModel);
         this.gridApi.setFilterModel(filterModel);
       }, 100);
     }
@@ -343,15 +336,12 @@ export class ServicioComponent implements OnInit {
   
   // CORREGIDO: Método onGridReady
   onGridReady(params: GridReadyEvent) {
-    console.log('🎯 Grid ready event triggered');
     this.gridApi = params.api;
     
     // Si ya tenemos datos cargados, asignarlos
     if (this.rowData && this.rowData.length > 0) {
-      console.log('📊 Asignando datos existentes al grid:', this.rowData.length, 'registros');
       this.updateGridData();
     } else {
-      console.log('⏳ Esperando carga de datos...');
     }
     
     // Configurar filtro rápido si existe
@@ -370,7 +360,6 @@ export class ServicioComponent implements OnInit {
   }
 
   onCellValueChanged(event: any) {
-    console.log('📝 Celda modificada:', event.colDef.field, '=', event.newValue);
     event.data.__modified = true;
     this.notSavedChanges = true;
     
@@ -383,7 +372,6 @@ export class ServicioComponent implements OnInit {
   // Métodos de filtrado y búsqueda
   onQuickFilterChanged(event: any) {
     const searchValue = event.target.value;
-    console.log('🔍 Búsqueda rápida:', searchValue);
     
     if (this.gridApi) {
       this.gridApi.setGridOption('quickFilterText', searchValue);
@@ -392,7 +380,6 @@ export class ServicioComponent implements OnInit {
   
   onPriorityFilterChanged(event: any) {
     const filterValue = event.value;
-    console.log('🔍 Dropdown filtro prioridad cambiado a:', filterValue);
     
     if (this.gridApi) {
       if (filterValue && filterValue.trim() !== '') {
@@ -404,11 +391,9 @@ export class ServicioComponent implements OnInit {
             filter: filterValue
           }
         };
-        console.log('🎯 Aplicando filtro desde dropdown:', filterModel);
         this.gridApi.setFilterModel(filterModel);
       } else {
         // Limpiar todos los filtros
-        console.log('🧹 Limpiando filtros');
         this.gridApi.setFilterModel(null);
       }
     }
@@ -486,7 +471,6 @@ export class ServicioComponent implements OnInit {
     this.isSaving = true;
     
     setTimeout(() => {
-      console.log('💾 Guardando cambios:', this.rowData);
       
       this.rowData.forEach(row => {
         delete (row as any).__isNew;

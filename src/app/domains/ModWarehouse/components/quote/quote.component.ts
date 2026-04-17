@@ -133,7 +133,6 @@ private lastProcessedQuote: number = null;
       const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
       const currentQuote = this.signalsService.getIdRequisition()();
 
-      console.log('Quote component signals:', { currentRoot, currentProject, currentBranch, currentQuote });
 
       // Si cambió el root, limpiar datos
       if (this.idRoot !== currentRoot) {
@@ -184,7 +183,6 @@ private lastProcessedQuote: number = null;
             quoteDetails: [],
             idRoot: this.idRoot,
           });
-          console.log('Updated grid context with idRoot:', this.idRoot);
         }
       }
     });
@@ -351,7 +349,6 @@ public gridOptions: any = {
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Clicked Proveedor 1:', params.data);
     this.openProviderQuote(params.data, 1);
   }
 },
@@ -372,7 +369,6 @@ public gridOptions: any = {
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Clicked Proveedor 2:', params.data);
     this.openProviderQuote(params.data, 2);
   }
 },
@@ -393,7 +389,6 @@ public gridOptions: any = {
   },
   editable: false,
   onCellClicked: (params: any) => {
-    console.log('Clicked Proveedor 3:', params.data);
     this.openProviderQuote(params.data, 3);
   }
 },
@@ -536,7 +531,6 @@ public gridOptions: any = {
 
       this.comparisonItems = Array.from(productMap.values());
       this.showComparisonModal = true;
-      console.log('Comparison items loaded:', this.comparisonItems);
     } catch (error) {
       console.error('Error loading comparison items:', error);
       alerts.basicAlert('Error', 'No se pudieron cargar los items para comparación', 'error');
@@ -635,7 +629,6 @@ public gridOptions: any = {
       .subscribe(
         (data: any) => {
           this.masterRowData = data;
-          console.log(this.typeReference, this.idReference, this.masterRowData);
           // Load provider COTIZ info once proveedores are available
           this.pendingCotizLoad = true;
           if (this.proveedores.length > 0) {
@@ -651,7 +644,6 @@ obtenerProveedores() {
     this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe(
       (data: any) => {
         this.proveedores = data;
-        console.log('Proveedores cargados:', this.proveedores.length);
         // If master data was already loaded, now load COTIZ info
         if (this.pendingCotizLoad && this.masterRowData.length > 0) {
           this.loadAllCotizInfo();
@@ -675,7 +667,6 @@ obtenerProveedores() {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.departamentos = data;
-        console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)
     );
@@ -694,7 +685,6 @@ obtenerProveedores() {
     this.currencyService.getCurrencies(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.monedas = data;
-        console.log('Monedas', this.monedas);
       },
       (error) => console.error('Error fetching currencies:', error)
     );
@@ -724,7 +714,6 @@ obtenerProveedores() {
       .subscribe(
         (data: any) => {
           this.requisiciones = data;
-          console.log('Requisiciones loaded:', this.requisiciones);
         },
         (error) => console.error('Error fetching requisitions:', error)
       );
@@ -745,7 +734,6 @@ obtenerProveedores() {
         this.quotesService.getReqItems(this.masterSelectedRowData.idReq).subscribe({
           next: (items: any[]) => {
             this.requisitionItems = items;
-            console.log('Requisition items loaded for combo box:', this.requisitionItems);
             // Update grid context with new items
             this.updateGridContext();
             // Initialize cascades with requisition items
@@ -828,7 +816,6 @@ obtenerProveedores() {
         });
       }
 
-      console.log('Provider cascades initialized with', cascadeData.length, 'items');
     } else if (this.masterSelectedRowData) {
       // Initialize empty cascades
       this.masterSelectedRowData.proveedor1Data = [];
@@ -884,7 +871,6 @@ obtenerProveedores() {
     // Set initial context for detail cell renderer
     this.updateGridContext();
 
-    console.log('Master grid ready, idRoot:', this.idRoot);
   }
 
   updateGridContext() {
@@ -913,7 +899,6 @@ obtenerProveedores() {
       this.quotesService.getReqItems(requisitionId).subscribe({
         next: (items: any[]) => {
           this.requisitionItems = items;
-          console.log('Requisition items loaded for combo:', this.requisitionItems);
         },
         error: (error) => {
           console.error('Error loading requisition items:', error);
@@ -943,7 +928,6 @@ obtenerProveedores() {
       });
     }
 
-    console.log('Requisition changed to:', requisitionId);
   }
 
   onRequisitionItemChanged(params: any) {
@@ -1047,13 +1031,11 @@ obtenerProveedores() {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Quote - Datos para agregar:', cleanedData);
       return this.quotesService.addOcAndReq(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Quote - Datos para actualizar (ID:', row.id, '):', cleanedData);
       return this.quotesService.updateOcAndReq(row.id, cleanedData);
     });
 
@@ -1071,7 +1053,6 @@ obtenerProveedores() {
         try {
           // Use the new PATCH endpoint to lock the requisition
           await lastValueFrom(this.quotesService.lockRequisition(row.idReq, true));
-          console.log('Requisition locked:', row.idReq);
         } catch (err) {
           console.error('Error locking requisition:', row.idReq, err);
         }
@@ -1167,7 +1148,6 @@ createQuote(idQuote: number, action: string) {
 
 // Método para abrir cotización de proveedor específico
   openProviderQuote(quoteData: any, providerNumber: number): void {
-    console.log('Provider quote - Data:', { quoteData, providerNumber });
 
     // Validar que haya idReq
     if (!quoteData.idReq) {
@@ -1183,7 +1163,6 @@ createQuote(idQuote: number, action: string) {
 
     // Check if clicking same provider on same row - toggle close
     if (this.expandedRowId === quoteData.id && this.expandedProviderNumber === providerNumber) {
-      console.log('Same provider clicked, collapsing detail');
       this.collapseProviderDetail(quoteData);
       return;
     }
@@ -1193,28 +1172,14 @@ createQuote(idQuote: number, action: string) {
     const providerName = quoteData[`proveedor${providerNumber}Name`] || '';
     const cotizId = quoteData[`proveedor${providerNumber}CotizId`] || null;
 
-    console.log('Provider data from row:', {
-      providerId,
-      providerName,
-      cotizId,
-      providerCount: quoteData[`proveedor${providerNumber}Count`],
-      'All provider fields': {
-        [`proveedor${providerNumber}Id`]: quoteData[`proveedor${providerNumber}Id`],
-        [`proveedor${providerNumber}Name`]: quoteData[`proveedor${providerNumber}Name`],
-        [`proveedor${providerNumber}CotizId`]: quoteData[`proveedor${providerNumber}CotizId`],
-        [`proveedor${providerNumber}Count`]: quoteData[`proveedor${providerNumber}Count`]
-      }
-    });
 
     // SI YA HAY COTIZACIÓN CREADA (cotizId y providerId), abrir directamente el detail
     if (cotizId && providerId > 0) {
-      console.log('Opening provider detail for EXISTING COTIZ with', quoteData[`proveedor${providerNumber}Count`] || 0, 'items');
       this.openProviderDetail(quoteData, providerNumber, cotizId, providerId);
       return;
     }
 
     // Si no hay cotización creada, abrir modal de selección para crearla
-    console.log('No existing COTIZ found, opening provider selection modal to create new one');
     this.selectedProviderSlot = providerNumber;
     this.selectedProviderId = null;
     this.showProviderModal = true;
@@ -1269,10 +1234,8 @@ createQuote(idQuote: number, action: string) {
         active: true
       };
 
-      console.log('Creating COTIZ:', cotizData);
       const cotizResponse: any = await lastValueFrom(this.quotesService.addOcAndReq(cotizData));
       const cotizId = cotizResponse.id;
-      console.log('COTIZ created with ID:', cotizId);
 
       // Copy items from REQUIS to COTIZ
       const reqItems: any[] = await lastValueFrom(this.quotesService.getReqItems(quoteData.idReq));
@@ -1400,7 +1363,6 @@ createQuote(idQuote: number, action: string) {
        next: (cotizList: any[]) => {
          // Filter only those with matching idReq
          const matching = cotizList.filter((c: any) => c.idReq === idReq && c.active !== false);
-         console.log('Existing COTIZs for idReq', idReq, ':', matching);
 
          // Clear provider data on master row first
          if (this.masterSelectedRowData) {
@@ -1438,12 +1400,6 @@ createQuote(idQuote: number, action: string) {
                 gridRowData[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
                 gridRowData[`proveedor${index + 1}CotizId`] = cotiz.id;
                 gridRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
-                console.log(`✅ Updated grid row data for provider ${index + 1}:`, {
-                  id: cotiz.idProvider,
-                  name: provider ? provider.name : `Proveedor ${cotiz.idProvider}`,
-                  cotizId: cotiz.id,
-                  count: cotiz.countrow || 0
-                });
               }
             }
          });
@@ -1524,7 +1480,6 @@ createQuote(idQuote: number, action: string) {
       // Force redraw of provider columns for all rows
       this.masterGridApi.redrawRows();
 
-      console.log('✅ Provider columns refreshed for', updatedRows.length, 'rows');
     }
   }
 
@@ -1614,7 +1569,6 @@ createQuote(idQuote: number, action: string) {
         };
       }));
 
-      console.log('Pedimentos loaded:', pedimentosConItems.length);
 
       // Update the row data with pedimentos
       quoteData.pedimentos = pedimentosConItems;
@@ -1719,7 +1673,6 @@ private cleanDataForServer(data: any): any {
           this.projectOrBranch = data[0].projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
           this.activateOc = data[0].activateOc !== false; // Default to true if not set
-          console.log('Setup loaded:', { projectOrBranch: this.projectOrBranch, activateOc: this.activateOc });
           // Reset column cache when setup changes
           this._colMaster = [];
           resolve(); // Resolvemos la promesa aquí

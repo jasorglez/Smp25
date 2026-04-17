@@ -321,7 +321,6 @@ export class ReportesEstimacionesComponent {
       this.projectsService.getProjectListByCompany(idRoot).subscribe({
         next: (data: any) => {
           this.projectsList = data;
-          console.log('Proyectos cargados:', this.projectsList);
         },
         error: (error) => {
           console.error('Error al cargar proyectos:', error);
@@ -335,7 +334,6 @@ export class ReportesEstimacionesComponent {
       this.otService.getOtAllt(idRoot).subscribe({
         next: (data: any) => {
           this.otCache = data;
-          console.log('OT cargadas:', this.otCache);
         },
         error: (error) => {
           console.error('Error al cargar OT:', error);
@@ -344,14 +342,12 @@ export class ReportesEstimacionesComponent {
       });
     }
 
-    console.log(`Consultando datos desde ${this.fechaInicio} hasta ${this.fechaFin} para idRoot ${idRoot}`);
     this.isLoading = true;
 
     this.logbookService.getOtListxReport(idRoot, this.fechaInicio, this.fechaFin).subscribe({
       next: (data) => {
         this.rowData = data;
         this.isLoading = false;
-        console.log('Datos obtenidos:', data);
 
         // Cargar conceptos para proyectos únicos en los datos
         this.loadConceptsForVisibleProjects(data);
@@ -384,7 +380,6 @@ export class ReportesEstimacionesComponent {
     this.logbookService.getOtListxReport(idRoot, this.fechaInicio, this.fechaFin).subscribe({
       next: (data) => {
         this.rowData = data;
-        console.log('Datos recargados:', data.length, 'registros');
       },
       error: (error) => {
         console.error('Error al recargar datos:', error);
@@ -401,7 +396,6 @@ export class ReportesEstimacionesComponent {
         this.workprogramsService.getActivities(projectId).subscribe({
           next: (concepts) => {
             this.conceptsCache[projectId] = concepts;
-            console.log(`Conceptos cargados para proyecto ${projectId}:`, concepts);
           },
           error: (error) => {
             console.error(`Error al cargar conceptos para proyecto ${projectId}:`, error);
@@ -422,7 +416,6 @@ export class ReportesEstimacionesComponent {
   onCuadrillaChanged(params: any) {
     // Prevenir llamadas recursivas
     if (this.isUpdatingCuadrilla) {
-      console.log('Llamada recursiva detectada, ignorando...');
       return;
     }
 
@@ -433,9 +426,6 @@ export class ReportesEstimacionesComponent {
     const rowData = params.data;
     const idLogbook = rowData.idLogbook;
 
-    console.log('=== onCuadrillaChanged ===');
-    console.log('idLogbook obtenido:', idLogbook);
-    console.log('rowData completo:', rowData);
 
     if (!idLogbook) {
       alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
@@ -448,7 +438,6 @@ export class ReportesEstimacionesComponent {
       return;
     }
 
-    console.log('Proyecto seleccionado:', selectedProject);
 
     // Activar flag para prevenir recursión
     this.isUpdatingCuadrilla = true;
@@ -456,19 +445,16 @@ export class ReportesEstimacionesComponent {
     // Obtener los datos completos del logbook primero
     this.logbookService.getDataForLogbook(idLogbook).subscribe({
       next: (response) => {
-        console.log('Respuesta de getDataForLogbook:', response);
 
         if (response.success && response.data) {
           // Modificar solo el idProject en los datos obtenidos
           const logbookData = response.data;
           logbookData.idProject = selectedProject.id;
 
-          console.log('Datos a enviar a updateDataForOt:', logbookData);
 
           // Enviar todo el objeto completo a updateDataForOt
           this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
             next: (updateResponse) => {
-              console.log('Respuesta de updateDataForOt:', updateResponse);
               alerts.basicAlert('Éxito', 'Proyecto de la cuadrilla actualizado correctamente.', 'success');
               this.isUpdatingCuadrilla = false;
             },
@@ -500,7 +486,6 @@ export class ReportesEstimacionesComponent {
   onClassificationChanged(params: any) {
     // Prevenir llamadas recursivas
     if (this.isUpdatingClassification) {
-      console.log('Llamada recursiva detectada en Classification, ignorando...');
       return;
     }
 
@@ -512,9 +497,6 @@ export class ReportesEstimacionesComponent {
     const idLogbook = rowData.idLogbook;
     const classification = params.newValue; // 'Interna' o 'Externa'
 
-    console.log('=== onClassificationChanged ===');
-    console.log('idLogbook obtenido:', idLogbook);
-    console.log('Nueva clasificación:', classification);
 
     if (!idLogbook) {
       alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
@@ -527,19 +509,16 @@ export class ReportesEstimacionesComponent {
     // Obtener los datos completos del logbook primero
     this.logbookService.getDataForLogbook(idLogbook).subscribe({
       next: (response) => {
-        console.log('Respuesta de getDataForLogbook (Classification):', response);
 
         if (response.success && response.data) {
           // Modificar solo el campo classification en los datos obtenidos
           const logbookData = response.data;
           logbookData.classification = classification;
 
-          console.log('Datos a enviar a updateDataForOt (Classification):', logbookData);
 
           // Enviar todo el objeto completo a updateDataForOt
           this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
             next: (updateResponse) => {
-              console.log('Respuesta de updateDataForOt (Classification):', updateResponse);
               alerts.basicAlert('Éxito', `Clasificación actualizada a "${classification}".`, 'success');
               this.isUpdatingClassification = false;
             },
@@ -571,7 +550,6 @@ export class ReportesEstimacionesComponent {
   onQuantityChanged(params: any) {
     // Prevenir llamadas recursivas
     if (this.isUpdatingQuantity) {
-      console.log('Llamada recursiva detectada en Quantity, ignorando...');
       return;
     }
 
@@ -583,9 +561,6 @@ export class ReportesEstimacionesComponent {
     const idLogbook = rowData.idLogbook;
     const newQuantity = params.newValue;
 
-    console.log('=== onQuantityChanged ===');
-    console.log('idLogbook obtenido:', idLogbook);
-    console.log('Nueva cantidad:', newQuantity);
 
     if (!idLogbook) {
       alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
@@ -605,19 +580,16 @@ export class ReportesEstimacionesComponent {
     // Obtener los datos completos del logbook primero
     this.logbookService.getDataForLogbook(idLogbook).subscribe({
       next: (response) => {
-        console.log('Respuesta de getDataForLogbook (Quantity):', response);
 
         if (response.success && response.data) {
           // Modificar solo el campo quantity en los datos obtenidos
           const logbookData = response.data;
           logbookData.quantity = newQuantity;
 
-          console.log('Datos a enviar a updateDataForOt (Quantity):', logbookData);
 
           // Enviar todo el objeto completo a updateDataForOt
           this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
             next: (updateResponse) => {
-              console.log('Respuesta de updateDataForOt (Quantity):', updateResponse);
               alerts.basicAlert('Éxito', `Cantidad actualizada a ${newQuantity}.`, 'success');
               this.isUpdatingQuantity = false;
             },
@@ -649,7 +621,6 @@ export class ReportesEstimacionesComponent {
   onValidadoChanged(params: any) {
     // Prevenir llamadas recursivas
     if (this.isUpdatingValidado) {
-      console.log('Llamada recursiva detectada en Validado, ignorando...');
       return;
     }
 
@@ -660,10 +631,6 @@ export class ReportesEstimacionesComponent {
     const rowData = params.data;
     const idLogbook = rowData.idLogbook;
 
-    console.log('=== onValidadoChanged ===');
-    console.log('idLogbook obtenido:', idLogbook);
-    console.log('Valor nuevo:', params.newValue);
-    console.log('Valor anterior:', params.oldValue);
 
     if (!idLogbook) {
       alerts.basicAlert('Error', 'No se encontró el ID del logbook para actualizar.', 'error');
@@ -676,19 +643,16 @@ export class ReportesEstimacionesComponent {
     // Obtener los datos completos del logbook primero
     this.logbookService.getDataForLogbook(idLogbook).subscribe({
       next: (response) => {
-        console.log('Respuesta de getDataForLogbook (Validado):', response);
 
         if (response.success && response.data) {
           // Modificar solo el campo validado en los datos obtenidos
           const logbookData = response.data;
           logbookData.validado = params.newValue;
 
-          console.log('Datos a enviar a updateDataForOt (Validado):', logbookData);
 
           // Enviar todo el objeto completo a updateDataForOt
           this.logbookService.updateDataForOt(idLogbook, logbookData).subscribe({
             next: (updateResponse) => {
-              console.log('Respuesta de updateDataForOt (Validado):', updateResponse);
               alerts.basicAlert('Éxito', 'Estado de validación actualizado correctamente.', 'success');
               this.isUpdatingValidado = false;
             },
@@ -720,7 +684,6 @@ export class ReportesEstimacionesComponent {
   onObservationsChanged(params: any) {
     // Prevenir llamadas recursivas
     if (this.isUpdatingObservations) {
-      console.log('Llamada recursiva detectada en Observaciones, ignorando...');
       return;
     }
 
@@ -731,10 +694,6 @@ export class ReportesEstimacionesComponent {
     const rowData = params.data;
     const idOt = rowData.idOt;
 
-    console.log('=== onObservationsChanged ===');
-    console.log('idOt obtenido:', idOt);
-    console.log('Valor nuevo:', params.newValue);
-    console.log('Valor anterior:', params.oldValue);
 
     if (!idOt) {
       alerts.basicAlert('Error', 'No se encontró el ID de la OT para actualizar.', 'error');
@@ -747,7 +706,6 @@ export class ReportesEstimacionesComponent {
     // Obtener los datos completos de la OT primero
     this.otService.getOtDetails(idOt).subscribe({
       next: (response) => {
-        console.log('Respuesta de getOtDetails (Observaciones):', response);
 
         // La respuesta es un array con un objeto
         if (response && response.length > 0) {
@@ -755,12 +713,10 @@ export class ReportesEstimacionesComponent {
           // Modificar solo el campo observations
           otData.observations = params.newValue;
 
-          console.log('Datos a enviar a updateOt (Observaciones):', otData);
 
           // Enviar todo el objeto completo a updateOt
           this.otService.updateOt(idOt, otData).subscribe({
             next: (updateResponse) => {
-              console.log('Respuesta de updateOt (Observaciones):', updateResponse);
               alerts.basicAlert('Éxito', 'Observaciones actualizadas correctamente.', 'success');
               this.isUpdatingObservations = false;
             },
@@ -792,7 +748,6 @@ export class ReportesEstimacionesComponent {
   onResultsChanged(params: any) {
     // Prevenir llamadas recursivas
     if (this.isUpdatingResults) {
-      console.log('Llamada recursiva detectada en Results, ignorando...');
       return;
     }
 
@@ -803,10 +758,6 @@ export class ReportesEstimacionesComponent {
     const rowData = params.data;
     const idOt = rowData.idOt;
 
-    console.log('=== onResultsChanged ===');
-    console.log('idOt obtenido:', idOt);
-    console.log('Valor nuevo:', params.newValue);
-    console.log('Valor anterior:', params.oldValue);
 
     if (!idOt) {
       alerts.basicAlert('Error', 'No se encontró el ID de la OT para actualizar.', 'error');
@@ -819,7 +770,6 @@ export class ReportesEstimacionesComponent {
     // Obtener los datos completos de la OT primero
     this.otService.getOtDetails(idOt).subscribe({
       next: (response) => {
-        console.log('Respuesta de getOtDetails (Results):', response);
 
         // La respuesta es un array con un objeto
         if (response && response.length > 0) {
@@ -827,12 +777,10 @@ export class ReportesEstimacionesComponent {
           // Modificar solo el campo results
           otData.results = params.newValue;
 
-          console.log('Datos a enviar a updateOt (Results):', otData);
 
           // Enviar todo el objeto completo a updateOt
           this.otService.updateOt(idOt, otData).subscribe({
             next: (updateResponse) => {
-              console.log('Respuesta de updateOt (Results):', updateResponse);
               alerts.basicAlert('Éxito', 'Resultado del trabajo actualizado correctamente.', 'success');
               this.isUpdatingResults = false;
             },
@@ -865,13 +813,11 @@ export class ReportesEstimacionesComponent {
    * Configura las opciones del menú contextual para ag-grid
    */
   getContextMenuItems(params: any) {
-    console.log('getContextMenuItems llamado', params);
 
     const result: any[] = [
       {
         name: 'Descargar multimedia',
         action: () => {
-          console.log('Acción Descargar multimedia ejecutada');
           this.downloadMultimedia(params.node.data);
         },
         disabled: !params.node?.data?.idOt,
@@ -880,7 +826,6 @@ export class ReportesEstimacionesComponent {
       {
         name: 'Reabrir OT',
         action: () => {
-          console.log('Acción Reabrir OT ejecutada');
           this.reopenOt(params.node.data);
         },
         disabled: !params.node?.data?.idOt,
@@ -894,7 +839,6 @@ export class ReportesEstimacionesComponent {
       'export'
     ];
 
-    console.log('Menú contextual generado:', result);
     return result;
   }
 
@@ -910,9 +854,6 @@ export class ReportesEstimacionesComponent {
       return;
     }
 
-    console.log('=== downloadMultimedia iniciado ===');
-    console.log('idOt:', idOt);
-    console.log('inmueble:', inmueble);
 
     // Mostrar loading que no se puede cerrar
     alerts.showLoading(
@@ -922,21 +863,16 @@ export class ReportesEstimacionesComponent {
 
     this.logbookService.getMediaByOt(idOt).subscribe({
       next: (response) => {
-        console.log('=== Respuesta de getMediaByOt ===', response);
 
         if (response.success && response.data && response.data.downloadUrl) {
           const { downloadUrl, zipFileName, fileCount } = response.data;
 
-          console.log('downloadUrl:', downloadUrl);
-          console.log('zipFileName:', zipFileName);
-          console.log('fileCount:', fileCount);
 
           // Cerrar el loading
           alerts.closeLoading();
 
           // Usar location.href para descargar en la misma pestaña
           // Este método es el más confiable y funciona siempre
-          console.log('✓ Iniciando descarga con location.href');
           window.location.href = downloadUrl;
 
           // Mostrar mensaje de éxito
@@ -1002,9 +938,6 @@ export class ReportesEstimacionesComponent {
       return;
     }
 
-    console.log('=== reopenOt iniciado ===');
-    console.log('idOt:', idOt);
-    console.log('otNumber:', otNumber);
 
     // Confirmar con el usuario antes de reabrir
     alerts.confirmAlert(
@@ -1019,7 +952,6 @@ export class ReportesEstimacionesComponent {
 
         this.otService.reopenOt(idOt).subscribe({
           next: (response) => {
-            console.log('=== Respuesta de reopenOt ===', response);
 
             // Cerrar el loading
             alerts.closeLoading();

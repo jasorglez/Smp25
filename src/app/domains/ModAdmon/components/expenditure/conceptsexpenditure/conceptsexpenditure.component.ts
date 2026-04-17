@@ -61,11 +61,9 @@ export class ConceptsexpenditureComponent {
   
    // 1. ✅ CORRECCIÓN: Mejorar la gestión de signals y datos
   constructor() {
-    console.log('🏗️ ConceptsComponent: Constructor iniciado');
     
     effect(() => {
       const newRootId = this.services.signals.getRootSelectedBySidebar()();
-      console.log('🔄 Effect Root ejecutado, newRootId:', newRootId);
       if (newRootId && newRootId !== this.idRoot) {
         this.idRoot = newRootId;
         this.loadCatalogsAndThenGridData(this.idRoot);
@@ -74,7 +72,6 @@ export class ConceptsexpenditureComponent {
   
     effect(() => {
       const newIdIncExp = this.services.signals.getIdIncomeAndExpense()();
-      console.log('🔄 Effect IdIncExp ejecutado, newIdIncExp:', newIdIncExp);
       if (newIdIncExp !== this.idIncExp) {
         this.idIncExp = newIdIncExp;
         // ✅ CORRECCIÓN: Verificar que los catálogos estén cargados antes de cargar datos
@@ -84,7 +81,6 @@ export class ConceptsexpenditureComponent {
       }
     });
     
-    console.log('✅ ConceptsComponent: Constructor completado');
   }
   
     ngOnInit() {
@@ -93,7 +89,6 @@ export class ConceptsexpenditureComponent {
   
   // 2. ✅ CORRECCIÓN: Mejorar la carga de catálogos con mejor manejo de errores
   private loadCatalogsAndThenGridData(idRoot: number) {
-    console.log('📚 Cargando catálogos para idRoot:', idRoot);
     if (!idRoot) return;
   
     const sources = {
@@ -125,12 +120,6 @@ export class ConceptsexpenditureComponent {
   
     forkJoin(sources).subscribe({
       next: ({ employees, providers, cuentasContables, billingInfo }) => {
-        console.log('📊 Datos cargados:', {
-          empleados: Array.isArray(employees) ? employees.length : 0,
-          proveedores: Array.isArray(providers) ? providers.length : 0,
-          cuentasContables: Array.isArray(cuentasContables) ? cuentasContables.length : 0,
-          iva: billingInfo?.[0]?.iIva
-        });
 
         // ✅ CORRECCIÓN: Asegurar que los datos sean arrays válidos
         this.employees.set(Array.isArray(employees) ? employees : []);
@@ -160,7 +149,6 @@ export class ConceptsexpenditureComponent {
   
   // 6. ✅ CORRECCIÓN: Mejorar loadGridData para manejar el campo selectedEntity
   private loadGridData(idIncExp: number | null) {
-    console.log('📊 loadGridData llamado con idIncExp:', idIncExp);
     
     if (!idIncExp) {
       this.rowData = [];
@@ -170,7 +158,6 @@ export class ConceptsexpenditureComponent {
   
     this.services.incomesAndExpenses.getConceptsFromIncomesAndExpenses(idIncExp).subscribe({
       next: (data: any[]) => {
-        console.log('📊 Datos recibidos:', data?.length || 0);
         
         const transformedData = (data || []).map(item => {
           const type = item.typeExpense?.trim().toUpperCase();
@@ -203,7 +190,6 @@ export class ConceptsexpenditureComponent {
         this.notSavedChanges = false;
         this.selectedData = null;
         
-        console.log('✅ Datos transformados y asignados');
       },
       error: (error) => {
         console.error('❌ Error cargando datos del grid:', error);
@@ -538,12 +524,6 @@ export class ConceptsexpenditureComponent {
           'Detalle Egresos ',
           this.services.trackingService.getEmail() );
               
-    console.log('🔍 Estado actual:', {
-      idIncExp: this.idIncExp,
-      subtotal: this.subtotal(),
-      iva: this.iva2(),
-      total: this.total()
-    });
     
     const newRows: any[] = [];
     const modifiedRowsMap = new Map<number, any>();
@@ -553,24 +533,17 @@ export class ConceptsexpenditureComponent {
       if (node.data.__isNew) {
         newRows.push(node.data);
         totalsNeedRecalculation = true;
-        console.log('➕ Fila nueva encontrada:', node.data.id);
       }
       else if (node.data.__modified) {
         modifiedRowsMap.set(node.data.id, node.data);
         
         if (node.data.__totalsChanged) {
           totalsNeedRecalculation = true;
-          console.log('📊 Fila con totales cambiados:', node.data.id);
         }
       }
     });
   
     const modifiedRows = Array.from(modifiedRowsMap.values());
-    console.log('📋 Resumen:', { 
-      nuevas: newRows.length, 
-      modificadas: modifiedRows.length,
-      totalsNeedRecalculation 
-    });
   
     if (newRows.length === 0 && modifiedRows.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios nuevos para guardar.', 'info');
@@ -591,13 +564,10 @@ export class ConceptsexpenditureComponent {
       const addObs = newRows.map(r => this.services.incomesAndExpenses.addConceptFromIncomesAndExpenses(cleanAndAdapt(r)));
       const updateObs = modifiedRows.map(r => this.services.incomesAndExpenses.updateConceptFromIncomesAndExpenses(r.id, cleanAndAdapt(r)));
       
-      console.log('🔄 Ejecutando observables para ADD/UPDATE...');
       await lastValueFrom(concat(...addObs, ...updateObs).pipe(toArray()));
-      console.log('✅ Observables ADD/UPDATE completados');
   
       // ✅ CORRECCIÓN: Siempre actualizar totales si hay cambios
       if (totalsNeedRecalculation && this.idIncExp) {
-        console.log('💰 Actualizando totales del maestro...');
         
         const totalsPayload = {
           subtotal: this.subtotal(),
@@ -606,10 +576,8 @@ export class ConceptsexpenditureComponent {
           modifiedBy: 'UsuarioLogueado'
         };
         
-        console.log('📊 Payload de totales:', totalsPayload);
         
         await lastValueFrom(this.services.incomesAndExpenses.updateTotal(this.idIncExp, totalsPayload));
-        console.log('✅ updateTotal completado');
         
         // ✅ CORRECCIÓN: Mejorar el trigger del signal
         const updateData = {
@@ -619,16 +587,13 @@ export class ConceptsexpenditureComponent {
           total: this.total()
         };
         
-        console.log('🚀 Disparando triggerMasterUpdate con:', updateData);
         
         // ✅ CORRECCIÓN: Usar setTimeout para asegurar que el signal se procese
         setTimeout(() => {
           this.services.signals.triggerMasterUpdate(updateData);
-          console.log('✅ triggerMasterUpdate disparado con retraso');
         }, 100);
         
       } else {
-        console.log('ℹ️ No se necesita recalcular totales o no hay idIncExp');
       }
   
       alerts.basicAlert('Datos actualizados', 'Se han guardado los cambios correctamente.', 'success');
@@ -636,7 +601,6 @@ export class ConceptsexpenditureComponent {
       // ✅ CORRECCIÓN: Recargar datos después de guardar
       setTimeout(() => {
         this.loadGridData(this.idIncExp!);
-        console.log('🔄 loadGridData llamado con retraso');
       }, 200);
   
     } catch (error) {

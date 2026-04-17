@@ -281,7 +281,6 @@ export class PriceProductsPresentationsComponent implements OnInit {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('id del updateObeservable', cleanedData);
       return this.priceXproductService.updatePriceXProductsPresentationsById(
         row.id,
         cleanedData

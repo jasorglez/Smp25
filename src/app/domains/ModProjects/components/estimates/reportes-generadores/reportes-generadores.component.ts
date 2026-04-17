@@ -371,7 +371,6 @@ export class ReportesGeneradoresComponent implements OnInit {
     this.catalogService.getCatalogsVigente(this.idcompany, 'POSITION').subscribe(
       (data: any) => {
         this.catalogDepartamentos = data;
-        console.log('Departamentos obtenidos:', this.catalogDepartamentos);
       },
       (error) => {
         if (error.status == 404) this.catalogDepartamentos = [];
@@ -384,7 +383,7 @@ export class ReportesGeneradoresComponent implements OnInit {
   const data = event.data;
 
   if (data.typenote === 'Photo' || data.typenote === 'Video') {
-    console.log('Media data:', data); // Verifica los datos en la consola
+// Verifica los datos en la consola
     this.selectedMediaUrl = data.image; // Asegúrate de tener esta URL en tus datos
     this.selectedMediaType = data.typenote;
 
@@ -481,7 +480,6 @@ getExtensionFromMime(mime: string): string {
     this.datosXFechasService.getOTs(18, startDate, endDate).subscribe({
       next: (data: any[]) => {
         this.OTsData = data;
-        console.log('OTsData loaded:', this.OTsData);
         //alerts.basicAlert('Reporte Generado', `Se encontraron ${data.length} OTs.`, 'success');
       },
       error: (error) => {
@@ -493,7 +491,6 @@ getExtensionFromMime(mime: string): string {
     this.datosXFechasService.getDailyReports(18, startDate, endDate).subscribe({
       next: (data: any[]) => {
         this.DetallesData = data;
-        console.log('DetallesData loaded:', this.DetallesData);
         //alerts.basicAlert('Reporte Generado', `Se encontraron ${data.length} Detalles.`, 'success');
       },
       error: (error) => {

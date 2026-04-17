@@ -67,7 +67,6 @@ export class InandoutStComponent implements OnInit {
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      console.log('idRoot set to:', this.idRoot);
       const email = this.trackingService.getEmail();
       if (this.idRoot && email) {
         this.loadCatalogs();
@@ -77,12 +76,10 @@ export class InandoutStComponent implements OnInit {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      console.log('idBranch set to:', this.idBranch);
     });
 
     effect(() => {
       this.projectId = this.signalsService.getProjectSelectedBySidebar()();
-      console.log('projectId set to:', this.projectId);
       const email = this.trackingService.getEmail();
       if (this.projectId && email) {
         this.loadWarehouses(email);
@@ -92,9 +89,7 @@ export class InandoutStComponent implements OnInit {
   }
 
   ngOnInit() {
-    console.log('ngOnInit called');
     this.movementType = this.route.snapshot.data['movementType'] || 'IN';
-    console.log('movementType:', this.movementType);
 
     this.loadUsers();
 
@@ -133,7 +128,6 @@ export class InandoutStComponent implements OnInit {
         if (this.catalogs.length > 0) {
           this.selectedCatalog = this.catalogs[0];
         }
-        console.log('Catalogs loaded:', this.catalogs);
       },
       error: (error) => {
         console.error('Error loading catalogs:', error);
@@ -150,7 +144,6 @@ export class InandoutStComponent implements OnInit {
         if (this.otList.length > 0) {
           this.selectedOt = this.otList[0];
         }
-        console.log('OTs loaded:', this.otList);
       },
       error: (error) => {
         console.error('Error loading OTs:', error);
@@ -163,9 +156,7 @@ export class InandoutStComponent implements OnInit {
 
     this.usersService.get2fieldsUsers(this.idRoot).subscribe({
       next: (data) => {
-        console.log('Users response:', data);
         this.users = data.data || data;
-        console.log('Users loaded:', this.users);
         // Update columnDefs to refresh the combo options
         if (this.gridApi) {
           this.gridApi.setGridOption('columnDefs', this.colMaster);
@@ -201,7 +192,6 @@ export class InandoutStComponent implements OnInit {
           detailType: null,
           detailData: []
         }));
-        console.log(`${this.movementType === 'IN' ? 'Entries' : 'Exits'} loaded:`, this.rowData);
       },
       error: (error) => {
         console.error(`Error loading ${this.movementType === 'IN' ? 'entries' : 'exits'}:`, error);
@@ -246,15 +236,12 @@ export class InandoutStComponent implements OnInit {
       }
     },
     onCellValueChanged: (event: any) => {
-      console.log('Cell value changed:', event);
 
       if (event.colDef.field === 'directEntry') {
         event.data.directEntry = event.newValue === true || event.newValue === 1 ? true : false;
-        console.log('Direct Entry changed to:', event.data.directEntry);
       }
 
       if (event.colDef.field === 'idAutoriza') {
-        console.log('idAutoriza changed to:', event.newValue, 'for row:', event.data.id);
       }
 
       event.data.__modified = true;
@@ -292,7 +279,6 @@ export class InandoutStComponent implements OnInit {
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
-            console.log('🔵 PDF Click detectado en InAndOut-ST - ID:', node.data.id);
             this.toggleReportDetail(node);
           },
           icon: 'bi-file-earmark-pdf',
@@ -385,7 +371,6 @@ export class InandoutStComponent implements OnInit {
         valueSetter: (params: any) => {
           const user = this.users.find(u => u.displayName === params.newValue);
           if (user) {
-            console.log('Setting idAutoriza to:', user.id);
             params.data.idAutoriza = user.id;
             params.data.__modified = true;
           }
@@ -472,14 +457,12 @@ export class InandoutStComponent implements OnInit {
   }
 
   async toggleReportDetail(node: any) {
-    console.log('🟢 toggleReportDetail llamado en InAndOut-ST - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
 
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
       // Si ya está expandido con el reporte, colapsarlo
-      console.log('🟡 Colapsando reporte expandido en InAndOut-ST');
       node.setExpanded(false);
 
       // Restaurar alturas de todas las filas
@@ -492,7 +475,6 @@ export class InandoutStComponent implements OnInit {
 
     // Verificar si ya se está generando un reporte
     if (this.isGeneratingReport) {
-      console.log('🔴 Ya se está generando un reporte en InAndOut-ST, ignorando clic');
       alerts.basicAlert(
         'Procesando',
         'Ya se está generando un reporte. Por favor espere.',
@@ -503,7 +485,6 @@ export class InandoutStComponent implements OnInit {
 
     // Marcar que se está generando
     this.isGeneratingReport = true;
-    console.log('🟢 Iniciando generación de reporte en InAndOut-ST');
 
     // Mostrar mensaje de progreso inicial
     let progress = 0;
@@ -562,20 +543,17 @@ export class InandoutStComponent implements OnInit {
         100
       );
 
-      console.log('✅ Reporte generado exitosamente en InAndOut-ST');
 
       // Cerrar mensaje de carga después de 800ms
       setTimeout(() => {
         alerts.closeLoading();
         this.isGeneratingReport = false; // Liberar el lock
-        console.log('🔓 Lock liberado en InAndOut-ST');
       }, 800);
 
     } catch (error) {
       clearInterval(progressInterval);
       alerts.closeLoading();
       this.isGeneratingReport = false; // Liberar el lock en caso de error
-      console.log('🔴 Error generando reporte en InAndOut-ST, lock liberado');
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
@@ -645,22 +623,15 @@ export class InandoutStComponent implements OnInit {
 
     // Sincronizar los combo boxes con la fila seleccionada
     if (this.selectedEntry) {
-      console.log('🔍 Fila seleccionada:', this.selectedEntry);
-      console.log('📦 Warehouses disponibles:', this.warehouses);
-      console.log('📋 Catalogs disponibles:', this.catalogs);
-      console.log('🔧 OTs disponibles:', this.otList);
 
       // Sincronizar Almacén
       this.selectedWarehouse = this.warehouses.find(wh => wh.idAlmacen === this.selectedEntry.idWarehouse);
-      console.log('✅ Warehouse sincronizado:', this.selectedWarehouse);
 
       // Sincronizar Catálogo/Tipo de Entrada
       this.selectedCatalog = this.catalogs.find(cat => cat.id === this.selectedEntry.idType);
-      console.log('✅ Catalog sincronizado:', this.selectedCatalog);
 
       // Sincronizar OT
       this.selectedOt = this.otList.find(ot => ot.id === this.selectedEntry.idOt);
-      console.log('✅ OT sincronizado:', this.selectedOt);
     }
   }
 
@@ -783,7 +754,6 @@ export class InandoutStComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
-    console.log('🚀 saveChanges called');
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -792,8 +762,6 @@ export class InandoutStComponent implements OnInit {
     const newRows = this.rowData.filter((row: any) => row.__isNew);
     const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
 
-    console.log('📝 newRows:', newRows);
-    console.log('✏️ modifiedRows:', modifiedRows);
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -896,7 +864,6 @@ export class InandoutStComponent implements OnInit {
           masterEntry.countrow = data.length;
           const entryData = this.prepareEntryData(masterEntry);
           await lastValueFrom(this.inandoutService.updateInAndOut(String(entryId), entryData));
-          console.log(`✅ Persistido countrow=${data.length} para entrada ${entryId}`);
         }
 
         // Limpiar los flags
@@ -966,7 +933,6 @@ export class InandoutStComponent implements OnInit {
             columns: ['countrow'],
             force: true
           });
-          console.log(`✅ Actualizado "Items" para entrada ${entryId}: ${count}`);
         }
       });
     }

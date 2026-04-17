@@ -123,7 +123,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
       }
     },
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
 
       // Obtener todas las columnas
       const allColumnIds: string[] = [];
@@ -131,31 +130,24 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
 
       // Autoajustar todas las columnas al contenido (skipHeader=false incluye header en el cálculo)
       params.api.autoSizeColumns(allColumnIds, false);
 
-      console.log('Autosize completed');
 
       // ✅ Verificar si hay un ID pendiente de selección en el context
       const pendingId = this.params?.context?.pendingBankSelection?.[this.providerId];
-      console.log('🔍 Verificando pendingBankSelection en context:', pendingId);
-      console.log('   Provider ID:', this.providerId);
 
       if (pendingId !== null && pendingId !== undefined) {
-        console.log('🎯 Ejecutando selección pendiente para ID:', pendingId);
 
         setTimeout(() => {
           let foundAndSelected = false;
 
           params.api.forEachNode((node: any, index: number) => {
             if (Number(node.data.id) === Number(pendingId)) {
-              console.log('✅ Encontrado nodo con ID', pendingId, 'en índice:', index);
               node.setSelected(true);
               params.api.ensureIndexVisible(index, 'middle');
               foundAndSelected = true;
-              console.log('✅ Fila seleccionada y centrada en viewport');
             }
           });
 
@@ -168,7 +160,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
           // Limpiar el ID pendiente del context
           if (this.params?.context?.pendingBankSelection) {
             delete this.params.context.pendingBankSelection[this.providerId];
-            console.log('🧹 ID pendiente limpiado del context');
           }
         }, 100);
       }
@@ -365,13 +356,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
       },
       width: 66,
       onCellValueChanged: async (params: any) => {
-        console.log('🔔 Principal checkbox changed:', {
-          id: params.data.id,
-          campo2: params.data.campo2,
-          oldValue: params.oldValue,
-          newValue: params.newValue,
-          vigente: params.data.vigente
-        });
 
         // ✅ Rastrear la última fila editada (checkbox principal)
         this.lastEditedRowId = params.data.id;
@@ -380,7 +364,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
 
         // Si se intenta marcar como principal pero no está vigente, revertir
         if (params.newValue === true && params.data.vigente === false) {
-          console.log('❌ Revirtiendo: No se puede marcar como principal si no está vigente');
           params.data.principal = false;
 
           // ✅ NO ordenar durante la edición - solo refrescar
@@ -397,11 +380,9 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
           const activeRows = this.bankRowData.filter(row => row.vigente === true);
           const principalRows = activeRows.filter(row => row.principal === true && row.id !== params.data.id);
 
-          console.log('📊 Al desmarcar:', { activeRows: activeRows.length, otherPrincipals: principalRows.length });
 
           // Si no hay ningún otro principal activo, forzar a mantener este como principal
           if (principalRows.length === 0 && activeRows.length > 0) {
-            console.log('⚠️ Forzando a mantener como principal (es el único)');
             params.data.principal = true;
 
             // ✅ NO ordenar durante la edición - solo refrescar
@@ -415,17 +396,13 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
 
         // Si se marca como principal, desmarcar todos los demás PRIMERO
         if (params.newValue === true) {
-          console.log('✅ Marcando como principal, desmarcando los demás...');
-          console.log('📋 Estado ANTES de cambios:');
           this.bankRowData.forEach(r => {
-            console.log(`  ID ${r.id} (${r.campo2}): principal=${r.principal}, campo7=${r.campo7}, __modified=${r.__modified}`);
           });
 
           // Buscar en el array original y desmarcar todos
           this.bankRowData.forEach(row => {
             if (row.id !== params.data.id) {
               if (row.principal === true || row.campo7 === true) {
-                console.log(`  ❌ Desmarcando ID ${row.id} (${row.campo2})`);
                 row.principal = false;
                 row.campo7 = false; // Sincronizar campo7 (backend)
                 if (!row.__isNew) {
@@ -443,12 +420,9 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
             if (!currentRow.__isNew) {
               currentRow.__modified = true;
             }
-            console.log(`  ✅ Marcado ID ${currentRow.id} (${currentRow.campo2})`);
           }
 
-          console.log('📋 Estado DESPUÉS de cambios:');
           this.bankRowData.forEach(r => {
-            console.log(`  ID ${r.id} (${r.campo2}): principal=${r.principal}, campo7=${r.campo7}, __modified=${r.__modified}`);
           });
 
           // ✅ NO ordenar durante la edición - solo refrescar todas las celdas
@@ -500,18 +474,12 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
     this.lastEditedRowName = event.data.campo2;
     this.lastEditedRowNumber = event.data.campo4;
 
-    console.log('📝 Última fila editada:', {
-      id: this.lastEditedRowId,
-      nombre: this.lastEditedRowName,
-      numero: this.lastEditedRowNumber
-    });
   }
 
   loadBankData(onComplete?: () => void) {
     if (this.params && this.params.context.BANK && this.params.context.BANK.load) {
       this.params.context.BANK.load(this.providerId, 'BANK', (data: any) => {
         this.bankRowData = data;
-        console.log('📥 Datos de bancos recibidos:', data);
 
         // ✅ Mapear nombreBanco para cada registro basado en el catálogo de bancos
         this.bankRowData.forEach(row => {
@@ -519,7 +487,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
             const bank = this.banks?.find(b => String(b.id) === String(row.campo3));
             if (bank) {
               row.nombreBanco = bank.name;
-              console.log(`  Banco mapeado: ID ${row.campo3} → ${bank.name}`);
             } else {
               console.warn(`  ⚠️ No se encontró banco con ID ${row.campo3}`);
             }
@@ -559,7 +526,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
           active: (b.active ?? b.vigente ?? true) // trata distintos nombres posibles
         }));
         this.banks = [{ id: '', name: 'EFECTIVO', active: true }, ...normalized];
-        console.log('🏦 Bancos cargados:', this.banks.length);
 
         // Llamar al callback si existe
         if (callback) {
@@ -595,7 +561,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
     this.hasBankChanges = true;
 
     if (isFirstBank) {
-      console.log('✅ Primer banco marcado automáticamente como principal');
     }
 
     setTimeout(() => {
@@ -608,9 +573,7 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
 
   async saveBanks() {
     if (this.params && this.params.context.BANK && this.params.context.BANK.save) {
-      console.log('💾 ANTES DE GUARDAR - Estado de todos los bancos:');
       this.bankRowData.forEach(r => {
-        console.log(`  ID ${r.id} (${r.campo2}): principal=${r.principal}, campo7=${r.campo7}, __modified=${r.__modified}, __isNew=${r.__isNew}`);
       });
 
       try {
@@ -619,17 +582,10 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         const targetBankName = this.lastEditedRowName || this.selectedBank?.campo2;
         const targetBankNumber = this.lastEditedRowNumber || this.selectedBank?.campo4;
 
-        console.log('💾 Guardando con foco en:', {
-          id: targetBankId,
-          nombre: targetBankName,
-          numero: targetBankNumber,
-          source: this.lastEditedRowId ? 'última editada' : 'seleccionada'
-        });
 
         // Guardar los bancos (ESPERA a que el usuario cierre el alert)
         await this.params.context.BANK.save(this.providerId, this.bankRowData, 'BANK');
 
-        console.log('✅ Guardado completado (incluyendo alert cerrado por usuario)');
 
         this.hasBankChanges = false;
 
@@ -639,7 +595,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         // ✅ RECARGAR datos desde el servidor para obtener los IDs reales
         await new Promise<void>((resolve) => {
           this.loadBankData(() => {
-            console.log('✅ Datos recargados desde servidor');
             resolve();
           });
         });
@@ -647,9 +602,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         // ⏰ Esperar para asegurar que el grid se renderice
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        console.log('🔍 Determinando ID final a seleccionar...');
-        console.log('   targetBankId original:', targetBankId);
-        console.log('   Total filas en bankRowData:', this.bankRowData.length);
 
         // ✅ DETERMINAR el ID final a seleccionar
         let finalIdToSelect: number;
@@ -657,11 +609,9 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         if (String(targetBankId).startsWith('temp_')) {
           // Si era un ID temporal (registro nuevo), buscar el ID MAYOR (más reciente)
           finalIdToSelect = Math.max(...this.bankRowData.map(r => Number(r.id)));
-          console.log('🆕 Era registro nuevo (ID temporal), seleccionando ID mayor:', finalIdToSelect);
         } else {
           // Si era un ID real (registro editado), usar ese ID
           finalIdToSelect = Number(targetBankId);
-          console.log('✏️ Era registro editado, seleccionando ID:', finalIdToSelect);
         }
 
         // ✅ GUARDAR el ID pendiente en el CONTEXT del grid padre
@@ -669,34 +619,25 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         // al hacer refreshCells(), y todas las variables de instancia se pierden
         if (!this.params.context.pendingBankSelection) {
           this.params.context.pendingBankSelection = {};
-          console.log('🆕 Creando objeto pendingBankSelection en context');
         }
         this.params.context.pendingBankSelection[this.providerId] = finalIdToSelect;
-        console.log('📌 ID guardado en context para selección pendiente:', finalIdToSelect);
-        console.log('   Provider ID:', this.providerId);
-        console.log('   Context completo:', this.params.context.pendingBankSelection);
 
         // AHORA actualizar contador en grid padre
         // Este método puede destruir y recrear este componente, pero el ID está a salvo en context
         await this.updateBankCountInParent();
 
-        console.log('🔍 Después de updateBankCountInParent - verificando context...');
-        console.log('   pendingBankSelection:', this.params.context.pendingBankSelection);
 
         // ✅ SELECCIONAR la fila manualmente si el grid todavía existe
         if (this.bankGridApi) {
-          console.log('🎯 Seleccionando fila manualmente con ID:', finalIdToSelect);
 
           setTimeout(() => {
             let foundAndSelected = false;
 
             this.bankGridApi.forEachNode((node: any, index: number) => {
               if (Number(node.data.id) === Number(finalIdToSelect)) {
-                console.log('✅ Encontrado nodo con ID', finalIdToSelect, 'en índice:', index);
                 node.setSelected(true);
                 this.bankGridApi.ensureIndexVisible(index, 'middle');
                 foundAndSelected = true;
-                console.log('✅ Fila seleccionada y centrada en viewport');
               }
             });
 
@@ -707,7 +648,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
             }
           }, 200);
         } else {
-          console.log('⚠️ bankGridApi no disponible - usando pendingBankSelection para onFirstDataRendered');
         }
 
         // ✅ Limpiar el rastreador de última fila editada
@@ -744,7 +684,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
   // El valor persistente viene del backend (vista SQL proveedoresxtype).
   private async updateBankCountInParent(): Promise<void> {
     try {
-      console.log('🔢 Actualizando contador de bancos en grid padre...');
 
       // Esperar un poco para que los datos se actualicen
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -764,12 +703,9 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         principalBankName = bank?.name || principalBank.nombreBanco || '';
       }
 
-      console.log('📊 Total de bancos activos:', activeBankCount);
-      console.log('🏦 Banco principal:', principalBankName);
 
       // ✅ Si NO hay bancos activos, limpiar el nombre del banco principal
       if (activeBankCount === 0) {
-        console.log('⚠️ No hay bancos activos - limpiando principalBankName');
         principalBankName = '';
       }
 
@@ -780,8 +716,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
       // ✅ ACTUALIZAR visualmente el grid padre usando refreshCells
       await this.updatePrincipalBankInParent(principalBankName);
 
-      console.log('✅ Contador de bancos actualizado en grid padre:', this.params.data.fieldBank);
-      console.log('✅ Banco principal guardado:', this.params.data.principalBankName);
 
     } catch (error) {
       console.error('❌ Error al actualizar contador de bancos:', error);
@@ -791,7 +725,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
   // ✅ NUEVO: Actualizar el banco principal en la columna fieldBank del grid padre
   private async updatePrincipalBankInParent(principalBankName?: string): Promise<void> {
     try {
-      console.log('🏦 Actualizando banco principal en ProvidersComponent...');
 
       // Si no se proporciona el nombre, buscarlo
       if (principalBankName === undefined) {
@@ -804,7 +737,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         }
       }
 
-      console.log('📝 Actualizando con banco principal:', principalBankName || '(vacío)');
 
       // Actualizar los datos locales del nodo padre (incluso si es vacío)
       this.params.data.principalBankName = principalBankName || '';
@@ -816,7 +748,6 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
           columns: ['fieldBank'],
           force: true
         });
-        console.log('✅ Celda fieldBank refrescada en grid padre');
       }
 
     } catch (error) {

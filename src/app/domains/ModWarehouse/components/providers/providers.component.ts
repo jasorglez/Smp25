@@ -149,7 +149,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         .map(e => e.nameContact)
         .filter(name => name && typeof name === 'string' && name.trim() !== '');
       
-      console.log('🔄 Actualizando filterList de contactos:', contactList.length, 'contactos');
       
       // Actualizar todas las definiciones de columna que usan autocomplete
       this._colMaster = [];
@@ -413,7 +412,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
       }
     },
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
 
       // Obtener todas las columnas
       const allColumnIds: string[] = [];
@@ -421,12 +419,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
 
       // Autoajustar todas las columnas al contenido (considera header y datos)
       params.api.autoSizeColumns(allColumnIds, false);
 
-      console.log('Autosize completed');
     },
 
   };
@@ -535,13 +531,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
           div.innerText = params.value; 
           const rowData = params.data;
           div.addEventListener('mouseenter', () => { 
-            console.log('Hover sobre celda:', params.value); 
-            console.log('Datos completos de la fila:', rowData);
             const modal = new bootstrap.Modal(document.getElementById('bonus')!);
             modal.show();
           }); 
           div.addEventListener('mouseleave', () => { 
-            console.log('Mouse fuera de celda:', params.value); 
             div.setAttribute('data-bs-dismiss', 'modal');
           }); 
           return div; 
@@ -554,7 +547,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
                 .filter(name => name && typeof name === 'string' && name.trim() !== '')
             : [];
           
-          console.log('🔧 cellEditorParams - filterList generado:', contactList.length, 'contactos');
           
           return {
             filterList: contactList,
@@ -893,7 +885,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   obtenerDatos() {
     if (!this.idRoot) {
-      console.log('idRoot no está disponible aún');
       return Promise.resolve(false);
     }
 
@@ -996,7 +987,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any) {
-    console.log('🔧 onCellValueChanged - field:', event.colDef.field, 'newValue:', event.newValue);
     
     event.data.__modified = true;
     this.notSavedChanges = true;
@@ -1011,7 +1001,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         .subscribe({
           next: (data: any) => {
             this.contactoCatalog = data;
-            console.log(this.contactoCatalog)
           },
           error: (error) => {
             console.error('Error obteniendo datos:', error);
@@ -1041,7 +1030,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   onCellClicked(event: any): void {
     event.node.setSelected(true);
-    console.log('Celda clickeada:', event);
 
     const colId = event.column.getColId();
     const isDetailColumn = colId === 'fieldContact' || colId === 'fieldBank' || colId === 'fieldCuenta' || colId === 'typeProvider' || colId === 'fieldMaterial';
@@ -1171,12 +1159,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
           },
           save: (providerId: number, data: any[], type: string) => {
             // For fake data, just simulate save
-            console.log('Simulating save for materiales:', data);
             // Could implement local storage or just log
           },
           delete: (params: any, callback: () => void) => {
             // For fake data, just simulate delete
-            console.log('Simulating delete for material:', params.data);
             callback();
           }
         }
@@ -1194,7 +1180,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
       const columnState = this.gridApi.getColumnState();
       const localStorageKey = `providers_column_state_${this.idRoot}`;
       localStorage.setItem(localStorageKey, JSON.stringify(columnState));
-      console.log('💾 Estado de columnas guardado:', columnState);
     } catch (error) {
       console.error('Error guardando estado de columnas:', error);
     }
@@ -1214,7 +1199,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           state: columnState,
           applyOrder: true
         });
-        console.log('📂 Estado de columnas cargado:', columnState);
       }
     } catch (error) {
       console.error('Error cargando estado de columnas:', error);
@@ -1342,13 +1326,11 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Datos a AGREGAR:', cleanedData);
       return this.customerService.addCustomer(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Datos a ACTUALIZAR (sin type):', cleanedData);
       return this.customerService.updateCustomer(row.id, cleanedData);
     });
 
@@ -1503,7 +1485,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminar Proveedores`, 'Menu Administracion Proveedores ',
       this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
-    console.log('🔍 deleteEntry - selectedNodes:', selectedNodes.length);
     
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -1515,10 +1496,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('🔍 deleteEntry - selectedData:', selectedData);
     
     const id = Number(selectedData?.id);
-    console.log('🔍 deleteEntry - id:', id, 'isFinite:', Number.isFinite(id));
     
     if (!Number.isFinite(id) || id <= 0) {
       alerts.basicAlert('Eliminar entrada', 'Identificador de proveedor no válido.', 'error');
@@ -1546,15 +1525,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
 
     try {
-      console.log('🔍 deleteEntry - Eliminando proveedor con ID:', id);
-      console.log('🔍 deleteEntry - idRoot:', this.idRoot, 'idCompany:', this.idCompany);
       await this.deleteWarehouseLinksForProvider(id);
-      console.log('🔍 deleteEntry - Warehouse links eliminados');
       
-      console.log('🔍 deleteEntry - Llamando deleteCustomer con ID:', id);
       const response = await lastValueFrom(this.customerService.deleteCustomer(id));
-      console.log('🔍 deleteEntry - deleteCustomer response:', response);
-      console.log('🔍 deleteEntry - deleteCustomer completado');
       
       await alerts.basicAlert('Eliminar entrada', 'Proveedor eliminado correctamente.', 'success');
       await this.obtenerDatos();
@@ -1728,22 +1701,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
   }
 
   async saveProviderDetailsById(providerId: number, data: any[], type: string) {
-    console.log(`💾 Saving details for provider ${providerId}, type: ${type}`, data);
     const newDetails = data.filter((row: any) => row.__isNew);
     const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
 
-    console.log(`📊 Filas nuevas: ${newDetails.length}, Filas modificadas: ${modifiedDetails.length}`);
-    console.log('📋 Lista de IDs modificados:', modifiedDetails.map((r: any) => `${r.id} (${r.campo2})`).join(', '));
 
     try {
       for (const row of newDetails) {
         const cleanedData = this.cleanDataForServer(row);
-        console.log(`➕ AGREGAR contacto:`, {
-          campo2: row.campo2,
-          campo7_principal_antes: row.campo7,
-          principal_antes: row.principal,
-          cleanedData
-        });
 
         this.customerService.updateFiel(row.idTabla, row.type, "SUMA").subscribe();
 
@@ -1754,16 +1718,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       for (const row of modifiedDetails) {
         const cleanedData = this.cleanDataForServer(row);
-        console.log(`✏️ ACTUALIZAR contacto ID ${row.id}:`, {
-          campo2: row.campo2,
-          campo7_EN_cleanedData: cleanedData.campo7,
-          principal_EN_cleanedData: cleanedData.principal,
-          cleanedData_completo: cleanedData
-        });
 
-        console.log('🌐 Enviando al servidor updateProviderXTable...');
         const resultado = await lastValueFrom(this.providersService.updateProviderXTable(row.id, cleanedData));
-        console.log('✅ Respuesta del servidor:', resultado);
       }
 
       if (newDetails.length > 0 || modifiedDetails.length > 0) {

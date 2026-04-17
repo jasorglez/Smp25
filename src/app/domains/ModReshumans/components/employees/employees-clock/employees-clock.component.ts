@@ -55,10 +55,8 @@ export class EmployeesClockComponent {
     this.employeesService.getEmployees(this.idBranch).subscribe(
       (data: any) => {
         this.employees = data;
-        console.log('Empleados:', data);
       },
       (error) => {
-        console.log(error);
       })
   }
 
@@ -96,18 +94,15 @@ export class EmployeesClockComponent {
             entry2: this.parseHora(dia.entry2),
             exit2: this.parseHora(dia.exit2)
           }));
-          console.log(this.horario*8)
           this.isNew = false;
         } else {
           this.initializeWeek();
           this.isNew = true;
         }
-        console.log('Estado horario:', this.isNew ? 'Nuevo' : 'Existente');
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
         this.horario.sort((a, b) => this.diasSemana.indexOf(a.day) - this.diasSemana.indexOf(b.day));
       },
       (error) => {
-        console.log(error);
         this.initializeWeek();
         this.isNew = true;
       }
@@ -159,12 +154,10 @@ export class EmployeesClockComponent {
 
     if (this.isNew) {
       // Crear nuevos registros para cada día
-      console.log('Creando nuevo horario...');
       horarioFormateado.forEach(dia => {
         this.employeesService.addEmployeeClock(dia)
           .subscribe({
             next: (res) => {
-              console.log(`Día ${dia.day} creado:`, res);
             },
             error: (err) => console.error(`Error creando ${dia.day}:`, err)
           });
@@ -172,11 +165,10 @@ export class EmployeesClockComponent {
       this.isNew = false;
     } else {
       // Actualizar días existentes uno por uno
-      console.log('Actualizando horario existente...');
       horarioFormateado.forEach(dia => {
         this.employeesService.updateEmployeeClock(this.idEmployee, dia.day, dia)
           .subscribe({
-            next: (res) => console.log(`Día ${dia.day} actualizado:`, res),
+            next: () => {},
             error: (err) => console.error(`Error actualizando ${dia.day}:`, err)
           });
       });
@@ -199,16 +191,13 @@ export class EmployeesClockComponent {
       this.employeesService.updateEmployee(this.idEmployee, this.employees[index])
         .subscribe({
           next: () => {
-            console.log("Las horas base fueron actualizadas", "success");
             this.trackingService.addLog(this.trackingService.getnameComp(),'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
           },
           error: (err) => {
-            console.log("No se pudo actualizar el empleado", "error");
             console.error(err);
           }
         });
     } else {
-      console.log("Empleado no encontrado", "error");
     }
   }
   
@@ -279,15 +268,12 @@ export class EmployeesClockComponent {
         data[0].baseHours = totalHoras;
         this.employeesService.updateEmployee(idEmployee, data[0]).subscribe(
           (res) => {
-            console.log('Empleado actualizado:', res);
           },
           (error) => {
-            console.log(error);
           }
         );
       },
       (error) => {
-        console.log(error);
       }
     );
   }

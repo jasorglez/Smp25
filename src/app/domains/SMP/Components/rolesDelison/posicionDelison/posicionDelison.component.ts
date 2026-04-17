@@ -285,7 +285,6 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     }
   }
   agInit(params: ICellRendererParams): void {
-    console.log('Params:', params);
     this.params = params;
     this.roleId = params.data.id;
     this.roleName = params.data.description;
@@ -354,11 +353,9 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   }
 
   loadPosicionData() {
-    console.log(`Cargando posiciones para el rol ID: ${this.roleId}`);
     this.posicionesService.getPositionsByRole(this.idRoot, this.roleId).subscribe({
       next: (data: any) => {
         this.posicionRowData = Array.isArray(data) ? data : (data ? [data] : []);
-        console.log('Posiciones:', this.posicionRowData);
       },
       error: (error) => {
         console.error('ERROR', error);

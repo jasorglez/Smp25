@@ -129,13 +129,6 @@ export class ProviderQuoteDetailComponent implements OnInit {
       this.providerName = provider ? provider.name : `Proveedor ${this.idProvider}`;
     }
 
-    console.log('Provider Quote Detail - Data:', {
-      quoteData: this.quoteData,
-      providerNumber: this.providerNumber,
-      cotizId: this.cotizId,
-      idProvider: this.idProvider,
-      idRoot: this.idRoot
-    });
 
     this.loadProviderQuoteData();
   }
@@ -150,13 +143,11 @@ export class ProviderQuoteDetailComponent implements OnInit {
         );
         // If COTIZ has idOc or locked field, it's been converted
         this.isLocked = cotizMaster.idOc > 0 || cotizMaster.locked === true;
-        console.log('COTIZ locked status:', this.isLocked, 'idOc:', cotizMaster.idOc);
 
         const items: any[] = await lastValueFrom(
           this.ocAndReqsService.getReqItems(this.cotizId)
         );
 
-        console.log('COTIZ items loaded:', items);
 
         this.rowData = items.map((item: any) => {
           const producto = this.productos.find((p: any) => p.id === (item.idSupplie || item.id_supplie));
@@ -190,7 +181,6 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
     // Fallback: load from REQUIS if no cotizId (shouldn't happen with new flow)
     if (!this.quoteData || !this.quoteData.idReq) {
-      console.log('No hay requisición seleccionada');
       return;
     }
 
@@ -199,7 +189,6 @@ export class ProviderQuoteDetailComponent implements OnInit {
         this.ocAndReqsService.getReqItems(this.quoteData.idReq)
       );
 
-      console.log('Requisition items loaded (fallback):', requisitionItems);
 
       this.rowData = requisitionItems.map((item: any, index: number) => {
         const producto = this.productos.find((p: any) => p.id === (item.idSupplie || item.id_supplie));
@@ -364,12 +353,10 @@ export class ProviderQuoteDetailComponent implements OnInit {
         // Explicitly ensure no id fields are sent (causes EF key modification error)
         delete updateData.id;
         delete updateData.Id;
-        console.log('📤 UPDATE item.id:', item.id, 'updateData:', JSON.stringify(updateData));
         await lastValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), updateData));
       }
 
       // Add new items
-      console.log('📤 New items to add:', newItems.length);
       for (const item of newItems) {
         const provider = this.proveedores.find((p: any) => p.id === this.idProvider);
         const addData: any = {
@@ -384,7 +371,6 @@ export class ProviderQuoteDetailComponent implements OnInit {
           dateuse: item.dateuse,
           active: true
         };
-        console.log('📤 ADD addData:', JSON.stringify(addData));
         await lastValueFrom(this.ocAndReqsService.addReqItem(addData));
       }
 
@@ -497,10 +483,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
         active: true
       };
 
-      console.log('Creating OC from COTIZ:', ocData);
       const ocResponse: any = await lastValueFrom(this.ocAndReqsService.addOcAndReq(ocData));
       const ocId = ocResponse.id;
-      console.log('OC created with ID:', ocId);
 
       // Copy items from COTIZ to OC
       for (const item of this.rowData) {
@@ -522,7 +506,6 @@ export class ProviderQuoteDetailComponent implements OnInit {
       // Lock the COTIZ using the PATCH endpoint
       await lastValueFrom(this.ocAndReqsService.lockRequisition(this.cotizId, true));
       this.isLocked = true;
-      console.log('COTIZ locked:', this.cotizId);
 
       // Calculate total
       const total = this.rowData.reduce((sum, item) => sum + (item.quantity * item.price), 0);

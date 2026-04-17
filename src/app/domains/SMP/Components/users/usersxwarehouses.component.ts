@@ -93,20 +93,17 @@ export class UsersxwarehousesComponent {
       return;
     }
 
-    console.log('🔍 Cargando datos con idBranch:', currentIdBranch);
 
     // Si idBranch es -9 (todas las sucursales), solo cargar permisos sin filtrar por almacenes
     if (currentIdBranch === -9) {
       this.usersxwarehousesService.getDataUsersxPermissions(this.permissionType).subscribe({
         next: (permisos) => {
-          console.log('✅ Datos recibidos (todas las sucursales):', { permisos: permisos.length });
 
           // Filtrar solo por usuario
           this.rowData = Object.values(permisos).filter((row: any) =>
             row.idUser === this.idUser
           );
 
-          console.log('📊 Filas filtradas:', this.rowData.length);
           this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Almacén (todas las sucursales)', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
         },
         error: (error) => {
@@ -127,7 +124,6 @@ export class UsersxwarehousesComponent {
       almacenes: this.warehousesService.getSimpleWarehouses(currentIdBranch)
     }).subscribe({
       next: ({ permisos, almacenes }) => {
-        console.log('✅ Datos recibidos:', { permisos: permisos.length, almacenes: almacenes.length });
 
         // Guardar almacenes en el formato requerido
         this.warehouses = almacenes.reduce((acc, dep) => {
@@ -141,7 +137,6 @@ export class UsersxwarehousesComponent {
           almacenes.some(almacen => almacen.id === row.idPermission && almacen.idBranch === currentIdBranch)
         );
 
-        console.log('📊 Filas filtradas:', this.rowData.length);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Usuarios por Almacén', 'Menu Administracion Usuarios por Almacén',  this.trackingService.getEmail());
       },
       error: (error) => {
@@ -239,7 +234,6 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {

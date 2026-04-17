@@ -35,12 +35,10 @@ export class SucursalByMaterialProveedorService {
   }
 
   addSucursalByMaterial(data: any) {
-    console.log('data', data);
     return this.http.post(`${environment.urlWarehouse}/SucursalByMaterialProveedor`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateSucursalByMaterial(id: number, data: any) {
-    console.log('data', data);
     return this.http.put(`${environment.urlWarehouse}/SucursalByMaterialProveedor?id=${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
