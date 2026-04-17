@@ -104,22 +104,38 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
   }
 
   loadData(): void {
-    if (!this.internalParams || this.dataLoaded) return;
-    
-    const preparacionData = this.internalParams?.data?.preparacionData || [];
-    this.rowData = preparacionData.map((item: any, index: number) => ({
-      ...item,
-      id: item.id || `temp_${Date.now()}_${index}`,
-      __isNew: item.__isNew || false,
-      __modified: item.__modified || false,
-      saved: item.saved !== false
-    }));
-    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-    this.dataLoaded = true;
+    if (!this.internalParams) return;
 
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-      this.gridApi.redrawRows();
+    const idPreparacion = this.internalParams?.data?.id;
+    if (!idPreparacion || typeof idPreparacion === 'string') return;
+
+    // Cargar directamente desde la API en lugar del snapshot del padre
+    this.loadFromServer(idPreparacion);
+  }
+
+  private async loadFromServer(idPreparacion: number): Promise<void> {
+    try {
+      const detalles = await lastValueFrom(this.preparacionService.getDetalles(idPreparacion));
+      this.rowData = detalles.map((item: any) => ({
+        id: item.id,
+        idPreparacion: item.idPreparacion,
+        ingrediente: item.ingrediente || '',
+        prep: item.prep || '',
+        correccion: item.correccion || '',
+        parametrosCount: item.parametrosCount || 0,
+        __isNew: false,
+        __modified: false
+      }));
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.dataLoaded = true;
+
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.redrawRows();
+      }
+    } catch (error) {
+      console.error('Error loading detalles:', error);
+      this.dataLoaded = true;
     }
   }
 
@@ -175,25 +191,25 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
         }
       },
       {
-        field: 'coreccion',
+        field: 'correccion',
         headerName: 'Corección',
         width: 150,
         editable: true,
         cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
-          params.data.coreccion = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.correccion = params.newValue ? params.newValue.toUpperCase() : '';
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
         }
       },
       {
-        field: 'parametros',
+        field: 'parametrosCount',
         headerName: 'Parámetros',
         flex: 1,
         editable: false,
         cellRenderer: (params: any) => {
-          const count = params.data?.parametrosData?.length || 0;
+          const count = params.data?.parametrosCount || 0;
           const container = document.createElement('div');
           container.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #7b1fa2; text-decoration: underline;';
           container.innerHTML = `<span>${count} parametro(s)</span>`;
@@ -230,8 +246,8 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       id: tempId,
       ingrediente: '',
       prep: 'Disolución',
-      coreccion: '',
-      parametros: '',
+      correccion: '',
+      parametrosCount: 0,
       __isNew: true,
       __modified: false,
       saved: false
@@ -285,8 +301,20 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
       this.updateParentCount();
       alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
-    } catch (error) {
-      alerts.basicAlert('Error', 'Ocurrió un error al eliminar el item.', 'error');
+    } catch (error: any) {
+      // Extract error message from backend response
+      let errorMessage = 'Ocurrió un error al eliminar el item.';
+
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.error) {
+        errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Show minimal toast error notification
+      alerts.preparacionErrorToast(errorMessage);
     }
   }
 
@@ -310,9 +338,20 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
 
     const idPreparacion = this.internalParams?.data?.id;
 
+    // Validar que el ID sea un número real, no temporal
+    if (!idPreparacion || typeof idPreparacion === 'string') {
+      alerts.basicAlert('Error', 'Debe guardar el registro principal antes de agregar detalles.', 'warning');
+      return;
+    }
+
     try {
       for (const item of newItems) {
-        const payload = { idPreparacion, ingrediente: item.ingrediente, prep: item.prep, correccion: item.coreccion };
+        const payload = {
+          idPreparacion,
+          ingrediente: item.ingrediente,
+          prep: item.prep,
+          correccion: item.correccion
+        };
         const created = await lastValueFrom(this.preparacionService.createDetalle(payload));
         item.id = created.id;
         item.__isNew = false;
@@ -321,16 +360,22 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       }
 
       for (const item of modifiedItems) {
-        const payload = { idPreparacion, ingrediente: item.ingrediente, prep: item.prep, correccion: item.coreccion };
+        const payload = {
+          idPreparacion,
+          ingrediente: item.ingrediente,
+          prep: item.prep,
+          correccion: item.correccion
+        };
         await lastValueFrom(this.preparacionService.updateDetalle(item.id, payload));
         item.__modified = false;
         item.saved = true;
       }
 
       this.hasUnsavedChanges = false;
-      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-      this.gridApi.redrawRows();
       this.updateParentCount();
+
+      // Recargar datos desde el servidor
+      await this.reloadFromServer();
 
       const totalSaved = newItems.length + modifiedItems.length;
       alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} item(s) exitosamente.`, 'success');
@@ -345,6 +390,49 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       if (this.internalParams.api) {
         this.internalParams.api.refreshCells({ rowNodes: [this.internalParams.node], force: true });
       }
+    }
+  }
+
+  private async reloadFromServer() {
+    try {
+      const idPreparacion = this.internalParams?.data?.id;
+      console.log('[reloadFromServer] idPreparacion:', idPreparacion, 'type:', typeof idPreparacion);
+
+      if (!idPreparacion || typeof idPreparacion === 'string') {
+        console.warn('[reloadFromServer] Invalid ID - debe ser un número');
+        return;
+      }
+
+      console.log('[reloadFromServer] Cargando detalles...');
+      const detalles = await lastValueFrom(this.preparacionService.getDetalles(idPreparacion));
+      console.log('[reloadFromServer] Detalles obtenidos:', detalles);
+
+      this.rowData = detalles.map((item: any, index: number) => ({
+        id: item.id,
+        idPreparacion: item.idPreparacion,
+        ingrediente: item.ingrediente || '',
+        prep: item.prep || '',
+        correccion: item.correccion || '',
+        parametrosCount: item.parametrosCount || 0,
+        __isNew: false,
+        __modified: false
+      }));
+      console.log('[reloadFromServer] rowData después de mapeo:', this.rowData);
+
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.redrawRows();
+        console.log('[reloadFromServer] Grid actualizado');
+      } else {
+        console.warn('[reloadFromServer] Grid está destruido, no se puede actualizar');
+      }
+
+      // Actualizar el contador en el padre
+      this.updateParentCount();
+    } catch (error) {
+      console.error('[reloadFromServer] Error:', error);
     }
   }
 

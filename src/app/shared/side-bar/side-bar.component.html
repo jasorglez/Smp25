@@ -55,7 +55,10 @@
   
 
       <ng-container *ngFor="let menu of sidebarMenus">
-        <li class="nav-item" *ngIf="authService.hasMenuMasterPermission(menu.identifier)">
+        <!-- Fuerza re-evaluación del *ngIf cuando cambian permisos -->
+        <ng-container *ngIf="permissionRefreshTick(); then showIfAllowed"></ng-container>
+        <ng-template #showIfAllowed>
+          <li class="nav-item" *ngIf="authService.hasMenuMasterPermission(menu.identifier)">
           <a
             class="nav-link d-flex align-items-center"
             [routerLink]="[menu.route]"
@@ -68,6 +71,7 @@
             <span>{{ menu.permissionName }}</span>
           </a>
         </li>
+        </ng-template>
       </ng-container>
       
       <li class="nav-item">

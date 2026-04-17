@@ -1,10 +1,12 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { PreparacionService } from 'app/services/preparacion.service';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-parametros',
@@ -62,10 +64,13 @@ import { alerts } from 'app/helpers/alerts';
   `]
 })
 export class ParametrosComponent implements OnInit, OnChanges {
+  private preparacionService = inject(PreparacionService);
+
   @Input() params: any;
   private internalParams: any;
   private gridApi!: GridApi;
   private dataLoaded: boolean = false;
+  private currentIdDetalle: number | null = null;
 
   rowData: any[] = [];
   originalRowData: any[] = [];
@@ -98,22 +103,42 @@ export class ParametrosComponent implements OnInit, OnChanges {
   }
 
   loadData(): void {
-    if (!this.internalParams || this.dataLoaded) return;
-    
-    const parametrosData = this.internalParams?.data?.parametrosData || [];
-    this.rowData = parametrosData.map((item: any, index: number) => ({
-      ...item,
-      id: item.id || `temp_${Date.now()}_${index}`,
-      __isNew: item.__isNew || false,
-      __modified: item.__modified || false,
-      saved: item.saved !== false
-    }));
-    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-    this.dataLoaded = true;
+    if (!this.internalParams) return;
 
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-      this.gridApi.redrawRows();
+    const idDetalle = this.internalParams?.data?.id;
+    if (!idDetalle || typeof idDetalle === 'string') return;
+
+    // Cargar directamente desde la API
+    this.loadFromServer(idDetalle);
+  }
+
+  private async loadFromServer(idDetalle: number): Promise<void> {
+    this.currentIdDetalle = idDetalle;
+    try {
+      const params = await lastValueFrom(this.preparacionService.getParams(idDetalle));
+      console.log('[parametros.loadFromServer] Datos recibidos del servidor:', params);
+      this.rowData = params.map((item: any) => ({
+        id: item.id,
+        idDetalle: item.idDetalle,
+        parametro1: item.parametro1 || '',
+        parametro2: item.parametro2 || '',
+        parametro3: item.parametro3 || '',
+        parametro4: item.parametro4 || '',
+        parametro5: item.parametro5 || '',
+        __isNew: false,
+        __modified: false
+      }));
+      console.log('[parametros.loadFromServer] rowData mapeado:', this.rowData);
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.dataLoaded = true;
+
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.redrawRows();
+      }
+    } catch (error) {
+      console.error('Error loading params:', error);
+      this.dataLoaded = true;
     }
   }
 
@@ -228,9 +253,15 @@ export class ParametrosComponent implements OnInit, OnChanges {
   };
 
   addItem() {
+    if (!this.currentIdDetalle) {
+      alerts.basicAlert('Error', 'No se pudo determinar el detalle', 'error');
+      return;
+    }
+
     const tempId = `temp_parametros_${Date.now()}_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
+      idDetalle: this.currentIdDetalle,
       parametro1: 0,
       parametro2: 0,
       parametro3: 0,
@@ -281,15 +312,34 @@ export class ParametrosComponent implements OnInit, OnChanges {
 
     if (!result.isConfirmed) return;
 
-    this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
-    this.originalRowData = this.originalRowData.filter(item => item.id !== selectedItem.id);
-    this.gridApi.setGridOption('rowData', this.rowData);
-    this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
+    try {
+      // Delete from database
+      await lastValueFrom(this.preparacionService.deleteParams(selectedItem.id));
 
-    alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+      this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
+      this.originalRowData = this.originalRowData.filter(item => item.id !== selectedItem.id);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
+
+      alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+    } catch (error: any) {
+      // Extract error message from backend response
+      let errorMessage = 'Error al eliminar el parámetro.';
+
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.error) {
+        errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Show minimal toast error notification
+      alerts.preparacionErrorToast(errorMessage);
+    }
   }
 
-  saveChanges() {
+  async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
     const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
 
@@ -298,20 +348,86 @@ export class ParametrosComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.rowData.forEach(item => {
-      if (item.__isNew || item.__modified) {
-        item.__isNew = false;
-        item.__modified = false;
-        item.saved = true;
+    try {
+      // Create new items
+      const createPromises = newItems.map(item =>
+        lastValueFrom(this.preparacionService.createParams({
+          idDetalle: item.idDetalle,
+          parametro1: item.parametro1,
+          parametro2: item.parametro2,
+          parametro3: item.parametro3,
+          parametro4: item.parametro4,
+          parametro5: item.parametro5
+        }))
+      );
+
+      // Update modified items
+      const updatePromises = modifiedItems.map(item =>
+        lastValueFrom(this.preparacionService.updateParams(item.id, {
+          idDetalle: item.idDetalle,
+          parametro1: item.parametro1,
+          parametro2: item.parametro2,
+          parametro3: item.parametro3,
+          parametro4: item.parametro4,
+          parametro5: item.parametro5
+        }))
+      );
+
+      await Promise.all([...createPromises, ...updatePromises]);
+
+      const totalSaved = newItems.length + modifiedItems.length;
+      alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} item(s) exitosamente.`, 'success');
+
+      // Reload from server instead of just redrawRows
+      if (this.currentIdDetalle) {
+        this.reloadFromServer(this.currentIdDetalle);
       }
-    });
+    } catch (error) {
+      console.error('Error saving params:', error);
+      alerts.basicAlert('Error', 'Error al guardar los parámetros', 'error');
+    }
+  }
 
-    this.hasUnsavedChanges = false;
-    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-    this.gridApi.redrawRows();
+  private async reloadFromServer(idDetalle: number): Promise<void> {
+    try {
+      const params = await lastValueFrom(this.preparacionService.getParams(idDetalle));
+      console.log('[parametros.reloadFromServer] Datos recibidos:', params);
+      console.log('[parametros.reloadFromServer] Cantidad de parámetros:', params.length);
 
-    const totalSaved = newItems.length + modifiedItems.length;
-    alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} item(s) exitosamente.`, 'success');
+      this.rowData = params.map((item: any) => ({
+        id: item.id,
+        idDetalle: item.idDetalle,
+        parametro1: item.parametro1 || '',
+        parametro2: item.parametro2 || '',
+        parametro3: item.parametro3 || '',
+        parametro4: item.parametro4 || '',
+        parametro5: item.parametro5 || '',
+        __isNew: false,
+        __modified: false
+      }));
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.hasUnsavedChanges = false;
+
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.redrawRows();
+      }
+
+      // Update parent row's parametros count
+      if (this.internalParams?.data) {
+        console.log('[parametros.reloadFromServer] Actualizando contador en fila padre');
+        console.log('[parametros.reloadFromServer] Nuevo contador:', this.rowData.length);
+        this.internalParams.data.parametrosCount = this.rowData.length;
+
+        // Redraw the entire parent grid to reflect the updated count
+        if (this.internalParams.api && this.internalParams.node) {
+          console.log('[parametros.reloadFromServer] Redibujando fila del grid padre');
+          this.internalParams.api.redrawRows({ rowNodes: [this.internalParams.node] });
+        }
+      }
+    } catch (error) {
+      console.error('Error reloading params:', error);
+    }
   }
 
   discardChanges() {

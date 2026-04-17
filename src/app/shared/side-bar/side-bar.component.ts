@@ -27,6 +27,9 @@ export class SideBarComponent {
   readonly guardUiTick: Signal<number>;
   readonly defaultCompanyLogo = './assets/img/default.png';
 
+  /** Computed que fuerza re-evaulation del *ngIf para cada menú cuando guardUiTick cambia */
+  readonly permissionRefreshTick: Signal<number>;
+
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
   private isInteractingWithSelect = false;

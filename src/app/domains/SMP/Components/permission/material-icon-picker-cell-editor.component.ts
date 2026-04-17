@@ -17,9 +17,9 @@ export interface MaterialIconPickerEditorParams extends ICellEditorParams {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div style="background:#fff;border:1px solid #ccc;border-radius:8px;padding:8px;
-                width:320px;max-height:280px;display:flex;flex-direction:column;
-                box-shadow:0 4px 12px rgba(0,0,0,0.18);z-index:9999;">
+    <div style="background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:10px;
+                width:280px;max-height:260px;display:flex;flex-direction:column;
+                box-shadow:0 10px 24px rgba(15,23,42,0.16);z-index:9999;">
       <input
         type="text"
         [(ngModel)]="filter"

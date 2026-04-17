@@ -65,6 +65,14 @@ import { lastValueFrom } from 'rxjs';
       margin: 0;
       padding: 0;
     }
+    ::ng-deep .ag-cell-focus {
+      outline: 3px solid #FFD700 !important;
+      outline-offset: -1px;
+    }
+    ::ng-deep .ag-cell-editing {
+      outline: 3px solid #FFD700 !important;
+      outline-offset: -1px;
+    }
   `]
 })
 export class JarabeComponent implements OnInit {
@@ -78,7 +86,10 @@ export class JarabeComponent implements OnInit {
   hasRowSelected: boolean = false;
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
-  userBranches: string[] = [];
+  userBranches: any[] = []; // { id: number, name: string }
+  branchNames: string[] = []; // Solo nombres para el select
+  /** Igual que Proveedores: Enter cierra edición y onCellEditingStopped abre la siguiente celda editable */
+  private enterPressedFlag = false;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -95,7 +106,22 @@ export class JarabeComponent implements OnInit {
   public defaultColDef: ColDef = {
     sortable: true,
     resizable: true,
-    filter: true
+    filter: true,
+    cellClassRules: {
+      'new-row-cell': (params: any) => !!params.data?.__isNew
+    },
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressedFlag = true;
+        setTimeout(() => {
+          if (this.gridApi) {
+            this.gridApi.stopEditing();
+          }
+        }, 0);
+        return true;
+      }
+      return false;
+    }
   };
 
   rowData: any[] = [];
@@ -104,6 +130,9 @@ export class JarabeComponent implements OnInit {
     headerHeight: 35,
     rowHeight: 35,
     animateRows: true,
+    rowClassRules: {
+      'new-row-highlight': (params: any) => !!params.data?.__isNew
+    },
     masterDetail: true,
     detailRowHeight: 400,
     isRowMaster: (_dataItem: any) => true,
@@ -121,6 +150,68 @@ export class JarabeComponent implements OnInit {
             node.setSelected(false);
           }
         });
+      }
+    },
+    onCellEditingStarted: (event: any) => {
+      if (event.data?.__isNew) {
+        setTimeout(() => {
+          const cell = document.querySelector(
+            `.ag-row[row-index="${event.rowIndex}"] .ag-cell[col-id="${event.column.getColId()}"]`
+          ) as HTMLElement;
+          if (cell) {
+            cell.style.outline = '2px solid #e67e00';
+            const input = cell.querySelector('input') as HTMLElement;
+            if (input) {
+              input.style.backgroundColor = '#ffeaa0';
+            }
+          }
+        }, 30);
+      }
+    },
+    onCellEditingStopped: (event: any) => {
+      if (event.data?.__isNew) {
+        const cell = document.querySelector(
+          `.ag-row[row-index="${event.rowIndex}"] .ag-cell[col-id="${event.column.getColId()}"]`
+        ) as HTMLElement;
+        if (cell) {
+          cell.style.outline = '';
+          const input = cell.querySelector('input') as HTMLElement;
+          if (input) {
+            input.style.backgroundColor = '';
+          }
+        }
+      }
+
+      const isEscapeKey = event.event?.key === 'Escape' || event.event?.keyCode === 27;
+      if (isEscapeKey) {
+        return;
+      }
+
+      const isEnterKey =
+        event.event?.key === 'Enter' || event.event?.keyCode === 13 || this.enterPressedFlag;
+      this.enterPressedFlag = false;
+
+      if (isEnterKey) {
+        const allColumns = this.gridApi.getColumnDefs() as ColDef[];
+        const currentIndex = allColumns.findIndex(
+          (col) => 'field' in col && col.field === event.column.colId
+        );
+        const nextEditableCol = allColumns.slice(currentIndex + 1).find(
+          (col) =>
+            'field' in col &&
+            col.field &&
+            col.editable &&
+            !('hide' in col && (col as any).hide)
+        );
+
+        if (nextEditableCol && 'field' in nextEditableCol && nextEditableCol.field) {
+          setTimeout(() => {
+            this.gridApi.startEditingCell({
+              rowIndex: event.rowIndex,
+              colKey: nextEditableCol.field as string
+            });
+          }, 100);
+        }
       }
     }
   };
@@ -141,9 +232,16 @@ export class JarabeComponent implements OnInit {
         ? branches
         : (branches as any)?.project ?? [];
 
+      // Mantener objetos con id y name
       this.userBranches = list
-        .map((b: any) => b?.name || b?.Name || '')
-        .filter(n => n.trim());
+        .map((b: any) => ({
+          id: b?.id,
+          name: b?.name || b?.Name || ''
+        }))
+        .filter(b => b.id && b.name.trim());
+
+      // Array solo de nombres para el select
+      this.branchNames = this.userBranches.map(b => b.name);
 
       this._colDefs = [];
       if (this.gridApi) {
@@ -172,7 +270,7 @@ export class JarabeComponent implements OnInit {
       id: item.id,
       lote: item.lote || '',
       articulo: item.articulo || '',
-      sucursal: item.sucursal || '',
+      sucursal: item.idSucursal || null,
       fechaElaboracion: item.fecha || '',
       preparacion: item.preparacionCount || 0,
       cantidad: item.cantidad || 0,
@@ -239,7 +337,7 @@ export class JarabeComponent implements OnInit {
     return {
       lote: item.lote,
       articulo: item.articulo,
-      sucursal: item.sucursal,
+      idSucursal: item.sucursal || null,
       fecha: item.fechaElaboracion || null,
       preparacionCount: item.preparacion || 0,
       cantidad: item.cantidad || 0,
@@ -298,11 +396,20 @@ export class JarabeComponent implements OnInit {
         width: 160,
         editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params: any) => {
-          return { values: this.userBranches };
+        cellEditorParams: () => ({ values: this.branchNames }),
+        valueFormatter: (params) => {
+          // Mostrar nombre en la celda, aunque internamente guardamos ID
+          if (params.value) {
+            const branch = this.userBranches.find(b => b.id === params.value);
+            return branch?.name ?? '';
+          }
+          return '';
         },
         valueSetter: (params) => {
-          params.data.sucursal = params.newValue ?? '';
+          // El usuario selecciona un nombre, pero guardamos el ID
+          const selectedName = params.newValue;
+          const selectedBranch = this.userBranches.find(b => b.name === selectedName);
+          params.data.sucursal = selectedBranch?.id ?? null;
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -416,7 +523,7 @@ export class JarabeComponent implements OnInit {
         field: 'activom',
         headerName: 'Activom',
         width: 80,
-        editable: true,
+        editable: false,
         cellRenderer: (params: any) => {
           const input = document.createElement('input');
           input.type = 'checkbox';
@@ -450,10 +557,25 @@ export class JarabeComponent implements OnInit {
               det.parametrosData = paramsList.map((p: any) => this.mapParams(p));
               return det;
             }));
+            // Asegurar que el conteo mostrado en el master sea el real (nivel 2)
+            detailParams.data.preparacion = mapped.length;
+            detailParams.api?.refreshCells?.({
+              rowNodes: [detailParams.node],
+              columns: ['preparacion'],
+              force: true,
+            });
             detailParams.successCallback(mapped);
           } else {
             const historial = await lastValueFrom(this.preparacionService.getHistorial(detailParams.data.id));
-            detailParams.successCallback(historial.map((h: any) => this.mapHistorial(h)));
+            const mappedHist = historial.map((h: any) => this.mapHistorial(h));
+            // Mantener también el conteo del historial consistente
+            detailParams.data.historialGastos = mappedHist.length;
+            detailParams.api?.refreshCells?.({
+              rowNodes: [detailParams.node],
+              columns: ['historialGastos'],
+              force: true,
+            });
+            detailParams.successCallback(mappedHist);
           }
         } catch (error) {
           console.error('Error loading detail data:', error);
@@ -530,13 +652,16 @@ export class JarabeComponent implements OnInit {
     const today = new Date();
     const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    const sucursalActual = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
+    // Obtener el nombre de la sucursal actual y buscar su ID
+    const branchNameActual = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
+    const currentBranch = this.userBranches.find(b => b.name === branchNameActual);
+    const idSucursalActual = currentBranch?.id ?? null;
 
     const newItem = {
       id: tempId,
       lote: '',
       articulo: '',
-      sucursal: sucursalActual,
+      sucursal: idSucursalActual,
       fechaElaboracion: fecha,
       preparacion: 0,
       cantidad: 0,
@@ -595,8 +720,20 @@ export class JarabeComponent implements OnInit {
       this.gridApi.setGridOption('rowData', this.rowData);
       this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
       alerts.basicAlert('Eliminado', 'Lote eliminado correctamente', 'success');
-    } catch (error) {
-      alerts.basicAlert('Error', 'Ocurrió un error al eliminar el lote.', 'error');
+    } catch (error: any) {
+      // Extract error message from backend response
+      let errorMessage = 'Ocurrió un error al eliminar el lote.';
+
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.error) {
+        errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Show minimal toast error notification
+      alerts.preparacionErrorToast(errorMessage);
     }
   }
 
