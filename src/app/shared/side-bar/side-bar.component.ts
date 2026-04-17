@@ -1,4 +1,4 @@
-import { Component, effect, Signal } from '@angular/core';
+import { Component, computed, effect, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EMPTY, lastValueFrom } from 'rxjs';
 
@@ -27,12 +27,16 @@ export class SideBarComponent {
   readonly guardUiTick: Signal<number>;
   readonly defaultCompanyLogo = './assets/img/default.png';
 
-  /** Computed que fuerza re-evaulation del *ngIf para cada menú cuando guardUiTick cambia */
-  readonly permissionRefreshTick: Signal<number>;
+  /** Siempre true pero lee guardRefreshTick para forzar re-evaluación reactiva del *ngIf */
+  readonly permissionRefreshTick = computed(() => {
+    this.signalsService.guardRefreshTick();
+    return true;
+  });
 
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
   private isInteractingWithSelect = false;
+  private _branchesReloadedAfterPermissions = false;
   companyLogoSrc = this.defaultCompanyLogo;
 
   selectedRoot = '';
@@ -69,11 +73,6 @@ export class SideBarComponent {
     private menuService: MenuService
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
-<<<<<<< HEAD
-    this.permissionRefreshTick = this.signalsService.guardRefreshTick;
-=======
-    this.permissionRefreshTick = this.guardUiTick;
->>>>>>> 42b1a3a5f0ae387141477147708d99447f3f00f6
 
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
@@ -130,6 +129,18 @@ export class SideBarComponent {
           idBranchOverride: branchId,
         })
       );
+
+      // On page refresh, branches may have loaded via the restricted API
+      // (permissions weren't ready yet). Now that permissions are loaded,
+      // reload branches once if the user qualifies for the full-branch path.
+      if (!this._branchesReloadedAfterPermissions && this.selectedRoot) {
+        const hasAll = this.authService.hasDetailedPermission('principal', 'see-all-branches');
+        const emailForRoot = this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
+        if (hasAll || emailForRoot === environment.root) {
+          this._branchesReloadedAfterPermissions = true;
+          await this.getpermissionxBranchs(parseInt(this.selectedRoot, 10));
+        }
+      }
     } catch (error) {
       console.error('Error al recargar permisos por sucursal en sidebar:', error);
     }
@@ -223,9 +234,12 @@ export class SideBarComponent {
 
   async getpermissionxBranchs(idRoot: number) {
     const hasPermission = this.authService.hasDetailedPermission('principal', 'see-all-branches');
-    const isRoot = this.signalsService.getemailChoose() === environment.root;
+    const emailForRoot = this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
+    const isRoot = emailForRoot === environment.root;
 
     if (hasPermission || isRoot) {
+      // Using the full-branch path — no need to reload after permissions.
+      this._branchesReloadedAfterPermissions = true;
       this.branchService.getBranches2fields(idRoot).subscribe(
         async (data) => {
           data.sort((a, b) => a.name.localeCompare(b.name));
@@ -258,8 +272,8 @@ export class SideBarComponent {
         .subscribe(
           async (data) => {
             this.branchData = (data.project || []).map((branch: any) => ({
-              id: branch.id,
-              name: branch.name,
+              id: branch.idPermission || branch.idBranch || branch.id,
+              name: branch.name || branch.description || '',
             }));
 
             const chosen = this.pickBranchAfterListLoad();
