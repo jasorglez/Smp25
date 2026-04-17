@@ -31,7 +31,11 @@
             <h4 class="titulo-seleccionado">{{ masterSeleccionado.masterPermissionName }}</h4>
           </div>
 
-          <ng-container *ngIf="masterSeleccionado.aplica; else masterNoAplica">
+          <p *ngIf="!masterSeleccionado.aplica" class="texto-placeholder">
+            <span class="placeholder-icon">i</span>
+            Este modulo no aplica para esta asignacion.
+          </p>
+
           <div class="submodulos-grid">
             <div *ngFor="let detail of masterSeleccionado.details"
                  class="submodulo-item"
@@ -151,14 +155,6 @@
             </div>
 
           </div>
-          </ng-container>
-
-          <ng-template #masterNoAplica>
-            <p class="texto-placeholder">
-              <span class="placeholder-icon">i</span>
-              Este modulo no aplica para esta asignacion.
-            </p>
-          </ng-template>
 
         </div>
         <p *ngIf="!masterSeleccionado" class="texto-placeholder">

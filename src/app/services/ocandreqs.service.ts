@@ -104,4 +104,9 @@ export class OcAndReqsService {
     return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/total`, { total }, { headers: this.trackingService.getHeaders() });
   }
 
+  getFrequentArticles(solicit: string, idDepartment: number, idBranch: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Detailsreqoc/frequent?solicit=${solicit}&idDepartment=${idDepartment}&idBranch=${idBranch}`,
+      { headers: this.trackingService.getHeaders() });
+  }
+
 }

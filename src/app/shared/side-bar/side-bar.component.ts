@@ -53,6 +53,7 @@ export class SideBarComponent {
   usersData: any[];
 
   private rootAdministrator: number[] = [];
+  private branchListRequestSeq = 0;
 
   sidebarMenus: {
     identifier: string;
@@ -83,9 +84,50 @@ export class SideBarComponent {
     });
   }
 
+  private prependAllBranchesOptionIfNeeded(idRoot: number): void {
+    const hasAllBranchesOption = this.branchData.some((branch) => branch.id === -idRoot);
+    if (this.branchData.length > 1 && !hasAllBranchesOption) {
+      this.branchData.unshift({
+        id: -idRoot,
+        name: 'Todas las sucursales',
+      });
+    }
+  }
+
+  private buildBranchOptions(idRoot: number, branches: { id: number; name: string }[]): { id: number; name: string }[] {
+    const next = [...branches];
+    if (next.length > 1 && !next.some((branch) => branch.id === -idRoot)) {
+      next.unshift({
+        id: -idRoot,
+        name: 'Todas las sucursales',
+      });
+    }
+    return next;
+  }
+
+  private sameBranchOptions(
+    current: { id: number; name: string }[],
+    next: { id: number; name: string }[]
+  ): boolean {
+    if (current.length !== next.length) {
+      return false;
+    }
+    return current.every((branch, index) =>
+      branch.id === next[index]?.id && branch.name === next[index]?.name
+    );
+  }
+
   private pickBranchAfterListLoad(): { id: number; name: string } | null {
     if (!this.branchData?.length) {
       return null;
+    }
+
+    const selectedId = Number(this.selectedBranchId);
+    if (!Number.isNaN(selectedId)) {
+      const selected = this.branchData.find((b) => b.id === selectedId);
+      if (selected) {
+        return selected;
+      }
     }
 
     const preferredRaw = this.signalsService.getBranchSelectedBySidebar()();
@@ -103,18 +145,26 @@ export class SideBarComponent {
   }
 
   private async applyPickedBranch(chosen: { id: number; name: string }): Promise<void> {
-    this.selectedBranchId = String(chosen.id);
+    const nextId = String(chosen.id);
+    const branchDidChange = this.selectedBranchId !== nextId;
+
+    this.selectedBranchId = nextId;
     this.signalsService.setBranchSelectedBySidebar(Number(chosen.id));
     this.signalsService.setBranchNameSelectedBySidebar(chosen.name);
 
-    setTimeout(() => {
-      const sel = document.getElementById('branchs') as HTMLSelectElement;
-      if (sel) {
-        sel.value = this.selectedBranchId;
-      }
-    });
+    if (!branchDidChange) {
+      return;
+    }
 
     await this.reloadGuardForSelectedBranch();
+  }
+
+  trackById(_index: number, item: { id: number }): number {
+    return item.id;
+  }
+
+  trackByMenuIdentifier(_index: number, item: { identifier: string }): string {
+    return item.identifier;
   }
 
   private async reloadGuardForSelectedBranch(): Promise<void> {
@@ -214,13 +264,6 @@ export class SideBarComponent {
           this.getHeadersCompanys(this.selectedRoot);
           this.getpermissionxBranchs(parseInt(this.selectedRoot, 10));
           this.loadSidebarMenus(parseInt(this.selectedRoot, 10));
-
-          setTimeout(() => {
-            const selectElement = document.getElementById('root') as HTMLSelectElement;
-            if (selectElement) {
-              selectElement.value = this.selectedRoot;
-            }
-          });
         } else {
           this.selectedRoot = null;
         }
@@ -236,22 +279,36 @@ export class SideBarComponent {
     const hasPermission = this.authService.hasDetailedPermission('principal', 'see-all-branches');
     const emailForRoot = this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
     const isRoot = emailForRoot === environment.root;
+    const requestSeq = ++this.branchListRequestSeq;
 
     if (hasPermission || isRoot) {
       // Using the full-branch path — no need to reload after permissions.
       this._branchesReloadedAfterPermissions = true;
       this.branchService.getBranches2fields(idRoot).subscribe(
         async (data) => {
+          if (requestSeq !== this.branchListRequestSeq) {
+            return;
+          }
           data.sort((a, b) => a.name.localeCompare(b.name));
 
-          this.branchData = data.map((branch: any) => ({
-            id: branch.id,
-            name: branch.name,
-          }));
-          this.branchData.unshift({
-            id: -idRoot,
-            name: 'Todas las sucursales',
-          });
+          const nextBranchData = this.buildBranchOptions(
+            idRoot,
+            data.map((branch: any) => ({
+              id: branch.id,
+              name: branch.name,
+            }))
+          );
+
+          const listChanged = !this.sameBranchOptions(this.branchData, nextBranchData);
+          this.branchData = listChanged ? nextBranchData : this.branchData;
+
+          if (this.isInteractingWithSelect) {
+            return;
+          }
+
+          if (!listChanged && this.selectedBranchId) {
+            return;
+          }
 
           const chosen = this.pickBranchAfterListLoad();
           if (chosen) {
@@ -259,6 +316,9 @@ export class SideBarComponent {
           }
         },
         (error) => {
+          if (requestSeq !== this.branchListRequestSeq) {
+            return;
+          }
           console.error('Error al obtener branches:', error);
           this.branchData = [];
         }
@@ -271,10 +331,27 @@ export class SideBarComponent {
         )
         .subscribe(
           async (data) => {
-            this.branchData = (data.project || []).map((branch: any) => ({
-              id: branch.idPermission || branch.idBranch || branch.id,
-              name: branch.name || branch.description || '',
-            }));
+            if (requestSeq !== this.branchListRequestSeq) {
+              return;
+            }
+            const nextBranchData = this.buildBranchOptions(
+              idRoot,
+              (data.project || []).map((branch: any) => ({
+                id: branch.idPermission || branch.idBranch || branch.id,
+                name: branch.name || branch.description || '',
+              }))
+            );
+
+            const listChanged = !this.sameBranchOptions(this.branchData, nextBranchData);
+            this.branchData = listChanged ? nextBranchData : this.branchData;
+
+            if (this.isInteractingWithSelect) {
+              return;
+            }
+
+            if (!listChanged && this.selectedBranchId) {
+              return;
+            }
 
             const chosen = this.pickBranchAfterListLoad();
             if (chosen) {
@@ -282,6 +359,9 @@ export class SideBarComponent {
             }
           },
           (error) => {
+            if (requestSeq !== this.branchListRequestSeq) {
+              return;
+            }
             console.error('Error al obtener branches:', error);
             this.branchData = [];
           }
