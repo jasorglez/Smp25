@@ -30,7 +30,7 @@
       matTooltipPosition="right"
     >
         <option selected value="" disabled>{{ "company" | translate }}</option>
-      <option *ngFor="let item of rootData" [value]="item.id">
+      <option *ngFor="let item of rootData; trackBy: trackById" [value]="item.id">
         {{ item.name }}
       </option>
     </select>
@@ -48,13 +48,13 @@
       matTooltipPosition="right"
     >
       <option selected disabled value="">{{ "branchs" | translate }}</option>
-      <option *ngFor="let item of branchData" [value]="'' + item.id">
+      <option *ngFor="let item of branchData; trackBy: trackById" [value]="'' + item.id">
         {{ item.name }}
       </option>
     </select>
   
 
-      <ng-container *ngFor="let menu of sidebarMenus">
+      <ng-container *ngFor="let menu of sidebarMenus; trackBy: trackByMenuIdentifier">
         <!-- Fuerza re-evaluación del *ngIf cuando cambian permisos -->
         <ng-container *ngIf="permissionRefreshTick(); then showIfAllowed"></ng-container>
         <ng-template #showIfAllowed>
