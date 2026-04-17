@@ -12,7 +12,7 @@ services:
     networks:
       - hco-siaf-network
     labels:
-      - "com.hco-siaf.version=6.0.22"
+      - "com.hco-siaf.version=6.0.24"
       - "com.hco-siaf.service=fronend"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]

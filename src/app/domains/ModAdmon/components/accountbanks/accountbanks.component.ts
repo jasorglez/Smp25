@@ -336,6 +336,15 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         headerName: 'Efectivo',
         editable: true,
         width: 90,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+      },
+      {
+        field: 'provision',
+        headerName: 'Provision',
+        editable: true,
+        width: 100,
+        cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
       },
     ];
@@ -609,6 +618,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       consecex: 0,
       eAplicaFiscal: 'Si',
       cash: false,
+      provision: false,
       active: true,
       __isNew: true,
     };
@@ -792,6 +802,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       consecex: data.consecex || 0,
       eAplicaFiscal: data.eAplicaFiscal || 'Si',
       cash: data.cash ? true : false,
+      provision: data.provision ? true : false,
     };
 
     // Solo incluir ID si no es temporal (para updates)
@@ -886,7 +897,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       const companyId = parseInt(localStorage.getItem('company') || '0');
       const bankName = this.banks
         ? this.banks.find((b: any) => b.id === this.selectedRowData?.idBanco)
-            ?.name || ''
+          ?.name || ''
         : '';
       const accountName = `${this.selectedRowData?.nameAccount || ''} - ${bankName}`;
 
@@ -900,7 +911,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
             rootData.picture,
           );
         }
-      } catch {}
+      } catch { }
 
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;

@@ -448,35 +448,55 @@ export class ReporteOperativoSinIvaComponent {
               ),
             ),
           ]);
-          const isCash = cuenta.cash === true;
+          const isCash      = cuenta.cash      === true;
+          const isProvision = cuenta.provision === true;
           const corte  = (resCorte  as any)?.data?.saldoInicial ?? 0;
           const actual = (resActual as any)?.data?.saldoInicial ?? 0;
           return {
-            concepto: cuenta.nameAccount || '',
-            importeCorte: isCash ? Math.abs(corte)  : corte,
+            isCash,
+            isProvision,
+            importeCorte:  isCash ? Math.abs(corte)  : corte,
             importeActual: isCash ? Math.abs(actual) : actual,
           };
         } catch {
           return {
-            concepto: cuenta.nameAccount || '',
-            importeCorte: 0,
+            isCash:      cuenta.cash      === true,
+            isProvision: cuenta.provision === true,
+            importeCorte:  0,
             importeActual: 0,
           };
         }
       }),
     );
 
-    this.flujoData = results.sort((a, b) =>
-      a.concepto.localeCompare(b.concepto),
-    );
-    this.totalFlujoCorte = this.flujoData.reduce(
-      (sum, f) => sum + f.importeCorte,
-      0,
-    );
-    this.totalFlujoActual = this.flujoData.reduce(
-      (sum, f) => sum + f.importeActual,
-      0,
-    );
+    // Agrupar en 3 conceptos
+    const grupos = {
+      proyectos: { corte: 0, actual: 0 },
+      provision: { corte: 0, actual: 0 },
+      efectivo:  { corte: 0, actual: 0 },
+    };
+
+    results.forEach((r) => {
+      if (r.isCash) {
+        grupos.efectivo.corte  += r.importeCorte;
+        grupos.efectivo.actual += r.importeActual;
+      } else if (r.isProvision) {
+        grupos.provision.corte  += r.importeCorte;
+        grupos.provision.actual += r.importeActual;
+      } else {
+        grupos.proyectos.corte  += r.importeCorte;
+        grupos.proyectos.actual += r.importeActual;
+      }
+    });
+
+    this.flujoData = [
+      { concepto: 'Bancos Proyectos', importeCorte: grupos.proyectos.corte, importeActual: grupos.proyectos.actual },
+      { concepto: 'Bancos Provisión', importeCorte: grupos.provision.corte, importeActual: grupos.provision.actual },
+      { concepto: 'Efectivo',         importeCorte: grupos.efectivo.corte,  importeActual: grupos.efectivo.actual  },
+    ];
+
+    this.totalFlujoCorte  = this.flujoData.reduce((sum, f) => sum + f.importeCorte,  0);
+    this.totalFlujoActual = this.flujoData.reduce((sum, f) => sum + f.importeActual, 0);
   }
 
   private processData(): void {

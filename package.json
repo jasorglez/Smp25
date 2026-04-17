@@ -1,6 +1,6 @@
 {
   "name": "hco-siaf-front",
-  "version": "6.0.22",
+  "version": "6.0.24",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
