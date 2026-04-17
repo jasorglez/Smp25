@@ -494,6 +494,11 @@ export class AuthService {
     ) {
       return basePermissions;
     }
+    const sessionEmail = (localStorage.getItem('mail') ?? '').toLowerCase().trim();
+    const signalEmail = String(this.signalsService.getemailChoose() ?? '').toLowerCase().trim();
+    const rootEmail = String(environment.root ?? '').toLowerCase().trim();
+    const isRootSession =
+      rootEmail !== '' && (sessionEmail === rootEmail || signalEmail === rootEmail);
     const merged = this.deepClonePlainObject(basePermissions);
     for (const masterKey of Object.keys(merged)) {
       if (Object.prototype.hasOwnProperty.call(advancedPermissions, masterKey)) {
@@ -501,9 +506,10 @@ export class AuthService {
           merged[masterKey],
           advancedPermissions[masterKey]
         );
+      } else if (!isRootSession) {
+        // En modo por sucursal, lo que no venga en advanced no aplica para el sidebar de esa sucursal.
+        merged[masterKey] = this.deactivatePermissionSubtree(merged[masterKey]);
       }
-      // Si el master está en el árbol base (rol) pero no en advanced (depto/sucursal),
-      // se conserva activo: los permisos del rol son aditivos, no restrictivos.
     }
     for (const masterKey of Object.keys(advancedPermissions)) {
       if (!Object.prototype.hasOwnProperty.call(merged, masterKey)) {

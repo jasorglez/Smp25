@@ -1,0 +1,82 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+\fs22
+\b Endpoints del Sidebar y Construccion del Menu\b0\par
+\par
+Base URLs en src/environments/environment.ts:\par
+- urlSecurity = https://ms-pruebas-api.bi2.mx/api\par
+- urlSmp = https://ms-pruebas-api.bi2.mx/smp/api\par
+\par
+\b Flujo actual del sidebar\b0\par
+\par
+1. Obtener usuario por email de sesion\par
+Se ejecuta en ngOnInit() si el idUser aun no esta cargado.\par
+- GET https://ms-pruebas-api.bi2.mx/api/User/email/\{email\}\par
+- Servicio: users.service.ts\par
+- Metodo: findEmail(...)\par
+\par
+2. Obtener empresas/roots permitidos para el usuario\par
+Con ese idUser, el sidebar carga las empresas visibles.\par
+- GET https://ms-pruebas-api.bi2.mx/smp/api/SmpandSecurity/root?idUser=\{idUser\}\par
+- Servicio: root.service.ts\par
+- Metodo: get2Root(...)\par
+\par
+3. Obtener sucursales de la empresa seleccionada\par
+Hay dos rutas posibles:\par
+\par
+Si el usuario puede ver todas las sucursales, o es root:\par
+- GET https://ms-pruebas-api.bi2.mx/smp/api/Branchs/2fields?idCompany=\{idRoot\}\par
+- Servicio: branchs.service.ts\par
+- Metodo: getBranches2fields(...)\par
+\par
+Si solo puede ver sus sucursales asignadas:\par
+- GET https://ms-pruebas-api.bi2.mx/smp/api/SmpandSecurity/Branch?idUser=\{idUser\}&idRoot=\{idCompany\}\par
+- Servicio: branchs.service.ts\par
+- Metodo: getBranchesByUserAndCompany(...)\par
+\par
+4. Recargar permisos efectivos por sucursal seleccionada\par
+Esto decide que menus si se muestran al usuario.\par
+\par
+Primero vuelve a resolver el usuario por email:\par
+- GET https://ms-pruebas-api.bi2.mx/api/User/email/\{email\}\par
+\par
+Luego carga permisos base:\par
+- GET https://ms-pruebas-api.bi2.mx/api/UserSystemPermissions/guard/\{userId\}\par
+\par
+Y para sucursal concreta o Todas las sucursales, carga permisos avanzados:\par
+- GET https://ms-pruebas-api.bi2.mx/api/UserSystemPermissions/guardAdvanced/\{userId\}/\{idBranch\}\par
+\par
+- Servicio: auth.service.ts\par
+- Metodo: reloadCurrentSessionGuard(...)\par
+\par
+5. Obtener menus del sidebar para la empresa seleccionada\par
+Este endpoint llena sidebarMenus.\par
+- GET https://ms-pruebas-api.bi2.mx/api/MenuXCompany/\{idCompany\}/sidebar\par
+- Servicio: menu.service.ts\par
+- Metodo: getSidebarMenus(...)\par
+\par
+6. Obtener datos de la empresa para logo y encabezado\par
+No arma el menu, pero si actualiza nombre y logo del sidebar.\par
+- GET https://ms-pruebas-api.bi2.mx/smp/api/Root/\{id\}\par
+- Servicio: root.service.ts\par
+- Metodo: getRootbyId(...)\par
+\par
+Fallback si falla:\par
+- GET https://ms-pruebas-api.bi2.mx/smp/api/Root\par
+- Servicio: root.service.ts\par
+- Metodo: getRoot(...)\par
+\par
+\b Resumen corto\b0\par
+Los endpoints que realmente afectan el menu visible del sidebar son:\par
+- GET /api/User/email/\{email\}\par
+- GET /smp/api/SmpandSecurity/root?idUser=\{idUser\}\par
+- GET /smp/api/Branchs/2fields?idCompany=\{idRoot\}\par
+- GET /smp/api/SmpandSecurity/Branch?idUser=\{idUser\}&idRoot=\{idCompany\}\par
+- GET /api/UserSystemPermissions/guard/\{userId\}\par
+- GET /api/UserSystemPermissions/guardAdvanced/\{userId\}/\{idBranch\}\par
+- GET /api/MenuXCompany/\{idCompany\}/sidebar\par
+\par
+Ya no intervienen endpoints de:\par
+- contratos\par
+- proyectos\par
+}
