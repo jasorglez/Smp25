@@ -411,8 +411,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
+      // Cargar TODOS los proveedores del material (sin filtrar por tipo)
+      // El filtrado por tipo se hace en cellEditorParams
       const providers = await firstValueFrom(
-        this.ocAndReqsService.getProviders(materialId, type)
+        this.ocAndReqsService.getProviders(materialId, undefined)
       );
 
       this.providersCache.set(cacheKey, providers);
@@ -716,9 +718,19 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           // Buscar proveedores en el caché (clave solo por material)
           const providers = this.providersCache.get(`${materialId}`) || [];
 
+          // 🔍 DEBUG: Ver TODOS los proveedores y sus tipos
+          console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo fila: ${type}, Total en caché: ${providers.length}`);
+          if (providers.length > 0) {
+            console.log('📦 Todos los proveedores en caché:', providers.map(p => ({ id: p.idProvider, name: p.providerName, type: p.typeIntOrExt })));
+          }
+
+          // ✅ FILTRAR: Solo mostrar proveedores que sean typeIntOrExt === 'Interno'
+          const filteredProviders = providers.filter(p => p.typeIntOrExt === 'Interno');
+
+          console.log(`✅ Filtrados (Interno): ${filteredProviders.length}`);
 
           return {
-            options: providers.map(p => {
+            options: filteredProviders.map(p => {
               const dashIdx = (p.providerName || '').indexOf(' - ');
               const display = dashIdx !== -1
                 ? p.providerName.substring(dashIdx + 3).trim()

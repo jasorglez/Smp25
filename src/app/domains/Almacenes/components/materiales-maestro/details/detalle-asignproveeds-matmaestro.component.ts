@@ -10,6 +10,7 @@ import { alerts } from 'app/helpers/alerts';
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetallesSucursalesProveedorComponent } from './detalles-sucursalesproveedor.component';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
@@ -78,6 +79,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
+  private materialsService = inject(MaterialsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
 
   private _sucursalSub: Subscription;
@@ -242,7 +244,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
                 id: p.id,
                 description: isCompany ? company : (contact || `Proveedor ${p.id}`),
                 group: isCompany ? 'Compañía' : 'Contacto',
-                sortKey: isCompany ? company : contact
+                sortKey: isCompany ? company : contact,
+                valueAddition2: p.typeIntOrExt || p.typework || 'Sin tipo',
+                label2: 'Tipo de proveedor:'
               };
             })
             .sort((a: any, b: any) => {
@@ -519,10 +523,28 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   async loadProviders() {
     try {
-      // 1. Cargar todos los proveedores vigentes
-      const allProviders: any = await this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').toPromise();
+      // 1. Cargar todos los proveedores vigentes + tipos del Warehouse en paralelo
+      const [allProviders, warehouseProviders]: any = await Promise.all([
+        this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').toPromise(),
+        firstValueFrom(this.materialsService.getProvidersxmaterials(this.idRoot)).catch(() => [])
+      ]);
+
       this.providers = allProviders.filter((p: any) => p.vigente === true || p.vigente === 1);
 
+<<<<<<< HEAD
+      // Enriquecer proveedores con typeIntOrExt del Warehouse
+      const typeMap = new Map<number, string>();
+      (warehouseProviders || []).forEach((wp: any) => {
+        if (wp.id && wp.typeIntOrExt) typeMap.set(wp.id, wp.typeIntOrExt);
+      });
+      this.providers = this.providers.map((p: any) => ({
+        ...p,
+        typeIntOrExt: typeMap.get(p.id) || null
+      }));
+
+      console.log('📦 Total proveedores vigentes:', this.providers.length);
+=======
+>>>>>>> eb68bbd89972abb3865a6f74c18053976130240e
 
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
