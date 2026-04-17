@@ -232,8 +232,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
     this.data = params.data;
     // ✅ Usar params.data.id para el select (como hace el componente de Proveedores)
     this.idSelect = params.data.id;
-    console.log('ID Root en Costos (desde signal):', this.idRoot);
-    console.log('Select en Costos (desde data.id):', this.idSelect);
     this.obtenerDatos();
     this.familias(this.data);
     this.familiasVigentes(this.data);
@@ -273,7 +271,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       valueAddition2: f.subfamilia ?? ''
     }));
 
-    console.log("OPCIONES EN EL EDITOR:", opts);
     return { options: opts };
   },
 
@@ -527,7 +524,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       this.materiaByCatalogService.getMateriaByCatalog(this.idRoot, this.idSelect).subscribe(
         (data: any) => {
             this.costosRowData = data;
-          console.log('Datos obtenidos del servidor:', this.costosRowData);
 
           // Calcular y almacenar los valores calculados para cada fila
           this.costosRowData.forEach(row => {
@@ -556,21 +552,17 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
   }
 
     familias(idFamilia:any){
-      console.log(idFamilia);
     this.familySubFamily.getArticulosCatalogsMasterByFamily(this.idRoot).subscribe(
       (data: any) => {
         this.familiasVigente = data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
   }
   familiasVigentes(idFamilia:any){
-    console.log("data",this.idRoot,this.idSelect,idFamilia);
     this.familySubFamily.getArticulosCatalogsMasterByFamilyVigentes(this.idRoot, this.idSelect, idFamilia.idFamilia).subscribe(
       (data: any) => {
         this.families= data;
-        console.log("-------vigentes " , data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -585,7 +577,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       // Already filtering by this id, remove filter
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
-      console.log('Filtro quitado para id:', selectedId);
     } else {
       // Apply filter
       const filterModel = {
@@ -596,7 +587,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       };
       this.gridApi.setFilterModel(filterModel);
       this.gridApi.onFilterChanged();
-      console.log('Filtro aplicado para id:', selectedId);
     }
   }
 
@@ -612,7 +602,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
     const colIdClicked = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro
-    console.log('Celda clickeada en columna:', colIdClicked, 'ID seleccionado:', selectedId);
 
     if (colIdClicked === 'parametros') {
       selectedRowData.detailType = 'parametros';
@@ -624,7 +613,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       if (this.gridApi) {
         this.gridApi.setFilterModel(null);
         this.gridApi.onFilterChanged();
-        console.log('Filtro quitado al clickear otra columna');
       }
     }
   }
@@ -680,7 +668,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
 
     const node = selectedNodes[0];
     const selectedData = node?.data;
-    console.log('Datos seleccionados para eliminar:', selectedData);
     if (!selectedData) {
       alerts.basicAlert('Eliminar entrada', 'No se encontró la fila seleccionada.', 'error');
       return;
@@ -790,7 +777,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
               mainGridApi.forEachNode((node: any) => {
                 if (node.data && node.data.id === materialId) {
                   node.data.costo = totalCosto;
-                  console.log('✅ Costo actualizado en grid maestro:', totalCosto);
                   mainGridApi.refreshCells({
                     rowNodes: [node],
                     columns: ['costo'],
@@ -841,7 +827,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
           mainGridApi.forEachNode((node: any) => {
             if (node.data && node.data.id === materialId) {
               node.data.costo = totalCosto;
-              console.log('✅ Costo actualizado en maestro (undo):', totalCosto);
               mainGridApi.refreshCells({
                 rowNodes: [node],
                 columns: ['costo'],
@@ -889,7 +874,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
   // --- Lógica para la Barra de Fórmulas ---
 
   onCellFocused(event: CellFocusedEvent) {
-    console.log('Celda enfocada:', event);
     this.clearCellHighlights(); // Limpiar resaltados anteriores
 
     if (!event.rowIndex || !event.column) {
@@ -927,12 +911,10 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       this.formulaBar.nativeElement.select();
     }
 
-    console.log('Evento de tecla en celda:', event);
     if (event.column) {
       const colIdClicked = event.column.getColId();
       const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
       const selectedId = selectedRowData.id; // Obtener el ID del registro
-      console.log('Celda clickeada en columna:', colIdClicked, 'ID seleccionado:', selectedId);
 
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
       if (colIdClicked === 'parametros') {
@@ -945,14 +927,12 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
           };
           this.gridApi.setFilterModel(filterModel);
           this.gridApi.onFilterChanged();
-          console.log('Filtro aplicado al enfocar parametros para id:', selectedId);
         }
       } else {
         // Quitar filtro si se enfoca otra columna
         if (this.gridApi) {
           this.gridApi.setFilterModel(null);
           this.gridApi.onFilterChanged();
-          console.log('Filtro quitado al enfocar otra columna');
         }
       }
     }
@@ -1073,7 +1053,6 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
         // Usamos getValue para asegurarnos de obtener el valor calculado (ej. de una fórmula)
 
         const value = this.gridApi.getValue(field, node);
-        console.log(`Valor para suma en ${field} de fila ${node.rowIndex}:`, value);
         if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
           sum += value;
         } else if (node.data && typeof node.data[field] === 'number' && !isNaN(node.data[field]) && isFinite(node.data[field])) {

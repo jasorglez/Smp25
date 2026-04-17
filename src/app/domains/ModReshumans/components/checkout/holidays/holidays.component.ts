@@ -157,7 +157,6 @@ export default class HolidaysComponent {
           forkJoin(allRequests).subscribe({
             next: (responses) => {
               //alert('Registros completados: ' + responses.length);
-              console.log('✅ Registros completados:', responses);
               alerts.basicAlert('Éxito', 'Se procesaron todos los registros.', 'success');
             },
             error: (err) => {
@@ -206,8 +205,6 @@ export default class HolidaysComponent {
                 adjustedTimeBySystem: `${fechaStr}T${horaSalida}`,
                 type: 'OUT'
               };
-              console.log(dataIn)
-              console.log(dataOut)
               allRequests.push(this.clockService.checkInOut(dataIn));
               allRequests.push(this.clockService.checkInOut(dataOut));
             });

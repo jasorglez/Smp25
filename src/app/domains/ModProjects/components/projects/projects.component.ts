@@ -260,7 +260,6 @@ export class ProjectsComponent {
     this.personalByProyectService.getCantidadPersonal().subscribe(
       (data: any) => {
         this.cantidadPersonal = data;
-        console.log('Personal data loaded:', this.cantidadPersonal);
       },
       (error) => {
         console.error('Error fetching personal data:', error);
@@ -305,7 +304,6 @@ export class ProjectsComponent {
     this.projectsService.getProjectListByCompany(this.idCompany).subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
-        console.log('Projects loaded:', this.project);
       },
       (error) => {
         console.error('Error fetching projects', error);
@@ -539,7 +537,6 @@ export class ProjectsComponent {
     if (this.addProject.valid) {
       this.formData = this.prepareFormData();
       if (this.isEditing && this.selectedRowData) {
-        console.log('Updating contract with data:', this.selectedRowData);
         this.projectsService.updateProject(this.selectedRowData.id, this.formData).pipe(
           catchError((error) => {
             alerts.basicAlert(
@@ -561,7 +558,6 @@ export class ProjectsComponent {
           this.resetForm();
         });
       } else {
-        console.log('Adding contract with data:', this.formData);
         this.projectsService.addProject(this.formData).pipe(
           catchError((error) => {
             alerts.basicAlert(

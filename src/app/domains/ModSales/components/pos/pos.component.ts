@@ -102,7 +102,6 @@ export class PosComponent {
       debounceTime(200),
       distinctUntilChanged(),
       switchMap((term) => {
-        console.log('Buscando materiales con término:', term);
         return this.materialsService
           .getMaterialsByNameOrBarcode(this.idCompany, term)
           .pipe(
@@ -195,7 +194,6 @@ export class PosComponent {
           this.idCustomer = this.clients[0].id; // Seleccionar el primer cliente
           this.signalsService.setIdCustomerFromPOS(this.idCustomer); // Enviar a la signal
         }
-        console.log(data);
       },
       (error) => console.error('Error fetching clients:', error)
     );
@@ -269,8 +267,6 @@ export class PosComponent {
     // Consumir el servicio getPosSetup
     this.posService.getPosSetup(this.idBranch, this.idCustomer).subscribe({
       next: (setupResponse) => {
-        console.log(this.idBranch, this.idCustomer);
-        console.log(setupResponse);
         if (setupResponse.length === 0) {
           alerts.basicAlert(
             'Error',
@@ -297,7 +293,6 @@ export class PosComponent {
         this.posService.addSaleXCustomerItem(data).subscribe({
           next: (response) => {
             const saleId = response.id;
-            console.log('ID de venta:', saleId);
 
             // Actualizar el idSale en todas las filas y eliminar el id temporal
             this.rowData = this.rowData.map((row) => {
@@ -334,7 +329,6 @@ export class PosComponent {
                   .updatePosSetup(this.idBranch, this.idCustomer, updatedSetup)
                   .subscribe({
                     next: () => {
-                      console.log('Consecutive actualizado correctamente.');
                     },
                     error: (error) => {
                       console.error(

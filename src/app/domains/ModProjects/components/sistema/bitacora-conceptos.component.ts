@@ -213,7 +213,6 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
       active: 1,
     };
     
-    console.log('buildPayload payload:', JSON.stringify(payload, null, 2));
     
     if (isUpdate && item.id) {
       payload.id = item.id;

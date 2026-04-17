@@ -233,7 +233,6 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
   constructor(private renderer: Renderer2) {}
 
   agInit(params: SelectWithTooltipParams): void {
-    console.log('SelectWithTooltipEditor: agInit called');
     this.params = params;
     this.options = params.options || [];
     this.filteredOptions = [...this.options];
@@ -241,23 +240,19 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
 
     // Crear el dropdown inmediatamente en agInit
     setTimeout(() => {
-      console.log('SelectWithTooltipEditor: Creating dropdown in agInit');
       this.createDropdownInBody();
 
       // Configurar listener después de un delay
       setTimeout(() => {
-        console.log('SelectWithTooltipEditor: Setting up document click listener');
         this.setupDocumentClickListener();
       }, 300);
     }, 0);
   }
 
   ngAfterViewInit(): void {
-    console.log('SelectWithTooltipEditor: ngAfterViewInit called');
   }
 
   afterGuiAttached?(): void {
-    console.log('SelectWithTooltipEditor: afterGuiAttached called');
   }
 
   private setupDocumentClickListener(): void {
@@ -300,7 +295,6 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
   }
 
   selectOption(option: SelectOption): void {
-    console.log('Opción seleccionada:', option.description, 'ID:', option.id);
     this.selectedValue = option.id;
     this.showTooltip = false;
     this.hoveredOption = null;
@@ -637,7 +631,6 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
   }
 
   ngOnDestroy(): void {
-    console.log('SelectWithTooltipEditor: ngOnDestroy called');
     this.removeDropdownFromBody();
   }
 }

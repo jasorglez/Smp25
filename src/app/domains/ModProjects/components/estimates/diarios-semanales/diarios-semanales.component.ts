@@ -259,7 +259,6 @@ export class DiariosSemánalesComponent {
     return this.catalogService.getPhases(this.idcompany).subscribe(
       (data: any )=> {
         this.areasDisponibles = data
-        console.log(this.areasDisponibles)
       },
       (error) => console.error('Error fetching conceptos:', error))
   }

@@ -139,7 +139,6 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     // Verificar si el campo modificado es 'id_company'
     if (event.colDef.field === 'id_company') {

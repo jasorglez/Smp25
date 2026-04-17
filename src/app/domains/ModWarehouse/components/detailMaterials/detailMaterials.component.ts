@@ -359,7 +359,6 @@ export class DetailMaterialsComponent {
           return foundItem ? `${foundItem.description}` : params.value;
         },
         valueGetter: (params) => {
-          console.log(params)
           if (!params.data || !params.data.idFamilia) return '';
           const familias = this.familias?.find(b => b.id === params.data.idFamilia);
         
@@ -427,7 +426,6 @@ export class DetailMaterialsComponent {
           return foundItem ? `${foundItem.description}` : params.value;
         },
         valueGetter: (params) => {
-          console.log(params)
           if (!params.data || !params.data.idSubfamilia) return '';
           const familias = this.subfamilias2?.find(b => b.id === params.data.idSubfamilia);
         
@@ -500,7 +498,6 @@ export class DetailMaterialsComponent {
         (item) => item.nameContact === selectedProveedor
       );
         
-      console.log(proveedorInfo.id)
       /*if (bonusInfo) {
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
       }*/

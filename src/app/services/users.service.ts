@@ -63,7 +63,6 @@ export class UsersService {
   }
 
   updateUser(id: string, data: any): Observable<any> {
-    console.log('DATA EN EL UPDATE', data)
     return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 

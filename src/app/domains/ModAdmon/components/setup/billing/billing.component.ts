@@ -32,7 +32,6 @@ export class BillingComponent {
 
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    console.log('ngOnInit - idRoot:', this.idRoot);
     this.getFiscalRegimes();
     this.getBillingManagementData();
   }
@@ -40,7 +39,6 @@ export class BillingComponent {
   constructor() {
     effect(() => {
       const newIdRoot = this.signalsService.getRootSelectedBySidebar()();
-      console.log('effect triggered - newIdRoot:', newIdRoot, 'currentIdRoot:', this.idRoot);
       if (newIdRoot && newIdRoot !== this.idRoot) {
         this.idRoot = newIdRoot;
         this.getBillingManagementData();
@@ -50,16 +48,13 @@ export class BillingComponent {
 
   getBillingManagementData() {
     if (!this.idRoot) {
-      console.log('getBillingManagementData - idRoot is null, skipping');
       return;
     }
 
-    console.log('getBillingManagementData - calling API with idRoot:', this.idRoot);
     this.administrationService
       .getBillingManagementInfo(this.idRoot)
       .subscribe({
         next: (data: any) => {
-          console.log('getBillingManagementData - received data:', data);
 
           if (data && data.length > 0) {
             // Crear nuevo objeto con todos los campos
@@ -89,7 +84,6 @@ export class BillingComponent {
             };
 
             this.newData = false;
-            console.log('getBillingManagementData - final billingData:', this.billingData);
           } else {
             this.billingData = {};
             this.newData = true;
@@ -99,7 +93,6 @@ export class BillingComponent {
           this.checkCertificateStatus();
         },
         error: (err) => {
-          console.log('getBillingManagementData - error:', err);
           if (err.status === 404) {
             this.billingData = {
               emisorRfc: '',
@@ -118,13 +111,11 @@ export class BillingComponent {
   }
 
   getFiscalRegimes() {
-    console.log('getFiscalRegimes - calling API');
     this.administrationService
       .getFiscalRegimes()
       .subscribe({
         next: (data: any) => {
           this.fiscalRegimes = data;
-          console.log('getFiscalRegimes - received data:', this.fiscalRegimes);
         },
         error: (err) => {
           console.error('getFiscalRegimes - error:', err);
@@ -138,7 +129,6 @@ export class BillingComponent {
       .subscribe({
         next: (data: any) => {
           this.certificateStatus = data;
-          console.log('Certificate status:', this.certificateStatus);
         },
         error: (err) => {
           console.error('Error checking certificates:', err);
@@ -152,11 +142,9 @@ export class BillingComponent {
 // En billing.component.ts - Modifica el método saveChanges()
 
 saveChanges() {
-  console.log('Saving changes, cerFile:', this.cerFile, 'keyFile:', this.keyFile);
   
   // Si hay archivos para subir/actualizar
   if (this.cerFile || this.keyFile) {
-    console.log('Processing certificate files');
     const formData = new FormData();
     if (this.cerFile) formData.append('CerFile', this.cerFile);
     if (this.keyFile) formData.append('KeyFile', this.keyFile);
@@ -169,7 +157,6 @@ saveChanges() {
     uploadMethod(this.idRoot, formData)
       .subscribe({
         next: (response: any) => {
-          console.log('Certificate operation success:', response);
           if (response.message) {
             alerts.basicAlert("Éxito", response.message, "success");
           }
@@ -180,7 +167,6 @@ saveChanges() {
           this.saveConfig();
         },
         error: (err) => {
-          console.log('Certificate operation error:', err);
           const errorMessage = err.error?.message || "Error al procesar los certificados.";
           alerts.basicAlert("Error", errorMessage, "error");
         }
@@ -217,7 +203,6 @@ onCerFileSelected(event: any) {
     }
 
     this.cerFile = file;
-    console.log('Cer file selected:', file.name, 'Size:', file.size);
 
     // Leer el archivo .cer para extraer fechas
     const reader = new FileReader();
@@ -230,7 +215,6 @@ onCerFileSelected(event: any) {
         this.billingData.dateStart = cert.validFrom;
         this.billingData.dateEnd = cert.validTo;
         
-        console.log('Certificate dates extracted:', cert.validFrom, 'to', cert.validTo);
       } catch (error) {
         console.error('Error al leer el certificado:', error);
         alerts.basicAlert("Advertencia", "No se pudieron extraer las fechas del certificado. Verifique que sea un archivo .cer válido.", "warning");
@@ -258,7 +242,6 @@ onKeyFileSelected(event: any) {
     }
 
     this.keyFile = file;
-    console.log('Key file selected:', file.name, 'Size:', file.size);
   }
 }
 
@@ -307,7 +290,6 @@ onKeyFileSelected(event: any) {
 
     if (this.newData) {
       this.billingData.idRoot = this.idRoot;
-      console.log('Datos enviados a addBillingManagementInfo:', this.billingData);
       this.administrationService.addBillingManagementInfo(this.billingData)
         .subscribe({
           next: () => {

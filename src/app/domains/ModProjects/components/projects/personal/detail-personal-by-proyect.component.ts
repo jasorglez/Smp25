@@ -107,7 +107,6 @@ export class DetailPersonalByProyectComponent implements ICellRendererAngularCom
       // opcionales: agregar campos auxiliares si los necesita el tooltip
     }));
 
-    console.log("OPCIONES EN EL EDITOR:", opts);
     return { options: opts };
   },
 
@@ -115,7 +114,6 @@ export class DetailPersonalByProyectComponent implements ICellRendererAngularCom
     // Aceptar que el valor pueda ser un objeto (editor devuelve {value,label})
     const raw = params.value;
     const val = (raw && typeof raw === 'object') ? (raw.value ?? raw.id) : raw;
-    console.log('Valor en valueFormatter:', val);
     const emp = this.empleadoCatalgos?.find(e => e.id === val);
     // Si no encontramos el empleado pero el raw es objeto, mostrar su label como respaldo
     if (emp) return emp.name;
@@ -171,7 +169,6 @@ constructor() {
 
 agInit(params: any): void {
   this.params = params;
-  console.log('DetailPersonalByProyectComponent initialized with params:', params);
   this.projectId = params.data.id;
   this.projectName = params.data.name;
   this.obtenerEmpleados();
@@ -186,11 +183,9 @@ agInit(params: any): void {
 
  cargarCatalogoEmpleados(idRoot: number): Promise<boolean> {
    return new Promise((resolve) => {
-    console.log('Cargando catálogo de empleados para idRoot:', idRoot);
      this.employeeService.getEmployees(-idRoot).subscribe(
        (data: any) => {
          this.empleadoCatalgos = data;
-         console.log('Catálogo de empleados cargado:', this.empleadoCatalgos);
          resolve(true);
        },
        (error) => {
@@ -213,7 +208,6 @@ agInit(params: any): void {
     this.personalByProyectService.getPersonalByProyect(this.projectId).subscribe(
       (data: any) => {
         this.personalRowData = data;
-        console.log('Personal data loaded:', this.personalRowData);
       },
       (error) => {
         console.error('Error fetching personal data:', error);
@@ -326,7 +320,6 @@ agInit(params: any): void {
 
         const node = selectedNodes[0];
         const selectedData = node?.data;
-        console.log('Datos seleccionados para eliminar:', selectedData);
         if (!selectedData) {
           alerts.basicAlert('Eliminar empleado', 'No se encontró la fila seleccionada.', 'error');
           return;

@@ -868,13 +868,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
     const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row, true); // isNew = true
-      console.log('Nuevo material:', cleanedData);
       return lastValueFrom(this.materialsService.addMaterial(cleanedData));
     });
 
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row, false); // isNew = false
-      console.log('Actualizar material ID:', row.id, cleanedData);
       return lastValueFrom(this.materialsService.updateMaterial(row.id, cleanedData));
     });
 
@@ -945,7 +943,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     /*if (selectedData.loan && selectedData.loan !== 0) {

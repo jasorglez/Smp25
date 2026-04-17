@@ -61,13 +61,11 @@ export class DetailsprocessComponent {
 
   
     onSelectedRow(event: any) {
-      console.log('es el evento',event)
       this.id = event.data.id;
     }
   
     
     onCellValueChanged(event: any) {
-      console.log('Dato cambiado:', event.data);
       event.data.__modified = true;
       this.notSavedChanges  = true;
     }
@@ -104,7 +102,6 @@ export class DetailsprocessComponent {
   };
   
     onSelectionChanged(event: any) {
-      console.log('Viene del OnSelectionChanged',event)
       const selectedNodes = event.api.getSelectedNodes();
       if (selectedNodes.length > 0) {
         this.selectedRowData = selectedNodes[0].data;
@@ -134,7 +131,6 @@ export class DetailsprocessComponent {
       this.catalogService.getPermissionxprocess(this.signalsService.getProcces()()).subscribe(
         (data: any) => {
           this.rowData = data;      
-          console.log('Data fetched:', this.rowData);
         },
         (error) => {
           if (error.status == 404) this.depto = [];
@@ -175,7 +171,6 @@ export class DetailsprocessComponent {
         
               const updateObservables = modifiedRows.map((row) => {
                 const cleanedData = this.cleanDataForServer(row);
-                console.log('Clean', cleanedData)
                 return this.catalogService.updatePermission(cleanedData);
               });              
 

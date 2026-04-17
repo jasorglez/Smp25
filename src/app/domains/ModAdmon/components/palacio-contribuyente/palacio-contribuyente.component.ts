@@ -118,7 +118,6 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
-      console.log(this.contactoCatalog)
     });
   }
 
@@ -723,7 +722,6 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
         .subscribe({
           next: (data: any) => {
             this.contactoCatalog = data;
-            console.log(this.contactoCatalog)
           },
           error: (error) => {
             console.error('Error obteniendo datos:', error);

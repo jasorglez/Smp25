@@ -329,7 +329,6 @@ export class DigitalPayrollDetailsTableComponent {
     this.idBlockPeriodsService.getIdBlockPeriods(idBranch).subscribe(
       (data: any) => {
         this.blockPeriods = data;
-        console.log(this.blockPeriods)
       },
       (error) => console.error('Error fetching data:', error)
     )

@@ -198,7 +198,6 @@ export default class DbComponent {
           date: new Date(item.date),  // Convertir cadena a Date
           hour: new Date(`${item.date}T${item.hour}`)  // Combinar fecha y hora
         }));
-        console.log(this.data);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Histórico de Checador', 'Menu Recursos HumanosHistórico Checador',  this.trackingService.getEmail());
       },
       error => {
@@ -208,17 +207,13 @@ export default class DbComponent {
   }
   onRowDoubleClicked(event: any) {
     this.idEmployee = event.data.id;
-    console.log(this.localTime.slice(0, 10), event.data.timeStamp);
     this.checkIncidentsByWeek(this.idEmployee, this.localTime.slice(0, 10), event.data.timeStamp);
-    console.log('ID Empleado seleccionado:', this.idEmployee);
 
     const modal = new bootstrap.Modal(document.getElementById('searchModal')!);
     modal.show();
   }
 
   onSearch() {
-    console.log('Fecha Inicio:', this.startDate);
-    console.log('Fecha Fin:', this.endDate);
 
     const modal = bootstrap.Modal.getInstance(document.getElementById('searchModal')!);
     modal?.hide();
@@ -227,7 +222,6 @@ export default class DbComponent {
   getTime() {
     return this.timeService.getTime().subscribe(time => {
       this.localTime = time.localTime;
-      console.log('Fecha y hora local:', this.localTime);
     });
   }
 
@@ -280,12 +274,9 @@ export default class DbComponent {
       };
 
       // Mostrar en consola las fechas calculadas
-      console.log('startPeriod:', formatLocalDate(startPeriod));
-      console.log('endPeriod:', formatLocalDate(endPeriod));
 
       // Llamar al servicio para verificar incidentes
       this.clockService.checkIncidentsByEmployee(idEmployee, formatLocalDate(startPeriod), formatLocalDate(endPeriod)).subscribe(incidentData => {
-        console.log('Datos de incidentes:', incidentData);
         this.weekData = incidentData;
       });
     });
@@ -303,7 +294,6 @@ export default class DbComponent {
 
     // Llamar al servicio para verificar incidentes
     this.clockService.checkIncidentsByEmployee(idEmployee, start, endDateFormatted).subscribe(incidentData => {
-      console.log('Datos de incidentes:', incidentData);
       this.customData = incidentData;
     });
   }

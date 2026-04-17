@@ -156,7 +156,6 @@ export class RawMaterialsComponent {
       next: (data: any) => {
         this.projectOrBranch = data[0].projectOrBranch;
         this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-        console.log(this.projectOrBranch);
       },
       error: (err) => {
         if (err.status === 404) {

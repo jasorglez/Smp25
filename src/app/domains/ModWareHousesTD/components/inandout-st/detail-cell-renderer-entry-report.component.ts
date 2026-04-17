@@ -70,8 +70,6 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
   private async generateReport() {
     if (!this.entryData) return;
 
-    console.log('Entry data type:', this.entryData.type);
-    console.log(`Generating report for ${this.entryData.type === 'IN' ? 'ENTRADA' : 'SALIDA'}`);
 
     try {
       // Configure fonts for pdfMake

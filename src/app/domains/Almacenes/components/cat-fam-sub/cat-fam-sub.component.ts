@@ -428,7 +428,6 @@ export class CatFamSubComponent {
 
   // Cambios en celdas
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     if (event.colDef.field === 'valueAdditionBit') {
       this.catalogsService.updateValueBit(
         event.data.originalId,
@@ -436,7 +435,6 @@ export class CatFamSubComponent {
         "MATERIAL"
       ).subscribe({
         next: (result) => {
-          console.log(result)
           if (result) {
             alerts.basicAlert(
               'Guardado exitoso',
@@ -467,14 +465,12 @@ export class CatFamSubComponent {
       // 1. Si se desactiva una categoría, desactivar todas sus familias y subfamilias
       if (nodeLevel === 'category' && newValue === false) {
         const categoryId = event.data.originalId;
-        console.log(`❌ Desactivando categoría ${categoryId} - cascada a familias y subfamilias`);
 
         this.treeData.forEach(node => {
           // Desactivar familias de esta categoría
           if (node.nodeLevel === 'family' && node.parentCategoryId === categoryId) {
             node.vigente = false;
             node.__modified = true;
-            console.log(`  ❌ Familia desactivada: ${node.description}`);
 
             // Desactivar subfamilias de esta familia
             const familyId = node.originalId;
@@ -482,7 +478,6 @@ export class CatFamSubComponent {
               if (subNode.nodeLevel === 'subfamily' && subNode.parentFamilyId === familyId) {
                 subNode.vigente = false;
                 subNode.__modified = true;
-                console.log(`    ❌ Subfamilia desactivada: ${subNode.description}`);
               }
             });
           }
@@ -495,13 +490,11 @@ export class CatFamSubComponent {
       // 2. Si se desactiva una familia, desactivar todas sus subfamilias
       if (nodeLevel === 'family' && newValue === false) {
         const familyId = event.data.originalId;
-        console.log(`❌ Desactivando familia ${familyId} - cascada a subfamilias`);
 
         this.treeData.forEach(node => {
           if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
             node.vigente = false;
             node.__modified = true;
-            console.log(`  ❌ Subfamilia desactivada: ${node.description}`);
           }
         });
 
@@ -513,14 +506,12 @@ export class CatFamSubComponent {
       // 3. Si se activa una categoría, activar todas sus familias y subfamilias (cascada hacia abajo)
       if (nodeLevel === 'category' && newValue === true) {
         const categoryId = event.data.originalId;
-        console.log(`✅ Activando categoría ${categoryId} - cascada a familias y subfamilias`);
 
         this.treeData.forEach(node => {
           // Activar familias de esta categoría
           if (node.nodeLevel === 'family' && node.parentCategoryId === categoryId) {
             node.vigente = true;
             node.__modified = true;
-            console.log(`  ✅ Familia activada: ${node.description}`);
 
             // Activar subfamilias de esta familia
             const familyId = node.originalId;
@@ -528,7 +519,6 @@ export class CatFamSubComponent {
               if (subNode.nodeLevel === 'subfamily' && subNode.parentFamilyId === familyId) {
                 subNode.vigente = true;
                 subNode.__modified = true;
-                console.log(`    ✅ Subfamilia activada: ${subNode.description}`);
               }
             });
           }
@@ -541,14 +531,12 @@ export class CatFamSubComponent {
       if (nodeLevel === 'family' && newValue === true) {
         const familyId = event.data.originalId;
         const categoryId = event.data.parentCategoryId;
-        console.log(`✅ Activando familia ${familyId} - activar categoría padre ${categoryId} y subfamilias hijas`);
 
         // Activar categoría padre (hacia arriba)
         this.treeData.forEach(node => {
           if (node.nodeLevel === 'category' && node.originalId === categoryId) {
             node.vigente = true;
             node.__modified = true;
-            console.log(`  ✅ Categoría padre activada: ${node.description}`);
           }
         });
 
@@ -557,7 +545,6 @@ export class CatFamSubComponent {
           if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
             node.vigente = true;
             node.__modified = true;
-            console.log(`  ✅ Subfamilia activada: ${node.description}`);
           }
         });
 
@@ -577,8 +564,6 @@ export class CatFamSubComponent {
         const activeCount = allSubfamilies.filter(sf => sf.vigente === true).length;
         const totalCount = allSubfamilies.length;
 
-        console.log(`📊 Subfamilia ${newValue ? 'activada' : 'desactivada'}: ${event.data.description}`);
-        console.log(`   Subfamilias activas: ${activeCount}/${totalCount}`);
 
         // Buscar la familia padre
         const familyNode = this.treeData.find(node =>
@@ -590,12 +575,10 @@ export class CatFamSubComponent {
 
           // Si TODAS las subfamilias están activas → activar familia padre
           if (activeCount === totalCount && newValue === true) {
-            console.log(`✅ Todas las subfamilias activas → activando familia padre`);
 
             if (!familyNode.vigente) {
               familyNode.vigente = true;
               familyNode.__modified = true;
-              console.log(`  ✅ Familia activada: ${familyNode.description}`);
             }
 
             // Verificar si todas las familias de la categoría están activas
@@ -604,17 +587,14 @@ export class CatFamSubComponent {
             );
             const activeFamilies = allFamilies.filter(f => f.vigente === true).length;
 
-            console.log(`   Familias activas: ${activeFamilies}/${allFamilies.length}`);
 
             // Si TODAS las familias están activas → activar categoría
             if (activeFamilies === allFamilies.length) {
-              console.log(`✅ Todas las familias activas → activando categoría padre`);
 
               this.treeData.forEach(node => {
                 if (node.nodeLevel === 'category' && node.originalId === categoryId && !node.vigente) {
                   node.vigente = true;
                   node.__modified = true;
-                  console.log(`  ✅ Categoría activada: ${node.description}`);
                 }
               });
             }
@@ -622,12 +602,10 @@ export class CatFamSubComponent {
 
           // Si TODAS las subfamilias están desactivadas → desactivar familia padre
           if (activeCount === 0 && newValue === false) {
-            console.log(`❌ Todas las subfamilias desactivadas → desactivando familia padre`);
 
             if (familyNode.vigente) {
               familyNode.vigente = false;
               familyNode.__modified = true;
-              console.log(`  ❌ Familia desactivada: ${familyNode.description}`);
             }
 
             // Verificar si todas las familias de la categoría están desactivadas
@@ -636,17 +614,14 @@ export class CatFamSubComponent {
             );
             const inactiveFamilies = allFamilies.filter(f => f.vigente === false).length;
 
-            console.log(`   Familias desactivadas: ${inactiveFamilies}/${allFamilies.length}`);
 
             // Si TODAS las familias están desactivadas → desactivar categoría
             if (inactiveFamilies === allFamilies.length) {
-              console.log(`❌ Todas las familias desactivadas → desactivando categoría padre`);
 
               this.treeData.forEach(node => {
                 if (node.nodeLevel === 'category' && node.originalId === categoryId && node.vigente) {
                   node.vigente = false;
                   node.__modified = true;
-                  console.log(`  ❌ Categoría desactivada: ${node.description}`);
                 }
               });
             }
@@ -668,31 +643,25 @@ export class CatFamSubComponent {
         const activeCount = allFamilies.filter(f => f.vigente === true).length;
         const totalCount = allFamilies.length;
 
-        console.log(`📊 Familia ${newValue ? 'activada' : 'desactivada'}: ${event.data.description}`);
-        console.log(`   Familias activas: ${activeCount}/${totalCount}`);
 
         // Si TODAS las familias están activas → activar categoría padre
         if (activeCount === totalCount && newValue === true) {
-          console.log(`✅ Todas las familias activas → activando categoría padre`);
 
           this.treeData.forEach(node => {
             if (node.nodeLevel === 'category' && node.originalId === categoryId && !node.vigente) {
               node.vigente = true;
               node.__modified = true;
-              console.log(`  ✅ Categoría activada: ${node.description}`);
             }
           });
         }
 
         // Si TODAS las familias están desactivadas → desactivar categoría padre
         if (activeCount === 0 && newValue === false) {
-          console.log(`❌ Todas las familias desactivadas → desactivando categoría padre`);
 
           this.treeData.forEach(node => {
             if (node.nodeLevel === 'category' && node.originalId === categoryId && node.vigente) {
               node.vigente = false;
               node.__modified = true;
-              console.log(`  ❌ Categoría desactivada: ${node.description}`);
             }
           });
         }
@@ -713,11 +682,9 @@ export class CatFamSubComponent {
     const itemsToUpdate = this.treeData.filter(item => item.__modified);
 
     if (itemsToUpdate.length === 0) {
-      console.log('No hay cambios de vigente para guardar');
       return;
     }
 
-    console.log(`💾 Guardando ${itemsToUpdate.length} cambios de vigente...`);
 
     try {
       // Guardar cada elemento modificado
@@ -738,13 +705,11 @@ export class CatFamSubComponent {
         };
 
         await lastValueFrom(this.catalogsService.updateCatalog(item.originalId, updateData));
-        console.log(`  ✅ Guardado: ${item.description} (vigente: ${item.vigente})`);
 
         // Limpiar el flag de modificado
         delete item.__modified;
       }
 
-      console.log('✅ Todos los cambios de vigente se guardaron correctamente');
       this.notSavedChanges = false;
 
       // Recargar datos para asegurar consistencia
@@ -782,7 +747,6 @@ export class CatFamSubComponent {
       const columnState = this.gridApi.getColumnState();
       const localStorageKey = `catfam_sub_column_state_${this.idRoot}`;
       localStorage.setItem(localStorageKey, JSON.stringify(columnState));
-      console.log('💾 Estado de columnas guardado:', columnState);
     } catch (error) {
       console.error('Error guardando estado de columnas:', error);
     }
@@ -802,7 +766,6 @@ export class CatFamSubComponent {
           state: columnState,
           applyOrder: true
         });
-        console.log('📂 Estado de columnas cargado:', columnState);
       }
     } catch (error) {
       console.error('Error cargando estado de columnas:', error);
@@ -949,9 +912,7 @@ export class CatFamSubComponent {
     if (!result.isConfirmed) return;
 
     try {
-      console.log( this.selectedRowData.originalId, this.selectedRowData.nodeLevel)
 
-      console.log('Eliminando registro ID:', this.selectedRowData.originalId);
       const res = await lastValueFrom(this.materialsService.catalogBymaterial(this.selectedRowData.originalId))
       
       if(res){
@@ -1127,7 +1088,6 @@ export class CatFamSubComponent {
 
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newCategory));
-      console.log('Respuesta del servidor (nueva categoría):', response);
       
       // Guardar el ID seleccionado actualmente para restaurar después
       const selectedId = this.selectedRowData?.originalId;
@@ -1183,7 +1143,6 @@ export class CatFamSubComponent {
 
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newFamily));
-      console.log('Respuesta del servidor (nueva familia):', response);
       
       // Guardar el ID seleccionado actualmente para restaurar después
       const selectedId = this.selectedRowData?.originalId;
@@ -1243,7 +1202,6 @@ export class CatFamSubComponent {
 
     try {
       const response = await lastValueFrom(this.catalogsService.addCatalog(newSubfamily));
-      console.log('Respuesta del servidor (nueva subfamilia):', response);
       
       // Guardar el ID seleccionado actualmente para restaurar después
       const selectedId = this.selectedRowData?.originalId;
@@ -1297,9 +1255,7 @@ export class CatFamSubComponent {
     });
 
     try {
-      console.log('Actualizando registro ID:', this.editingItem.originalId);
       const response = await lastValueFrom(this.catalogsService.updateCatalog(this.editingItem.originalId, updatedData));
-      console.log('Respuesta del servidor (actualización):', response);
       
       this.closeModals();
       
@@ -1337,7 +1293,6 @@ export class CatFamSubComponent {
       // Asegurar que sea visible haciendo scroll hacia él
       this.gridApi.ensureNodeVisible(targetNode, 'middle');
       
-      console.log('✅ Selección restaurada para:', selectedId, 'nivel:', selectedNodeLevel);
     } else {
       console.warn('⚠️ No se encontró el nodo para restaurar selección:', selectedId);
     }
@@ -1360,18 +1315,15 @@ export class CatFamSubComponent {
        active: Number(data.active || 1)
      };
 
-     console.log('Datos enviados al servidor:', cleanData);
      return cleanData;
    }
 
    // Leer tabla DEPARTAMENT cuando se hace click en Materia Prima
    private loadDepartmentsForSubfamily(subfamilyData: any) {
-     console.log('Cargando departamentos para subfamilia:', subfamilyData);
 
      // Usar el servicio de catálogos para obtener departamentos
      this.catalogsService.getCatalogs(this.idRoot, 'DEPARTAMENT').subscribe({
        next: (departments: any[]) => {
-         console.log('Departamentos obtenidos:', departments);
 
          // Aquí puedes mostrar los departamentos en un modal, alert, o navegar a otra vista
          if (departments && departments.length > 0) {
@@ -1465,7 +1417,6 @@ export class CatFamSubComponent {
   // Método para abrir el modal de materiales (placeholder)
   // TODO: Implementar la lógica del modal de materiales como se solicitó para proveedores.
   openMaterialsModal(subfamilyData: any) {
-    console.log('Abriendo modal de materiales para:', subfamilyData.description);
     this.loadDepartmentsForSubfamily(subfamilyData); // Reutilizando la lógica existente por ahora
   }
 }

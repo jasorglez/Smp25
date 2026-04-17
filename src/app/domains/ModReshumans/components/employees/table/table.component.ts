@@ -713,7 +713,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           values: this.banks.map((user) => user.id),
         },
         valueGetter: (params) => {
-          console.log(params.data)
           if (!params.data || !params.data.idBank) return 'EFECTIVO';
           const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
           return foundBank ? foundBank.name : 'EFECTIVO';
@@ -1454,7 +1453,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           values: this.banks.map((user) => user.id),
         },
         valueGetter: (params) => {
-          console.log(params.data)
           if (!params.data || !params.data.idBank) return 'EFECTIVO';
           const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
           return foundBank ? foundBank.name : 'EFECTIVO';
@@ -1722,7 +1720,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             this.rowData =[];
           }
           
-          console.log('Datos obtenidos del servidor:', this.rowData);
           this.captureOriginalRows(this.rowData);
 
           // Actualizar el grid y esperar a que termine
@@ -1800,7 +1797,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     try {
       const data = await lastValueFrom(this.inegiService.getZipCodeData(cp));
       this.infoCp = data;
-      console.log(this.infoCp);
       return data;
     } catch (error) {
       if (error.status === 404) {
@@ -1855,7 +1851,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idEmployee = this.selectedRowData.id;
-      console.log('Datos de la fila seleccionada:', this.selectedRowData);
 
       this.signalsService.setIdEmployee(this.idEmployee);
     } else {
@@ -1864,7 +1859,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   }
 
   onMasterCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
     // Si el campo cambiado es el código postal
@@ -2000,7 +1994,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      console.log('[SYNC] branchChangedRows:', branchChangedRows.length, branchChangedRows.map(r => ({ id: r.id, name: r.name, oldBranch: this.getOriginalBranchId(r), newBranch: r.idBranch })));
       for (const row of branchChangedRows) {
         await this.syncUserPrincipalBranch(row);
       }
@@ -2079,7 +2072,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     if (selectedData.loan && selectedData.loan !== 0) {
@@ -2350,7 +2342,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   private async syncUserPrincipalBranch(row: any): Promise<void> {
     const userIds = await this.resolveUserIdsForEmployee(row);
-    console.log('[SYNC] userIds found for', row.name, ':', userIds);
     if (userIds.length === 0) return;
     for (const idUser of userIds) {
       await this.syncSingleUserPrincipalBranch(idUser, row);
@@ -2522,7 +2513,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const colId = event.column.getColId();
     if (colId === 'idDepto') {
       const roleId = event.data.idDepto;
-      console.log(event.data)
       if (roleId) {
         this.catalogPosiciones = await this.getPoscionesbyRole(roleId);
       } else {

@@ -27,7 +27,6 @@ export class PersonalByProyectService {
   }
 
   addPersonalByProyect(data: any) {
-    console.log('data', data);
     return this.http.post(`${environment.urlSmp}/TDPersonalByProyects`, data, { headers: this.trackingService.getHeaders() });
   }
 

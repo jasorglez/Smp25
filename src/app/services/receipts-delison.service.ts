@@ -164,7 +164,6 @@ export class ReceiptsDelisonService {
       )) as InAndOutResponse;
       this.inOutItems = data;
       this.idOc = data.idOc;
-      console.log(this.idOc);
     } catch (error) {
       console.error('Error fetching in/out items:', error);
       throw error;
@@ -184,21 +183,17 @@ export class ReceiptsDelisonService {
       }
 
       this.reqItems = data;
-      console.log(this.reqItems);
       // Aqui obtengo la requisicion detallada
       const detailedReq = (await lastValueFrom(
         this.requisitionsService.getDetailedReq(id)
       )) as ReqResponse;
       this.detailedReq = detailedReq; // Cambia 'detailedReq' por el nombre correcto de la propiedad
-      console.log("detalles de requis", this.detailedReq);
       // Ahora el proyecto
       const projectId = this.getIdProject();
       if(projectId == 0){
-        console.log("no tiene proyecto")
         this.projectDescription = 'N/A'; // Cambia 'contractDescription' por el nombre correcto de la propiedad
       }
       else {
-        console.log("tiene proyecto");
         const projectResponse = (await lastValueFrom(
           this.projectsService.getProjectsById(projectId)
         )) as unknown as ProjectResponse;
@@ -221,7 +216,6 @@ export class ReceiptsDelisonService {
         this.requisitionName = requisitionName ? requisitionName.folio : 'N/A';
       }
       this.rootResponse = rootResponse;
-      console.log("imagen", this.rootResponse.picture);
       if (this.isInOut == false) {
         // Consigo el dato de quien autoriza
         if (detailedReq.type == 'OC') {
@@ -229,7 +223,6 @@ export class ReceiptsDelisonService {
             this.usersService.getUserById(this.detailedReq.idAuthorize)
           )) as UserResponse;
           this.authorizer = authorizer.data;
-          console.log(this.authorizer);
         } else {
           const authorizer = (await lastValueFrom(
             this.usersService.findEmail(localStorage.getItem('mail'))
@@ -243,11 +236,9 @@ export class ReceiptsDelisonService {
             this.usersService.getUserById(this.detailedReq.idSolicit)
           )) as UserResponse;
           this.solicitant = user.data;
-          console.log(this.solicitant);
         }
       }
 
-      console.log(this.detailedReq);
     } catch (error) {
       console.error('Error fetching requisition items:', error);
       throw error;

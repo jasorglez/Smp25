@@ -178,7 +178,6 @@ export class DetailCellRendererPrecioMayoreoComponent implements ICellRendererAn
 
   saveDescuentos() {
     // Aquí iría la lógica para guardar los descuentos
-    console.log('Guardando descuentos:', this.descuentoRowData);
     this.hasDescuentoChanges = false;
     // En producción, llamar a un servicio para guardar
   }

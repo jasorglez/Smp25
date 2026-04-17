@@ -668,7 +668,6 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
       delete contractData.detailType;
 
       await lastValueFrom(this.followprojectsService.updateContract(this.contractId, contractData));
-      console.log('Project count persisted to DB:', projectCount);
 
       // Refresh the parent grid cell
       if (this.params.api) {
@@ -679,7 +678,6 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         });
       }
 
-      console.log('Project count updated in parent:', projectCount);
     } catch (error) {
       console.error('Error updating project count:', error);
     }

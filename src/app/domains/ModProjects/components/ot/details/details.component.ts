@@ -96,7 +96,6 @@ export class DetailsComponent implements OnInit {
     return this.catalogService.getPhases(this.idcompany).subscribe(
       (data: any) => {
         this.catalogArea = data
-        console.log(this.catalogArea)
       },
       (error) => console.error('Error fetching conceptos:', error))
   }
@@ -151,7 +150,6 @@ export class DetailsComponent implements OnInit {
     this.otService.getOtDetails(id).subscribe({
       next: (data: any) => {
         const otData = data.data || data;
-        console.log('Datos de OT recibidos:', otData);
         this.datos = otData;
 
         // Verificar autorización del proyecto
@@ -250,12 +248,9 @@ export class DetailsComponent implements OnInit {
   }
 
   async onSubmit() {
-    console.log('Form valid:', this.otForm.valid);
-    console.log('Form errors:', this.getFormErrors());
     if (this.otForm.valid) {
       this.isLoading = true;
       const formData = await this.prepareFormData();
-      console.log(formData)
       if (this.isEditMode && this.otId) {
         this.updateOt(formData);
       } else {
@@ -297,7 +292,6 @@ export class DetailsComponent implements OnInit {
         // Si se marca como cerrado, obtener la fecha y hora actual del timeService
         const timeData = await firstValueFrom(this.timeService.getTime());
         closedAt = timeData.localTime;
-        console.log('Tiempo obtenido del servicio:', timeData);
       } catch (error) {
         console.error('Error obteniendo tiempo del servicio:', error);
         // Fallback a fecha local si el servicio falla
@@ -443,7 +437,6 @@ export class DetailsComponent implements OnInit {
   private checkProjectAuthorization(otData: any): boolean {
     // Si el usuario tiene permisos para ver todas las OTs, verificar por empresa
     if (this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
-      console.log('Usuario tiene permisos get-all-ot, verificando por empresa');
 
       const otCompanyId = otData.idCompany || (Array.isArray(otData) ? otData[0]?.idCompany : otData.data?.idCompany);
 

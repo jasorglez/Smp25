@@ -164,7 +164,6 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     const articulos = (this.params.data.articulos || []).filter(
       (item: any) => (item.intorext || item.tipo || '').toLowerCase() !== 'interno'
     );
-    console.log('📋 buildRowData - articulos recibidos:', articulos);
 
     // Mapear todos los items (excluidos los de tipo Interno)
     const mappedItems = articulos.map((item: any, index: number) => {
@@ -248,7 +247,6 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
           justificationNewArticle: rawItem.justificationNewArticle || ''
         };
 
-        console.log(`📤 Guardando item ${item.id}: pedimento = ${item.pedimento}`);
         await firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), cotizPayload));
 
         // 2. Actualizar pedimentoNum en la requisición solo si cambió el estado
@@ -398,7 +396,6 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         justificationNewArticle: matchingReqItem.justificationNewArticle || ''
       };
 
-      console.log(`📤 Actualizando requisición item ${matchingReqItem.id}: pedimentoNum "${currentPedimentoNum}" → "${newPedimentoNum}"`);
       await firstValueFrom(
         this.ocAndReqsService.updateReqItem(matchingReqItem.id.toString(), updatePayload)
       );

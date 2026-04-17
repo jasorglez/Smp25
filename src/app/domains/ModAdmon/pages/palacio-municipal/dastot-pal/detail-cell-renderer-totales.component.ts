@@ -140,10 +140,6 @@ export class DetailCellRendererTotalesComponent {
     const parentData = this.params.data;
     const context = this.params.context;
 
-    console.log('[DetailCellRendererTotales] loadDetailData called');
-    console.log('[DetailCellRendererTotales] parentData:', parentData);
-    console.log('[DetailCellRendererTotales] context:', context);
-    console.log('[DetailCellRendererTotales] detailType:', this.detailType);
 
     if (!parentData || !context) {
       console.error('Missing parent data or context');
@@ -155,13 +151,6 @@ export class DetailCellRendererTotalesComponent {
     const startDate = context.startDate;
     const endDate = context.endDate;
 
-    console.log('[DetailCellRendererTotales] Request params:', {
-      idRoot,
-      detailType: this.detailType,
-      nameAccount: parentData.nameAccount,
-      startDate,
-      endDate
-    });
 
     try {
       const response = await incomesExpensesService.getDetailFromIncomesAndExpenses(
@@ -172,14 +161,11 @@ export class DetailCellRendererTotalesComponent {
         endDate
       ).toPromise();
 
-      console.log('[DetailCellRendererTotales] Response:', response);
 
       if (response?.success && response?.hasData) {
         this.rowData = response.data;
-        console.log('[DetailCellRendererTotales] rowData set to:', this.rowData);
       } else {
         this.rowData = [];
-        console.log('[DetailCellRendererTotales] No data or unsuccessful response');
       }
     } catch (error) {
       console.error('[DetailCellRendererTotales] Error loading detail data:', error);

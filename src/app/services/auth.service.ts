@@ -219,9 +219,7 @@ export class AuthService {
       if (result.user) {
         await sendEmailVerification(result.user);
         if (result.user.emailVerified) {
-          console.log('El correo electrónico ha sido verificado.');
         } else {
-          console.log('El correo electrónico aún no ha sido verificado.');
         }
         return result.user;
       } else {
@@ -257,7 +255,6 @@ export class AuthService {
 
       await signOut(this.auth);
     } catch (error) {
-      console.log(error);
     }
   }
 
@@ -278,7 +275,6 @@ export class AuthService {
           idToken: idToken,
         })
       );
-      console.log('Usuario eliminado exitosamente.');
     } catch (error) {
       console.error('Error al eliminar el usuario:', error);
       throw error;
@@ -295,7 +291,6 @@ export class AuthService {
           returnSecureToken: false,
         })
       );
-      console.log(`Contraseña actualizada para el correo ${email}`);
     } catch (error) {
       console.error('Error al actualizar la contraseña:', error);
       throw error;
@@ -571,7 +566,6 @@ export class AuthService {
   }
 
   setUserPermissions(permissions: any): void {
-    console.log(permissions);
     this.userPermissions = permissions;
   }
 

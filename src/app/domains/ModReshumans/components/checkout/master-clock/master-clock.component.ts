@@ -211,7 +211,6 @@ export default class MasterClockComponent implements OnInit {
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
     onFirstDataRendered: (params) => {
-      console.log('onFirstDataRendered - autosizing columns...');
 
       // Obtener todas las columnas
       const allColumnIds: string[] = [];
@@ -219,12 +218,10 @@ export default class MasterClockComponent implements OnInit {
         allColumnIds.push(column.getId());
       });
 
-      console.log('Columns to autosize:', allColumnIds);
 
       // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
       params.api.autoSizeColumns(allColumnIds, true);
 
-      console.log('Autosize completed');
     }
   };
 
@@ -426,7 +423,6 @@ export default class MasterClockComponent implements OnInit {
         (data: any) => {
           this.rowData = [];
           this.rowData = data;
-          console.log(data)
           this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
@@ -503,7 +499,6 @@ export default class MasterClockComponent implements OnInit {
     console.warn('No hay datos en la fila seleccionada');
     return;
   }
-  console.log('Fila doble clickeada:', selectedRowData);
 
   //const selectedId = selectedRowData.idEmployee;
   //const selectedBlock = selectedRowData.idBlockPeriod;
@@ -572,8 +567,6 @@ this.gridApi.setFilterModel(filterModel);
       const datos = this.selectFechas.value;
       this.fechaInicio = datos.fechaInicio;
       this.fechaFin = datos.fechaFin;
-      console.log(this.fechaInicio, this.fechaFin)
-
       this.obtenerDatos(this.fechaInicio, this.fechaFin);
     } else {
       alerts.basicAlert('Error', 'Por favor selecciona ambas fechas', 'error');
@@ -583,7 +576,6 @@ this.gridApi.setFilterModel(filterModel);
     if (this.idBranch < 0) {
       const primerDiaDelMes = new Date(this.hoy.getFullYear(), this.hoy.getMonth(), 1);
       this.fechaInicio = primerDiaDelMes.toISOString().split('T')[0];
-      console.log(this.fechaInicio);
     } else if (this.ultimaFecha instanceof Date) {
       const siguienteDia = new Date(this.ultimaFecha);
       siguienteDia.setDate(siguienteDia.getDate() + 1);

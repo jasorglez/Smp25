@@ -666,24 +666,11 @@ export class ContractsComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Datos del nuevo contrato antes de enviar:', cleanedData);
-      console.log('Validación del nuevo contrato:', {
-        numberContract: !!cleanedData.numberContract,
-        description: !!cleanedData.description,
-        idBranch: !!cleanedData.idBranch
-      });
       return this.followprojectsService.addContract(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Datos del contrato actualizado antes de enviar:', cleanedData);
-      console.log('Validación del contrato actualizado:', {
-        id: cleanedData.id,
-        numberContract: !!cleanedData.numberContract,
-        description: !!cleanedData.description,
-        idBranch: !!cleanedData.idBranch
-      });
       return this.followprojectsService.updateContract(row.id, cleanedData);
     });
 
@@ -750,7 +737,6 @@ export class ContractsComponent {
     cleanedData.consecutive = Number(cleanedData.consecutive) || 0;
     cleanedData.active = Number(cleanedData.active) || 1;
     
-    console.log('Datos limpios para enviar al servidor:', cleanedData);
     return cleanedData;
   }
 

@@ -31,7 +31,6 @@ export class RequisitionsDetailsComponent {
   constructor() {
     effect(() => {
       this.idRequisition = this.signalsService.getIdRequisition()();
-      console.log(this.idRequisition);
       if (this.idRequisition == null) {
         this.rowData = [];
       }
@@ -170,7 +169,6 @@ public gridOptions: any = {
   obtenerDatos() {
     this.requisitionsService.getReqItems(this.idRequisition).subscribe((data: any) => {
       this.rowData = data;
-      console.log(this.rowData);
     });
   }
 
@@ -178,7 +176,6 @@ public gridOptions: any = {
     this.materialsService.getMaterials2Fields(1).subscribe(
       (data: Catalog[]) => {
         this.productos = data;
-        console.log(this.productos);
       },
       (error) => console.error('Error fetching providers:', error)
     );
@@ -198,7 +195,6 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
 
@@ -255,7 +251,6 @@ public gridOptions: any = {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.requisitionsService.updateReqItem(row.id, cleanedData);
     });
 

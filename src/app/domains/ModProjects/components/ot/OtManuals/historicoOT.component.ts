@@ -192,7 +192,6 @@ export class HistoricoOTComponent implements OnInit {
       }
       
       if (projectId) {
-        console.log('Proyecto seleccionado desde sidebar:', projectId);
         this.loadData(projectId);
       } else {
         // Si no hay proyecto seleccionado, limpiar datos
@@ -211,7 +210,6 @@ export class HistoricoOTComponent implements OnInit {
     this.projectsService.getProjects().subscribe({
       next: (data: any) => {
         this.projectsList = data;
-        console.log('Lista de proyectos cargada:', this.projectsList);
       },
       error: (error) => {
         console.error('Error al cargar proyectos:', error);
@@ -223,14 +221,12 @@ export class HistoricoOTComponent implements OnInit {
   // Cargar catálogo de áreas (fases)
   obtenerArea(): void {
     if (!this.idcompany) {
-      console.log('idcompany no disponible para cargar áreas');
       return;
     }
 
     this.catalogsService.getPhases(this.idcompany).subscribe({
       next: (data: any) => {
         this.catalogArea = data;
-        console.log('Catálogo de áreas cargado:', this.catalogArea);
       },
       error: (error) => {
         console.error('Error al cargar catálogo de áreas:', error);
@@ -250,7 +246,6 @@ export class HistoricoOTComponent implements OnInit {
    // Cargar OTs del proyecto seleccionado
 this.otService.getOtListByProject(idProject, true).subscribe({
   next: (data: any) => {
-    console.log('OTs cargadas para proyecto', idProject, ':', data);
     
     // Verificar si data es un array directamente o viene dentro de una respuesta
     const otsArray = Array.isArray(data) ? data : (data.data || data.ots || []);
@@ -261,7 +256,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     
     // Verificar si hay datos
     if (otsArray.length === 0) {
-      console.log('No se encontraron OTs cerradas para el proyecto', idProject);
       this.rowData = [];
       // Opcional: mostrar mensaje informativo en lugar de error
       // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
@@ -282,7 +276,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       closedApp: ot.closedApp || false
     }));
     
-    console.log(`Se cargaron ${this.rowData.length} OTs cerradas para el proyecto ${projectName}`);
   },
   error: (error) => {
     console.error('Error al cargar OTs:', error);
@@ -290,7 +283,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     // Manejo más específico de errores
     if (error.status === 404) {
       // El controlador anterior devolvía 404, pero el nuevo no debería
-      console.log('No se encontraron OTs cerradas (404)');
       this.rowData = [];
       // Opcional: mostrar mensaje informativo
       // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
@@ -320,7 +312,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
 
   onSelectionChanged(event: any): void {
     const selectedRows = this.gridApi.getSelectedRows();
-    console.log('Fila seleccionada:', selectedRows);
   }
 
   onCellValueChanged(event: any): void {
@@ -329,35 +320,28 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     const newValue = event.newValue;
     const oldValue = event.oldValue;
 
-    console.log(`onCellValueChanged - Campo: ${field}, Valor anterior: ${oldValue}, Valor nuevo: ${newValue}`);
 
     if (newValue !== oldValue) {
       if (data.__isNew) {
         // Para filas nuevas, solo marcar que hay cambios
         this.notSavedChanges = true;
-        console.log('Fila nueva modificada, notSavedChanges =', this.notSavedChanges);
       } else {
         // Para filas existentes, marcar como modificada
         data.__modified = true;
         this.notSavedChanges = true;
-        console.log('Fila existente modificada, notSavedChanges =', this.notSavedChanges);
       }
-      console.log(`Campo ${field} cambiado de ${oldValue} a ${newValue}`);
       
       // Forzar detección de cambios
       setTimeout(() => {
-        console.log('Estado final notSavedChanges:', this.notSavedChanges);
       });
     }
   }
 
   // Método adicional para detectar cambios en la edición de celdas
   onCellEditingStarted(event: any): void {
-    console.log('Edición iniciada en celda:', event.colDef.field);
   }
 
   onCellEditingStopped(event: any): void {
-    console.log('Edición finalizada en celda:', event.colDef.field);
     // Verificar si hay cambios pendientes después de cada edición
     this.updateNotSavedChangesStatus();
   }
@@ -371,7 +355,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     this.notSavedChanges = hasNewRows || hasModifiedRows;
     
     if (previousState !== this.notSavedChanges) {
-      console.log('Estado de notSavedChanges actualizado:', this.notSavedChanges);
     }
   }
 
@@ -407,7 +390,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     this.rowData = [newItem, ...this.rowData];
     this.updateNotSavedChangesStatus();
     
-    console.log('Nueva fila agregada, notSavedChanges:', this.notSavedChanges);
     
     // Enfocar en la primera celda editable (otNumber en lugar de idProject)
     setTimeout(() => {
@@ -469,12 +451,9 @@ this.otService.getOtListByProject(idProject, true).subscribe({
         closedApp: row.closedApp || false
       };
 
-      console.log('Enviando datos para crear OT:', newOtData);
-      console.log('URL del endpoint:', `${environment.urlSmp}/OT`);
 
       this.otService.addOt(newOtData).subscribe({
         next: (response: any) => {
-          console.log('OT creada exitosamente:', response);
           // Actualizar el ID de la fila con el ID devuelto por el servidor
           row.id = response.id || response;
           delete row.__isNew;
@@ -521,7 +500,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
 
       this.otService.updateOt(row.id, updateOtData).subscribe({
         next: (response: any) => {
-          console.log('OT actualizada exitosamente:', response);
           delete row.__modified;
           
           completedOperations++;
@@ -577,7 +555,6 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       if (selectedData.id) {
         this.otService.deleteOt(selectedData.id).subscribe({
           next: (response: any) => {
-            console.log('OT eliminada exitosamente:', response);
             this.rowData = this.rowData.filter(row => row !== selectedData);
             this.updateNotSavedChangesStatus();
             alerts.basicAlert('Éxito', 'OT eliminada exitosamente', 'success');

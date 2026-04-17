@@ -216,15 +216,12 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   }
 
   onCellDoubleClicked(event: any): void {
-    console.log('Base onCellDoubleClicked fired:', event.colDef?.field);
   }
 
   onCellClicked(event: any): void {
-    console.log('Base onCellClicked fired:', event.colDef?.field);
   }
 
   onSelectionChanged(event: any): void {
-    console.log('Selection changed fired');
     const selectedRows = this.gridApi?.getSelectedRows();
     if (selectedRows && selectedRows.length > 0) {
       this.selectedRowData = selectedRows[0];

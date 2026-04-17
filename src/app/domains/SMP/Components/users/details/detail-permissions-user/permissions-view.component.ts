@@ -1170,20 +1170,6 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           const compras = (Array.isArray(this.rawData) ? this.rawData : []).filter((x: any) =>
             this.normalizar(String(x?.masterPermissionName ?? x?.MasterPermissionName ?? '')).includes('compras')
           );
-          console.log('[PermisosViewDebug] crudCount=', Array.isArray(this.rawData) ? this.rawData.length : 0, {
-            comprasCount: compras.length,
-            comprasSample: compras.slice(0, 3).map((it: any) => ({
-              master: it?.masterPermissionName ?? it?.MasterPermissionName,
-              detailed: it?.detailedPermissionName ?? it?.DetailedPermissionName,
-              sub: it?.subdetailedPermissionName ?? it?.SubdetailedPermissionName,
-              show: it?.showColumn ?? it?.ShowColumn,
-              idDetailed: it?.idDetailedPermission ?? it?.IdDetailedPermission,
-              idShow: it?.idShowPermition ?? it?.IdShowPermition,
-              canRead: it?.canRead ?? it?.CanRead,
-              detailedRead: it?.detailedRead ?? it?.DetailedRead,
-              masterRead: it?.masterRead ?? it?.MasterRead,
-            })),
-          });
         }
         this.masterPermissionsCatalog = Array.isArray(catalog) ? catalog : [];
         this.unionModalSidebarUniverseFromRoleTemplate(roleTemplateRows ?? []);
@@ -1300,15 +1286,6 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           const comprasMaster = this.groupedPermissions.find((m) =>
             this.normalizar(String(m?.masterPermissionName ?? '')).includes('compras')
           );
-          console.log('[PermisosViewDebug] groupedCompras=', {
-            master: comprasMaster?.masterPermissionName,
-            detailsCount: comprasMaster?.details?.length ?? 0,
-            detailsSample: (comprasMaster?.details ?? []).slice(0, 6).map((d) => ({
-              name: d.detailedPermissionName,
-              detailedRead: d.detailedRead,
-              subdetailsCount: d.subdetails?.length ?? 0,
-            })),
-          });
         }
 
         if (preserve && savedMasterName) {
@@ -2797,7 +2774,6 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           }
         }
         for (const payload of changesMap.values()) {
-          console.log('Enviando payload único:', payload);
           requests.push(this.permitionsService.addPermitions(payload));
         }
       }

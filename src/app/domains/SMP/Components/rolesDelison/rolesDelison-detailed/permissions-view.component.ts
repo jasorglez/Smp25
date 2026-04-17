@@ -85,7 +85,6 @@ export class PermissionsViewComponent implements OnInit {
      this.rolesService.getPermissionsByRoles(this.idEmpresa, idRole, idPosicion)
        .subscribe((data: any) => {
          this.rawData = data;
-         console.log("new data", this.rawData);
          this.groupedPermissions = this.transformData(this.rawData);
        });
   }
@@ -242,7 +241,6 @@ export class PermissionsViewComponent implements OnInit {
 
       // Ahora creamos los observables a partir de los cambios únicos en el mapa
       const saveObservables = Array.from(changesMap.values()).map(payload => {
-        console.log("Enviando payload único:", payload);
         // Usamos el endpoint de "add" que internamente crea o actualiza.
         return this.rolesService.addDetailedPermissionsxRoles(payload);
       });

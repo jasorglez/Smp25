@@ -49,7 +49,6 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
     this.administrationService.getTypecustomers(this.idRoot).subscribe({
       next: (data: any) => {
         this.localitation = data;
-        console.log("Datos obtenidos:", data);
 
         if (this.localitation.length > 0) {
           this.initializeMap();
@@ -64,7 +63,6 @@ export class RadiusinfluenceComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   ngAfterViewInit(): void {
-    console.log('RadiusinfluenceComponent initialized');
   }
 
   ngOnDestroy(): void {

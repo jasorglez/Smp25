@@ -18,7 +18,6 @@ export class ParameterByMaterialDescriptionService {
   }
 
   addParameterByMaterialDescription(data: any) {
-    console.log('data service', data);
     return this.http.post(`${environment.urlWarehouse}/ParameterByMaterialDescription`, data, { headers: this.trackingService.getHeaders() });
   }
 

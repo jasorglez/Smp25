@@ -154,8 +154,6 @@ export class CustomersService {
   }
 
   deleteCustomer(id: number): Observable<any> {
-    console.log('🔍 deleteCustomer - Eliminando ID:', id, 'URL:', `${environment.urlAdministration}/Customer/${id}`);
-    console.log('🔍 deleteCustomer - Headers:', this.trackingService.getHeaders());
     return this.http.delete<any[]>(`${environment.urlAdministration}/Customer/${id}`, { headers: this.trackingService.getHeaders() });
   }
 

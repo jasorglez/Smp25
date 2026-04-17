@@ -46,13 +46,11 @@ export class SelectDepartmentEditorComponent implements ICellEditorAngularComp, 
   }
 
   getValue(): any {
-    console.log('🎯 SelectDepartmentEditor.getValue() - selectedValue:', this.selectedValue);
 
     // ✅ Retornar solo el ID (número), no el objeto completo
     // AG Grid espera que el tipo de dato coincida con el campo (departmentId = número)
     const selectedId = this.selectedValue ? Number(this.selectedValue) : null;
 
-    console.log('✅ Retornando ID:', selectedId);
     return selectedId;
   }
 
@@ -61,7 +59,6 @@ export class SelectDepartmentEditorComponent implements ICellEditorAngularComp, 
   }
 
   onChange(event: any) {
-    console.log('🔄 onChange disparado - selectedValue:', this.selectedValue);
   }
 
   onBlur() {

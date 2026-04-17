@@ -139,7 +139,6 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
         this.rowData = [];
         this.editable = true
         this.rowData = data;
-        console.log("algo aqui", this.rowData)
       });
     /*}else if(this.authService.getCrudPermission('setup', 'users','','','', 'update')){
        this.editable = true
@@ -209,7 +208,6 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
       .subscribe((data: any) => {
         this.rowData = [];
         this.rowData = data;
-        console.log("algo aqui", this.rowData)
       });
   }
 
@@ -221,7 +219,6 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      console.log(selectedNodes[0].data);
     } else {
       this.selectedRowData = null;
     }
@@ -231,7 +228,6 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
     event.data.__modified = true;
     this.notSavedChanges = true;
     this.lastEditedRowId = event.data.id;
-    console.log(event.data)
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -299,14 +295,12 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
         const timeResponse = await lastValueFrom(this.timeService.getTime());
         cleanedData.updatedAt = timeResponse.localTime;
         cleanedData.idDetailedPermission = row.idDetailedPermission;
-        console.log(cleanedData)
         updateObservables.push(
           this.permitionsService.updatePermitionsDetail(this.idUser,this.idBranch,this.idRole, this.idPosicion, row.idDetailedPermission, cleanedData)
         );
         this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
         
       } catch (error:any) {
-        console.log(error)
          // Si la actualización falla con 404, significa que el permiso no existe y debemos CREARLO.
         if (error.status === 404 || error.message?.includes('No se encontró')) {
           const timeResponse = await lastValueFrom(this.timeService.getTime());

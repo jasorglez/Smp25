@@ -77,7 +77,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   constructor(private route: ActivatedRoute) {
     effect(() => {
-      console.log(this.listsections)
       this.permisos(this.signalsService.getCatalogSelected());
     if(this.signalsService.getCloseCatalog()()){
       this.notSavedChanges = false;
@@ -238,7 +237,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
   obtenerDatos() {
     const catalogType = this.signalsService.getCatalogSelected();
     this.rowData = [];
-    console.log(`Obteniendo datos para tipo: ${catalogType}`);
 
     // Determina qué servicio usar
     const service = this.catalogService;
@@ -246,7 +244,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       .subscribe({
         next: (data: any[]) => {
           this.rowData = data 
-         console.log(data)},
+},
         error: (err) => console.error(`Error (${catalogType || 'desconocido'}):`, err)
       });
   }
@@ -453,7 +451,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -559,7 +556,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
       const cleanedData = this.cleanDataForServer(row);
 
       cleanedData.valueAddition = String(cleanedData.valueAddition);
-      console.log('añadidos', cleanedData.valueAddition);
       return this, this.catalogService.addCatalog(cleanedData);
     });
 

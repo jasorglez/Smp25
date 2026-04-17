@@ -70,7 +70,6 @@ export class TimeEditorComponent implements ICellEditorAngularComp, AfterViewIni
       this.value = '00:00:00';
     }
     
-    console.log('TimeEditorComponent initialized with value:', this.value);
   }
 
   getValue(): string {

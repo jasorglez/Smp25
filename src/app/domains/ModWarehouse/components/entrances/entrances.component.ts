@@ -425,7 +425,6 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
   }
 
   obtenerOcReq() {
-    console.log('Obteniendo OC y Requisiciones...', this.typeReference, this.idProject  );
     this.ocService
       .getOcAndReqs(this.typeReference, this.idProject, 'OC')
       .subscribe(
@@ -440,7 +439,6 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
     this.catalogsService.getTypesCat('INPUT').subscribe(
       (data: any) => {
         this.tipoEntrada = data;
-        console.log('Tipos de entrada cargados:', this.tipoEntrada)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -741,13 +739,11 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.inAndOutsService.addInAndOutItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.inAndOutsService.updateInAndOutItem(row.id, cleanedData);
     });
 

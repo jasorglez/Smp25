@@ -112,7 +112,6 @@ export class MasterExpensesComponent {
     this.branchesService.getBrancheswoa(this.companySelect).subscribe(
       (data: any) => {
         this.branchs = data;
-        console.log('Branchs', this.branchs);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -122,7 +121,6 @@ export class MasterExpensesComponent {
     this.incomesAndExpensesService.getIncomesAll().subscribe({
       next: (data: any) => {
         this.rowData = data;
-        console.log(this.rowData);
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Gastos', 'Menu Administracion Gastos',  this.trackingService.getEmail());
       },
       error: (error) => {
@@ -136,7 +134,6 @@ export class MasterExpensesComponent {
     this.cataalogAdmonService.getCatalogs(this.branchSelect, 'BILL').subscribe(
       (data: any) => {
         this.expenses = data;
-        console.log(this.expenses)
       },
       error => {
         console.error(error);
@@ -147,7 +144,6 @@ export class MasterExpensesComponent {
     this.rootService.getRoot().subscribe(
       (data: any) => {
         this.company = data;
-        console.log(this.company)
       },
       error => {
         console.error(error);
@@ -217,14 +213,12 @@ export class MasterExpensesComponent {
   onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
     if (event.colDef.field === 'name') {
       const companyName = event.newValue;
       
       const companyId = this.getCompanyIdByName(companyName);
-      console.log('Sucursal seleccionada:', companyName, 'ID:', companyId);
       // Si necesitas guardar el ID también en el row:
       this.companySelect = companyId;
       this.obtenerBranchs();
@@ -234,7 +228,6 @@ export class MasterExpensesComponent {
       const branchName = event.newValue;
       
       const branchId = this.getBranchIdByName(branchName);
-      console.log('Sucursal seleccionada:', branchName, 'ID:', branchId);
       this.branchSelect = branchId;
       this.getBills();
       // Si necesitas guardar el ID también en el row:
@@ -244,7 +237,6 @@ export class MasterExpensesComponent {
       const branchName = event.newValue;
       
       const branchId = this.getBranchIdByName(branchName);
-      console.log('Sucursal seleccionada:', branchName, 'ID:', branchId);
       //alert(branchId);
       // Si necesitas guardar el ID también en el row:
       event.data.idBranch = branchId;
@@ -626,7 +618,6 @@ export class MasterExpensesComponent {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     if (selectedData.loan && selectedData.loan !== 0) {

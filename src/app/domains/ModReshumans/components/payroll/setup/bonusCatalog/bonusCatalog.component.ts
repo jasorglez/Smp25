@@ -55,7 +55,6 @@ export class BonusCatalogComponent {
         });
   
         this.rowData = nuevoArray;
-        console.log("Datos procesados:", this.rowData);
       },
       error: () => {
         this.rowData = [];
@@ -65,14 +64,12 @@ export class BonusCatalogComponent {
   }
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
-    console.log(selectedNodes);
     this.selectedRowData = selectedNodes[0].data;
 
   /*if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
       this.idEmployee = this.selectedRowData.id;
 
-      console.log('Datos de la fila seleccionada:', this.selectedRowData);
 
       this.signalsService.setIdEmployee(this.idEmployee);
     } else {
@@ -81,7 +78,6 @@ export class BonusCatalogComponent {
   }
 
   onMasterCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
     
@@ -296,14 +292,12 @@ export class BonusCatalogComponent {
         const addObservables = newRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           cleanedData.valueAddition2 = String(cleanedData.valueAddition2);
-          console.log("añadidos", cleanedData.valueAddition2);
           return this.catalogsService.addCatalog(cleanedData);
         });
         
         const updateObservables = modifiedRows.map((row) => {
           const cleanedData = this.cleanDataForServer(row);
           cleanedData.valueAddition2 = String(cleanedData.valueAddition2);
-          console.log("actualizados", cleanedData.valueAddition2);
           return this.catalogsService.updateCatalog(row.id, cleanedData);
         });
         
@@ -372,7 +366,6 @@ export class BonusCatalogComponent {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     if (selectedData.loan && selectedData.loan !== 0) {

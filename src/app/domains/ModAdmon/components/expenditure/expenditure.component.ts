@@ -67,16 +67,13 @@ export class ExpenditureComponent {
   constructor() {
     // Effect para cambios de Root/Branch
     effect(async () => {
-      console.log('🔄 Effect Root/Branch ejecutado');
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
       if (!this.idRoot) {
-        console.log('⚠️ No hay idRoot, saliendo del effect');
         return;
       }
 
-      console.log('📊 Cargando datos con idRoot:', this.idRoot, 'idBranch:', this.idBranch);
       await this.getBillingManagementInfo();
       await this.getBankAccounts();
       await this.getExpenditure();
@@ -95,27 +92,16 @@ export class ExpenditureComponent {
       this.refreshColumnDefinitions();
       // Actualizar contexto del detalle con los datos cargados
       this.updateDetailContext();
-      console.log('✅ Effect Root/Branch completado');
     });
 
     // Effect para escuchar actualizaciones del detalle
     effect(() => {
-      console.log('👂 Effect MasterUpdate ejecutado');
       const updateData = this.signalsService.getMasterUpdateTrigger()();
-      console.log('📨 Signal recibido:', updateData);
 
       if (updateData && updateData.id && typeof updateData.subtotal === 'number') {
-        console.log('🎯 Datos válidos recibidos:', {
-          id: updateData.id,
-          subtotal: updateData.subtotal,
-          tax: updateData.tax,
-          total: updateData.total,
-        });
 
-        console.log('🔍 gridApi disponible:', !!this.gridApi);
 
         if (this.gridApi) {
-          console.log('✅ Llamando updateMasterRowInGrid...');
           setTimeout(() => {
             this.updateMasterRowInGrid({
               id: updateData.id,
@@ -125,7 +111,6 @@ export class ExpenditureComponent {
             });
           }, 50);
         } else {
-          console.log('❌ gridApi no disponible, guardando datos para cuando esté listo');
           this.pendingMasterUpdate = {
             id: updateData.id,
             subtotal: updateData.subtotal,
@@ -134,11 +119,9 @@ export class ExpenditureComponent {
           };
         }
       } else {
-        console.log('ℹ️ No hay datos válidos para actualizar');
       }
     });
 
-    console.log('✅ ExpenditureComponent: Constructor completado');
   }
 
   // Propiedades para datos pendientes y control
@@ -314,7 +297,6 @@ export class ExpenditureComponent {
             };
           });
 
-          console.log('✅ Egresos cargados:', this.incomes.length);
           resolve();
         },
         error: (err) => {
@@ -333,7 +315,6 @@ export class ExpenditureComponent {
       this.cataalogAdmonService.getCatalogs(this.idRoot, 'BILL').subscribe(
         (data: any) => {
           this.expenses = data;
-          console.log('✅ Tipos de Gasto cargados:', this.expenses.length);
           resolve();
         },
         error => {
@@ -356,7 +337,6 @@ export class ExpenditureComponent {
             id: e.id,
             name: e.name || 'Sin nombre'
           }));
-          console.log('✅ Empleados cargados:', this.employees.length);
           resolve();
         },
         error => {
@@ -376,7 +356,6 @@ export class ExpenditureComponent {
             id: p.id,
             name: p.name || 'Sin nombre'
           }));
-          console.log('✅ Proveedores cargados:', this.providers.length);
           resolve();
         },
         error => {
@@ -393,7 +372,6 @@ export class ExpenditureComponent {
       this.cuentasContablesService.getHojas(this.idRoot).subscribe(
         (data: any) => {
           this.cuentasContables = data || [];
-          console.log('✅ Cuentas contables cargadas:', this.cuentasContables.length);
           resolve();
         },
         error => {
@@ -410,7 +388,6 @@ export class ExpenditureComponent {
       this.cuentasContablesService.getByNivel(this.idRoot, 2).subscribe(
         (data: any) => {
           this.cuentasContablesNivel2 = data || [];
-          console.log('✅ Cuentas contables Nivel 2 cargadas:', this.cuentasContablesNivel2.length);
           resolve();
         },
         error => {
@@ -427,7 +404,6 @@ export class ExpenditureComponent {
       this.cuentasContablesService.getByNivel(this.idRoot, 3).subscribe(
         (data: any) => {
           this.cuentasContablesNivel3 = data || [];
-          console.log('✅ Cuentas contables Nivel 3 cargadas:', this.cuentasContablesNivel3.length);
           resolve();
         },
         error => {
@@ -447,7 +423,6 @@ export class ExpenditureComponent {
             id: p.id,
             name: p.name || p.projectName || 'Sin nombre'
           }));
-          console.log('✅ Proyectos cargados:', this.projects.length);
           resolve();
         },
         error => {
@@ -552,7 +527,6 @@ export class ExpenditureComponent {
         cellRenderer: PdfButtonCellRendererExpenditure2Component,
         cellRendererParams: {
           onClick: (node: any) => {
-            console.log('🔵 PDF Click detectado:', node.data.id);
             this.toggleReportDetail(node);
           },
           icon: 'bi-file-earmark-pdf',
@@ -763,20 +737,16 @@ export class ExpenditureComponent {
 
   // Método para refrescar las definiciones de columnas
   private refreshColumnDefinitions() {
-    console.log('🔄 Refrescando columnas. expenses:', this.expenses.length);
     this._colMaster = [];
     if (this.gridApi) {
       this.gridApi.setGridOption('columnDefs', this.colMaster);
-      console.log('✅ Columnas actualizadas en el grid');
     } else {
-      console.log('⚠️ Grid API no disponible aún');
     }
   }
 
   // Método para actualizar el contexto del detalle después de cargar datos
   private updateDetailContext() {
     if (this.gridApi) {
-      console.log('🔄 Actualizando contexto del detalle. Empleados:', this.employees.length, 'Proveedores:', this.providers.length);
       this.gridApi.setGridOption('detailCellRendererParams', {
         getDetailRowData: (params: any) => {
           params.successCallback(params.data.detailData);
@@ -812,7 +782,6 @@ export class ExpenditureComponent {
           }
         }
       });
-      console.log('✅ Contexto del detalle actualizado');
     }
   }
 
@@ -863,7 +832,6 @@ export class ExpenditureComponent {
   }
 
   onGridReady(params: GridReadyEvent) {
-    console.log('🏁 Grid ready');
     this.gridApi = params.api;
 
     // Configurar el detailCellRendererParams
@@ -904,7 +872,6 @@ export class ExpenditureComponent {
     });
 
     if (this.pendingMasterUpdate) {
-      console.log('⏳ Procesando actualización pendiente:', this.pendingMasterUpdate);
       setTimeout(() => {
         this.updateMasterRowInGrid(this.pendingMasterUpdate);
         this.pendingMasterUpdate = null;
@@ -994,13 +961,11 @@ export class ExpenditureComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData)
       return this.incomesAndExpensesService.addIncomesAndExpenses(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData)
       return this.incomesAndExpensesService.updateIncomesAndExpenses(row.id, cleanedData);
     });
 
@@ -1163,13 +1128,11 @@ export class ExpenditureComponent {
   }
 
   async toggleReportDetail(node: any) {
-    console.log('🟢 toggleReportDetail llamado - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
 
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
-      console.log('🟡 Colapsando reporte expandido');
       node.setExpanded(false);
       node.data.detailType = null;
       this.externalFilterActive = false;
@@ -1181,7 +1144,6 @@ export class ExpenditureComponent {
     }
 
     if (this.isGeneratingReport) {
-      console.log('🔴 Ya se está generando un reporte, ignorando clic');
       alerts.basicAlert(
         'Procesando',
         'Ya se está generando un reporte. Por favor espere.',
@@ -1191,7 +1153,6 @@ export class ExpenditureComponent {
     }
 
     this.isGeneratingReport = true;
-    console.log('🟢 Iniciando generación de reporte');
 
     let progress = 0;
     alerts.showLoadingWithProgress(
@@ -1246,19 +1207,16 @@ export class ExpenditureComponent {
         100
       );
 
-      console.log('✅ Reporte generado exitosamente');
 
       setTimeout(() => {
         alerts.closeLoading();
         this.isGeneratingReport = false;
-        console.log('🔓 Lock liberado');
       }, 800);
 
     } catch (error) {
       clearInterval(progressInterval);
       alerts.closeLoading();
       this.isGeneratingReport = false;
-      console.log('🔴 Error generando reporte, lock liberado');
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
@@ -1287,14 +1245,12 @@ export class ExpenditureComponent {
   // ==================== MÉTODOS PARA CONCEPTOS ====================
 
   updateExpenditureCountItems(expenditureId: number, count: number) {
-    console.log(`🔄 PADRE: updateExpenditureCountItems llamado. ID: ${expenditureId}, Nuevo Count: ${count}`);
     if (this.gridApi) {
       let found = false;
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === expenditureId) {
           found = true;
           const oldCount = node.data.countItems;
-          console.log(`   Registro encontrado. ID: ${expenditureId}, Count anterior: ${oldCount}, Count nuevo: ${count}`);
           node.data.countItems = count;
           node.data.countitems = count;
           this.gridApi.refreshCells({
@@ -1313,12 +1269,9 @@ export class ExpenditureComponent {
   }
 
   loadConceptsData(expenditureId: number, successCallback: any) {
-    console.log('🟢 PADRE: Cargando conceptos desde servidor para ID:', expenditureId);
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId).subscribe({
       next: (data: any) => {
-        console.log(`✅ PADRE: Conceptos recibidos del servidor para ID ${expenditureId}:`, data?.length || 0);
         if (data && data.length > 0) {
-          console.log('   Primer concepto:', data[0]);
         }
         successCallback(data);
       },
@@ -1330,8 +1283,6 @@ export class ExpenditureComponent {
   }
 
   async saveConceptsById(expenditureId: number, data: any) {
-    console.log('💾 PADRE: saveConceptsById iniciado. ID:', expenditureId);
-    console.log('💾 PADRE: Data recibida:', data);
 
     const conceptsData = data.concepts || data;
     const subtotal = data.subtotal || 0;
@@ -1341,9 +1292,6 @@ export class ExpenditureComponent {
     const newConcepts = conceptsData.filter((row: any) => row.__isNew);
     const modifiedConcepts = conceptsData.filter((row: any) => row.__modified && !row.__isNew);
 
-    console.log('💾 PADRE: Conceptos NUEVOS:', newConcepts.length);
-    console.log('💾 PADRE: Conceptos MODIFICADOS:', modifiedConcepts.length);
-    console.log('💾 PADRE: Total conceptos:', conceptsData.length);
 
     try {
       // Guardar conceptos nuevos
@@ -1385,7 +1333,6 @@ export class ExpenditureComponent {
         );
       }
 
-      console.log('💾 PADRE: Actualizando maestro después de guardar. ID:', expenditureId);
 
       this.updateExpenditureCountItems(expenditureId, conceptsData.length);
 
@@ -1396,7 +1343,6 @@ export class ExpenditureComponent {
         total: total
       });
 
-      console.log('✅ PADRE: Maestro actualizado con totales');
 
     } catch (error) {
       console.error('Error saving concepts:', error);
@@ -1435,7 +1381,6 @@ export class ExpenditureComponent {
             await lastValueFrom(
               this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDoc)
             );
-            console.log(`✅ countItems actualizado en BD: ${newCount}`);
           }
         }
 
@@ -1473,7 +1418,6 @@ export class ExpenditureComponent {
       currentData.tax = updatedData.tax;
       currentData.total = updatedData.total;
       this.gridApi.applyTransaction({ update: [currentData] });
-      console.log(`Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
     }
   }
 
@@ -1900,49 +1844,29 @@ export class ExpenditureComponent {
   }
 
   private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; total: number }) {
-    console.log('🔄 updateMasterRowInGrid iniciado con:', updatedData);
 
     if (!this.gridApi) {
-      console.log('❌ gridApi no disponible');
       return;
     }
 
     if (!updatedData?.id) {
-      console.log('❌ updatedData o id no válidos');
       return;
     }
 
     const selectedNodes = this.gridApi.getSelectedNodes();
     const currentSelectedId = selectedNodes.length > 0 ? selectedNodes[0].data.id : null;
-    console.log('🔖 Selección actual guardada:', currentSelectedId);
 
-    console.log('🔍 Buscando nodo con ID:', updatedData.id.toString());
     const rowNode = this.gridApi.getRowNode(updatedData.id.toString());
-    console.log('🎯 Nodo encontrado:', !!rowNode);
 
     if (rowNode) {
-      console.log('📝 Datos actuales del nodo:', {
-        id: rowNode.data.id,
-        subtotal_actual: rowNode.data.subtotal,
-        tax_actual: rowNode.data.tax,
-        total_actual: rowNode.data.total
-      });
 
       const currentData = rowNode.data;
       currentData.subtotal = updatedData.subtotal;
       currentData.tax = updatedData.tax;
       currentData.total = updatedData.total;
 
-      console.log('📝 Datos después de actualizar:', {
-        id: currentData.id,
-        subtotal_nuevo: currentData.subtotal,
-        tax_nuevo: currentData.tax,
-        total_nuevo: currentData.total
-      });
 
-      console.log('🔄 Aplicando transacción...');
       this.gridApi.applyTransaction({ update: [currentData] });
-      console.log('✅ Transacción aplicada');
 
       setTimeout(() => {
         this.gridApi.refreshCells({
@@ -1950,30 +1874,23 @@ export class ExpenditureComponent {
           columns: ['subtotal', 'tax', 'total'],
           force: true
         });
-        console.log('✅ Celdas refrescadas');
       }, 100);
 
-      console.log(`✅ Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
 
       if (currentSelectedId === updatedData.id) {
-        console.log('🔖 Restaurando selección...');
         setTimeout(() => {
           const updatedNode = this.gridApi.getRowNode(updatedData.id.toString());
           if (updatedNode) {
             updatedNode.setSelected(true);
             this.gridApi.ensureNodeVisible(updatedNode);
-            console.log('✅ Selección restaurada');
           } else {
-            console.log('❌ No se pudo restaurar la selección');
           }
         }, 50);
       }
     } else {
       console.warn(`⚠️ No se encontró la fila ${updatedData.id} en el grid.`);
 
-      console.log('🔄 Ejecutando Plan B - Actualizar array local...');
       const itemIndex = this.incomes.findIndex(item => item.id === updatedData.id);
-      console.log('🔍 Índice en array local:', itemIndex);
 
       if (itemIndex !== -1) {
         this.incomes[itemIndex].subtotal = updatedData.subtotal;
@@ -1982,19 +1899,15 @@ export class ExpenditureComponent {
 
         setTimeout(() => {
           if (currentSelectedId) {
-            console.log('🔖 Intentando restaurar selección después de Plan B...');
             const nodeToSelect = this.gridApi.getRowNode(currentSelectedId.toString());
             if (nodeToSelect) {
               nodeToSelect.setSelected(true);
               this.gridApi.ensureNodeVisible(nodeToSelect);
-              console.log('✅ Selección restaurada (Plan B)');
             } else {
-              console.log('❌ No se pudo restaurar la selección (Plan B)');
             }
           }
         }, 100);
       } else {
-        console.log('❌ No se encontró el item en el array local');
       }
     }
   }

@@ -41,7 +41,6 @@ export class BitacoraEquiposComponent extends BitacoraBaseComponent {
     this.equipmentService.getEquipment(idRoot).subscribe({
       next: (resp: any[]) => { 
         this.equiposCatalog = resp.filter(e => e.active !== false);
-        console.log('📦 Equipos cargados:', this.equiposCatalog.slice(0, 3));
       },
       error: () => {},
     });
@@ -49,7 +48,6 @@ export class BitacoraEquiposComponent extends BitacoraBaseComponent {
     this.catalogsService.getTypeEquipment(idRoot, 'TYPEEQUIPMENT').subscribe({
       next: (resp: any[]) => {
         this.typeEquipmentCatalog = resp.filter(t => t.active !== false);
-        console.log('🔧 Tipos de equipo cargados:', this.typeEquipmentCatalog.slice(0, 3));
       },
       error: () => {},
     });

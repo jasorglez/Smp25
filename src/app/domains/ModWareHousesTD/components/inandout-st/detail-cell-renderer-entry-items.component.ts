@@ -403,10 +403,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
     if (event.colDef.field === 'description' && this.context.movementType === 'OUT' && event.data.idProduct) {
       const idWarehouse = this.entryData.idWarehouse;
-      console.log('Calling getSumaIn with idProduct:', event.data.idProduct, 'idWarehouse:', idWarehouse);
       this.context.inandoutService.getSumaIn(event.data.idProduct, idWarehouse).subscribe({
         next: (data: any) => {
-          console.log('getSumaIn response:', data);
           event.data.pending = data || 0;
           if (this.gridApi) {
             this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['pending'] });

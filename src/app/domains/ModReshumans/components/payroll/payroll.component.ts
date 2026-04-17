@@ -51,7 +51,6 @@ export class PayrollComponent {
       },
       (error) => {
         this.rowData = [];
-        console.log('Error al obtener datos de normal payrolls: ', error);
       }
     );
   }
@@ -61,11 +60,8 @@ export class PayrollComponent {
       .getDPPayrollsExistence(startDate, endDate, idBranch)
       .subscribe({
         next: (payrollId) => {
-          console.log('-------------- PayrollId Recibido: ', payrollId);
           if (payrollId !== 0) {
-            console.log(`Nómina encontrada con ID: ${payrollId}`);
           } else {
-            console.log('No se encontró ninguna nómina.');
           }
         },
         error: (error) => {
@@ -136,9 +132,6 @@ export class PayrollComponent {
 
         valueGetter: (params) => {
           if (params.node.rowIndex == 0) {
-            console.log('Params completo:', params);
-            console.log('Datos de la fila:', params.data);
-            console.log('Valor de startDate:', params.data.startDate);
           }
 
           return params.data.startDate ? new Date(params.data.startDate) : null;
@@ -291,7 +284,6 @@ export class PayrollComponent {
   }
 
   onCheckClick(params: any): void {
-    console.log('entrando a oncheckclick()');
     if (!params.data) return;
 
     const payrollId = params.data.id;
@@ -301,7 +293,6 @@ export class PayrollComponent {
     const endDate = params.data.endDate ? new Date(params.data.endDate) : null;
     //const idBranch = this.idBranch;
     const idBranch = params.data.idBranch;
-    console.log('el valor de idBranch es: ', idBranch);
 
     if (!startDate || !endDate) {
       console.error('Fechas no válidas');
@@ -339,7 +330,6 @@ export class PayrollComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -376,12 +366,9 @@ export class PayrollComponent {
     //alert("Holaaaaaaaaaaaaa");
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    console.log('DOBLE CLICK', event.data);
-    console.log('DOBLE CLICK en columna', colId);
 
     const selectedId = selectedRowData.id; // Obtener el ID del registro
     this.signalsService.setNormalPayrollId(selectedId);
-    console.log('el ID NORMAYPAYROLL ES', selectedId);
 
     if (colId === 'NomDigital') {
       // Filtrar el grid para mostrar solo el registro con el ID seleccionado
@@ -396,10 +383,6 @@ export class PayrollComponent {
       this.gridApi.onFilterChanged();
     }
 
-    console.log(
-      '---------------- el valor de aggregatingrecord es: ',
-      this.aggregatingRecord
-    );
     if (!this.aggregatingRecord) this.activatePayrollDetailTab();
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
@@ -439,8 +422,6 @@ export class PayrollComponent {
   */
 
   addRow() {
-    console.log('---------------------- entrando a alta de nomina');
-    console.log('......... esto contiene rowdata: ', this.rowData);
     //const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       //id: tempId,
@@ -450,22 +431,12 @@ export class PayrollComponent {
       active: true,
       __isNew: true,
     };
-    console.log('.....................  NUEVO ITEM:   ', newItem);
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
     this.aggregatingRecord = true;
-    console.log('....................... rowData: ', this.rowData);
-    console.log('....................... newItem: ', newItem.idBranch);
   }
 
   async saveChanges() {
-    console.log(
-      '----------------------------------- ENTRANDO A SALVAR CAMBIOS'
-    );
-    console.log(
-      '................. estos son los datos de la tabla: ',
-      this.rowData
-    );
     const isValid = this.rowData.every(
       (item) => item.startDate && item.endDate && item.idBranch
     );
@@ -481,20 +452,14 @@ export class PayrollComponent {
     }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
-    console.log('----------------estos son los new rows: ', newRows);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('-------------------- los datos cleaned son: ', cleanedData);
       this.administrationService.addNormalPayroll(cleanedData).subscribe({
         next: (response) => {
-          console.log(
-            '-----------------------Respuesta del servidor: ',
-            response
-          );
           alerts.basicAlert('Datos guardados', response.message, 'success');
           this.notSavedChanges = false;
           this.aggregatingRecord = false;
@@ -502,10 +467,6 @@ export class PayrollComponent {
           this.resetGridSize();
         },
         error: (error) => {
-          console.log(
-            '----------------------------Error al guardar los datos:',
-            error.error
-          );
           const errorMessage =
             error?.error ||
             'Ocurrió un error al guardar los datos. Intente nuevamente.';
@@ -552,7 +513,6 @@ export class PayrollComponent {
   }
 
   onSelectionChanged(event: any) {
-    console.log(event);
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
@@ -715,7 +675,6 @@ export class PayrollComponent {
   }
 
   onSelectedRow(event: any) {
-    console.log(event);
     this.id = event.data.id;
   }
 

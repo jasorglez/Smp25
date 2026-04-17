@@ -54,7 +54,6 @@ export class SetupRootComponent {
     this.hrService.getHRManagementByRootData(this.idRoot).subscribe({
       next: (data: any) => {
         this.hrData = data[0] || {};
-        console.log(data);
       },
       error: (err) => {
         if (err.status === 404) {
@@ -71,7 +70,6 @@ export class SetupRootComponent {
     if (this.newData) {
       // Si no hay datos, hacer POST
       this.hrData.idRoot = this.idRoot; // Agregar idRoot al objeto
-      console.log('Datos enviados a addBillingManagementInfo:', this.hrData);
       this.hrService.addHRManagementByRootData(this.hrData)
         .subscribe({
           next: () => {

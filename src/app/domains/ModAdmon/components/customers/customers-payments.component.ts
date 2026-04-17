@@ -284,7 +284,6 @@ export class CustomersPaymentsComponent {
           this.maestroRowData = this.detalleRowData = [];
         } else {
           this.maestroRowData = maestroRowData;
-          console.log(this.maestroRowData)
 
           setTimeout(() => {
             if (this.maestroGridApi && this.maestroRowData.length > 0) {
@@ -535,13 +534,11 @@ export class CustomersPaymentsComponent {
   }
 
   onMasterCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
   }
 
   onDetailCellValueChanged($event) {
-    console.log('Dato cambiado:', $event.data);
     $event.data.__modified = true;
     this.detailNotSavedChanges = true;
   }

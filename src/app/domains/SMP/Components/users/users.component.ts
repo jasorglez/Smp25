@@ -261,7 +261,6 @@ export class UsersComponent implements OnDestroy {
       this.employeeService.getEmployeesVigente(-this.idRoot).subscribe(
         (data: any) => {
           this.empleadoCatalgos = data;
-          console.log(this.empleadoCatalgos);
           setTimeout(() => {
             resolve(true);
           }, 100);

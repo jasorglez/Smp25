@@ -248,7 +248,6 @@ export class EquipmentComponent implements CanComponentDeactivate {
   onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -340,7 +339,6 @@ export class EquipmentComponent implements CanComponentDeactivate {
         
           let date;
           // Si viene en formato "2025-07-29T00:00:00" del agDateCellEditor
-          console.log('Valor recibido en valueSetter:', params.newValue);
           if (typeof params.newValue === 'string' && params.newValue.includes('T') && !params.newValue.includes('Z')) {
             // Agregar 'Z' para que sea UTC y crear la fecha
             date = new Date(params.newValue + 'Z');
@@ -574,14 +572,12 @@ export class EquipmentComponent implements CanComponentDeactivate {
 
     const addObservables: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       //this.trackingService.addLog(this.trackingService.getnameComp(),'Save Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
       return lastValueFrom(this.equipmentService.addEquipment(cleanedData));
     });
 
     const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       //this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Tiendas', 'Menu Administracion Tiendas',  this.trackingService.getEmail());
       return lastValueFrom(this.equipmentService.updateEquipment(row.id, cleanedData));
     });
@@ -666,7 +662,6 @@ export class EquipmentComponent implements CanComponentDeactivate {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     /*if (selectedData.loan && selectedData.loan !== 0) {

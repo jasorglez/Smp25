@@ -425,7 +425,6 @@ maestroColumnDefs: ColDef[] = [
           this.maestroRowData = [];
         } else {
           this.maestroRowData = maestroRowData;
-          console.log(this.maestroRowData);
           this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Horas Extras Especiales', 'Menu Horas Extras Especiales en Checador',  this.trackingService.getEmail());
           setTimeout(() => {
             if (this.maestroGridApi && this.maestroRowData.length > 0) {
@@ -559,7 +558,6 @@ maestroColumnDefs: ColDef[] = [
   }
 
   onMasterCellValueChanged(event: any): void {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
   }

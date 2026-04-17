@@ -170,7 +170,6 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
   loadData() {
     this.subDetailedPermissionsService.getSubDetailedPermissions(this.masterId,  this.subMasterId).subscribe({
       next: (data) => {
-        console.log(data);
         this.rowData = data || [];
         this.hasChanges = false;
       },

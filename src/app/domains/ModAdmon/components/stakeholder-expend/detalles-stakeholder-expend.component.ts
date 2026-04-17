@@ -131,7 +131,6 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    console.log('📊 DetallesStakeholderExpend inicializado');
   }
 
   async agInit(params: ICellRendererParams): Promise<void> {
@@ -155,9 +154,7 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
   loadConceptsData() {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
-      console.log('🔵 DETALLE: Cargando conceptos para retiro ID:', expenditureId);
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
-        console.log(`📊 DETALLE: Conceptos recibidos para ID ${expenditureId}:`, data.length);
 
         this.rowData = data.map(concept => ({
           ...concept,
@@ -178,7 +175,6 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
 
         // Update the count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
-          console.log(`🔄 DETALLE: Actualizando contador en maestro. ID: ${expenditureId}, Count: ${this.rowData.length}`);
           this.context.CONCEPTS.updateCount(expenditureId, this.rowData.length);
         }
 
@@ -471,7 +467,6 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('💾 GUARDANDO CAMBIOS - Sincronizando datos del grid...');
 
     const syncedData: any[] = [];
     this.gridApi.forEachNode(node => {
@@ -536,7 +531,6 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
 
       try {
         await this.context.CONCEPTS.save(expenditureId, dataToSave);
-        console.log('✅ Guardado exitoso.');
         this.hasUnsavedChanges = false;
 
         if (this.context?.componentParent?.gridApi) {

@@ -116,7 +116,6 @@ export class UnidadComponent {
 
   onSelectionChanged(event: any) {
     const selectedRows = this.gridApi.getSelectedRows();
-    console.log('Fila seleccionada:', selectedRows);
   }
 
   onCellValueChanged(event: any) {
@@ -161,7 +160,6 @@ export class UnidadComponent {
     }
     
     // Simular guardado (aquí iría la llamada al API)
-    console.log('Guardando cambios:', this.rowData);
     
     // Limpiar flags de control
     this.rowData.forEach(row => {

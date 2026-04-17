@@ -177,7 +177,6 @@ export class InAndOutComponent implements OnInit {
       next: (data: any) => {
         this.projectOrBranch = data[0].projectOrBranch;
         this.typeReference = this.projectOrBranch ?  'project' : 'branch';
-        console.log(this.projectOrBranch);
       },
       error: (err) => {
         if (err.status === 404) {
@@ -462,7 +461,6 @@ public gridOptions: any = {
       .subscribe(
         (data: any) => {
           this.requisiciones = data;
-          console.log(this.requisiciones);
         },
         (error) => console.error('Error fetching requisitions:', error)
       );
@@ -472,7 +470,6 @@ public gridOptions: any = {
     this.catalogsService.getTypesCat('INPUT').subscribe(
       (data: any) => {
         this.tipoEntrada = data;
-        console.log(this.tipoEntrada);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -773,13 +770,11 @@ public gridOptions: any = {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.inAndOutsService.addInAndOutItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.inAndOutsService.updateInAndOutItem(row.id, cleanedData);
     });
 

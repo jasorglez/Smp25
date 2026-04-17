@@ -53,6 +53,5 @@ export class BeforePosComponent  implements OnInit {
   }
 
   onPuntoVenta(){
-    console.log("Se encuentra en : " , this.selectedLocation, " Y la caja es: ", this.selectedCaja)
   }
 }

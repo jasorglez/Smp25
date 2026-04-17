@@ -57,7 +57,7 @@
           [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"
           title="Guardar">
           <i class="bi bi-floppy"></i>
-          <span class="unsaved-dot" *ngIf="permissionsViewRef?.notSavedChanges"></span>
+          <span class="unsaved-dot" *ngIf="permissionsViewRef?.notSavedChanges === true"></span>
         </button>
         <button class="action-btn-sm revert"
           (click)="permissionsViewRef.revertChanges()"

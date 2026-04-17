@@ -112,7 +112,6 @@ export class menuComponent {
     this.rootService
       .getRoot().subscribe((data: any) => {
         this.empresas = data;
-       console.log(data)
       });
   }
   masterMenu() {
@@ -120,7 +119,6 @@ export class menuComponent {
       .getMasterMenu().subscribe((menus: any[]) => {
         // Inicializamos cada menú con el permiso desactivado por defecto.
         this.masterMenus = menus.map(menu => ({ ...menu, hasPermission: false }));
-        console.log('Master Menus inicializado:', this.masterMenus);
       });
   }
   
@@ -158,11 +156,9 @@ export class menuComponent {
     if (!this.selectedEmpresa) {
       return;
     }
-    console.log('Empresa Seleccionada:', this.selectedEmpresa);
     this.menuService
       .getMenu(this.selectedEmpresa.id)
       .subscribe((companyPermissions: any[]) => {
-        console.log('Permisos de la empresa:', companyPermissions);
 
         // Creamos un mapa para buscar permisos por idMenu fácilmente (mejora el rendimiento)
         const permissionsMap = new Map(companyPermissions.map(p => [p.idMenu, p.active]));
@@ -186,11 +182,9 @@ export class menuComponent {
       active: menu.hasPermission
     }));
 
-    console.log('Guardando permisos:', permissionsToUpdate);
 
     this.menuService.updateMenu(this.selectedEmpresa.id, permissionsToUpdate).subscribe({
       next: () => {
-        console.log(`Permisos para la empresa ${this.selectedEmpresa.nameSmall} actualizados.`);
         alerts.basicAlert('Guardado', 'Los permisos se han actualizado correctamente.', 'success');
       },
       error: (err) => {
@@ -221,7 +215,6 @@ export class menuComponent {
   }
 
   onCellValueChanged(event: any) {
-    console.log('---- evento de cambio de celda: ', event);
     event.data.__modified = true;
     this.notSavedChanges = true;
     

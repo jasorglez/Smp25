@@ -219,21 +219,18 @@ export class AdvancesComponent implements OnInit, OnChanges {
     };
     effect(() => {
       const nuevoValor = this._signalsService.getContractSelectedBySidebar();
-      console.log('El valor ha cambiado:', nuevoValor());
       this.curretnContractSelected = nuevoValor();
       this.obtenerDatos();
     });
   }
 
   ngOnInit(): void {
-    console.log(this.curretnContractSelected);
     if (this.curretnContractSelected) {
       this.obtenerDatos()
     }
   }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -282,7 +279,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   async saveChanges() {
-    console.log(this.rowData);
     const isValid = this.rowData.every((item) =>
       item.date &&
       typeof item.programAdvanced === 'number' &&
@@ -304,16 +300,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
-    console.log(newRows, modifiedRows);
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this._advancesService.addAdvance(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this._advancesService.updateAdvance(Number(row.id), cleanedData);
     });
 
@@ -340,9 +333,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
     }
   }
   obtenerDatos() {
-    console.log("entra a obtener datos");
     this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe((advances: ContractAdvance) => {
-      console.log(advances);
       let acumuladoProgramado = 0;
       let acumuladoFisico = 0;
       this.datosMensuales = (advances as unknown as ContractAdvance[]).map(advance => {
@@ -380,8 +371,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   private actualizarDatos() {
     // Actualizar datos de la tabla
-    console.log("entra a actualizar datos");
-    console.log(this.datosMensuales);
     this.rowData = this.datosMensuales.map(advance => ({
       date: advance.date.split('T')[0],
       programAdvanced: advance.programAdvanced,
@@ -469,7 +458,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
     };
 
-    console.log(this.chart);
     if (this.chart && this.chart.updateOptions) {
       this.chart.updateOptions(this.chartOptions);
     } else {
@@ -502,7 +490,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
       const worksheet = workbook.Sheets[firstSheetName];
       const data = XLSX.utils.sheet_to_json(worksheet, { raw: true });
 
-      console.log('Datos importados:', data);
 
       // Procesar los datos
       const processedData = data.map((row: any) => ({
@@ -513,12 +500,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
         active: 1,
       }));
 
-      console.log('Datos procesados:', processedData);
 
       processedData.map(item => {
-        console.log(item);
         this._advancesService.addAdvance(item).subscribe((response) => {
-          console.log(response);
         });
 
       });

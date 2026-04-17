@@ -598,7 +598,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   getCRUD(idPosicion: number): Promise<any[]> {
     return new Promise((resolve, reject) => {
       this.rolesService.getCatalogCRUD(idPosicion).subscribe({
-        next: (data: any) => { console.log(data); resolve(data || []); },
+        next: (data: any) => {resolve(data || []); },
         error: (error) => {
           if (error.status === 404) resolve([]);
           else { console.error('Error fetching posiciones:', error); reject(error); }
@@ -1007,8 +1007,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       this.hasWarehouseChanges = false;
       this.signalsService.setRefresCantidadPermisos(true);
       this.obternerDatos();
-      // Recargar guard para que el sidebar refleje los nuevos permisos del usuario
-      this.authService.reloadCurrentSessionGuard({ idBranchOverride: this.branchId }).subscribe();
+      // Recargar guard para que el sidebar refleje los permisos de la sucursal activa
+      this.authService.reloadCurrentSessionGuard().subscribe();
     } catch (error) {
       console.error(error);
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
@@ -1046,8 +1046,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           this.obternerDatos();
           this.signalsService.setRefresCantidadPermisos(true);
           this.selectedWarehouse = null;
-          // Recargar guard para que el sidebar refleje la eliminación del departamento
-          this.authService.reloadCurrentSessionGuard({ idBranchOverride: this.branchId }).subscribe();
+          // Recargar guard para que el sidebar refleje los permisos de la sucursal activa
+          this.authService.reloadCurrentSessionGuard().subscribe();
         });
       }
     });

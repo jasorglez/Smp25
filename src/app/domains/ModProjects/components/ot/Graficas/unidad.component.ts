@@ -162,7 +162,6 @@ export class UnidadComponent implements OnInit {
 
     this.dailyReportService.getTotalxCost(idRoot, fechaInicio, fechaFin).subscribe({
       next: (response: any) => {
-        console.log('🔍 Datos recibidos del servicio:', response);
         
         if (response.success && response.data) {
           this.rawData = response.data;
@@ -213,10 +212,6 @@ export class UnidadComponent implements OnInit {
       labels: grouped.map(g => g.projectName)
     };
 
-    console.log('🔍 Datos procesados:', {
-      gruposIndividuales: this.cuadrillasGrouped.length,
-      datosGenerales: this.generalChartData
-    });
   }
 
   // Paleta de colores diferentes para cada gráfica

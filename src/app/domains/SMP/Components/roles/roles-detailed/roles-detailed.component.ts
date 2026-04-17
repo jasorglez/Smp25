@@ -199,7 +199,6 @@ export class RolesDetailedComponent implements OnInit {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      console.log(selectedNodes[0].data);
     } else {
       this.selectedRowData = null;
     }
@@ -209,7 +208,6 @@ export class RolesDetailedComponent implements OnInit {
     event.data.__modified = true;
     this.notSavedChanges = true;
     this.lastEditedRowId = event.data.id;
-    console.log(event.data)
   }
 
   onGridReady(params: GridReadyEvent) {

@@ -83,16 +83,10 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
 
     this.requisitionId = this.params.data.id;
 
-    console.log('🔍 ==================== DEBUG DETAIL COMPONENT ====================');
-    console.log('📦 ID de requisición que se está abriendo:', this.requisitionId);
-    console.log('📋 Datos completos de la fila:', this.params.data);
-    console.log('🔢 Tipo de dato del ID:', typeof this.requisitionId);
-    console.log('================================================================');
 
     // ✅ Llamar al servicio real
     this.ocAndReqsService.getReqItems(this.requisitionId).subscribe({
       next: (data: any) => {
-        console.log('✅ Items recibidos del servidor:', data);
 
         // Mapear los datos del servidor al formato del grid
         this.rowData = Array.isArray(data) ? data.map((item: any) => ({
@@ -120,7 +114,6 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
           this.gridApi.setGridOption('rowData', this.rowData);
         }
 
-        console.log('✅ Items cargados:', this.rowData.length);
       },
       error: (error) => {
         console.error('❌ Error al cargar items:', error);

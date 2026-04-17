@@ -61,7 +61,6 @@ export class PositionsComponent {
     if (this.newData) {
       // Si no hay datos, hacer POST
       this.setupData.idRoot = this.idRoot; // Agregar idRoot al objeto
-      console.log('Datos enviados a addSetupManagementInfo:', this.setupData);
       this.administrationService.addSetupManagementInfo(this.setupData)
         .subscribe({
           next: () => {

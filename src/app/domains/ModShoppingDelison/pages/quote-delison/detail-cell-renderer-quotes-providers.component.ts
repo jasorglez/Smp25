@@ -213,7 +213,6 @@ export class DetailCellRendererQuotesProvidersComponent implements OnInit {
   saveChanges() {
     // Save logic here
     this.hasUnsavedChanges = false;
-    console.log('Providers saved:', this.rowData);
   }
 
   onCellValueChanged(event: any) {

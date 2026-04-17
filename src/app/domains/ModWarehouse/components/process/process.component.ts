@@ -55,7 +55,6 @@ ngOnInit() {
     this.catalogService.getCatalogs(this.idRoot,'PROCESOS').subscribe(
       (data: any) => {
         this.rowData = data;      
-        console.log('Proceso:', this.rowData);
       },
       (error) => {
         if (error.status == 404) this.rowData = [];
@@ -112,7 +111,6 @@ ngOnInit() {
   
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
   }
@@ -213,7 +211,6 @@ public gridOptions: any = {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('cleanedData', cleanedData)
       return this.catalogService.updateCatalog(1, cleanedData); // Corregir este dato
       
     });

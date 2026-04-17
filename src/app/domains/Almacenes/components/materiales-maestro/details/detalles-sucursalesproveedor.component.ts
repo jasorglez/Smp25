@@ -81,12 +81,8 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
-    console.log('Sucursal detail params.data:', params.data);
-    console.log('idProveedor from params:', params.data.idProveedor);
     this.signalsService.setIdProveedor(params.data.id);
-    console.log('IdProveedor set to:', this.signalsService.getIdProveedor());
     this.loadCatalogData();
-    console.log('Sucursal detail params:', params.data.id);
     this.providerName = params.data.providerName || 'N/A';
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
@@ -218,7 +214,6 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
   async loadAllBranches() {
     if (this.idRoot) {
       this.allBranches = await this.branchsService.getBranches2fields(this.idRoot).toPromise();
-      console.log('All branches loaded:', this.allBranches);
     }
   }
 
@@ -231,7 +226,6 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           fechaAlta: row.fechaAlta ? new Date(row.fechaAlta) : null
         }));
         this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData));
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -405,7 +399,6 @@ if (!this.gridApi) {
 
     const node = selectedNodes[0];
     const selectedData = node?.data;
-    console.log('Datos seleccionados para eliminar:', selectedData);
     if (!selectedData) {
       alerts.basicAlert('Eliminar entrada', 'No se encontró la fila seleccionada.', 'error');
       return;

@@ -170,7 +170,6 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
       next: (data: any) => {
         this.projectOrBranch = data[0].projectOrBranch;
         this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-        console.log(this.projectOrBranch);
       },
       error: (err) => {
         if (err.status === 404) {
@@ -458,7 +457,6 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
       .subscribe(
         (data: any) => {
           this.requisiciones = data;
-          console.log(this.requisiciones);
         },
         (error) => console.error('Error fetching requisitions:', error)
       );
@@ -468,7 +466,6 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
     this.catalogsService.getTypesCat('OUTPUT').subscribe(
       (data: any) => {
         this.tipoEntrada = data;
-        console.log(this.tipoEntrada);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -769,13 +766,11 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.inAndOutsService.addInAndOutItem(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.inAndOutsService.updateInAndOutItem(row.id, cleanedData);
     });
 

@@ -44,7 +44,6 @@ export class PdfButtonCellRendererExpenditure2Component implements ICellRenderer
 
   onClick(event: any): void {
     event.stopPropagation();
-    console.log('🟣 Click en PDF button component - node ID:', this.params.node.data?.id);
     this.params.onClick(this.params.node);
   }
 }

@@ -283,7 +283,6 @@ export class RolesDetailedDelisonComponent implements OnInit {
             return true;
           });
           this.rowData = filteredData;
-        console.log(this.rowData)
 
         // Esperar a que el grid se actualice y luego ajustar las columnas
         setTimeout(() => {
@@ -304,7 +303,6 @@ export class RolesDetailedDelisonComponent implements OnInit {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      console.log(selectedNodes[0].data);
     } else {
       this.selectedRowData = null;
     }
@@ -314,7 +312,6 @@ export class RolesDetailedDelisonComponent implements OnInit {
     event.data.__modified = true;
     this.notSavedChanges = true;
     this.lastEditedRowId = event.data.id;
-    console.log(event.data)
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -386,7 +383,6 @@ export class RolesDetailedDelisonComponent implements OnInit {
         );
         this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
       } catch (error) {
-        console.log(error)
         // Si el error es 404, significa que el permiso no existe y debemos crearlo
         if (error.status === 404) {
           const timeResponse = await lastValueFrom(this.timeService.getTime());

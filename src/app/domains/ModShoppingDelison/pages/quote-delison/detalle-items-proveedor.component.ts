@@ -932,12 +932,9 @@ try {
     }));
 
     try {
-      console.log(`💾 Guardando ${details.length} artículos para OC id=${newOcId}...`);
       for (let i = 0; i < details.length; i++) {
-        console.log(`  → item ${i + 1}/${details.length}:`, details[i]);
         await lastValueFrom(this.ocandreqsService.addReqItem(details[i]));
       }
-      console.log('✅ Todos los artículos guardados correctamente');
 
       if (type === 'OC' && details.length > 0) {
         const totalSum = details.reduce(
@@ -1085,7 +1082,6 @@ try {
         const created: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
         row.proveedorXTablaId = created?.id || 0;
         row.proveedorXTablaObj = created || null;
-        console.log(`✅ Asignación creada: Material ${row.idSupplie} → Proveedor ${this.selectedProviderId}`);
 
         // Crear automáticamente el detalle de sucursal si hay sucursal seleccionada
         if (branchId && created?.id) {
@@ -1101,7 +1097,6 @@ try {
             active: true
           };
           await lastValueFrom(this.sucursalByMaterialProveedorService.addSucursalByMaterial(sucursalPayload));
-          console.log(`✅ Sucursal ${branchId} asignada al proveedor-material id=${created.id}`);
         }
       } catch (error) {
         console.error(`❌ Error creando asignación para ${row.articulo}:`, error);
@@ -1118,7 +1113,6 @@ try {
   }
 
   deleteItem() {
-    console.log('🗑️ Eliminar (frontend only)');
     alert('Funcionalidad de eliminación pendiente de implementar.');
   }
 
@@ -1247,7 +1241,6 @@ try {
         const updated = { ...row.proveedorXTablaObj, campo7: false };
         await lastValueFrom(this.providersService.updateProviderXTable(row.proveedorXTablaId, updated));
         row.proveedorXTablaObj = { ...row.proveedorXTablaObj, campo7: false };
-        console.log(`✅ Por autorizar desmarcado: ProveedorXTabla id=${row.proveedorXTablaId} (${row.articulo})`);
       } catch (e) {
         console.error(`❌ Error desmarcando Por autorizar para ${row.articulo}:`, e);
       }
@@ -1285,7 +1278,6 @@ try {
     for (const row of toDelete) {
       try {
         await lastValueFrom(this.providersService.deleteProviderXTable(row.proveedorXTablaId));
-        console.log(`✅ Asignación eliminada: ProveedorXTabla id=${row.proveedorXTablaId} (${row.articulo} — ${row.typeOC})`);
         row.proveedorXTablaId = 0;
       } catch (error) {
         console.error(`❌ Error eliminando asignación para ${row.articulo}:`, error);

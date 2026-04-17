@@ -196,7 +196,6 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
   ];
 
   agInit(params: ICellRendererParams): void {
-    console.log(params.data)
     this.params = params;
     this.cuentas = params.data.id; 
     this.proveedor = params.data.idTabla;
@@ -226,7 +225,6 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
     // Cargar los abonos existentes para esta cuenta
     this.customerService.getProveedorCredit(this.proveedor, this.cuentas).subscribe(data => {
       this.DetallesCuentasRowData = data as any[];
-      console.log(this.DetallesCuentasRowData)
     });
   }
 
@@ -283,7 +281,6 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
         comments: row.comments,
         type: "PROVIDERS",
       };
-      console.log(dataToSend)
       return this.customerService.updateAbonoCustomer(row.id, dataToSend).pipe(
         concatMap(() => this.providersService.updateAbonoProviderXTable(this.proveedor, this.cuentas)),
         concatMap(() => this.customerService.addAbonoCustomer(this.proveedor))

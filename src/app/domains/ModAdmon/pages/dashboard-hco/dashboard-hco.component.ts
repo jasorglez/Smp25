@@ -650,7 +650,6 @@ export class DashboardHcoComponent {
     // Cargar catálogo de cuentas contables para clasificar tipo de gasto
     this.cuentasContablesService.getAll(rootId).subscribe(data => {
       this.cuentasContablesNivel2 = data || [];
-      console.log('✅ Cuentas contables cargadas:', this.cuentasContablesNivel2.length);
       this.processAllData();
     });
 
@@ -660,8 +659,6 @@ export class DashboardHcoComponent {
       this.egresosData = rows.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
       this.ingresosData = rows.filter(item => String(item?.type ?? '').toUpperCase() === 'DEPOSITO');
 
-      console.log('✅ Egresos cargados (GASTO):', this.egresosData.length);
-      console.log('✅ Ingresos cargados (DEPOSITO):', this.ingresosData.length);
       this.processAllData();
     });
   }
@@ -697,7 +694,6 @@ export class DashboardHcoComponent {
     const egresosReales = filteredExpenseData;
     const ingresosReales = filteredIncomeData;
 
-    console.log(`📊 Datos: ${egresosReales.length} egresos, ${ingresosReales.length} ingresos`);
 
     // Calcular KPIs
     this.totalEgresos = egresosReales.reduce((sum, e) => sum + this.getMonto(e), 0);
@@ -858,7 +854,6 @@ export class DashboardHcoComponent {
       .filter(item => item.gastoAcumulado > 0)
       .sort((a, b) => a.codigo.localeCompare(b.codigo, 'es', { numeric: true }));
 
-    console.log(`📊 Egresos clasificados por tipo de gasto: ${this.clasificacionEgresos.length} tipos`);
   }
 
   private prepareFlujoMensual(egresos: any[], ingresos: any[]): void {

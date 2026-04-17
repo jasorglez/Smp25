@@ -115,10 +115,6 @@ export class CompuestoNegocioComponent {
       this.ingresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'DEPOSITO');
       this.egresos = allData.filter(item => String(item?.type ?? '').toUpperCase() === 'GASTO');
 
-      console.log('Datos cargados:', {
-        ingresos: this.ingresos.length,
-        egresos: this.egresos.length
-      });
 
       this.processData();
     } catch (error) {

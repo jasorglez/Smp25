@@ -119,7 +119,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
       this.catalogsService.getCatalogs(this.idRoot, 'UNITS')
       .subscribe({
         next: (data: any[]) =>{ this.units = data 
-         console.log(data)},
+},
         error: (err) => console.error(`Error):`, err)
       });
   }
@@ -197,7 +197,6 @@ export class PriceProductsPresentationsComponent implements OnInit {
           return foundItem ? `${foundItem.description}` : params.value;
         },
         valueGetter: (params) => {
-          console.log(params)
           if (!params.data || !params.data.idFamilia) return '';
           const familias = this.familias?.find(b => b.id === params.data.idFamilia);
         
@@ -315,9 +314,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
   }
 
   getUnidadDescripcionById(id: string): string {
-  console.log(id)
   const unidad = this.units?.find((u) => u.id === id);
-  console.log(unidad)
   return unidad ? unidad.description : id;
 }
 
@@ -457,7 +454,6 @@ export class PriceProductsPresentationsComponent implements OnInit {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('id del updateObeservable', cleanedData);
       return this.priceXproductService.updatePriceXProductsPresentationsById(
         row.id,
         cleanedData

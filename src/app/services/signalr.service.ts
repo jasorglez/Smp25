@@ -31,8 +31,6 @@ export class SignalrService {
 public startConnection(hubEndpoint: string = 'storageHub', token?: string): void {
 
   const hubUrl = `https://bi2.com.mx/smp/${hubEndpoint}`;
- console.log('🔄 Iniciando conexión SignalR...');
- console.log('📡 URL:', hubUrl);
 
  // Construir la conexión con token
  this.hubConnection = new signalR.HubConnectionBuilder()
@@ -59,9 +57,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
  this.hubConnection
    .start()
    .then(() => {
-     console.log('✅ SignalR Connection establecida exitosamente');
-     console.log('🎯 Estado de conexión:', this.hubConnection?.state);
-     console.log('🔗 Connection ID:', (this.hubConnection as any)?.connectionId);
      this.connectionState.next('Connected');
      this.setupEventListeners();
    })
@@ -84,17 +79,14 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
     if (!this.hubConnection) return;
 
     this.hubConnection.onreconnecting(() => {
-      console.log('🔄 SignalR Reconnecting...');
       this.connectionState.next('Reconnecting');
     });
 
     this.hubConnection.onreconnected((connectionId) => {
-      console.log('🔄 SignalR Reconnected with ID:', connectionId);
       this.connectionState.next('Connected');
     });
 
     this.hubConnection.onclose((error) => {
-      console.log('❌ SignalR Connection closed');
       if (error) {
         console.error('⚠️ Connection closed with error:', error);
       }
@@ -111,12 +103,9 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
     // Escuchar actualizaciones de fotos - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceivePhotoUpdate', (jsonData: string) => {
-      console.log('📸 EVENTO RECIBIDO - ReceivePhotoUpdate:', jsonData);
       try {
         const photoData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-        console.log('📸 Datos de foto parseados:', photoData);
         this.photoUpdateSubject.next(photoData);
-        console.log('📸 Photo update enviado a subscribers');
       } catch (error) {
         console.error('❌ Error parsing photo data:', error);
         // Enviar datos crudos si no se puede parsear
@@ -126,12 +115,9 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
     // Escuchar actualizaciones de texto/reportes - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceiveTextUpdate', (jsonData: string) => {
-      console.log('📝 EVENTO RECIBIDO - ReceiveTextUpdate:', jsonData);
       try {
         const textData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-        console.log('📝 Datos de texto parseados:', textData);
         this.textUpdateSubject.next(textData);
-        console.log('📝 Text update enviado a subscribers');
       } catch (error) {
         console.error('❌ Error parsing text data:', error);
         // Enviar datos crudos si no se puede parsear
@@ -141,12 +127,9 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
      // **NUEVO: Listener para nuevos reportes diarios**
   this.hubConnection.on('ReceiveNewDailyReport', (reportData: any) => {
-    console.log('📊 EVENTO RECIBIDO - ReceiveNewDailyReport:', reportData);
     try {
       const parsedData = typeof reportData === 'string' ? JSON.parse(reportData) : reportData;
-      console.log('📊 Datos de nuevo reporte parseados:', parsedData);
       this.newDailyReportSubject.next(parsedData);
-      console.log('📊 New daily report enviado a subscribers');
     } catch (error) {
       console.error('❌ Error parsing daily report data:', error);
       this.newDailyReportSubject.next(reportData);
@@ -155,9 +138,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
     // Listener básico para testing - MANTENIDO EXACTAMENTE IGUAL
     this.hubConnection.on('ReceiveMessage', (user: string, message: string) => {
-      console.log('💬 EVENTO BÁSICO RECIBIDO - ReceiveMessage:');
-      console.log('👤 Usuario:', user);
-      console.log('📄 Mensaje:', message);
     });
 
     // Listener para errores del servidor - MANTENIDO EXACTAMENTE IGUAL
@@ -165,17 +145,10 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
       console.error('🚫 Error del servidor SignalR:', error);
     });
 
-    console.log('✅ Event listeners configurados correctamente');
   }
 
   // Información de diagnóstico - CORREGIDA LA URL ESPECÍFICA
   private diagnosticInfo(): void {
-    console.log('🔍 === INFORMACIÓN DE DIAGNÓSTICO ===');
-    console.log('🌐 Environment URL:', environment.urlSmp);
-    console.log('🎯 Target URL (hardcoded):', 'https://bi2.com.mx/storageHub');
-    console.log('🔒 Origin:', window.location.origin);
-    console.log('📍 Current URL:', window.location.href);
-    console.log('🚀 User Agent:', navigator.userAgent);
     
     // Probar conectividad básica
     this.testConnectivity();
@@ -185,7 +158,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
   private async testConnectivity(): Promise<void> {
     try {
       const hubUrl = 'https://bi2.com.mx/storageHub';
-      console.log('🧪 Testing connectivity to:', hubUrl);
       
       const response = await fetch(`${hubUrl}/negotiate?negotiateVersion=1`, {
         method: 'POST',
@@ -197,7 +169,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
       
       if (response.ok) {
         const negotiateResult = await response.json();
-        console.log('✅ Negotiate successful:', negotiateResult);
       } else {
         console.error('❌ Negotiate failed:', response.status, response.statusText);
       }
@@ -208,7 +179,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
   // Método alternativo con configuración diferente - MANTENIDO EXACTAMENTE IGUAL
   public startConnectionAlternative(): void {
-    console.log('🔄 Intentando conexión alternativa...');
     
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`${environment.urlSmp}/SMP/storageHub`, {
@@ -226,7 +196,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
     
     this.hubConnection.start()
       .then(() => {
-        console.log('✅ Conexión alternativa exitosa');
         this.connectionState.next('Connected');
         this.setupEventListeners();
       })
@@ -239,7 +208,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
   // Método para parar conexión - MANTENIDO EXACTAMENTE IGUAL
   public stopConnection(): void {
     if (this.hubConnection) {
-      console.log('⏹️ Deteniendo conexión SignalR...');
       this.hubConnection.stop();
       this.connectionState.next('Disconnected');
     }
@@ -253,20 +221,16 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
   // Método para testing - enviar mensaje de prueba - MANTENIDO EXACTAMENTE IGUAL
   public async sendTestMessage(): Promise<void> {
     if (this.hubConnection && this.isConnected()) {
-      console.log('🧪 Enviando mensaje de prueba...');
       try {
         await this.hubConnection.invoke('SendMessage', 'TestUser', 'Mensaje de prueba desde Angular');
-        console.log('✅ Mensaje de prueba enviado exitosamente');
       } catch (err) {
         console.error('❌ Error enviando mensaje de prueba:', err);
       }
     } else {
       console.error('❌ No hay conexión SignalR activa');
-      console.log('📊 Estado actual:', this.hubConnection?.state);
       
       // Intentar reconectar
       if (this.hubConnection?.state === signalR.HubConnectionState.Disconnected) {
-        console.log('🔄 Intentando reconectar...');
         this.startConnection();
       }
     }
@@ -287,7 +251,6 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
   // Método de reinicio completo - MANTENIDO EXACTAMENTE IGUAL
   public restartConnection(): void {
-    console.log('🔄 Reiniciando conexión SignalR...');
     this.stopConnection();
     setTimeout(() => {
       this.startConnection();

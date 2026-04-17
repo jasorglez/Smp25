@@ -160,7 +160,6 @@ export class ComploginComponent implements OnInit, OnDestroy {
         });
       },
       error: (err) => {
-        console.log(err);
         this.isLoading = false;
         if (err.status === 0) {
           alerts.basicAlert("Error", "El servidor no está disponible. Por favor, contacta al administrador.", "error");

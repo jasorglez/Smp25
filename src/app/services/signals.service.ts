@@ -41,7 +41,6 @@ private updateMasterGrid = signal<{ id: number; subtotal: number; tax: number; t
 
 // ✅ CORRECCIÓN: Método mejorado para disparar actualizaciones
   triggerMasterUpdate(data: { id: number; subtotal: number; tax: number; total: number }) {
-    console.log('🎯 SignalsService: triggerMasterUpdate llamado con:', data);
     
     // ✅ CORRECCIÓN: Crear una nueva referencia de objeto para forzar la detección de cambios
     const updateData = {
@@ -49,12 +48,10 @@ private updateMasterGrid = signal<{ id: number; subtotal: number; tax: number; t
       timestamp: Date.now() // Agregar timestamp para garantizar cambio
     };
     
-    console.log('🚀 SignalsService: Estableciendo signal con:', updateData);
     this.masterUpdateTrigger.set(updateData);
     
     // ✅ CORRECCIÓN: Limpiar el signal después de un tiempo para permitir futuros triggers
     setTimeout(() => {
-      console.log('🧹 SignalsService: Limpiando signal');
       this.masterUpdateTrigger.set(null);
     }, 500);
   }

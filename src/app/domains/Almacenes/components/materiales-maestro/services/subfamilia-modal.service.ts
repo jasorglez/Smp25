@@ -19,12 +19,10 @@ export class SubfamiliaModalService {
   saveConfirmed$ = this.saveSubject.asObservable();
 
   openModal(modalData: ModalData) {
-    console.log('🔔 SubfamiliaModalService - Abriendo modal:', modalData);
     this.modalSubject.next(modalData);
   }
 
   confirmSave(data: any) {
-    console.log('💾 SubfamiliaModalService - Guardando:', data);
     this.saveSubject.next(data);
   }
 }

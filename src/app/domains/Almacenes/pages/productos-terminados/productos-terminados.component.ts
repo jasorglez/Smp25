@@ -235,7 +235,6 @@ export class ProductosTerminadosComponent {
     }
 
     try {
-      console.log('🔄 Cargando productos terminados...');
       // Aquí iría la llamada al endpoint de productos terminados
       // const response = await lastValueFrom(this.catalogsService.getProductosTerminados(idRoot));
       // this.rowData = response || [];
@@ -304,7 +303,6 @@ export class ProductosTerminadosComponent {
         }
       ];
 
-      console.log('✅ Productos terminados cargados correctamente');
 
     } catch (error) {
       console.error('❌ Error al cargar productos terminados:', error);
@@ -361,7 +359,6 @@ export class ProductosTerminadosComponent {
 
   // Cambios en celdas
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
 
@@ -422,7 +419,6 @@ export class ProductosTerminadosComponent {
     }
 
     try {
-      console.log(`💾 Guardando ${itemsToUpdate.length} cambios...`);
 
       // Aquí iría la lógica para guardar los cambios
       // for (const item of itemsToUpdate) {
@@ -432,7 +428,6 @@ export class ProductosTerminadosComponent {
       // Limpiar flags de modificación
       itemsToUpdate.forEach(item => delete item.__modified);
 
-      console.log('✅ Cambios guardados correctamente');
       this.notSavedChanges = false;
 
       alerts.basicAlert(

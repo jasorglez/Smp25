@@ -47,7 +47,6 @@ export class DailyReportService {
   addDailyReport(data: any): Observable<any> {
    const apiUrl = `${environment.urlSmp}/DailyReport/`;
   // alert(apiUrl)
-   console.log('Adding new daily report:', data);
 
     return this.http.post(`${environment.urlSmp}/DailyReport/`, data, { headers: this.trackingService.getHeaders() });
   }
@@ -106,7 +105,6 @@ SumaReporte(
     fecha2: string
   ): Observable<{ Total: number }> {
     const url = `${environment.urlSmp}/DailyReport/resource-total?idResource=${resource}&startDate=${fecha1}&endDate=${fecha2}`;
-     console.log(`SumaReporte URL: ${url}`);
   
     return this.http.get<{ Total: number }>(url, {
       headers: this.trackingService.getHeaders()

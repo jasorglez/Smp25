@@ -109,7 +109,6 @@ export class AdditionalInfoComponent {
     this.catalogsService.getCatalogs(this.idRoot,"PAY").subscribe(
       (data) => {
         this.paymentTypesList = data;
-        console.log(this.paymentTypesList);
       },
       (error) => {
         if (error.status === 404) {
@@ -124,7 +123,6 @@ export class AdditionalInfoComponent {
     this.catalogsService.getCatalogs(this.idRoot,"CURRENCY").subscribe(
       (data) => {
         this.currencies = data;
-        console.log(data);
       },
       (error) => {
         if (error.status === 404) {
@@ -178,11 +176,9 @@ export class AdditionalInfoComponent {
     params.api.updateGridOptions({ columnDefs: this.colMaster });
   }
   
-  console.log('Grid ready:', params.api);
 }
 
   onCellValueChanged(event: any) {
-    console.log('Dato cambiado:', event.data);
 
     event.data.__modified = true;
     this.notSavedChanges = true;

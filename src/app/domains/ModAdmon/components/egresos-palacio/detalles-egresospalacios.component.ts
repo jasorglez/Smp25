@@ -346,9 +346,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   loadConceptsData() {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
-      console.log('🔵 DETALLE: Cargando conceptos para egreso ID:', expenditureId);
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
-        console.log(`📊 DETALLE: Conceptos recibidos para ID ${expenditureId}:`, data.length);
         this.rowData = data.map(concept => ({
           ...concept,
           __isNew: false,
@@ -365,7 +363,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         }
         // Update the count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
-          console.log(`🔄 DETALLE: Actualizando contador en maestro. ID: ${expenditureId}, Count: ${this.rowData.length}`);
           this.context.CONCEPTS.updateCount(expenditureId, this.rowData.length);
         }
         // Recalcular totales
@@ -427,7 +424,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   async loadObjetosNivel1() {
     if (this.context?.administrationService && this.context?.idRoot) {
       try {
-        console.log('🔵 Cargando objetos de nivel 1 para reporte agrupado...');
         const data: any = await lastValueFrom(
           this.context.administrationService.getByNivelObjeto(this.context.idRoot, 1)
         );
@@ -437,7 +433,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
           nombre: obj.nombre,
           codigoNombre: `${obj.codigo} - ${obj.nombre}`
         }));
-        console.log('✅ Objetos nivel 1 cargados:', this.objetosGastoNivel1.length);
       } catch (error) {
         console.error('❌ Error loading objetos nivel 1:', error);
         this.objetosGastoNivel1 = [];
@@ -448,7 +443,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   async loadObjetosNivel4ParaReporte() {
     if (this.context?.administrationService && this.context?.idRoot) {
       try {
-        console.log('🔵 Cargando objetos de nivel 4 para mapeo en reporte...');
         const data: any = await lastValueFrom(
           this.context.administrationService.getByNivelObjeto(this.context.idRoot, 4)
         );
@@ -458,7 +452,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
           nombre: obj.nombre,
           codigoNombre: `${obj.codigo} - ${obj.nombre}`
         }));
-        console.log('✅ Objetos nivel 4 cargados para reporte:', this.objetosGastoHijos.length);
       } catch (error) {
         console.error('❌ Error loading objetos nivel 4:', error);
         this.objetosGastoHijos = [];
@@ -509,7 +502,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
     if (mostrarTodos) {
       // ✅ Checkbox ACTIVO → Mostrar TODOS los objetos de nivel 4
-      console.log('🔵 DETALLE: Checkbox ACTIVO - Cargando TODOS los objetos de nivel 4');
       return new Promise<void>((resolve) => {
         this.context.administrationService.getByNivelObjeto(this.context.idRoot, 4).subscribe({
           next: (data: any[]) => {
@@ -520,7 +512,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
               displayText: `${obj.codigo} - ${obj.nombre}`
             }));
 
-            console.log('✅ DETALLE: Todos los objetos de nivel 4 cargados:', this.objetosGastoHijos.length);
             // Actualizar las columnas del grid con los nuevos valores
             this.refreshConceptsColumnDefinitions();
             resolve();
@@ -542,7 +533,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         return Promise.resolve();
       }
 
-      console.log('🔵 DETALLE: Checkbox INACTIVO - Cargando objetos CONDICIONADOS del objeto:', objetoGastoCodigo);
       // Usar getEspecifica para obtener solo los hijos del objeto específico
       return new Promise<void>((resolve) => {
         this.context.administrationService.getEspecifica(this.context.idRoot, objetoGastoCodigo).subscribe({
@@ -554,7 +544,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
               displayText: obj.codigoNombre
             }));
 
-            console.log('✅ DETALLE: Objetos condicionados cargados:', this.objetosGastoHijos.length);
             // Actualizar las columnas del grid con los nuevos valores
             this.refreshConceptsColumnDefinitions();
             resolve();
@@ -604,7 +593,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
     // Determinar si el tipo de comprobante es "Empleados"
     const isEmpleadosType = this.isEmpleadosComprobanteWithTypeComps(typeComps);
 
-    console.log('🔵 DETALLE: Tipo de comprobante es Empleados?', isEmpleadosType);
 
     if (isEmpleadosType) {
       // Cargar empleados cuando el tipo de comprobante es "Empleados"
@@ -620,7 +608,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
               displayText: employee.name || 'Sin nombre'
             }));
 
-            console.log('✅ DETALLE: Empleados cargados:', this.providers.length);
             // Actualizar las columnas del grid con los nuevos valores
             this.refreshDocumentosColumnDefinitions();
             resolve();
@@ -643,7 +630,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
               displayText: provider.name || 'Sin nombre'
             }));
 
-            console.log('✅ DETALLE: Proveedores cargados:', this.providers.length);
             // Actualizar las columnas del grid con los nuevos valores
             this.refreshDocumentosColumnDefinitions();
             resolve();
@@ -700,25 +686,19 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
   // Método para refrescar las definiciones de columnas de conceptos (invalidar cache)
   private refreshConceptsColumnDefinitions() {
-    console.log('🔄 DETALLE: Refrescando columnas de conceptos. Objetos disponibles:', this.objetosGastoHijos.length);
     this._colDefs = []; // Invalidar cache
     if (this.gridApi) {
       this.gridApi.setGridOption('columnDefs', this.colDefs); // Forzar actualización
-      console.log('✅ DETALLE: Columnas de conceptos actualizadas en el grid');
     } else {
-      console.log('⚠️ DETALLE: Grid API de conceptos no disponible aún');
     }
   }
 
   // Método para refrescar las definiciones de columnas de documentos (invalidar cache)
   private refreshDocumentosColumnDefinitions() {
-    console.log('🔄 DETALLE: Refrescando columnas de documentos. Proveedores/Empleados disponibles:', this.providers.length);
     this._colDefsComprobacion = []; // Invalidar cache
     if (this.gridApiDocumentos) {
       this.gridApiDocumentos.setGridOption('columnDefs', this.colDefsComprobacion); // Forzar actualización
-      console.log('✅ DETALLE: Columnas de documentos actualizadas en el grid');
     } else {
-      console.log('⚠️ DETALLE: Grid API de documentos no disponible aún');
     }
   }
 
@@ -783,22 +763,16 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
           // Obtener si "Mostrar Todo" está activado
           const mostrarTodo = this.params?.data?.mostrartodo || false;
 
-          console.log('🔍 DETALLE - Filtro Catálogo Gasto:');
-          console.log('   📌 idExpendxcategr del maestro:', idExpendxcategr);
-          console.log('   📌 mostrartodo:', mostrarTodo);
-          console.log('   📌 Total catálogo nivel 3:', expensesCatalogLevel3.length);
 
           // Filtrar opciones: si mostrarTodo es true, mostrar todos; si no, filtrar por parentId
           let filteredOptions = expensesCatalogLevel3;
           if (!mostrarTodo && idExpendxcategr > 0) {
             // Buscar items donde parentId coincida
             filteredOptions = expensesCatalogLevel3.filter((obj: any) => obj.parentId === idExpendxcategr);
-            console.log('   📌 Filtrados por parentId=' + idExpendxcategr + ':', filteredOptions.length);
 
             // Si no encontró nada, mostrar algunos parentIds disponibles para debug
             if (filteredOptions.length === 0) {
               const parentIds = [...new Set(expensesCatalogLevel3.map((obj: any) => obj.parentId))];
-              console.log('   ⚠️ parentIds disponibles en catálogo:', parentIds.slice(0, 10));
             }
           }
 
@@ -1108,14 +1082,10 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
     // Si es un registro nuevo (no guardado), eliminarlo solo localmente
     if (selectedConcept.__isNew) {
-      console.log('🔵 Eliminando registro NUEVO:', selectedConcept.id);
-      console.log('🔵 Total ANTES de eliminar:', this.total);
-      console.log('🔵 rowData length ANTES:', this.rowData.length);
 
       // Filtrar el concepto del array
       this.rowData = this.rowData.filter(concept => concept.id !== selectedConcept.id);
 
-      console.log('🔵 rowData length DESPUÉS:', this.rowData.length);
 
       // Eliminar del grid
       this.gridApi.applyTransaction({ remove: [selectedConcept] });
@@ -1125,7 +1095,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       // Recalcular totales
       this.recalculateTotals();
 
-      console.log('🔵 Total DESPUÉS de eliminar:', this.total);
 
       // Update count in master grid
       if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
@@ -1136,16 +1105,12 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
     // Si es un registro existente, llamar al servicio del padre
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.delete) {
-      console.log('🟢 Eliminando registro EXISTENTE:', selectedConcept.id);
-      console.log('🟢 Total ANTES de eliminar:', this.total);
-      console.log('🟢 rowData length ANTES:', this.rowData.length);
 
       // NO pasar el api, para que el padre NO haga applyTransaction
       this.context.CONCEPTS.delete({ data: selectedConcept }, () => {
         // Filtrar el concepto del array local
         this.rowData = this.rowData.filter(concept => concept.id !== selectedConcept.id);
 
-        console.log('🟢 rowData length DESPUÉS del filter:', this.rowData.length);
 
         // Eliminar del grid usando applyTransaction
         this.gridApi.applyTransaction({ remove: [selectedConcept] });
@@ -1155,7 +1120,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         // Recalcular totales
         this.recalculateTotals();
 
-        console.log('🟢 Total DESPUÉS de eliminar:', this.total);
 
         // Update count in master grid
         if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.updateCount) {
@@ -1171,7 +1135,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('💾 GUARDANDO CAMBIOS - Sincronizando datos del grid...');
 
     // PASO 1: Sincronizar datos del grid al array rowData
     const syncedData: any[] = [];
@@ -1182,7 +1145,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
     });
     this.rowData = syncedData;
 
-    console.log('💾 Datos sincronizados. Total filas:', this.rowData.length);
 
     // PASO 2: Validar longitud de description y truncar si excede 250 caracteres
     const truncatedConcepts: string[] = [];
@@ -1191,7 +1153,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         const originalLength = concept.description.length;
         concept.description = concept.description.substring(0, 250);
         truncatedConcepts.push(`Concepto ID ${concept.id}: ${originalLength} caracteres truncado a 250`);
-        console.log(`⚠️ TRUNCADO: Concepto ${concept.id} de ${originalLength} a 250 caracteres`);
       }
 
       // Recalcular total = quantity * price
@@ -1205,7 +1166,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       // Recalcular total final
       concept.totalFinal = concept.total + concept.iva2 - (concept.isr || 0);
 
-      console.log(`  💾 Concepto ${concept.id}: total=${concept.total}, iva2=${concept.iva2}, totalFinal=${concept.totalFinal}`);
     });
 
     // Mostrar alerta si se truncaron conceptos
@@ -1219,7 +1179,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       concept.price && Number(concept.price) > 0
     );
 
-    console.log('💾 Conceptos válidos (precio > 0):', validConcepts.length);
 
     // Si no hay conceptos válidos, mostrar mensaje
     if (validConcepts.length === 0) {
@@ -1253,17 +1212,11 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
     this.gridApi.setGridOption('rowData', this.rowData);
 
     // PASO 6: Recalcular totales GLOBALES (subtotal, iva2, isr, total)
-    console.log('💾 Recalculando totales globales...');
     this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
     this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
     this.isr = this.rowData.reduce((acc, row) => acc + (Number(row.isr) || 0), 0);
     this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
 
-    console.log('💾 TOTALES GLOBALES:');
-    console.log('  💾 Subtotal:', this.subtotal);
-    console.log('  💾 IVA:', this.iva2);
-    console.log('  💾 ISR:', this.isr);
-    console.log('  💾 Total:', this.total);
 
     // PASO 7: Guardar en el backend y ESPERAR a que termine
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
@@ -1275,17 +1228,14 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         isr: this.isr,
         total: this.total
       };
-      console.log('💾 Enviando al backend:', dataToSave);
 
       try {
         // ESPERAR a que el backend termine de guardar
         // El padre (egresos-palacio) actualizará el maestro después de guardar exitosamente
         await this.context.CONCEPTS.save(expenditureId, dataToSave);
-        console.log('✅ Guardado exitoso. El maestro ya fue actualizado por el componente padre.');
         this.hasUnsavedChanges = false;
 
         // CERRAR el detalle y REFRESCAR el grid maestro (igual que ingresos)
-        console.log('🔄 DETALLE: Cerrando detalle y refrescando grid maestro...');
         if (this.context?.componentParent) {
           // Cerrar el detalle
           this.context.componentParent.collapseReportDetail(expenditureId);
@@ -1294,7 +1244,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
           setTimeout(() => {
             if (this.context.componentParent.gridApi) {
               this.context.componentParent.gridApi.refreshCells({ force: true });
-              console.log('✅ DETALLE: Grid maestro refrescado');
             }
           }, 200);
         }
@@ -1401,13 +1350,9 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
   private recalculateTotals() {
     try {
-      console.log('📊 RECALCULANDO TOTALES...');
-      console.log('📊 rowData.length:', this.rowData.length);
-      console.log('📊 rowData IDs:', this.rowData.map(r => r.id));
 
       this.subtotal = this.rowData.reduce((acc, row) => {
         const total = Number(row.total) || 0;
-        console.log(`  - Row ${row.id}: total = ${total}`);
         return acc + total;
       }, 0);
 
@@ -1416,17 +1361,11 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
       const totalFinalSum = this.rowData.reduce((acc, row) => {
         const totalFinal = Number(row.totalFinal) || 0;
-        console.log(`  - Row ${row.id}: totalFinal = ${totalFinal}`);
         return acc + totalFinal;
       }, 0);
 
       this.total = totalFinalSum;
 
-      console.log('📊 TOTALES CALCULADOS:');
-      console.log('  - Subtotal:', this.subtotal);
-      console.log('  - IVA:', this.iva2);
-      console.log('  - ISR:', this.isr);
-      console.log('  - Total:', this.total);
 
       // Actualizar el maestro inmediatamente con los nuevos totales
       this.updateMasterTotals();
@@ -2380,9 +2319,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   loadDocumentosComprobados() {
     if (this.context && this.context.DOCUMENTOS_COMPROBADOS && this.context.DOCUMENTOS_COMPROBADOS.load) {
       const expenditureId = this.params.data.id;
-      console.log('🔵 DETALLE: Cargando documentos comprobados para egreso ID:', expenditureId);
       this.context.DOCUMENTOS_COMPROBADOS.load(expenditureId, (data: any[]) => {
-        console.log(`📊 DETALLE: Documentos comprobados recibidos para ID ${expenditureId}:`, data.length);
         this.documentosData = data.map(doc => ({
           ...doc,
           __isNew: false,
@@ -2393,7 +2330,6 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         }
         // Update the count in master grid
         if (this.context && this.context.DOCUMENTOS_COMPROBADOS && this.context.DOCUMENTOS_COMPROBADOS.updateCount) {
-          console.log(`🔄 DETALLE: Actualizando contador de documentos en maestro. ID: ${expenditureId}, Count: ${this.documentosData.length}`);
           this.context.DOCUMENTOS_COMPROBADOS.updateCount(expenditureId, this.documentosData.length);
         }
       });

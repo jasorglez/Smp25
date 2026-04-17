@@ -44,7 +44,6 @@ export class PdfButtonCellRendererComponent implements ICellRendererAngularComp 
 
   onClick(event: any): void {
     event.stopPropagation();
-    console.log('PDF button clicked - node ID:', this.params.node.data?.id);
     this.params.onClick(this.params.node);
   }
 }

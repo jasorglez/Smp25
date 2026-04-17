@@ -53,7 +53,6 @@ export class PayrollService {
   }
 
   uploadPayrollData(data: any): Observable<any> {
-    console.log("------------ UPLOADPAYROLLDATA() entrando al servicio payroll, la data es: ", data);
 
     return this.http.post<any>(`${environment.urlAdministration}/payroll`, data);
   }
@@ -73,7 +72,6 @@ export class PayrollService {
     endDate: newEnd.split("T")[0],
     idBranch: idBranch
   };
-  console.log(params)
   return this.http.get(`${environment.urlAdministration}/payroll/GetPayrollsByRange`, { params: params, headers: this.trackingService.getHeaders() });
 }
 

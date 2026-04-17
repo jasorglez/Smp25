@@ -525,7 +525,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return foundItem ? `${foundItem.description}` : params.value;
         },
         valueGetter: (params) => {
-          console.log(params)
           if (!params.data || !params.data.idFamilia) return '';
           const familias = this.familias?.find(b => b.id === params.data.idFamilia);
         
@@ -603,7 +602,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
           return foundItem ? `${foundItem.description}` : params.value;
         },
         valueGetter: (params) => {
-          console.log(params)
           if (!params.data || !params.data.idSubfamilia) return '';
           const familias = this.subfamilias2?.find(b => b.id === params.data.idSubfamilia);
         
@@ -1442,7 +1440,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     return this.materialsService.getMaterials(this.idRoot, this.type).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log(this.rowData)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -1668,7 +1665,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
         (item) => item.nameContact === selectedProveedor
       );
         
-      console.log(proveedorInfo.id)
       if (bonusInfo) {
         event.data.quantity = parseFloat(bonusInfo.valueAddition);
       }
@@ -2002,10 +1998,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onSubmitLocation() {
-    console.log('Intentando enviar ubicación:', {
-      name: this.newLocationName,
-      idRoot: this.idRoot,
-    });
 
     if (this.newLocationName) {
       this.catalogsService
@@ -2017,7 +2009,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
         })
         .subscribe(
           (response) => {
-            console.log('Respuesta del servidor:', response);
             alerts.basicAlert(
               'Éxito',
               'Ubicación añadida correctamente',

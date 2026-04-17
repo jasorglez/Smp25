@@ -29,7 +29,6 @@ export class StoresService {
   }
 
   addStore(store: any): Observable<any> {
-    console.log(store);
     return this.http.post<any>(`${environment.urlAdministration}/Stores`, store, { headers: this.trackingService.getHeaders() });
   }
 

@@ -280,7 +280,6 @@ export class ProvedoorByBranchComponent {
           (item) => item.nameContact === selectedProveedor
         );
           
-        console.log(proveedorInfo.id)
         /*if (bonusInfo) {
           event.data.quantity = parseFloat(bonusInfo.valueAddition);
         }*/

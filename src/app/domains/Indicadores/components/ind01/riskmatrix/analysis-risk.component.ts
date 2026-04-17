@@ -85,7 +85,6 @@ export class AnalysisRiskComponent {
       .subscribe({
         next: (data: any) => {
           this.rowData = data;
-          console.log(this.rowData);
         },
         error: () => {
           this.rowData = []; // Asigna un array vacío en caso de error
@@ -98,7 +97,6 @@ export class AnalysisRiskComponent {
       (data: WorkProgram[]) => {
         this.workProgramData = data;
         this.updateActivityOptions();
-        console.log(this.idProject);
       },
       (error) => console.error('Error fetching work programs:', error)
     );
@@ -454,13 +452,11 @@ export class AnalysisRiskComponent {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.riskMatrixService.addAnalysisRisk(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.riskMatrixService.updateAnalysisRisk(row.id, cleanedData);
     });
 

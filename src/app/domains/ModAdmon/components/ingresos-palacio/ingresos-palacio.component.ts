@@ -82,7 +82,6 @@ export class IngresosPalacioComponent implements OnInit {
 
     // Suscribirse a la solicitud de apertura del modal de contribuyente
     this.contribuyenteModalService.modalRequest$.subscribe((data) => {
-      console.log('📨 Componente padre recibió solicitud de abrir modal:', data);
       this.openContribuyenteModal(data.idRoot);
     });
   }
@@ -188,7 +187,6 @@ export class IngresosPalacioComponent implements OnInit {
      // Agregar log cuando se selecciona una cuenta
     if (value) {
       const selectedAccount = this.bankAccounts.find(account => account.id === value);
-      console.log('//////Cuenta seleccionada:', selectedAccount);
 
       if (selectedAccount) {
         const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
@@ -343,7 +341,6 @@ export class IngresosPalacioComponent implements OnInit {
     return new Promise<void>((resolve) => {
       this.catalogadmonService.getCatalogsxNivel(this.root, 'INCOME', 2).subscribe(
         (data: any) => {
-          console.log('📦 Resultado de getCatalogsxParent(2, this.root):', data);
           this.ingresosCatalog = data || [];
           this.refreshColumnDefinitions(); // Refrescar columnas después de cargar datos
           resolve();
@@ -467,7 +464,6 @@ export class IngresosPalacioComponent implements OnInit {
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
-            console.log('🔵 Contribución Click detectado en Ingresos - ID:', node.data.id);
             this.toggleReportDetail(node, 'contribution');
           },
           icon: 'bi-file-earmark-pdf',
@@ -484,7 +480,6 @@ export class IngresosPalacioComponent implements OnInit {
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
-            console.log('🔵 PDF Click detectado en Ingresos - ID:', node.data.id);
             this.toggleReportDetail(node, 'report');
           },
           icon: 'bi-file-earmark-pdf',
@@ -656,7 +651,7 @@ export class IngresosPalacioComponent implements OnInit {
 
   onSelectedRow(event: any) {
     this.id = event.data.id;
-      console.log('Setting idIncomeAndExpense to:', this.id); // Debug log
+// Debug log
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
@@ -879,7 +874,6 @@ async saveChanges() {
   private async saveIncomeRecords(newRows: any[], modifiedRows: any[]): Promise<void> {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Guardando nueva fila:', cleanedData);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Save Registro en Ingresos - Palacio Municipal',
@@ -891,7 +885,6 @@ async saveChanges() {
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log('Actualizando fila existente:', cleanedData);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         'Update Registro en Ingresos - Palacio Municipal',
@@ -978,8 +971,6 @@ async saveChanges() {
   revert() {
     this.getIncomes();
     this.notSavedChanges = false;
-    console.log('Reverted unsaved changes', this.trackingService.getnameComp());
-    console.log('Reverted Email:  ', this.trackingService.getEmail());
 
     this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro Ingresos - Palacio Municipal', 'Menu Administración - Palacio Municipal - Ingresos',  this.trackingService.getEmail());
   }
@@ -1011,7 +1002,6 @@ async saveChanges() {
           tipo: tipo?.trim()
         };
       });
-      console.log(this.tipos);
       },
       error => {
         console.error(error);
@@ -1069,14 +1059,12 @@ async saveChanges() {
   }
 
   async toggleReportDetail(node: any, reportType: 'report' | 'contribution' = 'report') {
-    console.log('🟢 toggleReportDetail llamado en Ingresos - ID:', node.data.id, 'tipo:', reportType, 'isGenerating:', this.isGeneratingReport);
 
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === reportType;
 
     if (isCurrentlyExpanded) {
       // Si ya está expandido con el reporte, colapsarlo
-      console.log('🟡 Colapsando reporte expandido en Ingresos');
       node.setExpanded(false);
 
       // Restaurar alturas de todas las filas
@@ -1089,7 +1077,6 @@ async saveChanges() {
 
     // Verificar si ya se está generando un reporte
     if (this.isGeneratingReport) {
-      console.log('🔴 Ya se está generando un reporte en Ingresos, ignorando clic');
       alerts.basicAlert(
         'Procesando',
         'Ya se está generando un reporte. Por favor espere.',
@@ -1100,7 +1087,6 @@ async saveChanges() {
 
     // Marcar que se está generando
     this.isGeneratingReport = true;
-    console.log('🟢 Iniciando generación de reporte en Ingresos');
 
     // Mostrar mensaje de progreso inicial
     let progress = 0;
@@ -1171,20 +1157,17 @@ async saveChanges() {
         100
       );
 
-      console.log('✅ Reporte generado exitosamente en Ingresos');
 
       // Cerrar mensaje de carga después de 800ms
       setTimeout(() => {
         alerts.closeLoading();
         this.isGeneratingReport = false; // Liberar el lock
-        console.log('🔓 Lock liberado en Ingresos');
       }, 800);
 
     } catch (error) {
       clearInterval(progressInterval);
       alerts.closeLoading();
       this.isGeneratingReport = false; // Liberar el lock en caso de error
-      console.log('🔴 Error generando reporte en Ingresos, lock liberado');
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
@@ -1251,7 +1234,6 @@ async saveChanges() {
           };
           this.administrationService.updateRowsIncorExp(incomeId, dataToSave).subscribe({
             next: () => {
-              console.log('Contador de items actualizado en servidor');
             },
             error: (error) => {
               console.error('Error actualizando contador de items:', error);
@@ -1427,7 +1409,6 @@ async saveChanges() {
   // ==================== MÉTODOS PARA EL MODAL DE CONTRIBUYENTE ====================
 
   openContribuyenteModal(idRoot: number) {
-    console.log('🟣 openContribuyenteModal ejecutado con idRoot:', idRoot);
     this.newContribuyente = {
       idRoot: idRoot,
       idBranch: this.idBranch || 0,
@@ -1462,7 +1443,6 @@ async saveChanges() {
 
     this.showContribuyenteModal = true;
     document.body.classList.add('modal-open');
-    console.log('✅ Modal de contribuyente abierto. showContribuyenteModal =', this.showContribuyenteModal);
   }
 
   closeContribuyenteModal() {
@@ -1674,7 +1654,6 @@ async saveChanges() {
       const setupInfo = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
         ? setupManagementInfo[0]
         : setupManagementInfo;
-      console.log('🖊️ Información de firmas:', setupInfo);
 
       const logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
       const logo2Base64 = rootResponse.picture2

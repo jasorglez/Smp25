@@ -197,7 +197,6 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
     this.detailedPermissionsService.getDetailedPermissions(this.masterId).subscribe({
       next: (data) => {
         this.rowData = data || [];
-        console.log(this.rowData);
         this.hasChanges = false;
       },
       error: (err) => console.error(err)
@@ -298,7 +297,6 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
         const payload = { ...row };
         delete payload.id;
         delete payload.__isNew;
-        console.log(payload);
         await lastValueFrom(this.detailedPermissionsService.addDetailedPermissions(payload));
       }
 

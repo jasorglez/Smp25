@@ -38,9 +38,6 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.productos = this.context?.productos || [];
     // Check if requisition is locked (assigned to a QUOTE for cotización)
     this.isLocked = params.data?.locked === true;
-    console.log('🔍 Detail Renderer - productos array:', this.productos);
-    console.log('🔍 Detail Renderer - productos length:', this.productos.length);
-    console.log('🔒 Detail Renderer - isLocked:', this.isLocked, 'locked:', params.data?.locked);
     this.loadData();
   }
 
@@ -48,13 +45,11 @@ export class DetallesRequisicionesComponent implements OnInit {
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
       const requisitionId = this.params.data.id;
       this.context.ITEMS.load(requisitionId, (data: any[]) => {
-        console.log('🔍 Raw data loaded:', data);
         this.rowData = data.map(item => ({
           ...item,
           __isNew: false,
           __modified: false
         }));
-        console.log('🔍 Mapped rowData:', this.rowData);
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }

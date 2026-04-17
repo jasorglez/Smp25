@@ -32,7 +32,6 @@ export class RolesService {
 
 
   updateRoles(id: string, data: any): Observable<any> {
-    console.log('DATA EN EL UPDATE', data)
     return this.http.put(`${environment.urlSecurity}/Roles/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 

@@ -21,7 +21,6 @@ export class StoragesService {
       const url = await getDownloadURL(imgRef);
       return url;
     } catch (error) {
-      console.log("Error uploading file", error);
       throw error;
     }
   }

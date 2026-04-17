@@ -262,7 +262,6 @@ export class DastotPalComponent implements OnInit {
       }
     };
 
-    console.log('[DastotPal] updateDetailContext - Setting context:', contextToSet);
 
     this.gridApi.setGridOption('detailCellRendererParams', contextToSet);
   }
@@ -276,11 +275,6 @@ export class DastotPalComponent implements OnInit {
     const isSameType = this.currentDetailType === detailType;
     const clickedData = node.data;
 
-    console.log('[DastotPal] toggleDetail called');
-    console.log('[DastotPal] detailType:', detailType);
-    console.log('[DastotPal] isExpanded:', isExpanded);
-    console.log('[DastotPal] isSameType:', isSameType);
-    console.log('[DastotPal] node.data:', node.data);
 
     // Si está expandido y es el mismo tipo, contraer y restaurar datos
     if (isExpanded && isSameType) {
@@ -302,7 +296,6 @@ export class DastotPalComponent implements OnInit {
 
     // Actualizar tipo y contexto
     this.currentDetailType = detailType;
-    console.log('[DastotPal] Setting currentDetailType to:', this.currentDetailType);
     this.updateDetailContext();
 
     // Guardar datos completos si no están guardados
@@ -316,7 +309,6 @@ export class DastotPalComponent implements OnInit {
 
     // Pequeño delay para asegurar que el contexto y datos se actualicen antes de expandir
     setTimeout(() => {
-      console.log('[DastotPal] Expanding node');
       this.gridApi.forEachNode((n: any) => {
         if (n.data?.nameAccount === clickedData.nameAccount) {
           n.setExpanded(true);

@@ -369,7 +369,6 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     this.permitionsService.getInfoByUser(this.userId)
       .subscribe((data: any) => {
         this.permiso = data;
-        console.log('🔵 getInfoByUser - permiso:', this.permiso);
         queueMicrotask(() => this.permissionsGridApi?.refreshCells({ force: true }));
       });
   }
@@ -519,7 +518,6 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
     } else {
       this.branchesService.getBranchesByUserAndCompany(this.userId, this.idRoot).subscribe(
         (data: any) => {
-          console.log('🔴 RAW data.project:', data.project);
 
           this.permissionsRowData = (data.project || []).map((row: any) => {
             // Deducción segura de branchId:

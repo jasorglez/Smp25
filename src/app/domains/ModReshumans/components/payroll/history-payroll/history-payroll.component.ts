@@ -100,7 +100,6 @@ export class HistoryPayrollComponent {
         (data) => {
           this.rowData = Array.isArray(data) ? data : [data];
           this.isLoading.set(false);
-          console.log('Datos extraidos de history-payroll', data);
         },
         (error) => {
           this.rowData = [];
@@ -144,7 +143,6 @@ export class HistoryPayrollComponent {
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos de la nomina a eliminar:', selectedData);
 
     const id = selectedData.id;
     selectedData.active = 0;

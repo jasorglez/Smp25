@@ -251,7 +251,6 @@ export class InspeccionComponent implements OnInit {
   // Cargar todos los reportes de la empresa
   loadAllReports(): void {
     if (!this.idRoot) {
-      console.log('No hay empresa seleccionada');
       return;
     }
 

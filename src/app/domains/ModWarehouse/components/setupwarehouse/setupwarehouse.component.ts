@@ -73,7 +73,6 @@ export class SetupwarehouseComponent {
     this.setupService.getWarehouseSetup(this.idCompany).subscribe({
       next: (data: any) => {
         this.warehouseSetup = data[0];
-        console.log(this.warehouseSetup);
       },
       error: (err) => {
         if (err.status === 404) {
@@ -138,16 +137,11 @@ export class SetupwarehouseComponent {
       active: true
     };
 
-    console.log('📤 Enviando PrefixSetup:', prefixData);
-    console.log('   - hasPrefixData:', this.hasPrefixData);
-    console.log('   - prefixSetupId:', this.prefixSetupId);
-    console.log('   - Método:', this.hasPrefixData && this.prefixSetupId ? 'PUT' : 'POST');
 
     if (this.hasPrefixData && this.prefixSetupId) {
       // PUT - Actualizar prefijo existente
       this.prefixSetupService.updatePrefixSetup(this.prefixSetupId, prefixData).subscribe({
         next: () => {
-          console.log('✅ PrefixSetup actualizado correctamente');
           alerts.basicAlert("Actualización", "La configuración se ha guardado correctamente", "success");
         },
         error: (err) => {
@@ -159,7 +153,6 @@ export class SetupwarehouseComponent {
       // POST - Crear nuevo prefijo
       this.prefixSetupService.createPrefixSetup(prefixData).subscribe({
         next: (result) => {
-          console.log('✅ PrefixSetup creado correctamente:', result);
           this.prefixSetupId = result.id;
           this.hasPrefixData = true;
           alerts.basicAlert("Actualización", "La configuración se ha guardado correctamente", "success");
@@ -202,7 +195,6 @@ export class SetupwarehouseComponent {
 
     this.prefixSetupService.getPrefixSetup(type, this.selectedBranchOrProject).subscribe({
       next: (data: PrefixSetup) => {
-        console.log('✅ PrefixSetup encontrado:', data);
         this.prefixSetupId = data.id;
         this.prefixReq = data.prefixReq || '';
         this.consecutiveReq = data.consecutiveReq || 0;
@@ -214,7 +206,6 @@ export class SetupwarehouseComponent {
       },
       error: (err) => {
         // Si no existe (404), limpiar campos para crear nuevo
-        console.log('ℹ️ No existe PrefixSetup, se creará uno nuevo');
         this.clearPrefixFields();
       }
     });
@@ -235,7 +226,6 @@ export class SetupwarehouseComponent {
     this.branchsService.getBranches(this.idCompany).subscribe({
       next: (data: any) => {
         this.branches = data;
-        console.log('✅ Sucursales cargadas:', this.branches.length);
       },
       error: (err) => {
         console.error('❌ Error al cargar sucursales:', err);
@@ -254,7 +244,6 @@ export class SetupwarehouseComponent {
           id: p.idProject,
           name: p.projectName
         }));
-        console.log('✅ Proyectos cargados:', this.projects.length, this.projects);
       },
       error: (err) => {
         console.error('❌ Error al cargar proyectos:', err);

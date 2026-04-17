@@ -52,7 +52,6 @@ export class OtService {
 
     // Crear headers simples que coincidan con el curl
     const baseHeaders = this.trackingService.getHeaders();
-    console.log('Base headers from trackingService:', baseHeaders);
 
     // Crear un objeto headers limpio
     const headers: any = {
@@ -65,10 +64,6 @@ export class OtService {
       headers['Authorization'] = authToken;
     }
 
-    console.log('Authorization token found:', authToken);
-    console.log('Final headers being sent:', headers);
-    console.log('FormData being sent:', formData);
-    console.log('Endpoint:', `${environment.urlSmp}/OT/upload?idProject=${idProject}`);
 
     return this.http.post(`${environment.urlSmp}/OT/upload?idProject=${idProject}`, formData, { headers });
   }
@@ -79,7 +74,6 @@ export class OtService {
 
     // Crear headers simples que coincidan con el curl
     const baseHeaders = this.trackingService.getHeaders();
-    console.log('Base headers from trackingService:', baseHeaders);
 
     // Crear un objeto headers limpio
     const headers: any = {
@@ -92,10 +86,6 @@ export class OtService {
       headers['Authorization'] = authToken;
     }
 
-    console.log('Authorization token found:', authToken);
-    console.log('Final headers being sent:', headers);
-    console.log('FormData being sent:', formData);
-    console.log('Endpoint:', `${environment.urlSmp}/OT/uploadCopy?idProject=${idProject}`);
 
     return this.http.post(`${environment.urlSmp}/OT/uploadCopy?idProject=${idProject}`, formData, { headers });
   }
@@ -105,7 +95,6 @@ export class OtService {
 
     // Crear headers simples que coincidan con el curl
     const baseHeaders = this.trackingService.getHeaders();
-    console.log('Base headers from trackingService:', baseHeaders);
 
     // Crear un objeto headers limpio
     const headers: any = {
@@ -118,10 +107,6 @@ export class OtService {
       headers['Authorization'] = authToken;
     }
 
-    console.log('Authorization token found:', authToken);
-    console.log('Final headers being sent:', headers);
-    console.log('FormData being sent:', formData);
-    console.log('Endpoint:', `${environment.urlSmp}/OT/uploadMaster?idProject=${idProject}`);
 
     return this.http.post(`${environment.urlSmp}/OT/uploadMaster?idProject=${idProject}`, formData, { headers });
   }
@@ -131,7 +116,6 @@ export class OtService {
 
     // Crear headers simples que coincidan con el curl
     const baseHeaders = this.trackingService.getHeaders();
-    console.log('Base headers from trackingService:', baseHeaders);
 
     // Crear un objeto headers limpio
     const headers: any = {
@@ -152,7 +136,6 @@ export class OtService {
 
     // Crear headers simples que coincidan con el curl
     const baseHeaders = this.trackingService.getHeaders();
-    console.log('Base headers from trackingService:', baseHeaders);
 
     // Crear un objeto headers limpio
     const headers: any = {

@@ -180,7 +180,6 @@ export class RolesDelisonComponent {
       (data: any) => {
         const raw = data?.data ?? data ?? [];
         this.rowData = this.sortDepartamentosPorNombre(Array.isArray(raw) ? raw : []);
-        console.log('Roles:', this.rowData);
       },
       (error) => {
         if (error.status == 404) this.rowData = [];
@@ -464,25 +463,19 @@ export class RolesDelisonComponent {
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
-    console.log('Nuevas filas:', newRows);
 
     // Mostrar los datos de las filas nuevas que se van a enviar
-    console.log('Filas nuevas que se van a enviar al servidor:');
     newRows.forEach((row, index) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(`Fila nueva ${index + 1}:`, cleanedData);
     });
 
     // Mostrar los datos de las filas modificadas que se van a enviar
-    console.log('Filas modificadas que se van a enviar al servidor:');
     modifiedRows.forEach((row, index) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(`Fila modificada ${index + 1}:`, cleanedData);
     });
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData)
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Save Registro en Roles', 'Menu Administracion Roles', this.trackingService.getEmail());
       return this.rolesService.addRoles(cleanedData);
     });

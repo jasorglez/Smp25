@@ -68,7 +68,6 @@ export class SetupEmployeesComponent {
   constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      console.log("---------- SETUPCOMPONENT() idBranch --> ", this.idBranch);
       this.getData();
     });
   }
@@ -83,7 +82,6 @@ export class SetupEmployeesComponent {
   }
 
   onBankSelected() {
-    console.log("Banco seleccionado ID:", this.selectedBankId);
     // Aquí puedes guardar el ID o hacer lo que necesites
   }
 
@@ -94,7 +92,6 @@ export class SetupEmployeesComponent {
     //console.log("---------- SENDPAYROLLDATA() Bancos: --> ", this.banks);
 
 
-    console.log("---------- SENDPAYROLLDATA() enviando datos de nómina --> ", this.jsonData);
 
     if (!this.jsonData) {
       alerts.basicAlert("Error", "No hay datos para enviar.", "error");
@@ -114,7 +111,6 @@ export class SetupEmployeesComponent {
     // Agregar el ID del banco seleccionado
     //this.jsonData.IdBranch = this.selectedBankId;
 
-    console.log("---------- SENDPAYROLLDATA() Datos formateados --> ", this.jsonData);
 
     //if (!this.selectedBankId) {
     //  alerts.basicAlert("Error", "Por favor seleccione un banco.", "error");
@@ -131,21 +127,16 @@ export class SetupEmployeesComponent {
 
     this.jsonData.idBranch = this.idBranch;
 
-    console.log("---------- SENDPAYROLLDATA() Datos a enviar con ID de banco --> ", this.jsonData);
-    console.log("---------- SENDPAYROLLDATA() enviando datos de nómina con idBranch --> ", this.jsonData);
 
 
     this.payrollService.uploadPayrollData(this.jsonData).subscribe({
       next: (response) => {
         this.isLoading = true;
         alerts.basicAlert("Actualización", "Los datos fueron guardados exitosamente.", "success");
-        console.log('-------------- uploadpayrollDATA() Respuesta del servidor servicio payroll:', response);
-        console.log("---------------justo antes de subir el uplodadexcel: ", this.formData);
         this.payrollService.upLoadExcelFile(response, this.formData). subscribe({
           next: (response) => {
             this.isLoading = true;
             alerts.basicAlert("Actualización", "El archivo excel fue subido exitosamente!", "success");
-            console.log('-------------- uploadpayrollDATA() Respuesta del servicio uploadexcelfile:', response);
             this.resetForm();
           }
         });
@@ -200,7 +191,6 @@ export class SetupEmployeesComponent {
       next: (data: any) => {
         this.hrData = data[0] || {};
         this.newData = false;
-        console.log(data);
       },
       error: (err) => {
         if (err.status === 404) {
@@ -217,7 +207,6 @@ export class SetupEmployeesComponent {
     if (this.newData) {
       // Si no hay datos, hacer POST
       this.hrData.idBranch = this.idBranch; // Agregar idBranch al objeto
-      console.log('Datos enviados a addBillingManagementInfo:', this.hrData);
       this.hrService.addHRManagementData(this.hrData)
         .subscribe({
           next: () => {
@@ -249,7 +238,6 @@ export class SetupEmployeesComponent {
   }
 
   onFileChange(event: Event): void {
-    console.log("entrando a onFileChange");
     this.isLoading = true;
     this.error = null;
     this.jsonData = null;
@@ -269,8 +257,6 @@ export class SetupEmployeesComponent {
     this.file = file;
     this.formData = new FormData();
     this.formData.append('archivo', this.file);
-    console.log("nombre del archivo --> ", file);
-    console.log("contenido de formData: ", this.formData);
 
 
     // Verificamos que sea un archivo Excel
@@ -291,7 +277,6 @@ export class SetupEmployeesComponent {
 
         // Procesamos el Excel de nómina específicamente
         const data = this.processNominaExcel(workbook);
-        console.log("la data despues de procesar el archivo es --> ", data);
 
         // Asignamos los datos a nuestra variable para mostrarlos
         this.jsonData = data;
@@ -303,8 +288,6 @@ export class SetupEmployeesComponent {
       }
 
       if (this.jsonData) {
-        console.log("la data despues de procesar y sin errores es --> ", this.jsonData);
-        console.log("aqui yq podemos enviar el archivo a guardar a BD --> ", this.jsonData.empleados);
         //this.sendPayrollData()
       }
     };
@@ -351,7 +334,6 @@ export class SetupEmployeesComponent {
     // Obtenemos el rango de celdas
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
 
-    console.log("rango de empleados", range);
 
     // Procesamos cada fila a partir de la fila 11 (donde comienzan los datos de empleados)
     for (let rowNum = 10; rowNum <= range.e.r; rowNum++) {
@@ -391,7 +373,6 @@ export class SetupEmployeesComponent {
         firma: this.getCellValue(worksheet, `W${rowNum}`)
       };
 
-      console.log("empleado", empleado);
 
       nominaData.empleados.push(empleado);
     }

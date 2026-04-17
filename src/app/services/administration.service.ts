@@ -227,10 +227,8 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
 
   // NormalPayroll
   addNormalPayroll(data: any): Observable<any> {
-    console.log("------ entrando a administration service -- addNormalPayroll", data);
     return this.http.post<number>(`${environment.urlAdministration}/NormalPayrolls`, data, { headers: this.trackingService.getHeaders() }).pipe(
       tap(response => {
-        console.log("Respuesta del servidor: ", response);
       })
     );
   }
@@ -260,13 +258,11 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
   }
 
   deleteEmployeeBonus(iDBonus: number): Observable<any> {
-    console.log("------ entrando a administration service -- delete bonus");
     return this.http.delete(`${environment.urlAdministration}/NormalPayrolls/bonus/${iDBonus}`, { headers: this.trackingService.getHeaders() })
   }
 
 
   updateEmployeesBonus(iDBonus: number, data: any): Observable<any> {
-    console.log("------ entrando a administration service -- update bonus", data);
     return this.http.put(`${environment.urlAdministration}/NormalPayrolls/${iDBonus}`, data, { headers: this.trackingService.getHeaders() })
   }
 

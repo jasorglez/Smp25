@@ -63,7 +63,6 @@ export class DetailFamilySubFamilyComponent implements OnInit {
 
   // ag-Grid framework method: recibe los params al instanciar el componente
   agInit(params: any) {
-    console.log('DEBUG agInit - params:', params);
     this.params = params;
     this.masterCatalog = params.data.id;
   }
@@ -74,7 +73,6 @@ export class DetailFamilySubFamilyComponent implements OnInit {
 
   onCellValueChanged(event: any) {
     try {
-      console.log('DEBUG onCellValueChanged - event:', event);
       const field = event.colDef?.field;
       // Si se editó el campo 'vigente' (Activo) marcamos cambios sin guardar
       if (field === 'vigente') {
@@ -84,7 +82,6 @@ export class DetailFamilySubFamilyComponent implements OnInit {
       // Marcar fila como modificada si no es nueva
       if (event.data && !event.data.__isNew) {
         event.data.__modified = true;
-        console.log('DEBUG onCellValueChanged - marked __modified for:', event.data);
       }
     } catch (e) {
       console.warn('Error en onCellValueChanged', e);
@@ -127,7 +124,6 @@ export class DetailFamilySubFamilyComponent implements OnInit {
     this.familySubFamily.getDetailMaster(this.idRoot, this.masterCatalog ).subscribe(
       (data: any) => {
         this.rowData = data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -137,7 +133,6 @@ export class DetailFamilySubFamilyComponent implements OnInit {
     this.catalogsService.getCatalogsVigente(this.idRoot, 'FAM-CAT').subscribe(
       (data: any) => {
         this.families = data;
-        console.log(data)
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -299,7 +294,6 @@ export class DetailFamilySubFamilyComponent implements OnInit {
               console.warn('DEBUG save - gridApi.hideOverlay() failed', e);
             }
 
-            console.log('DEBUG save - finished save flow');
           }
     }
 

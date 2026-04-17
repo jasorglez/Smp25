@@ -114,7 +114,6 @@ export class TimeinactivesComponent {
     this.workprogramsService.getWorkPrograms2Fields(this.idProject).subscribe(
       (data: WorkProgram[]) => {
         this.workProgramData = data;
-        console.log(this.workProgramData);
       },
       (error) => console.error('Error fetching work programs:', error)
     );
@@ -124,7 +123,6 @@ export class TimeinactivesComponent {
     this.timeinactivesService.getArea().subscribe(
       (data: Catalog[]) => {
         this.areaData = data;
-        console.log(this.areaData)
       },
       (error) => console.error('Error fetching areas:', error)
     );

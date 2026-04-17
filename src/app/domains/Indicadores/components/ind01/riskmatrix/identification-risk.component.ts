@@ -33,7 +33,6 @@ export class IdentificationRiskComponent implements OnInit {
   constructor() {
     effect(() => {
       this.idProject = this.signalsService.getProjectSelectedBySidebar()();
-      console.log(this.idProject);
       this.idIdentificationRisk = this.signalsService.getIdIdentificationRisk()();
       if (this.idProject == null) {
         this.rowData = [];
@@ -283,13 +282,11 @@ export class IdentificationRiskComponent implements OnInit {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.riskMatrixService.addIdentificationRisk(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      console.log(cleanedData);
       return this.riskMatrixService.updateIdentificationRisk(row.id, cleanedData);
     });
 
