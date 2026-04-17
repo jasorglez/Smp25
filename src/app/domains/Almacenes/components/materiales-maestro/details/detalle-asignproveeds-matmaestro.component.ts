@@ -100,7 +100,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   branches: any[] = [];
   idRoot: number;
 
-  constructor(private currencyPipe: CurrencyPipe) {}
+  constructor(private currencyPipe: CurrencyPipe) { }
 
   // Helper para formatear nombre de proveedor sin "undefined"
   private getProviderDisplayName(provider: any): string {
@@ -134,60 +134,60 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   proveedorColumnDefs: ColDef[] = [
     {
-        field: 'id',
-        headerName: 'Id',
-        editable: false,
-        width: 70,
-        hide: false,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        },
+      field: 'id',
+      headerName: 'Id',
+      editable: false,
+      width: 70,
+      hide: false,
+      filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+      filterParams: {
+        filterOptions: ['equals'], // Opciones de filtro
       },
-      {
-        field: 'active',
-        headerName: 'Activo',
-        editable: true,
-        width: 80,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        onCellValueChanged: (params: any) => {
-          params.data.__modified = true;
-          this.hasProveedorChanges = true;
-        }
-      },
-      {
-        field: 'principal',
-        headerName: 'Principal',
-        editable: true,
-        width: 111,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        onCellValueChanged: (params: any) => {
-          // Si se marca como principal, desmarcar todos los demás
-          if (params.newValue === true || params.newValue === 1) {
-            this.proveedorRowData.forEach((row: any) => {
-              if (row !== params.data) {
-                row.principal = false;
-                // Marcar como modificado si no es nuevo
-                if (!row.__isNew) {
-                  row.__modified = true;
-                }
+    },
+    {
+      field: 'active',
+      headerName: 'Activo',
+      editable: true,
+      width: 80,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor',
+      onCellValueChanged: (params: any) => {
+        params.data.__modified = true;
+        this.hasProveedorChanges = true;
+      }
+    },
+    {
+      field: 'principal',
+      headerName: 'Principal',
+      editable: true,
+      width: 111,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor',
+      onCellValueChanged: (params: any) => {
+        // Si se marca como principal, desmarcar todos los demás
+        if (params.newValue === true || params.newValue === 1) {
+          this.proveedorRowData.forEach((row: any) => {
+            if (row !== params.data) {
+              row.principal = false;
+              // Marcar como modificado si no es nuevo
+              if (!row.__isNew) {
+                row.__modified = true;
               }
-            });
-            // Marcar el actual como modificado si no es nuevo
-            if (!params.data.__isNew) {
-              params.data.__modified = true;
             }
-            // Activar el botón de guardar
-            this.hasProveedorChanges = true;
-            // Refrescar el grid para mostrar los cambios
-            if (this.proveedorGridApi) {
-              this.proveedorGridApi.refreshCells({ force: true });
-            }
+          });
+          // Marcar el actual como modificado si no es nuevo
+          if (!params.data.__isNew) {
+            params.data.__modified = true;
+          }
+          // Activar el botón de guardar
+          this.hasProveedorChanges = true;
+          // Refrescar el grid para mostrar los cambios
+          if (this.proveedorGridApi) {
+            this.proveedorGridApi.refreshCells({ force: true });
           }
         }
-      },
+      }
+    },
 
     {
       field: 'campo7',
@@ -208,115 +208,115 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     },
 
     {
-        field: 'idTabla',
-        headerName: 'Proveedor',
-        editable: true,
-        width: 200,
-        flex: 1,
-        cellStyle: (params: any) => {
-          if (params.data?.__isNew) return null;
-          if (params.data?._hasSucursales === false) {
-            return { backgroundColor: '#fce4ec', borderLeft: '3px solid #e91e63' };
-          }
-          return null;
-        },
-        tooltipValueGetter: (params: any) => {
-          if (params.data?._hasSucursales === false) return 'Sin sucursales asignadas';
-          return null;
-        },
-        // Nuevo editor
-        cellEditor: SelectWithTooltipEditorV2Component,
-
-        cellEditorParams: (params: any) => {
-          const currentIdTabla = params.data.idTabla;
-          const usedIds = new Set(
-            (this.proveedorRowData || [])
-              .map((row: any) => row.idTabla)
-              .filter((id: any) => id && id !== 0 && id !== currentIdTabla)
-          );
-          const options = (this.filteredProviders || [])
-            .filter((p: any) => !usedIds.has(p.id))
-            .map((p: any) => {
-              const company = (p.name ?? p.company ?? '').trim();
-              const contact = (p.description ?? p.nameContact ?? '').trim();
-              const isCompany = !!company;
-              return {
-                id: p.id,
-                description: isCompany ? company : (contact || `Proveedor ${p.id}`),
-                group: isCompany ? 'Compañía' : 'Contacto',
-                sortKey: isCompany ? company : contact,
-                valueAddition2: p.typeIntOrExt || p.typework || 'Sin tipo',
-                label2: 'Tipo de proveedor:'
-              };
-            })
-            .sort((a: any, b: any) => {
-              if (a.group !== b.group) return a.group === 'Compañía' ? -1 : 1;
-              return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
-            });
-          return { options };
-        },
-      
-        valueFormatter: (params: any) => {
-          if (!params.value) return '';
-          const provider = this.filteredProviders?.find?.(p => p.id === params.value)
-                          || this.providers?.find?.(p => p.id === params.value);
-          return provider ? this.getProviderDisplayName(provider) : params.value;
-        },
-      
-        onCellValueChanged: (params: any) => {
-          // refresca la fila
-          params.api.refreshCells({
-            rowNodes: [params.node],
-            force: true
-          });
-        },
-      
-        valueSetter: (params: any) => {
-          const editorValue = params.newValue;
-        
-          // Si el editor devuelve {id, description}
-          const newId = (editorValue && typeof editorValue === 'object' && 'id' in editorValue)
-            ? editorValue.id
-            : editorValue;
-        
-          // Validar requerido
-          if (!newId && newId !== 0) {
-            alerts.basicAlert(
-              'Campo requerido',
-              'El proveedor es obligatorio',
-              'error'
-            );
-            return false;
-          }
-        
-          // Evitar duplicados
-          const duplicateExists = (this.proveedorRowData || []).some((row, index) =>
-            index !== params.node.rowIndex && row.idTabla === newId
-          );
-        
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Proveedor duplicado',
-              'Ya existe una fila con ese proveedor.',
-              'error'
-            );
-            return false;
-          }
-        
-          // Asignar valores
-          params.data.idTabla = newId;
-        
-          const provider = this.filteredProviders.find((p: any) => p.id === newId)
-                        || this.providers.find((p: any) => p.id === newId);
-        
-          if (provider) {
-            params.data.providerName = this.getProviderDisplayName(provider);
-          } else {
-            params.data.providerName = newId;
-          }
-        
-          return true;
+      field: 'idTabla',
+      headerName: 'Proveedor',
+      editable: true,
+      width: 200,
+      flex: 1,
+      cellStyle: (params: any) => {
+        if (params.data?.__isNew) return null;
+        if (params.data?._hasSucursales === false) {
+          return { backgroundColor: '#fce4ec', borderLeft: '3px solid #e91e63' };
         }
+        return null;
+      },
+      tooltipValueGetter: (params: any) => {
+        if (params.data?._hasSucursales === false) return 'Sin sucursales asignadas';
+        return null;
+      },
+      // Nuevo editor
+      cellEditor: SelectWithTooltipEditorV2Component,
+
+      cellEditorParams: (params: any) => {
+        const currentIdTabla = params.data.idTabla;
+        const usedIds = new Set(
+          (this.proveedorRowData || [])
+            .map((row: any) => row.idTabla)
+            .filter((id: any) => id && id !== 0 && id !== currentIdTabla)
+        );
+        const options = (this.filteredProviders || [])
+          .filter((p: any) => !usedIds.has(p.id))
+          .map((p: any) => {
+            const company = (p.name ?? p.company ?? '').trim();
+            const contact = (p.description ?? p.nameContact ?? '').trim();
+            const isCompany = !!company;
+            return {
+              id: p.id,
+              description: isCompany ? company : (contact || `Proveedor ${p.id}`),
+              group: isCompany ? 'Compañía' : 'Contacto',
+              sortKey: isCompany ? company : contact,
+              valueAddition2: p.typeIntOrExt || p.typework || 'Sin tipo',
+              label2: 'Tipo de proveedor:'
+            };
+          })
+          .sort((a: any, b: any) => {
+            if (a.group !== b.group) return a.group === 'Compañía' ? -1 : 1;
+            return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
+          });
+        return { options };
+      },
+
+      valueFormatter: (params: any) => {
+        if (!params.value) return '';
+        const provider = this.filteredProviders?.find?.(p => p.id === params.value)
+          || this.providers?.find?.(p => p.id === params.value);
+        return provider ? this.getProviderDisplayName(provider) : params.value;
+      },
+
+      onCellValueChanged: (params: any) => {
+        // refresca la fila
+        params.api.refreshCells({
+          rowNodes: [params.node],
+          force: true
+        });
+      },
+
+      valueSetter: (params: any) => {
+        const editorValue = params.newValue;
+
+        // Si el editor devuelve {id, description}
+        const newId = (editorValue && typeof editorValue === 'object' && 'id' in editorValue)
+          ? editorValue.id
+          : editorValue;
+
+        // Validar requerido
+        if (!newId && newId !== 0) {
+          alerts.basicAlert(
+            'Campo requerido',
+            'El proveedor es obligatorio',
+            'error'
+          );
+          return false;
+        }
+
+        // Evitar duplicados
+        const duplicateExists = (this.proveedorRowData || []).some((row, index) =>
+          index !== params.node.rowIndex && row.idTabla === newId
+        );
+
+        if (duplicateExists) {
+          alerts.basicAlert(
+            'Proveedor duplicado',
+            'Ya existe una fila con ese proveedor.',
+            'error'
+          );
+          return false;
+        }
+
+        // Asignar valores
+        params.data.idTabla = newId;
+
+        const provider = this.filteredProviders.find((p: any) => p.id === newId)
+          || this.providers.find((p: any) => p.id === newId);
+
+        if (provider) {
+          params.data.providerName = this.getProviderDisplayName(provider);
+        } else {
+          params.data.providerName = newId;
+        }
+
+        return true;
+      }
     },
 
     //Agrego Soriano esta columna por que pedro se le olvido
@@ -472,17 +472,17 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       const api = event.api;
       const detailType = 'proveedorSucursal';
       if (this.gridApi) {
-          const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-          const selectedId = selectedRowData.id;
-          const filterModel = {
+        const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
+        const selectedId = selectedRowData.id;
+        const filterModel = {
           id: {
             type: 'equals',
             filter: selectedId,
           },
         };
-          this.gridApi.setFilterModel(filterModel);
-          this.gridApi.onFilterChanged();
-        }
+        this.gridApi.setFilterModel(filterModel);
+        this.gridApi.onFilterChanged();
+      }
 
       const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
 
@@ -491,7 +491,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         node.setExpanded(false);
         this.gridApi.setFilterModel(null); // quitar filtro
         this.gridApi.onFilterChanged();
-        
+
       } else {
         // Expanding: collapse other expanded rows
         api.forEachNode((otherNode: any) => {
@@ -531,20 +531,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
       this.providers = allProviders.filter((p: any) => p.vigente === true || p.vigente === 1);
 
-<<<<<<< HEAD
-      // Enriquecer proveedores con typeIntOrExt del Warehouse
-      const typeMap = new Map<number, string>();
-      (warehouseProviders || []).forEach((wp: any) => {
-        if (wp.id && wp.typeIntOrExt) typeMap.set(wp.id, wp.typeIntOrExt);
-      });
-      this.providers = this.providers.map((p: any) => ({
-        ...p,
-        typeIntOrExt: typeMap.get(p.id) || null
-      }));
-
-      console.log('📦 Total proveedores vigentes:', this.providers.length);
-=======
->>>>>>> eb68bbd89972abb3865a6f74c18053976130240e
 
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
@@ -555,10 +541,10 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
             try {
               // Usar el endpoint de subfamilias vigentes
               const subfamilies: any = await this.providersService.getSubfamilyxVigentes(provider.id).toPromise();
-              
+
               // Buscar si alguna subfamilia coincide con la subfamilia del material
               const matchingSubfamily = subfamilies?.find((s: any) => s.idSubfamily === this.materialSubfamilyId);
-              
+
               return {
                 providerId: provider.id,
                 providerName: this.getProviderDisplayName(provider),
@@ -580,7 +566,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
 
           // Crear el arreglo filtrado con la información del proveedor y la subfamilia
-          this.filteredProviders = this.providers.filter(p => 
+          this.filteredProviders = this.providers.filter(p =>
             providersWithMatchingSubfamily.some(pm => pm.providerId === p.id)
           );
 
@@ -702,7 +688,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     // Verificar si es el primer proveedor (tabla vacía)
     const isFirstProvider = this.proveedorRowData.length === 0;
 
-    const branchId   = this.signalsService.getBranchSelectedBySidebar()() || 0;
+    const branchId = this.signalsService.getBranchSelectedBySidebar()() || 0;
     const branchName = this.signalsService.getBranchNameSelectedBySidebar()() || '';
 
     const tempId = `temp_proveedor_${Date.now()}`;
