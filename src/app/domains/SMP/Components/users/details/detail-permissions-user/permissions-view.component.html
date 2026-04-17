@@ -17,7 +17,7 @@
           <div class="permission-header master-header">
             <span class="permission-name">{{ master.masterPermissionName }}</span>
             <label class="switch" (click)="$event.stopPropagation()">
-              <input type="checkbox" [(ngModel)]="master.masterRead" (ngModelChange)="onMasterReadChange(master)">
+              <input type="checkbox" [(ngModel)]="master.aplica" (ngModelChange)="onMasterAplicaChange(master)">
               <span class="slider round"></span>
             </label>
           </div>
@@ -31,7 +31,7 @@
             <h4 class="titulo-seleccionado">{{ masterSeleccionado.masterPermissionName }}</h4>
           </div>
 
-          <ng-container>
+          <ng-container *ngIf="masterSeleccionado.aplica; else masterNoAplica">
           <div class="submodulos-grid">
             <div *ngFor="let detail of masterSeleccionado.details"
                  class="submodulo-item"
@@ -152,6 +152,13 @@
 
           </div>
           </ng-container>
+
+          <ng-template #masterNoAplica>
+            <p class="texto-placeholder">
+              <span class="placeholder-icon">i</span>
+              Este modulo no aplica para esta asignacion.
+            </p>
+          </ng-template>
 
         </div>
         <p *ngIf="!masterSeleccionado" class="texto-placeholder">

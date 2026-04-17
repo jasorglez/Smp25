@@ -9,25 +9,23 @@ import { alerts } from 'app/helpers/alerts';
 import { TrackingService } from 'app/services/tracking.service';
 import { AuthService } from 'app/services/auth.service';
 
-// --- Interfaces para una mejor definición de tipos ---
 interface CrudPermission {
-  name: string; // Corresponderá a showColumn
+  name: string;
   canRead: boolean;
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  // --- Propiedades añadidas para mantener la referencia a los datos originales ---
   idMasterPermission: number;
   idDetailedPermission: number;
   idShowPermition: number;
   active?: boolean;
-  __original: any; // Guardamos una copia del objeto original para comparar cambios
+  __original: any;
 }
 
 interface SubdetailPermission {
   subdetailedPermissionName: string;
-  principal: CrudPermission | null; // El item 'Principal' que controla la visibilidad
-  children: CrudPermission[]; // Los otros items (Ahorros, Prestamos, etc.)
+  principal: CrudPermission | null;
+  children: CrudPermission[];
 }
 
 interface DetailedPermission {
@@ -45,11 +43,11 @@ interface MasterPermission {
 @Component({
   selector: 'app-permissions-view',
   standalone: true,
-  imports: [CommonModule, FormsModule], // Importamos FormsModule para usar ngModel en los checkboxes
-  templateUrl: './permissions-view.component.html',
-  styleUrls: ['./permissions-view.component.scss']
+  imports: [CommonModule, FormsModule],
+  templateUrl: './rolespermissions-view.component.html',
+  styleUrls: ['./rolespermissions-view.component.scss']
 })
-export class PermissionsViewComponent implements OnInit {
+export class RolesPermissionsViewComponent implements OnInit {
   private rolesService = inject(RolesService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
@@ -61,8 +59,6 @@ export class PermissionsViewComponent implements OnInit {
   idEmpresa: number;
   rawData: any[] = [];
   notSavedChanges: boolean = false;
-
-  // Aquí almacenaremos los datos transformados en una estructura jerárquica
   groupedPermissions: MasterPermission[] = [];
 
   constructor() {
@@ -74,19 +70,14 @@ export class PermissionsViewComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
-    this.idRole = this.signalsService.getIdRole()();
-    this.idPosicion = this.signalsService.getIdPosicion()();
-    this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-    this.obtenerDatos(this.idRole, this.idPosicion);
-  }
+  ngOnInit(): void {}
 
   obtenerDatos(idRole: number, idPosicion: number) {
-     this.rolesService.getPermissionsByRoles(this.idEmpresa, idRole, idPosicion)
-       .subscribe((data: any) => {
-         this.rawData = data;
-         this.groupedPermissions = this.transformData(this.rawData);
-       });
+    this.rolesService.getPermissionsByRoles(this.idEmpresa, idRole, idPosicion)
+      .subscribe((data: any) => {
+        this.rawData = data;
+        this.groupedPermissions = this.transformData(this.rawData);
+      });
   }
 
   checkForChanges() {
@@ -95,11 +86,8 @@ export class PermissionsViewComponent implements OnInit {
   }
 
   revertChanges() {
-    // Volvemos a transformar los datos originales para descartar cualquier cambio
     this.groupedPermissions = this.transformData(this.rawData);
-    // Reseteamos el indicador de cambios
     this.notSavedChanges = false;
-    //alerts.basicAlert('Cambios revertidos', 'Se han descartado los cambios no guardados.', 'info');
   }
 
   onMasterReadChange(master: MasterPermission) {
@@ -111,34 +99,26 @@ export class PermissionsViewComponent implements OnInit {
   }
 
   onCrudChange(permission: CrudPermission) {
-    // Si se activa canRead en Principal, automáticamente activar todos los permisos CRUD
     if (permission.canRead && permission.name === 'Principal') {
       permission.canCreate = true;
       permission.canUpdate = true;
       permission.canDelete = true;
     }
-    
-    // Si se desactiva canRead, desactivar todos los permisos CRUD
+
     if (!permission.canRead) {
       permission.canCreate = false;
       permission.canUpdate = false;
       permission.canDelete = false;
     }
-    
+
     this.checkForChanges();
   }
 
-  /**
-   * Transforma una lista plana de permisos en una estructura jerárquica.
-   * @param data La lista plana de permisos.
-   * @returns Un array de MasterPermission con datos anidados.
-   */
   private transformData(data: any[]): MasterPermission[] {
     const masterMap = new Map<string, MasterPermission>();
     const detailMap = new Map<string, DetailedPermission>();
 
     data.forEach(item => {
-      // Nivel Maestro
       if (!masterMap.has(item.masterPermissionName)) {
         masterMap.set(item.masterPermissionName, {
           masterPermissionName: item.masterPermissionName,
@@ -148,10 +128,9 @@ export class PermissionsViewComponent implements OnInit {
       }
 
       const masterGroup = masterMap.get(item.masterPermissionName)!;
-
-      // Nivel Detallado (usando un mapa para eficiencia)
       const detailKey = `${item.masterPermissionName}|${item.detailedPermissionName}`;
       let detailGroup = detailMap.get(detailKey);
+
       if (!detailGroup) {
         detailGroup = {
           detailedPermissionName: item.detailedPermissionName,
@@ -162,8 +141,8 @@ export class PermissionsViewComponent implements OnInit {
         masterGroup.details.push(detailGroup);
       }
 
-      // Nivel Sub-detallado
       let subdetailGroup = detailGroup.subdetails.find(sd => sd.subdetailedPermissionName === item.subdetailedPermissionName);
+
       if (!subdetailGroup) {
         subdetailGroup = {
           subdetailedPermissionName: item.subdetailedPermissionName,
@@ -173,22 +152,19 @@ export class PermissionsViewComponent implements OnInit {
         detailGroup.subdetails.push(subdetailGroup);
       }
 
-      // Crear el objeto de permiso
       const crudItem: CrudPermission = {
         name: item.showColumn,
         canRead: item.canRead,
         canCreate: item.canCreate,
         canUpdate: item.canUpdate,
         canDelete: item.canDelete,
-        // --- Añadimos las propiedades extra que vienen de la API ---
         idMasterPermission: item.idMasterPermission,
         idDetailedPermission: item.idDetailedPermission,
         idShowPermition: item.idShowPermition,
         active: item.active,
-        __original: { ...item } // Guardamos una copia del estado original
+        __original: { ...item }
       };
 
-      // Clasificar como 'principal' o 'child'
       if (item.showColumn === 'Principal') {
         subdetailGroup.principal = crudItem;
       } else {
@@ -207,24 +183,18 @@ export class PermissionsViewComponent implements OnInit {
       return;
     }
 
-    // Usaremos un Map para agrupar los cambios por una clave única compuesta 
-    // para asegurar que cada sub-permiso se guarde de forma independiente.
     const changesMap = new Map<string, any>();
 
     try {
       for (const perm of modifiedPermissions) {
-        // Creamos una clave única combinando idDetailedPermission y idShowPermition.
         const uniqueKey = `${perm.idDetailedPermission}-${perm.idShowPermition}`;
 
-        // Solo procesamos si no hemos registrado ya un cambio para esta combinación única.
         if (!changesMap.has(uniqueKey)) {
           const payload: RolesxDetailedPermission = {
             idMasterPermission: perm.idMasterPermission,
             masterRead: perm.masterRead,
             idDetailedPermission: perm.idDetailedPermission,
             detailedRead: perm.detailedRead,
-            // El subdetailedPermissionName y idShowPermition ya no son relevantes para la actualización
-            // porque la BD solo guarda un registro por idDetailedPermission.
             subdetailedPermissionName: perm.name,
             idShowPermition: perm.idShowPermition,
             idRole: this.idRole,
@@ -239,13 +209,10 @@ export class PermissionsViewComponent implements OnInit {
         }
       }
 
-      // Ahora creamos los observables a partir de los cambios únicos en el mapa
       const saveObservables = Array.from(changesMap.values()).map(payload => {
-        // Usamos el endpoint de "add" que internamente crea o actualiza.
         return this.rolesService.addDetailedPermissionsxRoles(payload);
       });
 
-      // Ejecutamos todas las operaciones de creación y actualización en paralelo
       await lastValueFrom(forkJoin(saveObservables));
 
       alerts.basicAlert(
@@ -254,16 +221,13 @@ export class PermissionsViewComponent implements OnInit {
         'success'
       );
       this.notSavedChanges = false;
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Update/Add Registros en Detalle de Roles', 'Menu Administracion Detalle de Roles',  this.trackingService.getEmail());
-      // Fuerza relectura local y re-evaluación global de permisos/guards dependientes.
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Update/Add Registros en Detalle de Roles', 'Menu Administracion Detalle de Roles', this.trackingService.getEmail());
       this.obtenerDatos(this.idRole, this.idPosicion);
       this.signalsService.setRefresSecurity(true);
       this.signalsService.setRefresCantidadPermisos(true);
-      // Recargar guard para que el sidebar refleje los cambios de permisos
       this.authService.reloadCurrentSessionGuard().subscribe();
-
     } catch (error) {
-      console.error("Error al guardar los permisos:", error);
+      console.error('Error al guardar los permisos:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');
     }
   }
@@ -275,11 +239,15 @@ export class PermissionsViewComponent implements OnInit {
       master.details.forEach(detail => {
         detail.subdetails.forEach(subdetail => {
           const allPermissions = [];
-          if (subdetail.principal) allPermissions.push(subdetail.principal);
+
+          if (subdetail.principal) {
+            allPermissions.push(subdetail.principal);
+          }
+
           allPermissions.push(...subdetail.children);
+
           allPermissions.forEach(permission => {
             const original = permission.__original;
-            // Un permiso se considera modificado si sus valores CRUD o los de sus padres (master/detail read) han cambiado.
             const isModified =
               original.masterRead !== master.masterRead ||
               original.detailedRead !== detail.detailedRead ||
@@ -289,12 +257,10 @@ export class PermissionsViewComponent implements OnInit {
               original.canDelete !== permission.canDelete ||
               original.active !== permission.active;
 
-            // También consideramos que se debe guardar si tiene algún permiso activo pero no existe en la BD.
             const hasAnyPermission = master.masterRead || detail.detailedRead || permission.canRead || permission.canCreate || permission.canUpdate || permission.canDelete;
             const isNewAndHasPermissions = !original.id && hasAnyPermission;
 
             if (isModified || isNewAndHasPermissions) {
-              // Añadimos el permiso modificado junto con los valores de sus padres
               modifiedList.push({ ...permission, masterRead: master.masterRead, detailedRead: detail.detailedRead });
             }
           });
@@ -304,5 +270,4 @@ export class PermissionsViewComponent implements OnInit {
 
     return modifiedList;
   }
-
 }

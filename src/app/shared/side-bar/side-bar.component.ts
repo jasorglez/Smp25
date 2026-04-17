@@ -69,7 +69,11 @@ export class SideBarComponent {
     private menuService: MenuService
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
+<<<<<<< HEAD
     this.permissionRefreshTick = this.signalsService.guardRefreshTick;
+=======
+    this.permissionRefreshTick = this.guardUiTick;
+>>>>>>> 42b1a3a5f0ae387141477147708d99447f3f00f6
 
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();

@@ -78,6 +78,7 @@ export class RolesService {
 export interface RolesxDetailedPermission {
   id?: number;
   idMasterPermission?: number;
+  aplica?: boolean;
   masterRead?: boolean;
   idDetailedPermission?: number;
   detailedRead?: boolean;
@@ -99,6 +100,7 @@ export interface CrudxDetailedPermission {
   idUser?: number;
   idBranch?: number;
   idMasterPermission?: number;
+  aplica?: boolean;
   masterRead?: boolean;
   idDetailedPermission?: number;
   detailedRead?: boolean;

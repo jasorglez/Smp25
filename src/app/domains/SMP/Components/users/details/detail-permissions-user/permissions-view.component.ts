@@ -42,6 +42,7 @@ interface DetailedPermission {
 
 interface MasterPermission {
   masterPermissionName: string;
+  aplica: boolean;
   masterRead: boolean;
   details: DetailedPermission[];
 }
@@ -1052,7 +1053,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
   private captureMasterReadBaseline(): void {
     this.masterReadBaselineByName = new Map(
-      this.groupedPermissions.map((m) => [m.masterPermissionName, m.masterRead])
+      this.groupedPermissions.map((m) => [m.masterPermissionName, m.aplica])
     );
   }
 
@@ -1082,27 +1083,48 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     const idRole = Number(this.idRoleInput);
     const idPosicion = Number(this.idPosicionInput);
+    const idBranch = Number(this.idBranchInput);
+    const idCompany = Number(this.idCompanyInput ?? this.signalsService.getRootSelectedBySidebar()());
     if (!Number.isFinite(idRole) || !Number.isFinite(idPosicion) || idRole <= 0 || idPosicion <= 0) {
       return;
     }
     if (this.idUserInput === undefined || this.idUserInput === null) {
       return;
     }
+    if (!Number.isFinite(idBranch) || idBranch === 0) {
+      return;
+    }
+    if (!Number.isFinite(idCompany) || idCompany <= 0) {
+      return;
+    }
     this.userId = this.idUserInput;
-    this.branchId = this.idBranchInput;
+    this.branchId = idBranch;
     this.idRole = idRole;
     this.idPosicion = idPosicion;
-    this.idCompany = this.idCompanyInput ?? this.signalsService.getRootSelectedBySidebar()();
+    this.idCompany = idCompany;
     this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
   }
 
   agInit(params: ICellRendererParams & { idUser: number, idBranch: number, idRole: number, idPosicion: number }): void {
+    const idCompany = Number(this.idCompanyInput ?? this.signalsService.getRootSelectedBySidebar()());
+    if (params?.idUser == null || !Number.isFinite(Number(params.idBranch)) || Number(params.idBranch) === 0) {
+      return;
+    }
+    if (!Number.isFinite(Number(params.idRole)) || Number(params.idRole) <= 0) {
+      return;
+    }
+    if (!Number.isFinite(Number(params.idPosicion)) || Number(params.idPosicion) <= 0) {
+      return;
+    }
+    if (!Number.isFinite(idCompany) || idCompany <= 0) {
+      return;
+    }
     this.params = params;
     this.userId = params.idUser;
     this.branchId = params.idBranch;
     this.idRole = params.idRole;
     this.idPosicion = params.idPosicion;
-    this.idCompany = this.idCompanyInput ?? this.signalsService.getRootSelectedBySidebar()();
+    this.idCompany = idCompany;
     this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
   }
 
@@ -1114,6 +1136,28 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     idPosicion: number,
     options?: { preserveUiSelection?: boolean; onComplete?: () => void }
   ) {
+    const company = Number(idCompany);
+    const branch = Number(idBranch);
+    const role = Number(idRole);
+    const posicion = Number(idPosicion);
+    const userNumeric = Number(idUser);
+    const transientUser = this.isTransientUserId(idUser);
+    if (!Number.isFinite(company) || company <= 0) {
+      options?.onComplete?.();
+      return;
+    }
+    if (!Number.isFinite(branch) || branch === 0) {
+      options?.onComplete?.();
+      return;
+    }
+    if (!Number.isFinite(role) || role <= 0 || !Number.isFinite(posicion) || posicion <= 0) {
+      options?.onComplete?.();
+      return;
+    }
+    if (!transientUser && (!Number.isFinite(userNumeric) || userNumeric <= 0)) {
+      options?.onComplete?.();
+      return;
+    }
     const ctx = `${idUser}|${idBranch}|${idRole}|${idPosicion}`;
     if (ctx !== this.lastPermissionsModalContextKey) {
       this.lastPermissionsModalContextKey = ctx;
@@ -1724,7 +1768,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     for (const master of this.groupedPermissions) {
       if (this.masterReadBaselineByName.has(master.masterPermissionName)) {
         const origMr = this.masterReadBaselineByName.get(master.masterPermissionName)!;
-        if (master.masterRead !== origMr) {
+        if (master.aplica !== origMr) {
           return true;
         }
       }
@@ -1748,6 +1792,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
               return true;
             }
             if (
+              !!o.aplica !== !!master.aplica ||
               p.canRead !== !!o.canRead ||
               p.canCreate !== !!o.canCreate ||
               p.canUpdate !== !!o.canUpdate ||
@@ -1865,6 +1910,27 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.detailSeleccionado = null;
   }
 
+  onMasterAplicaChange(master: MasterPermission) {
+    if (!master.aplica) {
+      master.masterRead = false;
+      for (const detail of master.details) {
+        detail.detailedRead = false;
+      }
+      this.zeroCrudReadsForMaster(master);
+
+      const idsToRemove = this.isConfiguracionMaster(master)
+        ? this.collectConfiguracionEdgeAndHomonymIds(master, { includeSetupUsuarioSubIds: true })
+        : this.collectDetailedPermissionIdsForMaster(master);
+      this.userSystemPermissionIds = this.userSystemPermissionIds.filter((id) => !idsToRemove.has(id));
+
+      if (this.masterSeleccionado === master) {
+        this.detailSeleccionado = null;
+        this.subdetailExpandido = null;
+      }
+    }
+    this.checkForChanges();
+  }
+
   seleccionarDetail(detail: DetailedPermission) {
     if (this.detailSeleccionado === detail) {
       this.detailSeleccionado = null;
@@ -1931,6 +1997,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       if (!masterMap.has(item.masterPermissionName)) {
         masterMap.set(item.masterPermissionName, {
           masterPermissionName: item.masterPermissionName,
+          aplica: item.aplica ?? true,
           masterRead: item.masterRead,
           details: []
         });
@@ -2159,6 +2226,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       }
       extras.push({
         masterPermissionName: name,
+        aplica: true,
         masterRead: false,
         details,
       });
@@ -2729,6 +2797,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           if (!changesMap.has(uniqueKey)) {
             changesMap.set(uniqueKey, {
               idMasterPermission: perm.idMasterPermission,
+              aplica: perm.aplica,
               masterRead: perm.masterRead,
               idDetailedPermission: perm.idDetailedPermission,
               detailedRead: perm.detailedRead,
@@ -2757,6 +2826,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
               idUser: persistedUserId,
               idBranch: this.branchId,
               idMasterPermission: perm.idMasterPermission,
+              aplica: perm.aplica,
               masterRead: perm.masterRead,
               idDetailedPermission: perm.idDetailedPermission,
               detailedRead: perm.detailedRead,
@@ -2820,7 +2890,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       }
 
       // Menú lateral / guards: tras tener el modal al día; reload agresivo de sesión
-      if (scope === 'userSystem' && sameSessionUser) {
+      if (scope === 'userSystem' && sameSessionUser && Number.isFinite(Number(this.branchId)) && Number(this.branchId) !== 0) {
         try {
           console.log('🔄 Forzando reload de permisos...');
           await lastValueFrom(
@@ -2863,10 +2933,16 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           if (subdetail.principal) allPermissions.push(subdetail.principal);
           allPermissions.push(...subdetail.children);
           allPermissions.forEach(permission => {
+            const applies = master.aplica !== false;
             modifiedList.push({
               ...permission,
-              masterRead: master.masterRead,
-              detailedRead: detail.detailedRead
+              aplica: applies,
+              masterRead: applies ? master.masterRead : false,
+              detailedRead: applies ? detail.detailedRead : false,
+              canRead: applies ? permission.canRead : false,
+              canCreate: applies ? permission.canCreate : false,
+              canUpdate: applies ? permission.canUpdate : false,
+              canDelete: applies ? permission.canDelete : false
             });
           });
         });
@@ -2887,28 +2963,36 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           allPermissions.push(...subdetail.children);
           allPermissions.forEach((permission) => {
             const original = permission.__original;
+            const applies = master.aplica !== false;
             const isModified =
               original &&
-              (original.masterRead !== master.masterRead ||
-                original.detailedRead !== detail.detailedRead ||
-                original.canRead !== permission.canRead ||
-                original.canCreate !== permission.canCreate ||
-                original.canUpdate !== permission.canUpdate ||
-                original.canDelete !== permission.canDelete ||
+              (original.aplica !== applies ||
+                original.masterRead !== (applies ? master.masterRead : false) ||
+                original.detailedRead !== (applies ? detail.detailedRead : false) ||
+                original.canRead !== (applies ? permission.canRead : false) ||
+                original.canCreate !== (applies ? permission.canCreate : false) ||
+                original.canUpdate !== (applies ? permission.canUpdate : false) ||
+                original.canDelete !== (applies ? permission.canDelete : false) ||
                 original.active !== permission.active);
             const hasAnyPermission =
-              master.masterRead ||
-              detail.detailedRead ||
-              permission.canRead ||
-              permission.canCreate ||
-              permission.canUpdate ||
-              permission.canDelete;
+              applies &&
+              (master.masterRead ||
+                detail.detailedRead ||
+                permission.canRead ||
+                permission.canCreate ||
+                permission.canUpdate ||
+                permission.canDelete);
             const isNewAndHasPermissions = original && !original.id && hasAnyPermission;
             if (isModified || isNewAndHasPermissions) {
               modifiedList.push({
                 ...permission,
-                masterRead: master.masterRead,
-                detailedRead: detail.detailedRead,
+                aplica: applies,
+                masterRead: applies ? master.masterRead : false,
+                detailedRead: applies ? detail.detailedRead : false,
+                canRead: applies ? permission.canRead : false,
+                canCreate: applies ? permission.canCreate : false,
+                canUpdate: applies ? permission.canUpdate : false,
+                canDelete: applies ? permission.canDelete : false,
               });
             }
           });

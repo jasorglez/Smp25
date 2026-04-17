@@ -23,7 +23,7 @@ h2 {
   margin-bottom: 25px;
 }
 
-/* ===== GRID DE 2 COLUMNAS - ÚNICO CAMBIO ===== */
+/* ===== GRID DE 2 COLUMNAS - UNICO CAMBIO ===== */
 .permissions-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -31,7 +31,7 @@ h2 {
   align-items: start;
 }
 
-/* Responsive - En móviles vuelve a 1 columna */
+/* Responsive - En moviles vuelve a 1 columna */
 @media (max-width: 768px) {
   .permissions-grid {
     grid-template-columns: 1fr;
@@ -45,7 +45,7 @@ h2 {
   border-radius: 5px;
   margin-bottom: 15px;
   background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .permission-header {
@@ -64,7 +64,7 @@ h2 {
 
 /* Contenedores para los niveles anidados */
 .details-container {
-  padding: 0 15px 15px 30px; /* Sangría para el segundo nivel */
+  padding: 0 15px 15px 30px;
 }
 
 .detail-group {
@@ -100,7 +100,7 @@ h2 {
 }
 
 .subdetails-container {
-  padding-left: 30px; /* Sangría para el tercer nivel */
+  padding-left: 30px;
   margin-top: 10px;
   padding-bottom: 10px;
 }
@@ -114,49 +114,81 @@ h2 {
   border-radius: 4px;
 }
 
-.crud-permissions-container label, .crud-permissions label {
+.crud-permissions-container label,
+.crud-permissions label {
   margin-left: 15px;
   font-weight: normal;
   font-size: 0.9em;
 }
 
 .children-container {
-  padding-left: 20px; /* Sangría para los elementos hijos (Ahorros, Prestamos) */
+  padding-left: 20px;
 }
-#master{
+
+#master {
   background-color: #3d77e4;
   color: white;
 }
-#detail{
+
+#detail {
   background-color: #1094e0;
   color: white;
 }
-#subdetail{
+
+#subdetail {
   background-color: #a5a5a3;
 }
-#columns{
+
+#columns {
   background-color: #ff0000;
   color: white;
 }
 
-
-/* Estilos para el interruptor (toggle switch) */
 .switch {
   position: relative;
   display: inline-block;
   width: 50px;
   height: 24px;
 }
-.switch input { display: none; }
+
+.switch input {
+  display: none;
+}
+
 .slider {
-  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc; transition: .4s;
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
 }
+
 .slider:before {
-  position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px;
-  background-color: white; transition: .4s;
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
 }
-input:checked + .slider { background-color: #2196F3; }
-input:checked + .slider:before { transform: translateX(26px); }
-.slider.round { border-radius: 24px; }
-.slider.round:before { border-radius: 50%; }
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+.slider.round {
+  border-radius: 24px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
