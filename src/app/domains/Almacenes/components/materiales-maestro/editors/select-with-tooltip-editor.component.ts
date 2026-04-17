@@ -9,6 +9,7 @@ export interface SelectOption {
   description: string;
   valueAddition?: string;
   valueAddition2?: string;
+  label2?: string; // Label personalizado para valueAddition2
 }
 
 export interface SelectWithTooltipParams extends ICellEditorParams {
@@ -586,7 +587,9 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
 
       const label2 = this.renderer.createElement('span');
       this.renderer.addClass(label2, 'tooltip-label');
-      label2.innerHTML = '<i class="bi bi-fonts"></i> Abreviatura:';
+      const labelText = this.hoveredOption.label2 || 'Abreviatura:';
+      const icon = this.hoveredOption.label2 ? 'bi-building' : 'bi-fonts';
+      label2.innerHTML = `<i class="bi ${icon}"></i> ${labelText}`;
       this.renderer.appendChild(row2, label2);
 
       const value2 = this.renderer.createElement('span');

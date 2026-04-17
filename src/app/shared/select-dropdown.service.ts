@@ -6,6 +6,7 @@ export interface SelectOption {
   valueAddition?: string;
   valueAddition2?: string;
   group?: string;
+  label2?: string;
 }
 
 @Injectable({
@@ -320,9 +321,8 @@ export class SelectDropdownService {
     // Remover tooltip anterior si existe
     this.removeTooltipFromBody();
 
-    // Siempre mostrar tooltip (incluso si los campos están vacíos o NA)
-    const description = option.valueAddition || 'NA';
-    const abbreviation = option.valueAddition2 || 'NA';
+    const description = option.valueAddition;
+    const abbreviation = option.valueAddition2;
 
     // Crear contenedor del tooltip
     this.tooltipElement = this.renderer.createElement('div');
@@ -387,43 +387,45 @@ export class SelectDropdownService {
     this.renderer.setStyle(body, 'color', '#e2e8f0');
     this.renderer.setStyle(body, 'font-size', '12px');
 
-    // Agregar descripción (siempre)
-    const descRow = this.renderer.createElement('div');
-    this.renderer.setStyle(descRow, 'display', 'flex');
-    this.renderer.setStyle(descRow, 'align-items', 'flex-start');
-    this.renderer.setStyle(descRow, 'margin-bottom', '10px');
-    this.renderer.setStyle(descRow, 'gap', '8px');
+    // Agregar descripción solo si tiene valor
+    if (description) {
+      const descRow = this.renderer.createElement('div');
+      this.renderer.setStyle(descRow, 'display', 'flex');
+      this.renderer.setStyle(descRow, 'align-items', 'flex-start');
+      this.renderer.setStyle(descRow, 'margin-bottom', '10px');
+      this.renderer.setStyle(descRow, 'gap', '8px');
 
-    const descLabel = this.renderer.createElement('span');
-    this.renderer.setStyle(descLabel, 'color', 'rgba(255, 255, 255, 0.8)');
-    this.renderer.setStyle(descLabel, 'font-weight', '600');
-    this.renderer.setStyle(descLabel, 'min-width', '100px');
-    this.renderer.setStyle(descLabel, 'display', 'flex');
-    this.renderer.setStyle(descLabel, 'align-items', 'center');
-    this.renderer.setStyle(descLabel, 'gap', '5px');
-    this.renderer.setStyle(descLabel, 'flex-shrink', '0');
+      const descLabel = this.renderer.createElement('span');
+      this.renderer.setStyle(descLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+      this.renderer.setStyle(descLabel, 'font-weight', '600');
+      this.renderer.setStyle(descLabel, 'min-width', '100px');
+      this.renderer.setStyle(descLabel, 'display', 'flex');
+      this.renderer.setStyle(descLabel, 'align-items', 'center');
+      this.renderer.setStyle(descLabel, 'gap', '5px');
+      this.renderer.setStyle(descLabel, 'flex-shrink', '0');
 
-    const descIcon = this.renderer.createElement('i');
-    this.renderer.addClass(descIcon, 'bi');
-    this.renderer.addClass(descIcon, 'bi-pencil');
-    this.renderer.setStyle(descIcon, 'font-size', '12px');
-    this.renderer.appendChild(descLabel, descIcon);
+      const descIcon = this.renderer.createElement('i');
+      this.renderer.addClass(descIcon, 'bi');
+      this.renderer.addClass(descIcon, 'bi-pencil');
+      this.renderer.setStyle(descIcon, 'font-size', '12px');
+      this.renderer.appendChild(descLabel, descIcon);
 
-    const descLabelText = this.renderer.createText('Num. Material:');
-    this.renderer.appendChild(descLabel, descLabelText);
-    this.renderer.appendChild(descRow, descLabel);
+      const descLabelText = this.renderer.createText('Num. Material:');
+      this.renderer.appendChild(descLabel, descLabelText);
+      this.renderer.appendChild(descRow, descLabel);
 
-    const descValue = this.renderer.createElement('span');
-    this.renderer.setStyle(descValue, 'color', '#ffffff');
-    this.renderer.setStyle(descValue, 'word-break', 'break-word');
-    this.renderer.setStyle(descValue, 'line-height', '1.4');
-    const descValueText = this.renderer.createText(description);
-    this.renderer.appendChild(descValue, descValueText);
-    this.renderer.appendChild(descRow, descValue);
+      const descValue = this.renderer.createElement('span');
+      this.renderer.setStyle(descValue, 'color', '#ffffff');
+      this.renderer.setStyle(descValue, 'word-break', 'break-word');
+      this.renderer.setStyle(descValue, 'line-height', '1.4');
+      const descValueText = this.renderer.createText(description);
+      this.renderer.appendChild(descValue, descValueText);
+      this.renderer.appendChild(descRow, descValue);
 
-    this.renderer.appendChild(body, descRow);
+      this.renderer.appendChild(body, descRow);
+    }
 
-    // Agregar abreviatura (siempre)
+    if (abbreviation && this.showAbbreviation) {
     const abbrRow = this.renderer.createElement('div');
     this.renderer.setStyle(abbrRow, 'display', 'flex');
     this.renderer.setStyle(abbrRow, 'align-items', 'flex-start');
@@ -445,7 +447,7 @@ export class SelectDropdownService {
     this.renderer.setStyle(abbrIcon, 'font-size', '12px');
     this.renderer.appendChild(abbrLabel, abbrIcon);
 
-    const abbrLabelText = this.renderer.createText('Abreviatura:');
+    const abbrLabelText = this.renderer.createText(option.label2 || 'Abreviatura:');
     this.renderer.appendChild(abbrLabel, abbrLabelText);
     this.renderer.appendChild(abbrRow, abbrLabel);
 
@@ -457,7 +459,6 @@ export class SelectDropdownService {
     this.renderer.appendChild(abbrValue, abbrValueText);
     this.renderer.appendChild(abbrRow, abbrValue);
 
-    if (this.showAbbreviation) {
       this.renderer.appendChild(body, abbrRow);
     }
 
