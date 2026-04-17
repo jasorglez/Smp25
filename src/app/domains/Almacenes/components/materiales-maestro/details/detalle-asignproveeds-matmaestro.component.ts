@@ -531,7 +531,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
       this.providers = allProviders.filter((p: any) => p.vigente === true || p.vigente === 1);
 
-<<<<<<< HEAD
       // Enriquecer proveedores con typeIntOrExt del Warehouse
       const typeMap = new Map<number, string>();
       (warehouseProviders || []).forEach((wp: any) => {
@@ -543,8 +542,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       }));
 
       console.log('📦 Total proveedores vigentes:', this.providers.length);
-=======
->>>>>>> eb68bbd89972abb3865a6f74c18053976130240e
 
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
