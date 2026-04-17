@@ -80,6 +80,16 @@ export class SideBarComponent {
     });
   }
 
+  private prependAllBranchesOptionIfNeeded(idRoot: number): void {
+    const hasAllBranchesOption = this.branchData.some((branch) => branch.id === -idRoot);
+    if (this.branchData.length > 1 && !hasAllBranchesOption) {
+      this.branchData.unshift({
+        id: -idRoot,
+        name: 'Todas las sucursales',
+      });
+    }
+  }
+
   private pickBranchAfterListLoad(): { id: number; name: string } | null {
     if (!this.branchData?.length) {
       return null;
@@ -230,10 +240,7 @@ export class SideBarComponent {
             id: branch.id,
             name: branch.name,
           }));
-          this.branchData.unshift({
-            id: -idRoot,
-            name: 'Todas las sucursales',
-          });
+          this.prependAllBranchesOptionIfNeeded(idRoot);
 
           const chosen = this.pickBranchAfterListLoad();
           if (chosen) {
@@ -257,6 +264,7 @@ export class SideBarComponent {
               id: branch.id,
               name: branch.name,
             }));
+            this.prependAllBranchesOptionIfNeeded(idRoot);
 
             const chosen = this.pickBranchAfterListLoad();
             if (chosen) {
