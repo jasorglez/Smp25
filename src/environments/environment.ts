@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.12 (18 Abril 2026 17:35) advance service with token auth + 90 test records',
+  version: '5.13 (18 Abril 2026 17:50) advances chart improved - area type, better colors, physical=60 delayed',
 };
