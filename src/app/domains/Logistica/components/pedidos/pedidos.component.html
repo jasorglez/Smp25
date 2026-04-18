@@ -21,17 +21,65 @@
         <button type="button" class="btn btn-danger ms-1 me-1" (click)="generateAllPedidosPDF()" title="Reporte General PDF (todos los pedidos)">
           <i class="bi bi-file-earmark-pdf-fill"></i>
         </button>
+        <!-- Botón Ticket General por Cliente -->
+        <button type="button" class="btn btn-info ms-1 me-1" (click)="openClienteGeneralModal()" title="Ticket general por cliente">
+          <i class="bi bi-receipt"></i>
+        </button>
         <!-- Botón Impuesto % -->
         <button type="button" class="btn btn-secondary ms-1 me-1 mt-1"
           (click)="openImpuestoModal()"
+          [disabled]="!selectedRowData"
           title="Editar impuesto del pedido"
           style="width: 46px; padding: 0;">
           <i class="bi bi-percent"></i>
         </button>
       </div>
     </div>
-    <!-- Grid del lado derecho -->
+    <!-- Filtros por estado de líneas + grid -->
     <div class="col">
+      <div class="d-flex gap-2 mb-2 flex-wrap">
+        <button type="button" class="btn btn-sm"
+          [style.background-color]="activeFilter === 'SOLICITADO' ? '#6c757d' : '#e2e3e5'"
+          [style.color]="activeFilter === 'SOLICITADO' ? 'white' : '#383d41'"
+          [style.border]="'1px solid #6c757d'"
+          (click)="setFilter('SOLICITADO')">
+          Solicitado
+        </button>
+        <button type="button" class="btn btn-sm"
+          [style.background-color]="activeFilter === 'RECIBIDO' ? '#28a745' : '#d4edda'"
+          [style.color]="activeFilter === 'RECIBIDO' ? 'white' : '#155724'"
+          [style.border]="'1px solid #28a745'"
+          (click)="setFilter('RECIBIDO')">
+          Recibido
+        </button>
+        <button type="button" class="btn btn-sm"
+          [style.background-color]="activeFilter === 'CANCELADO' ? '#dc3545' : '#f8d7da'"
+          [style.color]="activeFilter === 'CANCELADO' ? 'white' : '#721c24'"
+          [style.border]="'1px solid #dc3545'"
+          (click)="setFilter('CANCELADO')">
+          Cancelado
+        </button>
+        <button type="button" class="btn btn-sm"
+          [style.background-color]="activeFilter === 'ALMACENADO' ? '#0d6efd' : '#cce5ff'"
+          [style.color]="activeFilter === 'ALMACENADO' ? 'white' : '#004085'"
+          [style.border]="'1px solid #0d6efd'"
+          (click)="setFilter('ALMACENADO')">
+          Almacenado
+        </button>
+        <button type="button" class="btn btn-sm"
+          [style.background-color]="activeFilter === 'REVENDIDO' ? '#ffc107' : '#fff3cd'"
+          [style.color]="activeFilter === 'REVENDIDO' ? '#212529' : '#856404'"
+          [style.border]="'1px solid #ffc107'"
+          (click)="setFilter('REVENDIDO')">
+          Revendido
+        </button>
+        <button type="button" class="btn btn-sm"
+          [class.btn-secondary]="activeFilter !== null"
+          [class.btn-dark]="activeFilter === null"
+          (click)="setFilter(null)">
+          Todos
+        </button>
+      </div>
       <ag-grid-angular
         style="width: 100%;"
         [ngStyle]="{ height: gridHeight }"
@@ -102,24 +150,63 @@
 </div>
 
 <!-- Modal Impuesto -->
-<div class="modal" tabindex="-1" [style.display]="showImpuestoModal ? 'block' : 'none'" style="background-color: rgba(0,0,0,0.5);">
+<div class="impuesto-modal" [class.show]="showImpuestoModal">
+  <div class="impuesto-modal-backdrop" (click)="closeImpuestoModal()"></div>
+  <div class="impuesto-modal-content">
+    <div class="impuesto-modal-header">
+      <h6>Impuesto %</h6>
+      <button class="impuesto-modal-close" (click)="closeImpuestoModal()">✕</button>
+    </div>
+    <div class="impuesto-modal-body">
+      <input type="number" class="impuesto-input" [(ngModel)]="impuestoTemp"
+        min="0" max="100" step="0.01" placeholder="0.00">
+    </div>
+    <div class="impuesto-modal-footer">
+      <button class="btn-cancel" (click)="closeImpuestoModal()">Cancelar</button>
+      <button class="btn-save" (click)="saveImpuesto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Seleccionar Cliente General -->
+<div class="modal" tabindex="-1"
+  [style.display]="showClienteGeneralModal ? 'block' : 'none'"
+  style="background-color: rgba(0,0,0,0.55); z-index: 9999;">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Editar Impuesto %</h5>
-        <button type="button" class="btn-close" (click)="closeImpuestoModal()"></button>
+    <div class="modal-content shadow-lg">
+      <div class="modal-header" style="background:#0d47a1; color:white;">
+        <h5 class="modal-title">
+          <i class="bi bi-person-fill me-2"></i>
+          Seleccionar Cliente
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeClienteGeneralModal()"></button>
       </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Ingresa el Impuesto % *</label>
-          <input type="number" class="form-control" [(ngModel)]="impuestoTemp"
-            min="0" max="100" step="0.01" placeholder="0.00">
-          <small class="form-text text-muted">Valor entre 0 y 100</small>
+      <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+        <p class="text-muted small mb-3">Seleccione el cliente para generar su ticket general:</p>
+        <div *ngIf="clientesList.length === 0" class="text-center text-muted py-3">
+          <i class="bi bi-info-circle me-1"></i> No hay clientes registrados.
+        </div>
+        <div class="list-group">
+          <label *ngFor="let c of clientesList"
+            class="list-group-item list-group-item-action d-flex align-items-center gap-3"
+            style="cursor: pointer;"
+            [class.active]="selectedClienteGeneralId === c.id">
+            <input type="radio" name="clienteGeneral"
+              [value]="c.id"
+              [(ngModel)]="selectedClienteGeneralId"
+              class="form-check-input mt-0">
+            <span>{{ c.nameContact || c.company || c.name }}</span>
+          </label>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeImpuestoModal()">Cancelar</button>
-        <button type="button" class="btn btn-primary" (click)="saveImpuesto()">Guardar</button>
+        <button type="button" class="btn btn-secondary" (click)="closeClienteGeneralModal()">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" (click)="generateClienteGeneralTicket()"
+          [disabled]="selectedClienteGeneralId === null">
+          <i class="bi bi-printer me-1"></i> Generar Ticket
+        </button>
       </div>
     </div>
   </div>

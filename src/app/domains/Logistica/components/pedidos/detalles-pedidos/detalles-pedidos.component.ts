@@ -58,7 +58,7 @@ export class DetallesPedidosComponent implements OnInit {
   totalBanco: number | null = null;
   bancos: any[] = [];
   hasBancoInfo: boolean = false;
-  bancoModalTitle: string = 'Agregar Total Banco';
+  bancoModalTitle: string = 'Agregar pago al banco';
 
   /** Enter visto en captura (popup Rich Select no dispara cellKeyDown del grid) */
   private sawEnterDuringEdit = false;
@@ -93,7 +93,7 @@ export class DetallesPedidosComponent implements OnInit {
 
     // Detectar si ya tiene banco e información
     this.hasBancoInfo = !!(params.data?.banco || params.data?.totalPagarBanco);
-    this.bancoModalTitle = this.hasBancoInfo ? 'Editar Total Banco' : 'Agregar Total Banco';
+    this.bancoModalTitle = this.hasBancoInfo ? 'Editar pago al banco' : 'Agregar pago al banco';
 
     if (this.detailType === 'pdf') {
       this.generateReport();
@@ -379,7 +379,7 @@ get colDefs(): ColDef[] {
         }
       },
       {
-        field: 'aplicaimpuestos',
+        field: 'aplicaImpuestos',
         headerName: 'Aplica Impuestos',
         editable: false,
         width: 130,
@@ -387,7 +387,8 @@ get colDefs(): ColDef[] {
         cellRenderer: (params: ICellRendererParams) => {
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
-          checkbox.checked = params.value === true || params.value === 1 || params.value === '1';
+          const val = params.value;
+          checkbox.checked = val === true || val === 1 || val === '1' || (typeof val === 'string' && val.toLowerCase() === 'true');
           checkbox.style.pointerEvents = 'none';
           checkbox.style.cursor = 'inherit';
           return checkbox;
@@ -396,34 +397,46 @@ get colDefs(): ColDef[] {
           if (this.isLocked) return;
           // Asegurar que cualquier celda en edición haya confirmado su valor antes de leer venta
           params.api.stopEditing();
-          const checked = !(params.data.aplicaimpuestos === true || params.data.aplicaimpuestos === 1 || params.data.aplicaimpuestos === '1');
+          const currentVal = params.data.aplicaImpuestos;
+          const isCurrentlyChecked = currentVal === true || currentVal === 1 || currentVal === '1' || (typeof currentVal === 'string' && currentVal.toLowerCase() === 'true');
+
+          // Validar si intentas marcar pero no hay impuesto definido
+          if (!isCurrentlyChecked) {
+            const impuestoPedido = params.data?.impuesto;
+            if (impuestoPedido === null || impuestoPedido === undefined || impuestoPedido === 0 || impuestoPedido === '0') {
+              alerts.basicAlert('Impuesto no definido', 'Primero define el impuesto que quieres aplicar', 'warning');
+              return;
+            }
+          }
+
+          const checked = !isCurrentlyChecked;
           const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
           const venta = parseFloat(params.node.data.venta) || 0;
           const cantidad = parseFloat(params.node.data.cantidad) || 0;
-          params.data.aplicaimpuestos = checked;
+          params.data.aplicaImpuestos = checked;
           params.data.impuesto = checked ? cantidad * venta * defaultImpuesto / 100 : 0;
           if (checked) params.data.plataforma = 'TEMU';
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           params.api.refreshCells({
             rowNodes: [params.node],
-            columns: ['aplicaimpuestos', 'plataforma', 'impuesto', 'total'],
+            columns: ['aplicaImpuestos', 'plataforma', 'impuesto', 'total'],
             force: true
           });
         }
       },
       {
         field: 'impuesto',
-        headerName: 'Impuesto',
-        editable: () => !this.isLocked,
+        headerName: 'Impuesto %',
+        editable: false,
         width: 100,
-        type: 'numericColumn',
-        valueFormatter: (params) =>
-          new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value || 0),
-        valueSetter: (params: any) => {
-          const val = parseFloat(params.newValue);
-          params.data.impuesto = isNaN(val) ? 0 : val;
-          return true;
+        valueGetter: (params) => {
+          const aplicaImpuestos = params.data?.aplicaImpuestos === true || params.data?.aplicaImpuestos === 1 || params.data?.aplicaImpuestos === '1';
+          return aplicaImpuestos ? (this.params.data?.impuesto ?? 0) : 0;
+        },
+        valueFormatter: (params) => {
+          const val = params.value ?? 0;
+          return val.toFixed(2) + '%';
         }
       },
       {
@@ -577,7 +590,7 @@ get colDefs(): ColDef[] {
       idProducto: 0,
       cantidad: 1,
       plataforma: 'TEMU',
-      aplicaimpuestos: false,
+      aplicaImpuestos: false,
       impuesto: 0,
       costo: 0,
       venta: 0,
@@ -732,7 +745,7 @@ get colDefs(): ColDef[] {
     if (col === 'venta') {
       this.notifyTotalVentaToParent();
     }
-    if ((col === 'venta' || col === 'cantidad') && event.data.aplicaimpuestos) {
+    if ((col === 'venta' || col === 'cantidad') && event.data.aplicaImpuestos) {
       const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
       const venta = parseFloat(event.data.venta) || 0;
       const cantidad = parseFloat(event.data.cantidad) || 0;
@@ -746,7 +759,12 @@ get colDefs(): ColDef[] {
   private notifyTotalVentaToParent(): void {
     const pedidoId = this.params?.data?.id;
     if (!pedidoId) return;
-    const sumVenta = (this.rowData || []).reduce((sum, r) => sum + (Number(r?.venta) || 0), 0);
+    const sumVenta = (this.rowData || []).reduce((sum, r) => {
+      const cantidad = Number(r?.cantidad) || 0;
+      const venta = Number(r?.venta) || 0;
+      const impuesto = Number(r?.impuesto) || 0;
+      return sum + (cantidad * venta) + impuesto;
+    }, 0);
     if (this.context?.CONCEPTS?.updateTotalVenta) {
       this.context.CONCEPTS.updateTotalVenta(pedidoId, sumVenta);
     }

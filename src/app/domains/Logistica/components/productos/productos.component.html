@@ -20,10 +20,11 @@
     <div class="flex-grow-1">
       <div class="d-flex gap-2 mb-2 flex-wrap">
         <button class="btn btn-sm"
-          [class.btn-secondary]="activeFilter !== null"
-          [class.btn-dark]="activeFilter === null"
-          (click)="setFilter(null)">
-          Todos
+          [style.background-color]="activeFilter === 'SOLICITADO' ? '#6c757d' : '#e2e3e5'"
+          [style.color]="activeFilter === 'SOLICITADO' ? 'white' : '#383d41'"
+          [style.border]="'1px solid #6c757d'"
+          (click)="setFilter('SOLICITADO')">
+          Solicitado
         </button>
         <button class="btn btn-sm"
           [style.background-color]="activeFilter === 'RECIBIDO' ? '#28a745' : '#d4edda'"
@@ -54,11 +55,10 @@
           Revendido
         </button>
         <button class="btn btn-sm"
-          [style.background-color]="activeFilter === 'SOLICITADO' ? '#6c757d' : '#e2e3e5'"
-          [style.color]="activeFilter === 'SOLICITADO' ? 'white' : '#383d41'"
-          [style.border]="'1px solid #6c757d'"
-          (click)="setFilter('SOLICITADO')">
-          Solicitado
+          [class.btn-secondary]="activeFilter !== null"
+          [class.btn-dark]="activeFilter === null"
+          (click)="setFilter(null)">
+          Todos
         </button>
       </div>
 
