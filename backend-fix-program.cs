@@ -28,8 +28,8 @@ builder.Services.AddCors(options =>
             builder
                 .WithOrigins("https://be-app-five.vercel.app",
                 "http://localhost:8100",
-                "https://bi2.com.mx",
-                "https://www.bi2.com.mx",
+                "https://endpoints.biapp.com.mx",
+                "https://www.endpoints.biapp.com.mx",
                 "https://localhost:7118",
                 "https://smp25-beta.netlify.app",
                 "https://www.biapp.com.mx",
