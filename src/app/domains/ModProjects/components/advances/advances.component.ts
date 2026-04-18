@@ -166,7 +166,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         }
       ],
       chart: {
-        height: 550,
+        height: 380,
         width: '100%',
         type: "line",
         stacked: false,
@@ -436,7 +436,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         { name: 'Hitos de Avance',              data: hitosSeries,   type: 'column' }
       ],
       chart: {
-        height: 550,
+        height: 380,
         width: '100%',
         type: "line",
         stacked: false,
