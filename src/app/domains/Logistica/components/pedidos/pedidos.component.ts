@@ -44,6 +44,14 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   
   ngOnInit() {
     (window as any).pedidosComponent = this;
+    // Cargar impuesto global desde localStorage
+    const impuestoGuardado = localStorage.getItem(this.IMPUESTO_STORAGE_KEY);
+    if (impuestoGuardado) {
+      const valor = Number(impuestoGuardado);
+      if (!isNaN(valor) && valor > 0) {
+        this.defaultImpuesto = valor;
+      }
+    }
   }
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -66,6 +74,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   detalleContext: any = null;
   expandedRowId: number | null = null;
   defaultImpuesto: number = 16;
+  private readonly IMPUESTO_STORAGE_KEY = 'logistica_impuesto_global';
 
   // Modal ticket individual por cliente
   showClienteModal: boolean = false;
@@ -347,10 +356,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.defaultImpuesto = this.selectedRowData?.impuesto ?? 0;
     } else {
       this.selectedRowData = null;
-      this.defaultImpuesto = 0;
     }
   }
 
@@ -367,13 +374,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   }
 
   openImpuestoModal() {
-    if (!this.selectedRowData) {
-      alerts.basicAlert('Error', 'Selecciona un pedido primero', 'error');
-      return;
-    }
-    this.impuestoTemp = (this.selectedRowData.impuesto !== null && this.selectedRowData.impuesto !== undefined)
-      ? Number(this.selectedRowData.impuesto)
-      : 0;
+    this.impuestoTemp = this.defaultImpuesto;
     this.showImpuestoModal = true;
   }
 
@@ -383,44 +384,15 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   }
 
   async saveImpuesto() {
-    if (this.impuestoTemp === null || this.impuestoTemp === undefined) {
-      alerts.basicAlert('Error', 'Ingresa un valor de impuesto', 'error');
+    if (this.impuestoTemp === null || this.impuestoTemp === undefined || this.impuestoTemp <= 0) {
+      alerts.basicAlert('Error', 'Ingresa un valor de impuesto válido (mayor a 0)', 'error');
       return;
     }
 
-    try {
-      const dataToSend = {
-        id: this.selectedRowData.id,
-        idCompany: this.selectedRowData.idCompany,
-        numero: this.selectedRowData.numero,
-        fecha: this.selectedRowData.fecha,
-        comentario: this.selectedRowData.comentario,
-        active: this.selectedRowData.active,
-        banco: this.selectedRowData.banco,
-        totalPagarBanco: this.selectedRowData.totalPagarBanco,
-        impuesto: this.impuestoTemp,
-      };
-
-      const selectedRowDataId = this.selectedRowData.id;
-      const response = await lastValueFrom(this.pedidosService.updatePedido(selectedRowDataId, dataToSend));
-
-      // Actualizar en la tabla
-      this.selectedRowData.impuesto = this.impuestoTemp;
-      this.defaultImpuesto = this.impuestoTemp;
-      this.selectedRowData.__modified = false;
-
-      // Refrescar la fila
-      if (this.gridApi) {
-        this.gridApi.refreshCells({ rowNodes: [this.gridApi.getRowNode(String(selectedRowDataId))], columns: ['impuesto'], force: true });
-      }
-
-      alerts.basicAlert('Éxito', `Impuesto actualizado a ${this.impuestoTemp}%`, 'success');
-      await this.loadData();
-      this.closeImpuestoModal();
-    } catch (error) {
-      console.error('Error guardando impuesto:', error);
-      alerts.basicAlert('Error', 'No se pudo guardar el impuesto', 'error');
-    }
+    this.defaultImpuesto = this.impuestoTemp;
+    localStorage.setItem(this.IMPUESTO_STORAGE_KEY, String(this.impuestoTemp));
+    alerts.basicAlert('Éxito', `Impuesto global actualizado a ${this.impuestoTemp}%`, 'success');
+    this.closeImpuestoModal();
   }
 
   get colMaster(): ColDef[] {
@@ -799,7 +771,6 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         node.data.detailType = null;
       }
       this.selectedRowData = null;
-      this.defaultImpuesto = 0;
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
@@ -808,7 +779,6 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       if (node.data) {
         node.data.detailType = 'pedidos';
         this.selectedRowData = node.data;
-        this.defaultImpuesto = node.data.impuesto ?? 0;
       }
 
       this.gridApi.setGridOption('detailCellRenderer', DetallesPedidosComponent);
@@ -832,14 +802,12 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
       if (node.data) node.data.detailType = null;
       this.selectedRowData = null;
-      this.defaultImpuesto = 0;
     } else {
       api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); if (n.data) n.data.detailType = null; });
 
       if (node.data) {
         node.data.detailType = 'pdf';
         this.selectedRowData = node.data;
-        this.defaultImpuesto = node.data.impuesto ?? 0;
       }
       setTimeout(() => node.setExpanded(true), 0);
     }
@@ -856,7 +824,6 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       });
       if (node.data) node.data.detailType = null;
       this.selectedRowData = null;
-      this.defaultImpuesto = 0;
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
@@ -868,7 +835,6 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       if (node.data) {
         node.data.detailType = 'clientes';
         this.selectedRowData = node.data;
-        this.defaultImpuesto = node.data.impuesto ?? 0;
       }
       console.log('[toggleDetalleClientes] about to expand — detailType now:', node.data?.detailType);
 

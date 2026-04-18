@@ -179,6 +179,8 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       this.gridApi.setGridOption('rowData', this.rowData);
       this.gridApi.refreshClientSideRowModel('group');
     }
+    // Esconder la columna de suma(costo)
+    this.gridApi.setColumnVisible('costo', false);
   }
 
   private loadData(): void {

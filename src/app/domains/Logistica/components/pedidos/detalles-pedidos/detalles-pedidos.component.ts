@@ -399,22 +399,8 @@ get colDefs(): ColDef[] {
           params.api.stopEditing();
           const currentVal = params.data.aplicaImpuestos;
           const isCurrentlyChecked = currentVal === true || currentVal === 1 || currentVal === '1' || (typeof currentVal === 'string' && currentVal.toLowerCase() === 'true');
-
-          // Validar si intentas marcar pero no hay impuesto definido
-          if (!isCurrentlyChecked) {
-            const impuestoPedido = params.data?.impuesto;
-            if (impuestoPedido === null || impuestoPedido === undefined || impuestoPedido === 0 || impuestoPedido === '0') {
-              alerts.basicAlert('Impuesto no definido', 'Primero define el impuesto que quieres aplicar', 'warning');
-              return;
-            }
-          }
-
           const checked = !isCurrentlyChecked;
-          const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
-          const venta = parseFloat(params.node.data.venta) || 0;
-          const cantidad = parseFloat(params.node.data.cantidad) || 0;
           params.data.aplicaImpuestos = checked;
-          params.data.impuesto = checked ? cantidad * venta * defaultImpuesto / 100 : 0;
           if (checked) params.data.plataforma = 'TEMU';
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
@@ -432,7 +418,8 @@ get colDefs(): ColDef[] {
         width: 100,
         valueGetter: (params) => {
           const aplicaImpuestos = params.data?.aplicaImpuestos === true || params.data?.aplicaImpuestos === 1 || params.data?.aplicaImpuestos === '1';
-          return aplicaImpuestos ? (this.params.data?.impuesto ?? 0) : 0;
+          const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
+          return aplicaImpuestos ? defaultImpuesto : 0;
         },
         valueFormatter: (params) => {
           const val = params.value ?? 0;
@@ -746,10 +733,6 @@ get colDefs(): ColDef[] {
       this.notifyTotalVentaToParent();
     }
     if ((col === 'venta' || col === 'cantidad') && event.data.aplicaImpuestos) {
-      const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
-      const venta = parseFloat(event.data.venta) || 0;
-      const cantidad = parseFloat(event.data.cantidad) || 0;
-      event.data.impuesto = cantidad * venta * defaultImpuesto / 100;
       if (this.gridApi) {
         this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['impuesto', 'total'], force: true });
       }
