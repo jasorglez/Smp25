@@ -526,8 +526,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
           format: 'MMM yy',
           style: {
             colors: ['#666'],
-            fontSize: 12,
-            fontWeight: 500
+            fontSize: '12px',
+            fontWeight: '500'
           },
           offsetY: 5
         },
