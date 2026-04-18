@@ -61,7 +61,8 @@ export class ImageHandlerService {
       })
       .catch(error => {
         console.error("Error uploading file", error);
-        alerts.basicAlert('Subir imagen', 'Error al subir la imagen. Por favor, intente nuevamente.', 'error');
+        const msg = error?.code || error?.message || JSON.stringify(error);
+        alerts.basicAlert('Subir imagen', `Error: ${msg}`, 'error');
       });
   }
 
