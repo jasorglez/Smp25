@@ -224,6 +224,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   hasProviderAssigned: boolean = false; // true = cotización con proveedor asignado → no eliminar
   materials: any[] = [];
   frequentArticles: any[] = [];  // TOP 3 artículos más solicitados
+  totalRequisitions: number = 0; // Total de requisiciones para calcular porcentajes
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
   idRoot: number | null = null;
@@ -438,16 +439,26 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     if (!solicit || idDepartment <= 0 || idBranch <= 0) {
       this.frequentArticles = [];
+      this.totalRequisitions = 0;
       return;
     }
 
     this.ocAndReqsService.getFrequentArticles(solicit, idDepartment, idBranch).subscribe({
-      next: (data: any) => {
-        this.frequentArticles = Array.isArray(data) ? data : [];
+      next: (response: any) => {
+        // Manejar la nueva estructura con articles y totalRequisitions
+        if (response?.articles) {
+          this.frequentArticles = Array.isArray(response.articles) ? response.articles : [];
+          this.totalRequisitions = response.totalRequisitions || 0;
+        } else if (Array.isArray(response)) {
+          // Fallback si el servidor devuelve array plano
+          this.frequentArticles = response;
+          this.totalRequisitions = 0;
+        }
       },
       error: (error) => {
         console.warn('⚠️ Error cargando artículos frecuentes:', error);
         this.frequentArticles = [];
+        this.totalRequisitions = 0;
       }
     });
   }
@@ -563,11 +574,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
                 let description = m.description;
                 const frequentIndex = frequentMap[m.id];
 
-                // Agregar etiquetas a artículos frecuentes
-                if (frequentIndex === 0) {
-                  description = `⭐ ${m.description} (Más solicitado)`;
-                } else if (frequentIndex === 1 || frequentIndex === 2) {
-                  description = `⭐ ${m.description} (recomendado)`;
+                // Calcular porcentaje para artículos frecuentes
+                if (frequentIndex !== undefined && this.totalRequisitions > 0) {
+                  const frequentArticle = this.frequentArticles[frequentIndex];
+                  const percentage = Math.round((frequentArticle.countRequested / this.totalRequisitions) * 100);
+                  description = `⭐ ${m.description} (${percentage}%)`;
                 }
 
                 return {
