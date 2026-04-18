@@ -446,6 +446,13 @@ export const routes: Routes = [
           { path: '', redirectTo: 'ot', pathMatch: 'full' },
           ...SharedModule.getRoutes(),
           {
+            path: 'advances',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/advances/advances.component'
+              ).then((a) => a.AdvancesComponent),
+          },
+          {
             path: 'providers',
             loadComponent: () =>
               import(
