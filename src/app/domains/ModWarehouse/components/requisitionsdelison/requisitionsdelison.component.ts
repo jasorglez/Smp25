@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, Renderer2, RendererFactory2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -54,8 +54,12 @@ export class RequisitionsDelisonComponent implements OnInit {
   private gridApi!: GridApi;
   private isGeneratingReport: boolean = false;
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
+  private renderer: Renderer2;
+  private departmentTooltipElement: HTMLElement | null = null;
+  private solicitedByTooltipElement: HTMLElement | null = null;
 
-  constructor() {
+  constructor(rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
     // ✅ Usar effect para reaccionar a cambios en el signal de sucursal
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -682,6 +686,35 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'departmentId',
         headerName: 'Departamento que solicita',
         width: 200,
+        cellRenderer: (params: any) => {
+          const div = document.createElement('div');
+
+          // Aplicar la misma lógica del valueFormatter
+          const branchId = params.data?.idReference;
+          const cachedRoles = this.rolesByBranchCache.get(branchId);
+          let displayValue = '';
+
+          if (cachedRoles) {
+            const role = cachedRoles.find(r => r.id === params.value);
+            displayValue = role?.description || params.value?.toString() || '';
+          } else {
+            displayValue = params.data?.departmentName || params.value?.toString() || '';
+          }
+
+          div.textContent = displayValue;
+          div.style.cursor = 'pointer';
+
+          div.addEventListener('mouseenter', () => {
+            const rect = div.getBoundingClientRect();
+            this.showDepartmentTooltip(displayValue, rect);
+          });
+
+          div.addEventListener('mouseleave', () => {
+            this.hideDepartmentTooltip();
+          });
+
+          return div;
+        },
         editable: (params: any) => {
           // ✅ Solo editable si la fila tiene una sucursal seleccionada
           return params.data && params.data.idReference > 0;
@@ -809,8 +842,25 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'solicitedBy',
         headerName: 'Solicitado por',
         width: 150,
-        editable: false, // No editable - se toma del usuario actual
-        valueFormatter: (params) => params.value || this.currentUserName
+        editable: false,
+        cellRenderer: (params: any) => {
+          const div = document.createElement('div');
+          const displayValue = params.value || this.currentUserName || '';
+
+          div.textContent = displayValue;
+          div.style.cursor = 'pointer';
+
+          div.addEventListener('mouseenter', () => {
+            const rect = div.getBoundingClientRect();
+            this.showSolicitedByTooltip(displayValue, rect);
+          });
+
+          div.addEventListener('mouseleave', () => {
+            this.hideSolicitedByTooltip();
+          });
+
+          return div;
+        }
       },
       {
         field: 'articlesCount',
@@ -1750,4 +1800,234 @@ export class RequisitionsDelisonComponent implements OnInit {
   components = {
     selectDepartmentEditor: SelectDepartmentEditorComponent
   };
+
+  private showDepartmentTooltip(departmentName: string, optionRect: DOMRect): void {
+    this.hideDepartmentTooltip();
+
+    this.departmentTooltipElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.departmentTooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.departmentTooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.departmentTooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.departmentTooltipElement, 'min-width', '280px');
+    this.renderer.setStyle(this.departmentTooltipElement, 'max-width', '400px');
+
+    const arrow = this.renderer.createElement('div');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #1e40af');
+    this.renderer.appendChild(this.departmentTooltipElement, arrow);
+
+    const content = this.renderer.createElement('div');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-building');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const headerTextNode = this.renderer.createText(departmentName);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+    this.renderer.appendChild(content, header);
+
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#e2e8f0');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    // Fila de Modificación
+    const modRow = this.renderer.createElement('div');
+    this.renderer.setStyle(modRow, 'display', 'flex');
+    this.renderer.setStyle(modRow, 'align-items', 'center');
+    this.renderer.setStyle(modRow, 'gap', '8px');
+    this.renderer.setStyle(modRow, 'margin-bottom', '10px');
+
+    const modLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(modLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(modLabel, 'font-weight', '600');
+    const modLabelText = this.renderer.createText('Modificación:');
+    this.renderer.appendChild(modLabel, modLabelText);
+    this.renderer.appendChild(modRow, modLabel);
+
+    const modValue = this.renderer.createElement('span');
+    this.renderer.setStyle(modValue, 'color', '#ffffff');
+    const modValueText = this.renderer.createText('--');
+    this.renderer.appendChild(modValue, modValueText);
+    this.renderer.appendChild(modRow, modValue);
+
+    this.renderer.appendChild(body, modRow);
+
+    // Fila de Origen
+    const infoRow = this.renderer.createElement('div');
+    this.renderer.setStyle(infoRow, 'display', 'flex');
+    this.renderer.setStyle(infoRow, 'align-items', 'center');
+    this.renderer.setStyle(infoRow, 'gap', '8px');
+
+    const infoLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(infoLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(infoLabel, 'font-weight', '600');
+    const infoLabelText = this.renderer.createText('Origen:');
+    this.renderer.appendChild(infoLabel, infoLabelText);
+    this.renderer.appendChild(infoRow, infoLabel);
+
+    const infoValue = this.renderer.createElement('span');
+    this.renderer.setStyle(infoValue, 'color', '#ffffff');
+    const infoValueText = this.renderer.createText(departmentName);
+    this.renderer.appendChild(infoValue, infoValueText);
+    this.renderer.appendChild(infoRow, infoValue);
+
+    this.renderer.appendChild(body, infoRow);
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.departmentTooltipElement, content);
+    this.renderer.appendChild(document.body, this.departmentTooltipElement);
+
+    const top = optionRect.top;
+    const left = optionRect.right + 8;
+    this.renderer.setStyle(this.departmentTooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.departmentTooltipElement, 'left', `${left}px`);
+  }
+
+  private hideDepartmentTooltip(): void {
+    if (this.departmentTooltipElement) {
+      this.renderer.removeChild(document.body, this.departmentTooltipElement);
+      this.departmentTooltipElement = null;
+    }
+  }
+
+  private showSolicitedByTooltip(personName: string, optionRect: DOMRect): void {
+    this.hideSolicitedByTooltip();
+
+    this.solicitedByTooltipElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.solicitedByTooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.solicitedByTooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.solicitedByTooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.solicitedByTooltipElement, 'min-width', '280px');
+    this.renderer.setStyle(this.solicitedByTooltipElement, 'max-width', '400px');
+
+    const arrow = this.renderer.createElement('div');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #1e40af');
+    this.renderer.appendChild(this.solicitedByTooltipElement, arrow);
+
+    const content = this.renderer.createElement('div');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-person');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const headerTextNode = this.renderer.createText(personName);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+    this.renderer.appendChild(content, header);
+
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#e2e8f0');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    // Fila de Modificación
+    const modRow = this.renderer.createElement('div');
+    this.renderer.setStyle(modRow, 'display', 'flex');
+    this.renderer.setStyle(modRow, 'align-items', 'center');
+    this.renderer.setStyle(modRow, 'gap', '8px');
+    this.renderer.setStyle(modRow, 'margin-bottom', '10px');
+
+    const modLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(modLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(modLabel, 'font-weight', '600');
+    const modLabelText = this.renderer.createText('Modificación:');
+    this.renderer.appendChild(modLabel, modLabelText);
+    this.renderer.appendChild(modRow, modLabel);
+
+    const modValue = this.renderer.createElement('span');
+    this.renderer.setStyle(modValue, 'color', '#ffffff');
+    const modValueText = this.renderer.createText('--');
+    this.renderer.appendChild(modValue, modValueText);
+    this.renderer.appendChild(modRow, modValue);
+
+    this.renderer.appendChild(body, modRow);
+
+    // Fila de Solicito
+    const infoRow = this.renderer.createElement('div');
+    this.renderer.setStyle(infoRow, 'display', 'flex');
+    this.renderer.setStyle(infoRow, 'align-items', 'center');
+    this.renderer.setStyle(infoRow, 'gap', '8px');
+
+    const infoLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(infoLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(infoLabel, 'font-weight', '600');
+    const infoLabelText = this.renderer.createText('Solicito:');
+    this.renderer.appendChild(infoLabel, infoLabelText);
+    this.renderer.appendChild(infoRow, infoLabel);
+
+    const infoValue = this.renderer.createElement('span');
+    this.renderer.setStyle(infoValue, 'color', '#ffffff');
+    const infoValueText = this.renderer.createText(personName);
+    this.renderer.appendChild(infoValue, infoValueText);
+    this.renderer.appendChild(infoRow, infoValue);
+
+    this.renderer.appendChild(body, infoRow);
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.solicitedByTooltipElement, content);
+    this.renderer.appendChild(document.body, this.solicitedByTooltipElement);
+
+    const top = optionRect.top;
+    const left = optionRect.right + 8;
+    this.renderer.setStyle(this.solicitedByTooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.solicitedByTooltipElement, 'left', `${left}px`);
+  }
+
+  private hideSolicitedByTooltip(): void {
+    if (this.solicitedByTooltipElement) {
+      this.renderer.removeChild(document.body, this.solicitedByTooltipElement);
+      this.solicitedByTooltipElement = null;
+    }
+  }
 }
