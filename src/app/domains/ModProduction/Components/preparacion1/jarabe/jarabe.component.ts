@@ -4,9 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { environment } from '@env/environment';
 import { PreparacionService } from 'app/services/preparacion.service';
 import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { DetalleWrapperComponent } from './detalle-wrapper.component';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
@@ -79,15 +82,19 @@ export class JarabeComponent implements OnInit {
 
   private preparacionService = inject(PreparacionService);
   private signalsService = inject(SignalsService);
+  private authService = inject(AuthService);
   private branchsService = inject(BranchsService);
+  private materialsService = inject(MaterialsService);
   private gridApi!: GridApi;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
   hasRowSelected: boolean = false;
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
-  userBranches: any[] = []; // { id: number, name: string }
-  branchNames: string[] = []; // Solo nombres para el select
+  userBranches: any[] = [];
+  branchNames: string[] = [];
+  rawMaterials: any[] = [];
+  rawMaterialNames: string[] = [];
   /** Igual que Proveedores: Enter cierra edición y onCellEditingStopped abre la siguiente celda editable */
   private enterPressedFlag = false;
 
@@ -99,6 +106,7 @@ export class JarabeComponent implements OnInit {
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
       if (idUser && idCompany) {
         this.loadUserBranches();
+        this.loadRawMaterials(idCompany);
       }
     });
   }
@@ -220,28 +228,51 @@ export class JarabeComponent implements OnInit {
     this.loadData();
   }
 
+  async loadRawMaterials(idCompany: number) {
+    try {
+      const data = await lastValueFrom(this.materialsService.getMaterialsxview(idCompany));
+      const list: any[] = Array.isArray(data) ? data : [];
+      this.rawMaterials = list;
+      this.rawMaterialNames = list.map(m => m.articulo || m.description || m.insumo || '').filter(Boolean);
+      this._colDefs = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+      }
+    } catch (error) {
+      console.error('Error loading raw materials:', error);
+    }
+  }
+
   async loadUserBranches() {
     try {
       const idUser = this.signalsService.idUser();
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
       if (!idUser || !idCompany) return;
 
-      const branches = await lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany));
+      const hasAll = this.authService.hasDetailedPermission('principal', 'see-all-branches');
+      const email = localStorage.getItem('mail') ?? '';
+      const isRoot = email === environment.root;
 
-      const list: any[] = Array.isArray(branches)
-        ? branches
-        : (branches as any)?.project ?? [];
+      let mapped: { id: any; name: string }[];
 
-      // Mantener objetos con id y name
-      this.userBranches = list
-        .map((b: any) => ({
-          id: b?.id,
-          name: b?.name || b?.Name || ''
-        }))
-        .filter(b => b.id && b.name.trim());
+      if (hasAll || isRoot) {
+        const data = await lastValueFrom(this.branchsService.getBranches2fields(idCompany));
+        const list: any[] = Array.isArray(data) ? data : [];
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        mapped = list.map((b: any) => ({ id: b.id, name: b.name as string }));
+      } else {
+        const data = await lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany));
+        const list: any[] = (data as any)?.project ?? (Array.isArray(data) ? data : []);
+        mapped = list
+          .map((b: any) => ({
+            id: b?.idPermission || b?.idBranch || b?.id,
+            name: (b?.name || b?.description || b?.Name || '') as string
+          }))
+          .filter(b => b.id && b.name.trim());
+      }
 
-      // Array solo de nombres para el select
-      this.branchNames = this.userBranches.map(b => b.name);
+      this.userBranches = mapped;
+      this.branchNames = mapped.map(b => b.name);
 
       this._colDefs = [];
       if (this.gridApi) {
@@ -275,6 +306,7 @@ export class JarabeComponent implements OnInit {
       preparacion: item.preparacionCount || 0,
       cantidad: item.cantidad || 0,
       observaciones: item.observaciones || '',
+      nota: item.nota || '',
       historialGastos: item.historialCount || 0,
       adicional: item.adicional || '',
       activom: item.active !== false,
@@ -342,6 +374,7 @@ export class JarabeComponent implements OnInit {
       preparacionCount: item.preparacion || 0,
       cantidad: item.cantidad || 0,
       observaciones: item.observaciones,
+      nota: item.nota || '',
       historialCount: item.historialGastos || 0,
       adicional: item.adicional,
       active: item.activom !== false
@@ -363,33 +396,6 @@ export class JarabeComponent implements OnInit {
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
-
-      {
-        field: 'lote',
-        headerName: 'Lote',
-        width: 150,
-        editable: true,
-        cellEditor: 'agTextCellEditor',
-        valueSetter: (params) => {
-          params.data.lote = params.newValue ? params.newValue.toUpperCase() : '';
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
-      {
-        field: 'articulo',
-        headerName: 'Articulo',
-        width: 200,
-        editable: true,
-        cellEditor: 'agTextCellEditor',
-        valueSetter: (params) => {
-          params.data.articulo = params.newValue ? params.newValue.toUpperCase() : '';
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
       {
         field: 'sucursal',
         headerName: 'Sucursal',
@@ -398,7 +404,6 @@ export class JarabeComponent implements OnInit {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.branchNames }),
         valueFormatter: (params) => {
-          // Mostrar nombre en la celda, aunque internamente guardamos ID
           if (params.value) {
             const branch = this.userBranches.find(b => b.id === params.value);
             return branch?.name ?? '';
@@ -406,10 +411,48 @@ export class JarabeComponent implements OnInit {
           return '';
         },
         valueSetter: (params) => {
-          // El usuario selecciona un nombre, pero guardamos el ID
-          const selectedName = params.newValue;
-          const selectedBranch = this.userBranches.find(b => b.name === selectedName);
+          const selectedBranch = this.userBranches.find(b => b.name === params.newValue);
           params.data.sucursal = selectedBranch?.id ?? null;
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+      {
+        field: 'nota',
+        headerName: 'Nota',
+        width: 180,
+        editable: true,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params) => {
+          params.data.nota = params.newValue ?? '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+      {
+        field: 'articulo',
+        headerName: 'Artículo',
+        width: 200,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.rawMaterialNames }),
+        valueSetter: (params) => {
+          params.data.articulo = params.newValue ?? '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+      {
+        field: 'lote',
+        headerName: 'Lote',
+        width: 150,
+        editable: true,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params) => {
+          params.data.lote = params.newValue ? params.newValue.toUpperCase() : '';
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -666,6 +709,7 @@ export class JarabeComponent implements OnInit {
       preparacion: 0,
       cantidad: 0,
       observaciones: '',
+      nota: '',
       historialGastos: 0,
       adicional: '',
       activom: true,

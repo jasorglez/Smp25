@@ -223,6 +223,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   hasRowSelected: boolean = false;
   hasProviderAssigned: boolean = false; // true = cotización con proveedor asignado → no eliminar
   materials: any[] = [];
+  frequentArticles: any[] = [];  // TOP 3 artículos más solicitados
+  totalRequisitions: number = 0; // Total de requisiciones para calcular porcentajes
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
   idRoot: number | null = null;
@@ -276,6 +278,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     this.requisitionId = this.params.data.id;
+
+    // ✅ Cargar artículos frecuentes para recomendaciones
+    this.loadFrequentArticles();
 
 
 
@@ -425,6 +430,39 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
   }
 
+  private loadFrequentArticles() {
+    if (!this.params?.data) return;
+
+    const solicit = this.params.data.solicitedBy || '';  // Nombre del usuario que solicita
+    const idDepartment = this.params.data.departmentId || 0;  // ID del departamento
+    const idBranch = this.params.data.idReference || 0;  // ID de la sucursal
+
+    if (!solicit || idDepartment <= 0 || idBranch <= 0) {
+      this.frequentArticles = [];
+      this.totalRequisitions = 0;
+      return;
+    }
+
+    this.ocAndReqsService.getFrequentArticles(solicit, idDepartment, idBranch).subscribe({
+      next: (response: any) => {
+        // Manejar la nueva estructura con articles y totalRequisitions
+        if (response?.articles) {
+          this.frequentArticles = Array.isArray(response.articles) ? response.articles : [];
+          this.totalRequisitions = response.totalRequisitions || 0;
+        } else if (Array.isArray(response)) {
+          // Fallback si el servidor devuelve array plano
+          this.frequentArticles = response;
+          this.totalRequisitions = 0;
+        }
+      },
+      error: (error) => {
+        console.warn('⚠️ Error cargando artículos frecuentes:', error);
+        this.frequentArticles = [];
+        this.totalRequisitions = 0;
+      }
+    });
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
 
@@ -512,15 +550,45 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             m => !usedMaterialIds.includes(m.id)
           );
 
+          // ✅ Crear mapping de artículos frecuentes por índice (0=Más solicitado, 1-2=recomendados)
+          const frequentMap: { [key: number]: number } = {};
+          this.frequentArticles.forEach((freq, index) => {
+            frequentMap[freq.idSupplie] = index;
+          });
 
           return {
             showAbbreviation: false,
-            options: availableMaterials.map(m => ({
-              id: m.id,
-              description: m.description,
-              valueAddition: m.code || '',
-              valueAddition2: m.measure || ''
-            }))
+            options: (() => {
+              // Separar artículos frecuentes de los no frecuentes
+              const frequentMaterials = availableMaterials
+                .filter(m => frequentMap[m.id] !== undefined)
+                .sort((a, b) => (frequentMap[a.id] ?? 999) - (frequentMap[b.id] ?? 999));
+
+              const nonFrequentMaterials = availableMaterials
+                .filter(m => frequentMap[m.id] === undefined);
+
+              // Concatenar frecuentes primero, luego no frecuentes
+              const sortedMaterials = [...frequentMaterials, ...nonFrequentMaterials];
+
+              return sortedMaterials.map(m => {
+                let description = m.description;
+                const frequentIndex = frequentMap[m.id];
+
+                // Calcular porcentaje para artículos frecuentes
+                if (frequentIndex !== undefined && this.totalRequisitions > 0) {
+                  const frequentArticle = this.frequentArticles[frequentIndex];
+                  const percentage = Math.round((frequentArticle.countRequested / this.totalRequisitions) * 100);
+                  description = `⭐ ${m.description} (${percentage}%)`;
+                }
+
+                return {
+                  id: m.id,
+                  description: description,
+                  valueAddition: m.code || '',
+                  valueAddition2: m.measure || ''
+                };
+              });
+            })()
           };
         },
         valueFormatter: (params: any) => {

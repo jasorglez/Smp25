@@ -73,6 +73,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.82 (17 Abril 2026) - fix: validacion minimo un usuario Root en columna isRoot',
+  version: '3.84 (17 Abril 2026 17:20) - feature: mostrar porcentaje de solicitud en artículos frecuentes',
 };
 
