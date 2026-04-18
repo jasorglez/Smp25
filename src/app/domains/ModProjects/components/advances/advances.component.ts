@@ -120,7 +120,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   columnDefs: ColDef[] = [
-    { field: 'date', headerName: 'Fecha', width: 87, editable: true, valueFormatter: (params) => { if (!params.value) return ''; const [y, m, d] = String(params.value).substring(0, 10).split('-'); return `${d}/${m}/${y.substring(2)}`; } },
+    { field: 'date', headerName: 'Fecha', width: 86, editable: true, valueFormatter: (params) => { if (!params.value) return ''; const [y, m, d] = String(params.value).substring(0, 10).split('-'); return `${d}/${m}/${y.substring(2)}`; } },
     { field: 'programAdvanced', headerName: 'Program.', width: 88, editable: true },
     { field: 'physicalAdvanced', headerName: 'Fisico', width: 85, editable: true },
     {
