@@ -589,17 +589,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
             return value.toFixed(1) + '%'
           }
         }
-      },
-      responsive: [
-        {
-          breakpoint: 1024,
-          options: {
-            chart: {
-              height: 400
-            }
-          }
-        }
-      ]
+      }
     };
 
     if (this.chart && this.chart.updateOptions) {
