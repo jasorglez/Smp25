@@ -73,6 +73,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.81 (17 Abril 2026 16:40) - refactor: sidebar sin flujo de contratos ni proyectos',
+  version: '3.82 (17 Abril 2026 21:09) - refactor: sidebar sin flujo de contratos ni proyectos y filtro de sucursal',
 };
 
