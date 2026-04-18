@@ -87,6 +87,7 @@ export class UsersComponent implements OnDestroy {
 
   private editableColumnOrder = ['displayName', 'email', 'password', 'isRoot'];
   private enterPressed: boolean = false;
+  private _revertingIsRoot = false;
 
   private usersService        = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
@@ -937,6 +938,23 @@ export class UsersComponent implements OnDestroy {
   }
 
   onCellValueChanged(event: any) {
+    if (event.colDef.field === 'isRoot' && !this._revertingIsRoot) {
+      const newVal = event.newValue === true || event.newValue === 1 || event.newValue === 'true';
+      const oldVal = event.oldValue === true || event.oldValue === 1 || event.oldValue === 'true';
+      if (oldVal && !newVal) {
+        const rootCount = (this.rowData || []).filter(
+          (r: any) => (r.isRoot === true || r.isRoot === 1) && r.id !== event.data.id
+        ).length;
+        if (rootCount === 0) {
+          alerts.userBasicAlert('Root obligatorio', 'Debe existir al menos un usuario Root.', 'warning');
+          this._revertingIsRoot = true;
+          event.node.setDataValue('isRoot', event.oldValue);
+          this._revertingIsRoot = false;
+          return;
+        }
+      }
+    }
+
     if (!event.node.isSelected()) {
       event.node.setSelected(true);
     }
