@@ -401,32 +401,38 @@ export class AdvancesComponent implements OnInit, OnChanges {
       id: advance.id
     }));
 
-    // Agrupar datos por mes (cada 10 días = 1 mes), 12 meses total
+    // Agrupar por mes real usando la fecha
     const programSeries: any[] = new Array(12).fill(null);
     const physicalSeries: any[] = new Array(12).fill(null);
-    const hitosSeries: any[] = new Array(12).fill(null);
+    const hitosSeries: any[]    = new Array(12).fill(null);
 
     this.monthlyTableData = this.ALL_MONTHS.map(m => ({ month: m, program: null, physical: null, hito: null }));
 
-    for (let i = 0; i < 9; i++) {
-      const endIndex = (i + 1) * 10 - 1;
-      if (endIndex < this.datosMensuales.length) {
-        const program = parseFloat(this.datosMensuales[endIndex].accumulateProgram.toFixed(2));
-        const physical = parseFloat(this.datosMensuales[endIndex].accumulatePhysical.toFixed(2));
-        // hito = suma del mes (diferencia entre acumulados)
-        const startIndex = i * 10;
-        const hitoVal = parseFloat(
-          (this.datosMensuales[endIndex].accumulateProgram -
-          (startIndex > 0 ? this.datosMensuales[startIndex - 1].accumulateProgram : 0)).toFixed(2)
-        );
-        programSeries[i] = program;
-        physicalSeries[i] = physical;
-        hitosSeries[i] = hitoVal;
-        this.monthlyTableData[i].program = program;
-        this.monthlyTableData[i].physical = physical;
-        this.monthlyTableData[i].hito = hitoVal;
-      }
-    }
+    // Agrupar registros por mes (0=enero … 8=septiembre)
+    const byMonth: { [key: number]: ContractAdvance[] } = {};
+    this.datosMensuales.forEach(d => {
+      const monthIdx = new Date(d.date).getMonth(); // 0-based
+      if (!byMonth[monthIdx]) byMonth[monthIdx] = [];
+      byMonth[monthIdx].push(d);
+    });
+
+    Object.keys(byMonth).forEach(key => {
+      const idx = parseInt(key);
+      const records = byMonth[idx];
+      // último registro del mes = acumulado del mes
+      const last = records[records.length - 1];
+      const program = parseFloat(last.accumulateProgram.toFixed(2));
+      const physical = parseFloat(last.accumulatePhysical.toFixed(2));
+      // hito = suma incremental del mes
+      const hitoVal = parseFloat(records.reduce((s, r) => s + r.programAdvanced, 0).toFixed(2));
+
+      programSeries[idx] = program;
+      physicalSeries[idx] = physical;
+      hitosSeries[idx]    = hitoVal;
+      this.monthlyTableData[idx].program  = program;
+      this.monthlyTableData[idx].physical = physical;
+      this.monthlyTableData[idx].hito     = hitoVal;
+    });
 
     // Actualizar datos de la gráfica: 12 puntos mensuales
     this.chartOptions = {
