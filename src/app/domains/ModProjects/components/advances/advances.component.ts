@@ -163,57 +163,68 @@ export class AdvancesComponent implements OnInit, OnChanges {
         }
       ],
       chart: {
-        height: 500,
+        height: 550,
         width: '100%',
-        type: "area",
-        fontFamily: 'inherit',
+        type: "line",
+        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        animations: {
+          enabled: true,
+          speed: 800
+        },
         toolbar: {
           show: true
         }
       },
-      colors: ["#00a86b", "#e74c3c"],
+      colors: ["#1e88e5", "#d32f2f"],
       dataLabels: {
         enabled: false
       },
       fill: {
         type: 'gradient',
         gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.5,
-          opacityTo: 0.1,
-          stops: [0, 100]
+          opacityFrom: 0.45,
+          opacityTo: 0.05,
+          stops: [20, 100, 100, 100]
         }
       },
       stroke: {
         curve: "smooth",
-        width: 3
+        width: [3, 3],
+        lineCap: 'round'
       },
       title: {
-        text: "Comparativa: Avance Programado vs Avance Físico",
+        text: "📊 Seguimiento de Obra",
         align: "left",
         style: {
-          fontSize: '16px',
-          fontWeight: 'bold'
+          fontSize: '18px',
+          fontWeight: '700',
+          color: '#1a237e'
         }
       },
       grid: {
-        borderColor: "#e0e0e0",
-        strokeDashArray: 4
+        show: true,
+        borderColor: '#e8eaf6',
+        strokeDashArray: 3
       },
       markers: {
-        size: 5
+        size: [4, 4],
+        border: 2,
+        borderColor: "#fff"
       },
       xaxis: {
         categories: [],
         labels: {
           style: {
-            fontSize: '11px'
+            fontSize: '12px'
           }
         }
       },
       yaxis: {
         title: {
-          text: "Acumulado (%)"
+          text: "Avance Acumulado (%)"
+        },
+        labels: {
+          formatter: (value) => value.toFixed(0) + '%'
         }
       },
       legend: {
@@ -386,25 +397,41 @@ export class AdvancesComponent implements OnInit, OnChanges {
       id: advance.id
     }));
 
+    // Agrupar por mes para etiquetas
+    const monthLabels = this.datosMensuales.map((d, i) => {
+      const date = new Date(d.date);
+      const monthLabel = date.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+      return i % 10 === 0 ? monthLabel : '';
+    });
+
     // Actualizar datos de la gráfica
     this.chartOptions = {
       series: [
         {
           name: 'Avance Programado',
-          data: this.datosMensuales.map(d => d.accumulateProgram)
+          data: this.datosMensuales.map(d => parseFloat(d.accumulateProgram.toFixed(2)))
         },
         {
           name: 'Avance Físico',
-          data: this.datosMensuales.map(d => d.accumulatePhysical)
+          data: this.datosMensuales.map(d => parseFloat(d.accumulatePhysical.toFixed(2)))
         }
       ],
       chart: {
-        height: 500,
+        height: 550,
         width: '100%',
-        type: "area",
-        fontFamily: 'inherit',
-        sparkline: {
-          enabled: false
+        type: "line",
+        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        animations: {
+          enabled: true,
+          speed: 800,
+          animateGradually: {
+            enabled: true,
+            delay: 150
+          },
+          dynamicAnimation: {
+            enabled: true,
+            speed: 150
+          }
         },
         toolbar: {
           show: true,
@@ -415,74 +442,149 @@ export class AdvancesComponent implements OnInit, OnChanges {
             zoomin: true,
             zoomout: true,
             pan: true,
-            reset: true
-          }
-        }
+            reset: true,
+            autoSelect: 'zoom'
+          },
+          autoSelected: 'zoom'
+        },
+        background: '#fff'
       },
-      colors: ["#00a86b", "#e74c3c"],
+      colors: ["#1e88e5", "#d32f2f"],
       dataLabels: {
         enabled: false
       },
       fill: {
         type: 'gradient',
         gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.5,
-          opacityTo: 0.1,
-          stops: [0, 100]
+          shade: 'light',
+          type: 'vertical',
+          shadeIntensity: 0.1,
+          gradientToColors: undefined,
+          inverseColors: false,
+          opacityFrom: 0.45,
+          opacityTo: 0.05,
+          stops: [20, 100, 100, 100],
+          colorStops: []
         }
       },
       stroke: {
         curve: "smooth",
-        width: 3
+        width: [3, 3],
+        dashArray: [0, 0],
+        lineCap: 'round'
       },
       title: {
-        text: "Comparativa: Avance Programado vs Avance Físico",
+        text: "📊 Seguimiento de Obra: Avance Programado vs Avance Físico",
         align: "left",
+        margin: 20,
         style: {
-          fontSize: '16px',
-          fontWeight: 'bold',
-          color: '#333'
+          fontSize: '18px',
+          fontWeight: '700',
+          color: '#1a237e',
+          fontFamily: 'Arial, sans-serif'
+        }
+      },
+      subtitle: {
+        text: 'Enero - Septiembre 2026 | Atraso: 40%',
+        align: 'left',
+        style: {
+          fontSize: '13px',
+          color: '#666',
+          fontWeight: '400'
         }
       },
       grid: {
-        borderColor: "#e0e0e0",
-        strokeDashArray: 4,
-        row: {
-          colors: ["#fafafa", "transparent"],
-          opacity: 0.5
+        show: true,
+        borderColor: '#e8eaf6',
+        strokeDashArray: 3,
+        xaxis: {
+          lines: {
+            show: false
+          }
+        },
+        yaxis: {
+          lines: {
+            show: true
+          }
+        },
+        padding: {
+          left: 0,
+          right: 0,
+          bottom: 0
         }
       },
       markers: {
-        size: 5,
+        size: [4, 4],
+        colors: ["#1e88e5", "#d32f2f"],
+        border: 2,
+        borderColor: "#fff",
+        strokeWidth: 2,
         hover: {
           size: 7
-        }
+        },
+        shape: 'circle'
       },
       xaxis: {
-        categories: this.datosMensuales.map(d => d.date),
+        type: 'numeric',
+        categories: monthLabels,
         labels: {
-          format: 'dd/MM/yy',
+          format: 'MMM yy',
           style: {
-            fontSize: '11px'
+            colors: '#666',
+            fontSize: '12px',
+            fontWeight: '500'
+          },
+          offsetY: 5
+        },
+        axisBorder: {
+          show: true,
+          color: '#e8eaf6',
+          height: 1
+        },
+        axisTicks: {
+          show: true,
+          color: '#e8eaf6'
+        },
+        crosshairs: {
+          show: true,
+          width: 1,
+          position: 'back',
+          opacity: 0.9,
+          stroke: {
+            color: '#b3e5fc',
+            width: 1,
+            dashArray: 0
           }
         }
       },
       yaxis: {
+        min: 0,
+        max: 110,
+        tickAmount: 10,
         title: {
-          text: "Acumulado (%)",
+          text: "Avance Acumulado (%)",
           style: {
-            fontSize: '12px',
-            fontWeight: 'bold'
+            color: '#1a237e',
+            fontSize: '13px',
+            fontWeight: '700'
           }
         },
         labels: {
           formatter: (value) => {
-            return value.toFixed(1)
+            return value.toFixed(0) + '%'
           },
           style: {
+            colors: '#666',
             fontSize: '11px'
           }
+        },
+        axisBorder: {
+          show: true,
+          color: '#e8eaf6'
+        },
+        axisTicks: {
+          show: true,
+          color: '#e8eaf6'
         }
       },
       legend: {
@@ -490,20 +592,52 @@ export class AdvancesComponent implements OnInit, OnChanges {
         horizontalAlign: "center",
         floating: false,
         fontSize: '13px',
-        fontWeight: 'bold'
+        fontWeight: '600',
+        markers: {
+          width: 12,
+          height: 12,
+          radius: 2
+        }
       },
       tooltip: {
         theme: 'light',
+        enabled: true,
+        enabledOnSeries: undefined,
+        shared: true,
+        intersect: false,
         x: {
-          format: 'dd/MM/yyyy'
+          show: true,
+          format: 'dd/MM/yyyy',
+          formatter: undefined
         },
         y: {
           formatter: (value) => {
-            return value.toFixed(2) + '%'
+            return value.toFixed(1) + '%'
+          },
+          title: {
+            formatter: (seriesName) => seriesName,
+          }
+        },
+        marker: {
+          show: true
+        },
+        items: {
+          display: 'flex'
+        },
+        onDatasetHover: {
+          highlightDataSeries: true
+        }
+      },
+      responsive: [
+        {
+          breakpoint: 1024,
+          options: {
+            chart: {
+              height: 400
+            }
           }
         }
-      }
-
+      ]
     };
 
     if (this.chart && this.chart.updateOptions) {
