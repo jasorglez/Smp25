@@ -196,8 +196,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
         text: "📊 Seguimiento de Obra",
         align: "left",
         style: {
-          fontSize: 18,
-          fontWeight: 700,
+          fontSize: '18px',
+          fontWeight: '700',
           color: '#1a237e'
         }
       },
@@ -215,7 +215,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         labels: {
           style: {
             colors: ['#666'],
-            fontSize: 12
+            fontSize: '12px'
           }
         }
       },
@@ -442,8 +442,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
             zoomin: true,
             zoomout: true,
             pan: true,
-            reset: true,
-            autoSelect: 'zoom'
+            reset: true
           },
           autoSelected: 'zoom'
         },
@@ -557,8 +556,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
           text: "Avance Acumulado (%)",
           style: {
             color: '#1a237e',
-            fontSize: 13,
-            fontWeight: 700
+            fontSize: '13px',
+            fontWeight: '700'
           }
         },
         labels: {
@@ -567,7 +566,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
           },
           style: {
             colors: ['#666'],
-            fontSize: 11
+            fontSize: '11px'
           }
         },
         axisBorder: {
