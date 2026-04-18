@@ -30,7 +30,7 @@ export class SignalrService {
   // Método para iniciar conexión SIN JWT - CORREGIDA LA URL ESPECÍFICA
 public startConnection(hubEndpoint: string = 'storageHub', token?: string): void {
 
-  const hubUrl = `https://bi2.com.mx/smp/${hubEndpoint}`;
+  const hubUrl = `https://endpoints.biapp.com.mx/smp/${hubEndpoint}`;
  console.log('🔄 Iniciando conexión SignalR...');
  console.log('📡 URL:', hubUrl);
 
@@ -172,7 +172,7 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
   private diagnosticInfo(): void {
     console.log('🔍 === INFORMACIÓN DE DIAGNÓSTICO ===');
     console.log('🌐 Environment URL:', environment.urlSmp);
-    console.log('🎯 Target URL (hardcoded):', 'https://bi2.com.mx/storageHub');
+    console.log('🎯 Target URL (hardcoded):', 'https://endpoints.biapp.com.mx/storageHub');
     console.log('🔒 Origin:', window.location.origin);
     console.log('📍 Current URL:', window.location.href);
     console.log('🚀 User Agent:', navigator.userAgent);
@@ -184,7 +184,7 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
   // Probar conectividad básica - CORREGIDA LA URL ESPECÍFICA
   private async testConnectivity(): Promise<void> {
     try {
-      const hubUrl = 'https://bi2.com.mx/storageHub';
+      const hubUrl = 'https://endpoints.biapp.com.mx/storageHub';
       console.log('🧪 Testing connectivity to:', hubUrl);
       
       const response = await fetch(`${hubUrl}/negotiate?negotiateVersion=1`, {
@@ -279,7 +279,7 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
       state: this.hubConnection?.state,
       connectionId: (this.hubConnection as any)?.connectionId || 'Unknown',
       baseUrl: (this.hubConnection as any)?.baseUrl || 'No connection',
-      url: 'https://bi2.com.mx/storageHub',
+      url: 'https://endpoints.biapp.com.mx/storageHub',
       authMode: 'No JWT required',
       transport: 'WebSockets + LongPolling'
     };

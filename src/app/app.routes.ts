@@ -438,8 +438,8 @@ export const routes: Routes = [
         path: 'projects',
         loadComponent: () =>
           import(
-            './domains/ModProjects/pages/procprojects/procprojects.component'
-          ).then((s) => s.ProcprojectsComponent),
+            './domains/ModProjects/pages/procprojects/procmenuprojects.component'
+          ).then((s) => s.ProcmenuprojectsComponent),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'projects' } },
         children: [
@@ -578,6 +578,13 @@ export const routes: Routes = [
             },
           },
           {
+            path: 'workprograms',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/workprograms/workprograms.component'
+              ).then((w) => w.WorkprogramsComponent),
+          },
+          {
             path: 'ot',
             loadComponent: () =>
               import(
@@ -659,8 +666,8 @@ export const routes: Routes = [
       {
         path: 'smp',
         loadComponent: () =>
-          import('./domains/SMP/Pages/procsmp/proccsmp.component').then(
-            (s) => s.ProccsmpComponent
+          import('./domains/SMP/Pages/procsmp/procmenuconfiguracion.component').then(
+            (s) => s.ProcmenuconfiguracionComponent
           ),
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'setup' } },
