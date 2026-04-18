@@ -10,7 +10,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, concatMap, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 import { EmployeesService } from 'app/services/employees.service';
-import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
+import { DetailPermisosXDeptosComponent } from './detalles-permisos-x-deptos.component';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
