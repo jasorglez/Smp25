@@ -120,25 +120,22 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   columnDefs: ColDef[] = [
-    { field: 'date', headerName: 'Fecha', width: 100, editable: true },
-    { field: 'programAdvanced', headerName: 'Program.', width: 80, editable: true },
+    { field: 'date', headerName: 'Fecha', width: 90, editable: true },
+    { field: 'programAdvanced', headerName: 'Program.', width: 90, editable: true },
     { field: 'physicalAdvanced', headerName: 'Fisico', width: 90, editable: true },
     {
-      field: 'accumulateProgram', headerName: 'Acum. Progr.', width: 120, editable: true, cellDataType: 'number',
+      field: 'accumulateProgram', headerName: 'Acumulado Programado', width: 100, editable: true, cellDataType: 'number',
+      wrapHeaderText: true, autoHeaderHeight: true,
       valueFormatter: (params) => {
-        if (params.value) {
-          return params.value.toFixed(2);
-        }
+        if (params.value) { return params.value.toFixed(2); }
         return '';
       }
     },
     {
-      field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 190, editable: true,
-      cellDataType: 'number',
+      field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 100, editable: true, cellDataType: 'number',
+      wrapHeaderText: true, autoHeaderHeight: true,
       valueFormatter: (params) => {
-        if (params.value) {
-          return params.value.toFixed(2);
-        }
+        if (params.value) { return params.value.toFixed(2); }
         return '';
       }
     }
