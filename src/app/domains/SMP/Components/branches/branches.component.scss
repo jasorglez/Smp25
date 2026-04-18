@@ -1,3 +1,38 @@
+/* Pestaña interna + botonera + grid (mismo criterio que Usuarios / Departamentos) */
+.branches-tab-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.branches-tab-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Área útil bajo menú de configuración + pestaña «Sucursales» + márgenes */
+  height: calc(100vh - 240px);
+}
+
+.branches-main-row {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.branches-grid-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.branches-grid-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 ::ng-deep .ag-cell-inline-editing {
   background-color: #fff3cd !important;
   border: 2px solid #ffc107 !important;

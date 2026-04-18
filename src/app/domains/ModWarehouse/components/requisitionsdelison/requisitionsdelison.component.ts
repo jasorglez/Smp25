@@ -500,7 +500,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'idReference',
         headerName: 'Sucursal',
-        width: 220,
+        width: 150,
         // ✅ Solo editable si está en modo "Todas las sucursales" (idBranch negativo o no definido)
         editable: () => !this.idBranch || this.idBranch < 0,
         cellEditor: 'agRichSelectCellEditor',
@@ -865,7 +865,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'articlesCount',
         headerName: 'Articulos que solicita',
-        width: 165,
+        width: 175,
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Art'),
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {

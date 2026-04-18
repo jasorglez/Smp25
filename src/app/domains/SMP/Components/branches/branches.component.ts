@@ -53,7 +53,8 @@ export class BranchesComponent implements CanComponentDeactivate {
   masterNotSavedChanges: boolean = false;
   idRoot: number = null;
   idUser: number = null;
-  gridHeight: string = '85vh';
+  /** Llena el panel con pestaña interna (ver `.branches-tab-panel` en SCSS). */
+  gridHeight: string = '100%';
   addBranch: FormGroup;
   estados: any;
   isEditing: boolean = false;

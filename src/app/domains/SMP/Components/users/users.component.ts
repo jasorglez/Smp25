@@ -138,10 +138,10 @@ export class UsersComponent implements OnDestroy {
   }
 
   /**
-   * Espacio reservado encima del panel Security (tabs, toolbar, cabecera grid, ~1 fila maestra).
-   * Alineado con .users-container { height: calc(100vh - 195px) }.
+   * Espacio reservado encima del panel Security (menú SMP, pestaña interna, botonera, cabecera grid, ~1 fila maestra).
+   * Alineado con .users-tab-panel { height: calc(100vh - 228px) }.
    */
-  private readonly detailPanelTopReservePx = 268;
+  private readonly detailPanelTopReservePx = 302;
 
   /** Altura del panel «Sucursales» para que llegue hasta el fondo del área útil (sin franja gris). */
   private computeDetailPanelHeight(): number {

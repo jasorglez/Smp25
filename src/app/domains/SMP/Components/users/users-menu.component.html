@@ -2,13 +2,12 @@
   <div class="col-12">
     <span class="visually-hidden" aria-hidden="true">{{ guardUiTick() }}</span>
     <ul class="nav nav-pills">
-      <li class="nav-item">
+      <li class="nav-item" *ngIf="selectedTab !== 'users'">
         <a
           class="nav-link"
-          [class.active]="selectedTab === 'users'"
           data-toggle="tab"
           (click)="onUsersSelected('users')"
-          >Selección de usuarios</a
+          >Usuarios</a
         >
       </li>
 
