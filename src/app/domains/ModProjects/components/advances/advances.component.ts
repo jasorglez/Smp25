@@ -483,15 +483,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
           fontFamily: 'Arial, sans-serif'
         }
       },
-      subtitle: {
-        text: 'Enero - Septiembre 2026 | Atraso: 40%',
-        align: 'left',
-        style: {
-          fontSize: '13px',
-          color: '#666',
-          fontWeight: '400'
-        }
-      },
       grid: {
         show: true,
         borderColor: '#e8eaf6',
