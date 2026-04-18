@@ -323,10 +323,10 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
               : { backgroundColor: '#e2e3e5', cursor: 'not-allowed', opacity: 0.85 },
           onCellClicked: this.toggleBranches.bind(this)
         },
-        
+
         {
           field: 'position',
-          headerName: 'Posición33',
+          headerName: 'Posición',
           valueFormatter: (params) => {
             const branchId = Number(params.data?.idPermission);
             const meta = Number.isFinite(branchId) && branchId > 0 ? this.deptPosByBranchId.get(branchId) : undefined;
