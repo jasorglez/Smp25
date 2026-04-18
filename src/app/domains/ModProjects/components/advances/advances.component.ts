@@ -85,6 +85,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
   datosMensuales: ContractAdvance[] = [];
 
   // Column Definitions: Defines the columns to be displayed.
+  public monthlyTableData: any[] = [];
+  private readonly ALL_MONTHS = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
@@ -387,7 +390,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   private actualizarDatos() {
-    // Actualizar datos de la tabla
+    // Actualizar datos del grid
     this.rowData = this.datosMensuales.map(advance => ({
       date: advance.date.split('T')[0],
       programAdvanced: advance.programAdvanced,
@@ -398,43 +401,39 @@ export class AdvancesComponent implements OnInit, OnChanges {
       id: advance.id
     }));
 
-    // Agrupar datos por mes (cada 10 días = 1 mes)
-    const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE'];
-    const monthlyData = [];
-    for (let i = 0; i < months.length; i++) {
-      const monthEndIndex = (i + 1) * 10 - 1;
-      if (monthEndIndex < this.datosMensuales.length) {
-        monthlyData.push({
-          month: months[i],
-          programmedMonth: this.datosMensuales[monthEndIndex].accumulateProgram,
-          physicalMonth: this.datosMensuales[monthEndIndex].accumulatePhysical
-        });
+    // Agrupar datos por mes (cada 10 días = 1 mes), 12 meses total
+    const programSeries: any[] = new Array(12).fill(null);
+    const physicalSeries: any[] = new Array(12).fill(null);
+    const hitosSeries: any[] = new Array(12).fill(null);
+
+    this.monthlyTableData = this.ALL_MONTHS.map(m => ({ month: m, program: null, physical: null, hito: null }));
+
+    for (let i = 0; i < 9; i++) {
+      const endIndex = (i + 1) * 10 - 1;
+      if (endIndex < this.datosMensuales.length) {
+        const program = parseFloat(this.datosMensuales[endIndex].accumulateProgram.toFixed(2));
+        const physical = parseFloat(this.datosMensuales[endIndex].accumulatePhysical.toFixed(2));
+        // hito = suma del mes (diferencia entre acumulados)
+        const startIndex = i * 10;
+        const hitoVal = parseFloat(
+          (this.datosMensuales[endIndex].accumulateProgram -
+          (startIndex > 0 ? this.datosMensuales[startIndex - 1].accumulateProgram : 0)).toFixed(2)
+        );
+        programSeries[i] = program;
+        physicalSeries[i] = physical;
+        hitosSeries[i] = hitoVal;
+        this.monthlyTableData[i].program = program;
+        this.monthlyTableData[i].physical = physical;
+        this.monthlyTableData[i].hito = hitoVal;
       }
     }
 
-    // Crear etiquetas de meses para eje X (solo en posiciones de meses)
-    const monthLabels = this.datosMensuales.map((d, i) => {
-      return (i + 1) % 10 === 0 ? months[Math.floor(i / 10)] : '';
-    });
-
-    // Actualizar datos de la gráfica con líneas continuas + barras mensuales
+    // Actualizar datos de la gráfica: 12 puntos mensuales
     this.chartOptions = {
       series: [
-        {
-          name: 'Avance Programado',
-          data: this.datosMensuales.map(d => parseFloat(d.accumulateProgram.toFixed(2))),
-          type: 'line'
-        },
-        {
-          name: 'Avance Físico',
-          data: this.datosMensuales.map(d => parseFloat(d.accumulatePhysical.toFixed(2))),
-          type: 'line'
-        },
-        {
-          name: 'Acumulado Mensual',
-          data: monthlyData.map(m => parseFloat(m.physicalMonth.toFixed(2))),
-          type: 'column'
-        }
+        { name: 'Avance Programado Acumulado', data: programSeries, type: 'line' },
+        { name: 'Avance Real Acumulado',        data: physicalSeries, type: 'line' },
+        { name: 'Hitos de Avance',              data: hitosSeries,   type: 'column' }
       ],
       chart: {
         height: 550,
@@ -469,36 +468,36 @@ export class AdvancesComponent implements OnInit, OnChanges {
         },
         background: '#fff'
       },
-      colors: ["#1e88e5", "#d32f2f", "#ffd700"],
-      dataLabels: {
-        enabled: false
-      },
+      colors: ["#e67e22", "#2980b9", "#f1c40f"],
+      dataLabels: { enabled: false },
       fill: {
-        type: 'gradient',
+        type: ['gradient', 'gradient', 'solid'],
         gradient: {
           shade: 'light',
           type: 'vertical',
-          shadeIntensity: 0.1,
-          gradientToColors: undefined,
-          inverseColors: false,
-          opacityFrom: 0.45,
+          opacityFrom: 0.3,
           opacityTo: 0.05,
-          stops: [20, 100, 100, 100],
-          colorStops: []
+          stops: [0, 100]
         }
       },
       stroke: {
         curve: "smooth",
-        width: [3, 3],
-        dashArray: [0, 0],
+        width: [3, 3, 0],
+        dashArray: [0, 0, 0],
         lineCap: 'round'
       },
+      plotOptions: {
+        bar: {
+          columnWidth: '55%',
+          borderRadius: 3
+        }
+      },
       title: {
-        text: "📊 Seguimiento de Obra: Avance Programado vs Avance Físico",
+        text: "Curva S — Avance Programado vs Avance Real",
         align: "left",
-        margin: 20,
+        margin: 15,
         style: {
-          fontSize: '18px',
+          fontSize: '15px',
           fontWeight: '700',
           color: '#1a237e',
           fontFamily: 'Arial, sans-serif'
@@ -532,33 +531,16 @@ export class AdvancesComponent implements OnInit, OnChanges {
         }
       },
       xaxis: {
-        type: 'numeric',
-        categories: monthLabels,
+        categories: this.ALL_MONTHS,
         labels: {
-          format: 'MMM yy',
           style: {
-            colors: ['#666'],
-            fontSize: '12px',
-            fontWeight: '500'
-          },
-          offsetY: 5
-        },
-        axisBorder: {
-          show: true,
-          color: '#e8eaf6'
-        },
-        axisTicks: {
-          show: true,
-          color: '#e8eaf6'
-        },
-        crosshairs: {
-          show: true,
-          position: 'back',
-          stroke: {
-            color: '#b3e5fc',
-            width: 1
+            colors: ['#555'],
+            fontSize: '11px',
+            fontWeight: '600'
           }
-        }
+        },
+        axisBorder: { show: true, color: '#ccc' },
+        axisTicks:  { show: true, color: '#ccc' }
       },
       yaxis: {
         min: 0,
