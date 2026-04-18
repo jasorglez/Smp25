@@ -516,8 +516,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
       markers: {
         size: [4, 4],
         colors: ["#1e88e5", "#d32f2f"],
-        border: 2,
-        borderColor: "#fff",
         strokeWidth: 2,
         hover: {
           size: 7
@@ -538,8 +536,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         },
         axisBorder: {
           show: true,
-          color: '#e8eaf6',
-          height: 1
+          color: '#e8eaf6'
         },
         axisTicks: {
           show: true,
@@ -592,12 +589,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         horizontalAlign: "center",
         floating: false,
         fontSize: '13px',
-        fontWeight: '600',
-        markers: {
-          width: 12,
-          height: 12,
-          radius: 2
-        }
+        fontWeight: '600'
       },
       tooltip: {
         theme: 'light',
