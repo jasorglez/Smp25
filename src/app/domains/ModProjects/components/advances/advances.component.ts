@@ -166,6 +166,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         height: 550,
         width: '100%',
         type: "line",
+        stacked: false,
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
         animations: {
           enabled: true,
@@ -175,7 +176,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
           show: true
         }
       },
-      colors: ["#1e88e5", "#d32f2f"],
+      colors: ["#1e88e5", "#d32f2f", "#ffd700"],
       dataLabels: {
         enabled: false
       },
@@ -397,30 +398,49 @@ export class AdvancesComponent implements OnInit, OnChanges {
       id: advance.id
     }));
 
-    // Crear etiquetas de meses completos (ENERO, FEBRERO, etc.)
+    // Agrupar datos por mes (cada 10 días = 1 mes)
     const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE'];
+    const monthlyData = [];
+    for (let i = 0; i < months.length; i++) {
+      const monthEndIndex = (i + 1) * 10 - 1;
+      if (monthEndIndex < this.datosMensuales.length) {
+        monthlyData.push({
+          month: months[i],
+          programmedMonth: this.datosMensuales[monthEndIndex].accumulateProgram,
+          physicalMonth: this.datosMensuales[monthEndIndex].accumulatePhysical
+        });
+      }
+    }
+
+    // Crear etiquetas de meses para eje X (solo en posiciones de meses)
     const monthLabels = this.datosMensuales.map((d, i) => {
-      const date = new Date(d.date);
-      const monthIndex = date.getMonth();
-      return i % 10 === 0 ? months[monthIndex] : '';
+      return (i + 1) % 10 === 0 ? months[Math.floor(i / 10)] : '';
     });
 
-    // Actualizar datos de la gráfica
+    // Actualizar datos de la gráfica con líneas continuas + barras mensuales
     this.chartOptions = {
       series: [
         {
           name: 'Avance Programado',
-          data: this.datosMensuales.map(d => parseFloat(d.accumulateProgram.toFixed(2)))
+          data: this.datosMensuales.map(d => parseFloat(d.accumulateProgram.toFixed(2))),
+          type: 'line'
         },
         {
           name: 'Avance Físico',
-          data: this.datosMensuales.map(d => parseFloat(d.accumulatePhysical.toFixed(2)))
+          data: this.datosMensuales.map(d => parseFloat(d.accumulatePhysical.toFixed(2))),
+          type: 'line'
+        },
+        {
+          name: 'Acumulado Mensual',
+          data: monthlyData.map(m => parseFloat(m.physicalMonth.toFixed(2))),
+          type: 'column'
         }
       ],
       chart: {
         height: 550,
         width: '100%',
         type: "line",
+        stacked: false,
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
         animations: {
           enabled: true,
@@ -449,7 +469,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         },
         background: '#fff'
       },
-      colors: ["#1e88e5", "#d32f2f"],
+      colors: ["#1e88e5", "#d32f2f", "#ffd700"],
       dataLabels: {
         enabled: false
       },
