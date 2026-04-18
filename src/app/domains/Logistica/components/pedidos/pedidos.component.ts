@@ -51,6 +51,12 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   idCompany: number = null;
   idBranch: number = null;
   rowData: any[] = [];
+  /** Lista completa de pedidos (sin filtro por estado de líneas). */
+  private allPedidosRowData: any[] = [];
+  /** Detalles agrupados por id de pedido; sirve para filtrar el nivel 1 por estado de las líneas. */
+  private detallesByPedidoCache = new Map<number, any[]>();
+  /** Igual que Productos: null = Todos. Por defecto Solicitado. */
+  activeFilter: string | null = 'SOLICITADO';
   selectedRowData: any = null;
   hasUnsavedChanges: boolean = false;
   externalFilterActive: boolean = false;
@@ -72,9 +78,13 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   showImpuestoModal: boolean = false;
   impuestoTemp: number | null = null;
 
+  // Modal Cliente General
+  showClienteGeneralModal: boolean = false;
+  selectedClienteGeneralId: number | null = null;
+
   private gridApi: GridApi;
   private _colMaster: ColDef[] = [];
-  private clientesList: any[] = [];
+  public clientesList: any[] = [];
   public components = {
     detallesPedidosRenderer: DetallesPedidosComponent
   };
@@ -114,6 +124,14 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             node.setSelected(false);
           }
         });
+      }
+    },
+    onRowExpanded: (event: any) => {
+      this.expandedRowId = event.node.data?.id || null;
+    },
+    onRowCollapsed: (event: any) => {
+      if (event.node.data?.id === this.expandedRowId) {
+        this.expandedRowId = null;
       }
     },
   };
@@ -171,21 +189,29 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           if (!detallesByPedido.has(d.idPedido)) detallesByPedido.set(d.idPedido, []);
           detallesByPedido.get(d.idPedido)!.push(d);
         }
+        this.detallesByPedidoCache = detallesByPedido;
 
         // Calcular clientes únicos por pedido para mostrar en Items
-        this.rowData = pedidosList.map((pedido: any) => {
+        this.allPedidosRowData = pedidosList.map((pedido: any) => {
           const detallesDePedido = detallesByPedido.get(pedido.id) || [];
           const uniqueClientIds = [...new Set(detallesDePedido.map((d: any) => d.idCliente).filter(Boolean))];
           const clientesLabel = uniqueClientIds.length;
 
-          // Total (nivel 1) = suma de la columna "venta" de todos los detalles del pedido (nivel 2)
-          const totalVenta = detallesDePedido.reduce((sum: number, d: any) => sum + (Number(d?.venta) || 0), 0);
+          // Total (nivel 1) = suma de (cantidad × venta + impuesto) de todos los detalles del pedido (nivel 2)
+          const totalVenta = detallesDePedido.reduce((sum: number, d: any) => {
+            const cantidad = Number(d?.cantidad) || 0;
+            const venta = Number(d?.venta) || 0;
+            const impuesto = Number(d?.impuesto) || 0;
+            return sum + (cantidad * venta) + impuesto;
+          }, 0);
 
           // Número de artículos (cantidad de detalles)
           const numArticulos = detallesDePedido.length;
 
-          return { ...pedido, total: totalVenta, clientesLabel, numArticulos, impuesto: pedido.impuesto || 16, detailData: [], visible: true };
+          return { ...pedido, total: totalVenta, clientesLabel, numArticulos, impuesto: pedido.impuesto ?? 0, detailData: [], visible: true };
         });
+
+        this.applyEstadoFilter();
 
         queueMicrotask(() => {
           if (this.gridApi) {
@@ -196,6 +222,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       },
       error: (error) => {
         console.error('Error loading pedidos:', error);
+        this.allPedidosRowData = [];
+        this.detallesByPedidoCache = new Map();
+        this.rowData = [];
         alerts.basicAlert('Error', 'No se pudieron cargar los pedidos', 'error');
       },
     });
@@ -206,12 +235,80 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     this.setupDetailParams();
   }
 
+  setFilter(estado: string | null): void {
+    this.activeFilter = estado;
+    this.loadData();
+  }
+
+  private normalizeDetalleEstado(estado: unknown): string {
+    if (estado === undefined || estado === null || estado === '') {
+      return 'SOLICITADO';
+    }
+    return String(estado).toUpperCase();
+  }
+
+  /** Un pedido entra en el filtro si alguna línea tiene ese estado; sin líneas se trata como SOLICITADO. */
+  private pedidoMatchesEstadoFilter(pedidoId: unknown): boolean {
+    if (this.activeFilter === null) {
+      return true;
+    }
+    const pid = Number(pedidoId);
+    if (Number.isNaN(pid)) {
+      return this.activeFilter === 'SOLICITADO';
+    }
+    const ds = this.detallesByPedidoCache.get(pid) || [];
+    if (ds.length === 0) {
+      return this.activeFilter === 'SOLICITADO';
+    }
+    return ds.some((d: any) => this.normalizeDetalleEstado(d.estado) === this.activeFilter);
+  }
+
+  private applyEstadoFilter(): void {
+    this.rowData = this.allPedidosRowData.map((p: any) => {
+      if (p.__isNew) {
+        return p;
+      }
+      // Recalcular numArticulos y total basado en el filtro activo
+      const detallesDePedido = this.detallesByPedidoCache.get(p.id) || [];
+      const detallesFiltrados = this.activeFilter === null
+        ? detallesDePedido
+        : detallesDePedido.filter((d: any) => this.normalizeDetalleEstado(d.estado) === this.activeFilter);
+
+      const numArticulosFiltrados = detallesFiltrados.length;
+
+      // Recalcular total con detalles filtrados
+      const totalFiltrado = detallesFiltrados.reduce((sum: number, d: any) => {
+        const cantidad = Number(d?.cantidad) || 0;
+        const venta = Number(d?.venta) || 0;
+        const impuesto = Number(d?.impuesto) || 0;
+        return sum + (cantidad * venta) + impuesto;
+      }, 0);
+
+      return {
+        ...p,
+        numArticulos: numArticulosFiltrados,
+        total: totalFiltrado
+      };
+    }).filter(
+      (p: any) => p.__isNew || this.pedidoMatchesEstadoFilter(p.id)
+    );
+
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.setupDetailParams();
+    }
+  }
+
   private setupDetailParams(): void {
     if (!this.gridApi) return;
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params: any) => {
         const detailData = params.data?.detailData || [];
-        params.successCallback(detailData);
+        // Filtrar detalles por estado activo
+        const filteredData = this.activeFilter === null
+          ? detailData
+          : detailData.filter((d: any) => this.normalizeDetalleEstado(d.estado) === this.activeFilter);
+        params.successCallback(filteredData);
       },
       context: {
         idCompany: this.idCompany,
@@ -224,6 +321,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         materialsService: this.materialsService,
         rootService: this.rootService,
         base64EncodeService: this.base64EncodeService,
+        activeFilter: this.activeFilter,
         CONCEPTS: {
           load: (idPedido: number, callback: (data: any[]) => void) => {
             this.loadDetallesData(idPedido, callback);
@@ -249,11 +347,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      // Actualizar defaultImpuesto con el valor del pedido seleccionado
-      this.defaultImpuesto = this.selectedRowData?.impuesto || 16;
+      this.defaultImpuesto = this.selectedRowData?.impuesto ?? 0;
     } else {
       this.selectedRowData = null;
-      this.defaultImpuesto = 16; // Restaurar valor por defecto
+      this.defaultImpuesto = 0;
     }
   }
 
@@ -274,7 +371,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       alerts.basicAlert('Error', 'Selecciona un pedido primero', 'error');
       return;
     }
-    this.impuestoTemp = this.selectedRowData.impuesto || 16;
+    this.impuestoTemp = (this.selectedRowData.impuesto !== null && this.selectedRowData.impuesto !== undefined)
+      ? Number(this.selectedRowData.impuesto)
+      : 0;
     this.showImpuestoModal = true;
   }
 
@@ -290,7 +389,6 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     }
 
     try {
-      // Actualizar en la BD
       const dataToSend = {
         id: this.selectedRowData.id,
         idCompany: this.selectedRowData.idCompany,
@@ -303,7 +401,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         impuesto: this.impuestoTemp,
       };
 
-      await lastValueFrom(this.pedidosService.updatePedido(this.selectedRowData.id, dataToSend));
+      const selectedRowDataId = this.selectedRowData.id;
+      const response = await lastValueFrom(this.pedidosService.updatePedido(selectedRowDataId, dataToSend));
 
       // Actualizar en la tabla
       this.selectedRowData.impuesto = this.impuestoTemp;
@@ -312,10 +411,11 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
       // Refrescar la fila
       if (this.gridApi) {
-        this.gridApi.refreshCells({ rowNodes: [this.gridApi.getRowNode(String(this.selectedRowData.id))], columns: ['impuesto'], force: true });
+        this.gridApi.refreshCells({ rowNodes: [this.gridApi.getRowNode(String(selectedRowDataId))], columns: ['impuesto'], force: true });
       }
 
       alerts.basicAlert('Éxito', `Impuesto actualizado a ${this.impuestoTemp}%`, 'success');
+      await this.loadData();
       this.closeImpuestoModal();
     } catch (error) {
       console.error('Error guardando impuesto:', error);
@@ -453,6 +553,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       {
         field: 'impuesto',
         headerName: 'Imp. %',
+        hide: true,
         editable: true,
         minWidth: 80,
         type: 'numericColumn',
@@ -462,7 +563,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         },
         valueSetter: (params: any) => {
           const val = parseFloat(params.newValue);
-          params.data.impuesto = isNaN(val) ? 16 : val;
+          params.data.impuesto = isNaN(val) ? 0 : val;
           return true;
         }
       },
@@ -479,10 +580,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       },
       {
         colId: 'totalPagarBanco',
-        headerName: 'Total banco',
+        headerName: 'Pago al banco',
         editable: false,
         minWidth: 120,
-        valueGetter: (params) => params.data?.totalPagarBanco ?? params.data?.total ?? 0,
+        valueGetter: (params) => params.data?.totalPagarBanco ?? 0,
         valueFormatter: (params) => {
           const value = params.value ?? 0;
           return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
@@ -528,7 +629,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   }
 
   private getNextPedidoNumero(): string {
-    const maxSequence = this.rowData.reduce((max, row) => {
+    const maxSequence = this.allPedidosRowData.reduce((max, row) => {
       const numero = String(row?.numero || '').trim().toUpperCase();
       const match = numero.match(/^PED-(\d+)$/);
 
@@ -559,10 +660,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       __isNew: true,
     };
 
-    this.rowData = [newPedido, ...this.rowData];
+    this.allPedidosRowData = [newPedido, ...this.allPedidosRowData];
     this.newlyAddedRows.push(tempId);
     this.hasUnsavedChanges = true;
-    this.gridApi.setGridOption('rowData', this.rowData);
+    this.applyEstadoFilter();
 
     setTimeout(() => {
       this.gridApi.startEditingCell({
@@ -573,8 +674,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter((row) => row.__modified && !row.__isNew);
+    const newRows = this.allPedidosRowData.filter((row) => row.__isNew);
+    const modifiedRows = this.allPedidosRowData.filter((row) => row.__modified && !row.__isNew);
 
     try {
       for (const row of newRows) {
@@ -641,8 +742,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     }
 
     if (this.selectedRowData.__isNew) {
-      this.rowData = this.rowData.filter((row) => row.id !== this.selectedRowData.id);
-      this.gridApi.setGridOption('rowData', this.rowData);
+      this.allPedidosRowData = this.allPedidosRowData.filter((row) => row.id !== this.selectedRowData.id);
+      this.applyEstadoFilter();
       this.hasUnsavedChanges = false;
       this.selectedRowData = null;
       return;
@@ -697,7 +798,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       if (node.data) {
         node.data.detailType = null;
       }
-      // Quitar filtro para volver a ver todos los pedidos
+      this.selectedRowData = null;
+      this.defaultImpuesto = 0;
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
@@ -705,10 +807,13 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
       if (node.data) {
         node.data.detailType = 'pedidos';
+        this.selectedRowData = node.data;
+        this.defaultImpuesto = node.data.impuesto ?? 0;
       }
 
+      this.gridApi.setGridOption('detailCellRenderer', DetallesPedidosComponent);
+
       setTimeout(() => {
-        // Mostrar únicamente el pedido clickeado
         const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
         if (filterModel) {
           api.setFilterModel(filterModel);
@@ -726,10 +831,16 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     if (isCurrentlyExpanded) {
       api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
       if (node.data) node.data.detailType = null;
+      this.selectedRowData = null;
+      this.defaultImpuesto = 0;
     } else {
       api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); if (n.data) n.data.detailType = null; });
 
-      if (node.data) node.data.detailType = 'pdf';
+      if (node.data) {
+        node.data.detailType = 'pdf';
+        this.selectedRowData = node.data;
+        this.defaultImpuesto = node.data.impuesto ?? 0;
+      }
       setTimeout(() => node.setExpanded(true), 0);
     }
   }
@@ -744,7 +855,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         if (n.expanded) n.setExpanded(false);
       });
       if (node.data) node.data.detailType = null;
-      // Quitar filtro para volver a ver todos los pedidos
+      this.selectedRowData = null;
+      this.defaultImpuesto = 0;
       api.setFilterModel(null);
       api.onFilterChanged();
     } else {
@@ -753,18 +865,23 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         if (n.data) n.data.detailType = null;
       });
 
-      if (node.data) node.data.detailType = 'clientes';
+      if (node.data) {
+        node.data.detailType = 'clientes';
+        this.selectedRowData = node.data;
+        this.defaultImpuesto = node.data.impuesto ?? 0;
+      }
       console.log('[toggleDetalleClientes] about to expand — detailType now:', node.data?.detailType);
+
+      this.gridApi.setGridOption('detailCellRenderer', DetallesClientesComponent);
+
       setTimeout(() => {
         console.log('[toggleDetalleClientes] setTimeout — calling setExpanded(true), detailType:', node.data?.detailType);
-        // Mostrar únicamente el pedido clickeado
         const filterModel = this.buildIdEqualsFilterModel(node.data?.id);
         if (filterModel) {
           api.setFilterModel(filterModel);
           api.onFilterChanged();
         }
 
-        // Fuerza recreación del detalle (evita cache de renderer/datos del pedido anterior)
         api.redrawRows({ rowNodes: [node] });
         node.setExpanded(true);
       }, 0);
@@ -819,6 +936,12 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             return c?.nameContact || c?.company || '';
           })()
         }));
+
+        // Filtrar por estado activo si está configurado
+        if (this.activeFilter !== null) {
+          detalles = detalles.filter((d: any) => this.normalizeDetalleEstado(d.estado) === this.activeFilter);
+        }
+
         successCallback(detalles);
       },
       error: (error) => {
@@ -832,7 +955,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     return new Promise(async (resolve, reject) => {
       try {
         const detallesData = data.detalles || data;
-        
+        const expandedPedidoId = this.expandedRowId;
+
         const newRows = detallesData.filter((row: any) => row.__isNew);
         const modifiedRows = detallesData.filter((row: any) => row.__modified && !row.__isNew);
 
@@ -843,7 +967,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             producto: row.producto,
             cantidad: row.cantidad || 1,
             plataforma: row.plataforma,
-            aplicaimpuestos: row.aplicaimpuestos,
+            aplicaImpuestos: row.aplicaImpuestos,
             costo: row.costo || 0,
             venta: row.venta || 0,
             impuesto: row.impuesto || 0,
@@ -862,7 +986,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             producto: row.producto,
             cantidad: row.cantidad || 1,
             plataforma: row.plataforma,
-            aplicaimpuestos: row.aplicaimpuestos,
+            aplicaImpuestos: row.aplicaImpuestos,
             costo: row.costo || 0,
             venta: row.venta || 0,
             impuesto: row.impuesto || 0,
@@ -871,6 +995,25 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             active: row.active,
           };
           await lastValueFrom(this.pedidosService.updateDetalle(row.id, dataToSend));
+        }
+
+        // Recargar toda la tabla desde el backend
+        if (newRows.length > 0 || modifiedRows.length > 0) {
+          await new Promise(resolve => {
+            setTimeout(() => {
+              this.loadData();
+              // Re-expandir la fila que estaba expandida
+              if (expandedPedidoId !== null && this.gridApi) {
+                setTimeout(() => {
+                  const rowNode = this.gridApi.getRowNode(String(expandedPedidoId));
+                  if (rowNode) {
+                    rowNode.setExpanded(true);
+                  }
+                }, 100);
+              }
+              resolve(null);
+            }, 300);
+          });
         }
 
         resolve();
@@ -1407,7 +1550,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       alerts.basicAlert('Sin empresa', 'Seleccione una empresa primero', 'warning');
       return;
     }
-    if (!this.rowData.length) {
+    if (!this.allPedidosRowData.length) {
       alerts.basicAlert('Sin pedidos', 'No hay pedidos para generar el reporte', 'info');
       return;
     }
@@ -1453,9 +1596,11 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       };
 
       // Ordenar pedidos por fecha ascendente
-      const pedidosOrdenados = [...this.rowData].sort(
-        (a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime()
-      );
+      const pedidosOrdenados = [...this.allPedidosRowData]
+        .filter((p: any) => !p.__isNew)
+        .sort(
+          (a, b) => new Date(a.fecha || 0).getTime() - new Date(b.fecha || 0).getTime()
+        );
 
       const logoCell = logoBase64
         ? { image: logoBase64, width: 60, alignment: 'left' as const }
@@ -1648,6 +1793,210 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           alerts.basicAlert('Error', 'No se pudo eliminar el detalle', 'error');
         }
       });
+    }
+  }
+
+  // ==================== MODAL CLIENTE GENERAL ====================
+
+  openClienteGeneralModal(): void {
+    this.selectedClienteGeneralId = null;
+    this.showClienteGeneralModal = true;
+  }
+
+  closeClienteGeneralModal(): void {
+    this.showClienteGeneralModal = false;
+    this.selectedClienteGeneralId = null;
+  }
+
+  async generateClienteGeneralTicket(): Promise<void> {
+    if (this.selectedClienteGeneralId === null) {
+      alerts.basicAlert('Sin selección', 'Por favor seleccione un cliente', 'warning');
+      return;
+    }
+
+    const cliente = this.clientesList.find(c => c.id === this.selectedClienteGeneralId);
+    if (!cliente) return;
+
+    this.closeClienteGeneralModal();
+    await this.generateClienteGeneralTicketPDF(cliente);
+  }
+
+  private async generateClienteGeneralTicketPDF(cliente: any): Promise<void> {
+    try {
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      // Logo
+      let logoBase64: string | null = null;
+      try {
+        const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
+        if (rootData?.picture) {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+        }
+      } catch { /* sin logo */ }
+
+      // Obtener todos los detalles del cliente (RECIBIDO)
+      let todosDetalles: any[] = [];
+      try {
+        const resp: any = await lastValueFrom(this.pedidosService.getDetallesByCompany(this.idCompany));
+        const raw = resp?.data ?? resp ?? [];
+        todosDetalles = Array.isArray(raw) ? raw : [raw];
+      } catch { todosDetalles = []; }
+
+      // Filtrar por cliente y estado RECIBIDO
+      const detallesCliente = todosDetalles.filter((d: any) =>
+        Number(d.idCliente) === Number(cliente.id) && d.estado === 'RECIBIDO'
+      );
+
+      if (detallesCliente.length === 0) {
+        alerts.basicAlert('Sin ítems', `${cliente.nameContact || cliente.company} no tiene ítems RECIBIDO`, 'info');
+        return;
+      }
+
+      // Agrupar por pedido
+      const pedidoMap = new Map<number, any[]>();
+      for (const d of detallesCliente) {
+        const key = Number(d.idPedido);
+        if (!pedidoMap.has(key)) pedidoMap.set(key, []);
+        pedidoMap.get(key)!.push(d);
+      }
+
+      const currency = (val: number) =>
+        new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val || 0);
+
+      const logoCell = logoBase64
+        ? { image: logoBase64, width: 60, alignment: 'left' as const }
+        : { text: '', width: 60 };
+
+      // Construir contenido
+      const content: any[] = [];
+      let grandTotal = 0;
+
+      // Agrupar pedidos ordenados
+      const pedidosOrdenados = [...pedidoMap.entries()].sort((a, b) => a[0] - b[0]);
+
+      for (const [idPedido, items] of pedidosOrdenados) {
+        const pedido = this.allPedidosRowData.find(p => p.id === idPedido);
+        const fechaStr = pedido?.fecha ? new Date(pedido.fecha).toLocaleDateString('es-MX') : '-';
+
+        const subtotalPedido = items.reduce((sum: number, d: any) => {
+          const sub = (d.cantidad || 0) * (d.venta || 0);
+          return sum + sub + (d.impuesto || 0);
+        }, 0);
+        grandTotal += subtotalPedido;
+
+        // Encabezado del pedido
+        content.push({
+          table: {
+            widths: ['*', 'auto'],
+            body: [[
+              { text: `Pedido: ${pedido?.numero || idPedido}   Fecha: ${fechaStr}`, style: 'pedidoHeader' },
+              { text: currency(subtotalPedido), style: 'pedidoHeader', alignment: 'right' as const }
+            ]]
+          },
+          layout: 'noBorders',
+          margin: [0, 10, 0, 2]
+        });
+
+        // Tabla de ítems
+        const rows: any[] = items.map((d: any) => {
+          const sub = (d.cantidad || 0) * (d.venta || 0);
+          const total = sub + (d.impuesto || 0);
+          return [
+            { text: d.producto || '-', fontSize: 8 },
+            { text: String(d.cantidad || 0), alignment: 'center', fontSize: 8 },
+            { text: d.plataforma || '-', fontSize: 8 },
+            { text: currency(d.venta), alignment: 'right', fontSize: 8 },
+            { text: (d.impuesto || 0) + '%', alignment: 'center', fontSize: 8 },
+            { text: currency(total), alignment: 'right', bold: true, fontSize: 8 }
+          ];
+        });
+
+        content.push({
+          table: {
+            headerRows: 1,
+            widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+            body: [
+              [
+                { text: 'Producto', style: 'tableHeader' },
+                { text: 'Cant.', style: 'tableHeader' },
+                { text: 'Plataforma', style: 'tableHeader' },
+                { text: 'Venta', style: 'tableHeader' },
+                { text: 'Imp.%', style: 'tableHeader' },
+                { text: 'Total', style: 'tableHeader' }
+              ],
+              ...rows,
+              [
+                { text: 'SUBTOTAL', colSpan: 4, bold: true, alignment: 'right', fontSize: 8, fillColor: '#f5f5f5' },
+                {}, {}, {},
+                {},
+                { text: currency(subtotalPedido), bold: true, alignment: 'right', fontSize: 8, fillColor: '#f5f5f5' }
+              ]
+            ]
+          },
+          layout: 'lightHorizontalLines',
+          margin: [0, 0, 0, 4]
+        });
+      }
+
+      // Total general
+      content.push({ text: ' ', margin: [0, 6, 0, 0] });
+      content.push({
+        table: {
+          widths: ['*', 'auto'],
+          body: [[
+            { text: 'TOTAL GENERAL', bold: true, fontSize: 11, alignment: 'right', color: '#0d47a1' },
+            { text: currency(grandTotal), bold: true, fontSize: 11, alignment: 'right', color: '#0d47a1' }
+          ]]
+        },
+        layout: {
+          hLineWidth: (i: number) => (i === 0 || i === 1) ? 2 : 0,
+          vLineWidth: () => 0,
+          hLineColor: () => '#0d47a1'
+        }
+      });
+
+      const docDef: any = {
+        pageOrientation: 'portrait',
+        pageSize: 'A4',
+        pageMargins: [30, 60, 30, 35],
+        header: () => ({
+          margin: [30, 10, 30, 0],
+          table: {
+            widths: ['auto', '*', 'auto'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: `Ticket General — ${cliente.nameContact || cliente.company}`, fontSize: 13, bold: true, color: '#0d47a1', alignment: 'center' },
+                  { text: `Total de pedidos: ${pedidosOrdenados.length}`, fontSize: 8, color: '#555', alignment: 'center' }
+                ]
+              },
+              { text: new Date().toLocaleDateString('es-MX'), fontSize: 8, color: '#888', alignment: 'right', margin: [0, 6, 0, 0] }
+            ]]
+          },
+          layout: 'noBorders'
+        }),
+        content,
+        styles: {
+          pedidoHeader: { fontSize: 10, bold: true, color: '#ffffff', fillColor: '#0d47a1', margin: [4, 3, 4, 3] },
+          tableHeader: { bold: true, fontSize: 8, fillColor: '#e3f2fd', color: '#0d47a1' }
+        },
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} de ${pageCount}`,
+          alignment: 'center', fontSize: 8, color: '#999', margin: [0, 8, 0, 0]
+        })
+      };
+
+      const pdf = pdfMake.createPdf(docDef);
+      try { pdf.open(); } catch {
+        pdf.download(`Ticket_General_${cliente.nameContact || cliente.company}.pdf`);
+      }
+
+    } catch (error) {
+      console.error('Error generando ticket general:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el ticket', 'error');
     }
   }
 }
