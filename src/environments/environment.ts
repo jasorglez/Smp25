@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.18 (18 Abril 2026 19:10) curva S - 12 meses, hitos, tabla resumen',
+  version: '5.18 (18 Abril 2026 16:06) curva S - 12 meses',
 };
