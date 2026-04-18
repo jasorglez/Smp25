@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.17 (18 Abril 2026 18:50) monthly aggregation with bars + continuous lines',
+  version: '5.18 (18 Abril 2026 19:10) curva S - 12 meses, hitos, tabla resumen',
 };
