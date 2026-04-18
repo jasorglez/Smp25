@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.14 (18 Abril 2026 18:05) advances chart premium - line, animations, month labels, beautiful design',
+  version: '5.15 (18 Abril 2026 18:20) advances chart production ready - compiled & tested',
 };
