@@ -2261,6 +2261,30 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'production', detailed: 'envasado' } },
           },
+          {
+            path: 'configuracion',
+            loadComponent: () =>
+              import('./domains/ModProduction/Components/configuracion/configuracion.component')
+                .then((m) => m.ConfiguracionProdComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'production', detailed: 'configuracion' } },
+            children: [
+              { path: '', redirectTo: 'configuracion', pathMatch: 'full' },
+              { path: 'configuracion', loadComponent: () => import('./domains/ModProduction/Components/configuracion/configuracion-page/configuracion-page.component').then(m => m.ConfiguracionPageComponent) },
+            ],
+          },
+          {
+            path: 'catalogos',
+            loadComponent: () =>
+              import('./domains/ModProduction/Components/catalogos/catalogos.component')
+                .then((m) => m.CatalogosProdComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'production', detailed: 'catalogos' } },
+            children: [
+              { path: '', redirectTo: 'catalogos', pathMatch: 'full' },
+              { path: 'catalogos', loadComponent: () => import('./domains/ModProduction/Components/catalogos/catalogos-page/catalogos-page.component').then(m => m.CatalogosPageComponent) },
+            ],
+          },
         ],
       },
       {

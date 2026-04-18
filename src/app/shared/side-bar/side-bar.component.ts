@@ -141,7 +141,7 @@ export class SideBarComponent {
       }
     }
 
-    return this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
+    return this.branchData[0];
   }
 
   private async applyPickedBranch(chosen: { id: number; name: string }): Promise<void> {
@@ -173,11 +173,16 @@ export class SideBarComponent {
       return;
     }
 
+    // "Todas las sucursales" uses a negative id — load global (UserSystem) permissions.
+    const isAllBranches = branchId < 0;
+
     try {
       await lastValueFrom(
-        this.authService.reloadCurrentSessionGuard({
-          idBranchOverride: branchId,
-        })
+        this.authService.reloadCurrentSessionGuard(
+          isAllBranches
+            ? { preferUserSystemGuard: true }
+            : { idBranchOverride: branchId }
+        )
       );
 
       // On page refresh, branches may have loaded via the restricted API

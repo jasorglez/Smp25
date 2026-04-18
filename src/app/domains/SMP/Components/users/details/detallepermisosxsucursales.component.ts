@@ -11,7 +11,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, of, toArray, concatMap } from 'rxjs';
 import { environment } from '@env/environment';
-import { DetailPermisosXDeptosComponent } from './detail-permisos-x-deptos.component';
+import { DetailPermisosXDeptosComponent } from './detalles-permisos-x-deptos.component';
 import { DetailBranchesRendererComponent } from './detail-branches-renderer.component';
 import { AuthService } from 'app/services/auth.service';
 import { PermitionsService } from 'app/services/permitions.service';
@@ -323,9 +323,10 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
               : { backgroundColor: '#e2e3e5', cursor: 'not-allowed', opacity: 0.85 },
           onCellClicked: this.toggleBranches.bind(this)
         },
+        
         {
           field: 'position',
-          headerName: 'Posición',
+          headerName: 'Posición33',
           valueFormatter: (params) => {
             const branchId = Number(params.data?.idPermission);
             const meta = Number.isFinite(branchId) && branchId > 0 ? this.deptPosByBranchId.get(branchId) : undefined;

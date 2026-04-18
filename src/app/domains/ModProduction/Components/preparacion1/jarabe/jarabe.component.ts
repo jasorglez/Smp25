@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetalleWrapperComponent } from './detalle-wrapper.component';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
@@ -17,7 +18,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetalleWrapperComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, DetalleWrapperComponent, SelectWithTooltipEditorV2Component],
   template: `
     <div class="container-fluid h-100 p-3">
       <div style="display: flex; height: calc(100vh - 120px);">
@@ -97,6 +98,7 @@ export class JarabeComponent implements OnInit {
   rawMaterialNames: string[] = [];
   /** Igual que Proveedores: Enter cierra edición y onCellEditingStopped abre la siguiente celda editable */
   private enterPressedFlag = false;
+  activeBranchFilter: number | null = null;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -107,6 +109,16 @@ export class JarabeComponent implements OnInit {
       if (idUser && idCompany) {
         this.loadUserBranches();
         this.loadRawMaterials(idCompany);
+      }
+    });
+
+    effect(() => {
+      const branchId = this.signalsService.getBranchSelectedBySidebar()();
+      const branchName = this.signalsService.getBranchNameSelectedBySidebar()();
+      const isAll = !branchName || branchName === 'Todas las sucursales' || (branchId != null && branchId < 0);
+      this.activeBranchFilter = isAll ? null : branchId;
+      if (this.gridApi) {
+        this.gridApi.onFilterChanged();
       }
     });
   }
@@ -135,6 +147,11 @@ export class JarabeComponent implements OnInit {
   rowData: any[] = [];
 
   public gridOptions: any = {
+    components: {
+      selectV2: SelectWithTooltipEditorV2Component,
+    },
+    isExternalFilterPresent: () => this.activeBranchFilter != null,
+    doesExternalFilterPass: (node: any) => node.data?.sucursal === this.activeBranchFilter,
     headerHeight: 35,
     rowHeight: 35,
     animateRows: true,
@@ -401,18 +418,21 @@ export class JarabeComponent implements OnInit {
         headerName: 'Sucursal',
         width: 160,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: this.branchNames }),
+        cellDataType: false,
+        cellEditor: 'selectV2',
+        cellEditorParams: () => ({
+          options: this.userBranches.map(b => ({ id: b.id, description: b.name })),
+        }),
         valueFormatter: (params) => {
           if (params.value) {
             const branch = this.userBranches.find(b => b.id === params.value);
-            return branch?.name ?? '';
+            return branch?.name ?? String(params.value);
           }
           return '';
         },
         valueSetter: (params) => {
-          const selectedBranch = this.userBranches.find(b => b.name === params.newValue);
-          params.data.sucursal = selectedBranch?.id ?? null;
+          if (params.newValue == null) return false;
+          params.data.sucursal = params.newValue;
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -422,22 +442,17 @@ export class JarabeComponent implements OnInit {
         field: 'nota',
         headerName: 'Nota',
         width: 180,
-        editable: true,
-        cellEditor: 'agTextCellEditor',
-        valueSetter: (params) => {
-          params.data.nota = params.newValue ?? '';
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
+        editable: false
       },
       {
         field: 'articulo',
         headerName: 'Artículo',
         width: 200,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: this.rawMaterialNames }),
+        cellEditor: 'selectV2',
+        cellEditorParams: () => ({
+          options: this.rawMaterialNames.map(name => ({ id: name, description: name })),
+        }),
         valueSetter: (params) => {
           params.data.articulo = params.newValue ?? '';
           params.data.__modified = true;
@@ -727,7 +742,7 @@ export class JarabeComponent implements OnInit {
       this.gridApi.ensureIndexVisible(0);
       this.gridApi.startEditingCell({
         rowIndex: 0,
-        colKey: 'lote'
+        colKey: 'sucursal'
       });
     }, 0);
   }
