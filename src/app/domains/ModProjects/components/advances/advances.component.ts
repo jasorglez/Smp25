@@ -120,11 +120,11 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   columnDefs: ColDef[] = [
-    { field: 'date', headerName: 'Fecha', width: 90, editable: true },
-    { field: 'programAdvanced', headerName: 'Program.', width: 90, editable: true },
-    { field: 'physicalAdvanced', headerName: 'Fisico', width: 90, editable: true },
+    { field: 'date', headerName: 'Fecha', width: 87, editable: true, valueFormatter: (params) => { if (!params.value) return ''; const [y, m, d] = String(params.value).substring(0, 10).split('-'); return `${d}/${m}/${y.substring(2)}`; } },
+    { field: 'programAdvanced', headerName: 'Program.', width: 88, editable: true },
+    { field: 'physicalAdvanced', headerName: 'Fisico', width: 85, editable: true },
     {
-      field: 'accumulateProgram', headerName: 'Acumulado Programado', width: 100, editable: true, cellDataType: 'number',
+      field: 'accumulateProgram', headerName: 'Acumul. Program', width: 100, editable: true, cellDataType: 'number',
       wrapHeaderText: true, autoHeaderHeight: true,
       valueFormatter: (params) => {
         if (params.value) { return params.value.toFixed(2); }
@@ -132,7 +132,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
       }
     },
     {
-      field: 'accumulatePhysical', headerName: 'Acumulado Fisico', width: 100, editable: true, cellDataType: 'number',
+      field: 'accumulatePhysical', headerName: 'Acumul. Fisico', width: 100, editable: true, cellDataType: 'number',
       wrapHeaderText: true, autoHeaderHeight: true,
       valueFormatter: (params) => {
         if (params.value) { return params.value.toFixed(2); }
