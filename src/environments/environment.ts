@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.16 (18 Abril 2026 18:35) grid 25% + chart 75%, compact buttons, month labels',
+  version: '5.17 (18 Abril 2026 18:50) monthly aggregation with bars + continuous lines',
 };
