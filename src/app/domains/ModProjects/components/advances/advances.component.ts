@@ -397,11 +397,12 @@ export class AdvancesComponent implements OnInit, OnChanges {
       id: advance.id
     }));
 
-    // Agrupar por mes para etiquetas
+    // Crear etiquetas de meses completos (ENERO, FEBRERO, etc.)
+    const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE'];
     const monthLabels = this.datosMensuales.map((d, i) => {
       const date = new Date(d.date);
-      const monthLabel = date.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
-      return i % 10 === 0 ? monthLabel : '';
+      const monthIndex = date.getMonth();
+      return i % 10 === 0 ? months[monthIndex] : '';
     });
 
     // Actualizar datos de la gráfica
