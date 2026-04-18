@@ -310,7 +310,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
         field: 'description',
         headerName: 'Descripción',
         editable: true,
-        width: 750,
+        width: 550,
       },
       /*{
         field: 'date',

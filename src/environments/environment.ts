@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.10 (18 Abril 2026 17:10) Workprograms + rename components + fix ordenes',
+  version: '5.11 (18 Abril 2026 17:25) font size grid small-text-ag-grid',
 };
