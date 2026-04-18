@@ -196,8 +196,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
         text: "📊 Seguimiento de Obra",
         align: "left",
         style: {
-          fontSize: '18px',
-          fontWeight: '700',
+          fontSize: 18,
+          fontWeight: 700,
           color: '#1a237e'
         }
       },
@@ -207,15 +207,15 @@ export class AdvancesComponent implements OnInit, OnChanges {
         strokeDashArray: 3
       },
       markers: {
-        size: [4, 4],
-        border: 2,
-        borderColor: "#fff"
+        size: 4,
+        strokeWidth: 2
       },
       xaxis: {
         categories: [],
         labels: {
           style: {
-            fontSize: '12px'
+            colors: ['#666'],
+            fontSize: 12
           }
         }
       },
@@ -514,13 +514,11 @@ export class AdvancesComponent implements OnInit, OnChanges {
         }
       },
       markers: {
-        size: [4, 4],
-        colors: ["#1e88e5", "#d32f2f"],
+        size: 4,
         strokeWidth: 2,
         hover: {
           size: 7
-        },
-        shape: 'circle'
+        }
       },
       xaxis: {
         type: 'numeric',
@@ -528,9 +526,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
         labels: {
           format: 'MMM yy',
           style: {
-            colors: '#666',
-            fontSize: '12px',
-            fontWeight: '500'
+            colors: ['#666'],
+            fontSize: 12,
+            fontWeight: 500
           },
           offsetY: 5
         },
@@ -544,13 +542,10 @@ export class AdvancesComponent implements OnInit, OnChanges {
         },
         crosshairs: {
           show: true,
-          width: 1,
           position: 'back',
-          opacity: 0.9,
           stroke: {
             color: '#b3e5fc',
-            width: 1,
-            dashArray: 0
+            width: 1
           }
         }
       },
@@ -562,8 +557,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
           text: "Avance Acumulado (%)",
           style: {
             color: '#1a237e',
-            fontSize: '13px',
-            fontWeight: '700'
+            fontSize: 13,
+            fontWeight: 700
           }
         },
         labels: {
@@ -571,8 +566,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
             return value.toFixed(0) + '%'
           },
           style: {
-            colors: '#666',
-            fontSize: '11px'
+            colors: ['#666'],
+            fontSize: 11
           }
         },
         axisBorder: {
@@ -593,31 +588,16 @@ export class AdvancesComponent implements OnInit, OnChanges {
       },
       tooltip: {
         theme: 'light',
-        enabled: true,
-        enabledOnSeries: undefined,
         shared: true,
         intersect: false,
         x: {
           show: true,
-          format: 'dd/MM/yyyy',
-          formatter: undefined
+          format: 'dd/MM/yyyy'
         },
         y: {
           formatter: (value) => {
             return value.toFixed(1) + '%'
-          },
-          title: {
-            formatter: (seriesName) => seriesName,
           }
-        },
-        marker: {
-          show: true
-        },
-        items: {
-          display: 'flex'
-        },
-        onDatasetHover: {
-          highlightDataSeries: true
         }
       },
       responsive: [
