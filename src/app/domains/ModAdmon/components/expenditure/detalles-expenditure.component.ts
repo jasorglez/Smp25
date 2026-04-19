@@ -1176,11 +1176,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         this.customersService.addCustomer(this.newProvider)
       );
 
-      alerts.basicAlert(
-        'Proveedor creado',
-        'El proveedor se ha creado correctamente.',
-        'success'
-      );
+      alerts.toastAlert('Proveedor creado correctamente', 'success');
 
       // Actualizar la lista de proveedores en el contexto
       const newProvider = {

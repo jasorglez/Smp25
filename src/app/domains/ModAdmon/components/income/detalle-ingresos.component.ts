@@ -519,7 +519,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
         this.context.CONCEPTS.updateCount(incomeId, this.rowData.length);
       }
 
-      alerts.basicAlert('Exito', 'Datos guardados correctamente.', 'success');
+      alerts.toastAlert('Datos guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
       this.loadConceptsData();
     } catch (error) {
@@ -528,7 +528,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     }
   }
 
-  deleteSelectedConcept() {
+  async deleteSelectedConcept() {
     const selectedNodes = this.gridApi?.getSelectedNodes();
     if (!selectedNodes || selectedNodes.length === 0) {
       alerts.basicAlert('Aviso', 'Seleccione un concepto para eliminar.', 'warning');
@@ -538,8 +538,15 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
+    const confirm = await alerts.confirmAlert(
+      '¿Eliminar concepto?',
+      `¿Deseas eliminar el concepto "${selectedData.description || id}"? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirm.isConfirmed) return;
+
     if (id.toString().startsWith('temp_')) {
-      // Just remove from local array
       this.rowData = this.rowData.filter(row => row.id !== id);
       this.calculateTotals();
       return;
@@ -571,7 +578,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
           console.error('Error updating countItems after delete:', error);
         }
 
-        alerts.basicAlert('Exito', 'Concepto eliminado.', 'success');
+        alerts.toastAlert('Concepto eliminado', 'success');
         this.loadConceptsData();
       },
       error: (err) => {

@@ -922,11 +922,7 @@ async saveChanges() {
 
     // Éxito completo o parcial
     if (newRows.length === 0 || !this.hasConsecutiveError) {
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      alerts.toastAlert('Datos actualizados', 'success');
     }
 
     this.notSavedChanges = false;
@@ -1043,11 +1039,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     )
       .subscribe(
         () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
+          alerts.toastAlert('Entrada eliminada', 'success');
           this.getIncomes();
           this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
           this.notSavedChanges = false;
@@ -1512,7 +1504,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
         pdf.open();
       } catch {
         pdf.download(`reporte-ingresos-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
 
       this.closeIngresoReportModal();
@@ -1679,7 +1671,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
         pdf.open();
       } catch {
         pdf.download(`saldos-cuenta-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
       this.closeIngresoReportModal();
       this.trackingService.addLog(
@@ -1729,11 +1721,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
       next: (response: any) => {
         const newCustomerId = response.id;
 
-        alerts.basicAlert(
-          'Nuevo Cliente',
-          'Cliente guardado correctamente.',
-          'success'
-        );
+        alerts.toastAlert('Cliente guardado correctamente', 'success');
         this.closeCustomerModal();
 
         // Recargar la lista de clientes

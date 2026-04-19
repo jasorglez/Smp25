@@ -1029,11 +1029,7 @@ export class ExpenditureComponent {
         );
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizados los datos correctamente.',
-        'success'
-      );
+      alerts.toastAlert('Datos actualizados', 'success');
 
       this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Egresos ',
         this.trackingService.getEmail());
@@ -1090,11 +1086,7 @@ export class ExpenditureComponent {
     )
       .subscribe(
         () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
+          alerts.toastAlert('Entrada eliminada', 'success');
           this.getExpenditure();
           this.notSavedChanges = false;
           this.selectedIncomes = null;
@@ -1396,11 +1388,7 @@ export class ExpenditureComponent {
       );
 
       if (newConcepts.length > 0 || modifiedConcepts.length > 0) {
-        alerts.basicAlert(
-          'Conceptos guardados',
-          'Se han guardado los conceptos correctamente.',
-          'success'
-        );
+        alerts.toastAlert('Conceptos guardados', 'success');
       }
 
       console.log('💾 PADRE: Actualizando maestro después de guardar. ID:', expenditureId);
@@ -1457,7 +1445,7 @@ export class ExpenditureComponent {
           }
         }
 
-        alerts.basicAlert('Concepto eliminado', 'El concepto se eliminó correctamente.', 'success');
+        alerts.toastAlert('Concepto eliminado', 'success');
         if (params.api) {
           params.api.applyTransaction({ remove: [params.data] });
         }
@@ -1733,7 +1721,7 @@ export class ExpenditureComponent {
         pdf.open();
       } catch {
         pdf.download(`reporte-egresos-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
 
       this.closeEgresoReportModal();
@@ -1900,7 +1888,7 @@ export class ExpenditureComponent {
         pdf.open();
       } catch {
         pdf.download(`saldos-cuenta-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
       this.closeEgresoReportModal();
       this.trackingService.addLog(
