@@ -466,7 +466,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         headerName: 'Fecha',
         editable: true,
         cellDataType: 'date',
-        sort: 'asc',
+        sort: 'desc',
         width: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
@@ -767,7 +767,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           return 0;
         }
 
-        return dateA - dateB;
+        return dateB - dateA;
       });
     },
     getRowClass: (params) => {
