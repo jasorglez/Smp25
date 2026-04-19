@@ -72,10 +72,12 @@ import { TrackingService } from 'app/services/tracking.service';
         [rowData]="rowData"
         [columnDefs]="colDefs"
         [defaultColDef]="defaultColDef"
+        [pinnedBottomRowData]="pinnedBottomRow"
         [pagination]="true"
         [paginationPageSize]="50"
         [paginationPageSizeSelector]="[25,50,100,200]"
         (gridReady)="onGridReady($event)"
+        (filterChanged)="onGridFilterChanged()"
       />
 
       <!-- Sin datos -->
@@ -112,6 +114,8 @@ export class EgresosxfechasComponent {
   totalSubtotal = 0;
   totalIva      = 0;
   totalFinal    = 0;
+
+  pinnedBottomRow: any[] = [];
 
   startDate: string;
   endDate:   string;
@@ -178,10 +182,36 @@ export class EgresosxfechasComponent {
     this.totalSubtotal = filtered.reduce((s, c) => s + (c.total || 0), 0);
     this.totalIva      = filtered.reduce((s, c) => s + (c.iva2 || 0), 0);
     this.totalFinal    = filtered.reduce((s, c) => s + (c.totalFinal || 0), 0);
+
+    this.pinnedBottomRow = filtered.length > 0 ? [{
+      dateExpend:     'TOTAL',
+      numberDocument: `${filtered.length} registros`,
+      total:          this.totalSubtotal,
+      iva2:           this.totalIva,
+      totalFinal:     this.totalFinal,
+    }] : [];
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+  }
+
+  onGridFilterChanged() {
+    let subtotal = 0, iva = 0, total = 0, count = 0;
+    this.gridApi.forEachNodeAfterFilter(node => {
+      if (!node.data) return;
+      subtotal += node.data.total     || 0;
+      iva      += node.data.iva2      || 0;
+      total    += node.data.totalFinal || 0;
+      count++;
+    });
+    this.pinnedBottomRow = count > 0 ? [{
+      dateExpend:     'TOTAL',
+      numberDocument: `${count} registros`,
+      total:          subtotal,
+      iva2:           iva,
+      totalFinal:     total,
+    }] : [];
   }
 
   public defaultColDef: ColDef = {
@@ -264,7 +294,9 @@ export class EgresosxfechasComponent {
       type: 'numericColumn',
       valueFormatter: p => p.value != null
         ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
-      cellStyle: { fontWeight: '500' },
+      cellStyle: p => p.node.rowPinned
+        ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
+        : { fontWeight: '500' },
     },
     {
       field: 'iva2',
@@ -273,6 +305,9 @@ export class EgresosxfechasComponent {
       type: 'numericColumn',
       valueFormatter: p => p.value != null
         ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      cellStyle: p => p.node.rowPinned
+        ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
+        : {},
     },
     {
       field: 'totalFinal',
@@ -281,7 +316,9 @@ export class EgresosxfechasComponent {
       type: 'numericColumn',
       valueFormatter: p => p.value != null
         ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
-      cellStyle: { fontWeight: 'bold', color: '#155724' },
+      cellStyle: p => p.node.rowPinned
+        ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff', fontSize: '0.95rem' }
+        : { fontWeight: 'bold', color: '#155724' },
     },
   ];
 }
