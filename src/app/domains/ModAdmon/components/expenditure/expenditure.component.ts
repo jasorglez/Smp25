@@ -13,7 +13,6 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
-import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { environment } from '@env/environment';
@@ -33,7 +32,7 @@ import { DetallesExpenditureComponent } from './detalles-expenditure.component';
 @Component({
   selector: 'app-expenditure',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditure2Component, PdfButtonCellRendererExpenditure2Component,
     DetallesExpenditureComponent],
   templateUrl: './expenditure.component.html',

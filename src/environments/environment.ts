@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.21 (19 Abril 2026) dash-admon: ingresos tendencia + egresos por día',
+  version: '5.24 (19 Abril 2026) admon: Egresos — cuentas bancarias como pestañas en lugar de dropdown',
 };
