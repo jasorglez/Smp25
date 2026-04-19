@@ -979,6 +979,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+    this.gridApi.redrawRows({ rowNodes: [event.node] });
 
     // Si cambió la entidad seleccionada y es empleado nuevo, refrescar descripción
     if (event.colDef.field === 'selectedEntity' && event.data.typeExpense === 'EMPLEADOS') {
