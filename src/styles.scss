@@ -32,6 +32,16 @@ body {
   border: 2px solid #e67e00 !important;
 }
 
+.ag-theme-quartz .ag-row.modified-row-highlight {
+  background-color: #e8f4fd !important;
+  border-left: 3px solid #3498db !important;
+}
+
+.ag-theme-quartz .ag-row.modified-row-highlight .ag-cell-inline-editing {
+  background-color: #cce5ff !important;
+  border: 2px solid #1a7abf !important;
+}
+
 /* Bordes solo para el grid de Clientes (2do nivel en Pedidos) */
 .ag-theme-quartz.detalles-clientes-grid {
   --ag-border-color: rgba(0, 0, 0, 0.12);
