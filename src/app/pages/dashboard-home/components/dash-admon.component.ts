@@ -1,9 +1,12 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, DestroyRef, effect, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgApexchartsModule } from 'ng-apexcharts';
+import { debounceTime, filter } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
+import { SignalrService } from 'app/services/signalr.service';
 
 @Component({
   selector: 'app-dash-admon',
@@ -332,10 +335,12 @@ import { SignalsService } from 'app/services/signals.service';
     .date-sep { font-size: 11px; color: #94a3b8; font-weight: 700; }
   `]
 })
-export class DashAdmonComponent {
+export class DashAdmonComponent implements OnInit {
 
-  private incomesService = inject(IncomesAndExpensesService);
-  private signalsService = inject(SignalsService);
+  private incomesService  = inject(IncomesAndExpensesService);
+  private signalsService  = inject(SignalsService);
+  private signalrService  = inject(SignalrService);
+  private destroyRef      = inject(DestroyRef);
 
   // ── Clientes ──
   clientList: { name: string; total: number }[] = [];
@@ -413,6 +418,24 @@ export class DashAdmonComponent {
       }
     });
     this.updateEgresosRangeLabel();
+  }
+
+  ngOnInit(): void {
+    const token = localStorage.getItem('token') || '';
+    this.signalrService.startAdmonConnection(token);
+
+    this.signalrService.admonUpdate$.pipe(
+      filter(data => data !== null),
+      debounceTime(800),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(data => {
+      const rootId = this.signalsService.getRootSelectedBySidebar()();
+      if (!rootId) return;
+      if (!data?.idRoot || data.idRoot === rootId) {
+        this.loadIngresos(rootId);
+        this.loadEgresos(rootId);
+      }
+    });
   }
 
   onClientDateChange(): void {

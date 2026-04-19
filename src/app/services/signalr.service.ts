@@ -9,14 +9,19 @@ import { environment } from '@env/environment';
 export class SignalrService {
   private hubConnection: signalR.HubConnection | null = null;
   private connectionState = new BehaviorSubject<string>('Disconnected');
-  
+
   // Observables para los eventos - MANTENIDOS EXACTAMENTE IGUAL
   private photoUpdateSubject = new BehaviorSubject<any>(null);
   private textUpdateSubject = new BehaviorSubject<any>(null);
 
     // **NUEVO: Observable para nuevos reportes diarios**
   private newDailyReportSubject = new BehaviorSubject<any>(null);
-  
+
+  // AdmonHub — conexión independiente para actualizaciones de ingresos/egresos
+  private admonHubConnection: signalR.HubConnection | null = null;
+  private admonUpdateSubject = new BehaviorSubject<any>(null);
+  public admonUpdate$ = this.admonUpdateSubject.asObservable();
+
   // Exponer observables públicos - MANTENIDOS EXACTAMENTE IGUAL
   public connectionState$ = this.connectionState.asObservable();
   public photoUpdate$ = this.photoUpdateSubject.asObservable();
@@ -234,6 +239,46 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
         console.error('❌ Conexión alternativa falló:', err);
         this.connectionState.next('Error');
       });
+  }
+
+  // Conexión al AdmonHub del microservicio Tracking para actualizaciones en tiempo real
+  public startAdmonConnection(token?: string): void {
+    if (this.admonHubConnection?.state === signalR.HubConnectionState.Connected ||
+        this.admonHubConnection?.state === signalR.HubConnectionState.Connecting) {
+      return;
+    }
+
+    const hubUrl = 'https://endpoints.biapp.com.mx/tracking/admonHub';
+
+    this.admonHubConnection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, {
+        accessTokenFactory: () => token || '',
+        skipNegotiation: false,
+        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+        withCredentials: false
+      })
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: retryContext =>
+          Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000)
+      })
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    this.admonHubConnection.on('ReceiveAdmonUpdate', (data: any) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      this.admonUpdateSubject.next(parsed);
+    });
+
+    this.admonHubConnection.start()
+      .then(() => console.log('✅ AdmonHub conectado'))
+      .catch(err => console.error('❌ AdmonHub error:', err));
+  }
+
+  public stopAdmonConnection(): void {
+    if (this.admonHubConnection) {
+      this.admonHubConnection.stop();
+      this.admonHubConnection = null;
+    }
   }
 
   // Método para parar conexión - MANTENIDO EXACTAMENTE IGUAL
