@@ -126,26 +126,24 @@
 <div class="modal-backdrop fade" [class.show]="showIngresoReportModal" [style.display]="showIngresoReportModal ? 'block' : 'none'"></div>
 
 <div class="col-12">
-  <div class="row mt-3 mb-3">
-    <div class="col">
-      <ng-select
-        [items]="bankAccounts"
-        bindValue="id"
-        [(ngModel)]="idAccount"
-        [disabled]="!bankAccounts?.length"
-        placeholder="{{
-          bankAccounts?.length
-            ? 'Seleccione cuenta bancaria'
-            : 'No hay cuentas disponibles'
-        }}"
-      >
-        <ng-template ng-label-tmp let-item="item">
-          {{ item?.nameAccount }} - {{ item?.bankName }}
-        </ng-template>
-        <ng-template ng-option-tmp let-item="item">
-          {{ item.nameAccount }} - {{ item.bankName }}
-        </ng-template>
-      </ng-select>
+  <!-- Pestañas de cuentas bancarias -->
+  <div class="row mt-2 mb-2">
+    <div class="col-12">
+      <ul class="nav nav-tabs flex-nowrap overflow-auto">
+        <li class="nav-item" *ngFor="let account of bankAccounts">
+          <a class="nav-link py-1 px-3"
+             [class.active]="idAccount === account.id"
+             (click)="idAccount = account.id"
+             style="cursor:pointer; font-size:0.8rem; white-space:nowrap;">
+            {{ account.nameAccount }} - {{ account.bankName }}
+          </a>
+        </li>
+        <li *ngIf="!bankAccounts?.length" class="nav-item">
+          <span class="nav-link disabled py-1 px-3" style="font-size:0.8rem;">
+            No hay cuentas disponibles
+          </span>
+        </li>
+      </ul>
     </div>
   </div>
 

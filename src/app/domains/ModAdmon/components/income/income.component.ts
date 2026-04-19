@@ -13,7 +13,6 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
-import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -31,7 +30,7 @@ import { ProjectsService } from 'app/services/projects.service';
 @Component({
   selector: 'app-income',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
              FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
              PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
   templateUrl: './income.component.html',
