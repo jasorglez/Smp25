@@ -738,6 +738,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     groupIncludeFooter: true,
     groupIncludeTotalFooter: true,
     suppressAggFuncInHeader: true,
+    rowClassRules: {
+      'new-row-highlight': (params: any) => !!params.data?.__isNew
+    },
     autoGroupColumnDef: {
       headerName: 'Proveedor / Entidad',
       minWidth: 180,
