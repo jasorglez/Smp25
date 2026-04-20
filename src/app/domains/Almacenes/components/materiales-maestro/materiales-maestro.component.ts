@@ -13,6 +13,7 @@ import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-ren
 import { DetallesSucursalesProveedorComponent } from './details/detalles-sucursalesproveedor.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
+import { DetailCellRendererJarabeComponent } from './details/detail-cell-renderer-jarabe.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
@@ -42,6 +43,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
     DetallesSucursalesProveedorComponent,
     DetailCellRendererParametrosComponent,
     DetailCellRendererHistoricoComponent,
+    DetailCellRendererJarabeComponent,
     SelectWithTooltipEditorV2Component,
     ImageCellRendererComponent,
     AutocompleteEditorComponent
@@ -264,7 +266,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
     detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent,
     detailCellRendererParametros: DetailCellRendererParametrosComponent,
-    detailCellRendererHistorico: DetailCellRendererHistoricoComponent
+    detailCellRendererHistorico: DetailCellRendererHistoricoComponent,
+    detailCellRendererJarabe: DetailCellRendererJarabeComponent
   };
 
   public get gridOptions(): any {
@@ -299,6 +302,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return { component: 'detailCellRendererParametros' };
         } else if (params.data.detailType === 'historico') {
           return { component: 'detailCellRendererHistorico' };
+        } else if (params.data.detailType === 'jarabe') {
+          return { component: 'detailCellRendererJarabe' };
         }
         return undefined;
       },
@@ -655,6 +660,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
+      {
+        field: 'jarabe',
+        headerName: 'Jarabe',
+        width: 100,
+        cellRenderer: () => '⚗️ Config',
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
       
  
       {
@@ -690,6 +702,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (colId === 'parametros') return 'parametros';
     if (colId === 'costo') return 'costos';
     if (colId === 'historico') return 'historico';
+    if (colId === 'jarabe') return 'jarabe';
     return null;
   }
 
@@ -726,7 +739,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.idSelect = event.data.id; // Asignar el ID seleccionado
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico' || colId === 'jarabe';
 
     if (isDetailColumn) {
       // Si la columna es "Materiales" y la Familia es "Básica", bloquear el clic
