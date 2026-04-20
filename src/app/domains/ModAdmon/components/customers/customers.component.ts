@@ -1251,7 +1251,6 @@ export class CustomersComponent implements CanComponentDeactivate {
     // CUSTOMERS -> usa catálogo 'TIPO-CLIENTE' o similar
     // PROVIDERS -> usa catálogo 'TIPO-PROVEEDOR' o similar
     const catalogType = this.type === 'CUSTOMERS' ? 'TIPO-CLIENTE' : 'TIPO-PROVEEDOR';
-    console.log('🔍 Buscando catálogo:', catalogType, 'para idRoot:', this.idRoot);
 
     this.catalogsService.getCatalogsFromAdmon(this.idRoot, catalogType).subscribe(
       (data: Icatalog[]) => {
