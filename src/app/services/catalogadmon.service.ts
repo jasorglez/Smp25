@@ -14,7 +14,6 @@ export class CatalogadmonService {
   constructor() { }
 
  addCatalogAdmon(catalog: any): Observable<any> {
-    console.log(catalog);
     return this.http.post<any>(`${environment.urlAdministration}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
   }
 
@@ -39,7 +38,6 @@ getCatalogsxParent( idRoot: number, idParent: number): Observable<any[]> {
   }
      
   addCatalog(catalog: any): Observable<any> {
-    console.log(catalog);
     return this.http.post<any>(`${environment.urlWarehouse}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
   }
 

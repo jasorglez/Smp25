@@ -16,6 +16,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { RolesService } from 'app/services/roles.service';
 import { PosicionesService } from 'app/services/posiciones.service';
@@ -45,6 +46,7 @@ export class RootComponent {
   private providersService = inject(ProvidersService);
   private administrationService = inject(AdministrationService);
   private catalogsService = inject(CatalogsService);
+  private catalogadmonService = inject(CatalogadmonService);
   private cuentasContablesService = inject(CuentasContablesService);
   private rolesService = inject(RolesService);
   private posicionesService = inject(PosicionesService);
@@ -796,7 +798,7 @@ public gridOptions: any = {
 
     let branchId   = 0;
     let contractId = 0;
-    this.startPeripheralProgress(16);
+    this.startPeripheralProgress(18);
     try {
       this.logPeriferico('INICIO crear empresa nueva', rootName);
 
@@ -882,6 +884,26 @@ public gridOptions: any = {
         parentId: null
       }));
       this.logPeriferico('6-TIPO-CLIENTE creado', rootName);
+
+      // 6b. TIPO-CLIENTE en catálogo de Tracking (Administration DB)
+      await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
+        description: 'General',
+        active: true,
+        idCompany: rootId,
+        type: 'TIPO-CLIENTE',
+        parentId: null
+      }));
+      this.logPeriferico('6b-TIPO-CLIENTE en Tracking creado', rootName);
+
+      // 6c. Catálogo BILL en Tracking (tipo de gasto para egresos)
+      await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
+        description: 'GENERAL',
+        active: true,
+        idCompany: rootId,
+        type: 'BILL',
+        parentId: null
+      }));
+      this.logPeriferico('6c-BILL en Tracking creado', rootName);
 
       // 7. Cliente
       await lastValueFrom(this.customersService.addCustomer({
@@ -1186,6 +1208,28 @@ public gridOptions: any = {
         this.logPeriferico('6-TIPO-CLIENTE creado', rootName);
       }
     } catch (e) { console.error('ensure paso 6 (tipo-cliente):', e); }
+
+    // ── 6b. TIPO-CLIENTE en Tracking ─────────────────────────────────────────
+    try {
+      const tiposTracking: any[] = await lastValueFrom(this.catalogsService.getCatalogsFromAdmon(rootId, 'TIPO-CLIENTE')).catch(() => []);
+      if (!tiposTracking?.length) {
+        await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
+          description: 'General', active: true, idCompany: rootId, type: 'TIPO-CLIENTE', parentId: null
+        }));
+        this.logPeriferico('6b-TIPO-CLIENTE en Tracking creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 6b (tipo-cliente tracking):', e); }
+
+    // ── 6c. BILL en Tracking ──────────────────────────────────────────────────
+    try {
+      const billCats: any[] = await lastValueFrom(this.catalogsService.getCatalogsFromAdmon(rootId, 'BILL')).catch(() => []);
+      if (!billCats?.length) {
+        await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
+          description: 'GENERAL', active: true, idCompany: rootId, type: 'BILL', parentId: null
+        }));
+        this.logPeriferico('6c-BILL en Tracking creado', rootName);
+      }
+    } catch (e) { console.error('ensure paso 6c (bill tracking):', e); }
 
     // ── 7. Cliente ───────────────────────────────────────────────────────────
     try {
