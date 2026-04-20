@@ -170,7 +170,8 @@ import { SignalrService } from 'app/services/signalr.service';
                 [plotOptions]="egresosPlotOptions"
                 [dataLabels]="egresosDataLabels"
                 [tooltip]="egresosTooltip"
-                [colors]="egresosColors">
+                [colors]="egresosColors"
+                [legend]="egresosLegend">
               </apx-chart>
               <div *ngIf="!egresosSeries?.length" class="text-center text-muted py-5">
                 <i class="bi bi-hourglass-split fs-3"></i><br>Cargando egresos...
@@ -393,7 +394,8 @@ export class DashAdmonComponent implements OnInit {
   egresosPlotOptions: any     = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3, distributed: true } };
   egresosDataLabels:  any     = { enabled: true, formatter: (v: number) => v > 0 ? '$'+(v/1000).toFixed(1)+'K' : '', offsetY: -18, style: { fontSize: '10px', colors: ['#555'] } };
   egresosTooltip:     any     = { y: { formatter: (v: number) => '$'+v.toLocaleString('es-MX', { minimumFractionDigits: 2 }) } };
-  egresosColors:      string[]= ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63','#ff5722','#607d8b','#00bcd4','#8bc34a','#ff9800','#795548','#673ab7','#03a9f4','#4caf50','#ffc107','#f44336','#9c27b0','#009688','#ffeb3b','#2196f3','#ff6f00','#76ff03','#ea80fc','#40c4ff','#69f0ae','#ff6d00','#b0bec5'];
+  egresosColors:      string[]= ['#e74c3c'];
+  egresosLegend:      any     = { show: false };
 
   egresosRange: number = 1;
   egresosRangeLabel: string = '';
