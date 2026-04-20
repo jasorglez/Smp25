@@ -21,7 +21,7 @@ import { AuthService } from 'app/services/auth.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ButtonCellRendererIncomeComponent } from './button-cell-renderer-income.component';
 import { PdfButtonCellRendererIncomeComponent } from './pdf-button-cell-renderer-income.component';
-import { DetalleIngresosComponent } from './detalle-ingresos.component';
+import { DetailsIncomeComponent } from './details-income.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -32,7 +32,7 @@ import { ProjectsService } from 'app/services/projects.service';
   standalone: true,
   imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
              FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
-             PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
+             PdfButtonCellRendererIncomeComponent, DetailsIncomeComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -194,7 +194,7 @@ export class IncomeComponent {
     masterDetail: true,
     detailRowHeight: 600,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetalleIngresosComponent,
+    detailCellRenderer: DetailsIncomeComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {

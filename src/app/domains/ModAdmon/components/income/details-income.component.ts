@@ -20,7 +20,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
-  selector: 'app-detalle-ingresos',
+  selector: 'app-details-income',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   template: `
@@ -105,7 +105,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
     }
   `]
 })
-export class DetalleIngresosComponent implements OnInit, OnDestroy {
+export class DetailsIncomeComponent implements OnInit, OnDestroy {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -289,17 +289,15 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
       {
         field: 'dateExpend',
         headerName: 'Fecha',
-        type: 'date',
         editable: true,
         flex: 2,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const date = new Date(params.value);
-          return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-          });
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (p) => p.data?.dateExpend ? String(p.data.dateExpend).substring(0, 10) : '',
+        valueSetter: (p) => { p.data.dateExpend = p.newValue; return true; },
+        valueFormatter: (p) => {
+          if (!p.value) return '';
+          const [y, m, d] = String(p.value).substring(0, 10).split('-');
+          return d && m && y ? `${d}/${m}/${y}` : p.value;
         }
       },
       { field: 'quantity', headerName: 'Cantidad', type: 'number', editable: true, flex: 2 },
@@ -507,7 +505,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
         tax: this.iva2,
         total: this.total,
         countItems: this.rowData.length,
-        idBranch: this.incomeData?.idBranch ?? mainDoc.idBranch
+        idBranch: this.incomeData?.idBranch ?? mainDoc.idBranch,
+        idProject: this.incomeData?.idProject ?? mainDoc.idProject
       };
       await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDoc));
 
@@ -566,7 +565,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
           const updatedDoc = {
             ...mainDoc,
             countItems: newCount,
-            idBranch: this.incomeData?.idBranch ?? mainDoc.idBranch
+            idBranch: this.incomeData?.idBranch ?? mainDoc.idBranch,
+            idProject: this.incomeData?.idProject ?? mainDoc.idProject
           };
           await lastValueFrom(this.incomesAndExpensesService.updateIncomesAndExpenses(incomeId, updatedDoc));
 
