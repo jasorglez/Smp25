@@ -984,9 +984,12 @@ export class UsersComponent implements OnDestroy {
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
-    if (!cleanedData.password || cleanedData.password === '') {
-      console.warn('El campo password está vacío, esto puede causar el error');
+    // Para actualizaciones: omitir password si está vacío — el servidor lo rechaza con 400
+    // (el GET no devuelve el password, así que data.password llega null en ediciones)
+    if (!data.__isNew && (!cleanedData.password || cleanedData.password.trim() === '')) {
+      delete cleanedData.password;
     }
+
     // Procesar imágenes - ahora son URLs de Firebase, no base64
     if (cleanedData.picture === './assets/img/profile.png' || !cleanedData.picture) {
       delete cleanedData.picture; // No enviar la imagen por defecto

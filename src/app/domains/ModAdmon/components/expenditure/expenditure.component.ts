@@ -1126,7 +1126,10 @@ export class ExpenditureComponent {
     return new Promise<void>((resolve) => {
       this.administrationService.getAccountBanks(this.idRoot).subscribe(
         (data: any) => {
-          this.bankAccounts = data;
+          this.bankAccounts = data || [];
+          if (this.bankAccounts.length === 1) {
+            this.idAccount = this.bankAccounts[0].id;
+          }
           resolve();
         },
         error => {
@@ -1373,13 +1376,21 @@ export class ExpenditureComponent {
       );
 
       const mainDocument = mainDocumentResponse[0];
+
+      // Preserve idProject from the grid node — server may return 0/null
+      let currentIdProject = mainDocument.idProject ?? null;
+      this.gridApi?.forEachNode((node: any) => {
+        if (node.data?.id === expenditureId) currentIdProject = node.data.idProject ?? currentIdProject;
+      });
+
       const updatedDocument = {
         ...mainDocument,
         subtotal: subtotal,
         tax: tax,
         total: total,
         countitems: conceptsData.length,
-        idBranch: data.idBranch != null ? data.idBranch : mainDocument.idBranch
+        idBranch: data.idBranch != null ? data.idBranch : mainDocument.idBranch,
+        idProject: currentIdProject
       };
 
       await lastValueFrom(

@@ -138,11 +138,15 @@ export class EgresosxfechasComponent {
   async loadBankAccounts() {
     return new Promise<void>(resolve => {
       this.administrationService.getAccountBanks(this.idRoot).subscribe({
-        next: (data: any) => {
+        next: async (data: any) => {
           this.bankAccounts = data || [];
           this.idAccount = null;
           this.rowData = [];
           this.allData = [];
+          if (this.bankAccounts.length === 1) {
+            this.idAccount = this.bankAccounts[0].id;
+            await this.onFilterChange();
+          }
           resolve();
         },
         error: () => { this.bankAccounts = []; resolve(); }

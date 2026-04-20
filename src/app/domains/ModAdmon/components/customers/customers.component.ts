@@ -1134,15 +1134,14 @@ export class CustomersComponent implements CanComponentDeactivate {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    delete cleanedData.detailType; // Propiedad interna del grid
-    // NO incluir 'type' para evitar actualizarlo en ediciones
-    // El 'type' solo se debe incluir al agregar nuevos registros
+    delete cleanedData.detailType;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     } else {
-      // Si NO es un registro nuevo (temp_), eliminar 'type' para no actualizarlo
       delete cleanedData.type;
     }
+    // Siempre garantizar idRoot correcto — evita registros huérfanos sin empresa
+    cleanedData.idRoot = this.idRoot;
     return cleanedData;
   }
 

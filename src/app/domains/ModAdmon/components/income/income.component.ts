@@ -279,29 +279,29 @@ export class IncomeComponent {
 
 
   async getCustomers() {
-    // Obtener todos los clientes de la compañía
-    this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe(
-      (data: any) => {
-        // Mapear para formato consistente y ordenar por id descendente (más recientes primero)
-        this.customers = data
-          .map((item: any) => ({
-            id: item.id,
-            description: item.nameContact || item.company || item.name,
-            name: item.nameContact || item.company || item.name,
-            rfc: item.rfc,
-            cp: item.cp,
-            fiscalRegime: item.fiscalRegime,
-            usoCfdi: item.usoCfdi,
-            email: item.email
-          }))
-          .sort((a: any, b: any) => b.id - a.id); // Ordenar por id descendente
-      },
-      error => {
-        console.error(error);
-      }
-    )
-      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
-           this.trackingService.getEmail() );
+    return new Promise<void>(resolve => {
+      this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe({
+        next: (data: any) => {
+          this.customers = (data || [])
+            .map((item: any) => ({
+              id: item.id,
+              description: item.nameContact || item.company || item.name,
+              name: item.nameContact || item.company || item.name,
+              rfc: item.rfc,
+              cp: item.cp,
+              fiscalRegime: item.fiscalRegime,
+              usoCfdi: item.usoCfdi,
+              email: item.email
+            }))
+            .sort((a: any, b: any) => b.id - a.id);
+          // Refrescar la columna Cliente para que el formatter use la lista ya cargada
+          this.gridApi?.refreshCells({ columns: ['idCustomer'], force: true });
+          this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos', this.trackingService.getEmail());
+          resolve();
+        },
+        error: err => { console.error(err); resolve(); }
+      });
+    });
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -606,14 +606,19 @@ export class IncomeComponent {
         headerName: 'Proyecto',
         editable: true,
         width: 150,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
-          values: this.projects.map(p => p.id)
+          options: this.projects.map(p => ({
+            id: p.id,
+            description: p.name,
+            valueAddition: String(p.id),
+            valueAddition2: p.name
+          }))
         }),
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const foundProject = this.projects.find(p => p.id === params.value);
-          return foundProject ? foundProject.name : params.value;
+          const foundProject = this.projects.find(p => p.id === params.value || p.id === Number(params.value));
+          return foundProject ? foundProject.name : String(params.value);
         }
       },
 
@@ -1060,19 +1065,30 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+    // agSelectCellEditor stores values as strings; convert numeric FK fields back to numbers
+    if (cleanedData.idProject != null) cleanedData.idProject = cleanedData.idProject ? Number(cleanedData.idProject) || null : null;
+    if (cleanedData.idBranch  != null) cleanedData.idBranch  = cleanedData.idBranch  ? Number(cleanedData.idBranch)  || null : null;
+    if (cleanedData.idExpend  != null) cleanedData.idExpend  = cleanedData.idExpend  ? Number(cleanedData.idExpend)  || null : null;
     return cleanedData;
   }
 
   async getBankAccounts() {
-    this.administrationService.getAccountBanks(this.root).subscribe(
-      (data: any) => {
-        this.bankAccounts = data;
-      },
-      error => {
-        console.error(error);
-        this.bankAccounts = []; // Vaciamos el array en caso de error
-      }
-    )
+    return new Promise<void>(resolve => {
+      this.administrationService.getAccountBanks(this.root).subscribe({
+        next: (data: any) => {
+          this.bankAccounts = data || [];
+          if (this.bankAccounts.length === 1) {
+            this.idAccount = this.bankAccounts[0].id;
+          }
+          resolve();
+        },
+        error: err => {
+          console.error(err);
+          this.bankAccounts = [];
+          resolve();
+        }
+      });
+    });
   }
 
   // ==================== METODOS PARA CASCADAS ====================
