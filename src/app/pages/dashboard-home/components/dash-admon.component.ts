@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, effect, inject, NgZone, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -136,10 +136,11 @@ import { SignalrService } from 'app/services/signalr.service';
                     {{ e.name }}
                   </div>
                   <div class="client-bar-wrap">
-                    <div class="client-bar egreso-bar" [style.width.%]="(e.total / topEntityList[0].total) * 100"></div>
+                    <div class="client-bar" [style.width.%]="(e.total / topEntityList[0].total) * 100"
+                         [style.background]="BAR_PALETTE[i % BAR_PALETTE.length]"></div>
                   </div>
                 </div>
-                <span class="client-total egreso-total">\${{ e.total | number:'1.0-0' }}</span>
+                <span class="client-total" [style.color]="BAR_PALETTE[i % BAR_PALETTE.length]">\${{ e.total | number:'1.0-0' }}</span>
               </div>
             </div>
             <div class="list-footer egreso-footer" *ngIf="topEntityTotal">
@@ -341,6 +342,7 @@ export class DashAdmonComponent implements OnInit {
   private signalsService  = inject(SignalsService);
   private signalrService  = inject(SignalrService);
   private destroyRef      = inject(DestroyRef);
+  private zone            = inject(NgZone);
 
   // ── Clientes ──
   clientList: { name: string; total: number }[] = [];
@@ -385,13 +387,13 @@ export class DashAdmonComponent implements OnInit {
 
   // ── Egresos por día ──
   egresosSeries:      any[]   = [];
-  egresosChart:       any     = { type: 'bar', height: 320, width: '100%', toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
+  egresosChart:       any     = { type: 'bar', height: 320, width: '100%', toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif', legend: { show: false } };
   egresosXaxis:       any     = { categories: [] };
   egresosYaxis:       any     = { labels: { formatter: (v: number) => '$'+(v/1000).toFixed(0)+'K', style: { colors: '#64748b', fontSize: '11px' } } };
-  egresosPlotOptions: any     = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3 } };
+  egresosPlotOptions: any     = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3, distributed: true } };
   egresosDataLabels:  any     = { enabled: true, formatter: (v: number) => v > 0 ? '$'+(v/1000).toFixed(1)+'K' : '', offsetY: -18, style: { fontSize: '10px', colors: ['#555'] } };
   egresosTooltip:     any     = { y: { formatter: (v: number) => '$'+v.toLocaleString('es-MX', { minimumFractionDigits: 2 }) } };
-  egresosColors:      string[]= ['#e74c3c'];
+  egresosColors:      string[]= ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63','#ff5722','#607d8b','#00bcd4','#8bc34a','#ff9800','#795548','#673ab7','#03a9f4','#4caf50','#ffc107','#f44336','#9c27b0','#009688','#ffeb3b','#2196f3','#ff6f00','#76ff03','#ea80fc','#40c4ff','#69f0ae','#ff6d00','#b0bec5'];
 
   egresosRange: number = 1;
   egresosRangeLabel: string = '';
@@ -429,12 +431,14 @@ export class DashAdmonComponent implements OnInit {
       debounceTime(800),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(data => {
-      const rootId = this.signalsService.getRootSelectedBySidebar()();
-      if (!rootId) return;
-      if (!data?.idRoot || data.idRoot === rootId) {
-        this.loadIngresos(rootId);
-        this.loadEgresos(rootId);
-      }
+      this.zone.run(() => {
+        const rootId = this.signalsService.getRootSelectedBySidebar()();
+        if (!rootId) return;
+        if (!data?.idRoot || data.idRoot === rootId) {
+          this.loadIngresos(rootId);
+          this.loadEgresos(rootId);
+        }
+      });
     });
   }
 
@@ -511,8 +515,6 @@ export class DashAdmonComponent implements OnInit {
 
   private loadEgresos(rootId: number): void {
     this.allEgresosData = [];
-    this.egresosSeries  = [];
-    this.topEntityList  = [];
     this.incomesService.getConceptsDailyByRoot(rootId).subscribe((data: any[]) => {
       if (!data?.length) return;
       this.allEgresosData = data;
@@ -597,12 +599,19 @@ export class DashAdmonComponent implements OnInit {
     this.ingresosSeries  = [...barSeries, { name: 'Tendencia', type: 'line', data: trendData }];
   }
 
+  readonly BAR_PALETTE = [
+    '#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63',
+    '#ff5722','#607d8b','#00bcd4','#8bc34a','#ff9800','#795548','#673ab7','#03a9f4',
+    '#4caf50','#ffc107','#f44336','#9c27b0','#009688','#ffeb3b','#2196f3','#ff6f00',
+    '#76ff03','#ea80fc','#40c4ff','#69f0ae','#ff6d00','#b0bec5'
+  ];
+
   private buildEgresosChart(data: any[]): void {
     const now   = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const plotOpts = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3, distributed: true } };
 
     if (this.egresosRange === 1) {
-      // ── 1 mes: agrupar por día del mes actual ──
       const yr   = now.getFullYear();
       const mo   = now.getMonth();
       const days = new Date(yr, mo + 1, 0).getDate();
@@ -615,12 +624,13 @@ export class DashAdmonComponent implements OnInit {
         }
       });
 
-      this.egresosChart  = { ...this.egresosChart, type: 'bar', height: 320 };
-      this.egresosXaxis  = { categories: Array.from({ length: days }, (_, i) => String(i + 1)), labels: { style: { fontSize: '10px', colors: '#64748b' } } };
-      this.egresosSeries = [{ name: 'Egresos', data: byDay }];
+      this.egresosColors      = ['#transparent'];
+      this.egresosPlotOptions = { ...plotOpts };
+      this.egresosChart       = { ...this.egresosChart, type: 'bar', height: 320, legend: { show: false } };
+      this.egresosXaxis       = { categories: Array.from({ length: days }, (_, i) => String(i + 1)), labels: { style: { fontSize: '10px', colors: '#64748b' } } };
+      this.egresosSeries      = [{ name: 'Egresos', data: byDay.map((v, i) => ({ x: String(i + 1), y: v, fillColor: this.BAR_PALETTE[i % this.BAR_PALETTE.length] })) }];
 
     } else {
-      // ── 3 o 6 meses: agrupar por semana (etiqueta DD/MM) ──
       const fromDate = new Date(now.getFullYear(), now.getMonth() - this.egresosRange + 1, 1);
       const byDay: { [key: string]: number } = {};
 
@@ -638,9 +648,11 @@ export class DashAdmonComponent implements OnInit {
         return ma !== mb ? ma - mb : da - db;
       });
 
-      this.egresosChart  = { ...this.egresosChart, type: 'bar', height: 320 };
-      this.egresosXaxis  = { categories: sortedKeys, labels: { rotate: -45, rotateAlways: true, style: { fontSize: '9px', colors: '#64748b' } } };
-      this.egresosSeries = [{ name: 'Egresos', data: sortedKeys.map(k => byDay[k]) }];
+      this.egresosColors      = ['#transparent'];
+      this.egresosPlotOptions = { ...plotOpts };
+      this.egresosChart       = { ...this.egresosChart, type: 'bar', height: 320, legend: { show: false } };
+      this.egresosXaxis       = { categories: sortedKeys, labels: { rotate: -45, rotateAlways: true, style: { fontSize: '9px', colors: '#64748b' } } };
+      this.egresosSeries      = [{ name: 'Egresos', data: sortedKeys.map((k, i) => ({ x: k, y: byDay[k], fillColor: this.BAR_PALETTE[i % this.BAR_PALETTE.length] })) }];
     }
   }
 }
