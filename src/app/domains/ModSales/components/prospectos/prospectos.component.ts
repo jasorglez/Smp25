@@ -97,6 +97,7 @@ export class ProspectosComponent implements OnInit {
     detailCellRenderer: DetalleInteraccionesComponent,
     rowClassRules: {
       'new-row-highlight': (p: any) => !!p.data?.__isNew,
+      'row-inactivo':      (p: any) => p.data?.activo === false,
       'row-ganado':        (p: any) => !p.data?.__isNew && p.data?.estado === 'ganado',
       'row-perdido':       (p: any) => !p.data?.__isNew && p.data?.estado === 'perdido',
     },
@@ -132,6 +133,9 @@ export class ProspectosComponent implements OnInit {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: { values: ESTADOS_PROSPECTO.map(e => e.value) },
         cellRenderer: (p: any) => {
+          if (p.data?.activo === false) {
+            return '<span class="badge prospecto-eliminado-badge">Eliminado</span>';
+          }
           const e = ESTADOS_PROSPECTO.find(x => x.value === p.value);
           return e ? `<span class="badge bg-${e.color}">${e.icon} ${e.label}</span>` : p.value ?? '';
         },
@@ -204,17 +208,26 @@ export class ProspectosComponent implements OnInit {
     this.cargarProspectos();
   }
 
+  private ordenarProspectos(data: any[]) {
+    return [...data].sort((a, b) => {
+      if (!!a.__isNew !== !!b.__isNew) return a.__isNew ? -1 : 1;
+      if ((a.activo !== false) !== (b.activo !== false)) return a.activo === false ? 1 : -1;
+      return 0;
+    });
+  }
+
   cargarProspectos() {
     this.loading = true;
     this.svc.getProspectos(this.idVendedor).subscribe({
       next: data => {
-        this.rowData = data.map(p => ({
+        this.rowData = this.ordenarProspectos(data.map(p => ({
           ...p,
+          activo: (p as any).activo ?? true,
           domicilio: (p as any).domicilio ?? '',
           countInteracciones: (p as any).countInteracciones ?? 0,
           __isNew: false,
           __modified: false,
-        }));
+        })));
         this.originalData = JSON.parse(JSON.stringify(this.rowData));
         this.hasUnsavedChanges = false;
         this.loading = false;
@@ -227,7 +240,7 @@ export class ProspectosComponent implements OnInit {
 
   add() {
     const nuevo: any = {
-      nombre: '', telefono: '', empresa: '', puesto: '', domicilio: '', estado: 'nuevo',
+      nombre: '', telefono: 'SIN NUMERO', empresa: '', puesto: 'GERENTE', domicilio: 'SIN DOMICILIO', estado: 'nuevo',
       idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
@@ -236,22 +249,32 @@ export class ProspectosComponent implements OnInit {
       countInteracciones: 0,
       __isNew: true, __modified: false,
     };
-    this.rowData = [nuevo, ...this.rowData];
+    this.rowData = this.ordenarProspectos([nuevo, ...this.rowData]);
     this.hasUnsavedChanges = true;
     setTimeout(() => {
       this.gridApi.setGridOption('rowData', this.rowData);
-      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'nombre' });
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'empresa' });
     }, 50);
   }
 
   async saveChanges() {
+    this.gridApi?.stopEditing();
+
     const toSave = this.rowData.filter(p => p.__isNew || p.__modified);
     if (!toSave.length) return;
 
     const errores: string[] = [];
     for (const p of toSave) {
-      if (!p.nombre?.trim() || !p.telefono?.trim()) {
-        errores.push(`Sin nombre/teléfono: "${p.nombre || '(vacío)'}"`);
+      const empresa = p.empresa?.trim() ?? '';
+      const nombre = p.nombre?.trim() ?? '';
+
+      if (!empresa || !nombre) {
+        const camposFaltantes = [
+          !empresa ? 'Empresa' : null,
+          !nombre ? 'Nombre' : null,
+        ].filter(Boolean).join('/');
+
+        errores.push(`Sin ${camposFaltantes}: "${empresa || nombre || '(vacio)'}"`);
         continue;
       }
       try {
@@ -302,6 +325,11 @@ export class ProspectosComponent implements OnInit {
     }
     try {
       await this.svc.actualizarProspecto(this.selectedItem.id!, { activo: false } as any);
+      this.selectedItem.activo = false;
+      this.selectedItem.__modified = false;
+      this.rowData = this.ordenarProspectos(this.rowData);
+      this.originalData = JSON.parse(JSON.stringify(this.rowData));
+      this.gridApi.setGridOption('rowData', this.rowData);
       this.selectedItem = null;
       Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
     } catch {
@@ -315,3 +343,4 @@ export class ProspectosComponent implements OnInit {
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 }
+
