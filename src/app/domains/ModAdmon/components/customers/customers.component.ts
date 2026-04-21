@@ -1455,15 +1455,14 @@ export class CustomersComponent implements CanComponentDeactivate {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
-    delete cleanedData.detailType; // Propiedad interna del grid
-    // NO incluir 'type' para evitar actualizarlo en ediciones
-    // El 'type' solo se debe incluir al agregar nuevos registros
+    delete cleanedData.detailType;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     } else {
-      // Si NO es un registro nuevo (temp_), eliminar 'type' para no actualizarlo
       delete cleanedData.type;
     }
+    // Siempre garantizar idRoot correcto — evita registros huérfanos sin empresa
+    cleanedData.idRoot = this.idRoot;
     return cleanedData;
   }
 
@@ -1573,7 +1572,6 @@ export class CustomersComponent implements CanComponentDeactivate {
     // CUSTOMERS -> usa catálogo 'TIPO-CLIENTE' o similar
     // PROVIDERS -> usa catálogo 'TIPO-PROVEEDOR' o similar
     const catalogType = this.type === 'CUSTOMERS' ? 'TIPO-CLIENTE' : 'TIPO-PROVEEDOR';
-    console.log('🔍 Buscando catálogo:', catalogType, 'para idRoot:', this.idRoot);
 
     this.catalogsService.getCatalogsFromAdmon(this.idRoot, catalogType).subscribe(
       (data: Icatalog[]) => {

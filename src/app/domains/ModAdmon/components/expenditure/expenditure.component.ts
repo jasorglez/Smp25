@@ -13,7 +13,6 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
-import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { environment } from '@env/environment';
@@ -33,7 +32,7 @@ import { DetallesExpenditureComponent } from './detalles-expenditure.component';
 @Component({
   selector: 'app-expenditure',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditure2Component, PdfButtonCellRendererExpenditure2Component,
     DetallesExpenditureComponent],
   templateUrl: './expenditure.component.html',
@@ -1029,11 +1028,7 @@ export class ExpenditureComponent {
         );
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizados los datos correctamente.',
-        'success'
-      );
+      alerts.toastAlert('Datos actualizados', 'success');
 
       this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Egresos ',
         this.trackingService.getEmail());
@@ -1090,11 +1085,7 @@ export class ExpenditureComponent {
     )
       .subscribe(
         () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
+          alerts.toastAlert('Entrada eliminada', 'success');
           this.getExpenditure();
           this.notSavedChanges = false;
           this.selectedIncomes = null;
@@ -1135,7 +1126,10 @@ export class ExpenditureComponent {
     return new Promise<void>((resolve) => {
       this.administrationService.getAccountBanks(this.idRoot).subscribe(
         (data: any) => {
-          this.bankAccounts = data;
+          this.bankAccounts = data || [];
+          if (this.bankAccounts.length === 1) {
+            this.idAccount = this.bankAccounts[0].id;
+          }
           resolve();
         },
         error => {
@@ -1382,13 +1376,21 @@ export class ExpenditureComponent {
       );
 
       const mainDocument = mainDocumentResponse[0];
+
+      // Preserve idProject from the grid node — server may return 0/null
+      let currentIdProject = mainDocument.idProject ?? null;
+      this.gridApi?.forEachNode((node: any) => {
+        if (node.data?.id === expenditureId) currentIdProject = node.data.idProject ?? currentIdProject;
+      });
+
       const updatedDocument = {
         ...mainDocument,
         subtotal: subtotal,
         tax: tax,
         total: total,
         countitems: conceptsData.length,
-        idBranch: data.idBranch != null ? data.idBranch : mainDocument.idBranch
+        idBranch: data.idBranch != null ? data.idBranch : mainDocument.idBranch,
+        idProject: currentIdProject
       };
 
       await lastValueFrom(
@@ -1396,11 +1398,7 @@ export class ExpenditureComponent {
       );
 
       if (newConcepts.length > 0 || modifiedConcepts.length > 0) {
-        alerts.basicAlert(
-          'Conceptos guardados',
-          'Se han guardado los conceptos correctamente.',
-          'success'
-        );
+        alerts.toastAlert('Conceptos guardados', 'success');
       }
 
       console.log('💾 PADRE: Actualizando maestro después de guardar. ID:', expenditureId);
@@ -1457,7 +1455,7 @@ export class ExpenditureComponent {
           }
         }
 
-        alerts.basicAlert('Concepto eliminado', 'El concepto se eliminó correctamente.', 'success');
+        alerts.toastAlert('Concepto eliminado', 'success');
         if (params.api) {
           params.api.applyTransaction({ remove: [params.data] });
         }
@@ -1733,7 +1731,7 @@ export class ExpenditureComponent {
         pdf.open();
       } catch {
         pdf.download(`reporte-egresos-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
 
       this.closeEgresoReportModal();
@@ -1900,7 +1898,7 @@ export class ExpenditureComponent {
         pdf.open();
       } catch {
         pdf.download(`saldos-cuenta-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
       this.closeEgresoReportModal();
       this.trackingService.addLog(

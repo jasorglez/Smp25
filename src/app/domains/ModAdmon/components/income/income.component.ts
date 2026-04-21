@@ -13,7 +13,6 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { UsersService } from 'app/services/users.service';
 import { SignalsService } from 'app/services/signals.service';
-import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { CustomersService } from 'app/services/customers.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -22,7 +21,7 @@ import { AuthService } from 'app/services/auth.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ButtonCellRendererIncomeComponent } from './button-cell-renderer-income.component';
 import { PdfButtonCellRendererIncomeComponent } from './pdf-button-cell-renderer-income.component';
-import { DetalleIngresosComponent } from './detalle-ingresos.component';
+import { DetailsIncomeComponent } from './details-income.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -31,9 +30,9 @@ import { ProjectsService } from 'app/services/projects.service';
 @Component({
   selector: 'app-income',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
              FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
-             PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
+             PdfButtonCellRendererIncomeComponent, DetailsIncomeComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -195,7 +194,7 @@ export class IncomeComponent {
     masterDetail: true,
     detailRowHeight: 600,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetalleIngresosComponent,
+    detailCellRenderer: DetailsIncomeComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -280,29 +279,29 @@ export class IncomeComponent {
 
 
   async getCustomers() {
-    // Obtener todos los clientes de la compañía
-    this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe(
-      (data: any) => {
-        // Mapear para formato consistente y ordenar por id descendente (más recientes primero)
-        this.customers = data
-          .map((item: any) => ({
-            id: item.id,
-            description: item.nameContact || item.company || item.name,
-            name: item.nameContact || item.company || item.name,
-            rfc: item.rfc,
-            cp: item.cp,
-            fiscalRegime: item.fiscalRegime,
-            usoCfdi: item.usoCfdi,
-            email: item.email
-          }))
-          .sort((a: any, b: any) => b.id - a.id); // Ordenar por id descendente
-      },
-      error => {
-        console.error(error);
-      }
-    )
-      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
-           this.trackingService.getEmail() );
+    return new Promise<void>(resolve => {
+      this.customersService.getCustomersByCompany(this.root, 'CUSTOMERS').subscribe({
+        next: (data: any) => {
+          this.customers = (data || [])
+            .map((item: any) => ({
+              id: item.id,
+              description: item.nameContact || item.company || item.name,
+              name: item.nameContact || item.company || item.name,
+              rfc: item.rfc,
+              cp: item.cp,
+              fiscalRegime: item.fiscalRegime,
+              usoCfdi: item.usoCfdi,
+              email: item.email
+            }))
+            .sort((a: any, b: any) => b.id - a.id);
+          // Refrescar la columna Cliente para que el formatter use la lista ya cargada
+          this.gridApi?.refreshCells({ columns: ['idCustomer'], force: true });
+          this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos', this.trackingService.getEmail());
+          resolve();
+        },
+        error: err => { console.error(err); resolve(); }
+      });
+    });
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -607,14 +606,19 @@ export class IncomeComponent {
         headerName: 'Proyecto',
         editable: true,
         width: 150,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: SelectWithTooltipEditorV2Component,
         cellEditorParams: () => ({
-          values: this.projects.map(p => p.id)
+          options: this.projects.map(p => ({
+            id: p.id,
+            description: p.name,
+            valueAddition: String(p.id),
+            valueAddition2: p.name
+          }))
         }),
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const foundProject = this.projects.find(p => p.id === params.value);
-          return foundProject ? foundProject.name : params.value;
+          const foundProject = this.projects.find(p => p.id === params.value || p.id === Number(params.value));
+          return foundProject ? foundProject.name : String(params.value);
         }
       },
 
@@ -922,11 +926,7 @@ async saveChanges() {
 
     // Éxito completo o parcial
     if (newRows.length === 0 || !this.hasConsecutiveError) {
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      alerts.toastAlert('Datos actualizados', 'success');
     }
 
     this.notSavedChanges = false;
@@ -1043,11 +1043,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     )
       .subscribe(
         () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
+          alerts.toastAlert('Entrada eliminada', 'success');
           this.getIncomes();
           this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
           this.notSavedChanges = false;
@@ -1069,19 +1065,30 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
+    // agSelectCellEditor stores values as strings; convert numeric FK fields back to numbers
+    if (cleanedData.idProject != null) cleanedData.idProject = cleanedData.idProject ? Number(cleanedData.idProject) || null : null;
+    if (cleanedData.idBranch  != null) cleanedData.idBranch  = cleanedData.idBranch  ? Number(cleanedData.idBranch)  || null : null;
+    if (cleanedData.idExpend  != null) cleanedData.idExpend  = cleanedData.idExpend  ? Number(cleanedData.idExpend)  || null : null;
     return cleanedData;
   }
 
   async getBankAccounts() {
-    this.administrationService.getAccountBanks(this.root).subscribe(
-      (data: any) => {
-        this.bankAccounts = data;
-      },
-      error => {
-        console.error(error);
-        this.bankAccounts = []; // Vaciamos el array en caso de error
-      }
-    )
+    return new Promise<void>(resolve => {
+      this.administrationService.getAccountBanks(this.root).subscribe({
+        next: (data: any) => {
+          this.bankAccounts = data || [];
+          if (this.bankAccounts.length === 1) {
+            this.idAccount = this.bankAccounts[0].id;
+          }
+          resolve();
+        },
+        error: err => {
+          console.error(err);
+          this.bankAccounts = [];
+          resolve();
+        }
+      });
+    });
   }
 
   // ==================== METODOS PARA CASCADAS ====================
@@ -1512,7 +1519,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
         pdf.open();
       } catch {
         pdf.download(`reporte-ingresos-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
 
       this.closeIngresoReportModal();
@@ -1679,7 +1686,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
         pdf.open();
       } catch {
         pdf.download(`saldos-cuenta-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
       this.closeIngresoReportModal();
       this.trackingService.addLog(
@@ -1729,11 +1736,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
       next: (response: any) => {
         const newCustomerId = response.id;
 
-        alerts.basicAlert(
-          'Nuevo Cliente',
-          'Cliente guardado correctamente.',
-          'success'
-        );
+        alerts.toastAlert('Cliente guardado correctamente', 'success');
         this.closeCustomerModal();
 
         // Recargar la lista de clientes

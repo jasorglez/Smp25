@@ -119,7 +119,7 @@
       <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
 <a
           class="nav-link d-flex align-items-center"
-          [routerLink]="['/dashboardgrales']"
+          [routerLink]="['/dashboard']"
           routerLinkActive="active-link"
           (click)="Dashboard()"
           [matTooltip]="isSidebarCollapsed ? ('Dashboard' | translate) : ''"
@@ -216,7 +216,7 @@
           [matTooltip]="isSidebarCollapsed ? 'Almacenes' : ''"
           matTooltipPosition="right"
         >
-          <mat-icon>inventory_2</mat-icon> <span>Almacenes</span>
+          <mat-icon>inventory_2</mat-icon> <span>Produccion</span>
         </a>
       </li>
       <li

@@ -120,8 +120,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   columnDefs: ColDef[] = [
-    { field: 'date', headerName: 'Fecha', width: 86, editable: true, valueFormatter: (params) => { if (!params.value) return ''; const [y, m, d] = String(params.value).substring(0, 10).split('-'); return `${d}/${m}/${y.substring(2)}`; } },
-    { field: 'programAdvanced', headerName: 'Program.', width: 88, editable: true },
+    { field: 'date', headerName: 'Fecha', width: 85, editable: true, valueFormatter: (params) => { if (!params.value) return ''; const [y, m, d] = String(params.value).substring(0, 10).split('-'); return `${d}/${m}/${y.substring(2)}`; } },
+    { field: 'programAdvanced', headerName: 'Progr.', width: 90, editable: true },
     { field: 'physicalAdvanced', headerName: 'Fisico', width: 85, editable: true },
     {
       field: 'accumulateProgram', headerName: 'Acumul. Program', width: 100, editable: true, cellDataType: 'number',
@@ -434,9 +434,10 @@ export class AdvancesComponent implements OnInit, OnChanges {
     // Actualizar datos de la gráfica: 12 puntos mensuales
     this.chartOptions = {
       series: [
-        { name: 'Avance Programado Acumulado', data: programSeries, type: 'line' },
-        { name: 'Avance Real Acumulado',        data: physicalSeries, type: 'line' },
-        { name: 'Hitos de Avance',              data: hitosSeries,   type: 'column' }
+        { name: 'Avance Programado Acumulado', data: programSeries,  type: 'line'   },
+        { name: 'Avance Real Acumulado',        data: physicalSeries, type: 'line'   },
+        { name: 'Programado (barra)',            data: programSeries,  type: 'column' },
+        { name: 'Real (barra)',                  data: physicalSeries, type: 'column' }
       ],
       chart: {
         height: 580,
@@ -471,10 +472,10 @@ export class AdvancesComponent implements OnInit, OnChanges {
         },
         background: '#fff'
       },
-      colors: ["#e67e22", "#2980b9", "#f1c40f"],
+      colors: ["#e67e22", "#2980b9", "#f1c40f", "#2980b9"],
       dataLabels: { enabled: false },
       fill: {
-        type: ['gradient', 'gradient', 'solid'],
+        type: ['gradient', 'gradient', 'solid', 'solid'],
         gradient: {
           shade: 'light',
           type: 'vertical',
@@ -485,14 +486,14 @@ export class AdvancesComponent implements OnInit, OnChanges {
       },
       stroke: {
         curve: "smooth",
-        width: [3, 3, 0],
-        dashArray: [0, 0, 0],
+        width: [5, 5, 0, 0],
+        dashArray: [0, 0, 0, 0],
         lineCap: 'round'
       },
       plotOptions: {
         bar: {
-          columnWidth: '55%',
-          borderRadius: 3
+          columnWidth: '35%',
+          borderRadius: 2
         }
       },
       title: {
@@ -527,10 +528,10 @@ export class AdvancesComponent implements OnInit, OnChanges {
         }
       },
       markers: {
-        size: 4,
+        size: 6,
         strokeWidth: 2,
         hover: {
-          size: 7
+          size: 9
         }
       },
       xaxis: {

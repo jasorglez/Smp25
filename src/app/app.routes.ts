@@ -1090,8 +1090,8 @@ export const routes: Routes = [
             path: 'expend',
             loadComponent: () =>
               import(
-                './domains/ModAdmon/components/expenditure/expenditure.component'
-              ).then((e) => e.ExpenditureComponent),
+                './domains/ModAdmon/components/expenditure/egreso-shell.component'
+              ).then((e) => e.EgresoShellComponent),
             canActivate: [TrackingGuard],
             data: {
               tracking: {

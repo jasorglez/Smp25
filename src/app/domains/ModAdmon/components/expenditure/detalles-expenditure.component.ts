@@ -465,16 +465,18 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         field: 'dateExpend',
         headerName: 'Fecha',
         editable: true,
-        cellDataType: 'date',
-        sort: 'asc',
+        sort: 'desc',
         width: 120,
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (params) => params.data?.dateExpend ? String(params.data.dateExpend).substring(0, 10) : '',
+        valueSetter: (params) => {
+          params.data.dateExpend = params.newValue;
+          return true;
+        },
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const date = new Date(params.value);
-          const day = date.getDate().toString().padStart(2, '0');
-          const month = (date.getMonth() + 1).toString().padStart(2, '0');
-          const year = date.getFullYear();
-          return `${day}/${month}/${year}`;
+          const [y, m, d] = String(params.value).substring(0, 10).split('-');
+          return d && m && y ? `${d}/${m}/${y}` : params.value;
         }
       },
       {
@@ -738,6 +740,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     groupIncludeFooter: true,
     groupIncludeTotalFooter: true,
     suppressAggFuncInHeader: true,
+    rowClassRules: {
+      'new-row-highlight':      (params: any) => !!params.data?.__isNew,
+      'modified-row-highlight': (params: any) => !params.data?.__isNew && !!params.data?.__modified
+    },
     autoGroupColumnDef: {
       headerName: 'Proveedor / Entidad',
       minWidth: 180,
@@ -767,7 +773,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           return 0;
         }
 
-        return dateA - dateB;
+        return dateB - dateA;
       });
     },
     getRowClass: (params) => {
@@ -797,7 +803,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       idContribuyente: null,
       selectedEntity: null,
       groupEntity: this.getGroupEntityLabel({ typeExpense: 'EMPLEADOS', selectedEntity: null }),
-      dateExpend: this.params.data.date,
+      dateExpend: this.getTodayDateForInput(),
       description: '',
       quantity: 1,
       unit: '',
@@ -830,6 +836,14 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         colKey: 'typeExpense'
       });
     }, 100);
+  }
+
+  private getTodayDateForInput(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   async deleteSelectedConcept() {
@@ -975,6 +989,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
+    this.gridApi.redrawRows({ rowNodes: [event.node] });
 
     // Si cambió la entidad seleccionada y es empleado nuevo, refrescar descripción
     if (event.colDef.field === 'selectedEntity' && event.data.typeExpense === 'EMPLEADOS') {
@@ -1176,11 +1191,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         this.customersService.addCustomer(this.newProvider)
       );
 
-      alerts.basicAlert(
-        'Proveedor creado',
-        'El proveedor se ha creado correctamente.',
-        'success'
-      );
+      alerts.toastAlert('Proveedor creado correctamente', 'success');
 
       // Actualizar la lista de proveedores en el contexto
       const newProvider = {
