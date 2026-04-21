@@ -212,7 +212,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     if (permissionsData && permissionsData.permissions) {
                       this.auth.setUserPermissions(permissionsData.permissions);
                     }
-                    this.router.navigate(['/dashboard']);
+                    this.navigateToHomeAfterLogin();
                   },
                   error: (permError) => {
                     console.error('Error fetching advanced permissions:', permError);
@@ -225,7 +225,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     if (permissionsData && permissionsData.permissions) {
                       this.auth.setUserPermissions(permissionsData.permissions);
                     }
-                    this.router.navigate(['/dashboard']);
+                    this.navigateToHomeAfterLogin();
                   },
                   error: (permError) => {
                     console.error('Error fetching permissions:', permError);
@@ -251,5 +251,11 @@ export class ComploginComponent implements OnInit, OnDestroy {
 
   invalidField(field:string){
     return functions.invalidField(field, this.flogin, this.formSubmitted);
+  }
+
+  /** Con permiso dashboard → /dashboard; si no, /publicidad (misma lógica que el ítem del sidebar). */
+  private navigateToHomeAfterLogin(): void {
+    const target = this.auth.hasMasterPermission('dashboard') ? '/dashboard' : '/publicidad';
+    this.router.navigate([target]);
   }
 }

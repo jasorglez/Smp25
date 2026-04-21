@@ -329,6 +329,21 @@
     </ul>
   </div>
 
+  <!-- Publicidad: fija arriba del botón Contraer (no dentro del scroll) -->
+  <div class="sidebar-publicidad-dock flex-shrink-0 border-top">
+    <a
+      class="nav-link d-flex align-items-center sidebar-publicidad-link"
+      [routerLink]="['/publicidad']"
+      routerLinkActive="active-link"
+      (click)="publicidadMenu()"
+      [matTooltip]="isSidebarCollapsed ? 'Publicidad' : ''"
+      matTooltipPosition="right"
+    >
+      <mat-icon>campaign</mat-icon>
+      <span>Publicidad</span>
+    </a>
+  </div>
+
   <!-- Botón de colapsar en la parte inferior -->
   <div class="p-2 border-top">
     <!-- Logo pequeño cuando está colapsado -->

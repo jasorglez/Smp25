@@ -1,0 +1,91 @@
+<div class="welcome">
+  <div class="welcome__intro">
+    <header class="welcome__header">
+      <h1 class="welcome__title">{{ welcomeTitle }}</h1>
+      <p class="welcome__subtitle">{{ welcomeSubtitle }}</p>
+    </header>
+  </div>
+
+  <section class="welcome__showcase" aria-label="Publicidad">
+    @if (loading) {
+      <div class="carousel carousel--hero">
+        <div class="carousel__loading" aria-hidden="true">
+          <span>Cargando…</span>
+        </div>
+      </div>
+    } @else if (!hasSlides) {
+      <div class="welcome__empty">
+        No hay imágenes de publicidad. Añade archivos en
+        <code>assets/publicidad</code> y actualiza
+        <code>manifest.json</code>.
+      </div>
+    } @else {
+      <div class="carousel carousel--hero">
+        <div class="carousel__meta" aria-hidden="true">
+          <span class="carousel__meta-label">Publicidad</span>
+          <span class="carousel__meta-auto">cada {{ autoplayIntervalMs / 1000 }}s</span>
+          @if (hasSlides) {
+            <span class="carousel__meta-counter">{{ counterLabel }}</span>
+          }
+        </div>
+
+        <div class="carousel__track">
+          @for (url of imageUrls; track url; let i = $index) {
+            <div
+              class="carousel__slide"
+              [class.carousel__slide--active]="i === currentIndex"
+              [attr.aria-hidden]="i === currentIndex ? 'false' : 'true'"
+            >
+              <img
+                class="carousel__img"
+                [src]="url"
+                [alt]="alts[i]"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="carousel__nav" aria-hidden="true">
+          <button
+            type="button"
+            class="carousel__btn"
+            (click)="prev()"
+            aria-label="Anterior"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="carousel__btn"
+            (click)="next()"
+            aria-label="Siguiente"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="carousel__bottom">
+          <div class="carousel__dots" role="tablist" aria-label="Seleccionar imagen">
+            @for (url of imageUrls; track url; let i = $index) {
+              <button
+                type="button"
+                class="carousel__dot"
+                [class.carousel__dot--active]="i === currentIndex"
+                (click)="goTo(i)"
+                [attr.aria-label]="'Ir a imagen ' + (i + 1)"
+                role="tab"
+                [attr.aria-selected]="i === currentIndex"
+              ></button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </section>
+</div>
