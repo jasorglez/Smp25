@@ -2825,7 +2825,9 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   }
 
   onCrudChange(permission: CrudPermission) {
-    this.propagarActivacionCrudTrasLectura(permission);
+    if ((this.scopeInput ?? 'userSystem') === 'position') {
+      this.recomputeReadsFromCrud();
+    }
     this.checkForChanges();
   }
 
