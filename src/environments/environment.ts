@@ -73,6 +73,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.87 (17 Abril 2026) - feature: rutas y componentes Configuracion y Catalogos de Produccion',
+  version: '3.87 (20 Abril 2026) - feature: rutas y componentes Configuracion y Catalogos de Produccion',
 };
 
