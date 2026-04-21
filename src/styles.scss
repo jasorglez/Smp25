@@ -206,3 +206,43 @@ body {
 .swal-over-modal {
   z-index: 9999999 !important;
 }
+
+/* SweetAlert2 minimalista (usado por alerts.minimalAlert) */
+.swal-minimal-popup {
+  width: 360px !important;
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+.swal-minimal-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  margin: 0 0 6px 0 !important;
+}
+
+.swal-minimal-text {
+  font-size: 12px !important;
+  color: rgba(0, 0, 0, 0.72) !important;
+  margin: 0 !important;
+}
+
+.swal-minimal-btn {
+  margin-top: 10px !important;
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  background: #ffffff !important;
+  color: rgba(0, 0, 0, 0.75) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+}
+
+.swal-minimal-btn:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.18) !important;
+}
+
+.swal-minimal-icon {
+  transform: scale(0.85);
+}

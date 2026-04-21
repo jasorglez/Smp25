@@ -151,6 +151,7 @@ export class CustomersComponent implements CanComponentDeactivate {
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
+  private pendingEditCell: { rowIndex: number; colKey: string } | null = null;
 
   rowData: any;
   contracts: { [key: string]: string } = {};
@@ -178,6 +179,21 @@ export class CustomersComponent implements CanComponentDeactivate {
 
   currentIndex = 0;
 
+  // Orden de columnas editables para navegación con Enter
+  private editableColumns: string[] = [
+    'nameContact',
+    'company',
+    'idBranch',
+    'idTypecop',
+    'cp',
+    'address',
+    'state',
+    'city',
+    'neighborhood',
+    'phone',
+    'email',
+  ];
+
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
@@ -194,6 +210,8 @@ export class CustomersComponent implements CanComponentDeactivate {
     headerHeight: 25,
     rowHeight: 20,
     rowBuffer: 20,
+    singleClickEdit: true,
+    getRowId: (params: any) => params?.data?.id,
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -212,7 +230,12 @@ export class CustomersComponent implements CanComponentDeactivate {
         });
       }
     },
-
+    onCellKeyDown: (event: any) => {
+      if (event.event.key === 'Enter') {
+        event.event.preventDefault();
+        this.moveToNextColumn(event);
+      }
+    },
   };
 
   private _colMaster: ColDef[] = [];
@@ -337,23 +360,22 @@ export class CustomersComponent implements CanComponentDeactivate {
             return false;
           }
 
-          const normalizedValue = rawValue.trim().toUpperCase();
+          const normalizedValue = this.normalizeCustomerName(rawValue);
 
           if (!normalizedValue) {
             alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
             return false;
           }
 
-          const duplicateExists = this.contactoCatalog.some(
-            (row, index) =>
-              index !== params.node.rowIndex &&
-              row.nameContact?.toUpperCase() === normalizedValue
+          const duplicateExists = this.hasDuplicateCustomerName(
+            normalizedValue,
+            params.data
           );
 
           if (duplicateExists) {
             alerts.basicAlert(
-              'Nombre duplicado',
-              'Ya existe un nombre de contacto registrado.',
+              'Cliente duplicado',
+              'Este cliente ya está registrado.',
               'error'
             );
             return false;
@@ -380,7 +402,21 @@ export class CustomersComponent implements CanComponentDeactivate {
         suppressMovable: true,
         filter: true,
         valueSetter: (params) => {
-          const upperValue = params.newValue.toUpperCase();
+          const upperValue = this.normalizeCustomerName(params.newValue);
+          if (!upperValue) {
+            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+            return false;
+          }
+
+          if (this.hasDuplicateCustomerName(upperValue, params.data)) {
+            alerts.basicAlert(
+              'Cliente duplicado',
+              'Este cliente ya está registrado.',
+              'error'
+            );
+            return false;
+          }
+
           params.data[params.colDef.field] = upperValue;
           params.data.nameContact = upperValue;
           return true;
@@ -845,6 +881,30 @@ export class CustomersComponent implements CanComponentDeactivate {
     }
   }
 
+  moveToNextColumn(event: any): void {
+    const currentColKey = event.colDef.field;
+    const currentRowIndex = event.rowIndex;
+    const rowId = event.node?.id;
+
+    const currentColIndex = this.editableColumns.indexOf(currentColKey);
+
+    if (currentColIndex < this.editableColumns.length - 1) {
+      const nextColKey = this.editableColumns[currentColIndex + 1];
+
+      setTimeout(() => {
+        this.gridApi.setFocusedCell(currentRowIndex, nextColKey);
+        const cellEl = rowId
+          ? (document.querySelector(`[row-id="${rowId}"] [col-id="${nextColKey}"]`) as HTMLElement)
+          : null;
+        if (cellEl) {
+          cellEl.click();
+        }
+      }, 80);
+    } else {
+      this.gridApi.stopEditing();
+    }
+  }
+
   getCoordinatesFromCP(cp: string) {
     const url = `https://nominatim.openstreetmap.org/search?postalcode=${cp}&country=MX&format=json`;
     return this.http.get(url).pipe(
@@ -914,34 +974,275 @@ export class CustomersComponent implements CanComponentDeactivate {
       active: true,
       __isNew: true,
     };
-    this.rowData = [newItem, ...this.rowData];
+
+    // Insertar la fila al inicio y mantener rowData sincronizado para guardar la fila nueva.
+    this.rowData = [newItem, ...(this.rowData || [])];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
 
-    // Encontrar el índice de la nueva fila
-    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
+    this.focusNewCustomerNameCell(tempId);
+  }
 
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find((col) => col.editable);
-    const firstEditableColKey = firstEditableCol
-      ? firstEditableCol.field
-      : null;
+  private focusNewCustomerNameCell(tempId: string): void {
+    // "Nombre" en la tabla corresponde al campo `company`
+    const colKey = 'company';
+    let attempts = 0;
 
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-    
-    setTimeout(() => {
-      const firstRowIndex = 0;
+    const focusCell = () => {
+      if (!this.gridApi) return;
 
-      this.gridApi.ensureIndexVisible(firstRowIndex);
+      const node = this.gridApi.getRowNode(tempId);
+      if (!node || node.rowIndex === null || node.rowIndex === undefined) {
+        if (attempts++ < 12) {
+          setTimeout(focusCell, 50);
+        }
+        return;
+      }
 
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'idBranch'
+      const rowIndex = node.rowIndex;
+      this.gridApi.ensureIndexVisible(rowIndex, 'top');
+      this.gridApi.ensureColumnVisible(colKey);
+      node.setSelected(true);
+
+      requestAnimationFrame(() => {
+        this.gridApi.setFocusedCell(rowIndex, colKey);
+        this.gridApi.startEditingCell({ rowIndex, colKey });
+
+        requestAnimationFrame(() => {
+          const editingInput = document.querySelector(
+            '.ag-cell-inline-editing input, .autocomplete-input-editing'
+          ) as HTMLInputElement;
+          editingInput?.focus();
+          editingInput?.select();
+        });
       });
-    }, 0);// Un pequeño retraso de 50ms
+    };
+
+    setTimeout(focusCell, 0);
+  }
+
+  private normalizeCustomerName(value: any): string {
+    return (value ?? '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+  }
+
+  private waitForGridEditingToFinish(): Promise<void> {
+    this.gridApi?.stopEditing();
+
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(), 100);
+    });
+  }
+
+  private getCustomerField(row: any, ...keys: string[]): any {
+    if (!row) {
+      return null;
+    }
+
+    const rowKeys = Object.keys(row);
+    for (const key of keys) {
+      if (row[key] !== undefined && row[key] !== null) {
+        return row[key];
+      }
+
+      const matchedKey = rowKeys.find(
+        (rowKey) => rowKey.toLowerCase() === key.toLowerCase()
+      );
+      if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) {
+        return row[matchedKey];
+      }
+    }
+
+    return null;
+  }
+
+  private getCustomerNamesForDuplicateCheck(row: any): string[] {
+    return [
+      this.normalizeCustomerName(this.getCustomerField(row, 'nameContact')),
+      this.normalizeCustomerName(this.getCustomerField(row, 'company')),
+      this.normalizeCustomerName(this.getCustomerField(row, 'name')),
+      this.normalizeCustomerName(this.getCustomerField(row, 'description', 'Description')),
+    ].filter((name, index, names) => name && names.indexOf(name) === index);
+  }
+
+  private getCurrentCustomerRows(): any[] {
+    if (!this.gridApi) {
+      return this.rowData || [];
+    }
+
+    const rows: any[] = [];
+    this.gridApi.forEachNode((node) => {
+      if (node.data) {
+        rows.push(node.data);
+      }
+    });
+
+    return rows;
+  }
+
+  private isSameCustomerRow(row: any, currentRow: any): boolean {
+    if (row === currentRow) {
+      return true;
+    }
+
+    const rowId = this.getCustomerField(row, 'id');
+    const currentRowId = this.getCustomerField(currentRow, 'id');
+
+    if (!rowId || !currentRowId) {
+      return false;
+    }
+
+    return rowId.toString() === currentRowId.toString();
+  }
+
+  private isInactiveCustomer(row: any): boolean {
+    return this.getCustomerField(row, 'active') === false;
+  }
+
+  private hasDuplicateCustomerName(name: any, currentRow: any): boolean {
+    const normalizedName = this.normalizeCustomerName(name);
+    if (!normalizedName) {
+      return false;
+    }
+
+    return this.getCurrentCustomerRows().some((row: any) => {
+      if (this.isSameCustomerRow(row, currentRow) || this.isInactiveCustomer(row)) {
+        return false;
+      }
+
+      return this.getCustomerNamesForDuplicateCheck(row).includes(normalizedName);
+    });
+  }
+
+  private hasAnyDuplicateCustomerName(): boolean {
+    const seenNames = new Set<string>();
+
+    return this.getCurrentCustomerRows().some((row: any) => {
+      if (this.isInactiveCustomer(row)) {
+        return false;
+      }
+
+      const rowNames = this.getCustomerNamesForDuplicateCheck(row);
+      const hasDuplicate = rowNames.some((name) => seenNames.has(name));
+      rowNames.forEach((name) => seenNames.add(name));
+
+      return hasDuplicate;
+    });
+  }
+
+  private hasDuplicateCustomerNameBetweenRows(rowsToCheck: any[], rowsReference: any[]): boolean {
+    return rowsToCheck.some((rowToCheck) => {
+      const namesToCheck = this.getCustomerNamesForDuplicateCheck(rowToCheck);
+      if (namesToCheck.length === 0) {
+        return false;
+      }
+
+      return rowsReference.some((referenceRow: any) => {
+        if (
+          this.isSameCustomerRow(referenceRow, rowToCheck) ||
+          this.isInactiveCustomer(referenceRow)
+        ) {
+          return false;
+        }
+
+        return this
+          .getCustomerNamesForDuplicateCheck(referenceRow)
+          .some((referenceName) => namesToCheck.includes(referenceName));
+      });
+    });
+  }
+
+  private async hasDuplicateCustomerNameInSavedData(rowsToSave: any[]): Promise<boolean> {
+    if (!rowsToSave.length) {
+      return false;
+    }
+
+    const savedResponses = await Promise.all([
+      this.idRoot
+        ? lastValueFrom(this.customerService.getCustomersByCompany(this.idRoot, this.type)).catch(() => [])
+        : Promise.resolve([]),
+      this.idBranch !== null && this.idBranch !== undefined
+        ? lastValueFrom(this.customerService.getCustomers(this.idBranch, this.type)).catch(() => [])
+        : Promise.resolve([]),
+    ]);
+
+    const savedRows = savedResponses.flatMap((response: any) => response?.data || response || []);
+
+    return this.hasDuplicateCustomerNameBetweenRows(rowsToSave, savedRows);
+  }
+
+  private getPrimaryCustomerName(row: any): string {
+    return (
+      this.normalizeCustomerName(this.getCustomerField(row, 'nameContact')) ||
+      this.normalizeCustomerName(this.getCustomerField(row, 'company')) ||
+      this.normalizeCustomerName(this.getCustomerField(row, 'name')) ||
+      this.normalizeCustomerName(this.getCustomerField(row, 'description', 'Description'))
+    );
+  }
+
+  private async loadCustomersForDuplicateValidation(): Promise<any[]> {
+    const responses = await Promise.all([
+      this.idRoot
+        ? lastValueFrom(this.customerService.getCustomersByCompany(this.idRoot, this.type)).catch(() => [])
+        : Promise.resolve([]),
+      this.idBranch !== null && this.idBranch !== undefined
+        ? lastValueFrom(this.customerService.getCustomers(this.idBranch, this.type)).catch(() => [])
+        : Promise.resolve([]),
+    ]);
+
+    return responses.flatMap((response: any) => response?.data || response || []);
+  }
+
+  private async validateRowsToPersistAreUnique(rowsToPersist: any[]): Promise<boolean> {
+    const persistedRows = await this.loadCustomersForDuplicateValidation();
+    const persistedNamesById = new Map<string, Set<string>>();
+    const persistedNames = new Set<string>();
+
+    persistedRows.forEach((row: any) => {
+      if (this.isInactiveCustomer(row)) {
+        return;
+      }
+
+      const rowId = this.getCustomerField(row, 'id')?.toString();
+      const rowNames = this.getCustomerNamesForDuplicateCheck(row);
+
+      rowNames.forEach((name) => persistedNames.add(name));
+      if (rowId) {
+        persistedNamesById.set(rowId, new Set(rowNames));
+      }
+    });
+
+    for (const row of rowsToPersist) {
+      const rowId = this.getCustomerField(row, 'id')?.toString();
+      const rowNames = this.getCustomerNamesForDuplicateCheck(row);
+      const originalNames = rowId ? persistedNamesById.get(rowId) : null;
+
+      const hasDuplicate = rowNames.some(
+        (name) => persistedNames.has(name) && !originalNames?.has(name)
+      );
+
+      if (hasDuplicate) {
+        return false;
+      }
+
+      rowNames.forEach((name) => persistedNames.add(name));
+    }
+
+    return true;
   }
 
   async saveChanges() {
+    await this.waitForGridEditingToFinish();
+    this.rowData = this.getCurrentCustomerRows();
+
     const isValid = this.rowData.every(
       (item) => item.idBranch && (item.nameContact || item.company)
     );
@@ -954,11 +1255,31 @@ export class CustomersComponent implements CanComponentDeactivate {
       return;
     }
 
+    if (this.hasAnyDuplicateCustomerName()) {
+      alerts.basicAlert(
+        'Cliente duplicado',
+        'Este cliente ya está registrado.',
+        'error'
+      );
+      return;
+    }
+
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
     );
+    const rowsToPersist = [...newRows, ...modifiedRows].map((row) =>
+      this.cleanDataForServer(row)
+    );
 
+    if (!(await this.validateRowsToPersistAreUnique(rowsToPersist))) {
+      alerts.basicAlert(
+        'Cliente duplicado',
+        'Este cliente ya está registrado.',
+        'error'
+      );
+      return;
+    }
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);

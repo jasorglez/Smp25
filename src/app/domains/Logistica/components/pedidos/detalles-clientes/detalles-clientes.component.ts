@@ -150,7 +150,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       editable: (params) => !params.node?.group && !params.node?.footer,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
-        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO']
+        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO', 'ENTREGADO']
       },
       cellStyle: (params) => {
         if (params.node?.group) return {};
@@ -158,6 +158,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
         if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
         if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
         if (params.value === 'REVENDIDO')  return { backgroundColor: '#fff3cd' };
+        if (params.value === 'ENTREGADO')  return { backgroundColor: '#d1ecf1' };
         return { backgroundColor: '#e2e3e5' };
       }
     },

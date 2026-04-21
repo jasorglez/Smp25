@@ -21,6 +21,27 @@ export class alerts{
 	}
 
 	/*=============================================
+	Alerta minimalista (SweetAlert2 + SCSS)
+	=============================================*/
+	static minimalAlert(title: string, text: string, icon: SweetAlertIcon) {
+		return Swal.fire({
+			title,
+			text,
+			icon,
+			confirmButtonText: 'OK',
+			buttonsStyling: false,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'swal-minimal-popup',
+				title: 'swal-minimal-title',
+				htmlContainer: 'swal-minimal-text',
+				confirmButton: 'swal-minimal-btn',
+				icon: 'swal-minimal-icon',
+			},
+		});
+	}
+
+	/*=============================================
 	Función para alertas con confirmación
 	=============================================*/
 

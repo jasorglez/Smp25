@@ -73,6 +73,13 @@
           Revendido
         </button>
         <button type="button" class="btn btn-sm"
+          [style.background-color]="activeFilter === 'ENTREGADO' ? '#17a2b8' : '#d1ecf1'"
+          [style.color]="activeFilter === 'ENTREGADO' ? 'white' : '#0c5460'"
+          [style.border]="'1px solid #17a2b8'"
+          (click)="setFilter('ENTREGADO')">
+          Entregado
+        </button>
+        <button type="button" class="btn btn-sm"
           [class.btn-secondary]="activeFilter !== null"
           [class.btn-dark]="activeFilter === null"
           (click)="setFilter(null)">
