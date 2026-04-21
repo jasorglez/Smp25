@@ -18,7 +18,7 @@ COPY . .
 # Build Angular app for production
 # NODE_OPTIONS: limita heap a 1.5 GB para evitar OOM en VPS con pocos recursos
 ENV NODE_OPTIONS="--max_old_space_size=1536"
-RUN npm run build
+RUN npm run build-prod
 
 # ============================================
 # Stage 2: Serve with Nginx
