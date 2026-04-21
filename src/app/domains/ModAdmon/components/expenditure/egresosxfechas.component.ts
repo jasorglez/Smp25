@@ -1,12 +1,13 @@
-import { Component, effect, inject } from '@angular/core';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
+import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AgGridModule } from 'ag-grid-angular';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { lastValueFrom } from 'rxjs';
-import { SignalsService } from 'app/services/signals.service';
+
 import { AdministrationService } from 'app/services/administration.service';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
+import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
@@ -68,10 +69,11 @@ import { TrackingService } from 'app/services/tracking.service';
       <!-- Grid -->
       <ag-grid-angular
         class="ag-theme-quartz"
-        style="height: calc(100vh - 260px); width: 100%;"
+        style="height: calc(100vh - 260px); width: 100%; --ag-font-size: 12px; --ag-list-item-height: 30px; --ag-header-height: 30px; --ag-row-height: 30px;"
         [rowData]="rowData"
         [columnDefs]="colDefs"
         [defaultColDef]="defaultColDef"
+        [gridOptions]="gridOptions"
         [pinnedBottomRowData]="pinnedBottomRow"
         [pagination]="true"
         [paginationPageSize]="50"
@@ -98,10 +100,10 @@ import { TrackingService } from 'app/services/tracking.service';
 export class EgresosxfechasComponent {
 
   private signalsServicePriv = inject(SignalsService);
-  public  signalsService     = inject(SignalsService);
-  private administrationService   = inject(AdministrationService);
+  public signalsService = inject(SignalsService);
+  private administrationService = inject(AdministrationService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
-  public  trackingService    = inject(TrackingService);
+  public trackingService = inject(TrackingService);
 
   idRoot: number;
   idAccount: number | null = null;
@@ -112,21 +114,54 @@ export class EgresosxfechasComponent {
   rowData: any[] = [];
 
   totalSubtotal = 0;
-  totalIva      = 0;
-  totalFinal    = 0;
+  totalIva = 0;
+  totalFinal = 0;
 
   pinnedBottomRow: any[] = [];
 
   startDate: string;
-  endDate:   string;
+  endDate: string;
 
   private gridApi!: GridApi;
 
+  public gridOptions: any = {
+    animateRows: true,
+    headerHeight: 30,
+    rowHeight: 30,
+    groupDisplayType: 'singleColumn',
+    groupDefaultExpanded: 0,
+    groupIncludeFooter: true,
+    groupIncludeTotalFooter: false,
+    suppressAggFuncInHeader: true,
+    autoGroupColumnDef: {
+      headerName: 'Fecha',
+      width: 150,
+      minWidth: 95,
+      maxWidth: 160,
+      pinned: 'left',
+      sort: 'desc',
+      cellStyle: {
+        fontSize: '12px',
+      },
+      cellRendererParams: {
+        suppressCount: false,
+        footerValueGetter: (params: any) => {
+          return `Subtotal ${this.formatDate(params.value)}`;
+        }
+      }
+    },
+    getRowStyle: (params: any) => {
+      if (params.node?.footer) {
+        return { fontWeight: 'bold', backgroundColor: '#eaf4ff' };
+      }
+      return null;
+    }
+  };
+
   constructor() {
-    // Default: Jan 1 current year → today
     const now = new Date();
     this.startDate = `${now.getFullYear()}-01-01`;
-    this.endDate   = now.toISOString().substring(0, 10);
+    this.endDate = now.toISOString().substring(0, 10);
 
     effect(async () => {
       this.idRoot = this.signalsServicePriv.getRootSelectedBySidebar()();
@@ -149,7 +184,10 @@ export class EgresosxfechasComponent {
           }
           resolve();
         },
-        error: () => { this.bankAccounts = []; resolve(); }
+        error: () => {
+          this.bankAccounts = [];
+          resolve();
+        }
       });
     });
   }
@@ -160,7 +198,12 @@ export class EgresosxfechasComponent {
   }
 
   async onFilterChange() {
-    if (!this.idAccount) { this.rowData = []; return; }
+    if (!this.idAccount) {
+      this.rowData = [];
+      this.pinnedBottomRow = [];
+      return;
+    }
+
     this.loading = true;
 
     const data: any[] = await lastValueFrom(
@@ -184,15 +227,14 @@ export class EgresosxfechasComponent {
 
     this.rowData = filtered;
     this.totalSubtotal = filtered.reduce((s, c) => s + (c.total || 0), 0);
-    this.totalIva      = filtered.reduce((s, c) => s + (c.iva2 || 0), 0);
-    this.totalFinal    = filtered.reduce((s, c) => s + (c.totalFinal || 0), 0);
+    this.totalIva = filtered.reduce((s, c) => s + (c.iva2 || 0), 0);
+    this.totalFinal = filtered.reduce((s, c) => s + (c.totalFinal || 0), 0);
 
     this.pinnedBottomRow = filtered.length > 0 ? [{
-      dateExpend:     'TOTAL',
       numberDocument: `${filtered.length} registros`,
-      total:          this.totalSubtotal,
-      iva2:           this.totalIva,
-      totalFinal:     this.totalFinal,
+      total: this.totalSubtotal,
+      iva2: this.totalIva,
+      totalFinal: this.totalFinal,
     }] : [];
   }
 
@@ -201,20 +243,26 @@ export class EgresosxfechasComponent {
   }
 
   onGridFilterChanged() {
-    let subtotal = 0, iva = 0, total = 0, count = 0;
+    if (!this.gridApi) return;
+
+    let subtotal = 0;
+    let iva = 0;
+    let total = 0;
+    let count = 0;
+
     this.gridApi.forEachNodeAfterFilter(node => {
-      if (!node.data) return;
-      subtotal += node.data.total     || 0;
-      iva      += node.data.iva2      || 0;
-      total    += node.data.totalFinal || 0;
+      if (!node.data || node.group || node.footer || node.rowPinned) return;
+      subtotal += node.data.total || 0;
+      iva += node.data.iva2 || 0;
+      total += node.data.totalFinal || 0;
       count++;
     });
+
     this.pinnedBottomRow = count > 0 ? [{
-      dateExpend:     'TOTAL',
       numberDocument: `${count} registros`,
-      total:          subtotal,
-      iva2:           iva,
-      totalFinal:     total,
+      total: subtotal,
+      iva2: iva,
+      totalFinal: total,
     }] : [];
   }
 
@@ -223,42 +271,45 @@ export class EgresosxfechasComponent {
     resizable: true,
     filter: true,
     minWidth: 80,
+    cellStyle: {
+      fontSize: '12px',
+    },
   };
 
   public colDefs: ColDef[] = [
     {
       headerName: '#',
       width: 55,
-      valueGetter: p => (p.node!.rowIndex! % 50) + 1,
+      valueGetter: p => p.node?.group || p.node?.footer ? '' : (p.node!.rowIndex! % 50) + 1,
       pinned: 'left',
       cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
       filter: false,
     },
     {
       field: 'dateExpend',
-      headerName: 'Fecha',
-      width: 150,
+      rowGroup: true,
+      hide: true,
       sort: 'desc',
-      valueFormatter: p => {
-        if (!p.value) return '';
-        const [y, m, d] = String(p.value).substring(0, 10).split('-');
-        return `${d}/${m}/${y}`;
-      },
+      valueGetter: p => String(p.data?.dateExpend || '').substring(0, 10),
+      comparator: (a, b) => String(a || '').localeCompare(String(b || '')),
     },
     {
       field: 'numberDocument',
       headerName: '# Documento',
-      width: 150,
+      width: 140,
+      valueFormatter: p => p.node?.group || p.node?.footer ? '' : (p.value || ''),
     },
     {
       field: 'entityType',
       headerName: 'Tipo',
-      width: 140,
+      width: 130,
       cellRenderer: (p: any) => {
+        if (p.node?.group || p.node?.footer) return '';
+
         const map: any = {
-          'PROVEEDOR': '<span class="badge bg-primary">P</span> Proveedor',
-          'EMPLEADO':  '<span class="badge bg-warning text-dark">E</span> Empleado',
-          'OTRO':      '<span class="badge bg-secondary">O</span> Otro',
+          PROVEEDOR: '<span class="badge bg-primary">P</span> Proveedor',
+          EMPLEADO: '<span class="badge bg-warning text-dark">E</span> Empleado',
+          OTRO: '<span class="badge bg-secondary">O</span> Otro',
         };
         return map[p.value] || p.value || '';
       },
@@ -266,63 +317,86 @@ export class EgresosxfechasComponent {
     {
       field: 'entityName',
       headerName: 'Proveedor / Empleado',
-      width: 250,
+      width: 220,
       filter: true,
+      valueFormatter: p => p.node?.group || p.node?.footer ? '' : (p.value || ''),
     },
     {
       field: 'description',
-      headerName: 'Descripción',
-      width: 250,
+      headerName: 'Descripcion',
+      width: 230,
       filter: true,
+      valueFormatter: p => p.node?.group || p.node?.footer ? '' : (p.value || ''),
       cellStyle: { whiteSpace: 'normal', lineHeight: '1.3' },
     },
     {
       field: 'quantity',
       headerName: 'Cantidad',
-      width: 150,
+      width: 130,
       type: 'numericColumn',
-      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) : '',
+      valueFormatter: p => p.node?.group || p.node?.footer ? '' : (p.value != null ? Number(p.value).toFixed(2) : ''),
     },
     {
       field: 'price',
       headerName: 'Precio',
-      width: 150,
+      width: 120,
       type: 'numericColumn',
-      valueFormatter: p => p.value != null
-        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      valueFormatter: p => p.node?.group || p.node?.footer ? '' : (
+        p.value != null
+          ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+          : ''
+      ),
     },
     {
       field: 'total',
       headerName: 'Subtotal',
-      width: 150,
+      width: 120,
       type: 'numericColumn',
+      aggFunc: 'sum',
       valueFormatter: p => p.value != null
-        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        : '',
       cellStyle: p => p.node.rowPinned
         ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
-        : { fontWeight: '500' },
+        : p.node?.footer
+          ? { fontWeight: 'bold', color: '#0b5394' }
+          : { fontWeight: '500' },
     },
     {
       field: 'iva2',
       headerName: 'IVA',
-      width: 130,
+      width: 120,
       type: 'numericColumn',
+      aggFunc: 'sum',
       valueFormatter: p => p.value != null
-        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        : '',
       cellStyle: p => p.node.rowPinned
         ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
-        : {},
+        : p.node?.footer
+          ? { fontWeight: 'bold', color: '#0b5394' }
+          : {},
     },
     {
       field: 'totalFinal',
       headerName: 'Total Final',
-      width: 150,
+      width: 140,
       type: 'numericColumn',
+      aggFunc: 'sum',
       valueFormatter: p => p.value != null
-        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        : '',
       cellStyle: p => p.node.rowPinned
         ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff', fontSize: '0.95rem' }
-        : { fontWeight: 'bold', color: '#155724' },
+        : p.node?.footer
+          ? { fontWeight: 'bold', color: '#0b5394', fontSize: '0.95rem' }
+          : { fontWeight: 'bold', color: '#155724' },
     },
   ];
+
+  private formatDate(value: string) {
+    if (!value) return '';
+    const [y, m, d] = String(value).substring(0, 10).split('-');
+    return y && m && d ? `${d}/${m}/${y}` : value;
+  }
 }
