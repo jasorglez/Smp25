@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
@@ -8,15 +8,16 @@ import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-rend
 import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.component';
 import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
+import { ComparacionPreciosComponent } from './comparacion-precios.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, ComparacionPreciosComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
-      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+      <div style="flex: 1 1 auto; min-height: 0; overflow: auto;">
         <ag-grid-angular
           #agGrid
           class="ag-theme-quartz small-text-ag-grid"
@@ -25,7 +26,7 @@ import { DetailCellRendererPedimentoReportComponent } from './detail-cell-render
           [gridOptions]="gridOptions"
           [localeText]="AG_GRID_LOCALE_ES"
           (gridReady)="onGridReady($event)"
-          style="width: 150%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+          style="width: 100%; height: 100%;">
         </ag-grid-angular>
       </div>
     </div>
@@ -41,7 +42,7 @@ import { DetailCellRendererPedimentoReportComponent } from './detail-cell-render
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
-      overflow: hidden;
+      overflow: auto;
     }
   `]
 })
@@ -59,6 +60,24 @@ export class DetailCellRendererPedimentosComponent {
 
   onGridReady(params: any) {
     this.gridApi = params.api;
+    this.autoAdjustColumns();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.autoAdjustColumns();
+  }
+
+  private autoAdjustColumns() {
+    if (!this.gridApi) return;
+    const apiAny = this.gridApi as any;
+    if (typeof apiAny.autoSizeAllColumns === 'function') {
+      apiAny.autoSizeAllColumns(true);
+      return;
+    }
+    if (typeof apiAny.sizeColumnsToFit === 'function') {
+      apiAny.sizeColumnsToFit();
+    }
   }
 
   buildRowData() {
@@ -164,7 +183,7 @@ export class DetailCellRendererPedimentosComponent {
 
       {
         field: 'creo',
-        headerName: 'QUIEN LO CREÓ2',
+        headerName: 'QUIEN LO CREÓ',
         width: 180
       },
 
@@ -217,6 +236,20 @@ export class DetailCellRendererPedimentosComponent {
       },
 
       {
+        field: 'comparacion',
+        headerName: 'COMPARACIÓN',
+        width: 180,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleComparacionCascade(node),
+          icon: 'bi-scale-balanced',
+          title: 'Comparar Precios de Proveedores'
+        },
+        valueGetter: () => 'Comparar',
+        cellStyle: { backgroundColor: '#e8eef5', cursor: 'pointer' }
+      },
+
+      {
         field: 'createdBy',
         headerName: 'CREÓ',
         width: 200
@@ -235,7 +268,14 @@ export class DetailCellRendererPedimentosComponent {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 550,
+    detailRowHeight: 460,
+    defaultColDef: {
+      resizable: true,
+      sortable: true,
+      filter: true,
+      flex: 1,
+      minWidth: 120,
+    },
     detailCellRendererSelector: (params: any) => {
       if (params.data.detailType === 'proveedor') {
         return {
@@ -252,6 +292,15 @@ export class DetailCellRendererPedimentosComponent {
           params: {
             reportProviderField: params.data.reportProviderField,
             reportProviderLabel: params.data.reportProviderLabel
+          }
+        };
+      }
+      if (params.data.detailType === 'comparacion') {
+        return {
+          component: ComparacionPreciosComponent,
+          params: {
+            selectedProviderIds: [params.data.idProvider, params.data.idProvider2, params.data.idProvider3],
+            selectedProviderNames: [params.data.name_idProvider, params.data.name_idProvider2, params.data.name_idProvider3]
           }
         };
       }
@@ -446,6 +495,63 @@ export class DetailCellRendererPedimentosComponent {
       this.gridApi.redrawRows();
 
       // Expandir con el detalle del reporte
+      setTimeout(() => {
+        node.setExpanded(true);
+      }, 0);
+    }
+  }
+
+  toggleComparacionCascade(node: any) {
+    node.setSelected(true);
+
+    // Verificar si ya está expandido con comparación
+    const isCurrentlyExpanded = node.expanded &&
+      node.data.detailType === 'comparacion' &&
+      this.expandedRowId === node.id;
+
+    if (isCurrentlyExpanded) {
+      // Si ya está expandido, colapsarlo y restaurar todas las filas
+      node.setExpanded(false);
+      this.expandedRowId = null;
+      node.data.isExpanded = false;
+
+      // Restaurar alturas de todas las filas
+      this.gridApi.forEachNode((otherNode: any) => {
+        otherNode.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+    } else {
+      // Colapsar cualquier otra fila expandida
+      if (this.expandedRowId) {
+        this.gridApi.forEachNode((otherNode: any) => {
+          if (otherNode.id === this.expandedRowId) {
+            otherNode.setExpanded(false);
+            otherNode.data.isExpanded = false;
+          }
+        });
+      }
+
+      // Ocultar todas las demás filas (altura 0)
+      this.gridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        }
+      });
+
+      // Establecer el tipo de detalle como comparación
+      node.data.detailType = 'comparacion';
+
+      // Guardar el ID de la fila expandida
+      this.expandedRowId = node.id;
+      node.data.isExpanded = true;
+      this.activeDetailType = 'comparacion';
+
+      // Aplicar los cambios de altura
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.redrawRows();
+
+      // Expandir con el detalle de comparación
       setTimeout(() => {
         node.setExpanded(true);
       }, 0);

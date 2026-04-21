@@ -1,22 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { concat, lastValueFrom } from 'rxjs';
-import { toArray, tap } from 'rxjs/operators';
-import { RouterModule } from '@angular/router';
-import { DomainsModule } from 'app/domains/domainsmodule';
-
-import { ColDef, GridApi, GridReadyEvent, RowSelectedEvent } from 'ag-grid-enterprise';
- 
-import { AgGridModule } from 'ag-grid-angular';
-import { Router } from '@angular/router';
-
 import { SignalsService } from 'app/services/signals.service';
 import { FamilySubFamilyComponent } from 'app/domains/Almacenes/components/FamilySubFamily/FamilySubFamily.component';
-
+import { AutorizacionMontosComponent } from './autorizacion-montos/autorizacion-montos.component';
 
 @Component({
   selector: 'app-configShoppingDelison',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, FamilySubFamilyComponent],
+  imports: [FamilySubFamilyComponent, AutorizacionMontosComponent],
   templateUrl: './configSubPage.component.html',
 })
 export class configShoppingDelisonComponent {

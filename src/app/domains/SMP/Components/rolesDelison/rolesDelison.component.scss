@@ -1,3 +1,35 @@
+/* Pestaña interna + botonera + grid (mismo criterio que Usuarios) */
+.roles-tab-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.roles-tab-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.roles-main-row {
+  flex: 1;
+  min-height: 0;
+}
+
+.roles-grid-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.roles-grid-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Modal host para Ver Permisos (por posición) */
 .permissions-overlay {
   position: fixed;

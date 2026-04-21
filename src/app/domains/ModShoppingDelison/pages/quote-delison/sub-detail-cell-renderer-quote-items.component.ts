@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, HostListener, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -31,7 +31,7 @@ import { alerts } from 'app/helpers/alerts';
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
-        style="height: 150px; width: 100%;">
+        style="height: 100%; width: 100%; min-height: 220px;">
       </ag-grid-angular>
     </div>
   `,
@@ -39,6 +39,10 @@ import { alerts } from 'app/helpers/alerts';
     .sub-detail-grid-container {
       padding: 5px;
       background-color: #f0f0f0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
   `]
 })
@@ -59,6 +63,24 @@ export class SubDetailCellRendererQuoteItemsComponent implements OnInit {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    this.autoAdjustColumns();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.autoAdjustColumns();
+  }
+
+  private autoAdjustColumns() {
+    if (!this.gridApi) return;
+    const apiAny = this.gridApi as any;
+    if (typeof apiAny.autoSizeAllColumns === 'function') {
+      apiAny.autoSizeAllColumns(true);
+      return;
+    }
+    if (typeof apiAny.sizeColumnsToFit === 'function') {
+      apiAny.sizeColumnsToFit();
+    }
   }
 
   colDefs: ColDef[] = [
@@ -123,6 +145,13 @@ export class SubDetailCellRendererQuoteItemsComponent implements OnInit {
     animateRows: true,
     rowSelection: 'single',
     singleClickEdit: true,
+    defaultColDef: {
+      resizable: true,
+      sortable: true,
+      filter: true,
+      flex: 1,
+      minWidth: 120,
+    },
   };
 
   // --- Lógica de botones CRUD ---

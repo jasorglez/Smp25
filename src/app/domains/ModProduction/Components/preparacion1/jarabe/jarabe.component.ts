@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { MaterialJarabeService } from 'app/services/material-jarabe.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetalleWrapperComponent } from './detalle-wrapper.component';
 import { alerts } from 'app/helpers/alerts';
@@ -86,6 +87,7 @@ export class JarabeComponent implements OnInit {
   private authService = inject(AuthService);
   private branchsService = inject(BranchsService);
   private materialsService = inject(MaterialsService);
+  private materialJarabeService = inject(MaterialJarabeService);
   private gridApi!: GridApi;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
@@ -454,9 +456,36 @@ export class JarabeComponent implements OnInit {
           options: this.rawMaterialNames.map(name => ({ id: name, description: name })),
         }),
         valueSetter: (params) => {
-          params.data.articulo = params.newValue ?? '';
+          const name = params.newValue ?? '';
+          params.data.articulo = name;
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
+
+          if (params.data.__isNew && name) {
+            const material = this.rawMaterials.find(m => (m.articulo || m.description || m.insumo) === name);
+            if (material?.id) {
+              params.data.__idMaterialJarabe = material.id;
+              this.materialJarabeService.getByMaterial(material.id).subscribe({
+                next: (config) => {
+                  if (config?.usarEnJarabe) {
+                    params.data.nota = config.prefijoNota
+                      ? `${config.prefijoNota}${String(config.consecutivoNota ?? 0).padStart(3, '0')}`
+                      : String(config.consecutivoNota ?? 0);
+                    params.data.lote = config.prefijoLote
+                      ? `${config.prefijoLote}${String(config.consecutivoLote ?? 0).padStart(3, '0')}`
+                      : String(config.consecutivoLote ?? 0);
+                  } else {
+                    params.data.__idMaterialJarabe = null;
+                  }
+                  if (this.gridApi) {
+                    const node = params.node;
+                    this.gridApi.refreshCells({ rowNodes: [node], columns: ['nota', 'lote'], force: true });
+                  }
+                }
+              });
+            }
+          }
+
           return true;
         }
       },
@@ -822,6 +851,21 @@ export class JarabeComponent implements OnInit {
         item.__isNew = false;
         item.__modified = false;
         item.saved = true;
+
+        if (item.__idMaterialJarabe) {
+          try {
+            const config = await lastValueFrom(this.materialJarabeService.getByMaterial(item.__idMaterialJarabe));
+            if (config?.usarEnJarabe) {
+              await lastValueFrom(this.materialJarabeService.save(item.__idMaterialJarabe, {
+                ...config,
+                consecutivoNota: (config.consecutivoNota ?? 0) + 1,
+                consecutivoLote: (config.consecutivoLote ?? 0) + 1
+              }));
+            }
+          } catch (e) {
+            console.error('Error incrementing jarabe consecutivo for material', item.__idMaterialJarabe, e);
+          }
+        }
       }
 
       for (const item of modifiedItems) {

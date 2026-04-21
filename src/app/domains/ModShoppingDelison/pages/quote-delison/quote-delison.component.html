@@ -1,15 +1,14 @@
-<div class="container-fluid mt-3">
-  <div class="card">
+<div class="container-fluid mt-3 quote-delison-page">
+  <div class="card quote-delison-card">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="card-title mb-0">Cotizaciones</h5>
  
     </div>
    
-    <div class="card-body">
+    <div class="card-body quote-delison-card-body">
       <ag-grid-angular
-        style="width: 100%;"
-        [ngStyle]="{'height': gridHeight}"
-        class="ag-theme-quartz small-text-ag-grid"
+        class="ag-theme-quartz small-text-ag-grid quote-delison-grid"
+        [style.height.px]="gridHeightPx"
         [columnDefs]="colMaster"
         [rowData]="rowData"
         [gridOptions]="gridOptions"

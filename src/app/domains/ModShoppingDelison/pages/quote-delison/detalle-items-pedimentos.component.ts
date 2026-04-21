@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp, AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -39,7 +39,7 @@ import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell
       </div>
 
       <!-- Grid con tamaño completo -->
-      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+      <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
           [rowData]="rowData"
@@ -47,7 +47,7 @@ import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell
           [gridOptions]="gridOptions"
           [localeText]="AG_GRID_LOCALE_ES"
           (gridReady)="onGridReady($event)"
-          style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+          style="width: 100%; flex: 1 1 auto; min-height: 0;">
         </ag-grid-angular>
       </div>
     </div>
@@ -157,6 +157,24 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     this.gridApi = params.api;
     if (this.articulosLocked) {
       this.gridApi.setGridOption('suppressClickEdit', true);
+    }
+    this.autoAdjustColumns();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.autoAdjustColumns();
+  }
+
+  private autoAdjustColumns() {
+    if (!this.gridApi) return;
+    const apiAny = this.gridApi as any;
+    if (typeof apiAny.autoSizeAllColumns === 'function') {
+      apiAny.autoSizeAllColumns(true);
+      return;
+    }
+    if (typeof apiAny.sizeColumnsToFit === 'function') {
+      apiAny.sizeColumnsToFit();
     }
   }
 
@@ -521,6 +539,13 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
+    defaultColDef: {
+      resizable: true,
+      sortable: true,
+      filter: true,
+      flex: 1,
+      minWidth: 120,
+    },
     onRowClicked: (event: any) => {
       this.selectedRow = event.data;
     }

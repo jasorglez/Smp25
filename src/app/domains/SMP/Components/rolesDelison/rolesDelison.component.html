@@ -1,37 +1,48 @@
 <div class="row p-3">
-    <div class="col-12">
-        <div class="row mb-3" [ngStyle]="{ height: gridHeight }">
-            <nav class="col-auto d-flex flex-column align-items-start">
-                <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()" ><i
-                        class="bi bi-plus-lg"></i></button>
-                <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()" >
-                    <i class="bi bi-floppy"></i>
-                    <span
-                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                        *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
-                    </span>
-                </button>
-                <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()"><i
-                        class="bi bi-arrow-clockwise"></i></button>
-                <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteRol()" ><i
-                        class="bi bi-trash"></i></button>
-            </nav>
-            <div class="col">
-                <div class="row">
-                    <ag-grid-angular style="width: 100%"
-                    [ngStyle]="{ height: gridHeight }"
-                        class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData" [columnDefs]="columnDefs"
-                        [pagination]="false" [paginationPageSize]="paginationPageSize"
-                        [paginationPageSizeSelector]="paginationPageSizeSelector" rowSelection="single"
-                        (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)"
-                        (rowSelected)="onSelectedRow($event)" (gridReady)="onGridReady($event)" (cellClicked)="onCellClicked($event)"
-                        [components]="components" [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
-                    </ag-grid-angular>
-                </div>
-            </div>
+  <div class="col-12 mt-2 roles-tab-root">
+    <ul class="nav nav-tabs mb-0" role="tablist">
+      <li class="nav-item" role="presentation">
+        <span id="tab-departamentos-listado" class="nav-link active" role="tab" aria-selected="true">
+          Departamentos
+        </span>
+      </li>
+    </ul>
+    <div
+      class="tab-content border border-top-0 rounded-bottom p-2 pt-3 bg-body roles-tab-panel"
+      role="tabpanel"
+      aria-labelledby="tab-departamentos-listado">
+      <div class="row mb-3 align-items-stretch g-2 roles-main-row">
+        <nav class="col-auto d-flex flex-column align-items-start">
+          <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()"><i
+              class="bi bi-plus-lg"></i></button>
+          <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
+            <i class="bi bi-floppy"></i>
+            <span
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+            </span>
+          </button>
+          <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()"><i
+              class="bi bi-arrow-clockwise"></i></button>
+          <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteRol()"><i
+              class="bi bi-trash"></i></button>
+        </nav>
+        <div class="col roles-grid-col">
+          <div class="roles-grid-wrapper">
+            <ag-grid-angular style="width: 100%"
+              [ngStyle]="{ height: gridHeight }"
+              class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData" [columnDefs]="columnDefs"
+              [pagination]="false" [paginationPageSize]="paginationPageSize"
+              [paginationPageSizeSelector]="paginationPageSizeSelector" rowSelection="single"
+              (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)"
+              (rowSelected)="onSelectedRow($event)" (gridReady)="onGridReady($event)" (cellClicked)="onCellClicked($event)"
+              [components]="components" [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
+            </ag-grid-angular>
+          </div>
         </div>
+      </div>
     </div>
-
+  </div>
 </div>
 
 <!-- Modal de Permisos (host a nivel del módulo para evitar clipping del AG Grid) -->

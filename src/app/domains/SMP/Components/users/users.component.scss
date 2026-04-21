@@ -4,52 +4,28 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-// ─── Contenedor principal ─────────────────────────────────────────────────────
-.users-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 195px);
-  padding: 0 12px 12px;
-  gap: 10px;
+// ─── Listado: pestaña interna + botonera lateral + grid (tipo Proveedores) ─
+.users-tab-root {
   animation: fadeSlideIn 0.3s ease both;
 }
 
-// ─── Toolbar ─────────────────────────────────────────────────────────────────
-.users-toolbar {
+.users-tab-panel {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 4px 0;
-  flex-shrink: 0;
+  flex-direction: column;
+  min-height: 0;
+  height: calc(100vh - 228px);
 }
 
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.users-main-row {
+  flex: 1;
+  min-height: 0;
 }
 
-// ─── Botones de acción ────────────────────────────────────────────────────────
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
-  position: relative;
-
-  &:hover  { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-  &:active { transform: translateY(0);    box-shadow: none; filter: brightness(0.9); }
-
-  &.add    { background: #3b82f6; color: #fff; }
-  &.save   { background: #22c55e; color: #fff; }
-  &.revert { background: #f59e0b; color: #fff; }
-  &.delete { background: #ef4444; color: #fff; }
+.users-grid-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
 }
 
 // ─── Punto de cambios sin guardar ─────────────────────────────────────────────
@@ -74,6 +50,8 @@
 .users-grid-wrapper {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);

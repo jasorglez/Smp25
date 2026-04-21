@@ -109,4 +109,9 @@ export class OcAndReqsService {
       { headers: this.trackingService.getHeaders() });
   }
 
+  getComparisonData(pedimentoId: number): Observable<any> {
+    return this.http.get(`${environment.urlWarehouse}/Ocandreq/${pedimentoId}/comparison`,
+      { headers: this.trackingService.getHeaders() });
+  }
+
 }
