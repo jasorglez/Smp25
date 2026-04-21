@@ -1057,6 +1057,85 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     );
   }
 
+  /**
+   * Traduce la plantilla rol+posición al conjunto de ids que alimenta los
+   * switches maestros del modal de usuario.
+   *
+   * Se apoya en el árbol agrupado y sus flags `masterRead/detailedRead` para
+   * que coincida con lo que realmente se ve en Roles > Ver Permisos.
+   */
+  private buildUserSystemSeedFromRoleTemplateRows(templateRows: any[]): number[] {
+    if (!Array.isArray(templateRows) || templateRows.length === 0) {
+      return [];
+    }
+
+    const seed = new Set<number>();
+    const grouped = this.transformData(templateRows);
+
+    for (const master of grouped) {
+      if (master.masterRead) {
+        const masterToggleId = this.getCatalogDetailedIdForMasterToggle(master.masterPermissionName);
+        if (masterToggleId != null) {
+          seed.add(masterToggleId);
+        }
+      }
+
+      for (const detail of master.details || []) {
+        if (!detail.detailedRead) {
+          continue;
+        }
+        const detailId = this.getDetailedPermissionIdForDetail(detail);
+        if (detailId != null) {
+          seed.add(detailId);
+        }
+      }
+    }
+
+    return [...seed];
+  }
+
+  /**
+   * En usuario nuevo, el switch maestro izquierdo debe reflejar exactamente la
+   * plantilla del rol+posición. Si la plantilla trae un módulo apagado, lo
+   * apagamos también aquí aunque existan `detailedRead` residuales en filas CRUD.
+   */
+  private applyRoleTemplateMasterStatesToGroupedPermissions(): void {
+    if (!Array.isArray(this.roleTemplateCrudRows) || this.roleTemplateCrudRows.length === 0) {
+      return;
+    }
+
+    const templateGrouped = this.transformData(this.roleTemplateCrudRows);
+    const templateMasterByNorm = new Map<string, MasterPermission>();
+
+    for (const master of templateGrouped) {
+      const norm = this.normalizar(master.masterPermissionName || '');
+      if (norm) {
+        templateMasterByNorm.set(norm, master);
+      }
+    }
+
+    for (const master of this.groupedPermissions) {
+      const norm = this.normalizar(master.masterPermissionName || '');
+      const templateMaster = templateMasterByNorm.get(norm);
+      if (!templateMaster) {
+        continue;
+      }
+
+      master.masterRead = !!templateMaster.masterRead;
+
+      if (!templateMaster.masterRead) {
+        for (const detail of master.details || []) {
+          detail.detailedRead = false;
+        }
+        if (this.isConfiguracionMaster(master)) {
+          this.zeroCrudReadsForConfiguracionEdges(master);
+        } else {
+          this.zeroCrudReadsForMaster(master);
+        }
+      }
+    }
+  }
+
   /** Mismo usuario que la sesión (perfil o signal) para refrescar menú / guard sin F5. */
   private isEditingSessionUser(): boolean {
     const rowUser = Number(this.userId);
@@ -1285,6 +1364,9 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
             this.userSystemPermissionIds = [...seed];
           }
         }
+        if (seededFromRoleTemplateVisual) {
+          this.userSystemPermissionIds = this.buildUserSystemSeedFromRoleTemplateRows(this.roleTemplateCrudRows);
+        }
         this.userSystemPermissionIdsBaseline = [...this.userSystemPermissionIds];
         // Cuando se abre desde "Departamentos de:" y el usuario no tiene CRUD rows propios,
         // usar la plantilla como rawData (usuario nuevo sin permisos previos guardados).
@@ -1303,6 +1385,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
           // UserSystemPermissions propios (que son switches maestros, fuente distinta).
           if (seededFromRoleTemplateVisual) {
             this.applyTemplateCrudFlagsToGroupedPermissions();
+            this.applyRoleTemplateMasterStatesToGroupedPermissions();
           } else if (seedFromRolePos && userHasOwnCrud) {
             // El usuario ya tiene sus CRUD rows guardados (con los flags correctos del template).
             // rebuildGroupedPermissionsFromRaw() ya los leyó correctamente — no sobreescribir

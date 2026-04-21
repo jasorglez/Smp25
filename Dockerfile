@@ -26,7 +26,7 @@ RUN apk add --no-cache curl
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.docker.conf /etc/nginx/conf.d/default.conf
 
-COPY --from=build /app/dist/bi-aug-24/browser /usr/share/nginx/html
+COPY --from=build /app/dist/Delison/browser /usr/share/nginx/html
 
 EXPOSE 80
 

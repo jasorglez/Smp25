@@ -39,7 +39,7 @@ ng build --watch --configuration nt
 
 ## Project Architecture
 
-This is an Angular 18 application (project name: "bi-aug-24") with domain-driven architecture. The application connects to a C# backend and uses Firebase for authentication.
+This is an Angular 18 application (project name: "Delison") with domain-driven architecture. The application connects to a C# backend and uses Firebase for authentication.
 
 ### Domain Structure
 - `src/app/domains/` - Business domains (ModSales, ModProjects, ModAdmon, etc.)

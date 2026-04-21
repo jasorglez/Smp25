@@ -26,7 +26,7 @@ import { environment } from '@env/environment';
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-        <strong>Departamentos de putos: {{ userName }} ({{ branchName }})</strong>
+        <strong>Departamentos de: {{ userName }} ({{ branchName }})</strong>
         <div class="d-flex">
           <button
             class="btn btn-primary ms-1"
@@ -210,6 +210,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   }
 
   empleadoPrincipal: any = null;
+  idEmpleado: number = 0;
 
   warehousesGridOptions: any = {
     headerHeight: 25,
@@ -543,6 +544,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.branchName = params.data.name || '';
     this.isBranchPrincipal = !!params.data.principal;
     this.idCompany = Number(params.data.idCompany ?? this.signalsService.getRootSelectedBySidebar()());
+    this.idEmpleado = Number(params.data.id_empleado ?? params.data.idEmployee ?? params.data.idEmpleado ?? 0);
     this.loadCatalogs();
     this.getGeneralPosicion();
     this.getRoles();
@@ -608,11 +610,15 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
   }
 
   obternerDatos() {
+    const empleado$ = this.idEmpleado > 0
+      ? this.employeeService.getEmployeeById(this.idEmpleado).pipe(catchError(() => of(null)))
+      : this.employeeService.getEmployees(this.branchId).pipe(catchError(() => of([])));
+
     forkJoin({
       permisos: this.permitionsService.getRolYPosicion(this.userId, this.branchId),
-      empleados: this.employeeService.getEmployees(this.branchId)
+      empleadoData: empleado$,
     }).subscribe({
-      next: ({ permisos, empleados }: any) => {
+      next: ({ permisos, empleadoData }: any) => {
         const permisosArr =
           Array.isArray(permisos)
             ? permisos
@@ -623,105 +629,59 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
                 : Array.isArray(permisos?.permissions)
                   ? permisos.permissions
                   : [];
-        const empleadosArr = Array.isArray(empleados) ? empleados : [];
 
-        // Normalizar nombres de campos que varían por backend (camelCase/PascalCase)
-        // para que el grid SIEMPRE tenga idRole/idPosicion y pueda formatear con catálogos.
         this.warehousesRowDataOriginal = [];
         this.warehousesRowData = (permisosArr || []).map((r: any) => {
           const idRole =
-            r?.idRole ??
-            r?.IdRole ??
-            r?.idDepto ??
-            r?.IdDepto ??
-            r?.idDepartament ??
-            r?.IdDepartament ??
-            null;
+            r?.idRole ?? r?.IdRole ?? r?.idDepto ?? r?.IdDepto ??
+            r?.idDepartament ?? r?.IdDepartament ?? null;
           const idPosicion =
-            r?.idPosicion ??
-            r?.IdPosicion ??
-            r?.idPosition ??
-            r?.IdPosition ??
-            r?.id_position ??
-            r?.Id_position ??
-            null;
+            r?.idPosicion ?? r?.IdPosicion ?? r?.idPosition ?? r?.IdPosition ??
+            r?.id_position ?? r?.Id_position ?? null;
           const principal =
-            r?.principal ??
-            r?.Principal ??
-            r?.isPrincipal ??
-            r?.IsPrincipal ??
-            false;
-
-          return {
-            ...r,
-            idRole,
-            idPosicion,
-            principal,
-          };
+            r?.principal ?? r?.Principal ?? r?.isPrincipal ?? r?.IsPrincipal ?? false;
+          const permissionsInitialized =
+            r?.permissionsInitialized ?? r?.PermissionsInitialized ?? false;
+          return { ...r, idRole, idPosicion, principal, permissionsInitialized };
         });
 
         this.warehousesRowDataOriginal = JSON.parse(JSON.stringify(this.warehousesRowData));
 
-        // 1) Si el backend envía una fila con principal === true/1, usarla para marcar el checkbox
+        // 1) Si alguna fila tiene principal=true en DB, usarla directamente
         const rowPrincipal = this.warehousesRowData.find(
           (r: any) => r?.principal === true || r?.principal === 1
         );
         if (rowPrincipal && rowPrincipal.idRole != null && rowPrincipal.idPosicion != null) {
-          this.empleadoPrincipal = {
-            idDepto: rowPrincipal.idRole,
-            idPosition: rowPrincipal.idPosicion,
-          };
+          this.empleadoPrincipal = { idDepto: rowPrincipal.idRole, idPosition: rowPrincipal.idPosicion };
+        } else if (this.idEmpleado > 0 && empleadoData) {
+          // 2) Ruta directa: id_empleado → empleado → depto/posicion sin heurísticas de nombre
+          const emp = Array.isArray(empleadoData) ? empleadoData[0] : empleadoData;
+          const empDepto = emp?.idDepto ?? emp?.IdDepto ?? emp?.id_depto ?? emp?.idDepartament ?? null;
+          const empPos = emp?.idPosition ?? emp?.IdPosition ?? emp?.id_position ?? null;
+          this.empleadoPrincipal = (empDepto != null && empPos != null)
+            ? { idDepto: empDepto, idPosition: empPos }
+            : null;
         } else {
+          // 3) Fallback por nombre/email cuando no hay id_empleado (usuarios legacy)
+          const empleadosArr = Array.isArray(empleadoData) ? empleadoData : [];
           const normalize = (s: any) =>
-            String(s ?? '')
-              .toUpperCase()
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/\s+/g, ' ')
-              .trim();
-
-          // 2) Fallback robusto: buscar empleado por email primero; si no, por nombre normalizado.
+            String(s ?? '').toUpperCase().normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
           const userEmailNorm = normalize(this.userEmail);
           const userNameNorm = normalize(this.userName);
-
           const emp =
-            (userEmailNorm
-              ? empleadosArr.find((e: any) => normalize(e.email) === userEmailNorm)
-              : null) ??
-            (userNameNorm
-              ? empleadosArr.find((e: any) => {
-                  const n = normalize(e.name ?? e.displayName);
-                  return n === userNameNorm || (n && userNameNorm && n.includes(userNameNorm));
-                })
-              : null);
-
-          const empDepto =
-            emp?.idRole ??
-            emp?.IdRole ??
-            emp?.idDepto ??
-            emp?.IdDepto ??
-            emp?.idDepartament ??
-            emp?.IdDepartament ??
-            emp?.id_departament ??
-            emp?.Id_departament ??
-            null;
-          const empPos =
-            emp?.idPosition ??
-            emp?.IdPosition ??
-            emp?.idPosicion ??
-            emp?.IdPosicion ??
-            emp?.id_position ??
-            emp?.Id_position ??
-            null;
-
-          if (emp && empDepto != null && empPos != null) {
-            this.empleadoPrincipal = {
-              idDepto: empDepto,
-              idPosition: empPos,
-            };
-          } else {
-            this.empleadoPrincipal = null;
-          }
+            (userEmailNorm ? empleadosArr.find((e: any) => normalize(e.email) === userEmailNorm) : null) ??
+            (userNameNorm ? empleadosArr.find((e: any) => {
+              const n = normalize(e.name ?? e.displayName);
+              return n === userNameNorm || (n && userNameNorm && n.includes(userNameNorm));
+            }) : null);
+          const empDepto = emp?.idRole ?? emp?.IdRole ?? emp?.idDepto ?? emp?.IdDepto ??
+            emp?.idDepartament ?? emp?.IdDepartament ?? emp?.id_departament ?? null;
+          const empPos = emp?.idPosition ?? emp?.IdPosition ?? emp?.idPosicion ?? emp?.IdPosicion ??
+            emp?.id_position ?? null;
+          this.empleadoPrincipal = (emp && empDepto != null && empPos != null)
+            ? { idDepto: empDepto, idPosition: empPos }
+            : null;
         }
 
         this.mergeEmpleadoPrincipalRowIfMissing();
@@ -865,7 +825,11 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
 
       return this.permitionsService.addPermitionsDetailBydescription(cleanedData).pipe(
         catchError(() => of(null)),
-        map(() => ({ idRole, idPosicion }))
+        map((created: any) => ({
+          id: created?.id ?? created?.Id ?? null,
+          idRole,
+          idPosicion,
+        }))
       );
     });
 
@@ -899,7 +863,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
 
     try {
       // 1. Guardar filas dept/posición (nuevas y modificadas)
-      const addResults: { idRole: number; idPosicion: number }[] = newRows.length > 0
+      const addResults: { id: number | null; idRole: number; idPosicion: number }[] = newRows.length > 0
         ? await lastValueFrom(forkJoin(addObservables))
         : [];
       if (updateObservables.length > 0) {
@@ -952,7 +916,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         }
 
         // 3. Merge UserSystem permissions: actuales del usuario + ids ON del template
-        for (const { idRole, idPosicion } of addResults.filter((r) => r?.idRole && r?.idPosicion)) {
+        for (const { id, idRole, idPosicion } of addResults.filter((r) => r?.idRole && r?.idPosicion)) {
           const templateRows: any[] = await lastValueFrom(
             this.rolesService.getPermissionsByRoles(this.idCompany, idRole, idPosicion).pipe(catchError(() => of([])))
           );
@@ -984,6 +948,12 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
           await lastValueFrom(
             this.systemPermissionsService.updateUserPermissions(this.userId, [...currentIds]).pipe(catchError(() => of(null)))
           );
+
+          if (Number.isFinite(Number(id)) && Number(id) > 0) {
+            await lastValueFrom(
+              this.permitionsService.setRoleAssignmentInitialized(Number(id), true).pipe(catchError(() => of(null)))
+            );
+          }
         }
       }
 
@@ -1060,6 +1030,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     delete cleanedData.__originalIdRole;
     delete cleanedData.__originalIdPosicion;
     delete cleanedData.principal;
+    cleanedData.permissionsInitialized = !!(data?.permissionsInitialized ?? data?.PermissionsInitialized ?? false);
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

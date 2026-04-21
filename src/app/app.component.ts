@@ -14,7 +14,7 @@ import { ItemChatOverlayComponent } from './shared/item-comments-cell-renderer/i
   template: '<router-outlet></router-outlet><app-item-chat-overlay></app-item-chat-overlay>',
 })
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'bi-aug-24';
+  title = 'Delison';
   private lastLoadedBranchId: number | null = null; // Variable para rastrear la última sucursal cargada
   /** Cancela GET guard/guardAdvanced anteriores si cambia la sucursal antes de que respondan. */
   private permissionsLoadSub: Subscription | null = null;

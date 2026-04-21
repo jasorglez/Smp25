@@ -34,7 +34,7 @@ ng build --watch --configuration nt
 
 ## Architecture Overview
 
-This is an Angular 18 application (project name: "bi-aug-24") that connects to a C# backend. The application uses a domain-driven architecture with the following structure:
+This is an Angular 18 application (project name: "Delison") that connects to a C# backend. The application uses a domain-driven architecture with the following structure:
 
 ### Domain Architecture
 The application is organized into distinct business domains under `src/app/domains/`:

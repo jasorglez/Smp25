@@ -326,7 +326,7 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
 
         {
           field: 'position',
-          headerName: 'Posición',
+          headerName: 'Posición11',
           valueFormatter: (params) => {
             const branchId = Number(params.data?.idPermission);
             const meta = Number.isFinite(branchId) && branchId > 0 ? this.deptPosByBranchId.get(branchId) : undefined;

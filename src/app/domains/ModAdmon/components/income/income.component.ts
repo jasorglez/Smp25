@@ -1728,7 +1728,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
           'Cliente guardado correctamente.',
           'success'
         );
-        this.closeCustomerModal();
+   this.closeCustomerModal();
 
         // Recargar la lista de clientes
         this.getCustomers();

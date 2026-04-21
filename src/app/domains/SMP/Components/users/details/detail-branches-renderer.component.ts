@@ -24,7 +24,7 @@ import { UsersService } from 'app/services/users.service';
   template: `
     <div style="padding: 10px; background-color: #f0f0f0; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-        <strong>Sucursales de: {{ userName }} ({{companyName}})</strong>
+        <strong>Sucursales de145: {{ userName }} ({{companyName}})</strong>
         <div class="d-flex">
           <button
             class="btn btn-primary ms-1"

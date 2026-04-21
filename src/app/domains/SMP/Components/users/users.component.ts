@@ -595,7 +595,19 @@ export class UsersComponent implements OnDestroy {
       })
     );
 
-    return concat(addBranchPermission$, addDetailedPermissions$, seedUserSystem$);
+    const addPrincipalDept$ = (idRole > 0 && idPosicion > 0)
+      ? this.permitionsService.addPermitionsDetailBydescription({
+          idUser: userId,
+          idBranch: this.dataEmpleado.idBranch,
+          idRole,
+          idPosicion,
+          principal: true,
+          active: true,
+          permissionsInitialized: false,
+        }).pipe(catchError(() => of(null)))
+      : of(null);
+
+    return concat(addBranchPermission$, addPrincipalDept$, addDetailedPermissions$, seedUserSystem$);
   }
 
   getCRUD(idPosicion: number): Promise<any[]> {

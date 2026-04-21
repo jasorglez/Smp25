@@ -71,4 +71,12 @@ export class PermitionsService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+
+  setRoleAssignmentInitialized(id: number, initialized: boolean): Observable<any> {
+    return this.http.put(
+      `${environment.urlSecurity}/CrudPremissionsDelison/bydescription/${id}/initialized?initialized=${initialized}`,
+      {},
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
 }
