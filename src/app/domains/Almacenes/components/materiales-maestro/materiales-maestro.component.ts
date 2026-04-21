@@ -302,8 +302,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return { component: 'detailCellRendererParametros' };
         } else if (params.data.detailType === 'historico') {
           return { component: 'detailCellRendererHistorico' };
-        } else if (params.data.detailType === 'jarabe') {
-          return { component: 'detailCellRendererJarabe' };
         }
         return undefined;
       },
@@ -660,15 +658,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
-      {
-        field: 'jarabe',
-        headerName: 'Jarabe',
-        width: 100,
-        cellRenderer: () => '⚗️ Config',
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
-      },
-      
- 
+
+
       {
         field: 'picture',
         headerName: 'Imagen',
@@ -702,7 +693,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (colId === 'parametros') return 'parametros';
     if (colId === 'costo') return 'costos';
     if (colId === 'historico') return 'historico';
-    if (colId === 'jarabe') return 'jarabe';
     return null;
   }
 
@@ -739,7 +729,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.idSelect = event.data.id; // Asignar el ID seleccionado
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico' || colId === 'jarabe';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
       // Si la columna es "Materiales" y la Familia es "Básica", bloquear el clic

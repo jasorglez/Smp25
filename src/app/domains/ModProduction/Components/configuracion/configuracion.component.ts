@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ConfiguracionPageComponent } from './configuracion-page/configuracion-page.component';
 
 @Component({
   selector: 'app-configuracion-prod',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ConfiguracionPageComponent],
   template: `
     <div class="col-md-12">
       <div class="card mt-3">
@@ -17,19 +18,19 @@ import { CommonModule } from '@angular/common';
             </li>
           </ul>
         </div>
-        <div class="card-body">
-          <p *ngIf="activeTab === 'molienda'">Molienda — en construcción</p>
-          <p *ngIf="activeTab === 'preparacion1'">Preparacion 1 — en construcción</p>
-          <p *ngIf="activeTab === 'preparacion2'">Preparacion 2 — en construcción</p>
-          <p *ngIf="activeTab === 'cerveza'">Cerveza — en construcción</p>
-          <p *ngIf="activeTab === 'envasado'">Envasado — en construcción</p>
+        <div class="card-body p-0">
+          <p *ngIf="activeTab === 'molienda'" class="p-3">Molienda — en construcción</p>
+          <app-configuracion-page *ngIf="activeTab === 'preparacion1'"></app-configuracion-page>
+          <p *ngIf="activeTab === 'preparacion2'" class="p-3">Preparacion 2 — en construcción</p>
+          <p *ngIf="activeTab === 'cerveza'" class="p-3">Cerveza — en construcción</p>
+          <p *ngIf="activeTab === 'envasado'" class="p-3">Envasado — en construcción</p>
         </div>
       </div>
     </div>
   `,
 })
 export class ConfiguracionProdComponent {
-  activeTab = 'molienda';
+  activeTab = 'preparacion1';
 
   tabs = [
     { key: 'molienda',     label: 'Molienda' },
