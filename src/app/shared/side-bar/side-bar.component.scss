@@ -290,3 +290,18 @@
 .temp-expanded .btn-collapse span {
   display: inline !important;
 }
+
+/* Publicidad pegada al pie del sidebar, justo encima de Contraer */
+.sidebar-publicidad-dock {
+  padding: 6px 8px 4px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sidebar-publicidad-link {
+  margin: 0;
+  border-radius: 5px;
+}
+
+.sidebar-publicidad-link span {
+  margin-left: 6px;
+}

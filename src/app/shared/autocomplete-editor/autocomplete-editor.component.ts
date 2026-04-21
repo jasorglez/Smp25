@@ -31,12 +31,13 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
       border: 2px solid #ffc107 !important;
     }
     .suggestions {
-      position: absolute;
+      position: fixed;
       background: white;
       border: 1px solid #ccc;
-      z-index: 1000;
+      z-index: 9999;
       max-height: 200px;
       overflow-y: auto;
+      min-width: 200px;
     }
     .suggestion-item {
       padding: 5px 10px;
@@ -92,7 +93,7 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   }
 
   isPopup(): boolean {
-    return true;
+    return false;
   }
 
   isCancelAfterEnd(): boolean {
@@ -100,7 +101,10 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   }
 
   afterGuiAttached() {
-    this.input.nativeElement.focus();
+    setTimeout(() => {
+      this.input?.nativeElement?.focus();
+      this.input?.nativeElement?.select();
+    }, 0);
   }
 
   onKeyDown(event: any): void {
@@ -111,8 +115,23 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
     if (event.key === 'Enter') {
       event.preventDefault();
       event.stopPropagation();
+      // No autoseleccionar la primera sugerencia al presionar Enter.
+      // Solo usar sugerencia si hay coincidencia EXACTA con lo escrito.
       if (this.showSuggestions && this.filteredList.length > 0) {
-        this.selectValue(this.filteredList[0]);
+        const typed = String(this.value ?? '').trim();
+        if (typed) {
+          const exact = this.filteredList.find(
+            (item) => String(item).trim().toLowerCase() === typed.toLowerCase()
+          );
+          if (exact) {
+            this.selectValue(exact);
+          } else {
+            // Mantener lo escrito por el usuario
+            this.showSuggestions = false;
+          }
+        } else {
+          this.showSuggestions = false;
+        }
       }
       if (this.params.onEnterPressed) {
         this.params.onEnterPressed();

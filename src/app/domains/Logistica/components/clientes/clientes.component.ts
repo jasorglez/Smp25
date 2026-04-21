@@ -190,6 +190,7 @@ export class ClientesLogisticaComponent implements CanComponentDeactivate {
     headerHeight: 25,
     rowHeight: 20,
     rowBuffer: 20,
+    getRowId: (params: any) => params?.data?.id,
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -285,11 +286,34 @@ export class ClientesLogisticaComponent implements CanComponentDeactivate {
         width: 270,
         cellEditor: 'autocompleteEditor',
         filterParams: { defaultToNothingSelected: true },
-        cellEditorParams: {
-          filterList: this.rowData?.map((e) => e.nameContact.toUpperCase()) || [],
-          filterKey: 'nameContact',
-          placeholder: 'Nombre Contacto',
-          minLength: 1
+        cellEditorParams: () => {
+          const isPersistedRow = (e: any) => {
+            const id = e?.id;
+            const isTempId = typeof id === 'string' && id.startsWith('temp_');
+            return !e?.__isNew && !isTempId;
+          };
+
+          // Preferir catálogo desde backend; si no existe, usar el grid pero SOLO filas persistidas (ya guardadas).
+          const srcRaw = (Array.isArray(this.contactoCatalog) && this.contactoCatalog.length > 0)
+            ? this.contactoCatalog
+            : (Array.isArray(this.rowData) ? this.rowData : []);
+
+          const src = srcRaw.filter(isPersistedRow);
+
+          const list = src
+            .map((e: any) => String(e?.nameContact || e?.company || '').trim().toUpperCase())
+            .filter(Boolean);
+
+          // Quitar duplicados manteniendo el orden
+          const uniqueList = Array.from(new Set(list));
+
+          return {
+            filterList: uniqueList,
+            filterKey: 'nameContact',
+            placeholder: 'Nombre',
+            minLength: 1,
+            toUpperCase: true,
+          };
         },
         valueSetter: (params) => {
           const rawValue = params.newValue;
@@ -534,13 +558,53 @@ export class ClientesLogisticaComponent implements CanComponentDeactivate {
     const newItem = {
       id: tempId, idRoot: this.idRoot, idBranch: this.idBranch, nameContact: '', company: '', phone: '', rfc: '', city: '', mobile: '', email: '', address: '', addressfiscal: '', state: '', total: 0, radio: 0, vigente: true, NumCliente: 0, latitud: '', longitud: '', idTypecop: 1, fiscalRegime: '', usoCfdi: 'G03', type: this.type, active: true, __isNew: true,
     };
-    this.rowData = [newItem, ...this.rowData];
+    this.rowData = [newItem, ...(this.rowData || [])];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
-    setTimeout(() => {
-      this.gridApi.ensureIndexVisible(0);
-      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idBranch' });
-    }, 0);
+
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+
+    this.focusNewCustomerNameCell(tempId);
+  }
+
+  private focusNewCustomerNameCell(tempId: string): void {
+    // En esta tabla, la columna visible "Nombre" corresponde al campo `nameContact`
+    const colKey = 'nameContact';
+    let attempts = 0;
+
+    const focusCell = () => {
+      if (!this.gridApi) return;
+
+      const node = this.gridApi.getRowNode(tempId);
+      if (!node || node.rowIndex === null || node.rowIndex === undefined) {
+        if (attempts++ < 12) {
+          setTimeout(focusCell, 50);
+        }
+        return;
+      }
+
+      const rowIndex = node.rowIndex;
+      this.gridApi.ensureIndexVisible(rowIndex, 'top');
+      this.gridApi.ensureColumnVisible(colKey);
+      node.setSelected(true);
+
+      requestAnimationFrame(() => {
+        this.gridApi.setFocusedCell(rowIndex, colKey);
+        this.gridApi.startEditingCell({ rowIndex, colKey });
+
+        requestAnimationFrame(() => {
+          const editingInput = document.querySelector(
+            '.ag-cell-inline-editing input, .autocomplete-input-editing'
+          ) as HTMLInputElement;
+          editingInput?.focus();
+          editingInput?.select();
+        });
+      });
+    };
+
+    setTimeout(focusCell, 0);
   }
 
   async saveChanges() {
@@ -549,6 +613,81 @@ export class ClientesLogisticaComponent implements CanComponentDeactivate {
       alerts.basicAlert('Añadir entrada', 'Debe llenar todos los campos antes de guardar.', 'error');
       return;
     }
+
+    // Validación extra: evitar guardar nombres duplicados (contra ya guardados y entre cambios actuales)
+    const normalizeName = (v: any) => String(v ?? '').trim().toUpperCase();
+    const isTempId = (id: any) => typeof id === 'string' && id.startsWith('temp_');
+
+    const persistedRowsSource = (Array.isArray(this.contactoCatalog) && this.contactoCatalog.length > 0)
+      ? this.contactoCatalog
+      : (Array.isArray(this.rowData) ? this.rowData : []);
+
+    const persistedNameById = new Map<string, string>();
+    for (const r of persistedRowsSource) {
+      if (!r) continue;
+      if (r.__isNew) continue;
+      if (isTempId(r.id)) continue;
+      const id = r.id != null ? String(r.id) : '';
+      if (!id) continue;
+      const name = normalizeName(r.nameContact || r.company);
+      if (!name) continue;
+      persistedNameById.set(id, name);
+    }
+
+    const changes = this.rowData.filter((r: any) => r?.__isNew || r?.__modified);
+    const nameToIds = new Map<string, string[]>();
+    for (const r of changes) {
+      const id = r?.id != null ? String(r.id) : '';
+      const name = normalizeName(r?.nameContact || r?.company);
+      if (!name) continue;
+      const arr = nameToIds.get(name) ?? [];
+      arr.push(id);
+      nameToIds.set(name, arr);
+    }
+
+    // Duplicados dentro del mismo guardado (dos filas con el mismo nombre)
+    const intraDuplicates = [...nameToIds.entries()].filter(([, ids]) => ids.length > 1).map(([name]) => name);
+    if (intraDuplicates.length > 0) {
+      this.gridApi?.stopEditing();
+      await alerts.minimalAlert(
+        'Nombre duplicado',
+        `No se puede guardar. Hay nombres repetidos en los cambios: ${intraDuplicates.slice(0, 5).join(', ')}${intraDuplicates.length > 5 ? '…' : ''}`,
+        'error'
+      );
+      // Deshacer movimiento de "crear cliente" (volver al estado anterior)
+      this.revert();
+      return;
+    }
+
+    // Duplicados contra registros ya guardados (excluyendo el mismo id al actualizar)
+    const againstPersistedDuplicates: string[] = [];
+    for (const r of changes) {
+      const id = r?.id != null ? String(r.id) : '';
+      const name = normalizeName(r?.nameContact || r?.company);
+      if (!name) continue;
+
+      for (const [pid, pname] of persistedNameById.entries()) {
+        if (pid === id) continue; // misma fila (edición)
+        if (pname === name) {
+          againstPersistedDuplicates.push(name);
+          break;
+        }
+      }
+    }
+
+    if (againstPersistedDuplicates.length > 0) {
+      const uniq = Array.from(new Set(againstPersistedDuplicates));
+      this.gridApi?.stopEditing();
+      await alerts.minimalAlert(
+        'Nombre duplicado',
+        `No se puede guardar. Ya existen registrados: ${uniq.slice(0, 5).join(', ')}${uniq.length > 5 ? '…' : ''}`,
+        'error'
+      );
+      // Deshacer movimiento de "crear cliente" (volver al estado anterior)
+      this.revert();
+      return;
+    }
+
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter((row) => row.__modified && !row.__isNew);
     const addObservables = newRows.map((row) => { const cleanedData = this.cleanDataForServer(row); return this.customerService.addCustomer(cleanedData); });

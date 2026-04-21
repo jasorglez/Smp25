@@ -1,14 +1,15 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { DashAdmonComponent } from './components/dash-admon.component';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, DashAdmonComponent],
+  imports: [CommonModule, RouterLink, DashAdmonComponent],
   template: `
     <div class="dashboard-wrapper">
-
+      <div class="dashboard-body">
       <!-- Pestañas -->
       <ul class="nav nav-tabs px-3 pt-2">
         <li class="nav-item">
@@ -48,13 +49,35 @@ import { DashAdmonComponent } from './components/dash-admon.component';
           <div class="p-4 text-muted">Dashboard Ventas — próximamente.</div>
         </ng-container>
       </div>
+      </div>
 
+      <footer class="dashboard-publicidad-footer">
+        <a routerLink="/publicidad" class="dashboard-publicidad-link">
+          <i class="bi bi-megaphone-fill" aria-hidden="true"></i>
+          <span>Publicidad</span>
+          <span class="dashboard-publicidad-hint">Novedades y anuncios de la empresa</span>
+          <i class="bi bi-chevron-right dashboard-publicidad-chevron" aria-hidden="true"></i>
+        </a>
+      </footer>
     </div>
   `,
   styles: [`
     .dashboard-wrapper {
-      height: 100%;
+      min-height: calc(100vh - 88px);
+      display: flex;
+      flex-direction: column;
       background: #f8f9fa;
+    }
+    .dashboard-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .tab-content {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
     }
     .nav-tabs {
       background: #fff;
@@ -77,6 +100,37 @@ import { DashAdmonComponent } from './components/dash-admon.component';
     .nav-link:hover:not(.active) {
       color: #343a40;
       background: #f0f4ff;
+    }
+    .dashboard-publicidad-footer {
+      flex-shrink: 0;
+      margin-top: auto;
+      border-top: 1px solid #dee2e6;
+      background: #fff;
+    }
+    .dashboard-publicidad-link {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem 0.75rem;
+      padding: 12px 18px;
+      color: #0e4491;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .dashboard-publicidad-link:hover {
+      background: #eef3fb;
+      color: #0a3570;
+    }
+    .dashboard-publicidad-hint {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #6c757d;
+    }
+    .dashboard-publicidad-chevron {
+      font-size: 0.9rem;
+      opacity: 0.7;
     }
   `]
 })

@@ -1,0 +1,275 @@
+.welcome {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(165deg, #f5f7fb 0%, #eef2f9 38%, #f8fafc 100%);
+}
+
+/* Texto de bienvenida: compacto y centrado */
+.welcome__intro {
+  flex-shrink: 0;
+  padding: clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px) clamp(12px, 2vw, 20px);
+}
+
+.welcome__header {
+  text-align: center;
+  max-width: 560px;
+  margin: 0 auto;
+  animation: welcomeFadeUp 0.65s ease-out both;
+}
+
+.welcome__title {
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 800;
+  color: #0e4491;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+
+.welcome__subtitle {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Publicidad: ancho completo del área de contenido, sin tarjeta */
+.welcome__showcase {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  animation: welcomeFadeUp 0.75s ease-out 0.08s both;
+}
+
+.carousel {
+  position: relative;
+  width: 100%;
+  background: #e8edf5;
+}
+
+/* Alto generoso: los flyers verticales escalan por altura y llenan mejor el espacio */
+.carousel--hero {
+  flex: 1;
+  min-height: min(72vh, 820px);
+  max-height: min(78vh, 880px);
+}
+
+@media (max-width: 640px) {
+  .carousel--hero {
+    min-height: min(62vh, 640px);
+    max-height: min(70vh, 720px);
+  }
+}
+
+.carousel__track {
+  position: absolute;
+  inset: 0;
+}
+
+.carousel__slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(1.015);
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s ease;
+  pointer-events: none;
+}
+
+.carousel__slide--active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* Imagen centrada: escala al máximo posible dentro del área (vertical u horizontal) */
+.carousel__img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.carousel__meta {
+  position: absolute;
+  top: clamp(10px, 2vw, 18px);
+  left: clamp(10px, 2vw, 20px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+}
+
+.carousel__meta-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.carousel__meta-auto {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(14, 68, 145, 0.55);
+}
+
+.carousel__meta-counter {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(14, 68, 145, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.carousel__nav {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(8px, 2vw, 16px);
+  pointer-events: none;
+}
+
+.carousel__btn {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0e4491;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.carousel__btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 4px 20px rgba(14, 68, 145, 0.22);
+}
+
+.carousel__btn:active {
+  transform: scale(0.98);
+}
+
+.carousel__bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 20px 16px 18px;
+  background: linear-gradient(
+    to top,
+    rgba(15, 23, 42, 0.35) 0%,
+    rgba(15, 23, 42, 0.08) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.carousel__dots {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.carousel__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition:
+    width 0.35s ease,
+    background 0.35s ease,
+    transform 0.2s ease;
+}
+
+.carousel__dot:hover {
+  transform: scale(1.15);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.carousel__dot--active {
+  width: 22px;
+  background: #fff;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+}
+
+.welcome__empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  min-height: 200px;
+}
+
+@keyframes welcomeFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.carousel__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    110deg,
+    #e8edf5 0%,
+    #dfe7f2 45%,
+    #e8edf5 90%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  z-index: 3;
+}
+
+.carousel__loading span {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(14, 68, 145, 0.45);
+  letter-spacing: 0.04em;
+}

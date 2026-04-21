@@ -21,6 +21,13 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: '/login', pathMatch: 'full' },
       {
+        path: 'publicidad',
+        loadComponent: () =>
+          import('./pages/welcome/welcome.component').then(
+            (m) => m.WelcomeComponent
+          ),
+      },
+      {
         path: 'dashboard',
         loadComponent: () =>
           import('./pages/dashboard-home/dashboard-home.component').then(

@@ -461,6 +461,15 @@ error: (error) => {
     );
   }
 
+  publicidadMenu() {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      'Eleccion del menu Publicidad',
+      'Menu Side Bar',
+      ''
+    );
+  }
+
   Admonproc() {
     this.trackingService.addLog(
       this.trackingService.getnameComp(),

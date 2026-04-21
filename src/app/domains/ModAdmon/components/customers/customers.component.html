@@ -4,11 +4,11 @@
     <!-- Columna de botones -->
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()" >
+        <button type="button" class="btn btn-primary ms-1 me-1" (mousedown)="$event.preventDefault()" (click)="addRow()" >
           <i class="bi bi-plus-lg"></i>
         </button>
 
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()" >
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (mousedown)="$event.preventDefault()" (click)="saveChanges()" >
           <i class="bi bi-floppy"></i>
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="notSavedChanges">

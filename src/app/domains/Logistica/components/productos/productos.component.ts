@@ -131,7 +131,7 @@ export class MaterialsComponent {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
-        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO']
+        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO', 'ENTREGADO']
       },
       valueSetter: (params: any) => {
         params.data.estado = params.newValue;
@@ -142,6 +142,7 @@ export class MaterialsComponent {
         if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
         if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
         if (params.value === 'REVENDIDO')  return { backgroundColor: '#fff3cd' };
+        if (params.value === 'ENTREGADO')  return { backgroundColor: '#d1ecf1' };
         return { backgroundColor: '#e2e3e5' };
       },
     },
