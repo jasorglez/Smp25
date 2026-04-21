@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -27,7 +27,8 @@ export class QuoteDelisonComponent implements OnInit {
 
   rowData: any[] = [];
   fullRowData: any[] = []; // Store original unfiltered data
-  gridHeight: string = '80vh';
+  gridHeightPx = 600;
+  detailRowHeightPx = 520;
   private gridApi: GridApi;
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
 
@@ -42,6 +43,7 @@ export class QuoteDelisonComponent implements OnInit {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   constructor() {
+    this.updateGridHeight();
     // ✅ Usar effect para reaccionar a cambios en el signal de sucursal
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -82,7 +84,14 @@ export class QuoteDelisonComponent implements OnInit {
     animateRows: true,
     singleClickEdit: true,
     masterDetail: true,
-    detailRowHeight: 700,
+    detailRowHeight: 520,
+    defaultColDef: {
+      resizable: true,
+      sortable: true,
+      filter: true,
+      flex: 1,
+      minWidth: 120,
+    },
     detailCellRendererParams: {
       autoHeight: false
     },
@@ -90,6 +99,7 @@ export class QuoteDelisonComponent implements OnInit {
   };
 
   ngOnInit() {
+    this.updateGridHeight();
     // ✅ Esperar a que los signals se establezcan antes de inicializar
     setTimeout(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -140,6 +150,57 @@ export class QuoteDelisonComponent implements OnInit {
 
   onGridReady(params: any) {
     this.gridApi = params.api;
+    this.autoAdjustColumns();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.updateGridHeight();
+    // Re-layout del grid para recalcular tamaños
+    if (this.gridApi) {
+      setTimeout(() => {
+        // `doLayout` no existe en algunos typings/versiones; usar llamada segura
+        (this.gridApi as any)?.doLayout?.();
+        // Recalcular alturas (incluye detail row)
+        (this.gridApi as any)?.resetRowHeights?.();
+        this.autoAdjustColumns();
+      }, 0);
+    }
+  }
+
+  private autoAdjustColumns() {
+    if (!this.gridApi) return;
+    // Preferir autosize por contenido si existe; si no, ajustar al ancho disponible
+    const apiAny = this.gridApi as any;
+    if (typeof apiAny.autoSizeAllColumns === 'function') {
+      // `skipHeader=true` evita que el header haga columnas demasiado anchas
+      apiAny.autoSizeAllColumns(true);
+      return;
+    }
+    if (typeof apiAny.sizeColumnsToFit === 'function') {
+      apiAny.sizeColumnsToFit();
+    }
+  }
+
+  private updateGridHeight() {
+    // Ajusta este offset si tu header/toolbar cambia de tamaño
+    const offsetPx = 320;
+    const minPx = 320;
+    const h = (typeof window !== 'undefined' ? window.innerHeight : 800) - offsetPx;
+    this.gridHeightPx = Math.max(minPx, h);
+
+    // Altura del 2º nivel (detail): usar TODO el espacio disponible del grid principal.
+    // Como cuando expandes ocultas las demás filas (rowHeight=0), el detail puede ocupar casi todo el alto.
+    // Nota: AG Grid espera número (px).
+    const headerPx = Number(this.gridOptions?.headerHeight ?? 0);
+    const rowPx = Number(this.gridOptions?.rowHeight ?? 0);
+    const paddingPx = 20;
+    this.detailRowHeightPx = Math.max(260, this.gridHeightPx - headerPx - rowPx - paddingPx);
+    this.gridOptions.detailRowHeight = this.detailRowHeightPx;
+    if (this.gridApi) {
+      // Aplicar en caliente si el grid ya está listo
+      (this.gridApi as any).setGridOption?.('detailRowHeight', this.detailRowHeightPx);
+    }
   }
 
   loadQuotes() {
