@@ -8,11 +8,23 @@ const MANIFEST_URL = `${PUBLICIDAD_BASE}manifest.json`;
 
 /** Si falla el manifiesto, se usan estos nombres (deben coincidir con archivos en assets/publicidad). */
 const FALLBACK_IMAGE_NAMES: readonly string[] = [
-  'Integracio\u0301n de bot con ERP.jpg',
+  '3 erp.png',
+  'demo para obras.png',
+  'erp construccion.png',
+  'Gestio\u0301n de obras con ERP y bot.png',
+  'Historia.png',
+  'Integración de bot con ERP.jpg',
+  'Inteligencia empresarial en tiempo real.jpg',
+  'Intensive frontend development course promotion 1.png',
+  'publicidad 1.png',
   'Publicidad 2.png',
+  'Publicidad de ERP para construccio\u0301n.png',
   'RH 2.png',
   'RH.png',
-  'publicidad 1.png',
+  'Solucio\u0301n integral para ventas y ERP logo.jpg',
+  'ventas x whatsapp.png',
+  'ventas xwhats.png',
+  'Ventas.png',
 ];
 
 @Component({
