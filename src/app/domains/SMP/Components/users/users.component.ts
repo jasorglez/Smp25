@@ -111,7 +111,7 @@ export class UsersComponent implements OnDestroy {
   /** Si el usuario logueado tiene el switch "Security" encendido, puede dar clic en la columna Security. */
   private sessionSecurityEnabled(): boolean {
     // Root (super usuario) no debe verse restringido por este switch.
-    if (this.signalsService.getemailChoose() === environment.root) {
+    if (this.currentEmail === environment.root) {
       return true;
     }
     return this.authService.hasUsersMenuSecurityAccess();
@@ -197,7 +197,7 @@ export class UsersComponent implements OnDestroy {
       }
       this.verification();
       if (this.signalsService.getRefresSecurity()()) {
-        const isRoot = this.signalsService.getemailChoose() === environment.root;
+        const isRoot = this.currentEmail === environment.root;
         if (isRoot || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
           this.obtenerDatos();
           this.signalsService.setRefresSecurity(false);
@@ -333,7 +333,7 @@ export class UsersComponent implements OnDestroy {
   }
 
   obtenerDatos() {
-    if (this.signalsService.getemailChoose() !== environment.root && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+    if (this.currentEmail !== environment.root && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
       // Todavía no hay compañía/root seleccionado; evita request con id=null
       return;
     }
@@ -346,7 +346,7 @@ export class UsersComponent implements OnDestroy {
         this.trackingService.getEmail()
       );
 
-    if (this.signalsService.getemailChoose() === environment.root) {
+    if (this.currentEmail === environment.root) {
       forkJoin({
         users: this.usersService.getAllUsers(),
         branchPerms: this.usersxrootService.getDataUsersxPermissions('branch').pipe(catchError(() => of([]))),
@@ -1219,11 +1219,15 @@ export class UsersComponent implements OnDestroy {
     );
   }
 
+  private get currentEmail(): string {
+    return this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
+  }
+
   onSecurityColumnClicked(params: any): void {
     if (!params?.api || !params?.node) {
       return;
     }
-    if (this.signalsService.getemailChoose() !== environment.root) {
+    if (this.currentEmail !== environment.root) {
       if (!this.authService.hasUsersMenuSecurityAccess()) {
         alerts.userBasicAlert(
           'Sin acceso',
@@ -1291,7 +1295,7 @@ export class UsersComponent implements OnDestroy {
     const isCurrentlyExpanded = selectedNode.expanded && selectedData.detailType === 'permissions';
 
     if (!isCurrentlyExpanded) {
-      if (this.signalsService.getemailChoose() !== environment.root) {
+      if (this.currentEmail !== environment.root) {
         if (!this.authService.hasUsersMenuSecurityAccess()) {
           alerts.userBasicAlert(
             'Sin acceso',
