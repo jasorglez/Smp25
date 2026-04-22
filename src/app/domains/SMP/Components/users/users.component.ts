@@ -1091,6 +1091,13 @@ export class UsersComponent implements OnDestroy {
       const updateResponses = updateUserRequests.length > 0 ? await lastValueFrom(forkJoin(updateUserRequests)) : [];
       const newUserResponses = addResponses;
 
+      // Sync displayName → employee name for modified rows with a linked employee
+      for (const row of modifiedRows) {
+        const employeeId = Number(row.idEmployee ?? row.idEmpleado ?? 0);
+        if (employeeId <= 0 || !row.displayName) continue;
+        await this.syncEmployeeName(employeeId, row.displayName);
+      }
+
       const permissionRequests = newUserResponses.map((response) => {
         const userId = response.data?.id;
         if (!userId) return null;
@@ -1474,6 +1481,25 @@ export class UsersComponent implements OnDestroy {
     return colorEmojis[roleId % colorEmojis.length];
   }
 
+  private async syncEmployeeName(employeeId: number, displayName: string): Promise<void> {
+    try {
+      const empResponse = await lastValueFrom(
+        this.employeeService.getEmployeeById(employeeId).pipe(catchError(() => of(null)))
+      );
+      // API returns List<object> (array), extract first element
+      const raw = empResponse?.data ?? empResponse;
+      const emp = Array.isArray(raw) ? raw[0] : raw;
+      if (!emp) return;
+      const empName = (emp.name ?? emp.Name ?? '').trim();
+      if (empName.toUpperCase() === displayName.trim().toUpperCase()) return;
+      await lastValueFrom(
+        this.employeeService.updateEmployee(employeeId, { ...emp, name: displayName.trim() }).pipe(catchError(() => of(null)))
+      );
+    } catch {
+      // name sync is best-effort
+    }
+  }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
@@ -1504,6 +1530,11 @@ export class UsersComponent implements OnDestroy {
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
     cleanedData.active = Number(cleanedData.active) || 1;
+    // Normalize employee link: frontend uses idEmployee, backend expects idEmpleado
+    if ('idEmployee' in cleanedData) {
+      cleanedData.idEmpleado = cleanedData.idEmployee != null ? Number(cleanedData.idEmployee) || null : null;
+      delete cleanedData.idEmployee;
+    }
     return cleanedData;
   }
 }
