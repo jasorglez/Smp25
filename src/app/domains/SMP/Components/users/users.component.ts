@@ -312,21 +312,22 @@ export class UsersComponent implements OnDestroy {
       console.error('Respuesta inválida del servidor');
       return;
     }
-    this.rowData = response.data.map((item: any) => {
-      const idNum = Number(item.id);
-      const uid = Number.isFinite(idNum) && idNum > 0 ? idNum : Number(item.id);
-      const n = Number(uid);
-      const idRolDisplay =
-        securityCountByUser != null && Number.isFinite(n) && n > 0
-          ? securityCountByUser.get(n) ?? 0
-          : Number(item.idRol ?? item.IdRol ?? 0) || 0;
-      return {
-        ...item,
-        id: Number.isFinite(idNum) && idNum > 0 ? idNum : item.id,
-        idRol: idRolDisplay,
-      };
-    });
-    this.rowData = this.rowData.filter((row) => row.active !== 0);
+    this.rowData = response.data
+      .filter((item: any) => item.active !== 0 && item.active !== false)
+      .map((item: any) => {
+        const idNum = Number(item.id);
+        const uid = Number.isFinite(idNum) && idNum > 0 ? idNum : Number(item.id);
+        const n = Number(uid);
+        const idRolDisplay =
+          securityCountByUser != null && Number.isFinite(n) && n > 0
+            ? securityCountByUser.get(n) ?? 0
+            : Number(item.idRol ?? item.IdRol ?? 0) || 0;
+        return {
+          ...item,
+          id: Number.isFinite(idNum) && idNum > 0 ? idNum : item.id,
+          idRol: idRolDisplay,
+        };
+      });
     this.refreshUserSetupFlagsCache();
   }
 
@@ -709,6 +710,22 @@ export class UsersComponent implements OnDestroy {
     this._columnDefs = [
       { field: 'id', headerName: 'ID', hide: true, filter: 'agNumberColumnFilter', width: 80 },
       { field: 'active', hide: true },
+      {
+        field: 'active2',
+        headerName: 'Activo',
+        width: 90,
+        cellRenderer: (params: any) => {
+          const val = params.value === true || params.value === 1;
+          const disabled = !this.authService.isCurrentUserRoot() ? 'disabled' : '';
+          return `<input type="checkbox" ${val ? 'checked' : ''} ${disabled} style="width:16px;height:16px;cursor:pointer;" />`;
+        },
+        onCellClicked: (params: any) => {
+          if (!this.authService.isCurrentUserRoot()) return;
+          params.node.setDataValue('active2', !params.value);
+          params.node.data.__modified = true;
+          this.notSavedChanges = true;
+        },
+      },
       {
         field: 'displayName',
         headerName: 'Nombre *',
@@ -1217,11 +1234,7 @@ export class UsersComponent implements OnDestroy {
     );
   }
 
-  private get currentEmail(): string {
-    return this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
-  }
-
-  onSecurityColumnClicked(params: any): void {
+onSecurityColumnClicked(params: any): void {
     if (!params?.api || !params?.node) {
       return;
     }
