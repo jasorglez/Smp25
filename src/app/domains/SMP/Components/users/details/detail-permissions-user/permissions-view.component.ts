@@ -126,6 +126,11 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   @Input() seedFromRolePosInput: boolean = false;
   /** Catálogo rol+posición (Departamento › Ver permisos): solo `RolesxDetailedPermission`, nunca Crud por usuario. */
   @Input() roleTemplateOnlyInput: boolean = false;
+  /**
+   * false = registro nuevo, no inicializado → ignorar CRUD guardado, mostrar plantilla actual.
+   * true (default) = usuario ya personalizó permisos → mostrar CRUD guardado.
+   */
+  @Input() permissionsInitializedInput: boolean = true;
 
   idRole: number;
   idPosicion: number;
@@ -311,7 +316,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     idRole: number,
     idPosicion: number,
     seedFromRolePos: boolean,
-    roleTemplateOnly: boolean
+    roleTemplateOnly: boolean,
+    permissionsInitialized: boolean = true
   ): Observable<any[]> {
     if (roleTemplateOnly) {
       return this.rolesService.getPermissionsByRoles(idCompany, idRole, idPosicion).pipe(
@@ -325,6 +331,12 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
 
     if (scope !== 'position') {
       if (transient) {
+        return of([]);
+      }
+      // Registro nuevo (permissionsInitialized=false): ignorar CRUD guardado y forzar plantilla.
+      // Esto garantiza que "Ver Permisos" muestre la plantilla actual del rol+posición, no el CRUD
+      // histórico que pudo haberse sembrado con una versión anterior de la plantilla.
+      if (seedFromRolePos && !permissionsInitialized) {
         return of([]);
       }
       const base$ = this.permitionsService
@@ -1278,7 +1290,7 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
         : of([]);
 
     forkJoin({
-      crud: this.getCrudRowsForModal$(scope, idCompany, idUser, idBranch, idRole, idPosicion, seedFromRolePos, roleTemplateOnly),
+      crud: this.getCrudRowsForModal$(scope, idCompany, idUser, idBranch, idRole, idPosicion, seedFromRolePos, roleTemplateOnly, this.permissionsInitializedInput !== false),
       userSys: userSys$,
       catalog:
         scope === 'userSystem'

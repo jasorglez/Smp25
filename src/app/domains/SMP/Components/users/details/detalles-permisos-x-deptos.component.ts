@@ -928,8 +928,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             const id = Number(r?.idDetailedPermission ?? r?.IdDetailedPermission);
             if (!Number.isFinite(id)) continue;
             const anyOn = !!(r?.detailedRead ?? r?.DetailedRead) || !!(r?.masterRead ?? r?.MasterRead)
-              || !!(r?.canRead ?? r?.CanRead) || !!(r?.canCreate ?? r?.CanCreate)
-              || !!(r?.canUpdate ?? r?.CanUpdate) || !!(r?.canDelete ?? r?.CanDelete);
+              || !!(r?.canRead ?? r?.CanRead);
             if (anyOn) templateIds.add(id);
           }
           if (templateIds.size === 0) continue;
@@ -1065,6 +1064,7 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         seedFromRolePosition: true,
         scope: 'userSystem',
         idCompany: this.idCompany,
+        permissionsInitialized: event.data.permissionsInitialized === true,
       });
     }
   }
