@@ -2438,8 +2438,26 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     }
   }
 
+  private async resolveUserIdByEmployeeId(employeeId: number): Promise<number[]> {
+    if (employeeId <= 0) return [];
+    try {
+      const rawUsers = await lastValueFrom(
+        this.usersService.getDataUsers(this.idRoot).pipe(catchError(() => of([])))
+      );
+      const users = this.toUsersArray(rawUsers);
+      return users
+        .filter((u: any) => Number(u?.idEmpleado ?? u?.idEmployee ?? 0) === employeeId)
+        .map((u: any) => Number(u?.id ?? 0))
+        .filter((id: number) => id > 0);
+    } catch { return []; }
+  }
+
   private async syncUserDeptoPosPermission(row: any): Promise<void> {
-    const userIds = await this.resolveUserIdsForEmployee(row);
+    const employeeId = Number(row?.id ?? 0);
+    let userIds = await this.resolveUserIdByEmployeeId(employeeId);
+    if (userIds.length === 0) {
+      userIds = await this.resolveUserIdsForEmployee(row);
+    }
     if (userIds.length === 0) return;
     for (const idUser of userIds) {
       await this.syncSingleUserDeptoPosPermission(idUser, row);
