@@ -494,11 +494,10 @@ export class AuthService {
     ) {
       return basePermissions;
     }
-    const sessionEmail = (localStorage.getItem('mail') ?? '').toLowerCase().trim();
-    const signalEmail = String(this.signalsService.getemailChoose() ?? '').toLowerCase().trim();
-    const rootEmail = String(environment.root ?? '').toLowerCase().trim();
-    const isRootSession =
-      rootEmail !== '' && (sessionEmail === rootEmail || signalEmail === rootEmail);
+    // Root users: permisos de sistema completos sin filtrado por sucursal.
+    if (this.isCurrentUserRoot()) {
+      return this.deepClonePlainObject(basePermissions);
+    }
     const merged = this.deepClonePlainObject(basePermissions);
     for (const masterKey of Object.keys(merged)) {
       if (Object.prototype.hasOwnProperty.call(advancedPermissions, masterKey)) {
@@ -506,7 +505,7 @@ export class AuthService {
           merged[masterKey],
           advancedPermissions[masterKey]
         );
-      } else if (!isRootSession) {
+      } else {
         // En modo por sucursal, lo que no venga en advanced no aplica para el sidebar de esa sucursal.
         merged[masterKey] = this.deactivatePermissionSubtree(merged[masterKey]);
       }
@@ -589,6 +588,7 @@ export class AuthService {
    * Si aún no se ha cargado `guard/{userId}`, se usa el árbol actual como respaldo para no dejar el menú vacío.
    */
   hasMenuDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const tree = this.menuUserPermissions;
     if (tree && typeof tree === 'object' && Object.keys(tree).length > 0) {
       const section = tree[masterPermissionKey];
@@ -599,6 +599,7 @@ export class AuthService {
   }
 
   hasMenuMasterPermission(masterPermissionKey: string): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const tree = this.menuUserPermissions;
     if (tree && typeof tree === 'object' && Object.keys(tree).length > 0) {
       return tree[masterPermissionKey]?.active === true;
@@ -607,10 +608,12 @@ export class AuthService {
   }
 
   hasMasterPermission(masterPermissionKey: string): boolean {
+    if (this.isCurrentUserRoot()) return true;
     return this.userPermissions?.[masterPermissionKey]?.active === true;
   }
 
   hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const section = this.userPermissions?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     return section?.active === true && subSection?.active === true;
@@ -622,6 +625,7 @@ export class AuthService {
    * o un maestro cuyo identificador combine setup + usuario.
    */
   hasUsersMenuWarehousesAccess(): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const baseTree = this.baseUserSystemPermissions;
     if (baseTree?.['users-setup']?.active === true &&
         baseTree?.['users-setup']?.children?.['warehouses']?.active === true) {
@@ -665,6 +669,7 @@ export class AuthService {
    * tiene el detalle «Departamento» bajo Setup Usuarios (claves `department` / `departamento` u homólogos en el guard).
    */
   hasUsersMenuDepartmentAccess(): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const baseTree = this.baseUserSystemPermissions;
     if (baseTree?.['users-setup']?.active === true &&
         baseTree?.['users-setup']?.children?.['department']?.active === true) {
@@ -709,6 +714,7 @@ export class AuthService {
    * Operador: detalle «Security» bajo Setup Usuarios (UserSystem / guard).
    */
   hasUsersMenuSecurityAccess(): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const baseTree = this.baseUserSystemPermissions;
     if (baseTree?.['users-setup']?.active === true &&
         baseTree?.['users-setup']?.children?.['security']?.active === true) {
@@ -746,6 +752,7 @@ export class AuthService {
    * Operador: detalle «Permisos» bajo Setup Usuarios (UserSystem / guard).
    */
   hasUsersMenuPermissionsAccess(): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const baseTree = this.baseUserSystemPermissions;
     if (baseTree?.['users-setup']?.active === true &&
         baseTree?.['users-setup']?.children?.['permissions']?.active === true) {
@@ -780,6 +787,7 @@ export class AuthService {
   }
 
   hasSubDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string, subdetailedPermissionKey: string): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const section = this.userPermissions?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
@@ -787,6 +795,16 @@ export class AuthService {
   }
 
   getActiveSubDetailedByTipo(masterKey: string, detailedKey: string, tipo: string): any[] {
+    if (this.isCurrentUserRoot()) {
+      const section = this.userPermissions?.[masterKey];
+      const subSection = section?.children?.[detailedKey];
+      if (subSection?.children) {
+        return Object.values(subSection.children).filter(
+          (item: any) => (item?.tipo ?? '').toLowerCase() === tipo.toLowerCase()
+        );
+      }
+      return [];
+    }
     const section = this.userPermissions?.[masterKey];
     const subSection = section?.children?.[detailedKey];
     if (section?.active !== true || subSection?.active !== true || !subSection?.children) return [];
@@ -803,6 +821,7 @@ export class AuthService {
     capa: string,
     action: 'create' | 'read' | 'update' | 'delete'
   ): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const section = this.userPermissions?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
@@ -832,12 +851,25 @@ export class AuthService {
     return crudMap[action] === true;
   }
 
+  /** True si el usuario de la sesión es root: por email de entorno O por flag isRoot de la BD. */
+  isCurrentUserRoot(): boolean {
+    const sessionEmail = (localStorage.getItem('mail') ?? '').toLowerCase().trim();
+    const signalEmail = String(this.signalsService.getemailChoose() ?? '').toLowerCase().trim();
+    const rootEmail = String(environment.root ?? '').toLowerCase().trim();
+    const isEnvRoot = rootEmail !== '' && (sessionEmail === rootEmail || signalEmail === rootEmail);
+    // Chequea signal Y localStorage como fallback (la signal puede no estar lista en primer render)
+    const isDbRoot = !!this.signalsService.getrootChoose() ||
+                     localStorage.getItem('userRoot') === 'true';
+    return isEnvRoot || isDbRoot;
+  }
+
   getCrudPermissionDetail(
     masterPermissionKey: string,
     detailedPermissionKey: string,
     subdetailedPermissionKey: string,
     action: 'create' | 'read' | 'update' | 'delete'
   ): boolean {
+    if (this.isCurrentUserRoot()) return true;
     const section = this.userPermissions?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];

@@ -18,7 +18,6 @@ import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { AuthService } from 'app/services/auth.service';
-import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { DetallePermisosXSucursalesComponent } from './details/detallepermisosxsucursales.component';
@@ -111,7 +110,7 @@ export class UsersComponent implements OnDestroy {
   /** Si el usuario logueado tiene el switch "Security" encendido, puede dar clic en la columna Security. */
   private sessionSecurityEnabled(): boolean {
     // Root (super usuario) no debe verse restringido por este switch.
-    if (this.currentEmail === environment.root) {
+    if (this.authService.isCurrentUserRoot()) {
       return true;
     }
     return this.authService.hasUsersMenuSecurityAccess();
@@ -197,8 +196,7 @@ export class UsersComponent implements OnDestroy {
       }
       this.verification();
       if (this.signalsService.getRefresSecurity()()) {
-        const isRoot = this.currentEmail === environment.root;
-        if (isRoot || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
+        if (this.authService.isCurrentUserRoot() || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
           this.obtenerDatos();
           this.signalsService.setRefresSecurity(false);
         }
@@ -333,7 +331,7 @@ export class UsersComponent implements OnDestroy {
   }
 
   obtenerDatos() {
-    if (this.currentEmail !== environment.root && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+    if (!this.authService.isCurrentUserRoot() && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
       // Todavía no hay compañía/root seleccionado; evita request con id=null
       return;
     }
@@ -346,7 +344,7 @@ export class UsersComponent implements OnDestroy {
         this.trackingService.getEmail()
       );
 
-    if (this.currentEmail === environment.root) {
+    if (this.authService.isCurrentUserRoot()) {
       forkJoin({
         users: this.usersService.getAllUsers(),
         branchPerms: this.usersxrootService.getDataUsersxPermissions('branch').pipe(catchError(() => of([]))),
@@ -1227,7 +1225,7 @@ export class UsersComponent implements OnDestroy {
     if (!params?.api || !params?.node) {
       return;
     }
-    if (this.currentEmail !== environment.root) {
+    if (!this.authService.isCurrentUserRoot()) {
       if (!this.authService.hasUsersMenuSecurityAccess()) {
         alerts.userBasicAlert(
           'Sin acceso',
@@ -1295,7 +1293,7 @@ export class UsersComponent implements OnDestroy {
     const isCurrentlyExpanded = selectedNode.expanded && selectedData.detailType === 'permissions';
 
     if (!isCurrentlyExpanded) {
-      if (this.currentEmail !== environment.root) {
+      if (!this.authService.isCurrentUserRoot()) {
         if (!this.authService.hasUsersMenuSecurityAccess()) {
           alerts.userBasicAlert(
             'Sin acceso',
