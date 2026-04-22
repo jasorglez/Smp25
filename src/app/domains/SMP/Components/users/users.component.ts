@@ -18,7 +18,6 @@ import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { AuthService } from 'app/services/auth.service';
-import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { DetallePermisosXSucursalesComponent } from './details/detallepermisosxsucursales.component';
@@ -111,7 +110,7 @@ export class UsersComponent implements OnDestroy {
   /** Si el usuario logueado tiene el switch "Security" encendido, puede dar clic en la columna Security. */
   private sessionSecurityEnabled(): boolean {
     // Root (super usuario) no debe verse restringido por este switch.
-    if (this.signalsService.getemailChoose() === environment.root) {
+    if (this.authService.isCurrentUserRoot()) {
       return true;
     }
     return this.authService.hasUsersMenuSecurityAccess();
@@ -197,8 +196,7 @@ export class UsersComponent implements OnDestroy {
       }
       this.verification();
       if (this.signalsService.getRefresSecurity()()) {
-        const isRoot = this.signalsService.getemailChoose() === environment.root;
-        if (isRoot || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
+        if (this.authService.isCurrentUserRoot() || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
           this.obtenerDatos();
           this.signalsService.setRefresSecurity(false);
         }
@@ -334,7 +332,7 @@ export class UsersComponent implements OnDestroy {
   }
 
   obtenerDatos() {
-    if (this.signalsService.getemailChoose() !== environment.root && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+    if (!this.authService.isCurrentUserRoot() && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
       // Todavía no hay compañía/root seleccionado; evita request con id=null
       return;
     }
@@ -347,7 +345,7 @@ export class UsersComponent implements OnDestroy {
         this.trackingService.getEmail()
       );
 
-    if (this.signalsService.getemailChoose() === environment.root) {
+    if (this.authService.isCurrentUserRoot()) {
       forkJoin({
         users: this.usersService.getAllUsers(),
         branchPerms: this.usersxrootService.getDataUsersxPermissions('branch').pipe(catchError(() => of([]))),
@@ -1092,6 +1090,13 @@ export class UsersComponent implements OnDestroy {
       const updateResponses = updateUserRequests.length > 0 ? await lastValueFrom(forkJoin(updateUserRequests)) : [];
       const newUserResponses = addResponses;
 
+      // Sync displayName → employee name for modified rows with a linked employee
+      for (const row of modifiedRows) {
+        const employeeId = Number(row.idEmployee ?? row.idEmpleado ?? 0);
+        if (employeeId <= 0 || !row.displayName) continue;
+        await this.syncEmployeeName(employeeId, row.displayName);
+      }
+
       const permissionRequests = newUserResponses.map((response) => {
         const userId = response.data?.id;
         if (!userId) return null;
@@ -1213,11 +1218,15 @@ export class UsersComponent implements OnDestroy {
     );
   }
 
+  private get currentEmail(): string {
+    return this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
+  }
+
   onSecurityColumnClicked(params: any): void {
     if (!params?.api || !params?.node) {
       return;
     }
-    if (this.signalsService.getemailChoose() !== environment.root) {
+    if (!this.authService.isCurrentUserRoot()) {
       if (!this.authService.hasUsersMenuSecurityAccess()) {
         alerts.userBasicAlert(
           'Sin acceso',
@@ -1285,7 +1294,7 @@ export class UsersComponent implements OnDestroy {
     const isCurrentlyExpanded = selectedNode.expanded && selectedData.detailType === 'permissions';
 
     if (!isCurrentlyExpanded) {
-      if (this.signalsService.getemailChoose() !== environment.root) {
+      if (!this.authService.isCurrentUserRoot()) {
         if (!this.authService.hasUsersMenuSecurityAccess()) {
           alerts.userBasicAlert(
             'Sin acceso',
@@ -1475,6 +1484,25 @@ export class UsersComponent implements OnDestroy {
     return colorEmojis[roleId % colorEmojis.length];
   }
 
+  private async syncEmployeeName(employeeId: number, displayName: string): Promise<void> {
+    try {
+      const empResponse = await lastValueFrom(
+        this.employeeService.getEmployeeById(employeeId).pipe(catchError(() => of(null)))
+      );
+      // API returns List<object> (array), extract first element
+      const raw = empResponse?.data ?? empResponse;
+      const emp = Array.isArray(raw) ? raw[0] : raw;
+      if (!emp) return;
+      const empName = (emp.name ?? emp.Name ?? '').trim();
+      if (empName.toUpperCase() === displayName.trim().toUpperCase()) return;
+      await lastValueFrom(
+        this.employeeService.updateEmployee(employeeId, { ...emp, name: displayName.trim() }).pipe(catchError(() => of(null)))
+      );
+    } catch {
+      // name sync is best-effort
+    }
+  }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
@@ -1505,6 +1533,11 @@ export class UsersComponent implements OnDestroy {
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
     cleanedData.active = Number(cleanedData.active) || 1;
+    // Normalize employee link: frontend uses idEmployee, backend expects idEmpleado
+    if ('idEmployee' in cleanedData) {
+      cleanedData.idEmpleado = cleanedData.idEmployee != null ? Number(cleanedData.idEmployee) || null : null;
+      delete cleanedData.idEmployee;
+    }
     return cleanedData;
   }
 }

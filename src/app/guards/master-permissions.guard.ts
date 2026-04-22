@@ -32,6 +32,10 @@ export class MasterPermissionsGuard implements CanActivate {
       this.router.navigate(['/login']);
       return of(false);
     }
+
+    if (this.permissionService.isCurrentUserRoot()) {
+      return of(true);
+    }
     
 
     // Leemos los valores de los signals aquí, dentro de canActivate

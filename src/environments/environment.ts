@@ -73,6 +73,6 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.89 (20 Abril 2026) users: Ver Permisos respeta plantilla en registros no inicializados (permissionsInitialized=false)',
+  version: '3.94 (22 Abril 2026)',
 };
 
