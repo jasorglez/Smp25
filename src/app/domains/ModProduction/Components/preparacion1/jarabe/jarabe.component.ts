@@ -32,14 +32,14 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-sm btn-warning" (click)="discardChanges()" title="Deshacer">
             <i class="bi bi-arrow-counterclockwise"></i>
           </button>
-          <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="!hasRowSelected" title="Eliminar">
-            <i class="bi bi-trash"></i>
-          </button>
           <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges" title="Guardar">
             <i class="bi bi-floppy"></i>
             <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
               *ngIf="hasUnsavedChanges">
             </span>
+          </button>
+          <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="!hasRowSelected" title="Eliminar">
+            <i class="bi bi-trash"></i>
           </button>
         </div>
 
@@ -321,7 +321,7 @@ export class JarabeComponent implements OnInit {
       lote: item.lote || '',
       articulo: item.articulo || '',
       sucursal: item.idSucursal || null,
-      fechaElaboracion: item.fecha || '',
+      fechaElaboracion: item.fecha ? this.parseLocalDate(item.fecha) : null,
       preparacion: item.preparacionCount || 0,
       cantidad: item.cantidad || 0,
       observaciones: item.observaciones || '',
@@ -384,12 +384,26 @@ export class JarabeComponent implements OnInit {
     };
   }
 
+  private parseLocalDate(dateStr: string): Date | null {
+    const s = String(dateStr).substring(0, 10);
+    const [y, m, d] = s.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  }
+
+  private dateToIso(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   private toApiPayload(item: any): any {
     return {
       lote: item.lote,
       articulo: item.articulo,
       idSucursal: item.sucursal || null,
-      fecha: item.fechaElaboracion || null,
+      fecha: item.fechaElaboracion instanceof Date ? this.dateToIso(item.fechaElaboracion) : (item.fechaElaboracion || null),
       preparacionCount: item.preparacion || 0,
       cantidad: item.cantidad || 0,
       observaciones: item.observaciones,
@@ -507,23 +521,17 @@ export class JarabeComponent implements OnInit {
         headerName: 'Fecha Elaboración',
         width: 150,
         editable: true,
+        cellDataType: 'date',
         cellEditor: 'agDateCellEditor',
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const [y, m, d] = String(params.value).split('-');
-          return d && m && y ? `${d}/${m}/${y}` : params.value;
+          const d: Date = params.value instanceof Date ? params.value : new Date(params.value);
+          if (isNaN(d.getTime())) return '';
+          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
         },
         valueSetter: (params) => {
           if (!params.newValue) return false;
-          if (params.newValue instanceof Date) {
-            const d = params.newValue;
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            params.data.fechaElaboracion = `${y}-${m}-${day}`;
-          } else {
-            params.data.fechaElaboracion = String(params.newValue).substring(0, 10);
-          }
+          params.data.fechaElaboracion = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -737,7 +745,7 @@ export class JarabeComponent implements OnInit {
   addLote() {
     const tempId = `temp_${Date.now()}`;
     const today = new Date();
-    const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const fechaHoy = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     // Obtener el nombre de la sucursal actual y buscar su ID
     const branchNameActual = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
@@ -749,7 +757,7 @@ export class JarabeComponent implements OnInit {
       lote: '',
       articulo: '',
       sucursal: idSucursalActual,
-      fechaElaboracion: fecha,
+      fechaElaboracion: fechaHoy,
       preparacion: 0,
       cantidad: 0,
       observaciones: '',
