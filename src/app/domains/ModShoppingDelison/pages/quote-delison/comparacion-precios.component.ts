@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -11,10 +10,11 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, Subscription } from 'rxjs';
 
+
 @Component({
   selector: 'app-comparacion-precios',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, AgGridModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="comparacion-container">
       <h5 class="mb-3">Comparación de Precios por Proveedor</h5>
@@ -32,28 +32,13 @@ import { lastValueFrom, Subscription } from 'rxjs';
 
       <!-- Data loaded -->
       <div *ngIf="!loading && !error && articulos.length > 0" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
-        <!-- Botones de artículos -->
-        <div class="article-buttons-row" style="flex-shrink: 0;">
-          <div class="article-buttons-scroller">
-            <div class="article-buttons">
-              <button
-                type="button"
-                class="btn btn-sm"
-                *ngFor="let a of articulos"
-                [class.btn-primary]="a.id === selectedArticuloId"
-                [class.btn-outline-primary]="a.id !== selectedArticuloId"
-                (click)="onSelectArticulo(a.id)">
-                {{ a.nombre }}
-              </button>
-            </div>
-          </div>
-
-          <div class="actions d-flex align-items-center gap-2">
+        <div class="article-toolbar-row" style="flex-shrink: 0;">
+          <div class="actions d-flex align-items-center gap-2" style="margin-left: auto;">
             <button
               type="button"
               class="btn btn-sm btn-success position-relative"
               (click)="save()"
-              [disabled]="selectedArticuloId === null || !hasUnsavedChanges">
+              [disabled]="rowData.length === 0 || !hasUnsavedChanges">
               Guardar
               <span
                 class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
@@ -65,14 +50,13 @@ import { lastValueFrom, Subscription } from 'rxjs';
               type="button"
               class="btn btn-sm btn-warning"
               (click)="revert()"
-              [disabled]="selectedArticuloId === null || !hasUnsavedChanges">
+              [disabled]="rowData.length === 0 || !hasUnsavedChanges">
               Deshacer
             </button>
           </div>
         </div>
 
-        <!-- Grid: se muestra solo cuando se elige un artículo -->
-        <div *ngIf="selectedArticuloId !== null" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
+        <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
           <ag-grid-angular
             #agGrid
             class="ag-theme-quartz small-text-ag-grid"
@@ -113,33 +97,12 @@ import { lastValueFrom, Subscription } from 'rxjs';
       margin-bottom: 15px;
     }
 
-    .article-buttons-row {
+    .article-toolbar-row {
       display: flex;
       align-items: center;
       gap: 12px;
       margin-bottom: 10px;
       flex-wrap: wrap;
-    }
-
-    .article-buttons-scroller {
-      flex: 1 1 auto;
-      min-width: 220px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: 2px;
-    }
-
-    .actions {
-      margin-left: auto;
-      flex: 0 0 auto;
-    }
-
-    .article-buttons {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 8px;
     }
 
     :host ::ng-deep .ag-cell.cell-cantidad-comprar,
@@ -153,6 +116,18 @@ import { lastValueFrom, Subscription } from 'rxjs';
     :host ::ng-deep .ag-header-cell.header-cantidad-comprar .ag-header-cell-label {
       justify-content: center;
       width: 100%;
+    }
+
+    /* columnas con rowSpan: bordes horiz. (entre artículos) y vert. (lados de la celda) */
+    :host ::ng-deep .ag-cell.cell-col-articulo,
+    :host ::ng-deep .ag-cell.cell-col-cantidad-a-comprar,
+    :host ::ng-deep .ag-cell.cell-col-nuevo-recurrente,
+    :host ::ng-deep .ag-cell.cell-col-prioridad {
+      box-sizing: border-box;
+      box-shadow:
+        inset 0 -1px 0 rgba(33, 50, 83, 0.25),
+        inset 1px 0 0 rgba(33, 50, 83, 0.2),
+        inset -1px 0 0 rgba(33, 50, 83, 0.2);
     }
   `]
 })
@@ -174,7 +149,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   articulos: any[] = [];
   proveedores: any[] = [];
 
-  selectedArticuloId: number | null = null;
   hasUnsavedChanges = false;
   loading = false;
   error: string | null = null;
@@ -184,8 +158,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   readonly tipoOcOptions = [
     'SELECCIONE UNA OPCION',
     'COMPRA INMEDIATA',
-    'COMPRA AUTORIZADA',
     'COMPRA AUTORIZADA EN OTRA FECHA',
+    'COMPRA NO AUTORIZADA',
     'CAMBIO DE ESPECIFICACIONES',
     'ARTICULO NO AUTORIZADO'
   ];
@@ -248,6 +222,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
         if (this.articulos.length === 0) {
           this.error = null; // No es error, solo sin datos
+        } else {
+          this.rebuildAllRowsAndSync();
         }
       },
       error: (err: any) => {
@@ -284,92 +260,109 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
-  onSelectArticulo(id: number) {
-    if (this.selectedArticuloId === id) {
-      this.selectedArticuloId = null;
-      this.rowData = [];
-      this.originalRowData = [];
-      this.hasUnsavedChanges = false;
-      if (this.gridApi) {
-        setTimeout(() => {
-          this.gridApi.setGridOption('rowData', []);
-        }, 0);
-      }
-      return;
-    }
-
-    this.selectedArticuloId = id;
-    this.buildRowData();
+  private rebuildAllRowsAndSync() {
+    this.buildRowDataForAllArticulos();
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
-
-    // Forzar cambio de detección para que Angular renderice la grid
     this.cdr.detectChanges();
+    this.pushRowDataToGridIfReady(true);
+  }
 
-    // Esperar a que la grid esté en el DOM y gridApi esté listo
+  /**
+   * Construye un solo dataset: todos los artículos × proveedores (1 fila por combinación),
+   * agrupando visualmente el artículo (y cantidad) con rowSpan.
+   */
+  private buildRowDataForAllArticulos() {
+    const rows: any[] = [];
+
+    const proveedores = Array.isArray(this.proveedores) ? this.proveedores : [];
+    const blockSize = proveedores.length > 0 ? proveedores.length : 1;
+
+    for (const articulo of this.articulos || []) {
+      const preciosPorProv = articulo.precios || {};
+      const comprasMinsByProv = articulo.comprasMinimas || {};
+      const tiemposEntregaPorProv = articulo.tiemposEntrega || {};
+      const cantidadComprar = Number(articulo.cantidad ?? articulo.cantidadComprar ?? 0) || 0;
+      const articuloItemId = Number(articulo.id ?? 0) || 0;
+      const idSupplie = articulo.idSupplie || 0;
+      const rawNumArticle = articulo.numArticle ?? articulo.numArticuloInterno ?? articulo.numarticulo ?? '';
+      const tipoOc =
+        articulo.typeOc ?? articulo.tipoOc ?? this.tipoOcOptions[0] ?? 'SELECCIONE UNA OPCION';
+      const cantidadConceptualizada = Number(
+        articulo.cantidadConceptualizada ?? articulo.cantidad_conceptualizada ?? 0
+      );
+      const comentario = articulo.comment ?? articulo.comentario ?? '';
+
+      const provList = proveedores.length > 0 ? proveedores : [{ id: 0, nombre: '—' }];
+
+      provList.forEach((prov: any, idx: number) => {
+        const provId = Number(prov.id ?? 0) || 0;
+        const costoUnitario =
+          Number(
+            preciosPorProv[provId] ??
+              preciosPorProv[provId.toString()] ??
+              prov.costoUnitario ??
+              prov.precio ??
+              0
+          ) || 0;
+        const compraMinima =
+          Number(
+            comprasMinsByProv[provId] ??
+              comprasMinsByProv[provId.toString()] ??
+              articulo.compraMinima ??
+              1
+          ) || 1;
+        const costoTotal = costoUnitario * cantidadComprar;
+        const costoXCompraMinima = costoUnitario * compraMinima;
+
+        const providerCodigosMap = this.codigosExternos.get(provId) || new Map();
+        const codigoExternoProveedor = providerCodigosMap.get(idSupplie) || '';
+
+        rows.push({
+          articuloItemId,
+          proveedorId: provId,
+          proveedorNombre: prov.nombre ?? prov.name ?? (provId ? `Proveedor ${provId}` : '—'),
+          cantidadComprar,
+          nuevoRecurrente: articulo.recurrent ?? articulo.nuevoRecurrente ?? prov.recurrent ?? '—',
+          articulo: articulo.nombre ?? articulo.article ?? '',
+          numArticle: rawNumArticle,
+          numArticuloInterno: rawNumArticle,
+          numArticuloExterno:
+            codigoExternoProveedor || (articulo.codigoExterno ?? articulo.numArticuloExterno ?? articulo.observation ?? ''),
+          prioridad: articulo.typePriority ?? articulo.prioridad ?? 'NORMAL',
+          tiempoEntrega: tiemposEntregaPorProv[provId] ?? tiemposEntregaPorProv[provId.toString()] ?? '',
+          compraMinima,
+          costoUnitario,
+          costoTotal,
+          costoXCompraMinima,
+          comentario,
+          tipoOc,
+          cantidadConceptualizada: Number.isFinite(cantidadConceptualizada) ? cantidadConceptualizada : 0,
+          __isBlockStart: idx === 0,
+          __blockRowSpan: blockSize
+        });
+      });
+    }
+
+    this.rowData = rows;
+  }
+
+  private pushRowDataToGridIfReady(_alsoSchedule: boolean) {
     setTimeout(() => {
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.setGridOption('columnDefs', this.colDefs);
         this.scheduleAutoSizeColumns();
       }
-    }, 50);
-  }
-
-  private buildRowData() {
-    const articulo = this.articulos.find(a => a.id === this.selectedArticuloId);
-    if (!articulo) {
-      this.rowData = [];
-      return;
-    }
-
-    const preciosPorProv = articulo.precios || {};
-    const comprasMinsByProv = articulo.comprasMinimas || {};
-    const tiemposEntregaPorProv = articulo.tiemposEntrega || {};
-    const cantidadComprar = Number(articulo.cantidad ?? articulo.cantidadComprar ?? 0) || 0;
-
-    // Una fila por proveedor (datos API + fallbacks para campos nuevos)
-    this.rowData = this.proveedores.map((prov: any) => {
-      const costoUnitario = Number(preciosPorProv[prov.id] ?? preciosPorProv[prov.id.toString()] ?? prov.costoUnitario ?? prov.precio ?? 0) || 0;
-      const compraMinima = Number(comprasMinsByProv[prov.id] ?? comprasMinsByProv[prov.id.toString()] ?? articulo.compraMinima ?? 1) || 1;
-      console.log(`[Comparacion] prov.id=${prov.id} → compraMinima=${compraMinima}`);
-      const costoTotal = costoUnitario * cantidadComprar;
-      const costoXCompraMinima = costoUnitario * compraMinima;
-
-      // Obtener Cód. Externo del proveedor para este artículo
-      const idSupplie = articulo.idSupplie || 0;
-      const providerCodigosMap = this.codigosExternos.get(prov.id) || new Map();
-      const codigoExternoProveedor = providerCodigosMap.get(idSupplie) || '';
-      console.log(`[Comparacion] Artículo ${articulo.nombre} (idSupplie=${idSupplie}) × Prov ${prov.id}: codigoExterno="${codigoExternoProveedor}"`);
-
-      const rawNumArticle = articulo.numArticle ?? articulo.numArticuloInterno ?? articulo.numarticulo ?? '';
-      const rowItem = {
-        proveedorId: prov.id,
-        proveedorNombre: prov.nombre ?? prov.name ?? '',
-        cantidadComprar,
-        nuevoRecurrente: articulo.recurrent ?? articulo.nuevoRecurrente ?? prov.recurrent ?? '—',
-        articulo: articulo.nombre ?? articulo.article ?? '',
-        numArticle: rawNumArticle,
-        numArticuloInterno: rawNumArticle,
-        numArticuloExterno: codigoExternoProveedor || (articulo.codigoExterno ?? articulo.numArticuloExterno ?? articulo.observation ?? ''),
-        prioridad: articulo.typePriority ?? articulo.prioridad ?? 'NORMAL',
-        tiempoEntrega: tiemposEntregaPorProv[prov.id] ?? tiemposEntregaPorProv[prov.id.toString()] ?? '',
-        compraMinima,
-        costoUnitario,
-        costoTotal,
-        costoXCompraMinima,
-        comentario: articulo.comment ?? articulo.comentario ?? '',
-        tipoOc: articulo.typeOc ?? articulo.tipoOc ?? this.tipoOcOptions[0] ?? 'SELECCIONE UNA OPCION'
-      };
-      console.log('Primera fila creada - compraMinima:', rowItem.compraMinima);
-      return rowItem;
-    });
-
-    console.log('rowData completo:', this.rowData);
+    }, 0);
   }
 
   onGridReady(params: any) {
     this.gridApi = params.api;
+    if (this.rowData?.length) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+    }
     this.scheduleAutoSizeColumns();
   }
 
@@ -411,10 +404,41 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     if (field === 'cantidadComprar') {
       const v = Number(event.newValue);
       const qty = Number.isFinite(v) ? v : 0;
-      this.rowData.forEach((row: any) => {
+      const itemId = Number(event.data?.articuloItemId ?? 0) || 0;
+      for (const row of this.rowData) {
+        if (Number(row.articuloItemId ?? 0) !== itemId) {
+          continue;
+        }
         row.cantidadComprar = qty;
         row.costoTotal = (Number(row.costoUnitario) || 0) * qty;
-      });
+      }
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ force: true });
+      }
+    }
+    if (field === 'tipoOc') {
+      const itemId = Number(event.data?.articuloItemId ?? 0) || 0;
+      const val = event.newValue;
+      for (const row of this.rowData) {
+        if (Number(row.articuloItemId ?? 0) !== itemId) {
+          continue;
+        }
+        row.tipoOc = val;
+      }
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ force: true });
+      }
+    }
+    if (field === 'cantidadConceptualizada') {
+      const itemId = Number(event.data?.articuloItemId ?? 0) || 0;
+      const v = Number(event.newValue);
+      const val = Number.isFinite(v) ? v : 0;
+      for (const row of this.rowData) {
+        if (Number(row.articuloItemId ?? 0) !== itemId) {
+          continue;
+        }
+        row.cantidadConceptualizada = val;
+      }
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
       }
@@ -433,14 +457,18 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   }
 
   save() {
-    if (this.selectedArticuloId === null) return;
+    if (this.rowData.length === 0) {
+      return;
+    }
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
     alerts.basicAlert('Guardado', 'Selección de proveedores guardada', 'success');
   }
 
   revert() {
-    if (this.selectedArticuloId === null) return;
+    if (this.rowData.length === 0) {
+      return;
+    }
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     if (this.gridApi) {
@@ -451,20 +479,25 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   get colDefs(): ColDef[] {
     return [
       {
+        field: 'articulo',
+        headerName: 'ARTICULO',
+        minWidth: 120,
+        editable: false,
+        cellClass: 'cell-cantidad-comprar cell-col-articulo',
+        headerClass: 'header-cantidad-comprar',
+        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
+        cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
+        wrapText: true
+      },
+      {
         field: 'cantidadComprar',
         headerName: 'CANTIDAD A COMPRAR',
         minWidth: 120,
-        editable: (params: any) => params.node?.rowIndex === 0,
+        editable: (params: any) => !!params.data?.__isBlockStart,
         cellEditor: 'agNumberCellEditor',
-        cellClass: 'cell-cantidad-comprar',
+        cellClass: 'cell-cantidad-comprar cell-col-cantidad-a-comprar',
         headerClass: 'header-cantidad-comprar',
-        rowSpan: (params: any) => {
-          const api = params.api;
-          const idx = params.node?.rowIndex;
-          const n = api?.getDisplayedRowCount?.() ?? this.rowData?.length ?? 0;
-          if (n <= 0) return 1;
-          return idx === 0 ? n : 0;
-        },
+        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
         cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
         wrapText: true
       },
@@ -478,14 +511,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'nuevoRecurrente',
         headerName: 'NUEVO RECURRENTE',
         minWidth: 130,
-        cellStyle: { padding: '8px' }
-      },
-      {
-        field: 'articulo',
-        headerName: 'ARTICULO',
-        minWidth: 150,
-        hide: true,
-        cellStyle: { padding: '8px' }
+        editable: false,
+        cellClass: 'cell-cantidad-comprar cell-col-nuevo-recurrente',
+        headerClass: 'header-cantidad-comprar',
+        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
+        cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
+        wrapText: true
       },
       {
         field: 'numArticuloInterno',
@@ -502,8 +533,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       {
         field: 'prioridad',
         headerName: 'PRIORIDAD',
-        minWidth: 100,
-        cellStyle: { padding: '8px' }
+        minWidth: 120,
+        editable: false,
+        cellClass: 'cell-cantidad-comprar cell-col-prioridad',
+        headerClass: 'header-cantidad-comprar',
+        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
+        cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
+        wrapText: true
       },
       {
         field: 'tiempoEntrega',
@@ -574,12 +610,31 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       {
         field: 'tipoOc',
         headerName: 'TIPO OC',
-        minWidth: 220,
+        minWidth: 320,
         editable: true,
+        singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: () => ({ values: this.tipoOcOptions }),
-        cellEditorPopup: true,
+        cellEditorParams: {
+          values: this.tipoOcOptions.filter(opt => opt !== 'SELECCIONE UNA OPCION'),
+          searchable: false,
+          allowTyping: false
+        },
         cellStyle: { textAlign: 'left', padding: '8px' }
+      },
+      {
+        field: 'cantidadConceptualizada',
+        headerName: 'CANTIDAD X PROVEEDOR',
+        minWidth: 200,
+        editable: (params: any) => {
+          const tipoOc = params.data?.tipoOc;
+          return tipoOc === 'COMPRA INMEDIATA' || tipoOc === 'COMPRA AUTORIZADA EN OTRA FECHA';
+        },
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { precision: 2, isFloat: true },
+        valueFormatter: (params: any) =>
+          params.value != null ? Number(params.value).toFixed(2) : '0.00',
+        cellStyle: { textAlign: 'right', padding: '8px' }
       }
     ];
   }
@@ -596,7 +651,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     suppressRowTransform: true,
     animateRows: false,
     singleClickEdit: false,
-    stopEditingWhenCellsLoseFocus: true,
+    stopEditingWhenCellsLoseFocus: false,
     suppressClickEdit: false,
     defaultColDef: {
       resizable: true,

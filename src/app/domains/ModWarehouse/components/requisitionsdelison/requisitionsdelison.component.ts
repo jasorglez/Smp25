@@ -682,7 +682,8 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'requisitionNumber',
         headerName: '# Requisicion',
-        width: 150,
+        width: 200,
+        minWidth: 180,
         filter: true,
         editable: false,
         cellStyle: (params: any) => {
@@ -883,7 +884,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'solicitedBy',
         headerName: 'Solicitado por',
-        width: 150,
+        width: 300,
         editable: false,
         cellRenderer: (params: any) => {
           const div = document.createElement('div');
@@ -919,7 +920,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 80,
+        width: 110,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
