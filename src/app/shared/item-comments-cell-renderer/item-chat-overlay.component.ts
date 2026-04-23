@@ -169,6 +169,7 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
         text:         textToSave
       }));
       this.comments = [...this.comments, saved];
+      this.commentsService.commentSaved$.next(saved);
       this.newText = '';
       this.pendingTag = '';  // consumido
     } finally { this.saving = false; }
@@ -184,6 +185,7 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       const updated = await firstValueFrom(this.commentsService.editComment(c.id!, this.editingText.trim()));
       const idx = this.comments.findIndex(x => x.id === c.id);
       if (idx !== -1) this.comments[idx] = { ...this.comments[idx], text: updated.text };
+      this.commentsService.commentSaved$.next(updated);
       this.cancelEdit();
     } finally { this.saving = false; }
   }

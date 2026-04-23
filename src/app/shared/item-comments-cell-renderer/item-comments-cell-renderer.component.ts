@@ -27,11 +27,14 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   idDocument = 0;
   locked = false;
 
-  agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number; locked?: boolean }): void {
-    this.numArticle   = String(params.data?.numArticulo || params.data?.numeroArticulo || params.data?.numArticle || '');
+  agInit(params: ICellRendererParams & { documentType?: string; idDocument?: number; numArticle?: string; locked?: boolean }): void {
+    this.numArticle   = params.numArticle
+      ? String(params.numArticle)
+      : String(params.data?.numArticulo || params.data?.numeroArticulo || params.data?.numArticle || '');
     this.documentType = params.documentType || '';
     this.idDocument   = params.idDocument   || 0;
     this.locked       = params.locked       || false;
+    console.log('[ItemComments] documentType:', this.documentType, 'idDocument:', this.idDocument, 'numArticle:', this.numArticle);
     this.loadCount();
   }
 

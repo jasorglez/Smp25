@@ -8,6 +8,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
@@ -62,7 +63,7 @@ pdfMake.vfs = pdfFonts.vfs;
         <button class="btn btn-sm btn-outline-secondary" type="button" (click)="generatePlaceholderPdf()" [disabled]="ocGenerated" title="Ver PDF">
           <i class="bi bi-file-earmark-pdf text-danger"></i>
         </button>
-        <input type="date" class="form-control form-control-sm" [(ngModel)]="fechaProveedor" [disabled]="ocGenerated" style="width: 140px;">
+        <input *ngIf="false" type="date" class="form-control form-control-sm" [(ngModel)]="fechaProveedor" [disabled]="ocGenerated" style="width: 140px;">
         <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="savingChanges || ocGenerated" title="Guardar cotización">
           <span *ngIf="savingChanges" class="spinner-border spinner-border-sm"></span>
           <i *ngIf="!savingChanges" class="bi bi-floppy"></i>
@@ -281,6 +282,7 @@ export class DetalleItemsProveedorComponent {
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
   private ocandreqsService = inject(OcAndReqsService);
+  private pedimentoModificationService = inject(PedimentoModificationService);
   private providersService = inject(ProvidersService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private catalogadmonService = inject(CatalogadmonService);
@@ -822,6 +824,21 @@ export class DetalleItemsProveedorComponent {
 
       // Eliminar asignaciones proveedor-material de filas no autorizadas
       await this.deleteUnauthorizedProviderAssignments();
+
+      // ✅ Actualizar dateModified del maestro de la cotización original
+      try {
+        const maestroCotizacion: any = await lastValueFrom(
+          this.ocandreqsService.getDetailedReq(this.params.data.cotizacionId)
+        );
+        if (maestroCotizacion) {
+          maestroCotizacion.dateModified = new Date().toISOString();
+          await lastValueFrom(this.ocandreqsService.updateOcAndReq(this.params.data.cotizacionId, maestroCotizacion));
+          // ✅ Notificar que el pedimento fue modificado para que se reordene
+          this.pedimentoModificationService.pedimentoModified$.next(this.params.data.cotizacionId);
+        }
+      } catch (error) {
+        console.warn('⚠️ No se pudo actualizar dateModified:', error);
+      }
 
       await alerts.ocCotizSaved(this.savedCotizFolio);
 

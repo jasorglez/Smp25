@@ -52,4 +52,16 @@ export class TypexPrefixesService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+
+  /**
+   * Obtiene el próximo número de requisición para una sucursal
+   * @param idBranch ID de la sucursal
+   * @returns Observable con el número de requisición generado
+   */
+  getNextRequisitionNumber(idBranch: number): Observable<any> {
+    return this.http.get(
+      `${environment.urlWarehouse}/TypexPrefixes/next-requisition/${idBranch}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
 }

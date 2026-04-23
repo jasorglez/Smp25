@@ -5,6 +5,7 @@ import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-en
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { SignalsService } from 'app/services/signals.service';
+import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
 import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
@@ -77,6 +78,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   private gridApi!: GridApi;
   private ocAndReqsService = inject(OcAndReqsService);
   private signalsService = inject(SignalsService);
+  private pedimentoModificationService = inject(PedimentoModificationService);
 
   // Cache para evitar re-renderizado
   private _colDefs: ColDef[] | null = null;
@@ -169,10 +171,6 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   private autoAdjustColumns() {
     if (!this.gridApi) return;
     const apiAny = this.gridApi as any;
-    if (typeof apiAny.autoSizeAllColumns === 'function') {
-      apiAny.autoSizeAllColumns(true);
-      return;
-    }
     if (typeof apiAny.sizeColumnsToFit === 'function') {
       apiAny.sizeColumnsToFit();
     }
@@ -283,7 +281,27 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         this.gridApi.refreshCells({ force: true });
       }
 
+      // ✅ Actualizar dateModified del maestro de la cotización
+      try {
+        const maestroCotizacion: any = await firstValueFrom(
+          this.ocAndReqsService.getDetailedReq(this.cotizacionId)
+        );
+        if (maestroCotizacion) {
+          maestroCotizacion.dateModified = new Date().toISOString();
+          await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.cotizacionId, maestroCotizacion));
+          // ✅ Notificar que el pedimento fue modificado para que se reordene
+          this.pedimentoModificationService.pedimentoModified$.next(this.cotizacionId);
+        }
+      } catch (error) {
+        console.warn('⚠️ No se pudo actualizar dateModified:', error);
+      }
+
       alerts.basicAlert('Guardado', `Se guardaron ${changedItems.length} cambio(s) exitosamente.`, 'success');
+
+      // ✅ Recargar el grid del nivel 1 para que la cotización se reordene si fue modificada
+      if (this.context?.reloadParentGrid) {
+        this.context.reloadParentGrid();
+      }
 
     } catch (error) {
       console.error('❌ Error al guardar cambios:', error);
@@ -432,22 +450,31 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       {
         field: 'recurrent',
         headerName: 'Recurrente',
-        width: 120
+        minWidth: 130,
+        flex: 0,
+        suppressSizeToFit: true
       },
       {
         field: 'articulo',
         headerName: 'Articulo',
-        width: 200
+        minWidth: 280,
+        flex: 2,
+        wrapText: true
       },
       {
         field: 'numeroArticulo',
         headerName: '# Articulo',
-        width: 120
+        minWidth: 140,
+        flex: 0,
+        suppressSizeToFit: true
       },
       {
         field: 'cantidad',
         headerName: 'Cantidad',
-        width: 100
+        minWidth: 110,
+        flex: 0,
+        suppressSizeToFit: true,
+        cellStyle: { textAlign: 'right' }
       },
       {
         field: 'tipo',
@@ -458,7 +485,9 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       {
         field: 'tipoPrioridad',
         headerName: 'Tipo Prioridad3',
-        width: 150
+        minWidth: 140,
+        flex: 0,
+        suppressSizeToFit: true
       },
     /*  {
         field: 'comment',
@@ -468,20 +497,25 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
 
       {
         headerName: 'Comentarios💬',
-        width: 140,
+        minWidth: 140,
+        flex: 0,
+        suppressSizeToFit: true,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
-        cellRendererParams: () => ({
+        cellRendererParams: (params: any) => ({
           documentType: 'REQ',
           idDocument: this.requisitionId,
+          numArticle: params.data?.numeroArticulo || '',
           locked: this.articulosLocked
         }),
       },
       {
         field: 'pedimento',
         headerName: 'Solicitado',
-        width: 120,
+        minWidth: 120,
+        flex: 0,
+        suppressSizeToFit: true,
         cellRenderer: (params: any) => {
           const isChecked = params.value === true;
           const icon = isChecked ? '✓' : '○';
@@ -539,12 +573,19 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
+    autoSizeStrategy: {
+      type: 'fitGridWidth',
+      defaultMinWidth: 90,
+    },
     defaultColDef: {
       resizable: true,
       sortable: true,
       filter: true,
       flex: 1,
       minWidth: 120,
+    },
+    onFirstDataRendered: () => {
+      this.autoAdjustColumns();
     },
     onRowClicked: (event: any) => {
       this.selectedRow = event.data;

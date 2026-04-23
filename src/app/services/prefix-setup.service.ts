@@ -92,17 +92,17 @@ export class PrefixSetupService {
   }
 
   /**
-   * Genera el siguiente folio para un tipo de documento y actualiza el consecutivo
+   * Genera el siguiente folio SIN actualizar la BD (solo calcula)
    * @param type 'project' o 'branch'
    * @param idProjectOrBranch ID del proyecto o sucursal
    * @param documentType 'req' | 'cotiz' | 'oc'
    * @returns Promise con el folio generado o null si no hay configuración
    */
-  async getNextFolio(type: 'project' | 'branch', idProjectOrBranch: number, documentType: DocumentType): Promise<string | null> {
+  async generateNextFolio(type: 'project' | 'branch', idProjectOrBranch: number, documentType: DocumentType): Promise<string | null> {
     try {
       const prefixSetup = await firstValueFrom(this.getPrefixSetup(type, idProjectOrBranch));
 
-      if (!prefixSetup || !prefixSetup.id) {
+      if (!prefixSetup) {
         console.warn('No se encontró configuración de prefijos');
         return null;
       }
@@ -114,30 +114,73 @@ export class PrefixSetupService {
         case 'req':
           prefix = prefixSetup.prefixReq || '';
           consecutive = (prefixSetup.consecutiveReq || 0) + 1;
-          prefixSetup.consecutiveReq = consecutive;
           break;
         case 'cotiz':
           prefix = prefixSetup.prefixCotiz || '';
           consecutive = (prefixSetup.consecutiveCotiz || 0) + 1;
-          prefixSetup.consecutiveCotiz = consecutive;
           break;
         case 'oc':
           prefix = prefixSetup.prefixOc || '';
           consecutive = (prefixSetup.consecutiveOc || 0) + 1;
-          prefixSetup.consecutiveOc = consecutive;
           break;
       }
 
-      // Actualizar el consecutivo en la base de datos
-      await firstValueFrom(this.updatePrefixSetup(prefixSetup.id, prefixSetup));
-
-      // Concatenar prefijo + consecutivo (sin guion, el usuario lo incluye en el prefijo)
-      const folio = `${prefix}${consecutive}`;
+      // Concatenar prefijo + guion + consecutivo formateado a 4 dígitos (ej: BOD-0001)
+      const formattedConsecutive = consecutive.toString().padStart(4, '0');
+      const folio = `${prefix}-${formattedConsecutive}`;
 
       return folio;
     } catch (error) {
       console.error('Error al generar folio:', error);
       return null;
     }
+  }
+
+  /**
+   * Confirma y actualiza el consecutivo DESPUÉS de guardar
+   * @param prefixSetupId ID del PrefixSetup
+   * @param documentType 'req' | 'cotiz' | 'oc'
+   * @returns Promise que se resuelve cuando se actualiza
+   */
+  async confirmFolio(prefixSetupId: number, documentType: DocumentType): Promise<void> {
+    try {
+      const prefixSetup = await firstValueFrom(this.getPrefixSetupById(prefixSetupId));
+
+      if (!prefixSetup) {
+        throw new Error('No se encontró la configuración de prefijos');
+      }
+
+      // Incrementar el consecutivo según el tipo de documento
+      switch (documentType) {
+        case 'req':
+          prefixSetup.consecutiveReq = (prefixSetup.consecutiveReq || 0) + 1;
+          break;
+        case 'cotiz':
+          prefixSetup.consecutiveCotiz = (prefixSetup.consecutiveCotiz || 0) + 1;
+          break;
+        case 'oc':
+          prefixSetup.consecutiveOc = (prefixSetup.consecutiveOc || 0) + 1;
+          break;
+      }
+
+      // Actualizar en la base de datos
+      await firstValueFrom(this.updatePrefixSetup(prefixSetupId, prefixSetup));
+    } catch (error) {
+      console.error('Error al confirmar folio:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Genera el siguiente folio para un tipo de documento y actualiza el consecutivo
+   * @deprecated Usa generateNextFolio() + confirmFolio() en su lugar
+   * @param type 'project' o 'branch'
+   * @param idProjectOrBranch ID del proyecto o sucursal
+   * @param documentType 'req' | 'cotiz' | 'oc'
+   * @returns Promise con el folio generado o null si no hay configuración
+   */
+  async getNextFolio(type: 'project' | 'branch', idProjectOrBranch: number, documentType: DocumentType): Promise<string | null> {
+    // Para compatibilidad, usa generateNextFolio
+    return this.generateNextFolio(type, idProjectOrBranch, documentType);
   }
 }
