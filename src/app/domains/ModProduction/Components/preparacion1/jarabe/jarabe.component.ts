@@ -544,8 +544,11 @@ export class JarabeComponent implements OnInit {
         editable: false,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
+          const isNew = !!params.data?.__isNew;
           const container = document.createElement('div');
-          container.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #0d6efd; text-decoration: underline;';
+          container.style.cssText = isNew
+            ? 'display: flex; align-items: center; gap: 8px; cursor: not-allowed; color: #aaa;'
+            : 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #0d6efd; text-decoration: underline;';
           container.innerHTML = `<span>${count} ingrediente(s)</span>`;
           container.addEventListener('click', () => {
             this.toggleCascade(params.node, 'preparacion');
@@ -591,8 +594,11 @@ export class JarabeComponent implements OnInit {
         editable: false,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
+          const isNew = !!params.data?.__isNew;
           const container = document.createElement('div');
-          container.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #e65100; text-decoration: underline;';
+          container.style.cssText = isNew
+            ? 'display: flex; align-items: center; gap: 8px; cursor: not-allowed; color: #aaa;'
+            : 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #e65100; text-decoration: underline;';
           container.innerHTML = `<span>${count} registro(s)</span>`;
           container.addEventListener('click', () => {
             this.toggleCascade(params.node, 'historial');
@@ -686,6 +692,7 @@ export class JarabeComponent implements OnInit {
   }
 
   toggleCascade(node: any, type: string) {
+    if (node.data?.__isNew) return;
     if (this.expandedRowId === node.id && this.expandedDetailType === type) {
       node.setExpanded(false);
       this.expandedRowId = null;
