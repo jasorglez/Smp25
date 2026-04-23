@@ -59,7 +59,7 @@ export class UsersComponent implements OnDestroy {
   departamentos: any[] = [];
   position: any[] = [];
   rowData: any[] = [];
-  
+
   paginationPageSize = 20;
   pagination = true;
   notSavedChanges: boolean = false;
@@ -88,19 +88,19 @@ export class UsersComponent implements OnDestroy {
   private enterPressed: boolean = false;
   private _revertingIsRoot = false;
 
-  private usersService        = inject(UsersService);
+  private usersService = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
-  private usersxrootService   = inject(UsersxpermissionsService);
-  private trackingService     = inject(TrackingService);
-  private catalogService      = inject(CatalogsService);
-  private signalsService      = inject(SignalsService);
-  private rolesService        = inject(RolesService);  
-  private employeeService     = inject(EmployeesService);
-  private permitionsService   = inject(PermitionsService);
-  private modalService        = inject(ModalService);
+  private usersxrootService = inject(UsersxpermissionsService);
+  private trackingService = inject(TrackingService);
+  private catalogService = inject(CatalogsService);
+  private signalsService = inject(SignalsService);
+  private rolesService = inject(RolesService);
+  private employeeService = inject(EmployeesService);
+  private permitionsService = inject(PermitionsService);
+  private modalService = inject(ModalService);
   private masterPermissions2Service = inject(MasterPermissions2Service);
   private branchsService = inject(BranchsService);
-  authService                 = inject(AuthService);
+  authService = inject(AuthService);
 
   /** UserSystem › Setup Usuarios (Departamento / Security) por fila de usuario. */
   private userSetupFlagsById = new Map<number, { department: boolean; security: boolean }>();
@@ -313,7 +313,6 @@ export class UsersComponent implements OnDestroy {
       return;
     }
     this.rowData = response.data
-      .filter((item: any) => item.active !== 0 && item.active !== false)
       .map((item: any) => {
         const idNum = Number(item.id);
         const uid = Number.isFinite(idNum) && idNum > 0 ? idNum : Number(item.id);
@@ -478,10 +477,10 @@ export class UsersComponent implements OnDestroy {
           const subd =
             String(
               r?.subdetailedPermissionName ??
-                r?.SubdetailedPermissionName ??
-                r?.name ??
-                r?.Name ??
-                ''
+              r?.SubdetailedPermissionName ??
+              r?.name ??
+              r?.Name ??
+              ''
             ).trim();
           const key = `${did}-${sid}-${subd}`;
           if (changesMap.has(key)) continue;
@@ -526,9 +525,9 @@ export class UsersComponent implements OnDestroy {
         // Optimización: enviar CRUD en paralelo con límite de concurrencia.
         return requests.length
           ? from(requests).pipe(
-              mergeMap((req$) => req$, 8),
-              toArray()
-            )
+            mergeMap((req$) => req$, 8),
+            toArray()
+          )
           : EMPTY;
       })
     );
@@ -596,14 +595,14 @@ export class UsersComponent implements OnDestroy {
 
     const addPrincipalDept$ = (idRole > 0 && idPosicion > 0)
       ? this.permitionsService.addPermitionsDetailBydescription({
-          idUser: userId,
-          idBranch: this.dataEmpleado.idBranch,
-          idRole,
-          idPosicion,
-          principal: true,
-          active: true,
-          permissionsInitialized: false,
-        }).pipe(catchError(() => of(null)))
+        idUser: userId,
+        idBranch: this.dataEmpleado.idBranch,
+        idRole,
+        idPosicion,
+        principal: true,
+        active: true,
+        permissionsInitialized: false,
+      }).pipe(catchError(() => of(null)))
       : of(null);
 
     return concat(addBranchPermission$, addPrincipalDept$, addDetailedPermissions$, seedUserSystem$);
@@ -1233,7 +1232,7 @@ export class UsersComponent implements OnDestroy {
     );
   }
 
-onSecurityColumnClicked(params: any): void {
+  onSecurityColumnClicked(params: any): void {
     if (!params?.api || !params?.node) {
       return;
     }
