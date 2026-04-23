@@ -189,8 +189,7 @@ export class SideBarComponent {
       // (permissions weren't ready yet). Now that permissions are loaded,
       // reload branches once if the user qualifies for the full-branch path.
       if (!this._branchesReloadedAfterPermissions && this.selectedRoot) {
-        const hasAll = this.authService.hasDetailedPermission('principal', 'see-all-branches');
-        if (hasAll || this.authService.isCurrentUserRoot()) {
+        if (this.authService.isEnvRoot()) {
           this._branchesReloadedAfterPermissions = true;
           await this.getpermissionxBranchs(parseInt(this.selectedRoot, 10));
         }
@@ -280,11 +279,12 @@ export class SideBarComponent {
   }
 
   async getpermissionxBranchs(idRoot: number) {
-    const hasPermission = this.authService.hasDetailedPermission('principal', 'see-all-branches');
-    const isRoot = this.authService.isCurrentUserRoot();
+    // Only the environment root sees all branches; everyone else (including DB-root
+    // and see-all-branches users) is limited to their assigned branches.
+    const isRoot = this.authService.isEnvRoot();
     const requestSeq = ++this.branchListRequestSeq;
 
-    if (hasPermission || isRoot) {
+    if (isRoot) {
       // Using the full-branch path — no need to reload after permissions.
       this._branchesReloadedAfterPermissions = true;
       this.branchService.getBranches2fields(idRoot).subscribe(

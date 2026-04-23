@@ -94,9 +94,9 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           width: 200,
           editable: true,
           filter: true,
-                
+
           cellEditor: SelectWithTooltipEditorV2Component,
-                
+
           cellEditorParams: (params) => {
             const currentIdSucursal = Number(params.data.idSucursal);
             const usedIds = new Set(
@@ -113,42 +113,42 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
                 }))
             };
           },
-        
+
           // Mostrar el nombre de la sucursal
           valueFormatter: (params) => {
             if (!params.value) return '';
             const branch = this.allBranches?.find(p => p.id === Number(params.value));
             return branch ? branch.name : params.value;
           },
-        
+
           valueSetter: (params) => {
             let v = params.newValue;
-          
+
             // Normalizar valor:
             // el editor podría devolver string, number, o {id, description}
             let newValue = (v && typeof v === 'object' && 'id' in v)
-                ? v.id
-                : v;
-          
+              ? v.id
+              : v;
+
             // 👉 Convertir siempre a number
             newValue = Number(newValue);
-          
+
             if (isNaN(newValue)) {
               console.warn("Valor inválido, no es número:", params.newValue);
               return false;
             }
-          
+
             // Validar requerido
             if (!newValue) {
               alerts.basicAlert('Campo requerido', 'La sucursal es obligatoria', 'error');
               return false;
             }
-          
+
             // Validar duplicado
             const duplicateExists = (this.sucursalRowData || []).some((row, index) =>
               index !== params.node.rowIndex && Number(row.idSucursal) === newValue
             );
-          
+
             if (duplicateExists) {
               alerts.basicAlert(
                 'Valor duplicado',
@@ -157,12 +157,12 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
               );
               return false;
             }
-          
+
             // Asignar
             params.data.idSucursal = newValue;
             return true;
           },
-        
+
           // Coger siempre el número de data.sucursal (evita inconsistencias)
           valueGetter: (params) => Number(params.data.idSucursal),
         },
@@ -217,7 +217,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     }
   }
 
-  loadCatalogData(){
+  loadCatalogData() {
     const idProveedor = this.signalsService.getIdProveedor();
     this.sucursalByMaterialProveedorService.getSucursalByMaterial(idProveedor).subscribe(
       (data: any) => {
@@ -248,11 +248,12 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
   onSelectionChanged(event: any) {
     const selectedRows = event.api.getSelectedRows();
     this.selectedSucursal = selectedRows.length > 0 ? selectedRows[0] : null;
-    
+
   }
 
   addSucursal() {
-    const branchId = this.signalsService.getBranchSelectedBySidebar()() || 0;
+    const raw = this.signalsService.getBranchSelectedBySidebar()() || 0;
+    const branchId = raw > 0 ? raw : 0;
 
     const newRow = {
       id: `temp_${Date.now()}`,
@@ -300,7 +301,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
                 );
                 return;
               }*/
-          
+
     const newRows = this.sucursalRowData.filter((row) => row.__isNew);
     const modifiedRows = this.sucursalRowData.filter(
       (row) => row.__modified && !row.__isNew
@@ -364,7 +365,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
   }
 
   private cleanDataForServer(data: any): any {
-   const cleanedData = { ...data };
+    const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
@@ -382,7 +383,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
       alerts.basicAlert('Error', 'Seleccione una sucursal para eliminar.', 'warning');
       return;
     }
-if (!this.gridApi) {
+    if (!this.gridApi) {
       alerts.basicAlert('Error', 'Grid no inicializado.', 'error');
       return;
     }
