@@ -1561,17 +1561,20 @@ export class ExpenditureComponent {
 
       const mainDocument = mainDocumentResponse[0];
 
-      // Preservar idProject desde el grid: puede tener un valor no guardado aún en BD
+      // Preservar todos los campos editables del grid que puedan tener cambios no guardados en BD
       const rowNode = this.gridApi?.getRowNode(expenditureId.toString());
-      const updatedDocument = {
-        ...mainDocument,
-        idProject: rowNode?.data?.idProject ?? mainDocument.idProject,
-        subtotal: subtotal,
-        tax: tax,
-        total: total,
-        countitems: conceptsData.length,
-        idBranch: data.idBranch != null ? data.idBranch : mainDocument.idBranch
-      };
+      const updatedDocument = { ...mainDocument };
+      if (rowNode?.data) {
+        const { __isNew, __modified, detailType, detailData, visible, _rowNum, countItems, ...gridFields } = rowNode.data;
+        Object.assign(updatedDocument, gridFields);
+      }
+      updatedDocument.subtotal = subtotal;
+      updatedDocument.tax = tax;
+      updatedDocument.total = total;
+      updatedDocument.countitems = conceptsData.length;
+      if (data.idBranch != null) {
+        updatedDocument.idBranch = data.idBranch;
+      }
 
       await lastValueFrom(
         this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDocument)
