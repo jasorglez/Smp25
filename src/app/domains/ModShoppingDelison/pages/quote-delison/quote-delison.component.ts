@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, HostListener } from '@angular/core';
+import { Component, OnInit, inject, effect, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -12,6 +12,8 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { DepartmentsService } from 'app/services/departments.service';
 import { RolesService } from 'app/services/roles.service';
+import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-quote-delison',
@@ -20,7 +22,7 @@ import { RolesService } from 'app/services/roles.service';
   templateUrl: './quote-delison.component.html',
   styleUrl: './quote-delison.component.scss'
 })
-export class QuoteDelisonComponent implements OnInit {
+export class QuoteDelisonComponent implements OnInit, OnDestroy {
 
   // Inject services
   private signalsService = inject(SignalsService);
@@ -28,6 +30,7 @@ export class QuoteDelisonComponent implements OnInit {
   private branchsService = inject(BranchsService);
   private departmentsService = inject(DepartmentsService);
   private rolesService = inject(RolesService);
+  private pedimentoModificationService = inject(PedimentoModificationService);
 
   rowData: any[] = [];
   fullRowData: any[] = []; // Store original unfiltered data
@@ -36,6 +39,7 @@ export class QuoteDelisonComponent implements OnInit {
   private gridApi: GridApi;
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
   private expandedRequisitionId: number | null = null; // Almacenar ID de la requisición expandida
+  private modificationSub?: Subscription;
 
   idRoot: number = null;
   idBranch: number = null;
@@ -110,6 +114,12 @@ export class QuoteDelisonComponent implements OnInit {
 
   ngOnInit() {
     this.updateGridHeight();
+
+    // ✅ Suscribirse a modificaciones de pedimentos para reordenar el Nivel 1
+    this.modificationSub = this.pedimentoModificationService.pedimentoModified$.subscribe((cotizacionId: number) => {
+      this.reorderRequisitions(cotizacionId);
+    });
+
     // ✅ Esperar a que los signals se establezcan antes de inicializar
     setTimeout(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -134,6 +144,40 @@ export class QuoteDelisonComponent implements OnInit {
       // ✅ Marcar como inicializado
       this.isInitialized = true;
     }, 200);
+  }
+
+  ngOnDestroy() {
+    this.modificationSub?.unsubscribe();
+  }
+
+  private reorderRequisitions(cotizacionId: number) {
+    if (!this.rowData.length) return;
+
+    // 1. Encontrar cuál requisición contiene este pedimento
+    let targetRequisition: any = null;
+    for (const req of this.rowData) {
+      if (req.pedimentos?.some((p: any) => p.id === cotizacionId)) {
+        targetRequisition = req;
+        break;
+      }
+    }
+
+    if (targetRequisition) {
+      // 2. Actualizar marca de tiempo local para esta requisición
+      targetRequisition.__lastModifiedSort = new Date().getTime();
+
+      // 3. Reordenar rowData: lo más reciente arriba
+      this.rowData.sort((a, b) => {
+        const timeA = a.__lastModifiedSort || 0;
+        const timeB = b.__lastModifiedSort || 0;
+        return timeB - timeA;
+      });
+
+      // 4. Notificar a AG Grid del cambio
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', [...this.rowData]);
+      }
+    }
   }
 
   loadBranches() {
@@ -548,6 +592,11 @@ export class QuoteDelisonComponent implements OnInit {
           // PASO 4: Retornar requisición con sus cotizaciones
           const dept = this.departments.find(d => d.id === requisicion.idDepartament);
           const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
+
+          const lastModifiedFromPedimentos = pedimentosConItems.length > 0 
+            ? Math.max(...pedimentosConItems.map(p => new Date(p.createdAt).getTime()))
+            : new Date(requisicion.dateCreate).getTime();
+
           return {
             id: requisicion.id,
             branch: branchName,
@@ -557,9 +606,13 @@ export class QuoteDelisonComponent implements OnInit {
             requestedBy: requisicion.solicit || '',
             department: departmentName,
             idDepartament: requisicion.idDepartament || 0,
-            idReference: requisicion.idReference
+            idReference: requisicion.idReference,
+            __lastModifiedSort: lastModifiedFromPedimentos
           };
         }));
+
+        // ✅ Ordenar inicialmente por modificación
+        requisitionsWithQuotes.sort((a, b) => (b.__lastModifiedSort || 0) - (a.__lastModifiedSort || 0));
 
         // ✅ Solo mostrar requisiciones que tienen al menos una cotización
         this.fullRowData = requisitionsWithQuotes.filter(r => r.pedimentos && r.pedimentos.length > 0);
