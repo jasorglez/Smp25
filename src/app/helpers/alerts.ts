@@ -406,4 +406,95 @@ export class alerts{
 		});
 	}
 
+	/*=============================================
+	Toast minimalista para Requisiciones (auto-cierre)
+	=============================================*/
+
+	/** Toast éxito para requisiciones */
+	static reqSuccessToast(title: string, text: string = '', durationMs: number = 2000) {
+		return Swal.fire({
+			icon: 'success',
+			title,
+			text,
+			toast: true,
+			position: 'top-end',
+			timer: durationMs,
+			timerProgressBar: false,
+			showConfirmButton: false,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'req-toast req-toast--success'
+			},
+			showClass: { popup: 'req-toast-in' },
+			hideClass: { popup: 'req-toast-out' },
+		});
+	}
+
+	/** Toast error para requisiciones */
+	static reqErrorToast(title: string, text: string = '', durationMs: number = 2500) {
+		return Swal.fire({
+			icon: 'error',
+			title,
+			text,
+			toast: true,
+			position: 'top-end',
+			timer: durationMs,
+			timerProgressBar: false,
+			showConfirmButton: false,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'req-toast req-toast--error'
+			},
+			showClass: { popup: 'req-toast-in' },
+			hideClass: { popup: 'req-toast-out' },
+		});
+	}
+
+	/** Toast warning para requisiciones */
+	static reqWarningToast(title: string, text: string = '', durationMs: number = 2500) {
+		return Swal.fire({
+			icon: 'warning',
+			title,
+			text,
+			toast: true,
+			position: 'top-end',
+			timer: durationMs,
+			timerProgressBar: false,
+			showConfirmButton: false,
+			customClass: {
+				container: 'swal-over-modal',
+				popup: 'req-toast req-toast--warning'
+			},
+			showClass: { popup: 'req-toast-in' },
+			hideClass: { popup: 'req-toast-out' },
+		});
+	}
+
+	/** Alerta minimalista para requisiciones */
+	static reqBasicAlert(title: string, text: string, icon: SweetAlertIcon) {
+		const btnColors: Record<string, string> = {
+			success: '#16a34a',
+			error:   '#dc2626',
+			warning: '#d97706',
+			info:    '#2563eb',
+			question:'#2563eb',
+		};
+		return Swal.fire({
+			title,
+			text,
+			icon,
+			confirmButtonText: 'Aceptar',
+			confirmButtonColor: btnColors[icon] ?? '#2563eb',
+			customClass: {
+				container:     'swal-over-modal',
+				popup:         'req-popup',
+				title:         'req-popup-title',
+				htmlContainer: 'req-popup-text',
+				confirmButton: 'req-popup-btn',
+			},
+			showClass: { popup: 'req-fadeIn' },
+			hideClass: { popup: 'req-fadeOut' },
+		});
+	}
+
 }

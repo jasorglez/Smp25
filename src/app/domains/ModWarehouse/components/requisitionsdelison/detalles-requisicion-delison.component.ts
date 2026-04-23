@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2 } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -11,12 +11,13 @@ import { SignalsService } from 'app/services/signals.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
+import { ItemCommentsService } from 'app/services/item-comments.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
-import { TypexPrefixesService } from 'app/services/typexprefixes.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
@@ -192,7 +193,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private modalService = inject(ModalService);
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
-  private typexPrefixesService = inject(TypexPrefixesService);
+  private prefixSetupService = inject(PrefixSetupService);
+  private itemCommentsService = inject(ItemCommentsService);
+  private commentSub?: Subscription;
   authService = inject(AuthService);
   // Tooltip
   private renderer: Renderer2;
@@ -253,7 +256,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    this.loadData();
+    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
+      this.loadData();
+    });
   }
 
   agInit(params: any): void {
@@ -401,7 +406,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('❌ Error al cargar materiales:', error);
-        alerts.basicAlert('Error', 'No se pudieron cargar los materiales', 'error');
+        alerts.reqErrorToast('Error', 'No se pudieron cargar los materiales');
         this.materials = [];
       }
     });
@@ -465,6 +470,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    // Dejar el layout estable: ajustar columnas al ancho disponible
+    setTimeout(() => this.autoAdjustColumns(), 0);
 
     // Limpiar tooltip al hacer scroll
     setTimeout(() => {
@@ -474,6 +481,19 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         viewport.addEventListener('scroll', () => this.hideNewArticleTooltip());
       }
     }, 100);
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.autoAdjustColumns();
+  }
+
+  private autoAdjustColumns(): void {
+    if (!this.gridApi) return;
+    const apiAny = this.gridApi as any;
+    if (typeof apiAny.sizeColumnsToFit === 'function') {
+      apiAny.sizeColumnsToFit();
+    }
   }
 
   private _colDefs: ColDef[] = [];
@@ -486,7 +506,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this._colDefs = [
       {
         headerName: '#',
-        width: 50,
+        minWidth: 55,
+        maxWidth: 70,
+        flex: 0,
+        suppressSizeToFit: true,
         valueGetter: (params) => params.node.rowIndex + 1,
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
@@ -495,7 +518,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'recurrent',
         headerName: 'Recurrente',
-        width: 120,
+        minWidth: 130,
+        flex: 0,
+        suppressSizeToFit: true,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -506,7 +531,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'article',
         headerName: 'Articulos',
-        width: 200,
+        minWidth: 260,
+        flex: 1,
+        wrapText: true,
         cellDataType: false, // Desactivar auto-detección de tipo
         editable: (params) => {
           // Solo es editable con SelectWithTooltipEditorV2 si es "Recurrente"
@@ -673,8 +700,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'numArticle',
         headerName: '# del Articulo',
-        width: 120,
+        minWidth: 140,
+        flex: 0,
+        suppressSizeToFit: true,
         editable: false,
+        cellStyle: { textAlign: 'left' },
         valueSetter: (params: any) => {
           params.data.numArticle = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -683,10 +713,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'quantity',
         headerName: 'cantidad',
-        width: 100,
+        minWidth: 110,
+        flex: 0,
+        suppressSizeToFit: true,
         editable: true,
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
+        cellStyle: { textAlign: 'right' },
         cellEditorParams: {
           min: 0,
           precision: 3
@@ -726,7 +759,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'intorext',
         headerName: 'Proveedor',
-        width: 130,
+        minWidth: 130,
+        flex: 0,
+        suppressSizeToFit: true,
         editable: (params) => params.data.recurrent !== 'Nuevo',
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -765,7 +800,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'idProvider',
         headerName: 'Proveedor Interno',
-        width: 170,
+        minWidth: 190,
+        flex: 0,
+        suppressSizeToFit: true,
         editable: (params) => {
           // Solo editable si hay un material seleccionado Y el tipo es "Interno"
           const materialId = params.data.idSupplie || params.data.materialId || 0;
@@ -866,7 +903,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'typePriority',
         headerName: 'Prioridad',
-        width: 120,
+        minWidth: 120,
+        flex: 0,
+        suppressSizeToFit: true,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -896,17 +935,25 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       {
         headerName: 'Comentarios💬',
-        width: 140,
+        minWidth: 140,
+        flex: 0,
+        suppressSizeToFit: true,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
-        cellRendererParams: () => ({ documentType: 'REQ', idDocument: this.requisitionId }),
+        cellRendererParams: (params: any) => ({
+          documentType: 'REQ',
+          idDocument: this.requisitionId,
+          numArticle: params.data?.numArticle || ''
+        }),
       },
 
       {
         field: 'pedimiento',
         headerName: 'Pedimiento',
-        width: 120,
+        minWidth: 120,
+        flex: 0,
+        suppressSizeToFit: true,
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Ped'),
         editable: true,
         cellRenderer: (params: any) => {
@@ -943,7 +990,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         field: 'pedimentoNumber',
         headerName: 'Pedimento #',
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_PeN'),
-        width: 140,
+        minWidth: 150,
+        flex: 0,
+        suppressSizeToFit: true,
         editable: false,
         cellRenderer: (params: any) => {
           if (!params.value) {
@@ -976,14 +1025,29 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.hasPedimentoSelection = anyChecked;
   }
 
+  private refreshParentGridAfterSave(): void {
+    // ✅ Después de guardar, recargar la tabla nivel 1 completa
+    if (this.context?.reloadParentGrid) {
+      this.context.reloadParentGrid();
+    }
+  }
+
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 25,
     animateRows: true,
+    // Evita columnas “mini” cuando hay pocas filas: repartir al ancho del grid
+    autoSizeStrategy: {
+      type: 'fitGridWidth',
+      defaultMinWidth: 90,
+    },
     rowSelection: 'multiple',
     singleClickEdit: false, // Doble-click para editar (como tipo-proveedor)
     domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
     suppressHorizontalScroll: false,
+    onFirstDataRendered: () => {
+      this.autoAdjustColumns();
+    },
     getRowClass: (params: any) => {
       // Si la fila ya tiene un número de pedimento, no la pintes de rosa.
       if (params.data && params.data.pedimentoNumber) {
@@ -1036,7 +1100,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   async deleteSelectedItem() {
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
-      alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
+      alerts.reqWarningToast('Selección requerida', 'Seleccione un item para eliminar');
       return;
     }
 
@@ -1052,7 +1116,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       this.hasUnsavedChanges = hasChanges;
       this.isAddingNewItem = hasChanges;
 
-      alerts.basicAlert('Eliminado', 'Item eliminado del listado', 'success');
+      alerts.reqSuccessToast('Eliminado', 'Item eliminado del listado');
       return;
     }
 
@@ -1079,16 +1143,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
       }
 
-      alerts.basicAlert('Eliminado', 'Item eliminado correctamente', 'success');
+      alerts.reqSuccessToast('Eliminado', 'Item eliminado correctamente');
     } catch (error) {
       console.error('❌ Error al eliminar item:', error);
-      alerts.basicAlert('Error', 'No se pudo eliminar el item', 'error');
+      alerts.reqErrorToast('Error', 'No se pudo eliminar el item');
     }
   }
 
   saveChanges() {
     if (!this.isAddingNewItem) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
@@ -1097,7 +1161,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
 
     if (newItems.length === 0 && modifiedItems.length === 0) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
@@ -1113,10 +1177,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         return `Fila ${idx}`;
       }).join(', ');
 
-      alerts.basicAlert(
+      alerts.reqWarningToast(
         'Campo obligatorio',
-        `La columna "Artículos" es obligatoria. Por favor, seleccione o registre un artículo en: ${filas}.`,
-        'warning'
+        `Seleccione un artículo en: ${filas}`
       );
       return;
     }
@@ -1134,10 +1197,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         return `Fila ${idx}`;
       }).join(', ');
 
-      alerts.basicAlert(
+      alerts.reqWarningToast(
         'Campo obligatorio',
-        `La columna "Proveedor Interno" es obligatoria cuando el tipo es "Interno". Por favor, seleccione un proveedor en: ${filas}.`,
-        'warning'
+        `Seleccione un proveedor en: ${filas}`
       );
       return;
     }
@@ -1259,13 +1321,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           }
         } catch { /* no bloquear el flujo */ }
 
-        alerts.basicAlert('Guardado', `Se guardaron ${totalSaved} artículo(s) exitosamente.`, 'success');
+        alerts.reqSuccessToast('Guardado', `Se guardaron ${totalSaved} artículo(s) exitosamente`);
 
         // Recargar datos desde el servidor
         this.loadData();
+
+        // ✅ Actualizar y reordenar tabla padre inmediatamente
+        this.refreshParentGridAfterSave();
       })
       .catch(() => {
-        alerts.basicAlert('Error', 'Ocurrió un error al guardar los artículos', 'error');
+        alerts.reqErrorToast('Error', 'Ocurrió un error al guardar los artículos');
       });
   }
 
@@ -1273,17 +1338,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     // 1. Validar que haya al menos un item seleccionado
     const checkedItems = this.rowData.filter(item => item.pedimiento === true);
     if (checkedItems.length === 0) {
-      alerts.basicAlert('Sin selección', 'Por favor, marque al menos un item en la columna "Pedimento".', 'warning');
+      alerts.reqWarningToast('Sin selección', 'Marque al menos un item en la columna "Pedimento"');
       return;
     }
 
     // 2. Validar que ningún item seleccionado sea de tipo Interno
     const internoItems = checkedItems.filter(item => (item.intorext || '').toLowerCase() === 'interno');
     if (internoItems.length > 0) {
-      alerts.basicAlert(
+      alerts.reqWarningToast(
         'Proveedor Interno',
-        'Los artículos con Proveedor Interno no pueden incluirse en un pedimento de compra.',
-        'warning'
+        'Los artículos con Proveedor Interno no pueden incluirse en pedimentos'
       );
       return;
     }
@@ -1291,10 +1355,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     // 3. Validar que todos los items seleccionados sean del mismo tipo (Interno o Externo)
     const tipos = [...new Set(checkedItems.map(item => item.intorext || 'Externo'))];
     if (tipos.length > 1) {
-      alerts.basicAlert(
+      alerts.reqWarningToast(
         'Tipos mixtos',
-        'No se pueden crear pedimentos con artículos de tipos mixtos (Interno y Externo). Por favor, seleccione solo artículos del mismo tipo.',
-        'warning'
+        'Seleccione solo artículos del mismo tipo (Interno o Externo)'
       );
       return;
     }
@@ -1313,13 +1376,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       const siguienteNumeroPedimento = numCotizaciones + 1;
 
 
-      // 4. Obtener el prefijo de la sucursal para generar el folio
-      const prefixData: any = await firstValueFrom(
-        this.typexPrefixesService.getPrefix('branch', requisicionOriginal.idReference)
-      );
+      // 4. Obtener el folio de cotización (PrefixSetupService actualiza automáticamente el consecutivo)
+      const folioCotizacion = await this.prefixSetupService.getNextFolio('branch', requisicionOriginal.idReference, 'cotiz');
 
-      const siguienteConsecutivo = (prefixData.consecutive || 0) + 1;
-      const folioCotizacion = `${prefixData.prefix || ''}${siguienteConsecutivo}`;
+      if (!folioCotizacion) {
+        throw new Error('No se pudo generar el folio de cotización. Verifica la configuración de prefijos.');
+      }
 
 
       // 5. Crear el maestro de la cotización
@@ -1327,11 +1389,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         id: 0,
         folio: folioCotizacion,
         typeReference: 'requisition',
-        idReq: 0,
+        idReq: requisicionOriginal.id,
         idReference: requisicionOriginal.id, // ✅ Relación con la requisición original
         dateCreate: new Date().toISOString(),
         idProvider: 0,
-        idDepartament: requisicionOriginal.departmentId || 0,
+        idDepartament: requisicionOriginal.idDepartament || 0,
         delivery: requisicionOriginal.delivery || 'NO APLICA',
         deliveryTime: requisicionOriginal.deliveryTime || '1 DAY',
         typeOc: requisicionOriginal.typeOc || 'INSUMOS',
@@ -1367,6 +1429,18 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       if (!idCotizacion) {
         throw new Error('No se pudo obtener el ID de la cotización creada');
+      }
+
+      // ✅ Confirmar el folio en PrefixSetup (actualizar consecutivo después de guardar)
+      try {
+        const prefixSetup = await firstValueFrom(
+          this.prefixSetupService.getPrefixSetup('branch', requisicionOriginal.idReference)
+        );
+        if (prefixSetup && prefixSetup.id) {
+          await this.prefixSetupService.confirmFolio(prefixSetup.id, 'cotiz');
+        }
+      } catch (err) {
+        console.warn('No se pudo confirmar el folio:', err);
       }
 
 
@@ -1413,17 +1487,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
 
       // 7. Actualizar el consecutivo del prefijo
-      const updatedPrefixData = {
-        reqType: 'branch',
-        idReqType: requisicionOriginal.idReference,
-        prefix: prefixData.prefix,
-        consecutive: siguienteConsecutivo,
-        active: true
-      };
-
-      await firstValueFrom(
-        this.typexPrefixesService.updatePrefix('branch', requisicionOriginal.idReference, updatedPrefixData)
-      );
+      // El consecutivo ya fue actualizado automáticamente por getNextFolio
 
 
       // 8. Actualizar la columna "Pedimento #" de los items seleccionados
@@ -1487,19 +1551,19 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       this.gridApi.redrawRows();
 
       // 12. Mostrar mensaje de éxito
-      const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s). Pedimento #${siguienteNumeroPedimento}`;
-      alerts.basicAlert('Cotización Creada', message, 'success');
+      const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s)`;
+      alerts.reqSuccessToast('Cotización Creada', message);
 
 
     } catch (error) {
       console.error('❌ Error al crear cotización:', error);
-      alerts.basicAlert('Error', 'No se pudo crear la cotización. Revise la consola para más detalles.', 'error');
+      alerts.reqErrorToast('Error', 'No se pudo crear la cotización');
     }
   }
 
   discardChanges() {
     if (!this.hasUnsavedChanges && !this.isAddingNewItem) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
+      alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
       return;
     }
 
@@ -1548,7 +1612,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   saveNewArticle() {
     // Validación: solo el nombre del artículo es obligatorio
     if (!this.newArticle.description || !this.newArticle.description.trim()) {
-      alerts.basicAlert('Validación', 'El nombre del artículo es obligatorio.', 'warning');
+      alerts.reqWarningToast('Validación', 'El nombre del artículo es obligatorio');
       return;
     }
 
@@ -1576,7 +1640,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       force: true
     });
 
-    alerts.basicAlert('Éxito', 'Datos del artículo guardados. Presione "Guardar" para enviar al servidor.', 'success');
+    alerts.reqSuccessToast('Éxito', 'Datos guardados. Presione "Guardar" para enviar');
     this.closeNewArticleModal();
   }
 
@@ -1761,7 +1825,100 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('❌ Error al generar PDF:', error);
       this.pdfUrl = null;
-      alerts.basicAlert('Error', 'No se pudo generar el PDF de la requisición', 'error');
+      alerts.reqErrorToast('Error', 'No se pudo generar el PDF de la requisición');
+    }
+  }
+
+  private async createCotizationAutomatically(): Promise<void> {
+    try {
+      // 1. Obtener datos completos de la requisición
+      const requisitionData: any = await firstValueFrom(
+        this.ocAndReqsService.getDetailedReq(this.requisitionId)
+      );
+
+      if (!requisitionData) {
+        console.warn('⚠️ No se pudo obtener datos de la requisición');
+        return;
+      }
+
+      // 2. Verificar si ya existe una cotización para esta requisición
+      const existingCotiz: any = await firstValueFrom(
+        this.ocAndReqsService.getOcAndReqs('branch', requisitionData.idReference, 'COTIZ') as any
+      );
+
+      const hasCotiz = Array.isArray(existingCotiz) && existingCotiz.some((c: any) => c.idReq === this.requisitionId);
+      if (hasCotiz) {
+        console.log('ℹ️ La cotización ya existe para esta requisición');
+        return;
+      }
+
+      // 3. Generar folio para la cotización
+      const folioCotiz = await this.prefixSetupService.generateNextFolio(
+        'branch',
+        requisitionData.idReference,
+        'cotiz'
+      );
+
+      if (!folioCotiz) {
+        console.warn('⚠️ No se pudo generar folio para la cotización');
+        return;
+      }
+
+      // 4. Crear objeto de cotización copiando datos de la requisición
+      const newCotization = {
+        id: 0,
+        idRoot: requisitionData.idRoot,
+        folio: folioCotiz,
+        typeReference: 'requisition', // ✅ Las cotizaciones se relacionan a requisiciones
+        idReq: this.requisitionId, // ✅ Vinculado a la requisición
+        idReference: this.requisitionId, // ✅ Para que se encuentre con getOcAndReqs('requisition', idReq, 'COTIZ')
+        dateCreate: new Date().toISOString(),
+        idProvider: requisitionData.idProvider || 0,
+        idDepartament: requisitionData.idDepartament || 0,
+        delivery: requisitionData.delivery || 'NO APLICA',
+        deliveryTime: requisitionData.deliveryTime || '1 DAY',
+        typeOc: requisitionData.typeOc || 'INSUMOS',
+        dateSupply: requisitionData.dateSupply || new Date().toISOString(),
+        idPayment: requisitionData.idPayment || 0,
+        idCurrency: requisitionData.idCurrency || 0,
+        conditions: requisitionData.conditions || null,
+        idAuthorize: 0,
+        priority: requisitionData.priority || null,
+        solicit: requisitionData.solicit || '',
+        discount: requisitionData.discount || 0,
+        ivaRetention: requisitionData.ivaRetention || 0,
+        idSolicit: requisitionData.idSolicit || 0,
+        address: requisitionData.address || null,
+        city: requisitionData.city || null,
+        phone: requisitionData.phone || null,
+        type: 'COTIZ', // ✅ Tipo cotización
+        pedimento: 1,
+        compliancePedimento: 0,
+        complianceRequesicion: 0,
+        comments: requisitionData.comments || null,
+        close: false,
+        active: true
+      };
+
+      // 5. Guardar la cotización
+      await firstValueFrom(this.ocAndReqsService.addOcAndReq(newCotization));
+
+      // 6. Confirmar el folio para incrementar el consecutivo
+      try {
+        const prefixSetup = await firstValueFrom(
+          this.prefixSetupService.getPrefixSetup('branch', requisitionData.idReference)
+        );
+        if (prefixSetup && prefixSetup.id) {
+          await this.prefixSetupService.confirmFolio(prefixSetup.id, 'cotiz');
+        }
+      } catch (err) {
+        console.warn('⚠️ No se pudo confirmar el folio de cotización:', err);
+      }
+
+      console.log(`✅ Cotización ${folioCotiz} creada automáticamente`);
+    } catch (error) {
+      console.error('❌ Error al crear cotización automáticamente:', error);
+      throw error;
     }
   }
 
@@ -1773,12 +1930,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Clean up blob URL when component is destroyed
+    this.commentSub?.unsubscribe();
     if (this.originalPdfUrl) {
       URL.revokeObjectURL(this.originalPdfUrl);
       this.originalPdfUrl = null;
     }
-    // Clean up tooltip
     this.hideNewArticleTooltip();
   }
 

@@ -10,6 +10,7 @@ import { DetailCellRendererPedimentosComponent } from './detalle-pedimentosxprov
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { DepartmentsService } from 'app/services/departments.service';
 
 @Component({
   selector: 'app-quote-delison',
@@ -24,6 +25,7 @@ export class QuoteDelisonComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
+  private departmentsService = inject(DepartmentsService);
 
   rowData: any[] = [];
   fullRowData: any[] = []; // Store original unfiltered data
@@ -31,11 +33,14 @@ export class QuoteDelisonComponent implements OnInit {
   detailRowHeightPx = 520;
   private gridApi: GridApi;
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
+  private expandedRequisitionId: number | null = null; // Almacenar ID de la requisición expandida
 
   idRoot: number = null;
   idBranch: number = null;
   branches: any[] = []; // Catálogo de sucursales
   branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
+  departments: any[] = []; // Catálogo de departamentos
+  departmentsLoaded: boolean = false; // Flag para saber si ya se cargaron los departamentos
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
@@ -93,7 +98,8 @@ export class QuoteDelisonComponent implements OnInit {
       minWidth: 120,
     },
     detailCellRendererParams: {
-      autoHeight: false
+      autoHeight: false,
+      context: {}
     },
     detailCellRenderer: DetailCellRendererPedimentosComponent
   };
@@ -108,6 +114,7 @@ export class QuoteDelisonComponent implements OnInit {
       // ✅ Solo cargar si idRoot es válido
       if (this.idRoot) {
         this.loadBranches();
+        this.loadDepartments();
       } else {
         console.warn('⚠️ idRoot no está disponible todavía, reintentando...');
         // Reintentar después de un delay adicional
@@ -115,6 +122,7 @@ export class QuoteDelisonComponent implements OnInit {
           this.idRoot = this.signalsService.getRootSelectedBySidebar()();
           if (this.idRoot) {
             this.loadBranches();
+            this.loadDepartments();
           }
         }, 300);
       }
@@ -129,27 +137,50 @@ export class QuoteDelisonComponent implements OnInit {
       next: (data: any[]) => {
         this.branches = data;
         this.branchesLoaded = true;
-
-        // ✅ Obtener el idBranch actual del signal (puede ser negativo para "Todas las sucursales")
-        const currentIdBranch = this.signalsService.getBranchSelectedBySidebar()();
-
-        // ✅ Si hay un idBranch seleccionado (incluso si es negativo), cargar las cotizaciones ahora
-        if (currentIdBranch !== null && currentIdBranch !== undefined) {
-          this.idBranch = currentIdBranch;
-          this.loadQuotes();
-        } else {
-        }
+        this.checkAndLoadQuotes();
       },
       error: (error) => {
         console.error('❌ Error al cargar sucursales:', error);
         this.branches = [];
         this.branchesLoaded = true; // Marcar como cargado aunque haya error
+        this.checkAndLoadQuotes();
       }
     });
   }
 
+  loadDepartments() {
+    this.departmentsService.getDepartments(this.idRoot).subscribe({
+      next: (data: any[]) => {
+        this.departments = data;
+        this.departmentsLoaded = true;
+        this.checkAndLoadQuotes();
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar departamentos:', error);
+        this.departments = [];
+        this.departmentsLoaded = true;
+        this.checkAndLoadQuotes();
+      }
+    });
+  }
+
+  private checkAndLoadQuotes() {
+    // ✅ Cargar cotizaciones solo cuando AMBOS catálogos estén cargados
+    if (this.branchesLoaded && this.departmentsLoaded) {
+      const currentIdBranch = this.signalsService.getBranchSelectedBySidebar()();
+      if (currentIdBranch !== null && currentIdBranch !== undefined) {
+        this.idBranch = currentIdBranch;
+        this.loadQuotes();
+      }
+    }
+  }
+
   onGridReady(params: any) {
     this.gridApi = params.api;
+    // ✅ Pasar el método reloadParentGrid al contexto
+    this.gridApi.setGridOption('context', {
+      reloadParentGrid: () => this.reloadParentGrid()
+    });
     this.autoAdjustColumns();
   }
 
@@ -204,6 +235,16 @@ export class QuoteDelisonComponent implements OnInit {
   }
 
   loadQuotes() {
+    // ✅ Capturar cuál requisición está expandida antes de recargar
+    this.expandedRequisitionId = null;
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node: any) => {
+        if (node.expanded) {
+          this.expandedRequisitionId = node.data?.id || null;
+        }
+      });
+    }
+
     // ✅ Validar que idBranch sea válido antes de hacer la petición
     if (this.idBranch === null || this.idBranch === undefined) {
       console.warn('⚠️ No se puede cargar cotizaciones: idBranch no está definido');
@@ -220,6 +261,10 @@ export class QuoteDelisonComponent implements OnInit {
     } else {
       this.loadQuotesFromSingleBranch(this.idBranch);
     }
+  }
+
+  reloadParentGrid() {
+    this.loadQuotes();
   }
 
   private async loadQuotesFromAllBranches() {
@@ -312,6 +357,7 @@ export class QuoteDelisonComponent implements OnInit {
           name: `Pedimento ${cotizacion.pedimento}`,
           pedimento: cotizacion.pedimento,
           folio: cotizacion.folio || '',
+          idDepartament: requisicion.idDepartament || 0,
           idProvider:  slotA?.idProvider || 0,
           idProvider2: slotB?.idProvider || 0,
           idProvider3: slotC?.idProvider || 0,
@@ -352,6 +398,8 @@ export class QuoteDelisonComponent implements OnInit {
       }));
 
       // ✅ PASO 2.3: Retornar requisición con sus cotizaciones
+      const dept = this.departments.find(d => d.id === requisicion.idDepartament);
+      const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
       return {
         id: requisicion.id,
         branch: branchName,
@@ -359,18 +407,31 @@ export class QuoteDelisonComponent implements OnInit {
         pedimentos: pedimentosConItems,
         requiredDate: requisicion.dateCreate || new Date().toISOString(),
         requestedBy: requisicion.solicit || '',
-        department: requisicion.departmentName || '',
+        department: departmentName,
+        idDepartament: requisicion.idDepartament || 0,
         idReference: requisicion.idReference
       };
     }));
 
-    this.fullRowData = requisitionsWithQuotes;
+    // ✅ Solo mostrar requisiciones que tienen al menos una cotización
+    this.fullRowData = requisitionsWithQuotes.filter(r => r.pedimentos && r.pedimentos.length > 0);
     this.rowData = [...this.fullRowData];
 
     // Refrescar el grid
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
       this.gridApi.refreshCells({ force: true });
+
+      // ✅ Re-expandir la requisición que estaba expandida
+      if (this.expandedRequisitionId !== null) {
+        setTimeout(() => {
+          this.gridApi.forEachNode((node: any) => {
+            if (node.data?.id === this.expandedRequisitionId) {
+              node.setExpanded(true);
+            }
+          });
+        }, 100);
+      }
     }
   }
 
@@ -438,6 +499,7 @@ export class QuoteDelisonComponent implements OnInit {
               name: `Pedimento ${cotizacion.pedimento}`,
               pedimento: cotizacion.pedimento,
               folio: cotizacion.folio || '',
+              idDepartament: requisicion.idDepartament || 0,
               idProvider:  slotA?.idProvider || 0,
               idProvider2: slotB?.idProvider || 0,
               idProvider3: slotC?.idProvider || 0,
@@ -478,6 +540,8 @@ export class QuoteDelisonComponent implements OnInit {
           }));
 
           // PASO 4: Retornar requisición con sus cotizaciones
+          const dept = this.departments.find(d => d.id === requisicion.idDepartament);
+          const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
           return {
             id: requisicion.id,
             branch: branchName,
@@ -485,19 +549,31 @@ export class QuoteDelisonComponent implements OnInit {
             pedimentos: pedimentosConItems, // ✅ Array de cotizaciones (no un solo objeto)
             requiredDate: requisicion.dateCreate || new Date().toISOString(),
             requestedBy: requisicion.solicit || '',
-            department: requisicion.departmentName || '',
+            department: departmentName,
+            idDepartament: requisicion.idDepartament || 0,
             idReference: requisicion.idReference
           };
         }));
 
-        this.fullRowData = requisitionsWithQuotes;
+        // ✅ Solo mostrar requisiciones que tienen al menos una cotización
+        this.fullRowData = requisitionsWithQuotes.filter(r => r.pedimentos && r.pedimentos.length > 0);
         this.rowData = [...this.fullRowData];
-
 
         // Refrescar el grid si ya existe
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
           this.gridApi.refreshCells({ force: true });
+
+          // ✅ Re-expandir la requisición que estaba expandida
+          if (this.expandedRequisitionId !== null) {
+            setTimeout(() => {
+              this.gridApi.forEachNode((node: any) => {
+                if (node.data?.id === this.expandedRequisitionId) {
+                  node.setExpanded(true);
+                }
+              });
+            }, 100);
+          }
         }
       },
       error: (error) => {
@@ -585,10 +661,17 @@ export class QuoteDelisonComponent implements OnInit {
       },
 
      {
-       field: 'department',
+       field: 'idDepartament',
        headerName: 'Departamento',
        width: 150,
-       editable: false
+       editable: false,
+       valueGetter: (params: any) => {
+         const deptId = params.data?.idDepartament;
+         if (!deptId) return '';
+         // Buscar en el array de departamentos cargados
+         const dept = this.departments.find(d => d.id === deptId);
+         return dept?.description || dept?.name || `[ID: ${deptId}]`;
+       }
      },
 
     {

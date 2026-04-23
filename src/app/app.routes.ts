@@ -715,6 +715,18 @@ export const routes: Routes = [
                 './domains/SMP/Components/catalogs/catalogs.component'
               ).then((c) => c.CatalogsComponent),
           },
+          {
+            path: 'confsetup',
+            loadComponent: () =>
+              import('./domains/SMP/Components/confsetup/confsetup.component')
+                .then((c) => c.ConfsetupComponent),
+          },
+          {
+            path: 'confcatalogos',
+            loadComponent: () =>
+              import('./domains/SMP/Components/confcatalogos/confcatalogos.component')
+                .then((c) => c.ConfcatalogosComponent),
+          },
         ],
       },
 

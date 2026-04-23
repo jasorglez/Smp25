@@ -301,7 +301,7 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   async deleteSelectedItem() {
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
-      alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
+      alerts.reqWarningToast('Selección requerida', 'Seleccione un item para eliminar');
       return;
     }
 
@@ -320,16 +320,16 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
       await this.ocAndReqsService.deleteReqItem(selectedItem.id).toPromise();
       this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
       this.gridApi.setGridOption('rowData', this.rowData);
-      alerts.basicAlert('Eliminado', 'El item ha sido eliminado correctamente', 'success');
+      alerts.reqSuccessToast('Eliminado', 'El item ha sido eliminado correctamente');
     } catch (error) {
       console.error('❌ Error al eliminar item:', error);
-      alerts.basicAlert('Error', 'No se pudo eliminar el item', 'error');
+      alerts.reqErrorToast('Error', 'No se pudo eliminar el item');
     }
   }
 
   async saveChanges() {
     if (!this.hasUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
@@ -381,27 +381,27 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
         await this.ocAndReqsService.updateReqItem(item.id, itemData).toPromise();
       }
 
-      alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
+      alerts.reqSuccessToast('Guardado', 'Los cambios han sido guardados correctamente');
       this.hasUnsavedChanges = false;
 
       // Recargar datos desde el servidor
       this.loadData();
     } catch (error) {
       console.error('❌ Error al guardar cambios:', error);
-      alerts.basicAlert('Error', 'No se pudieron guardar los cambios', 'error');
+      alerts.reqErrorToast('Error', 'No se pudieron guardar los cambios');
     }
   }
 
   discardChanges() {
     if (!this.hasUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
+      alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
       return;
     }
 
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.gridApi.setGridOption('rowData', this.rowData);
     this.hasUnsavedChanges = false;
-    alerts.basicAlert('Cambios descartados', 'Los cambios han sido descartados', 'info');
+    alerts.reqBasicAlert('Cambios descartados', 'Los cambios han sido descartados', 'info');
   }
 
   onCellValueChanged(event: any) {

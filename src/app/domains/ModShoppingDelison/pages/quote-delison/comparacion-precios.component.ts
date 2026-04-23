@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -6,13 +6,15 @@ import { ColDef, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
+import { ItemCommentsService } from 'app/services/item-comments.service';
 import { alerts } from 'app/helpers/alerts';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-comparacion-precios',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="comparacion-container">
       <h5 class="mb-3">Comparación de Precios por Proveedor</h5>
@@ -154,15 +156,18 @@ import { lastValueFrom } from 'rxjs';
     }
   `]
 })
-export class ComparacionPreciosComponent implements OnInit {
+export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
+  private itemCommentsService = inject(ItemCommentsService);
   private cdr = inject(ChangeDetectorRef);
   private params: any;
   private gridApi!: GridApi;
   private cotizacionId: number = 0;
+  private requisitionId: number = 0;
   private selectedProviderIds: number[] = [];
-  private codigosExternos: Map<number, Map<number, string>> = new Map(); // providerId -> (idSupplie -> campo11)
+  private codigosExternos: Map<number, Map<number, string>> = new Map();
+  private commentSub?: Subscription;
 
   rowData: any[] = [];
   private originalRowData: any[] = [];
@@ -177,22 +182,36 @@ export class ComparacionPreciosComponent implements OnInit {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   readonly tipoOcOptions = [
+    'SELECCIONE UNA OPCION',
     'COMPRA INMEDIATA',
     'COMPRA AUTORIZADA',
     'COMPRA AUTORIZADA EN OTRA FECHA',
-    'CAMBIO DE ESPECIFICACIONES'
+    'CAMBIO DE ESPECIFICACIONES',
+    'ARTICULO NO AUTORIZADO'
   ];
 
   ngOnInit() {
-    // Solo se inicializa cuando se llama agInit
+    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ force: true });
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    this.commentSub?.unsubscribe();
   }
 
   agInit(params: any): void {
     this.params = params;
-    this.cotizacionId = params.data?.cotizacionId || params.data?.id || 0;
+    this.cotizacionId = params.cotizacionId || params.data?.cotizacionId || params.data?.id || 0;
+    this.requisitionId = params.requisitionId || params.data?.requisitionId || 0;
     this.selectedProviderIds = params.selectedProviderIds || [];
+    console.log('[Comparacion] agInit - cotizacionId:', this.cotizacionId, 'requisitionId:', this.requisitionId, 'params.data:', params.data);
     this.loadComparisonData();
   }
+
+  refresh(): boolean { return false; }
 
   private loadComparisonData() {
     if (!this.cotizacionId) {
@@ -323,13 +342,15 @@ export class ComparacionPreciosComponent implements OnInit {
       const codigoExternoProveedor = providerCodigosMap.get(idSupplie) || '';
       console.log(`[Comparacion] Artículo ${articulo.nombre} (idSupplie=${idSupplie}) × Prov ${prov.id}: codigoExterno="${codigoExternoProveedor}"`);
 
+      const rawNumArticle = articulo.numArticle ?? articulo.numArticuloInterno ?? articulo.numarticulo ?? '';
       const rowItem = {
         proveedorId: prov.id,
         proveedorNombre: prov.nombre ?? prov.name ?? '',
         cantidadComprar,
         nuevoRecurrente: articulo.recurrent ?? articulo.nuevoRecurrente ?? prov.recurrent ?? '—',
         articulo: articulo.nombre ?? articulo.article ?? '',
-        numArticuloInterno: articulo.numArticle ?? articulo.numArticuloInterno ?? articulo.numarticulo ?? '',
+        numArticle: rawNumArticle,
+        numArticuloInterno: rawNumArticle,
         numArticuloExterno: codigoExternoProveedor || (articulo.codigoExterno ?? articulo.numArticuloExterno ?? articulo.observation ?? ''),
         prioridad: articulo.typePriority ?? articulo.prioridad ?? 'NORMAL',
         tiempoEntrega: tiemposEntregaPorProv[prov.id] ?? tiemposEntregaPorProv[prov.id.toString()] ?? '',
@@ -338,7 +359,7 @@ export class ComparacionPreciosComponent implements OnInit {
         costoTotal,
         costoXCompraMinima,
         comentario: articulo.comment ?? articulo.comentario ?? '',
-        tipoOc: articulo.typeOc ?? articulo.tipoOc ?? this.tipoOcOptions[0] ?? 'COMPRA INMEDIATA'
+        tipoOc: articulo.typeOc ?? articulo.tipoOc ?? this.tipoOcOptions[0] ?? 'SELECCIONE UNA OPCION'
       };
       console.log('Primera fila creada - compraMinima:', rowItem.compraMinima);
       return rowItem;
@@ -463,6 +484,7 @@ export class ComparacionPreciosComponent implements OnInit {
         field: 'articulo',
         headerName: 'ARTICULO',
         minWidth: 150,
+        hide: true,
         cellStyle: { padding: '8px' }
       },
       {
@@ -529,11 +551,25 @@ export class ComparacionPreciosComponent implements OnInit {
       {
         field: 'comentario',
         headerName: 'COMENTAR',
-        minWidth: 140,
-        editable: true,
-        cellEditor: 'agLargeTextCellEditor',
-        cellEditorPopup: true,
-        cellStyle: { padding: '8px' }
+        minWidth: 100,
+        editable: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: (params: any) => ({
+          documentType: 'REQ',
+          idDocument: this.requisitionId,
+          numArticle: params.data?.numArticle || params.data?.numArticuloInterno || '',
+          locked: false
+        }),
+        onCellClicked: (params: any) => {
+          const numArticle = params.data?.numArticle || params.data?.numArticuloInterno || '';
+          if (!numArticle || !this.requisitionId) return;
+          this.itemCommentsService.openChatFor$.next({
+            documentType: 'REQ',
+            idDocument: this.requisitionId,
+            numArticle
+          });
+        },
+        cellStyle: { padding: '8px', cursor: 'pointer' }
       },
       {
         field: 'tipoOc',

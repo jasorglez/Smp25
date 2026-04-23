@@ -1,8 +1,10 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
+import { Subscription } from 'rxjs';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
 import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.component';
@@ -46,12 +48,24 @@ import { ComparacionPreciosComponent } from './comparacion-precios.component';
     }
   `]
 })
-export class DetailCellRendererPedimentosComponent {
+export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy {
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
+  private pedimentoModificationService = inject(PedimentoModificationService);
+  private modificationSub?: Subscription;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   private expandedRowId: string | null = null;
+
+  ngOnInit() {
+    this.modificationSub = this.pedimentoModificationService.pedimentoModified$.subscribe((cotizacionId: number) => {
+      this.reorderPedimentos(cotizacionId);
+    });
+  }
+
+  ngOnDestroy() {
+    this.modificationSub?.unsubscribe();
+  }
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -108,16 +122,38 @@ export class DetailCellRendererPedimentosComponent {
         creo: pedimento.createdBy || 'N/A',
         createdBy: pedimento.createdBy || 'N/A',
         fechaPedimento: fechaPedimento,
-        createdAt: pedimento.createdAt // Guardar fecha completa para ordenar
+        createdAt: pedimento.createdAt,
+        lastModified: pedimento.dateModified || pedimento.createdAt // Usar dateModified para ordenar
       });
     });
 
-    // ✅ Ordenar del más reciente al más antiguo (DESC)
+    // ✅ Ordenar por lastModified (más reciente primero)
     this.rowData.sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+      const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
       return dateB - dateA; // DESC: más reciente primero
     });
+  }
+
+  private reorderPedimentos(cotizacionId: number) {
+    // Actualizar lastModified en memoria del pedimento que fue modificado
+    const now = new Date().toISOString();
+    const pedimento = this.rowData.find(row => row.cotizacionId === cotizacionId);
+    if (pedimento) {
+      pedimento.lastModified = now;
+    }
+
+    // Reordenar por lastModified (más reciente primero)
+    this.rowData.sort((a, b) => {
+      const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+      const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    // Actualizar el grid sin cerrar las cascadas
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', [...this.rowData]);
+    }
   }
 
   /**
@@ -158,8 +194,12 @@ export class DetailCellRendererPedimentosComponent {
         },
         valueGetter: params => {
           const articulos = params.data.articulos || [];
-          const solicitados = articulos.filter((item: any) => item.pedimento === true).length;
-          const total = articulos.length;
+          // Filtrar solo artículos externos (excluir internos)
+          const articulosExternos = articulos.filter(
+            (item: any) => (item.intorext || item.tipo || '').toLowerCase() !== 'interno'
+          );
+          const solicitados = articulosExternos.filter((item: any) => item.pedimento === true).length;
+          const total = articulosExternos.length;
           return `${solicitados}/${total}`;
         },
         editable: false,
@@ -300,7 +340,9 @@ export class DetailCellRendererPedimentosComponent {
           component: ComparacionPreciosComponent,
           params: {
             selectedProviderIds: [params.data.idProvider, params.data.idProvider2, params.data.idProvider3],
-            selectedProviderNames: [params.data.name_idProvider, params.data.name_idProvider2, params.data.name_idProvider3]
+            selectedProviderNames: [params.data.name_idProvider, params.data.name_idProvider2, params.data.name_idProvider3],
+            requisitionId: params.data.requisitionId,
+            cotizacionId: params.data.cotizacionId
           }
         };
       }

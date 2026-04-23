@@ -29,6 +29,9 @@ export class ItemCommentsService {
   /** Emite cuando un componente externo quiere abrir el chat de un ítem específico */
   readonly openChatFor$ = new Subject<{ documentType: string; idDocument: number; numArticle: string; autoMessage?: string }>();
 
+  /** Emite cuando un comentario es guardado exitosamente */
+  readonly commentSaved$ = new Subject<ItemComment>();
+
   getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
       `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}`,
