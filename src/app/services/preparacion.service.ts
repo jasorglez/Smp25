@@ -26,6 +26,10 @@ export class PreparacionService {
     return this.http.delete<any>(`${environment.urlProduction}/preparacion/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getFrequentIngredientes(): Observable<{ ingredientes: any[]; totalPreparaciones: number }> {
+    return this.http.get<any>(`${environment.urlProduction}/preparacion/detalles/frequent`, { headers: this.trackingService.getHeaders() });
+  }
+
   // Detalles - ingredientes (nivel 2a)
   getDetalles(idPreparacion: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/detalles`, { headers: this.trackingService.getHeaders() });
