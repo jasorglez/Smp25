@@ -20,6 +20,13 @@ export class MaterialJarabeService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  getAll(): Observable<MaterialJarabeConfig[]> {
+    return this.http.get<MaterialJarabeConfig[]>(
+      `${environment.urlProduction}/materialjarabe`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getByMaterial(idMaterial: number): Observable<MaterialJarabeConfig> {
     return this.http.get<MaterialJarabeConfig>(
       `${environment.urlProduction}/materialjarabe/${idMaterial}`,

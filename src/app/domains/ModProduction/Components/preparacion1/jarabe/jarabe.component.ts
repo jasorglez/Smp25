@@ -249,8 +249,13 @@ export class JarabeComponent implements OnInit {
 
   async loadRawMaterials(idCompany: number) {
     try {
-      const data = await lastValueFrom(this.materialsService.getMaterialsxview(idCompany));
-      const list: any[] = Array.isArray(data) ? data : [];
+      const [data, jarabeConfigs] = await Promise.all([
+        lastValueFrom(this.materialsService.getMaterialsxview(idCompany)),
+        lastValueFrom(this.materialJarabeService.getAll())
+      ]);
+      const allMaterials: any[] = Array.isArray(data) ? data : [];
+      const jarabeIds = new Set((Array.isArray(jarabeConfigs) ? jarabeConfigs : []).map((c: any) => c.idMaterial));
+      const list = allMaterials.filter(m => jarabeIds.has(m.id));
       this.rawMaterials = list;
       this.rawMaterialNames = list.map(m => m.articulo || m.description || m.insumo || '').filter(Boolean);
       this._colDefs = [];
