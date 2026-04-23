@@ -851,16 +851,19 @@ export class AuthService {
     return crudMap[action] === true;
   }
 
-  /** True si el usuario de la sesión es root: por email de entorno O por flag isRoot de la BD. */
-  isCurrentUserRoot(): boolean {
+  /** True solo si el usuario es el root del entorno (email en environment.root). */
+  isEnvRoot(): boolean {
     const sessionEmail = (localStorage.getItem('mail') ?? '').toLowerCase().trim();
     const signalEmail = String(this.signalsService.getemailChoose() ?? '').toLowerCase().trim();
     const rootEmail = String(environment.root ?? '').toLowerCase().trim();
-    const isEnvRoot = rootEmail !== '' && (sessionEmail === rootEmail || signalEmail === rootEmail);
-    // Chequea signal Y localStorage como fallback (la signal puede no estar lista en primer render)
+    return rootEmail !== '' && (sessionEmail === rootEmail || signalEmail === rootEmail);
+  }
+
+  /** True si el usuario de la sesión es root: por email de entorno O por flag isRoot de la BD. */
+  isCurrentUserRoot(): boolean {
     const isDbRoot = !!this.signalsService.getrootChoose() ||
                      localStorage.getItem('userRoot') === 'true';
-    return isEnvRoot || isDbRoot;
+    return this.isEnvRoot() || isDbRoot;
   }
 
   getCrudPermissionDetail(
