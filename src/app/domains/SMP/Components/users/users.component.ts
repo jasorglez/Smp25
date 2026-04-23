@@ -709,9 +709,8 @@ export class UsersComponent implements OnDestroy {
 
     this._columnDefs = [
       { field: 'id', headerName: 'ID', hide: true, filter: 'agNumberColumnFilter', width: 80 },
-      { field: 'active', hide: true },
       {
-        field: 'active2',
+        field: 'active',
         headerName: 'Activo',
         width: 90,
         cellRenderer: (params: any) => {
@@ -721,7 +720,7 @@ export class UsersComponent implements OnDestroy {
         },
         onCellClicked: (params: any) => {
           if (!this.authService.isCurrentUserRoot()) return;
-          params.node.setDataValue('active2', !params.value);
+          params.node.setDataValue('active', !params.value);
           params.node.data.__modified = true;
           this.notSavedChanges = true;
         },
@@ -1011,7 +1010,7 @@ export class UsersComponent implements OnDestroy {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      active: 1,
+      active: true,
       displayName: '',
       country: '',
       email: '',
@@ -1201,7 +1200,7 @@ export class UsersComponent implements OnDestroy {
     alerts.userConfirmDelete(`Eliminar a ${who}`, '¿Está seguro que desea eliminar este usuario?')
       .then((value) => {
         if (value.isConfirmed) {
-          selectedData.active = 0;
+          selectedData.active = false;
           this.usersService.deleteUser(id, selectedData).pipe(
             catchError((error) => {
               alerts.userBasicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
@@ -1544,7 +1543,7 @@ onSecurityColumnClicked(params: any): void {
     cleanedData.idRol = Number(cleanedData.idRol) || 0;
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
-    cleanedData.active = Number(cleanedData.active) || 1;
+    cleanedData.active = cleanedData.active !== undefined ? Boolean(cleanedData.active) : true;
     // Normalize employee link: frontend uses idEmployee, backend expects idEmpleado
     if ('idEmployee' in cleanedData) {
       cleanedData.idEmpleado = cleanedData.idEmployee != null ? Number(cleanedData.idEmployee) || null : null;
