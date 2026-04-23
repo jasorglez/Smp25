@@ -507,7 +507,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
           documentType: 'REQ',
           idDocument: this.requisitionId,
           numArticle: params.data?.numeroArticulo || '',
-          locked: this.articulosLocked
+          locked: false
         }),
       },
       {
