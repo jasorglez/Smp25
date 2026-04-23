@@ -2203,25 +2203,13 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'production', detailed: 'molienda_princ' } },
             children: [
-              { path: '', redirectTo: 'clarificacion', pathMatch: 'full' },
-              {
-                path: 'clarificacion',
-                loadComponent: () =>
-                  import('./domains/ModProduction/Components/molienda/clarificacion/clarificacion.component')
-                    .then((m) => m.ClarificacionComponent),
-              },
-              {
-                path: 'moliendauno',
-                loadComponent: () =>
-                  import('./domains/ModProduction/Components/molienda/moliendauno/moliendauno.component')
-                    .then((m) => m.MoliendaUnoComponent),
-              },
-              {
-                path: 'moliendados',
-                loadComponent: () =>
-                  import('./domains/ModProduction/Components/molienda/moliendados/moliendados.component')
-                    .then((m) => m.MoliendaDosComponent),
-              },
+              { path: '', redirectTo: 'principal', pathMatch: 'full' },
+              { path: 'principal',     loadComponent: () => import('./domains/ModProduction/Components/molienda/principal/principal.component').then(m => m.MoliendaPrincipalComponent) },
+              { path: 'filtrado',      loadComponent: () => import('./domains/ModProduction/Components/molienda/filtrado/filtrado.component').then(m => m.FiltradoComponent) },
+              { path: 'fermentacion',  loadComponent: () => import('./domains/ModProduction/Components/molienda/fermentacion/fermentacion.component').then(m => m.FermentacionComponent) },
+              { path: 'clarificacion1',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion1/clarificacion1.component').then(m => m.Clarificacion1Component) },
+              { path: 'clarificacion2',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion2/clarificacion2.component').then(m => m.Clarificacion2Component) },
+              { path: 'envasado',      loadComponent: () => import('./domains/ModProduction/Components/molienda/envasado/envasado.component').then(m => m.EnvasadoMoliendaComponent) },
             ],
           },
           {
