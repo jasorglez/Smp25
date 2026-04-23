@@ -29,8 +29,8 @@ export class AppComponent implements OnInit, OnDestroy {
       const isAdvanced = this.signalsService.getIsAdvanced();
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-      // Esperar sucursal seleccionada evita pintar el árbol global y luego corregirlo "a destiempo".
-      if (email && idBranch != null) {
+      // Cargar permisos básicos en cuanto haya email; actualizarlos cuando cambie la sucursal.
+      if (email) {
         this.loadPermissions(email, isAdvanced, idBranch);
       }
     });

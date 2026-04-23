@@ -264,9 +264,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         },
         cellRenderer: (params: any) => {
           const checked = !!params.value;
-          const isLocked = this.isBranchPrincipal || !!params.data?.__isNew;
+          const isLocked = !!params.data?.__isNew;
 
-          // Sucursal principal: mostrar ícono de solo lectura (azul si marcado, gris si no)
           if (isLocked) {
             const span = document.createElement('span');
             span.style.display = 'inline-flex';
@@ -276,7 +275,6 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
             span.style.lineHeight = '1';
             span.style.pointerEvents = 'none';
             span.style.userSelect = 'none';
-            span.title = this.isBranchPrincipal ? 'No editable en sucursal principal' : '';
             span.innerHTML = checked
               ? '<i class="bi bi-check-square-fill" style="color:#0d6efd;"></i>'
               : '<i class="bi bi-square" style="color:#6c757d;opacity:.45;"></i>';
@@ -963,8 +961,20 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         await lastValueFrom(
           this.permitionsService.setPrincipal(this.userId, this.branchId, idRole, idPosicion).pipe(catchError(() => of(null)))
         );
-        // Actualizar el registro de empleado en la sucursal (si no existe, el backend devuelve 404 silencioso)
-        if (this.userName) {
+        // Actualizar depto/posición del empleado: directo por id (preferido) o por nombre (fallback)
+        if (this.idEmpleado > 0) {
+          const empResponse = await lastValueFrom(
+            this.employeeService.getEmployeeById(this.idEmpleado).pipe(catchError(() => of(null)))
+          );
+          const raw = empResponse?.data ?? empResponse;
+          const emp = Array.isArray(raw) ? raw[0] : raw;
+          if (emp) {
+            await lastValueFrom(
+              this.employeeService.updateEmployee(this.idEmpleado, { ...emp, idDepto: idRole, idPosition: idPosicion })
+                .pipe(catchError(() => of(null)))
+            );
+          }
+        } else if (this.userName) {
           await lastValueFrom(
             this.employeeService.updateEmployeeDeptPos(this.branchId, this.userName, idRole, idPosicion)
               .pipe(catchError(() => of(null)))

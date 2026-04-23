@@ -1978,6 +1978,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     );
     const branchChangedRows = modifiedRows.filter((row) => this.didBranchChange(row));
     const deptoPosChangedRows = modifiedRows.filter((row) => this.didDeptoPosChange(row));
+    const nameChangedRows = modifiedRows.filter((row) => this.didNameChange(row));
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -1999,6 +2000,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
       for (const row of deptoPosChangedRows) {
         await this.syncUserDeptoPosPermission(row);
+      }
+      for (const row of nameChangedRows) {
+        await this.syncUserDisplayName(row);
       }
 
       // Determinar qué ID vamos a seleccionar después de recargar
@@ -2180,6 +2184,37 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const origDepto = Number(original.idDepto ?? 0) || 0;
     const origPos = Number(original.idPosition ?? 0) || 0;
     return (curDepto > 0 && curDepto !== origDepto) || (curPos > 0 && curPos !== origPos);
+  }
+
+  private didNameChange(row: any): boolean {
+    const id = Number(row?.id);
+    if (!Number.isFinite(id) || id <= 0) return false;
+    const original = this.originalRowsById.get(id);
+    if (!original) return false;
+    return (row?.name ?? '').trim() !== (original.name ?? '').trim();
+  }
+
+  private async syncUserDisplayName(row: any): Promise<void> {
+    const newName = (row?.name ?? '').trim();
+    if (!newName) return;
+    const employeeId = Number(row?.id);
+    if (employeeId <= 0) return;
+
+    try {
+      const rawUsers = await lastValueFrom(
+        this.usersService.getDataUsers(this.idRoot).pipe(catchError(() => of([])))
+      );
+      const users = this.toUsersArray(rawUsers);
+      const linkedUser = users.find((u: any) => Number(u?.idEmpleado ?? u?.idEmployee ?? 0) === employeeId);
+      if (!linkedUser) return;
+      const userId = linkedUser.id ?? linkedUser.Id;
+      if (!userId) return;
+      await lastValueFrom(
+        this.usersService.updateUser(userId, { ...linkedUser, displayName: newName }).pipe(catchError(() => of(null)))
+      );
+    } catch {
+      // name sync is best-effort
+    }
   }
 
   private getOriginalDepto(row: any): number {
@@ -2403,8 +2438,26 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     }
   }
 
+  private async resolveUserIdByEmployeeId(employeeId: number): Promise<number[]> {
+    if (employeeId <= 0) return [];
+    try {
+      const rawUsers = await lastValueFrom(
+        this.usersService.getDataUsers(this.idRoot).pipe(catchError(() => of([])))
+      );
+      const users = this.toUsersArray(rawUsers);
+      return users
+        .filter((u: any) => Number(u?.idEmpleado ?? u?.idEmployee ?? 0) === employeeId)
+        .map((u: any) => Number(u?.id ?? 0))
+        .filter((id: number) => id > 0);
+    } catch { return []; }
+  }
+
   private async syncUserDeptoPosPermission(row: any): Promise<void> {
-    const userIds = await this.resolveUserIdsForEmployee(row);
+    const employeeId = Number(row?.id ?? 0);
+    let userIds = await this.resolveUserIdByEmployeeId(employeeId);
+    if (userIds.length === 0) {
+      userIds = await this.resolveUserIdsForEmployee(row);
+    }
     if (userIds.length === 0) return;
     for (const idUser of userIds) {
       await this.syncSingleUserDeptoPosPermission(idUser, row);

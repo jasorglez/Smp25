@@ -190,8 +190,7 @@ export class SideBarComponent {
       // reload branches once if the user qualifies for the full-branch path.
       if (!this._branchesReloadedAfterPermissions && this.selectedRoot) {
         const hasAll = this.authService.hasDetailedPermission('principal', 'see-all-branches');
-        const emailForRoot = this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
-        if (hasAll || emailForRoot === environment.root) {
+        if (hasAll || this.authService.isCurrentUserRoot()) {
           this._branchesReloadedAfterPermissions = true;
           await this.getpermissionxBranchs(parseInt(this.selectedRoot, 10));
         }
@@ -282,8 +281,7 @@ export class SideBarComponent {
 
   async getpermissionxBranchs(idRoot: number) {
     const hasPermission = this.authService.hasDetailedPermission('principal', 'see-all-branches');
-    const emailForRoot = this.signalsService.getemailChoose() ?? localStorage.getItem('mail') ?? '';
-    const isRoot = emailForRoot === environment.root;
+    const isRoot = this.authService.isCurrentUserRoot();
     const requestSeq = ++this.branchListRequestSeq;
 
     if (hasPermission || isRoot) {

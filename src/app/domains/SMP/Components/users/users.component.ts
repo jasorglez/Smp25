@@ -18,7 +18,6 @@ import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { AuthService } from 'app/services/auth.service';
-import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { DetallePermisosXSucursalesComponent } from './details/detallepermisosxsucursales.component';
@@ -111,7 +110,7 @@ export class UsersComponent implements OnDestroy {
   /** Si el usuario logueado tiene el switch "Security" encendido, puede dar clic en la columna Security. */
   private sessionSecurityEnabled(): boolean {
     // Root (super usuario) no debe verse restringido por este switch.
-    if (this.signalsService.getemailChoose() === environment.root) {
+    if (this.authService.isCurrentUserRoot()) {
       return true;
     }
     return this.authService.hasUsersMenuSecurityAccess();
@@ -197,8 +196,7 @@ export class UsersComponent implements OnDestroy {
       }
       this.verification();
       if (this.signalsService.getRefresSecurity()()) {
-        const isRoot = this.signalsService.getemailChoose() === environment.root;
-        if (isRoot || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
+        if (this.authService.isCurrentUserRoot() || (typeof this.idRoot === 'number' && this.idRoot > 0)) {
           this.obtenerDatos();
           this.signalsService.setRefresSecurity(false);
         }
@@ -314,26 +312,27 @@ export class UsersComponent implements OnDestroy {
       console.error('Respuesta inválida del servidor');
       return;
     }
-    this.rowData = response.data.map((item: any) => {
-      const idNum = Number(item.id);
-      const uid = Number.isFinite(idNum) && idNum > 0 ? idNum : Number(item.id);
-      const n = Number(uid);
-      const idRolDisplay =
-        securityCountByUser != null && Number.isFinite(n) && n > 0
-          ? securityCountByUser.get(n) ?? 0
-          : Number(item.idRol ?? item.IdRol ?? 0) || 0;
-      return {
-        ...item,
-        id: Number.isFinite(idNum) && idNum > 0 ? idNum : item.id,
-        idRol: idRolDisplay,
-      };
-    });
-    this.rowData = this.rowData.filter((row) => row.active !== 0);
+    this.rowData = response.data
+      .filter((item: any) => item.active !== 0 && item.active !== false)
+      .map((item: any) => {
+        const idNum = Number(item.id);
+        const uid = Number.isFinite(idNum) && idNum > 0 ? idNum : Number(item.id);
+        const n = Number(uid);
+        const idRolDisplay =
+          securityCountByUser != null && Number.isFinite(n) && n > 0
+            ? securityCountByUser.get(n) ?? 0
+            : Number(item.idRol ?? item.IdRol ?? 0) || 0;
+        return {
+          ...item,
+          id: Number.isFinite(idNum) && idNum > 0 ? idNum : item.id,
+          idRol: idRolDisplay,
+        };
+      });
     this.refreshUserSetupFlagsCache();
   }
 
   obtenerDatos() {
-    if (this.signalsService.getemailChoose() !== environment.root && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+    if (!this.authService.isCurrentUserRoot() && !(typeof this.idRoot === 'number' && this.idRoot > 0)) {
       // Todavía no hay compañía/root seleccionado; evita request con id=null
       return;
     }
@@ -346,7 +345,7 @@ export class UsersComponent implements OnDestroy {
         this.trackingService.getEmail()
       );
 
-    if (this.signalsService.getemailChoose() === environment.root) {
+    if (this.authService.isCurrentUserRoot()) {
       forkJoin({
         users: this.usersService.getAllUsers(),
         branchPerms: this.usersxrootService.getDataUsersxPermissions('branch').pipe(catchError(() => of([]))),
@@ -711,6 +710,22 @@ export class UsersComponent implements OnDestroy {
     this._columnDefs = [
       { field: 'id', headerName: 'ID', hide: true, filter: 'agNumberColumnFilter', width: 80 },
       { field: 'active', hide: true },
+      {
+        field: 'active2',
+        headerName: 'Activo',
+        width: 90,
+        cellRenderer: (params: any) => {
+          const val = params.value === true || params.value === 1;
+          const disabled = !this.authService.isCurrentUserRoot() ? 'disabled' : '';
+          return `<input type="checkbox" ${val ? 'checked' : ''} ${disabled} style="width:16px;height:16px;cursor:pointer;" />`;
+        },
+        onCellClicked: (params: any) => {
+          if (!this.authService.isCurrentUserRoot()) return;
+          params.node.setDataValue('active2', !params.value);
+          params.node.data.__modified = true;
+          this.notSavedChanges = true;
+        },
+      },
       {
         field: 'displayName',
         headerName: 'Nombre *',
@@ -1091,6 +1106,13 @@ export class UsersComponent implements OnDestroy {
       const updateResponses = updateUserRequests.length > 0 ? await lastValueFrom(forkJoin(updateUserRequests)) : [];
       const newUserResponses = addResponses;
 
+      // Sync displayName → employee name for modified rows with a linked employee
+      for (const row of modifiedRows) {
+        const employeeId = Number(row.idEmployee ?? row.idEmpleado ?? 0);
+        if (employeeId <= 0 || !row.displayName) continue;
+        await this.syncEmployeeName(employeeId, row.displayName);
+      }
+
       const permissionRequests = newUserResponses.map((response) => {
         const userId = response.data?.id;
         if (!userId) return null;
@@ -1212,11 +1234,11 @@ export class UsersComponent implements OnDestroy {
     );
   }
 
-  onSecurityColumnClicked(params: any): void {
+onSecurityColumnClicked(params: any): void {
     if (!params?.api || !params?.node) {
       return;
     }
-    if (this.signalsService.getemailChoose() !== environment.root) {
+    if (!this.authService.isCurrentUserRoot()) {
       if (!this.authService.hasUsersMenuSecurityAccess()) {
         alerts.userBasicAlert(
           'Sin acceso',
@@ -1284,7 +1306,7 @@ export class UsersComponent implements OnDestroy {
     const isCurrentlyExpanded = selectedNode.expanded && selectedData.detailType === 'permissions';
 
     if (!isCurrentlyExpanded) {
-      if (this.signalsService.getemailChoose() !== environment.root) {
+      if (!this.authService.isCurrentUserRoot()) {
         if (!this.authService.hasUsersMenuSecurityAccess()) {
           alerts.userBasicAlert(
             'Sin acceso',
@@ -1474,6 +1496,25 @@ export class UsersComponent implements OnDestroy {
     return colorEmojis[roleId % colorEmojis.length];
   }
 
+  private async syncEmployeeName(employeeId: number, displayName: string): Promise<void> {
+    try {
+      const empResponse = await lastValueFrom(
+        this.employeeService.getEmployeeById(employeeId).pipe(catchError(() => of(null)))
+      );
+      // API returns List<object> (array), extract first element
+      const raw = empResponse?.data ?? empResponse;
+      const emp = Array.isArray(raw) ? raw[0] : raw;
+      if (!emp) return;
+      const empName = (emp.name ?? emp.Name ?? '').trim();
+      if (empName.toUpperCase() === displayName.trim().toUpperCase()) return;
+      await lastValueFrom(
+        this.employeeService.updateEmployee(employeeId, { ...emp, name: displayName.trim() }).pipe(catchError(() => of(null)))
+      );
+    } catch {
+      // name sync is best-effort
+    }
+  }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
@@ -1504,6 +1545,11 @@ export class UsersComponent implements OnDestroy {
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
     cleanedData.active = Number(cleanedData.active) || 1;
+    // Normalize employee link: frontend uses idEmployee, backend expects idEmpleado
+    if ('idEmployee' in cleanedData) {
+      cleanedData.idEmpleado = cleanedData.idEmployee != null ? Number(cleanedData.idEmployee) || null : null;
+      delete cleanedData.idEmployee;
+    }
     return cleanedData;
   }
 }

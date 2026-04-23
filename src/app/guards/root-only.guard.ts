@@ -6,24 +6,21 @@ import {
   Router,
 } from '@angular/router';
 import { Observable, of } from 'rxjs';
-import { environment } from '@env/environment';
-import { SignalsService } from 'app/services/signals.service';
+import { AuthService } from 'app/services/auth.service';
 
-/** Solo permite acceso al usuario con correo root (root@bi2.mx). */
+/** Permite acceso al usuario root: por email de entorno O por flag isRoot de la BD. */
 @Injectable({
   providedIn: 'root',
 })
 export class RootOnlyGuard implements CanActivate {
   private router = inject(Router);
-  private signalsService = inject(SignalsService);
+  private authService = inject(AuthService);
 
   canActivate(
     _route: ActivatedRouteSnapshot,
     _state: RouterStateSnapshot
   ): Observable<boolean> {
-    const email = this.signalsService.getemailChoose() || localStorage.getItem('mail') || '';
-    const isRoot = email.toLowerCase() === (environment.root || 'root@bi2.mx').toLowerCase();
-    if (!isRoot) {
+    if (!this.authService.isCurrentUserRoot()) {
       this.router.navigate(['/main']);
       return of(false);
     }
