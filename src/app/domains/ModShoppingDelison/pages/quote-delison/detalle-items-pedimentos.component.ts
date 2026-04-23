@@ -450,54 +450,43 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       {
         field: 'recurrent',
         headerName: 'Recurrente',
-        minWidth: 130,
+        width: 140,
         flex: 0,
         suppressSizeToFit: true
       },
       {
         field: 'articulo',
         headerName: 'Articulo',
-        minWidth: 280,
-        flex: 2,
+        width: 200,
+        flex: 0,
+        suppressSizeToFit: true,
         wrapText: true
       },
       {
         field: 'numeroArticulo',
         headerName: '# Articulo',
-        minWidth: 140,
+        width: 100,
         flex: 0,
         suppressSizeToFit: true
       },
       {
         field: 'cantidad',
         headerName: 'Cantidad',
-        minWidth: 110,
+        width: 85,
         flex: 0,
         suppressSizeToFit: true,
         cellStyle: { textAlign: 'right' }
       },
       {
-        field: 'tipo',
-        headerName: 'Tipo',
-        width: 130,
-        hide: true
-      },
-      {
         field: 'tipoPrioridad',
-        headerName: 'Tipo Prioridad3',
-        minWidth: 140,
+        headerName: 'Tipo Prioridad',
+        width: 130,
         flex: 0,
         suppressSizeToFit: true
       },
-    /*  {
-        field: 'comment',
-        headerName: 'Observation',
-        width: 200
-      }, */
-
       {
         headerName: 'Comentarios💬',
-        minWidth: 140,
+        width: 130,
         flex: 0,
         suppressSizeToFit: true,
         sortable: false,
@@ -513,7 +502,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       {
         field: 'pedimento',
         headerName: 'Solicitado',
-        minWidth: 120,
+        width: 100,
         flex: 0,
         suppressSizeToFit: true,
         cellRenderer: (params: any) => {

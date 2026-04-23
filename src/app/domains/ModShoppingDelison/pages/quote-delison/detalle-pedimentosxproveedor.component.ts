@@ -4,18 +4,18 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
+import { ComparacionOverlayService } from 'app/services/comparacion-overlay.service';
 import { Subscription } from 'rxjs';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
 import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.component';
 import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
-import { ComparacionPreciosComponent } from './comparacion-precios.component';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, ComparacionPreciosComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -32,6 +32,7 @@ import { ComparacionPreciosComponent } from './comparacion-precios.component';
         </ag-grid-angular>
       </div>
     </div>
+
   `,
   styles: [`
     .detail-grid-container {
@@ -52,6 +53,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   private pedimentoModificationService = inject(PedimentoModificationService);
+  private comparacionOverlayService = inject(ComparacionOverlayService);
   private modificationSub?: Subscription;
   rowData: any[] = [];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -175,7 +177,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'pedimento',
         headerName: 'PEDIMENTO #',
-        width: 220
+        width: 160,
+        flex: 0,
+        suppressSizeToFit: true
       },
 
     /*  {
@@ -187,7 +191,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'articulos',
         headerName: 'ARTICULOS',
-        width: 200,
+        width: 140,
+        flex: 0,
+        suppressSizeToFit: true,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleArticulosCascade(node),
@@ -209,7 +215,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'pdf',
         headerName: 'PDF',
-        width: 80,
+        width: 50,
+        flex: 0,
+        suppressSizeToFit: true,
         cellRenderer: PdfButtonCellRendererPedimentosComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleReportCascade(node),
@@ -224,19 +232,25 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'creo',
         headerName: 'QUIEN LO CREÓ',
-        width: 180
+        width: 200,
+        flex: 0,
+        suppressSizeToFit: true
       },
 
       {
         field: 'fechaPedimento',
         headerName: 'FECHA PEDIMENTO',
-        width: 160
+        width: 200,
+        flex: 0,
+        suppressSizeToFit: true
       },
 
       {
         field: 'idProvider',
         headerName: 'PROVEEDOR 1',
-        width: 210,
+        width: 220,
+        flex: 0,
+        suppressSizeToFit: true,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor 1'),
@@ -250,7 +264,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'idProvider2',
         headerName: 'PROVEEDOR 2',
-        width: 210,
+        width: 220,
+        flex: 0,
+        suppressSizeToFit: true,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor 2'),
@@ -264,7 +280,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'idProvider3',
         headerName: 'PROVEEDOR 3',
-        width: 210,
+        width: 220,
+        flex: 0,
+        suppressSizeToFit: true,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor 3'),
@@ -278,7 +296,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'comparacion',
         headerName: 'COMPARACIÓN',
-        width: 180,
+        width: 200,
+        flex: 0,
+        suppressSizeToFit: true,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleComparacionCascade(node),
@@ -292,7 +312,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       {
         field: 'createdBy',
         headerName: 'CREÓ',
-        width: 200
+        width: 250,
+        flex: 0,
+        suppressSizeToFit: true
       }
 
     ];
@@ -332,17 +354,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
           params: {
             reportProviderField: params.data.reportProviderField,
             reportProviderLabel: params.data.reportProviderLabel
-          }
-        };
-      }
-      if (params.data.detailType === 'comparacion') {
-        return {
-          component: ComparacionPreciosComponent,
-          params: {
-            selectedProviderIds: [params.data.idProvider, params.data.idProvider2, params.data.idProvider3],
-            selectedProviderNames: [params.data.name_idProvider, params.data.name_idProvider2, params.data.name_idProvider3],
-            requisitionId: params.data.requisitionId,
-            cotizacionId: params.data.cotizacionId
           }
         };
       }
@@ -544,60 +555,11 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   }
 
   toggleComparacionCascade(node: any) {
-    node.setSelected(true);
-
-    // Verificar si ya está expandido con comparación
-    const isCurrentlyExpanded = node.expanded &&
-      node.data.detailType === 'comparacion' &&
-      this.expandedRowId === node.id;
-
-    if (isCurrentlyExpanded) {
-      // Si ya está expandido, colapsarlo y restaurar todas las filas
-      node.setExpanded(false);
-      this.expandedRowId = null;
-      node.data.isExpanded = false;
-
-      // Restaurar alturas de todas las filas
-      this.gridApi.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
-      });
-      this.gridApi.onRowHeightChanged();
-      this.gridApi.redrawRows();
-    } else {
-      // Colapsar cualquier otra fila expandida
-      if (this.expandedRowId) {
-        this.gridApi.forEachNode((otherNode: any) => {
-          if (otherNode.id === this.expandedRowId) {
-            otherNode.setExpanded(false);
-            otherNode.data.isExpanded = false;
-          }
-        });
-      }
-
-      // Ocultar todas las demás filas (altura 0)
-      this.gridApi.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
-      });
-
-      // Establecer el tipo de detalle como comparación
-      node.data.detailType = 'comparacion';
-
-      // Guardar el ID de la fila expandida
-      this.expandedRowId = node.id;
-      node.data.isExpanded = true;
-      this.activeDetailType = 'comparacion';
-
-      // Aplicar los cambios de altura
-      this.gridApi.onRowHeightChanged();
-      this.gridApi.redrawRows();
-
-      // Expandir con el detalle de comparación
-      setTimeout(() => {
-        node.setExpanded(true);
-      }, 0);
-    }
+    this.comparacionOverlayService.open({
+      cotizacionId: node.data.cotizacionId,
+      requisitionId: node.data.requisitionId,
+      selectedProviderIds: [node.data.idProvider, node.data.idProvider2, node.data.idProvider3].filter((id: number) => id > 0)
+    });
   }
 
   collapseReportDetail() {

@@ -109,9 +109,33 @@ export class OcAndReqsService {
       { headers: this.trackingService.getHeaders() });
   }
 
+  patchTypeOc(id: number, typeOc: string): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Detailsreqoc/${id}/typeoc`,
+      JSON.stringify(typeOc),
+      { headers: { ...this.trackingService.getHeaders(), 'Content-Type': 'application/json' } }
+    );
+  }
+
+  syncObservationBySupplieAndProvider(idSupplie: number, idProvider: number, observation: string): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Detailsreqoc/sync-observation?idSupplie=${idSupplie}&idProvider=${idProvider}&observation=${encodeURIComponent(observation)}`,
+      {},
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getComparisonData(pedimentoId: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Ocandreq/${pedimentoId}/comparison`,
       { headers: this.trackingService.getHeaders() });
+  }
+
+  patchCantidadConceptualizada(id: number, cantidad: number): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Detailsreqoc/${id}/cantidad-conceptualizada`,
+      cantidad,
+      { headers: { ...this.trackingService.getHeaders(), 'Content-Type': 'application/json' } }
+    );
   }
 
 }

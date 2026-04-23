@@ -976,10 +976,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             params.data.pedimiento = input.checked;
             params.api.refreshCells({ rowNodes: [params.node], columns: ['pedimiento'] });
             this.checkPedimentoSelection();
-            // Refresh master grid comments column
-            if (this.context && this.context.gridApi) {
-              this.context.gridApi.refreshCells({ force: true });
-            }
           });
 
           return input;
@@ -1363,9 +1359,24 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
+      // 🔄 MOSTRAR ALERTA DE PROGRESO: Primera alerta
+      alerts.showLoadingWithProgress('Generando Cotización', 'Por favor espera un momento...', 0);
 
       // 2. Obtener datos de la requisición original
-      const requisicionOriginal = this.params.data;
+      let requisicionOriginal = this.params.data;
+
+      // ✅ Cargar datos frescos del servidor para asegurar que idDepartament sea correcto
+      try {
+        const reqFresca: any = await firstValueFrom(
+          this.ocAndReqsService.getDetailedReq(requisicionOriginal.id)
+        );
+        if (reqFresca) {
+          // Usar datos frescos pero mantener respaldo a los locales
+          requisicionOriginal = { ...requisicionOriginal, ...reqFresca };
+        }
+      } catch (err) {
+        console.warn('⚠️ No se pudieron cargar datos frescos, usando datos locales:', err);
+      }
 
       // 3. Consultar cuántas cotizaciones ya existen para esta requisición
       const cotizacionesExistentes: any = await firstValueFrom(
@@ -1375,6 +1386,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       const numCotizaciones = Array.isArray(cotizacionesExistentes) ? cotizacionesExistentes.length : 0;
       const siguienteNumeroPedimento = numCotizaciones + 1;
 
+      alerts.updateLoadingProgress('Generando Cotización', 'Validando información...', 20);
 
       // 4. Obtener el folio de cotización (PrefixSetupService actualiza automáticamente el consecutivo)
       const folioCotizacion = await this.prefixSetupService.getNextFolio('branch', requisicionOriginal.idReference, 'cotiz');
@@ -1382,6 +1394,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       if (!folioCotizacion) {
         throw new Error('No se pudo generar el folio de cotización. Verifica la configuración de prefijos.');
       }
+
+      alerts.updateLoadingProgress('Generando Cotización', 'Creando maestro...', 30);
 
 
       // 5. Crear el maestro de la cotización
@@ -1431,6 +1445,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         throw new Error('No se pudo obtener el ID de la cotización creada');
       }
 
+      alerts.updateLoadingProgress('Generando Cotización', 'Confirmando folio...', 45);
+
       // ✅ Confirmar el folio en PrefixSetup (actualizar consecutivo después de guardar)
       try {
         const prefixSetup = await firstValueFrom(
@@ -1443,6 +1459,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         console.warn('No se pudo confirmar el folio:', err);
       }
 
+      alerts.updateLoadingProgress('Generando Cotización', 'Copiando artículos...', 55);
 
       // 6. Crear snapshot de TODOS los artículos de la requisición, marcando cuáles fueron solicitados
 
@@ -1485,6 +1502,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         );
       }
 
+      alerts.updateLoadingProgress('Generando Cotización', 'Actualizando números de pedimento...', 75);
 
       // 7. Actualizar el consecutivo del prefijo
       // El consecutivo ya fue actualizado automáticamente por getNextFolio
@@ -1546,17 +1564,24 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.context.ITEMS.save(this.requisitionId, this.rowData, false);
       }
 
+      alerts.updateLoadingProgress('Generando Cotización', 'Finalizando...', 90);
+
       // 11. Redibujar el grid
       this.hasPedimentoSelection = false;
       this.gridApi.redrawRows();
 
-      // 12. Mostrar mensaje de éxito
-      const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s)`;
-      alerts.reqSuccessToast('Cotización Creada', message);
+      // 12. Cerrar alerta de progreso y mostrar mensaje de éxito
+      alerts.closeLoading();
+
+      setTimeout(() => {
+        const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s)`;
+        alerts.reqSuccessToast('Cotización Creada', message);
+      }, 300);
 
 
     } catch (error) {
       console.error('❌ Error al crear cotización:', error);
+      alerts.closeLoading();
       alerts.reqErrorToast('Error', 'No se pudo crear la cotización');
     }
   }
