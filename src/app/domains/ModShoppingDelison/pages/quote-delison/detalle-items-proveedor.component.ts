@@ -809,6 +809,15 @@ export class DetalleItemsProveedorComponent {
       if (this.selectedProviderId) {
         await this.fetchAndMapProviderAssignments(this.selectedProviderId);
       }
+      // Sincronizar codigoExterno → proveedorxtablas.campo11
+      for (const row of this.rowData) {
+        if (row.proveedorXTablaId > 0 && row.proveedorXTablaObj) {
+          const updated = { ...row.proveedorXTablaObj, campo11: row.codigoExterno || '' };
+          await lastValueFrom(this.providersService.updateProviderXTable(row.proveedorXTablaId, updated)).catch(e =>
+            console.warn(`⚠️ No se pudo sincronizar campo11 para ${row.articulo}:`, e)
+          );
+        }
+      }
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
       // Mutar el nodo padre directamente (NO setData: destruiría el detail y resetearía precios)

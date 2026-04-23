@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { SignalsService } from 'app/services/signals.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { alerts } from 'app/helpers/alerts';
@@ -17,7 +18,10 @@ import { lastValueFrom, Subscription } from 'rxjs';
   imports: [CommonModule, AgGridModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="comparacion-container">
-      <h5 class="mb-3">Comparación de Precios por Proveedor</h5>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h5 class="mb-0">Comparación de Precios por Proveedor</h5>
+        <button type="button" class="btn-close" (click)="closed.emit()"></button>
+      </div>
 
       <!-- Loading state -->
       <div *ngIf="loading" style="display: flex; align-items: center; justify-content: center; flex: 1; gap: 8px;">
@@ -135,14 +139,19 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
   private itemCommentsService = inject(ItemCommentsService);
+  private signalsService = inject(SignalsService);
   private cdr = inject(ChangeDetectorRef);
-  private params: any;
   private gridApi!: GridApi;
-  private cotizacionId: number = 0;
-  private requisitionId: number = 0;
-  private selectedProviderIds: number[] = [];
   private codigosExternos: Map<number, Map<number, string>> = new Map();
+  private providerSlotMap = new Map<number, { suffix: string; cotizId: number }>();
   private commentSub?: Subscription;
+
+  @Input() cotizacionId: number = 0;
+  @Input() requisitionId: number = 0;
+  @Input() selectedProviderIds: number[] = [];
+  @Output() closed = new EventEmitter<void>();
+
+  ocGenerada = false;
 
   rowData: any[] = [];
   private originalRowData: any[] = [];
@@ -170,22 +179,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         this.gridApi.refreshCells({ force: true });
       }
     });
+    this.loadComparisonData();
   }
 
   ngOnDestroy() {
     this.commentSub?.unsubscribe();
   }
-
-  agInit(params: any): void {
-    this.params = params;
-    this.cotizacionId = params.cotizacionId || params.data?.cotizacionId || params.data?.id || 0;
-    this.requisitionId = params.requisitionId || params.data?.requisitionId || 0;
-    this.selectedProviderIds = params.selectedProviderIds || [];
-    console.log('[Comparacion] agInit - cotizacionId:', this.cotizacionId, 'requisitionId:', this.requisitionId, 'params.data:', params.data);
-    this.loadComparisonData();
-  }
-
-  refresh(): boolean { return false; }
 
   private loadComparisonData() {
     if (!this.cotizacionId) {
@@ -211,11 +210,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
         this.proveedores = proveedores;
 
-        // Cargar asignaciones de materiales (campo11 = Cód. Externo) para cada proveedor
+        // Cargar asignaciones de materiales (campo11 = Cód. Externo) y slots COTIZ en paralelo
         try {
-          await this.loadCodigosExternos();
+          await Promise.all([this.loadCodigosExternos(), this.loadCotizSlots()]);
         } catch (err) {
-          console.warn('[Comparacion] Error cargando códigos externos:', err);
+          console.warn('[Comparacion] Error cargando datos auxiliares:', err);
         }
 
         this.loading = false;
@@ -260,6 +259,93 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async loadCotizSlots(): Promise<void> {
+    try {
+      const cotizData: any = await lastValueFrom(
+        this.ocAndReqsService.getOcAndReqs('delison', this.cotizacionId, 'COTIZ')
+      );
+      const cotizList: any[] = Array.isArray(cotizData) ? cotizData : [];
+      this.providerSlotMap.clear();
+      for (const cotiz of cotizList) {
+        if (!cotiz.idProvider || cotiz.idProvider <= 0) continue;
+        const suffix = cotiz.folio?.includes('-A-') ? 'A'
+                     : cotiz.folio?.includes('-B-') ? 'B'
+                     : cotiz.folio?.includes('-C-') ? 'C' : null;
+        if (suffix && !this.providerSlotMap.has(cotiz.idProvider)) {
+          this.providerSlotMap.set(cotiz.idProvider, { suffix, cotizId: cotiz.id });
+        }
+      }
+    } catch (e) {
+      console.warn('[Comparacion] Error cargando slots COTIZ:', e);
+    }
+  }
+
+  private async generateOCForSlot(
+    provId: number,
+    provName: string,
+    slot: { suffix: string; cotizId: number },
+    rows: any[]
+  ): Promise<string> {
+    const idRoot   = this.signalsService.getRootSelectedBySidebar()();
+    const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    const folio    = `OC-${this.cotizacionId}-${slot.suffix}-${Date.now()}`;
+
+    const ocPayload = {
+      idRoot,
+      folio,
+      typeReference: 'branch',
+      idReference:   idBranch || 0,
+      idReq:         this.requisitionId || 0,
+      dateCreate:    new Date().toISOString().split('T')[0],
+      idProvider:    provId,
+      solicit:       provName.substring(0, 50),
+      idDepartament: 0,
+      delivery:      'NO APLICA',
+      deliveryTime:  '1 DAY',
+      typeOc:        'INSUMOS',
+      idPayment:     0,
+      idCurrency:    0,
+      type:          'OC',
+      datesupply:    new Date().toISOString().split('T')[0],
+      active:        true
+    };
+
+    const created: any = await lastValueFrom(this.ocAndReqsService.addOcAndReq(ocPayload));
+    const newOcId = Number(created?.id ?? created?.data?.id ?? 0);
+    if (!newOcId || newOcId <= 0) throw new Error('No se obtuvo id del OC');
+
+    const details = rows.map((row: any) => ({
+      idMovement:   newOcId,
+      idSupplie:    row.idSupplie || 0,
+      idProvider:   provId,
+      nameProvider: provName,
+      quantity:     Number(row.cantidadConceptualizada) > 0 ? Number(row.cantidadConceptualizada) : Number(row.cantidadComprar) || 0,
+      price:        Number(row.costoUnitario) || 0,
+      type:         'OC',
+      tiempoEntrega: row.tiempoEntrega || '',
+      compraMinima:  Number(row.compraMinima) || 1,
+      autorizado:    true,
+      active:        true,
+      recurrent:     row.nuevoRecurrente || 'Recurrente',
+      nameArticle:   row.articulo || '',
+      numArticle:    String(row.numArticuloInterno || ''),
+      observation:   row.numArticuloExterno || '',
+      typeOc:        row.tipoOc || '',
+      comment:       '',
+      datePostpone:  null
+    }));
+
+    for (const detail of details) {
+      await lastValueFrom(this.ocAndReqsService.addReqItem(detail));
+    }
+
+    const totalSum = details.reduce((s, d) => s + d.quantity * d.price, 0);
+    await lastValueFrom(this.ocAndReqsService.setCountItem(newOcId, details.length)).catch(() => {});
+    await lastValueFrom(this.ocAndReqsService.setTotal(newOcId, totalSum)).catch(() => {});
+
+    return folio;
+  }
+
   private rebuildAllRowsAndSync() {
     this.buildRowDataForAllArticulos();
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
@@ -282,15 +368,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const preciosPorProv = articulo.precios || {};
       const comprasMinsByProv = articulo.comprasMinimas || {};
       const tiemposEntregaPorProv = articulo.tiemposEntrega || {};
+      const cantidadesPorProv = articulo.cantidades || {};
+      const slotItemIdsPorProv = articulo.slotItemIds || {};
+      const tiposOcPorProv = articulo.tiposOc || {};
       const cantidadComprar = Number(articulo.cantidad ?? articulo.cantidadComprar ?? 0) || 0;
       const articuloItemId = Number(articulo.id ?? 0) || 0;
       const idSupplie = articulo.idSupplie || 0;
       const rawNumArticle = articulo.numArticle ?? articulo.numArticuloInterno ?? articulo.numarticulo ?? '';
-      const tipoOc =
-        articulo.typeOc ?? articulo.tipoOc ?? this.tipoOcOptions[0] ?? 'SELECCIONE UNA OPCION';
-      const cantidadConceptualizada = Number(
-        articulo.cantidadConceptualizada ?? articulo.cantidad_conceptualizada ?? 0
-      );
       const comentario = articulo.comment ?? articulo.comentario ?? '';
 
       const provList = proveedores.length > 0 ? proveedores : [{ id: 0, nombre: '—' }];
@@ -312,6 +396,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
               articulo.compraMinima ??
               1
           ) || 1;
+        const cantidadConceptualizada =
+          Number(cantidadesPorProv[provId] ?? cantidadesPorProv[provId.toString()] ?? 0) || 0;
+        const slotItemId =
+          Number(slotItemIdsPorProv[provId] ?? slotItemIdsPorProv[provId.toString()] ?? 0) || 0;
+        const tipoOc =
+          tiposOcPorProv[provId] ?? tiposOcPorProv[provId.toString()] ?? 'SELECCIONE UNA OPCION';
         const costoTotal = costoUnitario * cantidadComprar;
         const costoXCompraMinima = costoUnitario * compraMinima;
 
@@ -320,6 +410,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
         rows.push({
           articuloItemId,
+          slotItemId,
+          idSupplie,
           proveedorId: provId,
           proveedorNombre: prov.nombre ?? prov.name ?? (provId ? `Proveedor ${provId}` : '—'),
           cantidadComprar,
@@ -337,7 +429,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           costoXCompraMinima,
           comentario,
           tipoOc,
-          cantidadConceptualizada: Number.isFinite(cantidadConceptualizada) ? cantidadConceptualizada : 0,
+          cantidadConceptualizada,
           __isBlockStart: idx === 0,
           __blockRowSpan: blockSize
         });
@@ -350,8 +442,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private pushRowDataToGridIfReady(_alsoSchedule: boolean) {
     setTimeout(() => {
       if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.setGridOption('columnDefs', this.colDefs);
+        this.gridApi.setGridOption('rowData', this.rowData);
         this.scheduleAutoSizeColumns();
       }
     }, 0);
@@ -359,9 +451,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   onGridReady(params: any) {
     this.gridApi = params.api;
+    this.gridApi.setGridOption('columnDefs', this.colDefs);
     if (this.rowData?.length) {
       this.gridApi.setGridOption('rowData', this.rowData);
-      this.gridApi.setGridOption('columnDefs', this.colDefs);
     }
     this.scheduleAutoSizeColumns();
   }
@@ -417,30 +509,15 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
     if (field === 'tipoOc') {
-      const itemId = Number(event.data?.articuloItemId ?? 0) || 0;
-      const val = event.newValue;
-      for (const row of this.rowData) {
-        if (Number(row.articuloItemId ?? 0) !== itemId) {
-          continue;
-        }
-        row.tipoOc = val;
-      }
       if (this.gridApi) {
-        this.gridApi.refreshCells({ force: true });
+        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }
     }
     if (field === 'cantidadConceptualizada') {
-      const itemId = Number(event.data?.articuloItemId ?? 0) || 0;
       const v = Number(event.newValue);
-      const val = Number.isFinite(v) ? v : 0;
-      for (const row of this.rowData) {
-        if (Number(row.articuloItemId ?? 0) !== itemId) {
-          continue;
-        }
-        row.cantidadConceptualizada = val;
-      }
+      event.data.cantidadConceptualizada = Number.isFinite(v) ? v : 0;
       if (this.gridApi) {
-        this.gridApi.refreshCells({ force: true });
+        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }
     }
     if (field === 'costoUnitario' || field === 'compraMinima') {
@@ -456,13 +533,76 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
-  save() {
-    if (this.rowData.length === 0) {
-      return;
+  async save() {
+    if (this.rowData.length === 0) return;
+
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+
+    // 1. Guardar typeOc por slot COTIZ (independiente por proveedor)
+    for (const row of this.rowData) {
+      if (row.slotItemId > 0) {
+        await lastValueFrom(
+          this.ocAndReqsService.patchTypeOc(row.slotItemId, row.tipoOc || '')
+        ).catch(e =>
+          console.warn(`⚠️ No se pudo guardar typeOc para slotItem ${row.slotItemId}:`, e)
+        );
+      }
     }
+
+    // 1.5. Guardar cantidadConceptualizada en cada item del slot COTIZ
+    for (const row of this.rowData) {
+      if (row.slotItemId > 0) {
+        await lastValueFrom(
+          this.ocAndReqsService.patchCantidadConceptualizada(row.slotItemId, row.cantidadConceptualizada ?? 0)
+        ).catch(e =>
+          console.warn(`⚠️ No se pudo guardar cantidadConceptualizada para slotItem ${row.slotItemId}:`, e)
+        );
+      }
+    }
+
+    // 2. Generar OC por slot si hay filas autorizadas con cantidadConceptualizada > 0
+    const rowsByProvider = new Map<number, any[]>();
+    for (const row of this.rowData) {
+      if (AUTHORIZED.includes(row.tipoOc) && Number(row.cantidadConceptualizada) > 0) {
+        const list = rowsByProvider.get(row.proveedorId) || [];
+        list.push(row);
+        rowsByProvider.set(row.proveedorId, list);
+      }
+    }
+
+    const generatedFolios: string[] = [];
+
+    if (rowsByProvider.size > 0) {
+      const count = rowsByProvider.size;
+      const loadingTitle = count === 1 ? 'Generando orden de compra' : 'Generando órdenes de compra';
+      const loadingText = count === 1
+        ? 'Creando la orden de compra, por favor espere...'
+        : `Creando ${count} órdenes de compra, por favor espere...`;
+      alerts.showLoading(loadingTitle, loadingText);
+    }
+
+    for (const [provId, rows] of rowsByProvider) {
+      const slot = this.providerSlotMap.get(provId);
+      if (!slot) { console.warn(`⚠️ Sin slot COTIZ para proveedor ${provId}`); continue; }
+      const provName = rows[0]?.proveedorNombre || `Proveedor ${provId}`;
+      try {
+        const folio = await this.generateOCForSlot(provId, provName, slot, rows);
+        generatedFolios.push(folio);
+      } catch (e) {
+        console.error(`❌ Error generando OC para proveedor ${provId}:`, e);
+      }
+    }
+
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
-    alerts.basicAlert('Guardado', 'Selección de proveedores guardada', 'success');
+
+    if (generatedFolios.length > 0) {
+      this.ocGenerada = true;
+      alerts.closeLoading();
+      alerts.basicAlert('OC Generada', `Órdenes de compra generadas:\n${generatedFolios.join('\n')}`, 'success');
+    } else {
+      alerts.basicAlert('Guardado', 'Tipos de OC guardados correctamente', 'success');
+    }
   }
 
   revert() {

@@ -11,6 +11,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { DepartmentsService } from 'app/services/departments.service';
+import { RolesService } from 'app/services/roles.service';
 
 @Component({
   selector: 'app-quote-delison',
@@ -26,6 +27,7 @@ export class QuoteDelisonComponent implements OnInit {
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
   private departmentsService = inject(DepartmentsService);
+  private rolesService = inject(RolesService);
 
   rowData: any[] = [];
   fullRowData: any[] = []; // Store original unfiltered data
@@ -37,6 +39,8 @@ export class QuoteDelisonComponent implements OnInit {
 
   idRoot: number = null;
   idBranch: number = null;
+  idUser: number = null;
+  private rolesByBranchCache: Map<number, any[]> = new Map();
   branches: any[] = []; // Catálogo de sucursales
   branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
   departments: any[] = []; // Catálogo de departamentos
@@ -109,7 +113,7 @@ export class QuoteDelisonComponent implements OnInit {
     // ✅ Esperar a que los signals se establezcan antes de inicializar
     setTimeout(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-
+      this.idUser = this.signalsService.getIdUSer()();
 
       // ✅ Solo cargar si idRoot es válido
       if (this.idRoot) {
@@ -417,6 +421,8 @@ export class QuoteDelisonComponent implements OnInit {
     this.fullRowData = requisitionsWithQuotes.filter(r => r.pedimentos && r.pedimentos.length > 0);
     this.rowData = [...this.fullRowData];
 
+    this.preloadRolesForQuotes();
+
     // Refrescar el grid
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
@@ -559,6 +565,8 @@ export class QuoteDelisonComponent implements OnInit {
         this.fullRowData = requisitionsWithQuotes.filter(r => r.pedimentos && r.pedimentos.length > 0);
         this.rowData = [...this.fullRowData];
 
+        this.preloadRolesForQuotes();
+
         // Refrescar el grid si ya existe
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
@@ -665,12 +673,15 @@ export class QuoteDelisonComponent implements OnInit {
        headerName: 'Departamento',
        width: 150,
        editable: false,
-       valueGetter: (params: any) => {
-         const deptId = params.data?.idDepartament;
-         if (!deptId) return '';
-         // Buscar en el array de departamentos cargados
-         const dept = this.departments.find(d => d.id === deptId);
-         return dept?.description || dept?.name || `[ID: ${deptId}]`;
+       valueFormatter: (params: any) => {
+         if (!params.value) return '';
+         const branchId = params.data?.idReference;
+         const cachedRoles = this.rolesByBranchCache.get(branchId);
+         if (cachedRoles) {
+           const role = cachedRoles.find(r => r.id === params.value);
+           if (role) return role.description;
+         }
+         return params.value?.toString() || '';
        }
      },
 
@@ -696,5 +707,34 @@ export class QuoteDelisonComponent implements OnInit {
 
   saveChanges() {
     alerts.basicAlert('Función no implementada', 'La lógica para guardar cambios en las cotizaciones aún no se ha implementado.', 'info');
+  }
+
+  private preloadRolesForQuotes(): void {
+    if (!this.idUser) return;
+
+    const uniqueBranchIds = new Set<number>();
+    this.rowData.forEach(row => {
+      if (row.idReference && row.idReference > 0) {
+        uniqueBranchIds.add(row.idReference);
+      }
+    });
+
+    uniqueBranchIds.forEach(branchId => {
+      if (!this.rolesByBranchCache.has(branchId)) {
+        this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
+          next: (roles: any[]) => {
+            this.rolesByBranchCache.set(branchId, roles.map(r => ({
+              id: r.id,
+              description: r.description,
+              name: r.description
+            })));
+            if (this.gridApi) {
+              this.gridApi.refreshCells({ force: true });
+            }
+          },
+          error: () => {}
+        });
+      }
+    });
   }
 }

@@ -71,6 +71,10 @@ export class RequisitionsDelisonComponent implements OnInit {
       if (newIdBranch !== undefined && newIdBranch !== null && newIdBranch !== this.idBranch) {
         this.idBranch = newIdBranch;
 
+        // Precargar departamentos del backend para esta sucursal de inmediato
+        if (newIdBranch > 0 && this.idUser) {
+          this.preloadRolesForBranch(newIdBranch);
+        }
 
         // ✅ Esperar a que se carguen las sucursales antes de cargar requisiciones
         if (this.branchesLoaded) {
@@ -204,6 +208,10 @@ export class RequisitionsDelisonComponent implements OnInit {
         // ✅ Si hay un idBranch seleccionado (incluso si es negativo), cargar las requisiciones ahora
         if (currentIdBranch !== null && currentIdBranch !== undefined) {
           this.idBranch = currentIdBranch;
+
+          if (currentIdBranch > 0 && this.idUser) {
+            this.preloadRolesForBranch(currentIdBranch);
+          }
 
           this.loadRequisitions();
         } else {
@@ -589,7 +597,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'idReference',
         headerName: 'Sucursal',
-        width: 150,
+        width: 250,
         // ✅ Solo editable si está en modo "Todas las sucursales" (idBranch negativo o no definido)
         editable: () => !this.idBranch || this.idBranch < 0,
         cellEditor: 'agRichSelectCellEditor',
@@ -729,42 +737,67 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'departmentId',
         headerName: 'Departamento que solicita',
         width: 200,
-        cellRenderer: (params: any) => {
-          const div = document.createElement('div');
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
 
-          // Aplicar la misma lógica del valueFormatter
           const branchId = params.data?.idReference;
           const cachedRoles = this.rolesByBranchCache.get(branchId);
-          let displayValue = '';
 
           if (cachedRoles) {
             const role = cachedRoles.find(r => r.id === params.value);
-            displayValue = role?.description || params.value?.toString() || '';
-          } else {
-            displayValue = params.data?.departmentName || params.value?.toString() || '';
+            if (role) return role.description;
           }
 
-          div.textContent = displayValue;
-          div.style.cursor = 'pointer';
-
-          div.addEventListener('mouseenter', () => {
-            const rect = div.getBoundingClientRect();
-            this.showDepartmentTooltip(displayValue, rect);
-          });
-
-          div.addEventListener('mouseleave', () => {
-            this.hideDepartmentTooltip();
-          });
-
-          return div;
+          return params.value?.toString() || '';
         },
         editable: (params: any) => {
-          // ✅ Solo editable si la fila tiene una sucursal seleccionada
           return params.data && params.data.idReference > 0;
         },
         cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => {
+          const branchId = params.data?.idReference;
+
+          if (!branchId || !this.idUser) {
+            return { values: [] };
+          }
+
+          if (!this.rolesByBranchCache.has(branchId)) {
+            // Cargar roles si no están en cache
+            this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
+              next: (roles: any[]) => {
+                this.rolesByBranchCache.set(branchId, roles.map(r => ({
+                  id: r.id,
+                  description: r.description,
+                  name: r.description
+                })));
+                if (this.gridApi) {
+                  this.gridApi.refreshCells({ force: true });
+                }
+              },
+              error: () => {}
+            });
+            return { values: [] };
+          }
+
+          const roles = this.rolesByBranchCache.get(branchId) || [];
+          const descriptionToId: any = {};
+          const idToDescription: any = {};
+
+          roles.forEach(r => {
+            descriptionToId[r.description] = r.id;
+            idToDescription[r.id] = r.description;
+          });
+
+          (params.data as any).__roleMapDescToId = descriptionToId;
+          (params.data as any).__roleMapIdToDesc = idToDescription;
+
+          return {
+            values: roles.map(r => r.description),
+            valueListGap: 0,
+            valueListMaxHeight: 220
+          };
+        },
         valueGetter: (params: any) => {
-          // ✅ Convertir el ID numérico a description para el editor
           const departmentId = params.data?.departmentId;
           if (!departmentId) return null;
 
@@ -774,73 +807,19 @@ export class RequisitionsDelisonComponent implements OnInit {
           if (cachedRoles) {
             const role = cachedRoles.find(r => r.id === departmentId);
             if (role) {
-              return role.description; // Retornar solo el description
+              return role.description;
             }
           }
 
           return null;
         },
-        cellEditorParams: (params: any) => {
-          // ✅ Obtener roles según la sucursal de la fila
-          const branchId = params.data?.idReference;
-
-          if (!branchId || !this.idUser) {
-
-            return { values: [] };
-          }
-
-          // ✅ Si ya tenemos los roles en cache, usarlos
-          if (this.rolesByBranchCache.has(branchId)) {
-            const roles = this.rolesByBranchCache.get(branchId) || [];
-
-
-            // Crear mapas bidireccionales
-            const descriptionToId: any = {};
-            const idToDescription: any = {};
-
-            roles.forEach(r => {
-              descriptionToId[r.description] = r.id;
-              idToDescription[r.id] = r.description;
-            });
-
-            // Guardar temporalmente para el valueSetter
-            (params.data as any).__roleMapDescToId = descriptionToId;
-            (params.data as any).__roleMapIdToDesc = idToDescription;
-
-            return {
-              values: roles.map(r => r.description), // Solo descriptions: ["PRUEBA", "OTRO", ...]
-              valueListGap: 0,
-              valueListMaxHeight: 220
-            };
-          }
-
-
-          return { values: [] };
-        },
-        valueFormatter: (params) => {
-          // ✅ Mostrar el nombre del departamento
-          if (!params.value) return '';
-
-          const branchId = params.data?.idReference;
-          const cachedRoles = this.rolesByBranchCache.get(branchId);
-
-          if (cachedRoles) {
-            const role = cachedRoles.find(r => r.id === params.value);
-            return role?.description || params.value?.toString() || '';
-          }
-
-          return params.data?.departmentName || params.value?.toString() || '';
-        },
         valueSetter: (params: any) => {
-
-
           if (!params.newValue) {
             params.data.departmentId = null;
             params.data.departmentName = '';
             return true;
           }
 
-          // ✅ El valor viene como description, usar el mapa para obtener el ID
           const descToIdMap = (params.data as any).__roleMapDescToId;
 
           if (descToIdMap && descToIdMap[params.newValue]) {
@@ -849,10 +828,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
             params.data.departmentId = departmentId;
             params.data.departmentName = departmentName;
-
-
           } else {
-            // Fallback: buscar en cache
             const branchId = params.data.idReference;
             const cachedRoles = this.rolesByBranchCache.get(branchId);
 
@@ -861,21 +837,18 @@ export class RequisitionsDelisonComponent implements OnInit {
               if (role) {
                 params.data.departmentId = role.id;
                 params.data.departmentName = role.description;
-  
+              } else {
+                return false;
               }
             } else {
-
               return false;
             }
           }
 
-          // Marcar como modificado
           if (!params.data.__isNew) {
             params.data.__modified = true;
-
           }
           this.hasUnsavedChanges = true;
-
 
           return true;
         },
@@ -1003,27 +976,8 @@ export class RequisitionsDelisonComponent implements OnInit {
     const isDetailColumn = colId === 'articlesCount';
     const isDepartmentColumn = colId === 'departmentId';
 
-    // ✅ Si se hace clic en la columna de departamento, pre-cargar los roles
-    if (isDepartmentColumn) {
-      const branchId = event.data?.idReference;
-
-      if (branchId && this.idUser && !this.rolesByBranchCache.has(branchId)) {
-
-        this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
-          next: (roles: any[]) => {
-            const mappedRoles = roles.map(r => ({
-              id: r.id,
-              description: r.description,
-              name: r.description
-            }));
-
-            this.rolesByBranchCache.set(branchId, mappedRoles);
-          },
-          error: (err) => {
-          }
-        });
-      }
-    }
+    // ✅ Si se hace clic en la columna de departamento, los departamentos ya están cargados globalmente
+    // No es necesario cargar roles aquí, usamos el catálogo de departamentos
 
     if (isDetailColumn) {
       // Bloquear si la fila no está guardada
@@ -1340,23 +1294,9 @@ export class RequisitionsDelisonComponent implements OnInit {
 
     }
 
-    // Asegurar que los roles estén cargados antes de crear la fila (para pre-poblar departamento)
+    // Los departamentos ya están cargados globalmente, crear la fila directamente
     const crearFila = (requisitionNumber: string) => {
-      if (this.rolesByBranchCache.has(selectedBranchId)) {
-        this.createNewRequisitionRow(selectedBranchId, requisitionNumber);
-      } else if (this.idUser) {
-        this.rolesService.getRolesByBranchDelison(this.idUser, selectedBranchId).subscribe({
-          next: (roles: any[]) => {
-            this.rolesByBranchCache.set(selectedBranchId, roles.map(r => ({
-              id: r.id, description: r.description, name: r.description
-            })));
-            this.createNewRequisitionRow(selectedBranchId, requisitionNumber);
-          },
-          error: () => this.createNewRequisitionRow(selectedBranchId, requisitionNumber)
-        });
-      } else {
-        this.createNewRequisitionRow(selectedBranchId, requisitionNumber);
-      }
+      this.createNewRequisitionRow(selectedBranchId, requisitionNumber);
     };
 
     // Obtener el próximo número de requisición
@@ -1377,10 +1317,9 @@ export class RequisitionsDelisonComponent implements OnInit {
     const branch = this.branches.find(b => b.id === selectedBranchId);
     const branchName = branch?.name || branch?.description || '';
 
-    // Pre-poblar el primer departamento disponible del caché
-    const cachedRoles = this.rolesByBranchCache.get(selectedBranchId) || [];
-    const defaultDeptId = cachedRoles.length > 0 ? cachedRoles[0].id : null;
-    const defaultDeptName = cachedRoles.length > 0 ? cachedRoles[0].description : '';
+    // Pre-poblar el primer departamento disponible del catálogo
+    const defaultDeptId = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].id : null;
+    const defaultDeptName = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].description : '';
 
     const newId = `temp_${Date.now()}`;
     const newItem = {
@@ -1527,13 +1466,26 @@ export class RequisitionsDelisonComponent implements OnInit {
    * Pre-carga los roles para todas las sucursales únicas presentes en las requisiciones
    * Esto permite que el valueFormatter muestre los nombres correctamente al cargar
    */
+  private preloadRolesForBranch(branchId: number): void {
+    if (!this.idUser || !branchId || branchId <= 0) return;
+    this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
+      next: (roles: any[]) => {
+        this.rolesByBranchCache.set(branchId, roles.map(r => ({
+          id: r.id,
+          description: r.description,
+          name: r.description
+        })));
+        if (this.gridApi) {
+          this.gridApi.refreshCells({ force: true });
+        }
+      },
+      error: () => {}
+    });
+  }
+
   private preloadRolesForRequisitions(): void {
-    if (!this.idUser) {
+    if (!this.idUser) return;
 
-      return;
-    }
-
-    // Obtener sucursales únicas de todas las requisiciones
     const uniqueBranchIds = new Set<number>();
     this.rowData.forEach(row => {
       if (row.idReference && row.idReference > 0) {
@@ -1541,28 +1493,9 @@ export class RequisitionsDelisonComponent implements OnInit {
       }
     });
 
-    // Cargar roles para cada sucursal única
     uniqueBranchIds.forEach(branchId => {
-      // Solo cargar si no están ya en cache
       if (!this.rolesByBranchCache.has(branchId)) {
-        this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
-          next: (roles: any[]) => {
-            const mappedRoles = roles.map(r => ({
-              id: r.id,
-              description: r.description,
-              name: r.description
-            }));
-
-            this.rolesByBranchCache.set(branchId, mappedRoles);
-
-            // Refrescar el grid para que muestre los nombres
-            if (this.gridApi) {
-              this.gridApi.refreshCells({ force: true });
-            }
-          },
-          error: (err) => {
-          }
-        });
+        this.preloadRolesForBranch(branchId);
       }
     });
   }

@@ -97,6 +97,9 @@ export class AuthService {
     this.sessionExpireTimer = setTimeout(() => {
       this.ngZone.run(() => {
         Swal.close();
+        try {
+          sessionStorage.setItem('sessionExpiredNotice', '1');
+        } catch { /* ignorar */ }
         this.logout();
       });
     }, msUntilExpiry);
@@ -128,6 +131,7 @@ export class AuthService {
     document.addEventListener('click', this.onIdleActivity, opts);
     document.addEventListener('scroll', this.onIdleActivity, opts);
     document.addEventListener('wheel', this.onIdleActivity, opts);
+    document.addEventListener('mousemove', this.onIdleActivity, opts);
     this.idleListenersAttached = true;
   }
 
@@ -334,6 +338,9 @@ export class AuthService {
       }),
       catchError(error => {
         console.error('Error al obtener el ID del usuario:', error);
+        try {
+          sessionStorage.setItem('authErrorNotice', '1');
+        } catch { /* ignorar */ }
         this.router.navigateByUrl('/login');
         return throwError(() => error);
       })

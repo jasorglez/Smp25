@@ -15,6 +15,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { DetallesSucursalesProveedorComponent } from './detalles-sucursalesproveedor.component';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { firstValueFrom } from 'rxjs';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 
 @Component({
   selector: 'app-detalle-asignproveeds-matmaestro',
@@ -81,6 +82,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   private providersService = inject(ProvidersService);
   private materialsService = inject(MaterialsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
+  private ocAndReqsService = inject(OcAndReqsService);
 
   private _sucursalSub: Subscription;
 
@@ -742,6 +744,11 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.save) {
       // Confirmar cualquier celda que esté en edición antes de guardar
       this.proveedorGridApi?.stopEditing();
+      // Capturar filas a sincronizar ANTES del save (el save limpia los flags __modified/__isNew)
+      const rowsToSync = this.proveedorRowData.filter(
+        (row: any) => (row.__modified || row.__isNew) && row.idTabla > 0 && row.campo1 > 0
+      ).map((row: any) => ({ campo1: row.campo1, idTabla: row.idTabla, campo11: row.campo11 || '' }));
+
       try {
         // Guardar los cambios
         await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
@@ -749,6 +756,13 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
         // Esperar un poco para que el servidor procese
         await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Sincronizar campo11 → detailsreqoc.observation para cotizaciones existentes
+        for (const row of rowsToSync) {
+          firstValueFrom(
+            this.ocAndReqsService.syncObservationBySupplieAndProvider(row.campo1, row.idTabla, row.campo11)
+          ).catch(e => console.warn(`⚠️ No se pudo sincronizar observation para ${row.campo1}:`, e));
+        }
 
         this.hasProveedorChanges = false;
 
