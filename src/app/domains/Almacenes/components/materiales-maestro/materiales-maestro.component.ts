@@ -612,11 +612,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return `$${params.value}`;
         },
         cellRenderer: (params: any) => {
-          // Este renderer es necesario para que el clic funcione igual que en las otras columnas de detalle.
-          // Muestra el valor formateado.
           return `$${params.value}`;
         },
         cellStyle: (params: any) => {
+          // ✅ Bloqueo visual si es nuevo
+          if (params.data?.__isNew) {
+            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
+          }
           const familia = this.families?.find((f: any) => f.id === params.data.idFamilia);
           const familiaDesc = familia?.description || params.data.familia || '';
           if (familiaDesc.toUpperCase().includes('BASICA')) {
@@ -633,7 +635,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const count = params.value || 0;
           return count;
         },
-        cellStyle: { backgroundColor: '#fff300', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: (params: any) => {
+          if (params.data?.__isNew) {
+            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
+          }
+          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
+        }
       },
       
       
@@ -645,7 +652,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         cellRenderer: (params: any) => {
           return params.value || 0;
         },
-        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: (params: any) => {
+          if (params.data?.__isNew) {
+            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
+          }
+          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
+        }
       },
 
      {
@@ -656,7 +668,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const count = params.value || 0;
           return count;
         },
-        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: (params: any) => {
+          if (params.data?.__isNew) {
+            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
+          }
+          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
+        }
       },
 
 
@@ -679,7 +696,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const count = params.value || 0;
           return count;
         },
-        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
+        cellStyle: (params: any) => {
+          if (params.data?.__isNew) {
+            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
+          }
+          return { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' };
+        }
       },
     ];
 
@@ -732,6 +754,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
+      // ✅ Bloqueo: Si la fila es nueva, no permitir entrar a detalles
+      if (event.data?.__isNew) {
+        alerts.basicAlert(
+          'Guarda primero',
+          'Debes guardar el material antes de poder gestionar sus detalles (Proveedores, Parámetros, etc).',
+          'warning'
+        );
+        return;
+      }
+
       // Si la columna es "Materiales" y la Familia es "Básica", bloquear el clic
       if (colId === 'costo') {
         const familia = this.families?.find((f: any) => f.id === event.data.idFamilia);

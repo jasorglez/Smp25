@@ -201,6 +201,9 @@ export class RequisitionsDelisonComponent implements OnInit {
         }));
         this.branchesLoaded = true;
 
+        // Precargar departamentos de TODAS las sucursales disponibles de una vez
+        this.branches.forEach(branch => this.preloadRolesForBranch(branch.id));
+
 
         // ✅ Obtener el idBranch actual del signal (puede ser negativo para "Todas las sucursales")
         const currentIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -649,6 +652,9 @@ export class RequisitionsDelisonComponent implements OnInit {
           if (branch) {
             params.data.idReference = branchId;
             params.data.branch = branch.name || branch.description;
+
+            // Precargar departamentos del backend para la sucursal recién seleccionada
+            this.preloadRolesForBranch(branchId);
 
 
 

@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, Renderer2, RendererFactory2 } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams } from 'ag-grid-enterprise';
@@ -102,7 +102,130 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   branches: any[] = [];
   idRoot: number;
 
-  constructor(private currencyPipe: CurrencyPipe) { }
+  // Tooltip
+  private renderer: Renderer2;
+  private tooltipElement: HTMLElement | null = null;
+
+  constructor(private currencyPipe: CurrencyPipe, rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+  }
+
+  private showProviderTooltip(provider: any, optionRect: DOMRect): void {
+    this.hideProviderTooltip();
+
+    this.tooltipElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.tooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipElement, 'min-width', '280px');
+    this.renderer.setStyle(this.tooltipElement, 'max-width', '400px');
+
+    const arrow = this.renderer.createElement('div');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #1e40af');
+    this.renderer.appendChild(this.tooltipElement, arrow);
+
+    const content = this.renderer.createElement('div');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-person-badge');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const name = this.getProviderDisplayName(provider);
+    const headerTextNode = this.renderer.createText(name);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+    this.renderer.appendChild(content, header);
+
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#e2e8f0');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    // Fila de Tipo
+    const typeRow = this.renderer.createElement('div');
+    this.renderer.setStyle(typeRow, 'display', 'flex');
+    this.renderer.setStyle(typeRow, 'align-items', 'center');
+    this.renderer.setStyle(typeRow, 'gap', '8px');
+    this.renderer.setStyle(typeRow, 'margin-bottom', '8px');
+
+    const typeLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(typeLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(typeLabel, 'font-weight', '600');
+    const typeLabelText = this.renderer.createText('Tipo:');
+    this.renderer.appendChild(typeLabel, typeLabelText);
+    this.renderer.appendChild(typeRow, typeLabel);
+
+    const typeValue = this.renderer.createElement('span');
+    this.renderer.setStyle(typeValue, 'color', '#ffffff');
+    const typeText = provider.typeIntOrExt || provider.typework || 'No especificado';
+    const typeValueText = this.renderer.createText(typeText);
+    this.renderer.appendChild(typeValue, typeValueText);
+    this.renderer.appendChild(typeRow, typeValue);
+    this.renderer.appendChild(body, typeRow);
+
+    // Fila de Contacto
+    const contactRow = this.renderer.createElement('div');
+    this.renderer.setStyle(contactRow, 'display', 'flex');
+    this.renderer.setStyle(contactRow, 'align-items', 'center');
+    this.renderer.setStyle(contactRow, 'gap', '8px');
+
+    const contactLabel = this.renderer.createElement('span');
+    this.renderer.setStyle(contactLabel, 'color', 'rgba(255, 255, 255, 0.8)');
+    this.renderer.setStyle(contactLabel, 'font-weight', '600');
+    const contactLabelText = this.renderer.createText('Contacto:');
+    this.renderer.appendChild(contactLabel, contactLabelText);
+    this.renderer.appendChild(contactRow, contactLabel);
+
+    const contactValue = this.renderer.createElement('span');
+    this.renderer.setStyle(contactValue, 'color', '#ffffff');
+    const contact = provider.description || provider.nameContact || 'Sin contacto';
+    const contactValueText = this.renderer.createText(contact);
+    this.renderer.appendChild(contactValue, contactValueText);
+    this.renderer.appendChild(contactRow, contactValue);
+    this.renderer.appendChild(body, contactRow);
+
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.tooltipElement, content);
+    this.renderer.appendChild(document.body, this.tooltipElement);
+
+    const top = optionRect.top;
+    const left = optionRect.right + 8;
+    this.renderer.setStyle(this.tooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.tooltipElement, 'left', `${left}px`);
+  }
+
+  private hideProviderTooltip(): void {
+    if (this.tooltipElement) {
+      this.renderer.removeChild(document.body, this.tooltipElement);
+      this.tooltipElement = null;
+    }
+  }
 
   // Helper para formatear nombre de proveedor sin "undefined"
   private getProviderDisplayName(provider: any): string {
@@ -225,6 +348,28 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       tooltipValueGetter: (params: any) => {
         if (params.data?._hasSucursales === false) return 'Sin sucursales asignadas';
         return null;
+      },
+      cellRenderer: (params: any) => {
+        const div = document.createElement('div');
+        const providerId = params.value;
+        const provider = this.filteredProviders?.find((p: any) => p.id === providerId)
+          || this.providers?.find((p: any) => p.id === providerId);
+
+        div.textContent = provider ? this.getProviderDisplayName(provider) : (params.value || '');
+        div.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; cursor: pointer;';
+
+        div.addEventListener('mouseenter', () => {
+          if (provider) {
+            const rect = div.getBoundingClientRect();
+            this.showProviderTooltip(provider, rect);
+          }
+        });
+
+        div.addEventListener('mouseleave', () => {
+          this.hideProviderTooltip();
+        });
+
+        return div;
       },
       // Nuevo editor
       cellEditor: SelectWithTooltipEditorV2Component,

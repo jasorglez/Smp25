@@ -47,8 +47,11 @@ pdfMake.vfs = pdfFonts.vfs;
           [(ngModel)]="selectedProviderId"
           [clearable]="true"
           [disabled]="ocGenerated"
+          [searchable]="true"
+          appendTo="body"
           placeholder="Seleccione proveedor"
           (ngModelChange)="onProviderChange()"
+          (keydown)="$event.stopPropagation()"
           style="width: 50%; min-width: 150px;">
           <ng-template ng-optgroup-tmp let-item="item">
             <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; display: inline-block;">
@@ -421,12 +424,12 @@ export class DetalleItemsProveedorComponent {
       });
 
       this.providers = [
-        { id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' },
+        { id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor', group: 'ACCIONES' },
         ...active
       ];
     } catch (error) {
       console.error('❌ Error cargando proveedores:', error);
-      this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
+      this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor', group: 'ACCIONES' }];
     }
   }
 

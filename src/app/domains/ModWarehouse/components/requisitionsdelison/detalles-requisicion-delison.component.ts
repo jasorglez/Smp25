@@ -108,30 +108,83 @@ import { PrefixSetupService } from 'app/services/prefix-setup.service';
             <h5 class="modal-title">Registrar Nuevo Artículo</h5>
             <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
           </div>
-          <div class="modal-body">
+          <form class="modal-body" #newArticleForm="ngForm" (ngSubmit)="saveNewArticle()">
             <div class="mb-3">
-              <label for="newArticleName" class="form-label">Nombre del Artículo</label>
-              <input type="text" class="form-control" id="newArticleName" [(ngModel)]="newArticle.description"
-                (input)="newArticle.description = $any($event.target).value.toUpperCase()" style="text-transform: uppercase;">
+              <label for="newArticleName" class="form-label">
+                Nombre del Artículo <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="newArticleName"
+                name="newArticleName"
+                required
+                #newArticleNameModel="ngModel"
+                [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
+                [(ngModel)]="newArticle.description"
+                (input)="newArticle.description = $any($event.target).value.toUpperCase()"
+                style="text-transform: uppercase;">
+              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleNameModel.invalid">
+                El nombre del artículo es obligatorio.
+              </div>
             </div>
             <div class="mb-3">
-              <label for="newArticleDesc" class="form-label">Descripción del Artículo</label>
-              <textarea class="form-control" id="newArticleDesc" rows="2" [(ngModel)]="newArticle.descriptionNewArticle"
-                (input)="newArticle.descriptionNewArticle = $any($event.target).value.toUpperCase()" style="text-transform: uppercase;"></textarea>
+              <label for="newArticleDesc" class="form-label">
+                Descripción del Artículo <span class="text-danger">*</span>
+              </label>
+              <textarea
+                class="form-control"
+                id="newArticleDesc"
+                name="newArticleDesc"
+                rows="2"
+                required
+                #newArticleDescModel="ngModel"
+                [class.is-invalid]="newArticleFormSubmitted && newArticleDescModel.invalid"
+                [(ngModel)]="newArticle.descriptionNewArticle"
+                (input)="newArticle.descriptionNewArticle = $any($event.target).value.toUpperCase()"
+                style="text-transform: uppercase;"></textarea>
+              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleDescModel.invalid">
+                La descripción del artículo es obligatoria.
+              </div>
             </div>
             <div class="mb-3">
               <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
-              <input type="text" class="form-control" id="newArticleLink" [(ngModel)]="newArticle.urlNewArticle">
+              <input
+                type="text"
+                class="form-control"
+                id="newArticleLink"
+                name="newArticleLink"
+                [(ngModel)]="newArticle.urlNewArticle">
             </div>
             <div class="mb-3">
-              <label for="newArticleUsage" class="form-label">¿Para qué se va a usar?</label>
-              <textarea class="form-control" id="newArticleUsage" rows="2" [(ngModel)]="newArticle.justificationNewArticle"
-                (input)="newArticle.justificationNewArticle = $any($event.target).value.toUpperCase()" style="text-transform: uppercase;"></textarea>
+              <label for="newArticleUsage" class="form-label">
+                ¿Para qué se va a usar? <span class="text-danger">*</span>
+              </label>
+              <textarea
+                class="form-control"
+                id="newArticleUsage"
+                name="newArticleUsage"
+                rows="2"
+                required
+                #newArticleUsageModel="ngModel"
+                [class.is-invalid]="newArticleFormSubmitted && newArticleUsageModel.invalid"
+                [(ngModel)]="newArticle.justificationNewArticle"
+                (input)="newArticle.justificationNewArticle = $any($event.target).value.toUpperCase()"
+                style="text-transform: uppercase;"></textarea>
+              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleUsageModel.invalid">
+                Este campo es obligatorio.
+              </div>
             </div>
-          </div>
+          </form>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
-            <button type="button" class="btn btn-primary" (click)="saveNewArticle()">Guardar</button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="saveNewArticle()"
+              [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim()">
+              Guardar
+            </button>
           </div>
         </div>
       </div>
@@ -241,6 +294,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   // Propiedades para el modal de nuevo artículo
   isNewArticleModalVisible = false;
+  newArticleFormSubmitted = false;
   newArticle = {
     description: '',
     descriptionNewArticle: '',
@@ -1635,9 +1689,15 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   saveNewArticle() {
-    // Validación: solo el nombre del artículo es obligatorio
-    if (!this.newArticle.description || !this.newArticle.description.trim()) {
-      alerts.reqWarningToast('Validación', 'El nombre del artículo es obligatorio');
+    this.newArticleFormSubmitted = true;
+
+    const name = (this.newArticle.description || '').trim();
+    const desc = (this.newArticle.descriptionNewArticle || '').trim();
+    const usage = (this.newArticle.justificationNewArticle || '').trim();
+
+    // Validación: campos obligatorios
+    if (!name || !desc || !usage) {
+      alerts.reqWarningToast('Validación', 'Completa los campos obligatorios antes de guardar');
       return;
     }
 
@@ -1646,11 +1706,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     // idSupplie = 0 indica que es un artículo nuevo (no recurrente)
     this.currentRowForNewArticle.data.idSupplie = 0;
     this.currentRowForNewArticle.data.materialId = 0;
-    this.currentRowForNewArticle.data.article = this.newArticle.description.trim();
-    this.currentRowForNewArticle.data.nameArticle = this.newArticle.description.trim();
-    this.currentRowForNewArticle.data.descriptionNewArticle = this.newArticle.descriptionNewArticle.trim();
-    this.currentRowForNewArticle.data.urlNewArticle = this.newArticle.urlNewArticle.trim();
-    this.currentRowForNewArticle.data.justificationNewArticle = this.newArticle.justificationNewArticle.trim();
+    this.currentRowForNewArticle.data.article = name;
+    this.currentRowForNewArticle.data.nameArticle = name;
+    this.currentRowForNewArticle.data.descriptionNewArticle = desc;
+    this.currentRowForNewArticle.data.urlNewArticle = (this.newArticle.urlNewArticle || '').trim();
+    this.currentRowForNewArticle.data.justificationNewArticle = usage;
     this.currentRowForNewArticle.data.code = '';
     this.currentRowForNewArticle.data.numArticle = '';
     this.currentRowForNewArticle.data.description = this.newArticle.description.trim();
@@ -1672,6 +1732,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   closeNewArticleModal() {
     this.isNewArticleModalVisible = false;
     this.currentRowForNewArticle = null;
+    this.newArticleFormSubmitted = false;
   }
 
   onCellClicked(event: any): void {
