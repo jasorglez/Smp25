@@ -5,21 +5,7 @@
          <ul class="nav nav-pills">
 
             <!-- Tabs exclusivos de root (no tienen entrada en detailedpermissions) -->
-            <li class="nav-item" *ngIf="isRoot">
-               <a class="nav-link green-tab" routerLink="corporativos" routerLinkActive="active">
-                  <i class="bi bi-globe2"></i> Corporativos
-               </a>
-            </li>
-            <li class="nav-item" *ngIf="isRoot">
-               <a class="nav-link green-tab" routerLink="root" routerLinkActive="active">
-                  <i class="bi bi-building-fill-gear"></i> {{ 'root' | translate }}
-               </a>
-            </li>
-            <li class="nav-item" *ngIf="isRoot">
-               <a class="nav-link green-tab" routerLink="login" routerLinkActive="active">
-                  <i class="bi bi-box-arrow-in-right"></i> Login
-               </a>
-            </li>
+
             <li class="nav-item" *ngIf="isRoot">
                <a class="nav-link green-tab" routerLink="menu" routerLinkActive="active">
                   <i class="bi bi-building-fill-gear"></i> {{ 'menu' | translate }}

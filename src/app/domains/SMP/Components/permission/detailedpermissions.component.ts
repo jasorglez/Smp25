@@ -264,6 +264,10 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
       masterId: this.masterId,
       permissionName: '',
       identifier: '',
+      route: null,
+      icon: null,
+      showAsTab: false,
+      tab_order: null,
       active: true,
       comment: '',
       __isNew: true
@@ -294,9 +298,18 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
 
     try {
       for (const row of newRows) {
-        const payload = { ...row };
-        delete payload.id;
-        delete payload.__isNew;
+        const payload = {
+          masterId: row.masterId || this.masterId,
+          permissionName: row.permissionName,
+          comment: row.comment,
+          identifier: row.identifier,
+          active: row.active,
+          route: row.route ?? null,
+          icon: row.icon ?? null,
+          showAsTab: row.showAsTab ?? false,
+          tab_order: row.tab_order ?? null,
+          principalSubIdentifier: row.principalSubIdentifier ?? null,
+        };
         await lastValueFrom(this.detailedPermissionsService.addDetailedPermissions(payload));
       }
 

@@ -59,7 +59,7 @@ export class UsersComponent implements OnDestroy {
   departamentos: any[] = [];
   position: any[] = [];
   rowData: any[] = [];
-  
+
   paginationPageSize = 20;
   pagination = true;
   notSavedChanges: boolean = false;
@@ -77,7 +77,7 @@ export class UsersComponent implements OnDestroy {
   // --- Modal ---
   showPermissionsModal: boolean = false;
   modalUserName: string = '';
-  modalPermissions: { idUser: number | string, idBranch: number, idRole: number, idPosicion: number, scope?: 'userSystem' | 'position', seedFromRolePosition?: boolean, roleTemplateOnly?: boolean, idCompany?: number } | null = null;
+  modalPermissions: { idUser: number | string, idBranch: number, idRole: number, idPosicion: number, scope?: 'userSystem' | 'position', seedFromRolePosition?: boolean, roleTemplateOnly?: boolean, idCompany?: number, permissionsInitialized?: boolean } | null = null;
   private modalSubscription: Subscription;
 
   private gridApi: GridApi;
@@ -88,19 +88,19 @@ export class UsersComponent implements OnDestroy {
   private enterPressed: boolean = false;
   private _revertingIsRoot = false;
 
-  private usersService        = inject(UsersService);
+  private usersService = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
-  private usersxrootService   = inject(UsersxpermissionsService);
-  private trackingService     = inject(TrackingService);
-  private catalogService      = inject(CatalogsService);
-  private signalsService      = inject(SignalsService);
-  private rolesService        = inject(RolesService);  
-  private employeeService     = inject(EmployeesService);
-  private permitionsService   = inject(PermitionsService);
-  private modalService        = inject(ModalService);
+  private usersxrootService = inject(UsersxpermissionsService);
+  private trackingService = inject(TrackingService);
+  private catalogService = inject(CatalogsService);
+  private signalsService = inject(SignalsService);
+  private rolesService = inject(RolesService);
+  private employeeService = inject(EmployeesService);
+  private permitionsService = inject(PermitionsService);
+  private modalService = inject(ModalService);
   private masterPermissions2Service = inject(MasterPermissions2Service);
   private branchsService = inject(BranchsService);
-  authService                 = inject(AuthService);
+  authService = inject(AuthService);
 
   /** UserSystem › Setup Usuarios (Departamento / Security) por fila de usuario. */
   private userSetupFlagsById = new Map<number, { department: boolean; security: boolean }>();
@@ -232,6 +232,7 @@ export class UsersComponent implements OnDestroy {
         seedFromRolePosition: data.seedFromRolePosition,
         roleTemplateOnly: data.roleTemplateOnly,
         idCompany: data.idCompany,
+        permissionsInitialized: data.permissionsInitialized,
       };
       this.modalUserName = data.modalTitleDetail ?? data.userName;
       this.showPermissionsModal = true;
@@ -313,7 +314,6 @@ export class UsersComponent implements OnDestroy {
       return;
     }
     this.rowData = response.data
-      .filter((item: any) => item.active !== 0 && item.active !== false)
       .map((item: any) => {
         const idNum = Number(item.id);
         const uid = Number.isFinite(idNum) && idNum > 0 ? idNum : Number(item.id);
@@ -478,10 +478,10 @@ export class UsersComponent implements OnDestroy {
           const subd =
             String(
               r?.subdetailedPermissionName ??
-                r?.SubdetailedPermissionName ??
-                r?.name ??
-                r?.Name ??
-                ''
+              r?.SubdetailedPermissionName ??
+              r?.name ??
+              r?.Name ??
+              ''
             ).trim();
           const key = `${did}-${sid}-${subd}`;
           if (changesMap.has(key)) continue;
@@ -526,9 +526,9 @@ export class UsersComponent implements OnDestroy {
         // Optimización: enviar CRUD en paralelo con límite de concurrencia.
         return requests.length
           ? from(requests).pipe(
-              mergeMap((req$) => req$, 8),
-              toArray()
-            )
+            mergeMap((req$) => req$, 8),
+            toArray()
+          )
           : EMPTY;
       })
     );
@@ -596,14 +596,14 @@ export class UsersComponent implements OnDestroy {
 
     const addPrincipalDept$ = (idRole > 0 && idPosicion > 0)
       ? this.permitionsService.addPermitionsDetailBydescription({
-          idUser: userId,
-          idBranch: this.dataEmpleado.idBranch,
-          idRole,
-          idPosicion,
-          principal: true,
-          active: true,
-          permissionsInitialized: false,
-        }).pipe(catchError(() => of(null)))
+        idUser: userId,
+        idBranch: this.dataEmpleado.idBranch,
+        idRole,
+        idPosicion,
+        principal: true,
+        active: true,
+        permissionsInitialized: false,
+      }).pipe(catchError(() => of(null)))
       : of(null);
 
     return concat(addBranchPermission$, addPrincipalDept$, addDetailedPermissions$, seedUserSystem$);
@@ -709,9 +709,8 @@ export class UsersComponent implements OnDestroy {
 
     this._columnDefs = [
       { field: 'id', headerName: 'ID', hide: true, filter: 'agNumberColumnFilter', width: 80 },
-      { field: 'active', hide: true },
       {
-        field: 'active2',
+        field: 'active',
         headerName: 'Activo',
         width: 90,
         cellRenderer: (params: any) => {
@@ -721,7 +720,7 @@ export class UsersComponent implements OnDestroy {
         },
         onCellClicked: (params: any) => {
           if (!this.authService.isCurrentUserRoot()) return;
-          params.node.setDataValue('active2', !params.value);
+          params.node.setDataValue('active', !params.value);
           params.node.data.__modified = true;
           this.notSavedChanges = true;
         },
@@ -1011,7 +1010,7 @@ export class UsersComponent implements OnDestroy {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      active: 1,
+      active: true,
       displayName: '',
       country: '',
       email: '',
@@ -1201,7 +1200,7 @@ export class UsersComponent implements OnDestroy {
     alerts.userConfirmDelete(`Eliminar a ${who}`, '¿Está seguro que desea eliminar este usuario?')
       .then((value) => {
         if (value.isConfirmed) {
-          selectedData.active = 0;
+          selectedData.active = false;
           this.usersService.deleteUser(id, selectedData).pipe(
             catchError((error) => {
               alerts.userBasicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
@@ -1234,7 +1233,7 @@ export class UsersComponent implements OnDestroy {
     );
   }
 
-onSecurityColumnClicked(params: any): void {
+  onSecurityColumnClicked(params: any): void {
     if (!params?.api || !params?.node) {
       return;
     }
@@ -1544,7 +1543,7 @@ onSecurityColumnClicked(params: any): void {
     cleanedData.idRol = Number(cleanedData.idRol) || 0;
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
-    cleanedData.active = Number(cleanedData.active) || 1;
+    cleanedData.active = cleanedData.active !== undefined ? Boolean(cleanedData.active) : true;
     // Normalize employee link: frontend uses idEmployee, backend expects idEmpleado
     if ('idEmployee' in cleanedData) {
       cleanedData.idEmpleado = cleanedData.idEmployee != null ? Number(cleanedData.idEmployee) || null : null;

@@ -24,6 +24,11 @@ export interface PermissionsModalData {
   scope?: 'userSystem' | 'position';
   /** Empresa del usuario editado. Si no se pasa, permissions-view usa la empresa del sidebar. */
   idCompany?: number;
+  /**
+   * false = registro nuevo / no inicializado → mostrar plantilla actual del rol+posición.
+   * true = usuario ya personalizó sus permisos → mostrar CRUD guardado.
+   */
+  permissionsInitialized?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -6,27 +6,17 @@
       </span>
     </li>
   </ul>
-  <div
-    class="tab-content border border-top-0 rounded-bottom p-2 pt-3 bg-body users-tab-panel"
-    role="tabpanel"
+  <div class="tab-content border border-top-0 rounded-bottom p-2 pt-3 bg-body users-tab-panel" role="tabpanel"
     aria-labelledby="tab-users-listado">
     <div class="row g-2 align-items-stretch users-main-row">
       <div class="col-auto">
         <div class="d-flex flex-column gap-1">
-          <button
-            type="button"
-            class="btn btn-primary ms-1 me-1"
-            (click)="addRow()"
-            title="Agregar usuario"
+          <button type="button" class="btn btn-primary ms-1 me-1" (click)="addRow()" title="Agregar usuario"
             [disabled]="hasDetailExpanded">
             <i class="bi bi-plus-lg"></i>
           </button>
-          <button
-            type="button"
-            class="btn btn-success ms-1 me-1 position-relative"
-            (click)="saveChanges()"
-            title="Guardar cambios"
-            [disabled]="hasDetailExpanded">
+          <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveChanges()"
+            title="Guardar cambios" [disabled]="hasDetailExpanded">
             <i class="bi bi-floppy"></i>
             <span
               class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -34,46 +24,30 @@
               <span class="visually-hidden">Hay cambios sin guardar</span>
             </span>
           </button>
-          <button
-            type="button"
-            class="btn btn-warning ms-1 me-1"
-            (click)="revert()"
-            title="Deshacer cambios"
+          <button type="button" class="btn btn-warning ms-1 me-1" (click)="revert()" title="Deshacer cambios"
             [disabled]="hasDetailExpanded">
             <i class="bi bi-arrow-clockwise"></i>
           </button>
-          <button
+          <!--           <button
             type="button"
             class="btn btn-danger ms-1 me-1"
             (click)="deleteUser()"
             title="Eliminar usuario"
             [disabled]="hasDetailExpanded">
             <i class="bi bi-trash"></i>
-          </button>
+          </button> -->
         </div>
       </div>
       <div class="col users-grid-col">
         <div class="users-grid-wrapper">
-          <ag-grid-angular
-            class="ag-theme-quartz small-text-ag-grid"
-            style="width: 100%;"
-            [ngStyle]="{ height: gridHeight }"
-            [rowData]="rowData"
-            [columnDefs]="columnDefs"
-            [defaultColDef]="defaultColDef"
-            [pagination]="false"
-            [paginationPageSize]="paginationPageSize"
-            [paginationPageSizeSelector]="paginationPageSizeSelector"
-            rowSelection="single"
-            (selectionChanged)="onSelectionChanged($event)"
-            (cellValueChanged)="onCellValueChanged($event)"
-            (cellEditingStopped)="onCellEditingStopped($event)"
-            (rowSelected)="onSelectedRow($event)"
-            (gridReady)="onGridReady($event)"
-            (rowGroupOpened)="onRowGroupOpened($event)"
-            [components]="components"
-            [gridOptions]="gridOptions"
-            [stopEditingWhenCellsLoseFocus]="true">
+          <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" style="width: 100%;"
+            [ngStyle]="{ height: gridHeight }" [rowData]="rowData" [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef" [pagination]="false" [paginationPageSize]="paginationPageSize"
+            [paginationPageSizeSelector]="paginationPageSizeSelector" rowSelection="single"
+            (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)"
+            (cellEditingStopped)="onCellEditingStopped($event)" (rowSelected)="onSelectedRow($event)"
+            (gridReady)="onGridReady($event)" (rowGroupOpened)="onRowGroupOpened($event)" [components]="components"
+            [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
           </ag-grid-angular>
         </div>
       </div>
@@ -88,34 +62,26 @@
     <div class="permissions-modal-header">
       <strong class="modal-title-text">Permisos — {{ modalUserName }}</strong>
       <div class="modal-header-actions">
-        <button class="action-btn-sm save position-relative"
-          (click)="permissionsViewRef.saveDetailChanges()"
-          [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"
-          title="Guardar">
+        <button class="action-btn-sm save position-relative" (click)="permissionsViewRef.saveDetailChanges()"
+          [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)" title="Guardar">
           <i class="bi bi-floppy"></i>
           <span class="unsaved-dot" *ngIf="permissionsViewRef?.notSavedChanges === true"></span>
         </button>
-        <button class="action-btn-sm revert"
-          (click)="permissionsViewRef.revertChanges()"
-          [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)"
-          title="Revertir"><i class="bi bi-arrow-clockwise"></i></button>
+        <button class="action-btn-sm revert" (click)="permissionsViewRef.revertChanges()"
+          [disabled]="!(permissionsViewRef?.notSavedChanges ?? false)" title="Revertir"><i
+            class="bi bi-arrow-clockwise"></i></button>
         <div class="modal-divider"></div>
-        <button class="action-btn-sm close-btn" (click)="closePermissionsModal()" title="Cerrar"><i class="bi bi-x-lg"></i></button>
+        <button class="action-btn-sm close-btn" (click)="closePermissionsModal()" title="Cerrar"><i
+            class="bi bi-x-lg"></i></button>
       </div>
     </div>
 
     <div class="permissions-modal-body">
-      <app-permissions-view-by-user
-        #permissionsViewRef
-        *ngIf="modalPermissions"
-        [idUserInput]="modalPermissions.idUser"
-        [idBranchInput]="modalPermissions.idBranch"
-        [idRoleInput]="modalPermissions.idRole"
-        [idPosicionInput]="modalPermissions.idPosicion"
-        [scopeInput]="modalPermissions.scope"
+      <app-permissions-view-by-user #permissionsViewRef *ngIf="modalPermissions" [idUserInput]="modalPermissions.idUser"
+        [idBranchInput]="modalPermissions.idBranch" [idRoleInput]="modalPermissions.idRole"
+        [idPosicionInput]="modalPermissions.idPosicion" [scopeInput]="modalPermissions.scope"
         [seedFromRolePosInput]="modalPermissions.seedFromRolePosition"
-        [roleTemplateOnlyInput]="modalPermissions.roleTemplateOnly"
-        [idCompanyInput]="modalPermissions.idCompany">
+        [roleTemplateOnlyInput]="modalPermissions.roleTemplateOnly" [idCompanyInput]="modalPermissions.idCompany">
       </app-permissions-view-by-user>
     </div>
 
