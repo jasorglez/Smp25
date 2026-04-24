@@ -7,12 +7,15 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { ParametrosComponent } from './parametros.component';
 import { PreparacionService } from 'app/services/preparacion.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { SignalsService } from 'app/services/signals.service';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detalle-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ParametrosComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ParametrosComponent, SelectWithTooltipEditorV2Component],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       
@@ -66,6 +69,8 @@ import { lastValueFrom } from 'rxjs';
 })
 export class DetalleJarabeComponent implements OnInit, OnChanges {
   private preparacionService = inject(PreparacionService);
+  private materialsService = inject(MaterialsService);
+  private signalsService = inject(SignalsService);
 
   @Input() params: any;
   private internalParams: any;
@@ -78,10 +83,28 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
   hasUnsavedChanges: boolean = false;
   hasRowSelected: boolean = false;
   tempIdCounter: number = 0;
+  rawMaterialNames: string[] = [];
+  frequentIngredientes: any[] = [];
+  totalPreparaciones: number = 0;
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    const materialsObs = idCompany
+      ? lastValueFrom(this.materialsService.getMaterialsxview(idCompany)).catch(() => [])
+      : Promise.resolve([]);
+    const frequentObs = lastValueFrom(this.preparacionService.getFrequentIngredientes()).catch(() => ({ ingredientes: [], totalPreparaciones: 0 }));
+
+    Promise.all([materialsObs, frequentObs]).then(([materialsData, frequentData]) => {
+      const list: any[] = Array.isArray(materialsData) ? materialsData : [];
+      this.rawMaterialNames = list.map(m => m.articulo || m.description || m.insumo || '').filter(Boolean);
+      this.frequentIngredientes = frequentData?.ingredientes ?? [];
+      this.totalPreparaciones = frequentData?.totalPreparaciones ?? 0;
+      this._colDefs = [];
+      if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+    });
+
     setTimeout(() => {
       if (!this.dataLoaded && this.internalParams && this.gridApi) {
         this.loadData();
@@ -166,9 +189,31 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
         headerName: 'Ingrediente',
         width: 180,
         editable: true,
-        cellEditor: 'agTextCellEditor',
+        cellDataType: false,
+        cellEditor: 'selectV2',
+        cellEditorParams: (params: any) => {
+          const currentValue = params.data?.ingrediente ?? '';
+          const usedNames = new Set(
+            this.rowData
+              .filter(row => row.id !== params.data?.id && row.ingrediente)
+              .map((row: any) => row.ingrediente)
+          );
+          const frequentNames = new Set(this.frequentIngredientes.map((f: any) => f.ingrediente));
+          const frequentOptions = this.frequentIngredientes
+            .filter((f: any) => !usedNames.has(f.ingrediente) || f.ingrediente === currentValue)
+            .map((f: any) => ({
+              id: f.ingrediente,
+              description: this.totalPreparaciones > 0
+                ? `⭐ ${f.ingrediente} (${Math.round((f.countUsed / this.totalPreparaciones) * 100)}%)`
+                : `⭐ ${f.ingrediente}`
+            }));
+          const restOptions = this.rawMaterialNames
+            .filter(name => !frequentNames.has(name) && (!usedNames.has(name) || name === currentValue))
+            .map(name => ({ id: name, description: name }));
+          return { options: [...frequentOptions, ...restOptions] };
+        },
         valueSetter: (params) => {
-          params.data.ingrediente = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.ingrediente = params.newValue ?? '';
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -227,6 +272,9 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
   }
 
   public gridOptions: any = {
+    components: {
+      selectV2: SelectWithTooltipEditorV2Component
+    },
     headerHeight: 25,
     rowHeight: 25,
     animateRows: true,
@@ -237,7 +285,7 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
     masterDetail: true,
     detailRowHeight: 250,
     detailCellRenderer: ParametrosComponent,
-    isRowMaster: (dataItem: any) => true
+    isRowMaster: () => true
   };
 
   addItem() {
@@ -407,7 +455,7 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       const detalles = await lastValueFrom(this.preparacionService.getDetalles(idPreparacion));
       console.log('[reloadFromServer] Detalles obtenidos:', detalles);
 
-      this.rowData = detalles.map((item: any, index: number) => ({
+      this.rowData = detalles.map((item: any) => ({
         id: item.id,
         idPreparacion: item.idPreparacion,
         ingrediente: item.ingrediente || '',
