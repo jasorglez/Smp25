@@ -3,7 +3,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { MaterialJarabeService, MaterialJarabeConfig } from 'app/services/material-jarabe.service';
+import { ProductionService, MaterialJarabeConfig } from 'app/services/production.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-jarabe',
@@ -113,7 +113,7 @@ import { MaterialJarabeService, MaterialJarabeConfig } from 'app/services/materi
   `
 })
 export class DetailCellRendererJarabeComponent implements ICellRendererAngularComp {
-  private materialJarabeService = inject(MaterialJarabeService);
+  private materialJarabeService = inject(ProductionService);
 
   params: any;
   materialId: number = 0;
@@ -142,7 +142,7 @@ export class DetailCellRendererJarabeComponent implements ICellRendererAngularCo
 
   private loadConfig(): void {
     this.loading = true;
-    this.materialJarabeService.getByMaterial(this.materialId).subscribe({
+    this.materialJarabeService.getMaterialJarabeByMaterial(this.materialId).subscribe({
       next: (data) => {
         this.config = {
           idMaterial: this.materialId,
@@ -175,7 +175,7 @@ export class DetailCellRendererJarabeComponent implements ICellRendererAngularCo
       ...this.config,
       idMaterial: this.materialId
     };
-    this.materialJarabeService.save(this.materialId, payload).subscribe({
+    this.materialJarabeService.saveMaterialJarabe(this.materialId, payload).subscribe({
       next: (result) => {
         this.config = {
           idMaterial: this.materialId,

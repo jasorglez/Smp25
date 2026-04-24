@@ -5,12 +5,11 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { environment } from '@env/environment';
-import { PreparacionService } from 'app/services/preparacion.service';
+import { ProductionService } from 'app/services/production.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { MaterialsService } from 'app/services/materials.service';
-import { MaterialJarabeService } from 'app/services/material-jarabe.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetalleWrapperComponent } from './detalle-wrapper.component';
 import { alerts } from 'app/helpers/alerts';
@@ -82,12 +81,11 @@ import { lastValueFrom } from 'rxjs';
 })
 export class JarabeComponent implements OnInit {
 
-  private preparacionService = inject(PreparacionService);
+  private productionService = inject(ProductionService);
   private signalsService = inject(SignalsService);
   private authService = inject(AuthService);
   private branchsService = inject(BranchsService);
   private materialsService = inject(MaterialsService);
-  private materialJarabeService = inject(MaterialJarabeService);
   private gridApi!: GridApi;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
@@ -251,7 +249,7 @@ export class JarabeComponent implements OnInit {
     try {
       const [data, jarabeConfigs] = await Promise.all([
         lastValueFrom(this.materialsService.getMaterialsxview(idCompany)),
-        lastValueFrom(this.materialJarabeService.getAll())
+        lastValueFrom(this.productionService.getMaterialJarabeAll())
       ]);
       const allMaterials: any[] = Array.isArray(data) ? data : [];
       const jarabeIds = new Set((Array.isArray(jarabeConfigs) ? jarabeConfigs : []).map((c: any) => c.idMaterial));
@@ -309,7 +307,7 @@ export class JarabeComponent implements OnInit {
 
   async loadData() {
     try {
-      const items = await lastValueFrom(this.preparacionService.getAll());
+      const items = await lastValueFrom(this.productionService.getAll());
       this.rowData = items.map(item => this.mapPreparacion(item));
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
@@ -484,7 +482,7 @@ export class JarabeComponent implements OnInit {
             const material = this.rawMaterials.find(m => (m.articulo || m.description || m.insumo) === name);
             if (material?.id) {
               params.data.__idMaterialJarabe = material.id;
-              this.materialJarabeService.getByMaterial(material.id).subscribe({
+              this.productionService.getMaterialJarabeByMaterial(material.id).subscribe({
                 next: (config) => {
                   if (config?.usarEnJarabe) {
                     params.data.nota = config.prefijoNota
@@ -656,10 +654,10 @@ export class JarabeComponent implements OnInit {
       getDetailRowData: async (detailParams: any) => {
         try {
           if (detailParams.data.detailType === 'preparacion') {
-            const detalles = await lastValueFrom(this.preparacionService.getDetalles(detailParams.data.id));
+            const detalles = await lastValueFrom(this.productionService.getDetalles(detailParams.data.id));
             const mapped = await Promise.all(detalles.map(async (d: any) => {
               const det = this.mapDetalle(d);
-              const paramsList = await lastValueFrom(this.preparacionService.getParams(d.id));
+              const paramsList = await lastValueFrom(this.productionService.getParams(d.id));
               det.parametrosData = paramsList.map((p: any) => this.mapParams(p));
               return det;
             }));
@@ -672,7 +670,7 @@ export class JarabeComponent implements OnInit {
             });
             detailParams.successCallback(mapped);
           } else {
-            const historial = await lastValueFrom(this.preparacionService.getHistorial(detailParams.data.id));
+            const historial = await lastValueFrom(this.productionService.getHistorial(detailParams.data.id));
             const mappedHist = historial.map((h: any) => this.mapHistorial(h));
             // Mantener también el conteo del historial consistente
             detailParams.data.historialGastos = mappedHist.length;
@@ -823,7 +821,7 @@ export class JarabeComponent implements OnInit {
     if (!result.isConfirmed) return;
 
     try {
-      await lastValueFrom(this.preparacionService.delete(selectedItem.id));
+      await lastValueFrom(this.productionService.delete(selectedItem.id));
       this.rowData = this.rowData.filter(row => row.id !== selectedItem.id);
       this.gridApi.setGridOption('rowData', this.rowData);
       this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified);
@@ -866,7 +864,7 @@ export class JarabeComponent implements OnInit {
     try {
       for (const item of newItems) {
         const payload = this.toApiPayload(item);
-        const created = await lastValueFrom(this.preparacionService.create(payload));
+        const created = await lastValueFrom(this.productionService.create(payload));
         item.id = created.id;
         item.__isNew = false;
         item.__modified = false;
@@ -874,9 +872,9 @@ export class JarabeComponent implements OnInit {
 
         if (item.__idMaterialJarabe) {
           try {
-            const config = await lastValueFrom(this.materialJarabeService.getByMaterial(item.__idMaterialJarabe));
+            const config = await lastValueFrom(this.productionService.getMaterialJarabeByMaterial(item.__idMaterialJarabe));
             if (config?.usarEnJarabe) {
-              await lastValueFrom(this.materialJarabeService.save(item.__idMaterialJarabe, {
+              await lastValueFrom(this.productionService.saveMaterialJarabe(item.__idMaterialJarabe, {
                 ...config,
                 consecutivoNota: (config.consecutivoNota ?? 0) + 1,
                 consecutivoLote: (config.consecutivoLote ?? 0) + 1
@@ -890,7 +888,7 @@ export class JarabeComponent implements OnInit {
 
       for (const item of modifiedItems) {
         const payload = this.toApiPayload(item);
-        await lastValueFrom(this.preparacionService.update(item.id, payload));
+        await lastValueFrom(this.productionService.update(item.id, payload));
         item.__modified = false;
         item.saved = true;
       }

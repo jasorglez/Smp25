@@ -2,9 +2,9 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-filtrado',
+  selector: 'app-almmolienda',
   standalone: true,
   imports: [CommonModule],
-  template: `<p>Filtrado — en construcción</p>`,
+  template: `<p>Almacen Molienda — en construcción</p>`,
 })
-export class FiltradoComponent {}
+export class AlmmoliendaComponent {}

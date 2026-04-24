@@ -2198,18 +2198,19 @@ export const routes: Routes = [
             path: 'molienda',
             loadComponent: () =>
               import(
-                './domains/ModProduction/Components/molienda/molienda.component'
-              ).then((m) => m.MoliendaComponent),
+                './domains/ModProduction/Components/molienda/procmenumolienda.component'
+              ).then((m) => m.ProcmenumoliendaComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'production', detailed: 'molienda_princ' } },
             children: [
               { path: '', redirectTo: 'principal', pathMatch: 'full' },
               { path: 'principal',     loadComponent: () => import('./domains/ModProduction/Components/molienda/principal/principal.component').then(m => m.MoliendaPrincipalComponent) },
-              { path: 'filtrado',      loadComponent: () => import('./domains/ModProduction/Components/molienda/filtrado/filtrado.component').then(m => m.FiltradoComponent) },
+              { path: 'filtrado',      loadComponent: () => import('./domains/ModProduction/Components/molienda/filtrado/molienda.component').then(m => m.MoliendaComponent) },
               { path: 'fermentacion',  loadComponent: () => import('./domains/ModProduction/Components/molienda/fermentacion/fermentacion.component').then(m => m.FermentacionComponent) },
               { path: 'clarificacion1',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion1/clarificacion1.component').then(m => m.Clarificacion1Component) },
               { path: 'clarificacion2',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion2/clarificacion2.component').then(m => m.Clarificacion2Component) },
               { path: 'envasado',      loadComponent: () => import('./domains/ModProduction/Components/molienda/envasado/envasado.component').then(m => m.EnvasadoMoliendaComponent) },
+              { path: 'almmolienda',   loadComponent: () => import('./domains/ModProduction/Components/molienda/almmolienda/almmolienda.component').then(m => m.AlmmoliendaComponent) },
             ],
           },
           {
@@ -2276,13 +2277,13 @@ export const routes: Routes = [
           {
             path: 'catalogos',
             loadComponent: () =>
-              import('./domains/ModProduction/Components/catalogos/catalogos.component')
-                .then((m) => m.CatalogosProdComponent),
+              import('./domains/ModProduction/Components/catalogos/catalogosproduccion.component')
+                .then((m) => m.CatalogosProduccionComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'production', detailed: 'catalogos' } },
             children: [
               { path: '', redirectTo: 'catalogos', pathMatch: 'full' },
-              { path: 'catalogos', loadComponent: () => import('./domains/ModProduction/Components/catalogos/catalogos-page/catalogos-page.component').then(m => m.CatalogosPageComponent) },
+              { path: 'catalogos', loadComponent: () => import('./domains/ModProduction/Components/catalogos/catalogos-page/catalogosproduccion-page.component').then(m => m.CatalogosProduccionPageComponent) },
             ],
           },
         ],
