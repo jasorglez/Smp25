@@ -17,6 +17,9 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class MaterialsComponent {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  private readonly ESTADO_ENTREGADO = 'ENTREGADO';
+  private readonly ESTADO_REMISION = 'REMISION';
+  private readonly MANUAL_ESTADOS = ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO'];
 
   private signalsService = inject(SignalsService);
   private pedidosService = inject(PedidosService);
@@ -44,6 +47,9 @@ export class MaterialsComponent {
     rowHeight: 28,
     animateRows: true,
     rowSelection: 'single',
+    groupDefaultExpanded: 0,
+    suppressAggFuncInHeader: true,
+    groupDisplayType: 'singleColumn',
     onCellValueChanged: (event: any) => {
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
@@ -54,99 +60,17 @@ export class MaterialsComponent {
     }
   };
 
-  public colDefs: ColDef[] = [
-    {
-      headerName: '#',
-      width: 50,
-      valueGetter: (params) => params.node!.rowIndex! + 1,
-      pinned: 'left',
-      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+  public autoGroupColumnDef: ColDef = {
+    headerName: 'Cliente',
+    minWidth: 260,
+    pinned: 'left',
+    cellStyle: (params) => params.node?.group ? { fontWeight: '700' } : { fontWeight: '600' },
+    cellRendererParams: {
+      suppressCount: false,
     },
-    {
-      field: 'producto',
-      headerName: 'Producto',
-      filter: 'agSetColumnFilter',
-      filterParams: {
-        defaultToNothingSelected: true,
-      },
-      flex: 2,
-      minWidth: 200,
-    },
-    {
-      field: 'clienteName',
-      headerName: 'Cliente',
-      flex: 2,
-      minWidth: 160,
-      filter: 'agSetColumnFilter',
-      filterParams: {
-        defaultToNothingSelected: true,
-      },
-    },
-    {
-      field: 'pedidoNumero',
-      headerName: 'Pedido',
-      width: 100,
-      filter: 'agSetColumnFilter',
-      filterParams: {
-        defaultToNothingSelected: true,
-      },
-    },
-    {
-      field: 'costo',
-      headerName: 'Costo',
-      width: 120,
-      type: 'numericColumn',
-      valueFormatter: (params) =>
-        params.value
-          ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
-          : '$0.00',
-      cellStyle: { textAlign: 'right' },
-    },
-    {
-      field: 'venta',
-      headerName: 'Venta',
-      width: 120,
-      type: 'numericColumn',
-      valueFormatter: (params) =>
-        params.value
-          ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
-          : '$0.00',
-      cellStyle: { textAlign: 'right' },
-    },
-    {
-      field: 'impuesto',
-      headerName: 'Impuesto',
-      width: 110,
-      type: 'numericColumn',
-      valueFormatter: (params) =>
-        params.value
-          ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
-          : '$0.00',
-      cellStyle: { textAlign: 'right' },
-    },
-    {
-      field: 'estado',
-      headerName: 'Estado',
-      width: 140,
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO', 'ENTREGADO']
-      },
-      valueSetter: (params: any) => {
-        params.data.estado = params.newValue;
-        return true;
-      },
-      cellStyle: (params) => {
-        if (params.value === 'RECIBIDO')   return { backgroundColor: '#d4edda' };
-        if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
-        if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
-        if (params.value === 'REVENDIDO')  return { backgroundColor: '#fff3cd' };
-        if (params.value === 'ENTREGADO')  return { backgroundColor: '#d1ecf1' };
-        return { backgroundColor: '#e2e3e5' };
-      },
-    },
-  ];
+  };
+
+  public colDefs: ColDef[] = this.buildColumnDefs();
 
   constructor() {
     effect(() => {
@@ -176,9 +100,142 @@ export class MaterialsComponent {
     this.rowData = this.activeFilter
       ? this.allData.filter(d => d.estado === this.activeFilter)
       : [...this.allData];
+
+    this.updateGrouping();
+
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
     }
+  }
+
+  private updateGrouping(): void {
+    const groupByClient = this.activeFilter === this.ESTADO_ENTREGADO;
+
+    this.colDefs = this.buildColumnDefs(groupByClient);
+
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+      this.gridApi.setGridOption('groupDefaultExpanded', groupByClient ? -1 : 0);
+    }
+  }
+
+  private buildColumnDefs(groupByClient: boolean = false): ColDef[] {
+    return [
+      {
+        headerName: '#',
+        width: 50,
+        valueGetter: (params) => {
+          if (params.node?.group) {
+            return '';
+          }
+
+          return (params.node?.rowIndex ?? 0) + 1;
+        },
+        pinned: 'left',
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+      },
+      {
+        field: 'producto',
+        headerName: 'Producto',
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          defaultToNothingSelected: true,
+        },
+        flex: 2,
+        minWidth: 200,
+      },
+      {
+        field: 'clienteName',
+        headerName: 'Cliente',
+        flex: 2,
+        minWidth: 160,
+        rowGroup: groupByClient,
+        hide: groupByClient,
+        sort: groupByClient ? 'asc' : null,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          defaultToNothingSelected: true,
+        },
+      },
+      {
+        field: 'pedidoNumero',
+        headerName: 'Pedido',
+        width: 100,
+        sort: groupByClient ? 'asc' : null,
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          defaultToNothingSelected: true,
+        },
+      },
+      {
+        field: 'costo',
+        headerName: 'Costo',
+        width: 120,
+        type: 'numericColumn',
+        aggFunc: groupByClient ? 'sum' : undefined,
+        valueFormatter: (params) =>
+          params.value
+            ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+            : '$0.00',
+        cellStyle: (params) => ({
+          textAlign: 'right',
+          fontWeight: params.node?.group ? '700' : '400',
+        }),
+      },
+      {
+        field: 'venta',
+        headerName: 'Venta',
+        width: 120,
+        type: 'numericColumn',
+        aggFunc: groupByClient ? 'sum' : undefined,
+        valueFormatter: (params) =>
+          params.value
+            ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+            : '$0.00',
+        cellStyle: (params) => ({
+          textAlign: 'right',
+          fontWeight: params.node?.group ? '700' : '400',
+        }),
+      },
+      {
+        field: 'impuesto',
+        headerName: 'Impuesto',
+        width: 110,
+        type: 'numericColumn',
+        aggFunc: groupByClient ? 'sum' : undefined,
+        valueFormatter: (params) =>
+          params.value
+            ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+            : '$0.00',
+        cellStyle: (params) => ({
+          textAlign: 'right',
+          fontWeight: params.node?.group ? '700' : '400',
+        }),
+      },
+      {
+        field: 'estado',
+        headerName: 'Estado',
+        width: 140,
+        editable: (params) => !this.isBackendControlledState(params.data?.estado),
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: this.MANUAL_ESTADOS
+        },
+        valueSetter: (params: any) => {
+          params.data.estado = params.newValue;
+          return true;
+        },
+        cellStyle: (params) => {
+          if (params.value === 'RECIBIDO')   return { backgroundColor: '#d4edda' };
+          if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
+          if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
+          if (params.value === 'REVENDIDO')  return { backgroundColor: '#fff3cd' };
+          if (params.value === 'REMISION')   return { backgroundColor: '#ffe5b4' };
+          if (params.value === 'ENTREGADO')  return { backgroundColor: '#d1ecf1' };
+          return { backgroundColor: '#e2e3e5' };
+        },
+      },
+    ];
   }
 
   private loadData(): void {
@@ -263,5 +320,10 @@ export class MaterialsComponent {
       return;
     }
     this.loadData();
+  }
+
+  private isBackendControlledState(estado: unknown): boolean {
+    const normalized = String(estado ?? '').toUpperCase();
+    return normalized === this.ESTADO_REMISION || normalized === this.ESTADO_ENTREGADO;
   }
 }

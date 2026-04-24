@@ -2,7 +2,7 @@ import { Component, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { concat, lastValueFrom, toArray } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RootService } from 'app/services/root.service';
@@ -23,7 +23,7 @@ export class CorporativosComponent {
   notSavedChanges: boolean = false;
   rowData: any[] = [];
   selectedRowData: any = null;
-  private gridApi: GridApi;
+  private gridApi?: GridApi;
   private tempIdCounter: number = 0;
 
   private editableColumnOrder = [
@@ -45,11 +45,13 @@ export class CorporativosComponent {
   obtenerDatos() {
     this.rootService.getCorporativos().subscribe({
       next: (data: any) => {
-        this.rowData = data || [];
+        this.rowData = Array.isArray(data) ? data : data?.Data || data?.data || [];
+        this.refreshGridData();
       },
       error: (error) => {
         console.error('Error obteniendo corporativos:', error);
         this.rowData = [];
+        this.refreshGridData();
       }
     });
   }
@@ -191,6 +193,7 @@ export class CorporativosComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    this.refreshGridData();
     setTimeout(() => {
       params.api.sizeColumnsToFit();
     }, 100);
@@ -230,11 +233,12 @@ export class CorporativosComponent {
 
     this.rowData = [newItem, ...this.rowData];
     this.notSavedChanges = true;
+    this.refreshGridData();
 
     setTimeout(() => {
-      this.gridApi.setGridOption('rowData', this.rowData);
+      this.refreshGridData();
       setTimeout(() => {
-        this.gridApi.startEditingCell({
+        this.gridApi?.startEditingCell({
           rowIndex: 0,
           colKey: 'name'
         });
@@ -258,20 +262,18 @@ export class CorporativosComponent {
       (row) => row.__modified && !row.__isNew
     );
 
-    const addObservables: Promise<any>[] = newRows.map((row) => {
+    const addRequests: Promise<any>[] = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return lastValueFrom(this.rootService.addCorporativo(cleanedData));
     });
 
-    const updateObservables: Promise<any>[] = modifiedRows.map((row) => {
+    const updateRequests: Promise<any>[] = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return lastValueFrom(this.rootService.updateCorporativo(row.id, cleanedData));
     });
 
     try {
-      await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
+      await Promise.all([...addRequests, ...updateRequests]);
 
       alerts.basicAlert(
         'Datos actualizados',
@@ -293,6 +295,11 @@ export class CorporativosComponent {
   revert() {
     this.obtenerDatos();
     this.notSavedChanges = false;
+  }
+
+  private refreshGridData(): void {
+    if (!this.gridApi) return;
+    this.gridApi.setGridOption('rowData', this.rowData);
   }
 
   private cleanDataForServer(data: any): any {

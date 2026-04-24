@@ -391,6 +391,20 @@ export const routes: Routes = [
                 './domains/Logistica/components/pedidos/pedidos.component'
               ).then((p) => p.PedidosLogisticaComponent),
           },
+          {
+            path: 'remisiones',
+            loadComponent: () =>
+              import(
+                './domains/Logistica/components/remisiones/remisiones.component'
+              ).then((r) => r.RemisionesComponent),
+          },
+          {
+            path: 'pedidos-entregados',
+            loadComponent: () =>
+              import(
+                './domains/Logistica/components/pedidos-entregados/pedidos-entregados.component'
+              ).then((p) => p.PedidosEntregadosComponent),
+          },
         ],
       },
       {

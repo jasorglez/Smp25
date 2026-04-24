@@ -232,8 +232,8 @@ export class AportacionesComponent {
 
       alerts.closeLoading();
       alerts.basicAlert(
-        'Aportación Registrada',
-        `Se registró la aportación de ${this.socioSeleccionado} por ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} a ${nombreDestino}.`,
+        'Aportación',
+        `La aportación ya quedó registrada por ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}.`,
         'success'
       );
 

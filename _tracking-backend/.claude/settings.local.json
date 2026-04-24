@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del \"C:\\Developer\\Visual Studio 22\\c#\\MicroServicios\\MicroservicioTracking\\Tracking\\Tracking\\Models\\IncomeandexpenseVoucher.cs\")",
+      "Bash(del \"C:\\Developer\\Visual Studio 22\\c#\\MicroServicios\\MicroservicioTracking\\Tracking\\Tracking\\INCOMEANDEXPENSE_VOUCHER_SETUP.sql\")"
+    ]
+  }
+}

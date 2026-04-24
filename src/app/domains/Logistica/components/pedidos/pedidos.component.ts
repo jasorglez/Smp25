@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   ColDef,
   GridApi,
@@ -36,6 +37,8 @@ import { PdfButtonCellRendererComponent } from 'app/domains/ModAdmon/components/
 export class PedidosLogisticaComponent implements CanComponentDeactivate {
   private signalsService = inject(SignalsService);
   private pedidosService = inject(PedidosService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private trackingService = inject(TrackingService);
   private customersService = inject(CustomersService);
   private materialsService = inject(MaterialsService);
@@ -245,6 +248,11 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
   }
 
   setFilter(estado: string | null): void {
+    if (estado === 'ENTREGADO') {
+      this.router.navigate(['../pedidos-entregados'], { relativeTo: this.route });
+      return;
+    }
+
     this.activeFilter = estado;
     this.loadData();
   }

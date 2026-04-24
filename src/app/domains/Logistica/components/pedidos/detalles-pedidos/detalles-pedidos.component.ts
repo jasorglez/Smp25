@@ -11,6 +11,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { PedidosService } from 'app/services/pedidos.service';
+import { RemisionesService } from 'app/services/remisiones.service';
 import { lastValueFrom } from 'rxjs';
 import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -33,6 +34,7 @@ export class DetallesPedidosComponent implements OnInit {
   private catalogadmonService = inject(CatalogadmonService);
   private administrationService = inject(AdministrationService);
   private pedidosService = inject(PedidosService);
+  private remisionesService = inject(RemisionesService);
   private sanitizer = inject(DomSanitizer);
 
   rowData: any[] = [];
@@ -77,6 +79,8 @@ export class DetallesPedidosComponent implements OnInit {
     'impuesto':    'estado',
     'estado':      'comentario'
   };
+  private readonly BLOCKED_MANUAL_STATES = ['REMISION', 'ENTREGADO'];
+  private readonly MANUAL_ESTADOS = ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO'];
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -448,11 +452,11 @@ get colDefs(): ColDef[] {
       {
         field: 'estado',
         headerName: 'Estado',
-        editable: () => !this.isLocked,
+        editable: (params) => !this.isLocked && !this.isBlockedManualState(params.data?.estado),
         width: 120,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO', 'ENTREGADO']
+          values: this.MANUAL_ESTADOS
         },
         valueSetter: (params: any) => {
           params.data.estado = params.newValue;
@@ -463,6 +467,7 @@ get colDefs(): ColDef[] {
           if (params.value === 'CANCELADO') return { backgroundColor: '#f8d7da' };
           if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
           if (params.value === 'REVENDIDO') return { backgroundColor: '#fff3cd' };
+          if (params.value === 'REMISION') return { backgroundColor: '#ffe5b4' };
           if (params.value === 'ENTREGADO') return { backgroundColor: '#d1ecf1' };
           return { backgroundColor: '#e2e3e5' };
         }
@@ -756,6 +761,120 @@ get colDefs(): ColDef[] {
 
   refreshByParent() {
     this.loadData();
+  }
+
+  private isBlockedManualState(estado: unknown): boolean {
+    return this.BLOCKED_MANUAL_STATES.includes(String(estado ?? '').toUpperCase());
+  }
+
+  async sendSelectedItemToRemision(): Promise<void> {
+    if (this.isLocked) {
+      alerts.basicAlert('Pedido bloqueado', 'No se puede operar la remisión sobre un pedido bloqueado.', 'warning');
+      return;
+    }
+
+    if (this.hasUnsavedChanges) {
+      alerts.basicAlert('Guardar primero', 'Guarda o deshaz los cambios antes de mandar a remisión.', 'warning');
+      return;
+    }
+
+    const selectedRows = this.gridApi?.getSelectedRows?.() || [];
+    if (selectedRows.length === 0) {
+      alerts.basicAlert('Selección requerida', 'Selecciona un detalle para mandarlo a remisión.', 'warning');
+      return;
+    }
+
+    const selectedItem = selectedRows[0];
+    if (selectedItem.__isNew || !selectedItem.id) {
+      alerts.basicAlert('Guardar primero', 'El detalle debe existir en la base antes de mandarlo a remisión.', 'warning');
+      return;
+    }
+
+    const estadoActual = String(selectedItem.estado ?? '').toUpperCase();
+    if (estadoActual === 'ENTREGADO') {
+      alerts.basicAlert('No permitido', 'Un detalle ENTREGADO ya no puede volver a remisión.', 'warning');
+      return;
+    }
+
+    const cantidadMaxima = Number(selectedItem.cantidad) || 0;
+    if (cantidadMaxima <= 0) {
+      alerts.basicAlert('Cantidad inválida', 'El detalle debe tener una cantidad válida para remisionar.', 'warning');
+      return;
+    }
+
+    const quantityResult = await alerts.inputAlert(
+      'Cantidad a remisionar',
+      'Indica la cantidad que deseas mandar a remisión.',
+      'text',
+      String(cantidadMaxima),
+      {
+        confirmButtonText: 'Continuar',
+        inputAttributes: {
+          inputmode: 'decimal',
+          autocomplete: 'off',
+        },
+        swalOptions: {
+          preConfirm: (value: string) => {
+            const cantidad = Number(value);
+            if (!Number.isFinite(cantidad) || cantidad <= 0) {
+              return 'La cantidad debe ser mayor a 0';
+            }
+            if (cantidad > cantidadMaxima) {
+              return `La cantidad no puede ser mayor a ${cantidadMaxima}`;
+            }
+            return null;
+          },
+        },
+      }
+    );
+
+    if (!quantityResult.isConfirmed) return;
+
+    const cantidadRemitida = Number(quantityResult.value);
+    const commentResult = await alerts.inputAlert(
+      'Comentario de remisión',
+      'Puedes capturar un comentario opcional para este movimiento.',
+      'textarea',
+      '',
+      {
+        required: false,
+        confirmButtonText: 'Mandar a remisión',
+      }
+    );
+
+    if (!commentResult.isConfirmed) return;
+
+    const comentario = String(commentResult.value ?? '').trim();
+    const idCompany = this.context?.idCompany;
+    const createdBy = this.context?.trackingService?.getEmail?.() || null;
+
+    if (!idCompany || !selectedItem.idCliente) {
+      alerts.basicAlert('Datos incompletos', 'Falta empresa o cliente para crear la remisión.', 'warning');
+      return;
+    }
+
+    alerts.showLoading('Mandando a remisión...', 'Creando o reutilizando la remisión abierta.');
+    try {
+      await lastValueFrom(
+        this.remisionesService.addDetalle({
+          idCompany,
+          idCliente: selectedItem.idCliente,
+          idDetallePedido: selectedItem.id,
+          cantidadRemitida,
+          comentario,
+          createdBy,
+        })
+      );
+
+      alerts.closeLoading();
+      alerts.toastAlert('Detalle mandado a remisión', 'success');
+      this.loadData();
+      this.context?.componentParent?.loadData?.();
+    } catch (error) {
+      alerts.closeLoading();
+      console.error('Error mandando detalle a remisión:', error);
+      alerts.basicAlert('Error', 'No se pudo mandar el detalle a remisión.', 'error');
+    }
   }
 
   // ==================== MODAL NUEVA PLATAFORMA ====================

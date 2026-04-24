@@ -1,0 +1,25 @@
+#services:
+#  api:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    container_name: Administration
+#    ports:
+#      - "5006:80"
+#    environment:
+#      - ASPNETCORE_ENVIRONMENT=Development
+#      - ASPNETCORE_URLS=http://+:80
+#    restart: unless-stopped
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: Tracking
+    ports:
+      - "5006:80"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:80"
+    restart: unless-stopped

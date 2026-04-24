@@ -39,6 +39,7 @@ import { lastValueFrom } from 'rxjs';
   `
 })
 export class DetallesClientesComponent implements ICellRendererAngularComp {
+  private readonly MANUAL_ESTADOS = ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO'];
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   private context: any;
@@ -147,10 +148,10 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       headerName: 'Estado',
       width: 120,
       valueFormatter: (params) => params.node?.group ? '' : (params.value ?? ''),
-      editable: (params) => !params.node?.group && !params.node?.footer,
+      editable: (params) => !params.node?.group && !params.node?.footer && !this.isBackendControlledState(params.data?.estado),
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
-        values: ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO', 'ENTREGADO']
+        values: this.MANUAL_ESTADOS
       },
       cellStyle: (params) => {
         if (params.node?.group) return {};
@@ -158,6 +159,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
         if (params.value === 'CANCELADO')  return { backgroundColor: '#f8d7da' };
         if (params.value === 'ALMACENADO') return { backgroundColor: '#cce5ff' };
         if (params.value === 'REVENDIDO')  return { backgroundColor: '#fff3cd' };
+        if (params.value === 'REMISION')   return { backgroundColor: '#ffe5b4' };
         if (params.value === 'ENTREGADO')  return { backgroundColor: '#d1ecf1' };
         return { backgroundColor: '#e2e3e5' };
       }
@@ -204,6 +206,11 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
     } else {
       console.warn('[DetallesClientes] context.CONCEPTS.load is not available — context:', this.context);
     }
+  }
+
+  private isBackendControlledState(estado: unknown): boolean {
+    const normalized = String(estado ?? '').toUpperCase();
+    return normalized === 'REMISION' || normalized === 'ENTREGADO';
   }
 
   private buildPayload(row: any) {

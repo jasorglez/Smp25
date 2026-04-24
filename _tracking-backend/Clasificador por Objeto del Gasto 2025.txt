@@ -1,0 +1,68 @@
+Página 1
+CLASIFICADOR POR OBJETO DEL GASTO
+
+El CACECAM con fundamento en los artículos 7 y 10 Bis de la Ley General de Contabilidad Gubernamental, y numeral 8 inciso I de las Reglas de Operación de los Consejos de Armonización Contable de las Entidades Federativas; aprobó lo siguiente:
+
+ACUERDO POR EL QUE SE EMITE EL CLASIFICADOR POR OBJETO DEL GASTO A CUARTO NIVEL (PARTIDA ESPECÍFICA)
+
+PRIMERO. - Se emite el Clasificador por Objeto del Gasto a cuarto nivel (partida específica), integrado por cuatro niveles de desagregación: Capítulo, Concepto, Partida Genérica y Partida Específica.
+
+INTRODUCCIÓN
+
+Para el registro único de las operaciones presupuestarias y contables, los entes públicos dispondrán de clasificadores presupuestarios, listas de cuentas y catálogos de bienes o instrumentos similares que permitan su interrelación automática.
+
+En el marco anterior, el Clasificador por Objeto del Gasto permitirá una clasificación de las erogaciones, consistente con criterios internacionales y con criterios contables, claro, preciso, integral y útil, que posibilite un adecuado registro y exposición de las operaciones, y que facilite la interrelación con las cuentas patrimoniales.
+
+El propósito principal del Clasificador por Objeto del Gasto es el registro de los gastos que se realizan en el proceso presupuestario. Resume, ordena y presenta los gastos programados en el presupuesto, de acuerdo con la naturaleza de los bienes, servicios, activos y pasivos financieros. Alcanza a todas las transacciones que realizan los entes públicos para obtener bienes y servicios que se utilizan en la prestación de servicios públicos y en la realización de transferencias, en el marco del Presupuesto de Egresos.
+
+La clasificación por objeto del gasto reúne en forma sistemática y homogénea todos los conceptos de gastos descritos. En ese orden, se constituye en un elemento fundamental del sistema general de cuentas donde cada componente destaca aspectos concretos del presupuesto y suministra información que atiende a necesidades diferentes pero enlazadas, permitiendo el vínculo con la contabilidad.
+
+El Clasificador por Objeto del Gasto ha sido diseñado con un nivel de desagregación que permite el registro único de las transacciones con incidencia económico-financiera que realiza un ente público, en el marco del presupuesto.
+
+Por ser un instrumento que permite la obtención de información para el análisis y seguimiento de la gestión financiera gubernamental, es considerado la clasificación operativa que permite conocer en qué se gasta, (base del registro de las transacciones económico-financieras) y a su vez permite cuantificar la demanda de bienes y servicios que realiza el Sector Público.
+
+Página 2
+CLASIFICADOR POR OBJETO DEL GASTO
+
+ESTRUCTURA DE CODIFICACIÓN
+
+La estructura del Clasificador por Objeto del Gasto se diseñó con un nivel de desagregación que permite que sus cuentas faciliten el registro único de todas las transacciones con incidencia económico-financiera es por ello que la armonización se realiza a tercer dígito que corresponde a la partida genérica formándose la siguiente estructura:
+
+CODIFICACIÓN
+Capítulo	Concepto	Partida
+Genérica	Específica
+X000	XX00	XXX0	XXXX
+Capítulo: Es el mayor nivel de agregación que identifica el conjunto homogéneo y ordenado de los bienes y servicios requeridos por los entes públicos.
+
+Concepto: Son subconjuntos homogéneos y ordenados en forma específica, producto de la desagregación de los bienes y servicios, incluidos en cada capítulo.
+
+Partida: Es el nivel de agregación más específico en el cual se describen las expresiones concretas y detalladas de los bienes y servicios que se adquieren y se compone de: Partida Genérica y Partida Específica.
+
+a) La Partida Genérica se refiere al tercer dígito, el cual logrará la armonización a todos los niveles de gobierno; por ello, el CONAC pública el 9 de diciembre de 2009 en el DOF la integración del tercer nivel.
+b) La Partida Específica corresponde al cuarto dígito, el cual permitirá que las unidades administrativas o instancias competentes en materia de Contabilidad Gubernamental y de Presupuesto de cada orden de gobierno, con base en sus necesidades, generen su apertura, conservando la estructura básica (capítulo, concepto y partida genérica), con el fin de mantener la armonización con el Plan de Cuentas.
+
+Derivado de lo anterior, se incorpora el cuarto nivel -Partida Específica-, el "Clasificador por Objeto del Gasto", queda integrado de la siguiente forma:
+
+Página 3
+CLASIFICADOR POR OBJETO DEL GASTO
+
+CAPÍTULO 1000	CONCEPTO	GENÉRICA	ESPECÍFICA	CAPÍTULO 1000 SERVICIOS PERSONALES
+Agrupa las remuneraciones del personal al servicio de los entes públicos, tales como: sueldos, salarios, dietas, honorarios asimilables al salario, prestaciones y gastos de seguridad social, obligaciones laborales y otras prestaciones derivadas de una relación laboral; pudiendo ser de carácter permanente o transitorio.
+1100			REMUNERACIONES AL PERSONAL DE CARÁCTER PERMANENTE
+Asignaciones destinadas a cubrir las percepciones correspondientes al personal de carácter permanente.
+111		Dietas
+Asignaciones para remuneraciones a los Diputados, Senadores, Asambleístas, Regidores y Síndicos.
+1111	Dietas
+Asignaciones para el pago de remuneraciones a los Diputados del H. Congreso del Estado, Regidores y Síndicos del H. Ayuntamiento de los Municipios.
+112		Haberes
+Asignaciones para remuneraciones al personal que desempeña sus servicios en el ejército, fuerza aérea y armada nacionales.
+1121	Haberes
+Asignaciones para remuneraciones al personal que desempeña sus servicios en el ejército, fuerza aérea y armada nacionales.
+113		Sueldos base al personal permanente
+Asignaciones para remuneraciones al personal civil, de base o de confianza, de carácter permanente que preste sus servicios en los entes públicos. Los montos que importen estas remuneraciones serán fijados de acuerdo con los catálogos institucionales de puestos de los entes públicos.
+1131	Sueldos al personal de confianza
+Asignaciones destinadas a cubrir las remuneraciones al personal de confianza de la Administración Pública Estatal o Municipal de acuerdo a lo establecido en la Ley de los Trabajadores al Servicio del Gobierno del Estado de Campeche y la Ley de los Trabajadores al Servicio de los Poderes, Municipios e Instituciones Descentralizadas del Estado de Campeche. Los montos que importen estas remuneraciones serán fijados de acuerdo con el Catálogo General de Puestos y los respectivos tabuladores del Presupuesto de Egresos de conformidad con lo dispuesto en las leyes y normatividad respectiva. Definición reformada /POE 02-09-2024
+1132	Sueldos al personal de Base
+Asignaciones destinadas a cubrir las remuneraciones al personal de base, de carácter permanente que preste sus servicios en la
+Estas tres páginas contienen la introducción, estructura de codificación y el inicio del Capítulo 1000: Servicios Personales, específicamente el concepto 1100: Remuneraciones al Personal de Carácter Permanente.
+

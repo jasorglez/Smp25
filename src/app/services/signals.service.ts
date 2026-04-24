@@ -4,6 +4,19 @@ import { Injectable, signal } from '@angular/core';
   providedIn: 'root',
 })
 export class SignalsService {
+  private getStoredNumber(key: string): number | null {
+    if (typeof localStorage === 'undefined') {
+      return null;
+    }
+
+    const rawValue = localStorage.getItem(key);
+    if (rawValue === null || rawValue === '') {
+      return null;
+    }
+
+    const parsedValue = Number(rawValue);
+    return Number.isNaN(parsedValue) ? null : parsedValue;
+  }
   /*
   Voy a empezar a definir las signals en un mismo servicio,
   de esta forma no estarán dispersados por todos lados.
@@ -69,7 +82,7 @@ getMasterUpdateTrigger() {
 
   private sectionSelected       = signal<string | null>(null);
   
-  private rootSelectedBySidebar = signal<number | null>(null);  
+  private rootSelectedBySidebar = signal<number | null>(this.getStoredNumber('company'));  
   
   private Procces               = signal<number | null>(null);
 
@@ -95,6 +108,13 @@ getMasterUpdateTrigger() {
 
   setRootSelectedBySidebar(id: number) {
     this.rootSelectedBySidebar.set(id);
+    if (typeof localStorage !== 'undefined') {
+      if (id === null || id === undefined || Number.isNaN(Number(id))) {
+        localStorage.removeItem('company');
+      } else {
+        localStorage.setItem('company', String(id));
+      }
+    }
   }
 
   private contractSelectedBySidebar = signal<number | null>(null);
@@ -140,10 +160,17 @@ getMasterUpdateTrigger() {
     return this.sidebarProjectId;
   }
 
-  private branchSelectedBySidebar = signal<number | null>(null);
+  private branchSelectedBySidebar = signal<number | null>(this.getStoredNumber('branch'));
 
   setBranchSelectedBySidebar(id: number) {
     this.branchSelectedBySidebar.set(id);
+    if (typeof localStorage !== 'undefined') {
+      if (id === null || id === undefined || Number.isNaN(Number(id))) {
+        localStorage.removeItem('branch');
+      } else {
+        localStorage.setItem('branch', String(id));
+      }
+    }
   }
 
   private branchNameSelectedBySidebar = signal<string>(null);
@@ -739,6 +766,10 @@ getMasterUpdateTrigger() {
   deleteSignals() {
     this.rootSelectedBySidebar = signal(null);
     this.branchSelectedBySidebar = signal(null);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('company');
+      localStorage.removeItem('branch');
+    }
     this.branchNameSelectedBySidebar = signal(null);
     this.projectSelectedBySidebar = signal(null);
     this.projectNameBySidebar = signal('');

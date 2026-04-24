@@ -472,11 +472,16 @@ export class ClientesLogisticaComponent implements CanComponentDeactivate {
 
   obtenerDatos() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Logistica', this.trackingService.getEmail());
-    if (this.idBranch === null || this.idBranch === undefined) {
+    if (!this.idRoot) {
       return Promise.resolve(false);
     }
+
+    const customers$ = this.idBranch && this.idBranch > 0
+      ? this.customerService.getCustomers(this.idBranch, this.type)
+      : this.customerService.getCustomersByCompany(this.idRoot, this.type);
+
     return new Promise((resolve) => {
-      this.customerService.getCustomers(this.idBranch, this.type).subscribe({
+      customers$.subscribe({
         next: (data: any) => { this.rowData = data; resolve(true); },
         error: (error) => { console.error('Error obteniendo datos:', error); resolve(false); }
       });

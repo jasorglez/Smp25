@@ -1,0 +1,119 @@
+<div class="col-12 p-2">
+  <div class="d-flex gap-2">
+    <div class="d-flex flex-column gap-1">
+      <button type="button" class="btn btn-primary ms-1" (click)="loadData()" title="Recargar remisiones">
+        <i class="bi bi-arrow-repeat"></i>
+      </button>
+    </div>
+
+    <div class="flex-grow-1">
+      <div class="d-flex gap-2 mb-2 flex-wrap">
+        <button class="btn btn-sm"
+          [style.background-color]="activeFilter === 'ABIERTA' ? '#fd7e14' : '#ffe5d0'"
+          [style.color]="activeFilter === 'ABIERTA' ? 'white' : '#8a4b08'"
+          [style.border]="'1px solid #fd7e14'"
+          (click)="setFilter('ABIERTA')">
+          Abiertas
+        </button>
+        <button class="btn btn-sm"
+          [style.background-color]="activeFilter === 'CERRADA' ? '#17a2b8' : '#d1ecf1'"
+          [style.color]="activeFilter === 'CERRADA' ? 'white' : '#0c5460'"
+          [style.border]="'1px solid #17a2b8'"
+          (click)="setFilter('CERRADA')">
+          Cerradas
+        </button>
+        <button class="btn btn-sm"
+          [class.btn-secondary]="activeFilter !== null"
+          [class.btn-dark]="activeFilter === null"
+          (click)="setFilter(null)">
+          Todas
+        </button>
+      </div>
+
+      <ag-grid-angular
+        style="width: 100%; height: 78vh;"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="rowData"
+        [columnDefs]="colDefs"
+        [defaultColDef]="defaultColDef"
+        [gridOptions]="gridOptions"
+        (gridReady)="onGridReady($event)"
+        [localeText]="AG_GRID_LOCALE_ES">
+      </ag-grid-angular>
+    </div>
+  </div>
+</div>
+
+<div class="modal" tabindex="-1"
+  [style.display]="showDetalleModal ? 'block' : 'none'"
+  style="background-color: rgba(0,0,0,0.55); z-index: 9999;">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header" style="background:#0d6efd; color:white;">
+        <h5 class="modal-title">
+          <i class="bi bi-list-ul me-2"></i>
+          Detalle de Remisión {{ selectedRemision?.folio }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeDetalleModal()"></button>
+      </div>
+
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <div class="row g-2 mb-3">
+          <div class="col-md-3"><strong>Cliente:</strong> {{ selectedRemision?.clienteName }}</div>
+          <div class="col-md-2"><strong>Estado:</strong> {{ selectedRemision?.estado }}</div>
+          <div class="col-md-3"><strong>Creación:</strong> {{ formatDateTime(selectedRemision?.fechaCreacion) }}</div>
+          <div class="col-md-4"><strong>Comentario:</strong> {{ selectedRemision?.comentario || '-' }}</div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Pedido</th>
+                <th>Detalle</th>
+                <th>Producto</th>
+                <th>Plataforma</th>
+                <th>Cant. pedido</th>
+                <th>Cant. remitida</th>
+                <th>Venta</th>
+                <th>Impuesto</th>
+                <th>Total</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of selectedDetalleRows">
+                <td>{{ row.idPedido }}</td>
+                <td>{{ row.idDetallePedido }}</td>
+                <td>{{ row.producto }}</td>
+                <td>{{ row.plataforma }}</td>
+                <td>{{ formatNumber(row.cantidad) }}</td>
+                <td>{{ formatNumber(row.cantidadRemitida) }}</td>
+                <td>{{ formatCurrency(row.venta) }}</td>
+                <td>{{ formatCurrency(row.impuesto) }}</td>
+                <td>{{ formatCurrency(row.totalLinea) }}</td>
+                <td>{{ row.estado }}</td>
+              </tr>
+              <tr *ngIf="selectedDetalleRows.length === 0">
+                <td colspan="10" class="text-center text-muted">Sin renglones en esta remisión.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDetalleModal()">
+          Cerrar
+        </button>
+        <button
+          *ngIf="selectedRemision?.estado === 'ABIERTA'"
+          type="button"
+          class="btn btn-warning"
+          (click)="closeRemision(selectedRemision)">
+          Cerrar remisión
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

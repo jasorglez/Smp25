@@ -16,6 +16,9 @@
     <button type="button" class="btn btn-danger btn-sm" (click)="deleteSelectedItem()" [disabled]="isLocked">
       <i class="bi bi-trash"></i> Eliminar
     </button>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="sendSelectedItemToRemision()" [disabled]="isLocked">
+      <i class="bi bi-truck"></i> Mandar a remisión
+    </button>
   </div>
   <!-- Grid de detalles -->
   <ag-grid-angular
