@@ -1561,11 +1561,14 @@ export class ExpenditureComponent {
 
       const mainDocument = mainDocumentResponse[0];
 
-      // Preservar todos los campos editables del grid que puedan tener cambios no guardados en BD
+      // Preservar todos los campos editables del grid que puedan tener cambios no guardados en BD.
+      // getRowNode busca por índice de fila (no por data.id), así que usamos this.incomes como fallback.
       const rowNode = this.gridApi?.getRowNode(expenditureId.toString());
+      const gridData = rowNode?.data ?? this.incomes.find(i => i.id === expenditureId);
+
       const updatedDocument = { ...mainDocument };
-      if (rowNode?.data) {
-        const { __isNew, __modified, detailType, detailData, visible, _rowNum, countItems, ...gridFields } = rowNode.data;
+      if (gridData) {
+        const { __isNew, __modified, detailType, detailData, visible, _rowNum, countItems, ...gridFields } = gridData;
         Object.assign(updatedDocument, gridFields);
       }
       updatedDocument.subtotal = subtotal;
