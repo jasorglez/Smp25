@@ -4,10 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { environment } from '@env/environment';
 import { ProductionService } from 'app/services/production.service';
 import { SignalsService } from 'app/services/signals.service';
-import { AuthService } from 'app/services/auth.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -83,7 +81,6 @@ export class JarabeComponent implements OnInit {
 
   private productionService = inject(ProductionService);
   private signalsService = inject(SignalsService);
-  private authService = inject(AuthService);
   private branchsService = inject(BranchsService);
   private materialsService = inject(MaterialsService);
   private gridApi!: GridApi;
@@ -271,27 +268,14 @@ export class JarabeComponent implements OnInit {
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
       if (!idUser || !idCompany) return;
 
-      const hasAll = this.authService.hasDetailedPermission('principal', 'see-all-branches');
-      const email = localStorage.getItem('mail') ?? '';
-      const isRoot = email === environment.root;
-
-      let mapped: { id: any; name: string }[];
-
-      if (hasAll || isRoot) {
-        const data = await lastValueFrom(this.branchsService.getBranches2fields(idCompany));
-        const list: any[] = Array.isArray(data) ? data : [];
-        list.sort((a, b) => a.name.localeCompare(b.name));
-        mapped = list.map((b: any) => ({ id: b.id, name: b.name as string }));
-      } else {
-        const data = await lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany));
-        const list: any[] = (data as any)?.project ?? (Array.isArray(data) ? data : []);
-        mapped = list
-          .map((b: any) => ({
-            id: b?.idPermission || b?.idBranch || b?.id,
-            name: (b?.name || b?.description || b?.Name || '') as string
-          }))
-          .filter(b => b.id && b.name.trim());
-      }
+      const data = await lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany));
+      const list: any[] = (data as any)?.project ?? (Array.isArray(data) ? data : []);
+      const mapped = list
+        .map((b: any) => ({
+          id: b?.idPermission || b?.idBranch || b?.id,
+          name: (b?.name || b?.description || b?.Name || '') as string
+        }))
+        .filter(b => b.id && b.name.trim());
 
       this.userBranches = mapped;
       this.branchNames = mapped.map(b => b.name);
@@ -435,23 +419,38 @@ export class JarabeComponent implements OnInit {
       {
         field: 'sucursal',
         headerName: 'Sucursal',
-        width: 160,
-        editable: true,
-        cellDataType: false,
-        cellEditor: 'selectV2',
+        width: 200,
+        editable: () => !this.activeBranchFilter || this.activeBranchFilter < 0,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorPopup: true,
         cellEditorParams: () => ({
-          options: this.userBranches.map(b => ({ id: b.id, description: b.name })),
-        }),
-        valueFormatter: (params) => {
-          if (params.value) {
-            const branch = this.userBranches.find(b => b.id === params.value);
-            return branch?.name ?? String(params.value);
+          values: this.userBranches.map(b => b.id),
+          valueListGap: 0,
+          valueListMaxHeight: 220,
+          cellWidth: 220,
+          formatValue: (value: any) => {
+            const branch = this.userBranches.find(b => b.id === value);
+            return branch?.name ?? value?.toString() ?? '';
           }
-          return '';
+        }),
+        filter: true,
+        filterValueGetter: (params) => {
+          const branch = this.userBranches.find(b => b.id === params.data?.sucursal);
+          return branch?.name ?? '';
+        },
+        valueFormatter: (params) => {
+          const branch = this.userBranches.find(b => b.id === params.value);
+          return branch?.name ?? '';
+        },
+        cellStyle: () => {
+          if (this.activeBranchFilter && this.activeBranchFilter > 0) {
+            return { backgroundColor: '#f0f0f0' };
+          }
+          return {};
         },
         valueSetter: (params) => {
           if (params.newValue == null) return false;
-          params.data.sucursal = params.newValue;
+          params.data.sucursal = Number(params.newValue);
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -488,9 +487,7 @@ export class JarabeComponent implements OnInit {
                     params.data.nota = config.prefijoNota
                       ? `${config.prefijoNota}${String(config.consecutivoNota ?? 0).padStart(3, '0')}`
                       : String(config.consecutivoNota ?? 0);
-                    params.data.lote = config.prefijoLote
-                      ? `${config.prefijoLote}${String(config.consecutivoLote ?? 0).padStart(3, '0')}`
-                      : String(config.consecutivoLote ?? 0);
+                    params.data.lote = config.prefijoLote ?? '';
                   } else {
                     params.data.__idMaterialJarabe = null;
                   }
@@ -876,8 +873,7 @@ export class JarabeComponent implements OnInit {
             if (config?.usarEnJarabe) {
               await lastValueFrom(this.productionService.saveMaterialJarabe(item.__idMaterialJarabe, {
                 ...config,
-                consecutivoNota: (config.consecutivoNota ?? 0) + 1,
-                consecutivoLote: (config.consecutivoLote ?? 0) + 1
+                consecutivoNota: (config.consecutivoNota ?? 0) + 1
               }));
             }
           } catch (e) {
