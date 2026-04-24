@@ -18,6 +18,9 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { CustomersService } from 'app/services/customers.service';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
@@ -248,7 +251,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private prefixSetupService = inject(PrefixSetupService);
   private itemCommentsService = inject(ItemCommentsService);
+  private providersService = inject(ProvidersService);
+  private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
+  private customersService = inject(CustomersService);
   private commentSub?: Subscription;
+  private sucursalSub?: Subscription;
   authService = inject(AuthService);
   // Tooltip
   private renderer: Renderer2;
@@ -283,6 +290,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   totalRequisitions: number = 0; // Total de requisiciones para calcular porcentajes
   private pedimentoCounter: number = 1;
   requisitionId: number = 0;
+  currentBranchId: number = 0;
   idRoot: number | null = null;
   providersCache: Map<string, any[]> = new Map(); // Cache para proveedores por material+tipo
 
@@ -313,6 +321,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
       this.loadData();
     });
+
+    // ✅ Sincronización en tiempo real:
+    // Si se modifican autorizaciones en el maestro, limpiar el caché local
+    this.sucursalSub = this.sucursalByMaterialProveedorService.sucursalSaved$.subscribe(() => {
+      this.providersCache.clear();
+      // Si hay un grid activo, forzar el refresco de las celdas de proveedores
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ columns: ['idProvider'], force: true });
+      }
+    });
   }
 
   agInit(params: any): void {
@@ -321,6 +339,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.requisitionData = params.data;
     this.detailType = params.data.detailType || 'items';
     this.hasProviderAssigned = params.data?.locked === true;
+    this.currentBranchId = params.data?.idReference || 0;
 
     if (this.detailType === 'items') {
       this.loadMaterials();
@@ -475,16 +494,87 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
-      // Cargar TODOS los proveedores del material (sin filtrar por tipo)
-      // El filtrado por tipo se hace en cellEditorParams
-      const providers = await firstValueFrom(
-        this.ocAndReqsService.getProviders(materialId, undefined)
+      console.log(`🔍 Iniciando validación para Material: ${materialId}, Sucursal Requisición: ${this.currentBranchId}`);
+      
+      // 1. Obtener datos maestros (Nombres y Tipos) de proveedores
+      const [allProvidersRaw, warehouseProviders]: any = await Promise.all([
+        firstValueFrom(this.customersService.getCustomersByCompany(this.idRoot || 0, 'PROVIDERS')),
+        firstValueFrom(this.materialsService.getProvidersxmaterials(this.idRoot || 0)).catch(() => [])
+      ]);
+
+      // Mapa para búsqueda rápida de datos maestros
+      const providerDataMap = new Map<number, { name: string, type: string }>();
+      
+      // Llenar mapa con nombres desde CustomersService
+      (allProvidersRaw || []).forEach((p: any) => {
+        const name = p.name || p.company || p.description || `Proveedor ${p.id}`;
+        providerDataMap.set(p.id, { name, type: 'Externo' }); // Default Externo
+      });
+
+      // Actualizar tipos desde Warehouse
+      (warehouseProviders || []).forEach((wp: any) => {
+        if (wp.id && wp.typeIntOrExt) {
+          const existing = providerDataMap.get(wp.id);
+          if (existing) {
+            existing.type = wp.typeIntOrExt;
+          } else {
+            providerDataMap.set(wp.id, { name: wp.company || `Proveedor ${wp.id}`, type: wp.typeIntOrExt });
+          }
+        }
+      });
+
+      // 2. Obtener las relaciones Maestro-Proveedor (ProveedorXTabla) para este material
+      const relations: any = await firstValueFrom(
+        this.providersService.getMaterXTable(materialId, 'MATERIAL')
       );
 
-      this.providersCache.set(cacheKey, providers);
+      console.log(`📦 Relaciones encontradas en ProveedorXTabla:`, relations);
 
-      return providers;
+      if (!Array.isArray(relations)) return [];
+
+      const validatedProviders = [];
+
+      // 3. Validar cada relación contra la sucursal de la requisición (currentBranchId)
+      for (const rel of relations) {
+        try {
+          const providerId = rel.idTabla;
+          const masterData = providerDataMap.get(providerId);
+          
+          const realName = masterData?.name || rel.providerName || `Proveedor ${providerId}`;
+          const realType = masterData?.type || rel.typeIntOrExt || 'Externo';
+          
+          console.log(`⚙️ Validando relación ID: ${rel.id} (Proveedor: ${realName}, Tipo Real: ${realType})`);
+          
+          // Consultar sucursales autorizadas para esta relación específica
+          const authBranches = await firstValueFrom(
+            this.sucursalByMaterialProveedorService.getSucursalByMaterial(rel.id)
+          );
+
+          // 4. EL FILTRO DE TRES NIVELES:
+          const isAuthorized = Array.isArray(authBranches) && authBranches.some(branch => {
+            const match = Number(branch.idSucursal) === Number(this.currentBranchId) &&
+                         (branch.vigente === true || branch.vigente === 1);
+            return match;
+          });
+
+          if (isAuthorized) {
+            const providerObj = {
+              idProvider: providerId,
+              providerName: realName,
+              typeIntOrExt: realType
+            };
+            validatedProviders.push(providerObj);
+          }
+        } catch (e) {
+          console.warn(`Error validando sucursales para relación ${rel.id}:`, e);
+        }
+      }
+
+      console.log(`🏁 Total proveedores validados para material ${materialId}: ${validatedProviders.length}`);
+      this.providersCache.set(cacheKey, validatedProviders);
+      return validatedProviders;
     } catch (error) {
+      console.error('❌ Error al cargar y validar proveedores:', error);
       return [];
     }
   }
@@ -2017,6 +2107,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.commentSub?.unsubscribe();
+    this.sucursalSub?.unsubscribe();
     if (this.originalPdfUrl) {
       URL.revokeObjectURL(this.originalPdfUrl);
       this.originalPdfUrl = null;

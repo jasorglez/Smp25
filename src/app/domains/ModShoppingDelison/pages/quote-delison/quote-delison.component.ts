@@ -448,6 +448,12 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
       // ✅ PASO 2.3: Retornar requisición con sus cotizaciones
       const dept = this.departments.find(d => d.id === requisicion.idDepartament);
       const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
+
+      // Calcular la fecha de modificación más reciente (entre requisición y sus pedimentos)
+      const lastModifiedFromPedimentos = pedimentosConItems.length > 0 
+        ? Math.max(...pedimentosConItems.map(p => new Date(p.createdAt).getTime()))
+        : new Date(requisicion.dateCreate).getTime();
+
       return {
         id: requisicion.id,
         branch: branchName,
@@ -457,9 +463,13 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
         requestedBy: requisicion.solicit || '',
         department: departmentName,
         idDepartament: requisicion.idDepartament || 0,
-        idReference: requisicion.idReference
+        idReference: requisicion.idReference,
+        __lastModifiedSort: lastModifiedFromPedimentos
       };
     }));
+
+    // ✅ Ordenar por modificación (más reciente arriba)
+    requisitionsWithQuotes.sort((a, b) => (b.__lastModifiedSort || 0) - (a.__lastModifiedSort || 0));
 
     // ✅ Solo mostrar requisiciones que tienen al menos una cotización
     this.fullRowData = requisitionsWithQuotes.filter(r => r.pedimentos && r.pedimentos.length > 0);

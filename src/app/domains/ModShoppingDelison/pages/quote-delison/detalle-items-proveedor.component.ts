@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, Renderer2, RendererFactory2, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -101,65 +101,7 @@ pdfMake.vfs = pdfFonts.vfs;
       </div>
     </div>
 
-    <!-- Modal Nuevo Proveedor -->
-    <div *ngIf="showNewProviderModal" class="modal-backdrop-inline">
-      <div class="modal-box-inline" (click)="$event.stopPropagation()">
-        <div class="modal-header-inline">
-          <span><i class="bi bi-building-add me-2"></i>Nuevo Proveedor</span>
-          <button type="button" class="btn-close btn-close-white" (click)="cancelNewProvider()"></button>
-        </div>
-        <div class="modal-body-inline">
-          <div class="mb-3" style="position: relative;">
-            <label class="form-label small fw-semibold">Compañía <span class="text-danger">*</span></label>
-            <input type="text" class="form-control form-control-sm"
-              [(ngModel)]="newProvider.company"
-              (ngModelChange)="onCompanyInput($event)"
-              (blur)="hideCompanySuggestionsDelayed()"
-              placeholder="Nombre de la empresa"
-              autocomplete="off">
-            <div *ngIf="showCompanySuggestions" class="company-suggestions">
-              <div *ngFor="let s of companySuggestions"
-                   class="company-suggestion-item"
-                   (mousedown)="selectCompanySuggestion(s)">
-                <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>{{ s }}
-              </div>
-            </div>
-            <div *ngIf="companyDuplicateWarning" class="mt-1 text-danger small">
-              <i class="bi bi-x-circle-fill me-1"></i>Ya existe: <strong>{{ companyDuplicateWarning }}</strong>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label small fw-semibold">Contacto principal</label>
-            <input type="text" class="form-control form-control-sm" [(ngModel)]="newProvider.nameContact" placeholder="Nombre del contacto">
-          </div>
-          <div class="mb-3">
-            <label class="form-label small fw-semibold">Teléfono</label>
-            <input type="text" class="form-control form-control-sm" [(ngModel)]="newProvider.phone" placeholder="10 dígitos">
-          </div>
-          <div class="mb-3">
-            <label class="form-label small fw-semibold">Correo</label>
-            <input type="email" class="form-control form-control-sm"
-              [(ngModel)]="newProvider.email"
-              (ngModelChange)="emailInvalid = false"
-              [class.is-invalid]="emailInvalid"
-              placeholder="correo@ejemplo.com">
-            <div *ngIf="emailInvalid" class="invalid-feedback">
-              <i class="bi bi-x-circle-fill me-1"></i>Correo no válido.
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer-inline">
-          <button type="button" class="btn btn-sm btn-secondary" (click)="cancelNewProvider()" [disabled]="savingProvider">
-            Cancelar
-          </button>
-          <button type="button" class="btn btn-sm btn-primary" (click)="confirmNewProvider()" [disabled]="savingProvider || !newProvider.company">
-            <span *ngIf="savingProvider" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!savingProvider" class="bi bi-floppy me-1"></i>
-            {{ savingProvider ? 'Guardando...' : 'Crear Proveedor' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Modal Nuevo Proveedor: ahora se renderiza global (en document.body) -->
   `,
   styles: [`
     .detail-grid-container {
@@ -177,65 +119,6 @@ pdfMake.vfs = pdfFonts.vfs;
       margin-bottom: 2px;
       font-weight: 500;
     }
-    .modal-backdrop-inline {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-box-inline {
-      background: #fff;
-      border-radius: 8px;
-      width: 380px;
-      max-width: 95vw;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-      display: flex;
-      flex-direction: column;
-    }
-    .modal-header-inline {
-      background: #0d6efd;
-      color: #fff;
-      padding: 12px 16px;
-      border-radius: 8px 8px 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-    .modal-body-inline {
-      padding: 16px;
-    }
-    .modal-footer-inline {
-      padding: 10px 16px;
-      border-top: 1px solid #dee2e6;
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-    .company-suggestions {
-      position: absolute;
-      top: 100%;
-      left: 0; right: 0;
-      background: white;
-      border: 1px solid #ffc107;
-      border-top: none;
-      z-index: 10000;
-      max-height: 160px;
-      overflow-y: auto;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-    .company-suggestion-item {
-      padding: 6px 10px;
-      cursor: pointer;
-      font-size: 0.82rem;
-    }
-    .company-suggestion-item:hover {
-      background: #fff3cd;
-    }
   `]
 })
 export class DetalleItemsProveedorComponent {
@@ -250,6 +133,13 @@ export class DetalleItemsProveedorComponent {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
+  private renderer: Renderer2;
+  private newProviderOverlayEl: HTMLElement | null = null;
+  private newProviderOverlayUnlisteners: Array<() => void> = [];
+
+  constructor(rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+  }
 
   rowData: any[] = [];
   providers: any[] = [];
@@ -274,6 +164,7 @@ export class DetalleItemsProveedorComponent {
   ocGenerated: boolean = false;
   hasRowsWithTypeOC: boolean = false;
 
+  // Modal global (se renderiza en document.body para no quedar atrapado por transforms de AG Grid)
   showNewProviderModal: boolean = false;
   savingProvider: boolean = false;
   newProvider = { company: '', nameContact: '', phone: '', email: '' };
@@ -396,7 +287,7 @@ export class DetalleItemsProveedorComponent {
       this.selectedProviderId = null;
       this.selectedProviderObj = null;
       this.newProvider = { company: '', nameContact: '', phone: '', email: '' };
-      this.showNewProviderModal = true;
+      this.openNewProviderOverlay();
       return;
     }
 
@@ -665,7 +556,13 @@ export class DetalleItemsProveedorComponent {
   }
   generatePlaceholderPdf() { alerts.basicAlert('PDF', 'Abriendo vista previa...', 'info'); }
   async generateOC() { this.generatingOC = true; setTimeout(() => { this.generatingOC = false; alerts.ocGenerated('OC-TEMP-123'); }, 1000); }
-  cancelNewProvider() { this.showNewProviderModal = false; }
+  ngOnDestroy(): void {
+    this.closeNewProviderOverlay();
+  }
+
+  cancelNewProvider() {
+    this.closeNewProviderOverlay();
+  }
   onCompanyInput(value: string) {
     if (!value) { this.companySuggestions = []; this.showCompanySuggestions = false; return; }
     const term = value.toLowerCase();
@@ -675,11 +572,201 @@ export class DetalleItemsProveedorComponent {
   hideCompanySuggestionsDelayed() { setTimeout(() => { this.showCompanySuggestions = false; }, 200); }
   selectCompanySuggestion(name: string) { this.newProvider.company = name; this.showCompanySuggestions = false; }
   async confirmNewProvider() {
+    if (!this.newProvider.company.trim()) return;
+
     this.savingProvider = true;
-    setTimeout(() => {
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+      // 1. Crear el objeto del proveedor (Customer)
+      const payload = {
+        idRoot: idRoot,
+        company: this.newProvider.company.trim().toUpperCase(),
+        nameContact: (this.newProvider.nameContact || '').trim().toUpperCase(),
+        phone: (this.newProvider.phone || '').trim(),
+        email: (this.newProvider.email || '').trim(),
+        type: 'PROVIDERS',
+        typeIntOrExt: 'Externo', // Por defecto externo para nuevos desde compras
+        active: true,
+        vigente: true,
+        autorizacion: true,
+        position: 'GERENCIA'
+      };
+
+      // 2. Guardar en el microservicio de Administración
+      const createdProvider: any = await lastValueFrom(this.customersService.addCustomer(payload));
+      const newId = createdProvider?.id || createdProvider?.ID;
+
+      if (!newId) throw new Error('No se obtuvo el ID del nuevo proveedor');
+
+      // 3. Crear registro técnico inicial en ProveedorXTabla (CONTACT)
+      const contactPayload = {
+        campo1: 0,
+        campo2: payload.nameContact || payload.company,
+        campo3: payload.position,
+        campo4: payload.phone,
+        campo5: payload.email,
+        campo6: 'NA',
+        campo7: true,
+        idTabla: newId,
+        type: 'CONTACT'
+      };
+      await lastValueFrom(this.providersService.addProviderXTable(contactPayload)).catch(() => {});
+
+      // 4. Actualizar interfaz
+      await this.loadProviders(); // Recargar catálogo
+      this.selectedProviderId = newId; // Seleccionar el nuevo
+      
+      this.closeNewProviderOverlay();
+      alerts.reqSuccessToast('Éxito', `Proveedor "${payload.company}" creado y seleccionado`);
+
+      // 5. Disparar lógica de vinculación (Artículos y Sucursal)
+      await this.onProviderChange();
+
+    } catch (error) {
+      console.error('❌ Error al crear proveedor:', error);
+      alerts.reqErrorToast('Error', 'No se pudo crear el proveedor en el servidor');
+    } finally {
       this.savingProvider = false;
-      this.showNewProviderModal = false;
-      alerts.reqSuccessToast('Éxito', 'Proveedor creado correctamente');
-    }, 1000);
+    }
+  }
+
+  private openNewProviderOverlay(): void {
+    this.closeNewProviderOverlay();
+    this.showNewProviderModal = true;
+
+    const backdrop = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(backdrop, 'position', 'fixed');
+    this.renderer.setStyle(backdrop, 'inset', '0');
+    this.renderer.setStyle(backdrop, 'background', 'rgba(0,0,0,0.55)');
+    this.renderer.setStyle(backdrop, 'z-index', '999999');
+    this.renderer.setStyle(backdrop, 'display', 'flex');
+    this.renderer.setStyle(backdrop, 'align-items', 'center');
+    this.renderer.setStyle(backdrop, 'justify-content', 'center');
+
+    const modal = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(modal, 'width', '420px');
+    this.renderer.setStyle(modal, 'max-width', '95vw');
+    this.renderer.setStyle(modal, 'background', '#fff');
+    this.renderer.setStyle(modal, 'border-radius', '10px');
+    this.renderer.setStyle(modal, 'box-shadow', '0 18px 55px rgba(0,0,0,0.45)');
+    this.renderer.setStyle(modal, 'overflow', 'hidden');
+    this.renderer.setStyle(modal, 'position', 'relative');
+
+    // header
+    const header = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(header, 'background', '#0d6efd');
+    this.renderer.setStyle(header, 'color', '#fff');
+    this.renderer.setStyle(header, 'padding', '12px 16px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'justify-content', 'space-between');
+
+    const title = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(title, 'font-weight', '700');
+    this.renderer.setStyle(title, 'display', 'flex');
+    this.renderer.setStyle(title, 'align-items', 'center');
+    this.renderer.setStyle(title, 'gap', '8px');
+    const icon = this.renderer.createElement('i');
+    this.renderer.addClass(icon, 'bi');
+    this.renderer.addClass(icon, 'bi-building-add');
+    this.renderer.appendChild(title, icon);
+    this.renderer.appendChild(title, this.renderer.createText('Nuevo Proveedor'));
+
+    const closeBtn = this.renderer.createElement('button') as HTMLButtonElement;
+    this.renderer.setAttribute(closeBtn, 'type', 'button');
+    this.renderer.addClass(closeBtn, 'btn-close');
+    this.renderer.addClass(closeBtn, 'btn-close-white');
+    this.renderer.appendChild(header, title);
+    this.renderer.appendChild(header, closeBtn);
+
+    // body
+    const body = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(body, 'padding', '16px');
+
+    const mkField = (labelText: string, placeholder: string, value: string, onChange: (v: string) => void, type: string = 'text') => {
+      const wrap = this.renderer.createElement('div') as HTMLElement;
+      this.renderer.setStyle(wrap, 'margin-bottom', '10px');
+      const label = this.renderer.createElement('label') as HTMLElement;
+      this.renderer.setStyle(label, 'font-size', '12px');
+      this.renderer.setStyle(label, 'font-weight', '700');
+      this.renderer.setStyle(label, 'margin-bottom', '4px');
+      this.renderer.setStyle(label, 'display', 'block');
+      this.renderer.appendChild(label, this.renderer.createText(labelText));
+      const input = this.renderer.createElement('input') as HTMLInputElement;
+      this.renderer.setAttribute(input, 'type', type);
+      this.renderer.addClass(input, 'form-control');
+      this.renderer.addClass(input, 'form-control-sm');
+      this.renderer.setProperty(input, 'value', value || '');
+      this.renderer.setAttribute(input, 'placeholder', placeholder);
+      this.renderer.appendChild(wrap, label);
+      this.renderer.appendChild(wrap, input);
+      const un = this.renderer.listen(input, 'input', (ev: any) => onChange(String(ev?.target?.value ?? '')));
+      this.newProviderOverlayUnlisteners.push(un);
+      return wrap;
+    };
+
+    body.appendChild(mkField('Compañía *', 'Nombre de la empresa', this.newProvider.company, (v) => {
+      this.newProvider.company = v;
+      this.companyDuplicateWarning = '';
+    }));
+    body.appendChild(mkField('Contacto principal', 'Nombre del contacto', this.newProvider.nameContact, (v) => this.newProvider.nameContact = v));
+    body.appendChild(mkField('Teléfono', '10 dígitos', this.newProvider.phone, (v) => this.newProvider.phone = v));
+    body.appendChild(mkField('Correo', 'correo@ejemplo.com', this.newProvider.email, (v) => { this.newProvider.email = v; this.emailInvalid = false; }, 'email'));
+
+    // footer
+    const footer = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(footer, 'padding', '10px 16px');
+    this.renderer.setStyle(footer, 'border-top', '1px solid #dee2e6');
+    this.renderer.setStyle(footer, 'display', 'flex');
+    this.renderer.setStyle(footer, 'justify-content', 'flex-end');
+    this.renderer.setStyle(footer, 'gap', '8px');
+
+    const cancel = this.renderer.createElement('button') as HTMLButtonElement;
+    this.renderer.setAttribute(cancel, 'type', 'button');
+    this.renderer.addClass(cancel, 'btn');
+    this.renderer.addClass(cancel, 'btn-sm');
+    this.renderer.addClass(cancel, 'btn-secondary');
+    this.renderer.appendChild(cancel, this.renderer.createText('Cancelar'));
+
+    const create = this.renderer.createElement('button') as HTMLButtonElement;
+    this.renderer.setAttribute(create, 'type', 'button');
+    this.renderer.addClass(create, 'btn');
+    this.renderer.addClass(create, 'btn-sm');
+    this.renderer.addClass(create, 'btn-primary');
+    this.renderer.appendChild(create, this.renderer.createText('Crear Proveedor'));
+
+    // listeners
+    this.newProviderOverlayUnlisteners.push(this.renderer.listen(closeBtn, 'click', () => this.closeNewProviderOverlay()));
+    this.newProviderOverlayUnlisteners.push(this.renderer.listen(cancel, 'click', () => this.closeNewProviderOverlay()));
+    this.newProviderOverlayUnlisteners.push(this.renderer.listen(backdrop, 'click', () => this.closeNewProviderOverlay()));
+    this.newProviderOverlayUnlisteners.push(this.renderer.listen(modal, 'click', (e: Event) => e.stopPropagation()));
+    this.newProviderOverlayUnlisteners.push(this.renderer.listen(create, 'click', () => {
+      if (!String(this.newProvider.company || '').trim()) return;
+      void this.confirmNewProvider();
+    }));
+
+    this.renderer.appendChild(footer, cancel);
+    this.renderer.appendChild(footer, create);
+
+    this.renderer.appendChild(modal, header);
+    this.renderer.appendChild(modal, body);
+    this.renderer.appendChild(modal, footer);
+
+    this.renderer.appendChild(backdrop, modal);
+    this.renderer.appendChild(document.body, backdrop);
+    this.newProviderOverlayEl = backdrop;
+  }
+
+  private closeNewProviderOverlay(): void {
+    this.showNewProviderModal = false;
+    this.newProviderOverlayUnlisteners.forEach(fn => {
+      try { fn(); } catch {}
+    });
+    this.newProviderOverlayUnlisteners = [];
+    if (this.newProviderOverlayEl) {
+      try { this.renderer.removeChild(document.body, this.newProviderOverlayEl); } catch {}
+      this.newProviderOverlayEl = null;
+    }
   }
 }
