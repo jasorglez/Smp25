@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\SMP0.props" />
-</Project>
