@@ -113,7 +113,7 @@ export class OcAndReqsService {
     return this.http.patch(
       `${environment.urlWarehouse}/Detailsreqoc/${id}/typeoc`,
       JSON.stringify(typeOc),
-      { headers: { ...this.trackingService.getHeaders(), 'Content-Type': 'application/json' } }
+      { headers: this.trackingService.getHeaders() }
     );
   }
 
@@ -133,8 +133,24 @@ export class OcAndReqsService {
   patchCantidadConceptualizada(id: number, cantidad: number): Observable<any> {
     return this.http.patch(
       `${environment.urlWarehouse}/Detailsreqoc/${id}/cantidad-conceptualizada`,
-      cantidad,
-      { headers: { ...this.trackingService.getHeaders(), 'Content-Type': 'application/json' } }
+      JSON.stringify(cantidad),
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  patchProveedorXTablaCampo7(campo1: number, idTabla: number, valor: boolean): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/ProveedorXTabla/campo7/by-material-provider/${campo1}/${idTabla}`,
+      JSON.stringify(valor),
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  deactivateProveedorForMaterial(campo1: number, idTabla: number): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/ProveedorXTabla/deactivate-for-material/${campo1}/${idTabla}`,
+      {},
+      { headers: this.trackingService.getHeaders() }
     );
   }
 

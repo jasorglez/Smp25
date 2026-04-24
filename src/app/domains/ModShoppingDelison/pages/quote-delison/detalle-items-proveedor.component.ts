@@ -75,11 +75,6 @@ pdfMake.vfs = pdfFonts.vfs;
         <button type="button" class="btn btn-sm btn-danger" (click)="deleteItem()" [disabled]="ocGenerated" title="Eliminar">
           <i class="bi bi-trash"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-primary ms-2" (click)="generateOC()" [disabled]="generatingOC || !cotizacionSaved || ocGenerated || !hasRowsWithTypeOC" title="Generar Orden de Compra">
-          <span *ngIf="generatingOC" class="spinner-border spinner-border-sm me-1"></span>
-          <i *ngIf="!generatingOC" class="bi bi-file-earmark-check me-1"></i>
-          {{ generatingOC ? 'Generando...' : 'Generar OC' }}
-        </button>
       </div>
 
       <!-- Grid con tamaño completo -->
@@ -618,14 +613,14 @@ export class DetalleItemsProveedorComponent {
       { field: 'numArticulo', headerName: '# Art', width: 130 },
       { field: 'articulo', headerName: 'Artículo', width: 140 },
       { field: 'codigoExterno', headerName: 'Cód. Externo', width: 120, editable: true },
-      { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: true },
       { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 120, editable: true },
+      { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: true },
       { field: 'costoUnitario', headerName: 'Costo Unit.', width: 130, editable: true, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 130, editable: true },
+      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 130, editable: true, hide: true },
       { field: 'costoTotal', headerName: 'Costo Total', width: 150, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
       { headerName: 'Comentarios💬', width: 140, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || '', locked: this.ocGenerated }) },
-      { field: 'typeOC', headerName: 'Tipo OC', width: 220, editable: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
-      { field: 'oc', headerName: 'OC', width: 80, editable: true }
+      { field: 'typeOC', headerName: 'Tipo OC', width: 220, editable: true, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
+      { field: 'oc', headerName: 'OC', width: 80, editable: true, hide: true }
     ];
     if (this.ocGenerated) this._colDefs = this._colDefs.map(col => ({ ...col, editable: false }));
     return this._colDefs;

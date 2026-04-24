@@ -537,6 +537,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     if (this.rowData.length === 0) return;
 
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
 
     // 1. Guardar typeOc por slot COTIZ (independiente por proveedor)
     for (const row of this.rowData) {
@@ -546,6 +547,24 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         ).catch(e =>
           console.warn(`⚠️ No se pudo guardar typeOc para slotItem ${row.slotItemId}:`, e)
         );
+
+        // Si el tipo es positivo, desmarcar "Por autorizar" en proveedorxtablas
+        if (AUTHORIZED.includes(row.tipoOc) && row.idSupplie > 0 && row.proveedorId > 0) {
+          await lastValueFrom(
+            this.ocAndReqsService.patchProveedorXTablaCampo7(row.idSupplie, row.proveedorId, false)
+          ).catch(e =>
+            console.warn(`⚠️ No se pudo desmarcar "Por autorizar" para material ${row.idSupplie} proveedor ${row.proveedorId}:`, e)
+          );
+        }
+
+        // Si el tipo es NEGATIVO, desactivar proveedor y sucursales para este material
+        if (NOT_AUTHORIZED.includes(row.tipoOc) && row.idSupplie > 0 && row.proveedorId > 0) {
+          await lastValueFrom(
+            this.ocAndReqsService.deactivateProveedorForMaterial(row.idSupplie, row.proveedorId)
+          ).catch(e =>
+            console.warn(`⚠️ No se pudo desactivar proveedor para material ${row.idSupplie} proveedor ${row.proveedorId}:`, e)
+          );
+        }
       }
     }
 
