@@ -5,30 +5,12 @@ import { MenuService } from 'app/services/menu.service';
 import { AuthService } from 'app/services/auth.service';
 
 @Component({
-  selector: 'app-molienda',
+  selector: 'app-procmenumolienda',
   standalone: true,
   imports: [CommonModule, RouterModule],
-  template: `
-    <div class="col-md-12">
-      <div class="card mt-3">
-        <div class="card-header p-2">
-          <ul class="nav nav-pills nav-level-2">
-            <ng-container *ngFor="let tab of tabMenus">
-              <li class="nav-item"
-                  *ngIf="authService.hasSubDetailedPermission('production', 'molienda_princ', tab.identifier)">
-                <a class="nav-link" [routerLink]="tab.route" routerLinkActive="active">
-                  <i [class]="tab.icon"></i> {{ tab.permissionName }}
-                </a>
-              </li>
-            </ng-container>
-          </ul>
-          <router-outlet></router-outlet>
-        </div>
-      </div>
-    </div>
-  `,
+  templateUrl: './procmenumolienda.component.html',
 })
-export class MoliendaComponent implements OnInit {
+export class ProcmenumoliendaComponent implements OnInit {
   authService = inject(AuthService);
   private menuService = inject(MenuService);
 

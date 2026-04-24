@@ -19,10 +19,17 @@
   
       <!-- Columna de la tabla -->
       <div class="col">
-        <ag-grid-angular style="width: 100%" [ngStyle]="{ height: gridHeight }" class="ag-theme-quartz small-text-ag-grid"
-          [rowData]="rowData" [columnDefs]="colDetail" (selectionChanged)="onSelectionChanged($event)"
-          [gridOptions]="gridOptions" (cellValueChanged)="onCellValueChanged($event)"
-          (rowSelected)="onSelectedRow($event)" (gridReady)="onGridReady($event)" [pagination]="false"
+        <ag-grid-angular style="width: 100%" 
+          [ngStyle]="{ height: gridHeight }" 
+          class="ag-theme-quartz small-text-ag-grid"
+          [rowData]="rowData"
+          [columnDefs]="colDetail" 
+          (selectionChanged)="onSelectionChanged($event)"
+          [gridOptions]="gridOptions" 
+          (cellValueChanged)="onCellValueChanged($event)"
+          (rowSelected)="onSelectedRow($event)" 
+          (gridReady)="onGridReady($event)" 
+          [pagination]="false"
         [components]="components">
         </ag-grid-angular>
       </div>
