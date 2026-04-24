@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { forkJoin } from 'rxjs';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { CatalogsService } from '../../../../services/catalogs.service';
 import { MaterialsService } from '../../../../services/materials.service';
 import { MaterialXModuloService } from '../../../../services/materialxmodulo.service';
@@ -20,7 +21,25 @@ interface CatalogItem {
 @Component({
   selector: 'app-catalogosproduccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular],
+  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component],
+  styles: [`
+    .toast-mini {
+      display: inline-block;
+      background: #198754;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 6px;
+      animation: fadeInOut 1.5s ease forwards;
+    }
+    @keyframes fadeInOut {
+      0%   { opacity: 0; transform: translateY(-4px); }
+      15%  { opacity: 1; transform: translateY(0); }
+      75%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  `],
   template: `
     <div class="col-md-12">
       <div class="card mt-3">
@@ -59,6 +78,9 @@ interface CatalogItem {
             </p>
 
             <ng-container *ngIf="selectedType">
+
+              <!-- TOAST -->
+              <div *ngIf="toastMsg()" class="toast-mini">{{ toastMsg() }}</div>
 
               <!-- BOTONES CRUD -->
               <div class="d-flex gap-2 mb-2 col-md-6">
@@ -118,15 +140,16 @@ export class CatalogosProduccionComponent {
   selectedType      = '';
   hasUnsavedChanges = false;
   selectedRow: any  = null;
+  toastMsg          = signal('');
   tree              = signal<CatalogItem[]>([]);
   rowData           = signal<any[]>([]);
   private originalRowData: any[] = [];
   gridApi!: GridApi;
   private idRoot = 0;
-  private materialesValues: string[] = [];
-  private materialesDescToId = new Map<string, number>();
+  private materiales: any[] = [];
+  private materialesIdToDesc = new Map<number, string>();
   private enterPressed = false;
-  private editableColumnOrder = ['articulo'];
+  private editableColumnOrder = ['idArticulo'];
 
   tabs = [
     { key: 'molienda',     label: 'Molienda' },
@@ -139,12 +162,20 @@ export class CatalogosProduccionComponent {
   columnDefs: ColDef[] = [
     {
       headerName: 'Articulos',
-      field: 'articulo',
+      field: 'idArticulo',
       flex: 1,
       minWidth: 150,
       editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({ values: this.materialesValues }),
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => {
+        const usados = new Set(this.rowData().map((r: any) => r.idArticulo).filter(Boolean));
+        return {
+          options: this.materiales
+            .filter(m => !usados.has(m.id))
+            .map(m => ({ id: m.id, description: m.description })),
+        };
+      },
+      valueFormatter: (p: any) => this.materialesIdToDesc.get(p.value) ?? '',
     },
     {
       headerName: 'Valor',
@@ -184,6 +215,11 @@ export class CatalogosProduccionComponent {
 
   onGridReady(params: GridReadyEvent) { this.gridApi = params.api; }
 
+  private showToast(msg: string) {
+    this.toastMsg.set(msg);
+    setTimeout(() => this.toastMsg.set(''), 1500);
+  }
+
   onRowClicked(event: any)        { this.selectedRow = event.data; }
   onCellValueChanged(event: any)  {
     if (!event.data.__isNew) {
@@ -214,10 +250,9 @@ export class CatalogosProduccionComponent {
 
   loadMateriales(idRoot: number) {
     this.materialsService.getMaterials2Fields(idRoot).subscribe((res: any) => {
-      const list: any[] = res ?? [];
-      this.materialesValues = list.map(m => m.description);
-      this.materialesDescToId.clear();
-      list.forEach(m => this.materialesDescToId.set(m.description, m.id));
+      this.materiales = res ?? [];
+      this.materialesIdToDesc.clear();
+      this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.description));
     });
   }
 
@@ -233,31 +268,23 @@ export class CatalogosProduccionComponent {
   loadGridData(type: string) {
     this.mxmService.getByType(this.idRoot, type).subscribe((modulos: any[]) => {
       const rows = (modulos ?? []).map(m => ({
-        id:        m.id,
+        id:         m.id,
         idArticulo: m.idArticulo,
-        articulo:  this.getDescById(m.idArticulo),
-        valor:     m.active,
+        valor:      m.active,
       }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
       this.rowData.set(rows);
     });
   }
 
-  private getDescById(id: number): string {
-    for (const [desc, mid] of this.materialesDescToId) {
-      if (mid === id) return desc;
-    }
-    return `(id: ${id})`;
-  }
-
   add() {
-    const newRow = { id: null, idArticulo: null, articulo: '', valor: false, __isNew: true };
+    const newRow = { id: null, idArticulo: null, valor: false, __isNew: true };
     const updated = [newRow, ...this.rowData()];
     this.rowData.set(updated);
     this.hasUnsavedChanges = true;
     setTimeout(() => {
-      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'articulo' });
-    }, 100);
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idArticulo' });
+    }, 0);
   }
 
   async saveChanges() {
@@ -267,7 +294,7 @@ export class CatalogosProduccionComponent {
       .map(r => {
         const payload = {
           idCompany:  this.idRoot,
-          idArticulo: this.materialesDescToId.get(r.articulo) ?? r.idArticulo,
+          idArticulo: r.idArticulo,
           cantidad:   1,
           type:       this.selectedType,
           active:     r.valor,
@@ -280,6 +307,7 @@ export class CatalogosProduccionComponent {
     if (saves.length === 0) return;
     forkJoin(saves).subscribe(() => {
       this.hasUnsavedChanges = false;
+      this.showToast('Guardado');
       this.loadGridData(this.selectedType);
     });
   }
@@ -300,6 +328,7 @@ export class CatalogosProduccionComponent {
     }
     this.mxmService.delete(this.selectedRow.id).subscribe(() => {
       this.selectedRow = null;
+      this.showToast('Borrado');
       this.loadGridData(this.selectedType);
     });
   }
