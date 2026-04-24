@@ -11,7 +11,6 @@ export interface MaterialJarabeConfig {
   prefijoNota?: string | null;
   consecutivoNota?: number | null;
   prefijoLote?: string | null;
-  consecutivoLote?: number | null;
   active?: boolean;
 }
 

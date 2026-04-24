@@ -66,7 +66,7 @@ import { ProductionService, MaterialJarabeConfig } from 'app/services/production
           </div>
         </fieldset>
 
-        <!-- Campos de Lote -->
+        <!-- Prefijo Lote -->
         <fieldset [disabled]="!config.usarEnJarabe" style="border: 1px solid #ced4da; border-radius: 4px; padding: 10px 14px;">
           <legend style="font-size: 0.85rem; width: auto; padding: 0 6px; margin-bottom: 6px;">Lote</legend>
           <div style="display: flex; gap: 12px; align-items: flex-end;">
@@ -80,17 +80,6 @@ import { ProductionService, MaterialJarabeConfig } from 'app/services/production
                 [disabled]="!config.usarEnJarabe"
                 maxlength="50"
                 placeholder="Ej. LT-"
-              />
-            </div>
-            <div class="mb-0">
-              <label class="form-label form-label-sm mb-1">Consecutivo</label>
-              <input
-                type="number"
-                class="form-control form-control-sm"
-                style="width: 100px;"
-                [(ngModel)]="config.consecutivoLote"
-                [disabled]="!config.usarEnJarabe"
-                min="0"
               />
             </div>
           </div>
@@ -126,7 +115,6 @@ export class DetailCellRendererJarabeComponent implements ICellRendererAngularCo
     prefijoNota: null,
     consecutivoNota: 0,
     prefijoLote: null,
-    consecutivoLote: 0
   };
 
   agInit(params: any): void {
@@ -150,7 +138,6 @@ export class DetailCellRendererJarabeComponent implements ICellRendererAngularCo
           prefijoNota: data?.prefijoNota ?? null,
           consecutivoNota: data?.consecutivoNota ?? 0,
           prefijoLote: data?.prefijoLote ?? null,
-          consecutivoLote: data?.consecutivoLote ?? 0
         };
         this.loading = false;
       },
@@ -165,7 +152,6 @@ export class DetailCellRendererJarabeComponent implements ICellRendererAngularCo
       this.config.prefijoNota = null;
       this.config.consecutivoNota = 0;
       this.config.prefijoLote = null;
-      this.config.consecutivoLote = 0;
     }
   }
 
@@ -183,7 +169,6 @@ export class DetailCellRendererJarabeComponent implements ICellRendererAngularCo
           prefijoNota: result.prefijoNota ?? null,
           consecutivoNota: result.consecutivoNota ?? 0,
           prefijoLote: result.prefijoLote ?? null,
-          consecutivoLote: result.consecutivoLote ?? 0
         };
         this.loading = false;
         alerts.basicAlert('Guardado', 'Configuración de jarabe guardada correctamente.', 'success');

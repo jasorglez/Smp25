@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ConfiguracionPageComponent } from './configuracion-page/configuracion-page.component';
 
 @Component({
   selector: 'app-configuracion-prod',
   standalone: true,
-  imports: [CommonModule, ConfiguracionPageComponent],
+  imports: [CommonModule],
   template: `
     <div class="col-md-12">
       <div class="card mt-3">
@@ -20,7 +19,7 @@ import { ConfiguracionPageComponent } from './configuracion-page/configuracion-p
         </div>
         <div class="card-body p-0">
           <p *ngIf="activeTab === 'molienda'" class="p-3">Molienda — en construcción</p>
-          <app-configuracion-page *ngIf="activeTab === 'preparacion1'"></app-configuracion-page>
+          <p *ngIf="activeTab === 'preparacion1'" class="p-3">Preparacion 1 — en construcción</p>
           <p *ngIf="activeTab === 'preparacion2'" class="p-3">Preparacion 2 — en construcción</p>
           <p *ngIf="activeTab === 'cerveza'" class="p-3">Cerveza — en construcción</p>
           <p *ngIf="activeTab === 'envasado'" class="p-3">Envasado — en construcción</p>
