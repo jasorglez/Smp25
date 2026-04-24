@@ -113,6 +113,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         articulos: pedimento.items,
         cotizacionId: pedimento.id,
         requisitionId: this.params.data.id,
+        idBranch: this.params.data.idReference, // ✅ ID de la sucursal (Nivel 1)
+        branchName: this.params.data.branch,   // ✅ Nombre de la sucursal (Nivel 1)
         numeroPedimentoRaw: numeroPedimento,
         idProvider: pedimento.idProvider || 0,
         idProvider2: pedimento.idProvider2 || 0,
