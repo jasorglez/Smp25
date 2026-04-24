@@ -5,7 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { PreparacionService } from 'app/services/preparacion.service';
+import { ProductionService } from 'app/services/production.service';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
@@ -64,7 +64,7 @@ import { lastValueFrom } from 'rxjs';
   `]
 })
 export class HistorialJarabeComponent implements OnInit, OnChanges {
-  private preparacionService = inject(PreparacionService);
+  private preparacionService = inject(ProductionService);
 
   @Input() params: any;
   private internalParams: any;

@@ -6,7 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { ParametrosComponent } from './parametros.component';
-import { PreparacionService } from 'app/services/preparacion.service';
+import { ProductionService } from 'app/services/production.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -68,7 +68,7 @@ import { lastValueFrom } from 'rxjs';
   `]
 })
 export class DetalleJarabeComponent implements OnInit, OnChanges {
-  private preparacionService = inject(PreparacionService);
+  private preparacionService = inject(ProductionService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
 
