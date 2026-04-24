@@ -172,7 +172,7 @@ export class CatalogosProduccionComponent {
         return {
           options: this.materiales
             .filter(m => !usados.has(m.id))
-            .map(m => ({ id: m.id, description: m.description })),
+            .map(m => ({ id: m.id, description: m.articulo })),
         };
       },
       valueFormatter: (p: any) => this.materialesIdToDesc.get(p.value) ?? '',
@@ -249,10 +249,10 @@ export class CatalogosProduccionComponent {
   }
 
   loadMateriales(idRoot: number) {
-    this.materialsService.getMaterials2Fields(idRoot).subscribe((res: any) => {
+    this.materialsService.getMaterialsxview(idRoot).subscribe((res: any) => {
       this.materiales = res ?? [];
       this.materialesIdToDesc.clear();
-      this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.description));
+      this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
     });
   }
 

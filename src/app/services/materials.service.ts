@@ -23,6 +23,7 @@ export class MaterialsService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+    
 
   getMaterialsxview(idRoot: number): Observable<MaterialsResponse[]> {
     return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/with-counts/${idRoot}`,
