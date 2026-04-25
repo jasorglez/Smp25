@@ -64,6 +64,8 @@ export class DetallesPedidosComponent implements OnInit {
   /** Enter visto en captura (popup Rich Select no dispara cellKeyDown del grid) */
   private sawEnterDuringEdit = false;
   private enterCapture?: (ev: KeyboardEvent) => void;
+  /** Bloquea la navegación Enter mientras el Swal de recepción parcial está abierto */
+  private handlingPartialReceipt = false;
 
   /** Un frame: abrir Producto tras Enter en Cliente; el editor ignora el Enter “fantasma” en el input */
   skipFirstEnterOnProductoEditor = false;
@@ -555,7 +557,7 @@ get colDefs(): ColDef[] {
         this.enterCapture = undefined;
       }
 
-      if (this.isLocked) return;
+      if (this.isLocked || this.handlingPartialReceipt) return;
 
       const colId = event.column?.getColId?.() ?? event.colDef?.field;
       const nextColId = this.NEXT_EDIT_COL[colId];
@@ -684,51 +686,34 @@ get colDefs(): ColDef[] {
       return;
     }
 
-    // Validación: cliente + producto + plataforma duplicados en el mismo pedido
-    const normalizeKeyPart = (v: any) => String(v ?? '').trim().toUpperCase();
+    // Duplicado: misma combinación cliente + producto + plataforma + estado
+    const norm = (v: any) => String(v ?? '').trim().toUpperCase();
     const groups = new Map<string, any[]>();
     for (const r of this.rowData) {
-      const clienteKey = normalizeKeyPart(r?.idCliente);
-      const productoKey = normalizeKeyPart(r?.producto);
-      const plataformaKey = normalizeKeyPart(r?.plataforma);
-      if (!clienteKey || !productoKey || !plataformaKey) continue;
-      const key = `${clienteKey}||${productoKey}||${plataformaKey}`;
-      const arr = groups.get(key) ?? [];
+      const k = `${norm(r?.idCliente)}||${norm(r?.producto)}||${norm(r?.plataforma)}||${norm(r?.estado)}`;
+      const arr = groups.get(k) ?? [];
       arr.push(r);
-      groups.set(key, arr);
+      groups.set(k, arr);
     }
 
     const duplicates = [...groups.values()].filter(arr => arr.length > 1);
     if (duplicates.length > 0) {
-      const msg =
-        'Este cliente ya está registrado con este producto en la misma plataforma.\n\n' +
-        '¿Quieres aumentar la cantidad (sumar) y eliminar duplicados?';
-
       const result = await alerts.confirmAlert(
         'Duplicado detectado',
-        msg,
+        'Este cliente ya tiene el mismo producto, plataforma y estado más de una vez.\n\n¿Quieres sumar las cantidades y eliminar los duplicados?',
         'warning',
         'Sí, aumentar cantidad'
       );
-
       if (!result?.isConfirmed) return;
 
-      // Merge: suma cantidades y elimina duplicados (en UI y backend si aplica)
       for (const arr of duplicates) {
         const keep = arr.find(r => !r.__isNew && r?.id) ?? arr[0];
-        const totalCantidad = arr.reduce((sum, r) => sum + (Number(r?.cantidad) || 0), 0);
-        keep.cantidad = totalCantidad > 0 ? totalCantidad : 1;
+        keep.cantidad = arr.reduce((sum, r) => sum + (Number(r?.cantidad) || 0), 0) || 1;
         keep.__modified = true;
-
         for (const r of arr) {
           if (r === keep) continue;
-          // Si ya existía en backend, lo eliminamos para evitar duplicados
           if (!r.__isNew && r?.id && this.context?.pedidosService?.deleteDetalle) {
-            try {
-              await lastValueFrom(this.context.pedidosService.deleteDetalle(r.id));
-            } catch (e) {
-              console.error('Error eliminando duplicado:', e);
-            }
+            try { await lastValueFrom(this.context.pedidosService.deleteDetalle(r.id)); } catch {}
           }
           this.rowData = this.rowData.filter(x => x !== r);
         }
@@ -800,6 +785,9 @@ get colDefs(): ColDef[] {
   private async handlePartialReceipt(event: any, wasModified: boolean): Promise<void> {
     const totalCantidad = Number(event.data.cantidad) || 1;
 
+    this.handlingPartialReceipt = true;
+    this.gridApi?.stopEditing();
+
     const result = await Swal.fire({
       title: 'Recepción de mercancía',
       html: `¿Cuántas piezas se reciben?<br><small>Cantidad del ítem: <b>${totalCantidad}</b></small>`,
@@ -824,6 +812,7 @@ get colDefs(): ColDef[] {
     });
 
     if (!result.isConfirmed) {
+      this.handlingPartialReceipt = false;
       // Revertir estado
       event.data.estado = event.oldValue || 'SOLICITADO';
       if (!wasModified) event.data.__modified = false;
@@ -836,7 +825,10 @@ get colDefs(): ColDef[] {
     const cantidadRecibida = Number(result.value);
     const cantidadRestante = totalCantidad - cantidadRecibida;
 
-    if (cantidadRestante <= 0) return; // Recibe todo → sin cambios adicionales
+    if (cantidadRestante <= 0) {
+      this.handlingPartialReceipt = false;
+      return; // Recibe todo → sin cambios adicionales
+    }
 
     // Recepción parcial: ajustar fila actual y crear fila pendiente
     event.data.cantidad = cantidadRecibida;
@@ -866,6 +858,7 @@ get colDefs(): ColDef[] {
     this.gridApi?.setGridOption('rowData', this.rowData);
     this.gridApi?.refreshCells({ force: true });
     this.notifyTotalVentaToParent();
+    this.handlingPartialReceipt = false;
   }
 
   private notifyTotalVentaToParent(): void {
