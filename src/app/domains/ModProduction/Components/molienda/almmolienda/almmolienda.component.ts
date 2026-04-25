@@ -208,6 +208,24 @@ export class AlmmoliendaComponent {
       cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer' }
     },
     {
+      headerName: 'Total Entradas',
+      field: 'totalEntradas',
+      width: 130,
+      editable: false,
+      type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? String(Math.trunc(p.value)) : '—',
+      cellStyle: { backgroundColor: '#e8f5e9', fontWeight: '600', color: '#2e7d32' }
+    },
+    {
+      headerName: 'Total Salidas',
+      field: 'totalSalidas',
+      width: 130,
+      editable: false,
+      type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? String(Math.trunc(p.value)) : '—',
+      cellStyle: { backgroundColor: '#fce4ec', fontWeight: '600', color: '#c62828' }
+    },
+    {
       headerName: 'Total Inventarios',
       field: 'totalInventarios',
       width: 150,
@@ -377,6 +395,8 @@ export class AlmmoliendaComponent {
       id_articulo:        nombreMaterial,
       entradas:           i.entradas     ?? 0,
       salidas:            i.salidas      ?? 0,
+      totalEntradas:      (i as any).totalEntradas ?? null,
+      totalSalidas:       (i as any).totalSalidas  ?? null,
       totalInventarios:   i.totalInventarios   ?? 0,
       ajustesInventarios: i.ajustesInventarios ?? 0,
       comentarios:        i.comentarios  ?? '',
@@ -443,6 +463,8 @@ export class AlmmoliendaComponent {
       id_articulo: '',
       entradas: 0,
       salidas: 0,
+      totalEntradas: null,
+      totalSalidas: null,
       totalInventarios: 0,
       ajustesInventarios: 0,
       comentarios: '',
@@ -476,6 +498,7 @@ export class AlmmoliendaComponent {
       const saved = newRows.length + modifiedRows.length;
       this.hasUnsavedChanges = false;
       this.originalRowData   = JSON.parse(JSON.stringify(this.rowData()));
+      if (this.gridApi) this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
       this.showToast(`${saved} registro(s) guardado(s)`);
     } catch (error) {
       console.error('Error saving molienda:', error);

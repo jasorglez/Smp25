@@ -97,7 +97,6 @@ export class DetalleMoliendaComponent {
     {
       field: 'cantidad',
       headerName: 'Cantidad',
-      flex: 1,
       minWidth: 120,
       editable: true,
       type: 'numericColumn',
@@ -159,10 +158,10 @@ export class DetalleMoliendaComponent {
       const type = this.detailType === 'entradas' ? 'ENTRADA' : 'SALIDA';
       const items = await lastValueFrom(this.moliendaService.getDetails(idMolienda, type));
       this.rowData = (Array.isArray(items) ? items : []).map(d => ({
-        id:       d.id,
-        fecha:    d.fecha ? new Date(d.fecha as string) : null,
+        id: d.id,
+        fecha: d.fecha ? new Date(d.fecha as string) : null,
         cantidad: d.cantidad ?? 0,
-        __isNew:  false, __modified: false,
+        __isNew: false, __modified: false,
       }));
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       if (this.gridApi && !this.gridApi.isDestroyed())
@@ -208,27 +207,37 @@ export class DetalleMoliendaComponent {
     }
 
     const type = this.detailType === 'entradas' ? 'ENTRADA' : 'SALIDA';
-    const newRows      = this.rowData.filter(r => r.__isNew);
+    const newRows = this.rowData.filter(r => r.__isNew);
     const modifiedRows = this.rowData.filter(r => r.__modified && !r.__isNew);
     if (newRows.length === 0 && modifiedRows.length === 0) return;
+
+    // Validar stock disponible para salidas
+    if (this.detailType === 'salidas') {
+      const rowsToValidate = [...newRows, ...modifiedRows];
+      const error = await this.validateSalidas(idMolienda, rowsToValidate);
+      if (error) {
+        alerts.basicAlert('Stock insuficiente', error, 'warning');
+        return;
+      }
+    }
 
     try {
       for (const row of newRows) {
         const payload: DetailsMolienda = {
           idMolienda,
           type,
-          fecha:    row.fecha instanceof Date ? row.fecha.toISOString().substring(0, 10) : (row.fecha ?? null),
+          fecha: row.fecha instanceof Date ? row.fecha.toISOString().substring(0, 10) : (row.fecha ?? null),
           cantidad: row.cantidad ?? 0,
         };
         const created = await lastValueFrom(this.moliendaService.createDetail(payload));
-        row.id      = created.id;
+        row.id = created.id;
         row.__isNew = false;
       }
       for (const row of modifiedRows) {
         const payload: DetailsMolienda = {
           idMolienda,
           type,
-          fecha:    row.fecha instanceof Date ? row.fecha.toISOString().substring(0, 10) : (row.fecha ?? null),
+          fecha: row.fecha instanceof Date ? row.fecha.toISOString().substring(0, 10) : (row.fecha ?? null),
           cantidad: row.cantidad ?? 0,
         };
         await lastValueFrom(this.moliendaService.updateDetail(row.id, payload));
@@ -236,7 +245,7 @@ export class DetalleMoliendaComponent {
       }
 
       this.hasUnsavedChanges = false;
-      this.originalRowData   = JSON.parse(JSON.stringify(this.rowData));
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       if (this.gridApi) this.gridApi.setGridOption('rowData', [...this.rowData]);
       this.updateParentCount();
     } catch (error) {
@@ -279,30 +288,75 @@ export class DetalleMoliendaComponent {
     }
   }
 
+  private async validateSalidas(idMolienda: number, rowsToSave: any[]): Promise<string | null> {
+    const [entradasDB, salidasDB] = await Promise.all([
+      lastValueFrom(this.moliendaService.getDetails(idMolienda, 'ENTRADA')),
+      lastValueFrom(this.moliendaService.getDetails(idMolienda, 'SALIDA')),
+    ]);
+
+    // Salidas ya guardadas en DB (sin las que estamos por guardar ahora)
+    const savedIds = new Set(rowsToSave.map(r => r.id).filter(Boolean));
+    const salidasBase = salidasDB.filter(s => !savedIds.has(s.id));
+
+    // Validar cada fila a guardar en orden de fecha
+    const sorted = [...rowsToSave].sort((a, b) => {
+      const fa = a.fecha instanceof Date ? a.fecha : new Date(a.fecha);
+      const fb = b.fecha instanceof Date ? b.fecha : new Date(b.fecha);
+      return fa.getTime() - fb.getTime();
+    });
+
+    // Acumular las nuevas salidas ya validadas en esta misma sesión
+    const pendingSalidas: { fecha: Date; cantidad: number }[] = [];
+
+    for (const row of sorted) {
+      const fecha = row.fecha instanceof Date ? row.fecha : new Date(row.fecha);
+      const cantidad = Number(row.cantidad) || 0;
+
+      const sumEntradas = entradasDB
+        .filter(e => e.fecha && new Date(e.fecha as string) <= fecha)
+        .reduce((acc, e) => acc + (Number(e.cantidad) || 0), 0);
+
+      const sumSalidasDB = salidasBase
+        .filter(s => s.fecha && new Date(s.fecha as string) <= fecha)
+        .reduce((acc, s) => acc + (Number(s.cantidad) || 0), 0);
+
+      const sumPending = pendingSalidas
+        .filter(p => p.fecha <= fecha)
+        .reduce((acc, p) => acc + p.cantidad, 0);
+
+      const disponible = sumEntradas - sumSalidasDB - sumPending;
+
+      if (cantidad > disponible) {
+        const fechaStr = fecha.toLocaleDateString('es-MX');
+        return `Al ${fechaStr}, el stock disponible es <b>${disponible.toFixed(2)}</b> y se solicitaron <b>${cantidad.toFixed(2)}</b>.`;
+      }
+
+      pendingSalidas.push({ fecha, cantidad });
+    }
+
+    return null;
+  }
+
   private updateParentCount() {
     if (!this.internalParams?.node) return;
     const data = this.internalParams.node.data;
 
-    // Actualizar conteo de la cascada que está abierta
-    const field = this.detailType === 'entradas' ? 'entradas' : 'salidas';
-    data[field] = this.rowData.length;
+    const countField = this.detailType === 'entradas' ? 'entradas' : 'salidas';
+    data[countField] = this.rowData.length;
 
-    // Recalcular totalInventarios localmente: sum(cantidades entradas) - sum(cantidades salidas)
-    // Para ello necesitamos los datos del otro tipo — pedimos al backend
-    // Por ahora actualizamos la columna afectada y totalInventarios con lo que tenemos
     const sumThis = this.rowData.reduce((acc, r) => acc + (Number(r.cantidad) || 0), 0);
     if (this.detailType === 'entradas') {
-      data.totalInventarios = sumThis - (data._sumSalidas ?? 0);
-      data._sumEntradas = sumThis;
+      data.totalEntradas = sumThis;
+      data.totalInventarios = sumThis - (data.totalSalidas ?? 0);
     } else {
-      data.totalInventarios = (data._sumEntradas ?? 0) - sumThis;
-      data._sumSalidas = sumThis;
+      data.totalSalidas = sumThis;
+      data.totalInventarios = (data.totalEntradas ?? 0) - sumThis;
     }
 
     if (this.internalParams.api) {
       this.internalParams.api.refreshCells({
         rowNodes: [this.internalParams.node],
-        columns: [field, 'totalInventarios'],
+        columns: [countField, 'totalEntradas', 'totalSalidas', 'totalInventarios'],
         force: true
       });
     }
