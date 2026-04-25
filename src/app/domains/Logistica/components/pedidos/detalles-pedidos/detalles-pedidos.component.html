@@ -1,6 +1,14 @@
 <div class="container-fluid p-2">
   <!-- Botones del detalle (arriba, alineados a la derecha) -->
   <div class="d-flex justify-content-end gap-2 mb-2">
+    <button type="button" [class.btn-info]="!hasBancoInfo" [class.btn-warning]="hasBancoInfo" class="btn btn-sm" (click)="openBancoModal()">
+      <i [class.bi-bank]="!hasBancoInfo" [class.bi-pencil]="hasBancoInfo" class="bi"></i>
+      {{ hasBancoInfo ? 'Editar banco' : 'Añadir banco' }}
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="sendToRemision(selectedRow)"
+      [disabled]="!selectedRow || selectedRow?.estado !== 'RECIBIDO'">
+      <i class="bi bi-truck"></i> Remisión
+    </button>
     <button type="button" class="btn btn-primary btn-sm" (click)="addItem()" [disabled]="isLocked">
       <i class="bi bi-plus-lg"></i> Agregar
     </button>
@@ -33,13 +41,7 @@
     [localeText]="AG_GRID_LOCALE_ES">
   </ag-grid-angular>
 
-  <!-- Botón Añadir/Editar pago al banco -->
-  <div class="d-flex justify-content-center mt-3">
-    <button type="button" [class.btn-info]="!hasBancoInfo" [class.btn-warning]="hasBancoInfo" class="btn btn-sm" (click)="openBancoModal()">
-      <i [class.bi-plus-lg]="!hasBancoInfo" [class.bi-pencil]="hasBancoInfo" class="bi"></i>
-      {{ hasBancoInfo ? 'Editar pago al banco' : 'Añadir pago al banco' }}
-    </button>
-  </div>
+
 </div>
 
 <!-- Modal pago al banco -->

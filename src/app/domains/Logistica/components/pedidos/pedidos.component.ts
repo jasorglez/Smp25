@@ -600,7 +600,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       },
       {
         colId: 'totalPagarBanco',
-        headerName: 'Pago al banco',
+        headerName: 'Pago banco',
         editable: false,
         minWidth: 120,
         valueGetter: (params) => params.data?.totalPagarBanco ?? 0,
