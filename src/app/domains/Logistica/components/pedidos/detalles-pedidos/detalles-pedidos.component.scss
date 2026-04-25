@@ -241,3 +241,38 @@ input.form-control-minimal {
     box-shadow: none;
   }
 }
+
+/* Modal selección de remisiones (SweetAlert) */
+::ng-deep .swal2-container.swal-over-modal .swal-remisiones-popup {
+  font-size: 12px;
+}
+
+::ng-deep .swal2-container.swal-over-modal .swal-remisiones-title {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+::ng-deep .swal2-container.swal-over-modal .swal-remisiones-text {
+  font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+::ng-deep .swal2-container.swal-over-modal .swal-remisiones-radio {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0.25em 0 0.75em;
+  text-align: left;
+}
+
+::ng-deep .swal2-container.swal-over-modal .swal-remisiones-radio label {
+  font-size: 12px;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+::ng-deep .swal2-container.swal-over-modal .swal-remisiones-actions .swal2-confirm,
+::ng-deep .swal2-container.swal-over-modal .swal-remisiones-actions .swal2-cancel {
+  font-size: 12px;
+  padding: 0.45rem 0.85rem;
+}
