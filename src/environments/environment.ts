@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.34 (25 Abril 2026) pedidos: recepcion parcial RECIBIDO + botones Borrar/Remision en Productos',
+  version: '5.35 (25 Abril 2026) pedidos: boton Remision en detalle Pedido para items RECIBIDO',
 };
