@@ -259,13 +259,6 @@ export class MaterialsComponent {
           const div = document.createElement('div');
           div.style.cssText = 'display:flex;gap:4px;align-items:center;height:100%';
 
-          const btnBorrar = document.createElement('button');
-          btnBorrar.type = 'button';
-          btnBorrar.className = 'btn btn-danger btn-sm';
-          btnBorrar.style.cssText = 'font-size:11px;padding:1px 7px;line-height:1.5';
-          btnBorrar.innerHTML = '<i class="bi bi-trash"></i> Borrar';
-          btnBorrar.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.deleteRow(params.data); });
-
           const btnRemision = document.createElement('button');
           btnRemision.type = 'button';
           btnRemision.className = 'btn btn-secondary btn-sm';
@@ -273,7 +266,6 @@ export class MaterialsComponent {
           btnRemision.innerHTML = '<i class="bi bi-truck"></i> Remisión';
           btnRemision.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.sendToRemision(params.data); });
 
-          div.appendChild(btnBorrar);
           div.appendChild(btnRemision);
           return div;
         },
