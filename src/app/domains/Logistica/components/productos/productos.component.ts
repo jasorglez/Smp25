@@ -38,6 +38,8 @@ export class MaterialsComponent {
 
   private gridApi: GridApi;
   private allData: any[] = [];
+  private handlingPartialReceipt = false;
+  private tempIdCounter = 0;
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -54,12 +56,16 @@ export class MaterialsComponent {
     groupDefaultExpanded: 0,
     suppressAggFuncInHeader: true,
     groupDisplayType: 'singleColumn',
-    onCellValueChanged: (event: any) => {
+    onCellValueChanged: async (event: any) => {
+      const wasModified = !!event.data.__modified;
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
-      // Refrescar el color del estado inmediatamente
       if (this.gridApi) {
         this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['estado'], force: true });
+      }
+      const col = event.column?.getColId?.() ?? event.colDef?.field;
+      if (col === 'estado' && event.newValue === 'RECIBIDO' && event.oldValue === 'SOLICITADO' && Number(event.data.cantidad) > 1) {
+        await this.handlePartialReceipt(event, wasModified);
       }
     }
   };
@@ -313,15 +319,35 @@ export class MaterialsComponent {
   }
 
   async saveChanges(): Promise<void> {
-    const modified = this.allData.filter(r => r.__modified);
-    if (modified.length === 0) {
+    const newRows      = this.allData.filter(r => r.__isNew);
+    const modifiedRows = this.allData.filter(r => r.__modified && !r.__isNew);
+    if (newRows.length === 0 && modifiedRows.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
 
     alerts.showLoading('Guardando...', 'Actualizando estados');
     try {
-      for (const row of modified) {
+      for (const row of newRows) {
+        const created: any = await lastValueFrom(this.pedidosService.createDetalle({
+          idPedido:        row.idPedido,
+          idCliente:       row.idCliente,
+          producto:        row.producto,
+          cantidad:        row.cantidad        || 1,
+          plataforma:      row.plataforma,
+          aplicaimpuestos: row.aplicaimpuestos,
+          costo:           row.costo           || 0,
+          venta:           row.venta           || 0,
+          impuesto:        row.impuesto        || 0,
+          estado:          row.estado          || 'SOLICITADO',
+          comentario:      row.comentario,
+          active:          row.active,
+        }));
+        row.id = created?.id ?? created?.data?.id ?? row.id;
+        row.__isNew = false;
+        row.__modified = false;
+      }
+      for (const row of modifiedRows) {
         await lastValueFrom(this.pedidosService.updateDetalle(row.id, {
           id:              row.id,
           idPedido:        row.idPedido,
@@ -347,6 +373,82 @@ export class MaterialsComponent {
       console.error('Error guardando cambios:', error);
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios', 'error');
     }
+  }
+
+  private async handlePartialReceipt(event: any, wasModified: boolean): Promise<void> {
+    const totalCantidad = Number(event.data.cantidad) || 1;
+
+    this.handlingPartialReceipt = true;
+    this.gridApi?.stopEditing();
+
+    const result = await Swal.fire({
+      title: 'Recepción de mercancía',
+      html: `¿Cuántas piezas se reciben?<br><small>Cantidad del ítem: <b>${totalCantidad}</b></small>`,
+      input: 'number',
+      inputValue: String(totalCantidad),
+      inputAttributes: { min: '1', max: String(totalCantidad), step: '1' },
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: (value: string) => {
+        const num = parseInt(value, 10);
+        if (isNaN(num) || num < 1) {
+          Swal.showValidationMessage('Ingresa una cantidad válida (mínimo 1)');
+          return false;
+        }
+        if (num > totalCantidad) {
+          Swal.showValidationMessage(`No puede exceder ${totalCantidad}`);
+          return false;
+        }
+        return num;
+      }
+    });
+
+    if (!result.isConfirmed) {
+      this.handlingPartialReceipt = false;
+      event.data.estado = event.oldValue || 'SOLICITADO';
+      if (!wasModified) event.data.__modified = false;
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['estado'], force: true });
+      }
+      return;
+    }
+
+    const cantidadRecibida = Number(result.value);
+    const cantidadRestante = totalCantidad - cantidadRecibida;
+
+    if (cantidadRestante <= 0) {
+      this.handlingPartialReceipt = false;
+      return;
+    }
+
+    event.data.cantidad = cantidadRecibida;
+
+    const tempId = `temp_detalle_${this.tempIdCounter++}`;
+    const pendingRow: any = {
+      id:            tempId,
+      idPedido:      event.data.idPedido,
+      idCliente:     event.data.idCliente,
+      clienteName:   event.data.clienteName,
+      pedidoNumero:  event.data.pedidoNumero,
+      producto:      event.data.producto,
+      cantidad:      cantidadRestante,
+      plataforma:    event.data.plataforma,
+      aplicaImpuestos:  event.data.aplicaImpuestos,
+      aplicaimpuestos:  event.data.aplicaimpuestos,
+      costo:         event.data.costo,
+      venta:         event.data.venta,
+      impuesto:      event.data.impuesto,
+      comentario:    event.data.comentario,
+      active:        event.data.active ?? true,
+      estado:        event.oldValue || 'SOLICITADO',
+      __isNew:       true,
+      __modified:    false,
+    };
+
+    this.allData = [...this.allData, pendingRow];
+    this.applyFilter();
+    this.handlingPartialReceipt = false;
   }
 
   revertChanges(): void {
