@@ -51,8 +51,8 @@ export class SelectDropdownService {
       }
     }
 
-    this.options = options;
-    this.filteredOptions = [...options];
+    this.options = this.sortOptions(options);
+    this.filteredOptions = [...this.options];
     this.selectedValue = currentValue;
     this.onSelectCallback = onSelect;
     this.onCancelCallback = onCancel;
@@ -261,6 +261,24 @@ export class SelectDropdownService {
         option.valueAddition2?.toLowerCase().includes(searchLower)
       );
     }
+  }
+
+  private sortOptions(options: SelectOption[]): SelectOption[] {
+    const regularOptions = [...(options || [])].filter(option => !this.isSpecialOption(option));
+    const specialOptions = [...(options || [])].filter(option => this.isSpecialOption(option));
+
+    regularOptions.sort((a, b) =>
+      String(a?.description || '').localeCompare(String(b?.description || ''), 'es', {
+        sensitivity: 'base'
+      })
+    );
+
+    return [...regularOptions, ...specialOptions];
+  }
+
+  private isSpecialOption(option: SelectOption): boolean {
+    const description = String(option?.description || '').toLowerCase();
+    return description.includes('agregar proveedor');
   }
 
   private selectOption(option: SelectOption): void {

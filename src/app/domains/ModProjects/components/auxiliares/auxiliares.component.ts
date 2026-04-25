@@ -17,6 +17,7 @@ import { alerts } from 'app/helpers/alerts';
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './auxiliares.component.html',
+  styleUrl: './auxiliares.component.scss',
 })
 export class AuxiliaresComponent {
   private signalsService       = inject(SignalsService);

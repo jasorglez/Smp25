@@ -310,13 +310,27 @@ get colDefs(): ColDef[] {
         }
       },
 
-    {
+      {
         field: 'cantidad',
         headerName: 'Cantidad',
         editable: () => !this.isLocked,
         width: 90,
         type: 'numericColumn',
-        suppressKeyboardEvent: (params: any) => params.event.key === 'Enter' && params.editing,
+        suppressKeyboardEvent: (params: any) => {
+          if (params.event.key === 'Enter' && params.editing) {
+            this.sawEnterDuringEdit = false;
+            params.api.stopEditing();
+            setTimeout(() => {
+              params.api.setFocusedCell(params.node.rowIndex, 'venta');
+              params.api.startEditingCell({
+                rowIndex: params.node.rowIndex,
+                colKey: 'venta'
+              });
+            }, 0);
+            return true;
+          }
+          return false;
+        },
         valueSetter: (params: any) => {
           const val = parseInt(params.newValue);
           params.data.cantidad = isNaN(val) || val < 1 ? 1 : val;
@@ -708,15 +722,22 @@ get colDefs(): ColDef[] {
 
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const pedidoId = this.params.data.id;
-      await this.context.CONCEPTS.save(pedidoId, { detalles: this.rowData });
+      const detallesActualizados = await this.context.CONCEPTS.save(pedidoId, { detalles: this.rowData });
+      if (Array.isArray(detallesActualizados) && detallesActualizados.length >= 0) {
+        this.rowData = detallesActualizados.map((item: any) => ({
+          ...item,
+          __isNew: false,
+          __modified: false
+        }));
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.refreshCells({ force: true });
+        }
+      }
       this.hasUnsavedChanges = false;
-      
-      setTimeout(() => {
-        this.loadData();
-      }, 500);
     }
     
-    alerts.basicAlert('Guardado', 'Registro actualizado correctamente', 'success');
+    alerts.toastAlert('Se guardó un registro', 'success');
   }
 
   discardChanges() {
@@ -785,7 +806,18 @@ get colDefs(): ColDef[] {
     }
 
     const selectedItem = selectedRows[0];
-    if (selectedItem.__isNew || !selectedItem.id) {
+    const detalleId = Number(
+      selectedItem?.id ??
+      selectedItem?.Id ??
+      selectedItem?.idDetallePedido ??
+      selectedItem?.IdDetallePedido ??
+      selectedItem?.idDetalle ??
+      selectedItem?.IdDetalle ??
+      0
+    );
+    const clienteId = Number(selectedItem?.idCliente ?? selectedItem?.IdCliente ?? 0);
+    const pedidoId = Number(selectedItem?.idPedido ?? selectedItem?.IdPedido ?? this.params?.data?.id ?? 0);
+    if (selectedItem.__isNew || detalleId <= 0) {
       alerts.basicAlert('Guardar primero', 'El detalle debe existir en la base antes de mandarlo a remisión.', 'warning');
       return;
     }
@@ -822,7 +854,7 @@ get colDefs(): ColDef[] {
             if (cantidad > cantidadMaxima) {
               return `La cantidad no puede ser mayor a ${cantidadMaxima}`;
             }
-            return null;
+            return cantidad;
           },
         },
       }
@@ -845,26 +877,78 @@ get colDefs(): ColDef[] {
     if (!commentResult.isConfirmed) return;
 
     const comentario = String(commentResult.value ?? '').trim();
-    const idCompany = this.context?.idCompany;
-    const createdBy = this.context?.trackingService?.getEmail?.() || null;
+    const idCompany = Number(this.context?.idCompany ?? this.context?.componentParent?.idCompany ?? 0);
+    const createdBy =
+      this.context?.trackingService?.getEmail?.() ||
+      localStorage.getItem('mail') ||
+      'WEB';
 
-    if (!idCompany || !selectedItem.idCliente) {
+    if (!idCompany || !clienteId) {
       alerts.basicAlert('Datos incompletos', 'Falta empresa o cliente para crear la remisión.', 'warning');
       return;
     }
 
     alerts.showLoading('Mandando a remisión...', 'Creando o reutilizando la remisión abierta.');
     try {
-      await lastValueFrom(
-        this.remisionesService.addDetalle({
+      const openResponse: any = await lastValueFrom(
+        this.remisionesService.createOrReuseOpen({
           idCompany,
-          idCliente: selectedItem.idCliente,
-          idDetallePedido: selectedItem.id,
-          cantidadRemitida,
+          IdCompany: idCompany,
+          idCliente: clienteId,
+          IdCliente: clienteId,
           comentario,
+          Comentario: comentario,
           createdBy,
+          CreatedBy: createdBy,
         })
       );
+
+      const idRemision = Number(
+        openResponse?.id ??
+        openResponse?.Id ??
+        openResponse?.Data?.id ??
+        openResponse?.Data?.Id ??
+        openResponse?.data?.id ??
+        openResponse?.data?.Id ??
+        openResponse?.remision?.id ??
+        openResponse?.remision?.Id ??
+        0
+      );
+
+      const payload = {
+        idCompany,
+        IdCompany: idCompany,
+        idCliente: clienteId,
+        IdCliente: clienteId,
+        idRemision,
+        IdRemision: idRemision,
+        idPedido: pedidoId,
+        IdPedido: pedidoId,
+        idDetallePedido: detalleId,
+        IdDetallePedido: detalleId,
+        idDetalle: detalleId,
+        IdDetalle: detalleId,
+        cantidadRemitida,
+        CantidadRemitida: cantidadRemitida,
+        cantidad: cantidadRemitida,
+        Cantidad: cantidadRemitida,
+        comentario,
+        Comentario: comentario,
+        createdBy,
+        CreatedBy: createdBy,
+      };
+
+      console.log('Payload remision detalle:', payload, {
+        selectedItem,
+        idCompany,
+        clienteId,
+        pedidoId,
+        detalleId,
+        cantidadRemitida,
+        openResponse
+      });
+
+      await lastValueFrom(this.remisionesService.addDetalle(payload));
 
       alerts.closeLoading();
       alerts.toastAlert('Detalle mandado a remisión', 'success');
@@ -873,7 +957,12 @@ get colDefs(): ColDef[] {
     } catch (error) {
       alerts.closeLoading();
       console.error('Error mandando detalle a remisión:', error);
-      alerts.basicAlert('Error', 'No se pudo mandar el detalle a remisión.', 'error');
+      const backendMessage =
+        (error as any)?.error?.message ||
+        (error as any)?.error?.title ||
+        (error as any)?.message ||
+        'No se pudo mandar el detalle a remisión.';
+      alerts.basicAlert('Error', backendMessage, 'error');
     }
   }
 
