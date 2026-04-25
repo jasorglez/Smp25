@@ -11,7 +11,6 @@ import { MaterialsService } from 'app/services/materials.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { PedidosService } from 'app/services/pedidos.service';
-import { RemisionesService } from 'app/services/remisiones.service';
 import { lastValueFrom } from 'rxjs';
 import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -35,7 +34,6 @@ export class DetallesPedidosComponent implements OnInit {
   private catalogadmonService = inject(CatalogadmonService);
   private administrationService = inject(AdministrationService);
   private pedidosService = inject(PedidosService);
-  private remisionesService = inject(RemisionesService);
   private sanitizer = inject(DomSanitizer);
 
   rowData: any[] = [];
@@ -774,7 +772,9 @@ get colDefs(): ColDef[] {
     this.hasUnsavedChanges = false;
   }
 
-  onCellValueChanged(event: any) {
+  async onCellValueChanged(event: any) {
+    const wasModified = !!event.data.__modified;
+
     if (event?.data) {
       this.recalcImpuestoInRow(event.data);
     }
@@ -782,6 +782,11 @@ get colDefs(): ColDef[] {
     this.hasUnsavedChanges = true;
 
     const col = event.column?.getColId?.() ?? event.colDef?.field;
+
+    if (col === 'estado' && event.newValue === 'RECIBIDO' && Number(event.data.cantidad) > 1) {
+      await this.handlePartialReceipt(event, wasModified);
+    }
+
     if (col === 'venta') {
       this.notifyTotalVentaToParent();
     }
@@ -790,6 +795,77 @@ get colDefs(): ColDef[] {
         this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['impuesto', 'total'], force: true });
       }
     }
+  }
+
+  private async handlePartialReceipt(event: any, wasModified: boolean): Promise<void> {
+    const totalCantidad = Number(event.data.cantidad) || 1;
+
+    const result = await Swal.fire({
+      title: 'Recepción de mercancía',
+      html: `¿Cuántas piezas se reciben?<br><small>Cantidad del ítem: <b>${totalCantidad}</b></small>`,
+      input: 'number',
+      inputValue: String(totalCantidad),
+      inputAttributes: { min: '1', max: String(totalCantidad), step: '1' },
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: (value: string) => {
+        const num = parseInt(value, 10);
+        if (isNaN(num) || num < 1) {
+          Swal.showValidationMessage('Ingresa una cantidad válida (mínimo 1)');
+          return false;
+        }
+        if (num > totalCantidad) {
+          Swal.showValidationMessage(`No puede exceder ${totalCantidad}`);
+          return false;
+        }
+        return num;
+      }
+    });
+
+    if (!result.isConfirmed) {
+      // Revertir estado
+      event.data.estado = event.oldValue || 'SOLICITADO';
+      if (!wasModified) event.data.__modified = false;
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['estado'], force: true });
+      }
+      return;
+    }
+
+    const cantidadRecibida = Number(result.value);
+    const cantidadRestante = totalCantidad - cantidadRecibida;
+
+    if (cantidadRestante <= 0) return; // Recibe todo → sin cambios adicionales
+
+    // Recepción parcial: ajustar fila actual y crear fila pendiente
+    event.data.cantidad = cantidadRecibida;
+    this.recalcImpuestoInRow(event.data);
+
+    const tempId = `temp_detalle_${this.tempIdCounter++}`;
+    const pendingRow: any = {
+      id: tempId,
+      idPedido: event.data.idPedido,
+      idCliente: event.data.idCliente,
+      clienteName: event.data.clienteName,
+      producto: event.data.producto,
+      cantidad: cantidadRestante,
+      plataforma: event.data.plataforma,
+      aplicaImpuestos: event.data.aplicaImpuestos,
+      costo: event.data.costo,
+      venta: event.data.venta,
+      comentario: event.data.comentario,
+      active: event.data.active ?? true,
+      estado: event.oldValue || 'SOLICITADO',
+      __isNew: true,
+      __modified: false
+    };
+    this.recalcImpuestoInRow(pendingRow);
+
+    this.rowData = [...this.rowData, pendingRow];
+    this.gridApi?.setGridOption('rowData', this.rowData);
+    this.gridApi?.refreshCells({ force: true });
+    this.notifyTotalVentaToParent();
   }
 
   private notifyTotalVentaToParent(): void {
@@ -812,321 +888,6 @@ get colDefs(): ColDef[] {
 
   private isBlockedManualState(estado: unknown): boolean {
     return this.BLOCKED_MANUAL_STATES.includes(String(estado ?? '').toUpperCase());
-  }
-
-  async sendSelectedItemToRemision(): Promise<void> {
-    if (this.isLocked) {
-      alerts.basicAlert('Pedido bloqueado', 'No se puede operar la remisión sobre un pedido bloqueado.', 'warning');
-      return;
-    }
-
-    if (this.hasUnsavedChanges) {
-      alerts.basicAlert('Guardar primero', 'Guarda o deshaz los cambios antes de mandar a remisión.', 'warning');
-      return;
-    }
-
-    const selectedRows = this.gridApi?.getSelectedRows?.() || [];
-    if (selectedRows.length === 0) {
-      alerts.basicAlert('Selección requerida', 'Selecciona un detalle para mandarlo a remisión.', 'warning');
-      return;
-    }
-
-    const selectedItem = selectedRows[0];
-    const detalleId = Number(
-      selectedItem?.id ??
-      selectedItem?.Id ??
-      selectedItem?.idDetallePedido ??
-      selectedItem?.IdDetallePedido ??
-      selectedItem?.idDetalle ??
-      selectedItem?.IdDetalle ??
-      0
-    );
-    const clienteId = Number(selectedItem?.idCliente ?? selectedItem?.IdCliente ?? 0);
-    const pedidoId = Number(selectedItem?.idPedido ?? selectedItem?.IdPedido ?? this.params?.data?.id ?? 0);
-    if (selectedItem.__isNew || detalleId <= 0) {
-      alerts.basicAlert('Guardar primero', 'El detalle debe existir en la base antes de mandarlo a remisión.', 'warning');
-      return;
-    }
-
-    const estadoActual = String(selectedItem.estado ?? '').toUpperCase();
-    if (estadoActual === 'REMISION') {
-      alerts.basicAlert(
-        'Sin disponible',
-        'Este detalle ya está en REMISIÓN. Usa el renglón pendiente en SOLICITADO para seguir enviando.',
-        'warning'
-      );
-      return;
-    }
-    if (estadoActual === 'ENTREGADO') {
-      alerts.basicAlert('No permitido', 'Un detalle ENTREGADO ya no puede volver a remisión.', 'warning');
-      return;
-    }
-
-    const cantidadDisponible = Number(selectedItem.cantidad) || 0;
-    if (cantidadDisponible <= 0) {
-      alerts.basicAlert('Cantidad inválida', 'El detalle debe tener una cantidad válida para remisionar.', 'warning');
-      return;
-    }
-
-    const quantityResult = await alerts.inputAlert(
-      'Cantidad a remisionar',
-      'Indica la cantidad que deseas mandar a remisión.',
-      'text',
-      String(cantidadDisponible),
-      {
-        confirmButtonText: 'Continuar',
-        inputAttributes: {
-          inputmode: 'decimal',
-          autocomplete: 'off',
-        },
-        swalOptions: {
-          preConfirm: (value: string) => {
-            const cantidad = Number(value);
-            if (!Number.isFinite(cantidad) || cantidad <= 0) {
-              return 'La cantidad debe ser mayor a 0';
-            }
-            if (cantidad > cantidadDisponible) {
-              return `No puedes agregar más de lo que tienes. Disponible: ${cantidadDisponible}`;
-            }
-            return cantidad;
-          },
-        },
-      }
-    );
-
-    if (!quantityResult.isConfirmed) return;
-
-    const cantidadRemitida = Number(quantityResult.value);
-    const comentario = '';
-    const idCompany = Number(this.context?.idCompany ?? this.context?.componentParent?.idCompany ?? 0);
-    const createdBy =
-      this.context?.trackingService?.getEmail?.() ||
-      localStorage.getItem('mail') ||
-      'WEB';
-
-    if (!idCompany || !clienteId) {
-      alerts.basicAlert('Datos incompletos', 'Falta empresa o cliente para crear la remisión.', 'warning');
-      return;
-    }
-
-    try {
-      alerts.showLoading('Preparando remisión...', 'Consultando remisiones abiertas del cliente.');
-
-      const abiertasResponse: any = await lastValueFrom(
-        this.remisionesService.getByCliente(idCompany, clienteId, 'ABIERTA')
-      );
-      const remisionesAbiertas = this.extractOpenRemisiones(abiertasResponse, idCompany, clienteId);
-      alerts.closeLoading();
-
-      let idRemision = 0;
-      let openResponse: any = null;
-
-      if (remisionesAbiertas.length > 0) {
-        const selectedOption = await this.askOpenRemisionSelection(remisionesAbiertas);
-        if (!selectedOption) return;
-
-        if (selectedOption === 'NEW') {
-          alerts.showLoading('Mandando a remisión...', 'Creando nueva remisión abierta.');
-          openResponse = await lastValueFrom(
-            this.remisionesService.createOrReuseOpen({
-              idCompany,
-              IdCompany: idCompany,
-              idCliente: clienteId,
-              IdCliente: clienteId,
-              forceNew: true,
-              ForceNew: true,
-              comentario,
-              Comentario: comentario,
-              createdBy,
-              CreatedBy: createdBy,
-            })
-          );
-          alerts.closeLoading();
-
-          idRemision = Number(
-            openResponse?.id ??
-            openResponse?.Id ??
-            openResponse?.Data?.id ??
-            openResponse?.Data?.Id ??
-            openResponse?.data?.id ??
-            openResponse?.data?.Id ??
-            openResponse?.remision?.id ??
-            openResponse?.remision?.Id ??
-            0
-          );
-        } else {
-          idRemision = Number(selectedOption);
-        }
-      } else {
-        alerts.showLoading('Mandando a remisión...', 'Creando nueva remisión abierta.');
-        openResponse = await lastValueFrom(
-          this.remisionesService.createOrReuseOpen({
-            idCompany,
-            IdCompany: idCompany,
-            idCliente: clienteId,
-            IdCliente: clienteId,
-            comentario,
-            Comentario: comentario,
-            createdBy,
-            CreatedBy: createdBy,
-          })
-        );
-        alerts.closeLoading();
-
-        idRemision = Number(
-          openResponse?.id ??
-          openResponse?.Id ??
-          openResponse?.Data?.id ??
-          openResponse?.Data?.Id ??
-          openResponse?.data?.id ??
-          openResponse?.data?.Id ??
-          openResponse?.remision?.id ??
-          openResponse?.remision?.Id ??
-          0
-        );
-      }
-
-      if (idRemision <= 0) {
-        throw new Error('No se pudo determinar la remisión destino.');
-      }
-
-      const payload = {
-        idCompany,
-        IdCompany: idCompany,
-        idCliente: clienteId,
-        IdCliente: clienteId,
-        idRemision,
-        IdRemision: idRemision,
-        idPedido: pedidoId,
-        IdPedido: pedidoId,
-        idDetallePedido: detalleId,
-        IdDetallePedido: detalleId,
-        idDetalle: detalleId,
-        IdDetalle: detalleId,
-        cantidadRemitida,
-        CantidadRemitida: cantidadRemitida,
-        cantidad: cantidadRemitida,
-        Cantidad: cantidadRemitida,
-        comentario,
-        Comentario: comentario,
-        createdBy,
-        CreatedBy: createdBy,
-      };
-
-      console.log('Payload remision detalle:', payload, {
-        selectedItem,
-        idCompany,
-        clienteId,
-        pedidoId,
-        detalleId,
-        cantidadRemitida,
-        openResponse
-      });
-
-      alerts.showLoading('Mandando a remisión...', 'Agregando detalle a la remisión seleccionada.');
-      await lastValueFrom(this.remisionesService.addDetalle(payload));
-
-      alerts.closeLoading();
-      alerts.toastAlert('Detalle mandado a remisión', 'success');
-      this.loadData();
-      this.context?.componentParent?.loadData?.();
-    } catch (error) {
-      alerts.closeLoading();
-      console.error('Error mandando detalle a remisión:', error);
-      const backendMessage =
-        (error as any)?.error?.message ||
-        (error as any)?.error?.title ||
-        (error as any)?.message ||
-        'No se pudo mandar el detalle a remisión.';
-      alerts.basicAlert('Error', backendMessage, 'error');
-    }
-  }
-
-  private extractOpenRemisiones(response: any, idCompany: number, idCliente: number): any[] {
-    const possibleLists = [
-      response?.data,
-      response?.Data,
-      response?.data?.remisiones,
-      response?.Data?.Remisiones,
-      response?.remisiones,
-      response?.Remisiones
-    ];
-
-    let list: any[] = [];
-    for (const candidate of possibleLists) {
-      if (Array.isArray(candidate)) {
-        list = candidate;
-        break;
-      }
-      if (candidate && typeof candidate === 'object') {
-        const nested = candidate?.remisiones || candidate?.Remisiones;
-        if (Array.isArray(nested)) {
-          list = nested;
-          break;
-        }
-      }
-    }
-
-    return (list || [])
-      .filter((item: any) =>
-        String(item?.estado ?? '').toUpperCase() === 'ABIERTA' &&
-        Number(item?.idCompany ?? item?.IdCompany ?? 0) === Number(idCompany) &&
-        Number(item?.idCliente ?? item?.IdCliente ?? 0) === Number(idCliente)
-      )
-      .sort((a: any, b: any) => {
-        const dateA = new Date(a?.fechaCreacion || 0).getTime();
-        const dateB = new Date(b?.fechaCreacion || 0).getTime();
-        return dateB - dateA;
-      });
-  }
-
-  private async askOpenRemisionSelection(remisionesAbiertas: any[]): Promise<number | 'NEW' | null> {
-    const inputOptions: Record<string, string> = {};
-
-    for (const remision of remisionesAbiertas) {
-      const id = Number(remision?.id ?? remision?.Id ?? 0);
-      if (id <= 0) continue;
-      const folio = remision?.folio || remision?.Folio || `#${id}`;
-      const fechaCreacion = remision?.fechaCreacion || remision?.FechaCreacion;
-      const fechaTxt = fechaCreacion ? new Date(fechaCreacion).toLocaleString('es-MX') : '-';
-      inputOptions[String(id)] = `${folio} | Creada: ${fechaTxt}`;
-    }
-    inputOptions['NEW'] = '➕ Crear nueva remisión';
-
-    const firstRemisionId = Number(remisionesAbiertas[0]?.id ?? remisionesAbiertas[0]?.Id ?? 0);
-    const defaultSelected = remisionesAbiertas.length === 1 && firstRemisionId > 0
-      ? String(firstRemisionId)
-      : '';
-
-    const result = await Swal.fire({
-      title: 'Selecciona remisión abierta',
-      text: 'Elige a cuál remisión deseas enviar el detalle.',
-      input: 'radio',
-      inputOptions,
-      inputValue: defaultSelected,
-      inputPlaceholder: 'Selecciona una remisión abierta',
-      width: '36rem',
-      showCancelButton: true,
-      confirmButtonText: 'Usar remisión',
-      cancelButtonText: 'Cancelar',
-      customClass: {
-        container: 'swal-over-modal',
-        popup: 'swal-remisiones-popup',
-        title: 'swal-remisiones-title',
-        htmlContainer: 'swal-remisiones-text',
-        input: 'swal-remisiones-radio',
-        actions: 'swal-remisiones-actions',
-      },
-      inputValidator: (value) => {
-        if (!value) return 'Debes seleccionar una remisión abierta';
-        return null;
-      }
-    });
-
-    if (!result.isConfirmed) return null;
-    if (result.value === 'NEW') return 'NEW';
-    const selectedId = Number(result.value || 0);
-    return selectedId > 0 ? selectedId : null;
   }
 
   // ==================== MODAL NUEVA PLATAFORMA ====================

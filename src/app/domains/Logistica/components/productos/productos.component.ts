@@ -8,12 +8,15 @@ import { PedidosService } from 'app/services/pedidos.service';
 import { CustomersService } from 'app/services/customers.service';
 import { forkJoin, lastValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
+import { RemisionesService } from 'app/services/remisiones.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'storeComponent',
   standalone: true,
   imports: [CommonModule, AgGridModule],
   templateUrl: './productos.component.html',
+  styleUrls: ['./productos.component.scss'],
 })
 export class MaterialsComponent {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -24,6 +27,7 @@ export class MaterialsComponent {
   private signalsService = inject(SignalsService);
   private pedidosService = inject(PedidosService);
   private customersService = inject(CustomersService);
+  private remisionesService = inject(RemisionesService);
 
   idcompany: number = null;
   idBranch: number = null;
@@ -235,6 +239,45 @@ export class MaterialsComponent {
           return { backgroundColor: '#e2e3e5' };
         },
       },
+      {
+        field: 'cantidad',
+        headerName: 'Cantidad',
+        width: 100,
+        type: 'numericColumn',
+        cellStyle: { textAlign: 'center' },
+      },
+      {
+        headerName: 'Acciones',
+        width: 200,
+        editable: false,
+        sortable: false,
+        filter: false,
+        suppressSizeToFit: true,
+        cellStyle: { padding: '2px 4px', display: 'flex', alignItems: 'center' },
+        cellRenderer: (params: any) => {
+          if (params.data?.estado !== 'RECIBIDO') return '';
+          const div = document.createElement('div');
+          div.style.cssText = 'display:flex;gap:4px;align-items:center;height:100%';
+
+          const btnBorrar = document.createElement('button');
+          btnBorrar.type = 'button';
+          btnBorrar.className = 'btn btn-danger btn-sm';
+          btnBorrar.style.cssText = 'font-size:11px;padding:1px 7px;line-height:1.5';
+          btnBorrar.innerHTML = '<i class="bi bi-trash"></i> Borrar';
+          btnBorrar.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.deleteRow(params.data); });
+
+          const btnRemision = document.createElement('button');
+          btnRemision.type = 'button';
+          btnRemision.className = 'btn btn-secondary btn-sm';
+          btnRemision.style.cssText = 'font-size:11px;padding:1px 7px;line-height:1.5';
+          btnRemision.innerHTML = '<i class="bi bi-truck"></i> Remisión';
+          btnRemision.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.sendToRemision(params.data); });
+
+          div.appendChild(btnBorrar);
+          div.appendChild(btnRemision);
+          return div;
+        },
+      },
     ];
   }
 
@@ -325,5 +368,220 @@ export class MaterialsComponent {
   private isBackendControlledState(estado: unknown): boolean {
     const normalized = String(estado ?? '').toUpperCase();
     return normalized === this.ESTADO_REMISION || normalized === this.ESTADO_ENTREGADO;
+  }
+
+  async deleteRow(item: any): Promise<void> {
+    const result = await Swal.fire({
+      title: '¿Eliminar ítem?',
+      text: '¿Estás seguro de que deseas eliminar este registro?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      allowOutsideClick: false,
+      customClass: { container: 'swal-over-modal' }
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await lastValueFrom(this.pedidosService.deleteDetalle(item.id));
+      this.allData = this.allData.filter(r => r.id !== item.id);
+      this.applyFilter();
+      alerts.toastAlert('Ítem eliminado', 'success');
+    } catch (e) {
+      console.error('Error eliminando ítem:', e);
+      alerts.basicAlert('Error', 'No se pudo eliminar el ítem', 'error');
+    }
+  }
+
+  async sendToRemision(item: any): Promise<void> {
+    const detalleId  = Number(item?.id ?? 0);
+    const clienteId  = Number(item?.idCliente ?? 0);
+    const pedidoId   = Number(item?.idPedido ?? 0);
+    const idCompany  = Number(this.idcompany ?? 0);
+
+    if (detalleId <= 0 || !idCompany || !clienteId) {
+      alerts.basicAlert('Datos incompletos', 'Falta empresa, cliente o ID del ítem.', 'warning');
+      return;
+    }
+
+    const cantidadDisponible = Number(item.cantidad) || 0;
+    if (cantidadDisponible <= 0) {
+      alerts.basicAlert('Cantidad inválida', 'El ítem debe tener una cantidad válida para remisionar.', 'warning');
+      return;
+    }
+
+    const qResult = await Swal.fire({
+      title: 'Cantidad a remisionar',
+      text: 'Indica la cantidad que deseas mandar a remisión.',
+      input: 'number',
+      inputValue: String(cantidadDisponible),
+      inputAttributes: { min: '1', max: String(cantidadDisponible), step: '1' },
+      showCancelButton: true,
+      confirmButtonText: 'Continuar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: (value: string) => {
+        const cantidad = Number(value);
+        if (!Number.isFinite(cantidad) || cantidad <= 0) {
+          Swal.showValidationMessage('La cantidad debe ser mayor a 0');
+          return false;
+        }
+        if (cantidad > cantidadDisponible) {
+          Swal.showValidationMessage(`Disponible: ${cantidadDisponible}`);
+          return false;
+        }
+        return cantidad;
+      }
+    });
+    if (!qResult.isConfirmed) return;
+
+    const cantidadRemitida = Number(qResult.value);
+    const comentario = '';
+    const createdBy  = localStorage.getItem('mail') || 'WEB';
+
+    try {
+      alerts.showLoading('Preparando remisión...', 'Consultando remisiones abiertas del cliente.');
+      const abiertasResponse: any = await lastValueFrom(
+        this.remisionesService.getByCliente(idCompany, clienteId, 'ABIERTA')
+      );
+      const remisionesAbiertas = this.extractOpenRemisiones(abiertasResponse, idCompany, clienteId);
+      alerts.closeLoading();
+
+      let idRemision = 0;
+      let openResponse: any = null;
+
+      if (remisionesAbiertas.length > 0) {
+        const selectedOption = await this.askOpenRemisionSelection(remisionesAbiertas);
+        if (!selectedOption) return;
+
+        if (selectedOption === 'NEW') {
+          alerts.showLoading('Creando remisión...', '');
+          openResponse = await lastValueFrom(
+            this.remisionesService.createOrReuseOpen({
+              idCompany, IdCompany: idCompany,
+              idCliente: clienteId, IdCliente: clienteId,
+              forceNew: true, ForceNew: true,
+              comentario, Comentario: comentario,
+              createdBy, CreatedBy: createdBy,
+            })
+          );
+          alerts.closeLoading();
+        } else {
+          idRemision = Number(selectedOption);
+        }
+      } else {
+        alerts.showLoading('Creando remisión...', '');
+        openResponse = await lastValueFrom(
+          this.remisionesService.createOrReuseOpen({
+            idCompany, IdCompany: idCompany,
+            idCliente: clienteId, IdCliente: clienteId,
+            comentario, Comentario: comentario,
+            createdBy, CreatedBy: createdBy,
+          })
+        );
+        alerts.closeLoading();
+      }
+
+      if (openResponse) {
+        idRemision = Number(
+          openResponse?.id ?? openResponse?.Id ??
+          openResponse?.Data?.id ?? openResponse?.Data?.Id ??
+          openResponse?.data?.id ?? openResponse?.data?.Id ??
+          openResponse?.remision?.id ?? openResponse?.remision?.Id ?? 0
+        );
+      }
+
+      if (idRemision <= 0) throw new Error('No se pudo determinar la remisión destino.');
+
+      const payload = {
+        idCompany, IdCompany: idCompany,
+        idCliente: clienteId, IdCliente: clienteId,
+        idRemision, IdRemision: idRemision,
+        idPedido: pedidoId, IdPedido: pedidoId,
+        idDetallePedido: detalleId, IdDetallePedido: detalleId,
+        idDetalle: detalleId, IdDetalle: detalleId,
+        cantidadRemitida, CantidadRemitida: cantidadRemitida,
+        cantidad: cantidadRemitida, Cantidad: cantidadRemitida,
+        comentario, Comentario: comentario,
+        createdBy, CreatedBy: createdBy,
+      };
+
+      alerts.showLoading('Mandando a remisión...', 'Agregando detalle a la remisión seleccionada.');
+      await lastValueFrom(this.remisionesService.addDetalle(payload));
+      alerts.closeLoading();
+      alerts.toastAlert('Detalle mandado a remisión', 'success');
+      this.loadData();
+    } catch (error) {
+      alerts.closeLoading();
+      const msg = (error as any)?.error?.message || (error as any)?.message || 'No se pudo mandar el detalle a remisión.';
+      alerts.basicAlert('Error', msg, 'error');
+    }
+  }
+
+  private extractOpenRemisiones(response: any, idCompany: number, idCliente: number): any[] {
+    const possibleLists = [
+      response?.data, response?.Data,
+      response?.data?.remisiones, response?.Data?.Remisiones,
+      response?.remisiones, response?.Remisiones
+    ];
+    let list: any[] = [];
+    for (const candidate of possibleLists) {
+      if (Array.isArray(candidate)) { list = candidate; break; }
+      if (candidate && typeof candidate === 'object') {
+        const nested = candidate?.remisiones || candidate?.Remisiones;
+        if (Array.isArray(nested)) { list = nested; break; }
+      }
+    }
+    return list
+      .filter((r: any) =>
+        String(r?.estado ?? '').toUpperCase() === 'ABIERTA' &&
+        Number(r?.idCompany ?? r?.IdCompany ?? 0) === idCompany &&
+        Number(r?.idCliente ?? r?.IdCliente ?? 0) === idCliente
+      )
+      .sort((a: any, b: any) =>
+        new Date(b?.fechaCreacion || 0).getTime() - new Date(a?.fechaCreacion || 0).getTime()
+      );
+  }
+
+  private async askOpenRemisionSelection(remisionesAbiertas: any[]): Promise<number | 'NEW' | null> {
+    const inputOptions: Record<string, string> = {};
+    for (const r of remisionesAbiertas) {
+      const id = Number(r?.id ?? r?.Id ?? 0);
+      if (id <= 0) continue;
+      const folio = r?.folio || r?.Folio || `#${id}`;
+      const fecha = r?.fechaCreacion || r?.FechaCreacion;
+      inputOptions[String(id)] = `${folio} | Creada: ${fecha ? new Date(fecha).toLocaleString('es-MX') : '-'}`;
+    }
+    inputOptions['NEW'] = '➕ Crear nueva remisión';
+
+    const firstId = Number(remisionesAbiertas[0]?.id ?? remisionesAbiertas[0]?.Id ?? 0);
+    const defaultSelected = remisionesAbiertas.length === 1 && firstId > 0 ? String(firstId) : '';
+
+    const result = await Swal.fire({
+      title: 'Selecciona remisión abierta',
+      text: 'Elige a cuál remisión deseas enviar el detalle.',
+      input: 'radio',
+      inputOptions,
+      inputValue: defaultSelected,
+      width: '28rem',
+      showCancelButton: true,
+      confirmButtonText: 'Usar remisión',
+      cancelButtonText: 'Cancelar',
+      customClass: {
+        container: 'swal-over-modal',
+        popup: 'swal-remisiones-popup',
+        title: 'swal-remisiones-title',
+        htmlContainer: 'swal-remisiones-text',
+        input: 'swal-remisiones-radio',
+        actions: 'swal-remisiones-actions',
+      },
+      inputValidator: (value) => (!value ? 'Debes seleccionar una remisión' : null)
+    });
+
+    if (!result.isConfirmed) return null;
+    if (result.value === 'NEW') return 'NEW';
+    const selectedId = Number(result.value || 0);
+    return selectedId > 0 ? selectedId : null;
   }
 }
