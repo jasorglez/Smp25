@@ -12,11 +12,13 @@ import { CustomersService } from 'app/services/customers.service';
 import { RemisionesService } from 'app/services/remisiones.service';
 import { RootService } from 'app/services/root.service';
 import { SignalsService } from 'app/services/signals.service';
+import { NumArticulosRendererComponent } from '../pedidos/pedidos-button-num-articulos.component';
+import { DetallesRemisionesComponent } from './detalles-remisiones.component';
 
 @Component({
   selector: 'app-remisiones-logistica',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, NumArticulosRendererComponent, DetallesRemisionesComponent],
   templateUrl: './remisiones.component.html',
   styleUrl: './remisiones.component.scss',
 })
@@ -33,12 +35,19 @@ export class RemisionesComponent {
   idBranch = 0;
   activeFilter: string | null = 'ABIERTA';
   rowData: any[] = [];
-  showDetalleModal = false;
-  selectedRemision: any = null;
-  selectedDetalleRows: any[] = [];
+  selectedRowData: any = null;
+  expandedRowId: number | null = null;
+  focusedRemisionId: number | null = null;
+  private preFocusRowData: any[] = [];
 
   private allRowData: any[] = [];
   private gridApi?: GridApi;
+  private pdfMakeModule: any | null = null;
+  private logoBase64Cache: string | null | undefined = undefined;
+
+  ngOnInit(): void {
+    (window as any).remisionesComponent = this;
+  }
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -52,13 +61,34 @@ export class RemisionesComponent {
     rowHeight: 28,
     animateRows: true,
     rowSelection: 'single',
+    context: { componentParent: this },
+    getRowId: (params: any) => String(params.data?.id ?? ''),
+    masterDetail: true,
+    detailCellRenderer: DetallesRemisionesComponent,
+    detailRowHeight: 620,
+    isRowMaster: () => true,
+    onRowExpanded: (event: any) => {
+      this.expandedRowId = event.node.data?.id || null;
+    },
+    onRowCollapsed: (event: any) => {
+      if (event.node.data?.id === this.expandedRowId) {
+        this.expandedRowId = null;
+      }
+      if (event.node.data?.id === this.focusedRemisionId) {
+        this.exitFocusedView();
+      }
+    },
   };
 
   public colDefs: ColDef[] = [
     {
+      colId: 'acciones',
       headerName: 'Acciones',
-      minWidth: 190,
-      width: 190,
+      minWidth: 140,
+      width: 150,
+      pinned: 'left',
+      lockPinned: true,
+      suppressMovable: true,
       sortable: false,
       filter: false,
       editable: false,
@@ -66,17 +96,12 @@ export class RemisionesComponent {
         const isAbierta = String(params.data?.estado || '').toUpperCase() === 'ABIERTA';
         return `
           <div class="d-flex gap-1 justify-content-center">
-            <button class="btn btn-sm btn-info" data-action="view">Ver</button>
             ${isAbierta ? '<button class="btn btn-sm btn-warning" data-action="close">Cerrar</button>' : '<span class="text-muted ms-1">Cerrada</span>'}
           </div>
         `;
       },
       onCellClicked: (params: any) => {
         const action = (params.event?.target as HTMLElement | null)?.getAttribute('data-action');
-        if (action === 'view') {
-          this.openDetalleModal(params.data);
-          return;
-        }
         if (action === 'close' && String(params.data?.estado || '').toUpperCase() === 'ABIERTA') {
           this.closeRemision(params.data);
         }
@@ -84,6 +109,27 @@ export class RemisionesComponent {
       cellStyle: { textAlign: 'center' },
     },
     {
+      colId: 'verArticulos',
+      field: 'numArticulos',
+      headerName: 'Ver',
+      minWidth: 110,
+      width: 110,
+      maxWidth: 110,
+      resizable: false,
+      pinned: 'left',
+      lockPinned: true,
+      suppressMovable: true,
+      editable: false,
+      cellRenderer: NumArticulosRendererComponent,
+      cellRendererParams: {
+        onClick: (node: any) => {
+          this.toggleDetalle(node);
+        }
+      },
+      cellStyle: { backgroundColor: '#e3f2fd' }
+    },
+    {
+      colId: 'ticket',
       headerName: 'Ticket',
       minWidth: 90,
       width: 90,
@@ -99,7 +145,7 @@ export class RemisionesComponent {
       onCellClicked: (params: any) => {
         const action = (params.event?.target as HTMLElement | null)?.getAttribute('data-action');
         if (action === 'print') {
-          this.printRemisionTicket(params.data);
+          this.toggleDetallePdf(params.node);
         }
       },
       cellStyle: { textAlign: 'center' },
@@ -123,14 +169,17 @@ export class RemisionesComponent {
       minWidth: 170,
       valueFormatter: (params) => this.formatDateTime(params.value),
     },
+
+    
     {
       field: 'fechaCierre',
       headerName: 'Cierre',
       minWidth: 170,
       valueFormatter: (params) => this.formatDateTime(params.value),
     },
+
     { field: 'diasTranscurridos', headerName: 'Dias', width: 90, type: 'numericColumn' },
-    { field: 'totalRenglones', headerName: 'Renglones', width: 110, type: 'numericColumn' },
+
     {
       field: 'totalCantidadRemitida',
       headerName: 'Cant. remitida',
@@ -156,8 +205,12 @@ export class RemisionesComponent {
       const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
 
       if (currentRoot && (currentRoot !== this.idCompany || currentBranch !== this.idBranch)) {
+        const companyChanged = currentRoot !== this.idCompany;
         this.idCompany = currentRoot;
         this.idBranch = currentBranch;
+        if (companyChanged) {
+          this.logoBase64Cache = undefined;
+        }
         this.loadData();
       }
     });
@@ -165,6 +218,16 @@ export class RemisionesComponent {
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
+    this.gridApi.setGridOption('context', { componentParent: this });
+    // Fuerza orden y visibilidad (evita que estado previo del usuario o cache oculte "Ver").
+    this.gridApi.applyColumnState({
+      state: [
+        { colId: 'acciones', hide: false },
+        { colId: 'verArticulos', hide: false, width: 110 },
+        { colId: 'ticket', hide: false },
+      ],
+      applyOrder: true
+    });
   }
 
   setFilter(estado: string | null): void {
@@ -194,6 +257,10 @@ export class RemisionesComponent {
             ...item,
             estado: String(item.estado || '').toUpperCase(),
             clienteName: cliente?.nameContact || cliente?.company || cliente?.name || `Cliente ${item.idCliente}`,
+            numArticulos: Number(item?.totalRenglones || 0),
+            detailData: [],
+            detailType: 'detalle',
+            detailPdfUrl: null,
           };
         });
 
@@ -215,7 +282,33 @@ export class RemisionesComponent {
 
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.applyColumnState({
+        state: [
+          { colId: 'acciones', hide: false },
+          { colId: 'verArticulos', hide: false, width: 110 },
+          { colId: 'ticket', hide: false },
+        ],
+        applyOrder: true
+      });
     }
+  }
+
+  private enterFocusedView(idRemision: number): void {
+    if (!idRemision || !this.gridApi) return;
+    if (this.focusedRemisionId === idRemision) return;
+
+    this.preFocusRowData = [...this.rowData];
+    this.focusedRemisionId = idRemision;
+    const focused = this.preFocusRowData.find((x: any) => Number(x.id) === Number(idRemision));
+    this.rowData = focused ? [focused] : [];
+    this.gridApi.setGridOption('rowData', this.rowData);
+  }
+
+  private exitFocusedView(): void {
+    if (!this.gridApi) return;
+    this.focusedRemisionId = null;
+    this.preFocusRowData = [];
+    this.applyFilter();
   }
 
   async closeRemision(remision: any): Promise<void> {
@@ -243,9 +336,6 @@ export class RemisionesComponent {
 
       alerts.closeLoading();
       alerts.toastAlert('Remision cerrada correctamente', 'success');
-      if (this.selectedRemision?.id === remision.id) {
-        this.closeDetalleModal();
-      }
       this.loadData();
     } catch (error) {
       alerts.closeLoading();
@@ -254,31 +344,216 @@ export class RemisionesComponent {
     }
   }
 
-  async openDetalleModal(remision: any): Promise<void> {
-    alerts.showLoading('Cargando detalle...', 'Consultando los renglones de la remision.');
-    try {
-      const response: any = await lastValueFrom(this.remisionesService.getDetalle(remision.id));
-      const payload = response?.data || response?.Data || {};
-      const detalleRows = payload?.detalles || payload?.Detalles || [];
+  async toggleDetalle(node: any): Promise<void> {
+    if (!node?.data) return;
+    this.selectedRowData = node.data;
 
-      this.selectedRemision = remision;
-      this.selectedDetalleRows = (detalleRows || []).map((row: any) => ({
-        ...row,
-        totalLinea: (Number(row.cantidadRemitida) || 0) * (Number(row.venta) || 0) + (Number(row.impuesto) || 0),
-      }));
-      this.showDetalleModal = true;
+    if (node.expanded) {
+      node.setExpanded(false);
+      this.exitFocusedView();
+      return;
+    }
+
+    this.enterFocusedView(node.data.id);
+    const focusedNode = this.gridApi?.getRowNode(String(node.data.id)) || node;
+
+    node.data.detailType = 'detalle';
+    if (!Array.isArray(focusedNode.data.detailData) || focusedNode.data.detailData.length === 0) {
+      focusedNode.data.detailData = await this.getRemisionDetalleRows(focusedNode.data.id);
+    }
+
+    this.gridApi?.redrawRows({ rowNodes: [focusedNode] });
+    focusedNode.setExpanded(true);
+  }
+
+  async toggleDetallePdf(node: any): Promise<void> {
+    if (!node?.data?.id) return;
+    this.selectedRowData = node.data;
+    this.enterFocusedView(node.data.id);
+    const focusedNode = this.gridApi?.getRowNode(String(node.data.id)) || node;
+
+    focusedNode.data.detailType = 'pdf';
+    focusedNode.data.detailPdfLoading = true;
+    this.syncDetailNode(focusedNode, true);
+
+    if (focusedNode.data.detailPdfUrl) {
+      focusedNode.data.detailPdfLoading = false;
+      this.syncDetailNode(focusedNode, true);
+      return;
+    }
+
+    const currentRows = Array.isArray(focusedNode.data.detailData) ? focusedNode.data.detailData : [];
+    const pdfUrl = await this.generateRemisionPdfUrl(focusedNode.data, currentRows.length > 0 ? currentRows : undefined);
+    focusedNode.data.detailPdfLoading = false;
+    if (pdfUrl) {
+      focusedNode.data.detailPdfUrl = pdfUrl;
+    }
+    this.syncDetailNode(focusedNode, true);
+  }
+
+  async toggleDetallePdfById(idRemision: number): Promise<void> {
+    if (!idRemision || !this.gridApi) return;
+    const node = this.gridApi.getRowNode(String(idRemision));
+    if (!node) return;
+    await this.toggleDetallePdf(node);
+  }
+
+  closeDetallePdfById(idRemision: number): void {
+    if (!idRemision || !this.gridApi) return;
+    const node = this.gridApi.getRowNode(String(idRemision));
+    if (!node?.data) return;
+    node.data.detailType = 'detalle';
+    node.data.detailPdfLoading = false;
+    this.syncDetailNode(node, true);
+  }
+
+  closeFocusedDetalleById(idRemision: number): void {
+    if (!this.gridApi) return;
+    const targetId = idRemision || this.focusedRemisionId || this.expandedRowId;
+    if (!targetId) return;
+    const node = this.gridApi.getRowNode(String(targetId));
+    if (node) {
+      node.setExpanded(false);
+    }
+    this.exitFocusedView();
+  }
+
+  async updateDetalleCantidadById(idRemision: number, row: any, nuevaCantidadRemitida: number): Promise<void> {
+    if (!idRemision || !row) return;
+    const idRemisionDetalle = this.getRemisionDetalleId(row);
+    if (idRemisionDetalle <= 0) {
+      alerts.basicAlert('Error', 'No se pudo identificar el detalle de remisión a modificar.', 'error');
+      return;
+    }
+
+    const cantidadOriginal = Number(row?.cantidad ?? 0);
+    const cantidadNueva = Number(nuevaCantidadRemitida ?? 0);
+    if (!Number.isFinite(cantidadNueva) || cantidadNueva <= 0) {
+      alerts.basicAlert('Cantidad inválida', 'La cantidad remitida debe ser mayor a 0.', 'warning');
+      return;
+    }
+    if (cantidadOriginal > 0 && cantidadNueva > cantidadOriginal) {
+      alerts.basicAlert('Cantidad inválida', `La cantidad remitida no puede ser mayor a ${cantidadOriginal}.`, 'warning');
+      return;
+    }
+
+    const confirmUpdate = await alerts.confirmAlert(
+      '¿Estas seguro?',
+      `Se actualizará la cantidad remitida a ${cantidadNueva}.`,
+      'question',
+      'Sí, actualizar'
+    );
+    if (!confirmUpdate.isConfirmed) return;
+
+    const payload = {
+      idRemision,
+      IdRemision: idRemision,
+      idRemisionDetalle,
+      IdRemisionDetalle: idRemisionDetalle,
+      idDetallePedido: Number(row?.idDetallePedido ?? row?.IdDetallePedido ?? 0),
+      IdDetallePedido: Number(row?.idDetallePedido ?? row?.IdDetallePedido ?? 0),
+      cantidadRemitida: cantidadNueva,
+      CantidadRemitida: cantidadNueva,
+      updatedBy: localStorage.getItem('mail') || 'WEB',
+      UpdatedBy: localStorage.getItem('mail') || 'WEB',
+    };
+
+    try {
+      alerts.showLoading('Actualizando remisión...', 'Ajustando cantidades en pedido y remisión.');
+      await lastValueFrom(this.remisionesService.updateDetalle(idRemisionDetalle, payload));
       alerts.closeLoading();
-    } catch (error) {
+      alerts.toastAlert('Cantidad modificada. Regresó ajuste al pedido.', 'success');
+      await this.reloadFocusedDetalle(idRemision);
+    } catch (error: any) {
       alerts.closeLoading();
-      console.error('Error cargando detalle de remision:', error);
-      alerts.basicAlert('Error', 'No se pudo cargar el detalle de la remision', 'error');
+      const backendMessage =
+        error?.error?.message ||
+        error?.error?.title ||
+        error?.message ||
+        'No se pudo actualizar el detalle de remisión.';
+      alerts.basicAlert('Error', backendMessage, 'error');
     }
   }
 
-  closeDetalleModal(): void {
-    this.showDetalleModal = false;
-    this.selectedRemision = null;
-    this.selectedDetalleRows = [];
+  async deleteDetalleById(idRemision: number, row: any): Promise<void> {
+    if (!idRemision || !row) return;
+    const idRemisionDetalle = this.getRemisionDetalleId(row);
+    if (idRemisionDetalle <= 0) {
+      alerts.basicAlert('Error', 'No se pudo identificar el detalle de remisión a eliminar.', 'error');
+      return;
+    }
+
+    const payload = {
+      idRemision,
+      IdRemision: idRemision,
+      idRemisionDetalle,
+      IdRemisionDetalle: idRemisionDetalle,
+      idDetallePedido: Number(row?.idDetallePedido ?? row?.IdDetallePedido ?? 0),
+      IdDetallePedido: Number(row?.idDetallePedido ?? row?.IdDetallePedido ?? 0),
+      deletedBy: localStorage.getItem('mail') || 'WEB',
+      DeletedBy: localStorage.getItem('mail') || 'WEB',
+    };
+
+    const confirmDelete = await alerts.confirmAlert(
+      '¿Estas seguro?',
+      'Se eliminará este detalle de la remisión y la cantidad regresará al pedido como SOLICITADO.',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmDelete.isConfirmed) return;
+
+    try {
+      alerts.showLoading('Eliminando detalle...', 'Regresando cantidad al pedido.');
+      await lastValueFrom(this.remisionesService.deleteDetalle(idRemisionDetalle, payload));
+      alerts.closeLoading();
+      alerts.toastAlert('Detalle eliminado. Regresó al pedido.', 'success');
+      await this.reloadFocusedDetalle(idRemision);
+    } catch (error: any) {
+      alerts.closeLoading();
+      const backendMessage =
+        error?.error?.message ||
+        error?.error?.title ||
+        error?.message ||
+        'No se pudo eliminar el detalle de remisión.';
+      alerts.basicAlert('Error', backendMessage, 'error');
+    }
+  }
+
+  private getRemisionDetalleId(row: any): number {
+    return Number(
+      row?.id ??
+      row?.Id ??
+      row?.idRemisionDetalle ??
+      row?.IdRemisionDetalle ??
+      row?.idDetalleRemision ??
+      row?.IdDetalleRemision ??
+      0
+    );
+  }
+
+  private async reloadFocusedDetalle(idRemision: number): Promise<void> {
+    if (!this.gridApi) return;
+    const node = this.gridApi.getRowNode(String(idRemision));
+    if (!node?.data) return;
+
+    const detailRows = await this.getRemisionDetalleRows(idRemision);
+    node.data.detailData = detailRows;
+    node.data.numArticulos = detailRows.length;
+    node.data.totalCantidadRemitida = (detailRows || []).reduce((acc: number, row: any) => acc + (Number(row?.cantidadRemitida) || 0), 0);
+    node.data.totalImporte = (detailRows || []).reduce((acc: number, row: any) => {
+      const subtotal = (Number(row?.cantidadRemitida) || 0) * (Number(row?.venta) || 0);
+      return acc + subtotal + (Number(row?.impuesto) || 0);
+    }, 0);
+    node.data.detailPdfUrl = null;
+    node.data.detailPdfLoading = false;
+    node.data.detailType = 'detalle';
+
+    const idxAll = this.allRowData.findIndex((x: any) => Number(x?.id) === Number(idRemision));
+    if (idxAll >= 0) {
+      this.allRowData[idxAll] = { ...this.allRowData[idxAll], ...node.data };
+    }
+
+    this.syncDetailNode(node, true);
   }
 
   formatDateTime(value: unknown): string {
@@ -304,7 +579,7 @@ export class RemisionesComponent {
     try {
       alerts.showLoading('Generando ticket...', 'Preparando PDF de la remision.');
       const detalleRows = await this.getRemisionDetalleRows(remision.id);
-      await this.buildTicketPdf(remision, detalleRows);
+      await this.buildTicketPdf(remision, detalleRows, undefined, 'open');
       alerts.closeLoading();
     } catch (error) {
       alerts.closeLoading();
@@ -313,21 +588,25 @@ export class RemisionesComponent {
     }
   }
 
-  async printPedidoTicketFromDetalle(row: any): Promise<void> {
-    const remision = this.selectedRemision;
+  async printPedidoTicketFromCascade(remision: any, row: any, providedRows?: any[]): Promise<void> {
     if (!remision?.id || !row?.idPedido) return;
 
     try {
-      alerts.showLoading('Generando ticket...', 'Preparando PDF del pedido.');
-      const detalleRows = this.selectedDetalleRows?.length
-        ? this.selectedDetalleRows
+      const detalleRows = Array.isArray(providedRows) && providedRows.length > 0
+        ? providedRows
         : await this.getRemisionDetalleRows(remision.id);
-
       const pedidoRows = (detalleRows || []).filter((x: any) => Number(x.idPedido) === Number(row.idPedido));
-      await this.buildTicketPdf(remision, pedidoRows, Number(row.idPedido));
-      alerts.closeLoading();
+      const pdfUrl = await this.buildTicketPdf(remision, pedidoRows, Number(row.idPedido), 'blob');
+      if (!pdfUrl || !this.gridApi) return;
+
+      const node = this.gridApi.getRowNode(String(remision.id));
+      if (!node?.data) return;
+
+      node.data.detailPdfUrl = pdfUrl;
+      node.data.detailType = 'pdf';
+      node.data.detailPdfLoading = false;
+      this.syncDetailNode(node, true);
     } catch (error) {
-      alerts.closeLoading();
       console.error('Error generando ticket del pedido en remision:', error);
       alerts.basicAlert('Error', 'No se pudo generar el ticket del pedido', 'error');
     }
@@ -344,19 +623,54 @@ export class RemisionesComponent {
   }
 
   private async getCompanyLogoBase64(): Promise<string | null> {
+    if (this.logoBase64Cache !== undefined) {
+      return this.logoBase64Cache;
+    }
+
     try {
       const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
-      if (!rootData?.picture) return null;
-      return await this.base64EncodeService.convertImageToBase64(rootData.picture);
+      if (!rootData?.picture) {
+        this.logoBase64Cache = null;
+        return null;
+      }
+      this.logoBase64Cache = await this.base64EncodeService.convertImageToBase64(rootData.picture);
+      return this.logoBase64Cache;
     } catch {
+      this.logoBase64Cache = null;
       return null;
     }
   }
 
-  private async buildTicketPdf(remision: any, detalleRows: any[], pedidoId?: number): Promise<void> {
+  private async getPdfMakeLib(): Promise<any> {
+    if (this.pdfMakeModule) {
+      return this.pdfMakeModule;
+    }
+
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
     (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+    this.pdfMakeModule = pdfMake;
+    return pdfMake;
+  }
+
+  private syncDetailNode(node: any, keepExpanded = false): void {
+    if (!this.gridApi || !node?.data) return;
+
+    node.setData({ ...node.data });
+    this.gridApi.refreshCells({ rowNodes: [node], force: true });
+    this.gridApi.redrawRows({ rowNodes: [node] });
+    if (keepExpanded && !node.expanded) {
+      node.setExpanded(true);
+    }
+  }
+
+  private async buildTicketPdf(
+    remision: any,
+    detalleRows: any[],
+    pedidoId?: number,
+    mode: 'open' | 'blob' = 'open'
+  ): Promise<string | void> {
+    const pdfMake = await this.getPdfMakeLib();
 
     const rows = Array.isArray(detalleRows) ? detalleRows : [];
     const clienteNombre =
@@ -492,10 +806,31 @@ export class RemisionesComponent {
       : `Ticket_Remision_${remision?.folio || remision?.id || 'NA'}.pdf`;
 
     const pdf = pdfMake.createPdf(docDefinition);
+    if (mode === 'blob') {
+      return await new Promise<string>((resolve) => {
+        pdf.getBlob((blob: Blob) => {
+          resolve(URL.createObjectURL(blob));
+        });
+      });
+    }
+
     try {
       pdf.open();
     } catch {
       pdf.download(fileName);
+    }
+  }
+
+  async generateRemisionPdfUrl(remision: any, providedRows?: any[]): Promise<string | null> {
+    if (!remision?.id) return null;
+    try {
+      const detalleRows = Array.isArray(providedRows) && providedRows.length > 0
+        ? providedRows
+        : await this.getRemisionDetalleRows(remision.id);
+      const url = await this.buildTicketPdf(remision, detalleRows, undefined, 'blob');
+      return typeof url === 'string' ? url : null;
+    } catch {
+      return null;
     }
   }
 
