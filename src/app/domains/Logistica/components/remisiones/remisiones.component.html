@@ -69,6 +69,7 @@
           <table class="table table-sm table-striped table-bordered align-middle">
             <thead class="table-light">
               <tr>
+                <th>PDF</th>
                 <th>Pedido</th>
                 <th>Detalle</th>
                 <th>Producto</th>
@@ -83,7 +84,15 @@
             </thead>
             <tbody>
               <tr *ngFor="let row of selectedDetalleRows">
-                <td>{{ row.idPedido }}</td>
+                <td class="text-center">
+                  <i
+                    class="bi bi-file-earmark-pdf-fill text-danger"
+                    title="Imprimir ticket del pedido"
+                    style="font-size:1.15rem; cursor:pointer;"
+                    (click)="printPedidoTicketFromDetalle(row)">
+                  </i>
+                </td>
+                <td>{{ getPedidoNumber(row) }}</td>
                 <td>{{ row.idDetallePedido }}</td>
                 <td>{{ row.producto }}</td>
                 <td>{{ row.plataforma }}</td>
@@ -95,7 +104,7 @@
                 <td>{{ row.estado }}</td>
               </tr>
               <tr *ngIf="selectedDetalleRows.length === 0">
-                <td colspan="10" class="text-center text-muted">Sin renglones en esta remisión.</td>
+                <td colspan="11" class="text-center text-muted">Sin renglones en esta remisión.</td>
               </tr>
             </tbody>
           </table>
@@ -105,6 +114,14 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeDetalleModal()">
           Cerrar
+        </button>
+        <button
+          *ngIf="selectedRemision"
+          type="button"
+          class="btn btn-danger"
+          (click)="printRemisionTicket(selectedRemision)">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i>
+          Ticket
         </button>
         <button
           *ngIf="selectedRemision?.estado === 'ABIERTA'"

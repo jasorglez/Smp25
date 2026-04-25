@@ -7,8 +7,10 @@ import { forkJoin, lastValueFrom } from 'rxjs';
 
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 import { CustomersService } from 'app/services/customers.service';
 import { RemisionesService } from 'app/services/remisiones.service';
+import { RootService } from 'app/services/root.service';
 import { SignalsService } from 'app/services/signals.service';
 
 @Component({
@@ -22,11 +24,13 @@ export class RemisionesComponent {
   private signalsService = inject(SignalsService);
   private remisionesService = inject(RemisionesService);
   private customersService = inject(CustomersService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
-  idCompany: number = 0;
-  idBranch: number = 0;
+  idCompany = 0;
+  idBranch = 0;
   activeFilter: string | null = 'ABIERTA';
   rowData: any[] = [];
   showDetalleModal = false;
@@ -79,6 +83,27 @@ export class RemisionesComponent {
       },
       cellStyle: { textAlign: 'center' },
     },
+    {
+      headerName: 'Ticket',
+      minWidth: 90,
+      width: 90,
+      maxWidth: 100,
+      sortable: false,
+      filter: false,
+      editable: false,
+      cellRenderer: () => `
+        <div class="d-flex justify-content-center align-items-center h-100">
+          <i class="bi bi-file-earmark-pdf-fill text-danger" data-action="print" title="Imprimir ticket de remision" style="font-size:1.2rem; cursor:pointer;"></i>
+        </div>
+      `,
+      onCellClicked: (params: any) => {
+        const action = (params.event?.target as HTMLElement | null)?.getAttribute('data-action');
+        if (action === 'print') {
+          this.printRemisionTicket(params.data);
+        }
+      },
+      cellStyle: { textAlign: 'center' },
+    },
     { field: 'id', headerName: 'ID', width: 90, maxWidth: 100 },
     { field: 'folio', headerName: 'Folio', minWidth: 170 },
     { field: 'clienteName', headerName: 'Cliente', minWidth: 240 },
@@ -94,7 +119,7 @@ export class RemisionesComponent {
     },
     {
       field: 'fechaCreacion',
-      headerName: 'Creación',
+      headerName: 'Creacion',
       minWidth: 170,
       valueFormatter: (params) => this.formatDateTime(params.value),
     },
@@ -104,7 +129,7 @@ export class RemisionesComponent {
       minWidth: 170,
       valueFormatter: (params) => this.formatDateTime(params.value),
     },
-    { field: 'diasTranscurridos', headerName: 'Días', width: 90, type: 'numericColumn' },
+    { field: 'diasTranscurridos', headerName: 'Dias', width: 90, type: 'numericColumn' },
     { field: 'totalRenglones', headerName: 'Renglones', width: 110, type: 'numericColumn' },
     {
       field: 'totalCantidadRemitida',
@@ -195,19 +220,19 @@ export class RemisionesComponent {
 
   async closeRemision(remision: any): Promise<void> {
     const commentResult = await alerts.inputAlert(
-      'Cerrar remisión',
+      'Cerrar remision',
       `Folio ${remision.folio}. Puedes capturar un comentario opcional de cierre.`,
       'textarea',
       remision.comentario || '',
       {
         required: false,
-        confirmButtonText: 'Cerrar remisión',
+        confirmButtonText: 'Cerrar remision',
       }
     );
 
     if (!commentResult.isConfirmed) return;
 
-    alerts.showLoading('Cerrando remisión...', 'Actualizando estado y detalles relacionados.');
+    alerts.showLoading('Cerrando remision...', 'Actualizando estado y detalles relacionados.');
     try {
       await lastValueFrom(
         this.remisionesService.closeRemision(remision.id, {
@@ -217,20 +242,20 @@ export class RemisionesComponent {
       );
 
       alerts.closeLoading();
-      alerts.toastAlert('Remisión cerrada correctamente', 'success');
+      alerts.toastAlert('Remision cerrada correctamente', 'success');
       if (this.selectedRemision?.id === remision.id) {
         this.closeDetalleModal();
       }
       this.loadData();
     } catch (error) {
       alerts.closeLoading();
-      console.error('Error cerrando remisión:', error);
-      alerts.basicAlert('Error', 'No se pudo cerrar la remisión', 'error');
+      console.error('Error cerrando remision:', error);
+      alerts.basicAlert('Error', 'No se pudo cerrar la remision', 'error');
     }
   }
 
   async openDetalleModal(remision: any): Promise<void> {
-    alerts.showLoading('Cargando detalle...', 'Consultando los renglones de la remisión.');
+    alerts.showLoading('Cargando detalle...', 'Consultando los renglones de la remision.');
     try {
       const response: any = await lastValueFrom(this.remisionesService.getDetalle(remision.id));
       const payload = response?.data || response?.Data || {};
@@ -245,8 +270,8 @@ export class RemisionesComponent {
       alerts.closeLoading();
     } catch (error) {
       alerts.closeLoading();
-      console.error('Error cargando detalle de remisión:', error);
-      alerts.basicAlert('Error', 'No se pudo cargar el detalle de la remisión', 'error');
+      console.error('Error cargando detalle de remision:', error);
+      alerts.basicAlert('Error', 'No se pudo cargar el detalle de la remision', 'error');
     }
   }
 
@@ -271,5 +296,234 @@ export class RemisionesComponent {
   formatNumber(value: unknown): string {
     const numericValue = Number(value) || 0;
     return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(numericValue);
+  }
+
+  async printRemisionTicket(remision: any): Promise<void> {
+    if (!remision?.id) return;
+
+    try {
+      alerts.showLoading('Generando ticket...', 'Preparando PDF de la remision.');
+      const detalleRows = await this.getRemisionDetalleRows(remision.id);
+      await this.buildTicketPdf(remision, detalleRows);
+      alerts.closeLoading();
+    } catch (error) {
+      alerts.closeLoading();
+      console.error('Error generando ticket de remision:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el ticket de la remision', 'error');
+    }
+  }
+
+  async printPedidoTicketFromDetalle(row: any): Promise<void> {
+    const remision = this.selectedRemision;
+    if (!remision?.id || !row?.idPedido) return;
+
+    try {
+      alerts.showLoading('Generando ticket...', 'Preparando PDF del pedido.');
+      const detalleRows = this.selectedDetalleRows?.length
+        ? this.selectedDetalleRows
+        : await this.getRemisionDetalleRows(remision.id);
+
+      const pedidoRows = (detalleRows || []).filter((x: any) => Number(x.idPedido) === Number(row.idPedido));
+      await this.buildTicketPdf(remision, pedidoRows, Number(row.idPedido));
+      alerts.closeLoading();
+    } catch (error) {
+      alerts.closeLoading();
+      console.error('Error generando ticket del pedido en remision:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el ticket del pedido', 'error');
+    }
+  }
+
+  private async getRemisionDetalleRows(idRemision: number): Promise<any[]> {
+    const response: any = await lastValueFrom(this.remisionesService.getDetalle(idRemision));
+    const payload = response?.data || response?.Data || {};
+    const detalleRows = payload?.detalles || payload?.Detalles || [];
+    return (detalleRows || []).map((row: any) => ({
+      ...row,
+      totalLinea: (Number(row.cantidadRemitida) || 0) * (Number(row.venta) || 0) + (Number(row.impuesto) || 0),
+    }));
+  }
+
+  private async getCompanyLogoBase64(): Promise<string | null> {
+    try {
+      const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
+      if (!rootData?.picture) return null;
+      return await this.base64EncodeService.convertImageToBase64(rootData.picture);
+    } catch {
+      return null;
+    }
+  }
+
+  private async buildTicketPdf(remision: any, detalleRows: any[], pedidoId?: number): Promise<void> {
+    const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+    const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+    (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+    const rows = Array.isArray(detalleRows) ? detalleRows : [];
+    const clienteNombre =
+      remision?.clienteName ||
+      this.allRowData.find((r: any) => Number(r?.id) === Number(remision?.id))?.clienteName ||
+      `Cliente ${remision?.idCliente ?? '-'}`;
+    const logoBase64 = await this.getCompanyLogoBase64();
+    const logoCell = logoBase64
+      ? { image: logoBase64, width: 60, alignment: 'left' as const }
+      : { text: '', width: 60 };
+
+    const total = rows.reduce((acc: number, row: any) => {
+      const subtotal = (Number(row.cantidadRemitida) || 0) * (Number(row.venta) || 0);
+      return acc + subtotal + (Number(row.impuesto) || 0);
+    }, 0);
+
+    const docDefinition: any = {
+      pageOrientation: 'portrait',
+      pageSize: 'A4',
+      pageMargins: [30, 60, 30, 35],
+      header: () => ({
+        margin: [30, 10, 30, 0],
+        table: {
+          widths: ['auto', '*', 'auto'],
+          body: [[
+            logoCell,
+            {
+              stack: [
+                { text: pedidoId ? `Ticket Pedido #${pedidoId}` : `Ticket Remision ${remision?.folio || ''}`, style: 'headerTitle' },
+                {
+                  text: `Estado: ${remision?.estado || '-'}   |   Renglones: ${rows.length}`,
+                  fontSize: 8,
+                  color: '#555',
+                  alignment: 'center',
+                },
+              ],
+            },
+            { text: new Date().toLocaleDateString('es-MX'), fontSize: 8, color: '#888', alignment: 'right', margin: [0, 6, 0, 0] },
+          ]],
+        },
+        layout: 'noBorders',
+      }),
+      content: [
+        {
+          text: 'Maestro',
+          style: 'sectionTitle',
+          margin: [0, 0, 0, 6],
+        },
+        {
+          table: {
+            widths: ['*', '*', '*', '*'],
+            body: [
+              [
+                { text: `Folio: ${remision?.folio || '-'}`, fontSize: 9 },
+                { text: `Cliente: ${clienteNombre}`, fontSize: 9 },
+                { text: `Estado: ${remision?.estado || '-'}`, fontSize: 9 },
+                { text: '', fontSize: 9 },
+              ],
+              [
+                { text: `Creacion: ${this.formatDateTime(remision?.fechaCreacion) || '-'}`, fontSize: 9 },
+                { text: `Cierre: ${this.formatDateTime(remision?.fechaCierre) || '-'}`, fontSize: 9 },
+                { text: `Creada por: ${remision?.createdBy || '-'}`, fontSize: 9 },
+                { text: `Cerrada por: ${remision?.closedBy || '-'}`, fontSize: 9 },
+              ],
+            ],
+          },
+          layout: 'lightHorizontalLines',
+          margin: [0, 0, 0, 10],
+        },
+        { text: 'Detalle', style: 'sectionTitle', margin: [0, 0, 0, 6] },
+        {
+          table: {
+            headerRows: 1,
+            widths: [40, '*', 36, 34, 66, 66, 72],
+            body: [
+              [
+                { text: 'Pedido', style: 'tableHeader' },
+                { text: 'Producto', style: 'tableHeader' },
+                { text: 'Solicitado', style: 'tableHeader', alignment: 'center' },
+                { text: 'Remit.', style: 'tableHeader', alignment: 'center' },
+                { text: 'Venta', style: 'tableHeader', alignment: 'right' },
+                { text: 'Impuesto', style: 'tableHeader', alignment: 'right' },
+                { text: 'Total', style: 'tableHeader', alignment: 'right' },
+              ],
+              ...rows.map((row: any) => [
+                { text: this.getPedidoNumber(row), fontSize: 8 },
+                { text: String(row.producto || '-'), fontSize: 8 },
+                { text: this.formatNumber(row.cantidad), alignment: 'center', fontSize: 8, noWrap: true },
+                { text: this.formatNumber(row.cantidadRemitida), alignment: 'center', fontSize: 8, noWrap: true },
+                { text: this.formatCurrency(row.venta), alignment: 'right', fontSize: 7, noWrap: true },
+                { text: this.formatCurrency(row.impuesto), alignment: 'right', fontSize: 7, noWrap: true },
+                { text: this.formatCurrency(row.totalLinea), alignment: 'right', bold: true, fontSize: 7, noWrap: true },
+              ]),
+            ],
+          },
+          layout: {
+            hLineColor: () => '#d6dce5',
+            vLineColor: () => '#d6dce5',
+            paddingLeft: () => 2,
+            paddingRight: () => 2,
+            paddingTop: () => 1,
+            paddingBottom: () => 1,
+          },
+        },
+        {
+          margin: [0, 10, 0, 0],
+          table: {
+            widths: ['*', 120],
+            body: [[
+              { text: 'TOTAL', alignment: 'right', bold: true, fontSize: 11 },
+              { text: this.formatCurrency(total), alignment: 'right', bold: true, fontSize: 11 },
+            ]],
+          },
+          layout: 'noBorders',
+        },
+      ],
+      styles: {
+        headerTitle: { fontSize: 13, bold: true, color: '#1a237e', alignment: 'center' },
+        sectionTitle: { fontSize: 10, bold: true, color: '#1565c0' },
+        tableHeader: { bold: true, fontSize: 8, fillColor: '#e3f2fd', color: '#1a237e' },
+      },
+      footer: (currentPage: number, pageCount: number) => ({
+        text: `Pagina ${currentPage} de ${pageCount}`,
+        alignment: 'center',
+        fontSize: 8,
+        color: '#999',
+        margin: [0, 8, 0, 0],
+      }),
+    };
+
+    const fileName = pedidoId
+      ? `Ticket_Pedido_${pedidoId}_Remision_${remision?.folio || remision?.id || 'NA'}.pdf`
+      : `Ticket_Remision_${remision?.folio || remision?.id || 'NA'}.pdf`;
+
+    const pdf = pdfMake.createPdf(docDefinition);
+    try {
+      pdf.open();
+    } catch {
+      pdf.download(fileName);
+    }
+  }
+
+  getPedidoNumber(row: any): string {
+    const candidates = [
+      row?.numeroPedido,
+      row?.NumeroPedido,
+      row?.numero,
+      row?.Numero,
+      row?.pedido,
+      row?.Pedido,
+      row?.folioPedido,
+      row?.FolioPedido,
+      row?.idPedido,
+      row?.IdPedido
+    ];
+
+    for (const value of candidates) {
+      if (value === null || value === undefined) continue;
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(value);
+      }
+
+      const text = String(value).trim();
+      if (!text) continue;
+      return text;
+    }
+
+    return '-';
   }
 }

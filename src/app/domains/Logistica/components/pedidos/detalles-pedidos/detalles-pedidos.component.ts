@@ -16,6 +16,7 @@ import { lastValueFrom } from 'rxjs';
 import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-editor.component';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import Swal from 'sweetalert2';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
@@ -83,6 +84,29 @@ export class DetallesPedidosComponent implements OnInit {
   private readonly MANUAL_ESTADOS = ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO'];
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+  private getDefaultImpuestoRate(): number {
+    const rate = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
+    return Number.isFinite(rate) && rate > 0 ? rate : 0;
+  }
+
+  private isAplicaImpuestos(value: any): boolean {
+    return value === true || value === 1 || value === '1' || (typeof value === 'string' && value.toLowerCase() === 'true');
+  }
+
+  private getImpuestoAmountFromRow(row: any): number {
+    if (!this.isAplicaImpuestos(row?.aplicaImpuestos)) return 0;
+    const cantidad = Number(row?.cantidad) || 0;
+    const venta = Number(row?.venta) || 0;
+    const subtotal = cantidad * venta;
+    const rate = this.getDefaultImpuestoRate();
+    return Number(((subtotal * rate) / 100).toFixed(2));
+  }
+
+  private recalcImpuestoInRow(row: any): void {
+    if (!row) return;
+    row.impuesto = this.getImpuestoAmountFromRow(row);
+  }
 
   ngOnInit() {
     this.loadData();
@@ -420,6 +444,7 @@ get colDefs(): ColDef[] {
           const checked = !isCurrentlyChecked;
           params.data.aplicaImpuestos = checked;
           if (checked) params.data.plataforma = 'TEMU';
+          this.recalcImpuestoInRow(params.data);
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           params.api.refreshCells({
@@ -435,9 +460,7 @@ get colDefs(): ColDef[] {
         editable: false,
         width: 100,
         valueGetter: (params) => {
-          const aplicaImpuestos = params.data?.aplicaImpuestos === true || params.data?.aplicaImpuestos === 1 || params.data?.aplicaImpuestos === '1';
-          const defaultImpuesto = Number(this.context?.componentParent?.defaultImpuesto ?? 16);
-          return aplicaImpuestos ? defaultImpuesto : 0;
+          return this.isAplicaImpuestos(params.data?.aplicaImpuestos) ? this.getDefaultImpuestoRate() : 0;
         },
         valueFormatter: (params) => {
           const val = params.value ?? 0;
@@ -452,7 +475,7 @@ get colDefs(): ColDef[] {
         valueGetter: (params) => {
           const cantidad = params.data.cantidad || 0;
           const venta = params.data.venta || 0;
-          const impuesto = params.data.impuesto || 0;
+          const impuesto = this.getImpuestoAmountFromRow(params.data);
           return (cantidad * venta) + impuesto;
         },
         valueFormatter: (params) => {
@@ -752,6 +775,9 @@ get colDefs(): ColDef[] {
   }
 
   onCellValueChanged(event: any) {
+    if (event?.data) {
+      this.recalcImpuestoInRow(event.data);
+    }
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
 
@@ -863,20 +889,7 @@ get colDefs(): ColDef[] {
     if (!quantityResult.isConfirmed) return;
 
     const cantidadRemitida = Number(quantityResult.value);
-    const commentResult = await alerts.inputAlert(
-      'Comentario de remisión',
-      'Puedes capturar un comentario opcional para este movimiento.',
-      'textarea',
-      '',
-      {
-        required: false,
-        confirmButtonText: 'Mandar a remisión',
-      }
-    );
-
-    if (!commentResult.isConfirmed) return;
-
-    const comentario = String(commentResult.value ?? '').trim();
+    const comentario = '';
     const idCompany = Number(this.context?.idCompany ?? this.context?.componentParent?.idCompany ?? 0);
     const createdBy =
       this.context?.trackingService?.getEmail?.() ||
@@ -888,32 +901,86 @@ get colDefs(): ColDef[] {
       return;
     }
 
-    alerts.showLoading('Mandando a remisión...', 'Creando o reutilizando la remisión abierta.');
     try {
-      const openResponse: any = await lastValueFrom(
-        this.remisionesService.createOrReuseOpen({
-          idCompany,
-          IdCompany: idCompany,
-          idCliente: clienteId,
-          IdCliente: clienteId,
-          comentario,
-          Comentario: comentario,
-          createdBy,
-          CreatedBy: createdBy,
-        })
-      );
+      alerts.showLoading('Preparando remisión...', 'Consultando remisiones abiertas del cliente.');
 
-      const idRemision = Number(
-        openResponse?.id ??
-        openResponse?.Id ??
-        openResponse?.Data?.id ??
-        openResponse?.Data?.Id ??
-        openResponse?.data?.id ??
-        openResponse?.data?.Id ??
-        openResponse?.remision?.id ??
-        openResponse?.remision?.Id ??
-        0
+      const abiertasResponse: any = await lastValueFrom(
+        this.remisionesService.getByCliente(idCompany, clienteId, 'ABIERTA')
       );
+      const remisionesAbiertas = this.extractOpenRemisiones(abiertasResponse, idCompany, clienteId);
+      alerts.closeLoading();
+
+      let idRemision = 0;
+      let openResponse: any = null;
+
+      if (remisionesAbiertas.length > 0) {
+        const selectedOption = await this.askOpenRemisionSelection(remisionesAbiertas);
+        if (!selectedOption) return;
+
+        if (selectedOption === 'NEW') {
+          alerts.showLoading('Mandando a remisión...', 'Creando nueva remisión abierta.');
+          openResponse = await lastValueFrom(
+            this.remisionesService.createOrReuseOpen({
+              idCompany,
+              IdCompany: idCompany,
+              idCliente: clienteId,
+              IdCliente: clienteId,
+              forceNew: true,
+              ForceNew: true,
+              comentario,
+              Comentario: comentario,
+              createdBy,
+              CreatedBy: createdBy,
+            })
+          );
+          alerts.closeLoading();
+
+          idRemision = Number(
+            openResponse?.id ??
+            openResponse?.Id ??
+            openResponse?.Data?.id ??
+            openResponse?.Data?.Id ??
+            openResponse?.data?.id ??
+            openResponse?.data?.Id ??
+            openResponse?.remision?.id ??
+            openResponse?.remision?.Id ??
+            0
+          );
+        } else {
+          idRemision = Number(selectedOption);
+        }
+      } else {
+        alerts.showLoading('Mandando a remisión...', 'Creando nueva remisión abierta.');
+        openResponse = await lastValueFrom(
+          this.remisionesService.createOrReuseOpen({
+            idCompany,
+            IdCompany: idCompany,
+            idCliente: clienteId,
+            IdCliente: clienteId,
+            comentario,
+            Comentario: comentario,
+            createdBy,
+            CreatedBy: createdBy,
+          })
+        );
+        alerts.closeLoading();
+
+        idRemision = Number(
+          openResponse?.id ??
+          openResponse?.Id ??
+          openResponse?.Data?.id ??
+          openResponse?.Data?.Id ??
+          openResponse?.data?.id ??
+          openResponse?.data?.Id ??
+          openResponse?.remision?.id ??
+          openResponse?.remision?.Id ??
+          0
+        );
+      }
+
+      if (idRemision <= 0) {
+        throw new Error('No se pudo determinar la remisión destino.');
+      }
 
       const payload = {
         idCompany,
@@ -948,6 +1015,7 @@ get colDefs(): ColDef[] {
         openResponse
       });
 
+      alerts.showLoading('Mandando a remisión...', 'Agregando detalle a la remisión seleccionada.');
       await lastValueFrom(this.remisionesService.addDetalle(payload));
 
       alerts.closeLoading();
@@ -964,6 +1032,85 @@ get colDefs(): ColDef[] {
         'No se pudo mandar el detalle a remisión.';
       alerts.basicAlert('Error', backendMessage, 'error');
     }
+  }
+
+  private extractOpenRemisiones(response: any, idCompany: number, idCliente: number): any[] {
+    const possibleLists = [
+      response?.data,
+      response?.Data,
+      response?.data?.remisiones,
+      response?.Data?.Remisiones,
+      response?.remisiones,
+      response?.Remisiones
+    ];
+
+    let list: any[] = [];
+    for (const candidate of possibleLists) {
+      if (Array.isArray(candidate)) {
+        list = candidate;
+        break;
+      }
+      if (candidate && typeof candidate === 'object') {
+        const nested = candidate?.remisiones || candidate?.Remisiones;
+        if (Array.isArray(nested)) {
+          list = nested;
+          break;
+        }
+      }
+    }
+
+    return (list || [])
+      .filter((item: any) =>
+        String(item?.estado ?? '').toUpperCase() === 'ABIERTA' &&
+        Number(item?.idCompany ?? item?.IdCompany ?? 0) === Number(idCompany) &&
+        Number(item?.idCliente ?? item?.IdCliente ?? 0) === Number(idCliente)
+      )
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a?.fechaCreacion || 0).getTime();
+        const dateB = new Date(b?.fechaCreacion || 0).getTime();
+        return dateB - dateA;
+      });
+  }
+
+  private async askOpenRemisionSelection(remisionesAbiertas: any[]): Promise<number | 'NEW' | null> {
+    const inputOptions: Record<string, string> = {};
+
+    for (const remision of remisionesAbiertas) {
+      const id = Number(remision?.id ?? remision?.Id ?? 0);
+      if (id <= 0) continue;
+      const folio = remision?.folio || remision?.Folio || `#${id}`;
+      const fechaCreacion = remision?.fechaCreacion || remision?.FechaCreacion;
+      const fechaTxt = fechaCreacion ? new Date(fechaCreacion).toLocaleString('es-MX') : '-';
+      inputOptions[String(id)] = `${folio} | Creada: ${fechaTxt}`;
+    }
+    inputOptions['NEW'] = '➕ Crear nueva remisión';
+
+    const firstRemisionId = Number(remisionesAbiertas[0]?.id ?? remisionesAbiertas[0]?.Id ?? 0);
+    const defaultSelected = remisionesAbiertas.length === 1 && firstRemisionId > 0
+      ? String(firstRemisionId)
+      : '';
+
+    const result = await Swal.fire({
+      title: 'Selecciona remisión abierta',
+      text: 'Elige a cuál remisión deseas enviar el detalle.',
+      input: 'radio',
+      inputOptions,
+      inputValue: defaultSelected,
+      inputPlaceholder: 'Selecciona una remisión abierta',
+      showCancelButton: true,
+      confirmButtonText: 'Usar remisión',
+      cancelButtonText: 'Cancelar',
+      customClass: { container: 'swal-over-modal' },
+      inputValidator: (value) => {
+        if (!value) return 'Debes seleccionar una remisión abierta';
+        return null;
+      }
+    });
+
+    if (!result.isConfirmed) return null;
+    if (result.value === 'NEW') return 'NEW';
+    const selectedId = Number(result.value || 0);
+    return selectedId > 0 ? selectedId : null;
   }
 
   // ==================== MODAL NUEVA PLATAFORMA ====================
