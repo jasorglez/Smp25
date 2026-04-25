@@ -130,6 +130,10 @@ export class ProductionService {
     return this.http.get<MoliendaProduccion[]>(`${environment.urlProduction}/Molienda/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getMoliendaByCompanyAndSucursal(idCompany: number, idSucursal: number): Observable<MoliendaProduccion[]> {
+    return this.http.get<MoliendaProduccion[]>(`${environment.urlProduction}/Molienda/company/${idCompany}/sucursal/${idSucursal}`, { headers: this.trackingService.getHeaders() });
+  }
+
   createMolienda(data: MoliendaProduccion): Observable<MoliendaProduccion> {
     return this.http.post<MoliendaProduccion>(`${environment.urlProduction}/Molienda`, data, { headers: this.trackingService.getHeaders() });
   }

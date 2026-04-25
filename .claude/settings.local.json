@@ -130,7 +130,8 @@
       "mcp__b2-mssql-production__execute_sql",
       "mcp__b2-mssql-security__list_databases",
       "mcp__b2-mssql-security__get_table_schema",
-      "mcp__b2-mssql-administration__get_table_schema"
+      "mcp__b2-mssql-administration__get_table_schema",
+      "mcp__b2-mssql-production__get_table_schema"
     ],
     "deny": [],
     "ask": []

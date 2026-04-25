@@ -74,6 +74,8 @@ export class MoliendaComponent {
   matPrimaOptions: { id: number; name: string }[] = [];
 
   private idCompany = 0;
+  private idBranch  = 0;
+
   get colDefs(): ColDef[] {
     return [
       {
@@ -143,6 +145,14 @@ export class MoliendaComponent {
         this.loadBranches(idUser, idCompany);
       }
     });
+
+    effect(() => {
+      const idBranch = this.signalService.getBranchSelectedBySidebar()();
+      if (idBranch !== undefined && idBranch !== null && idBranch !== this.idBranch) {
+        this.idBranch = idBranch;
+        if (this.idCompany) this.loadData();
+      }
+    });
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -160,6 +170,8 @@ export class MoliendaComponent {
   }
 
   private async loadBranches(idUser: number, idCompany: number) {
+    const currentBranch = this.signalService.getBranchSelectedBySidebar()();
+    if (currentBranch) this.idBranch = currentBranch;
     try {
       const [branchData, mxmData, matsData] = await Promise.all([
         lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany)),
@@ -190,8 +202,13 @@ export class MoliendaComponent {
   }
 
   async loadData() {
+    if (!this.idCompany) return;
     try {
-      const items = await lastValueFrom(this.productionService.getMoliendaByCompany(this.idCompany));
+      const allBranches = this.idBranch <= 0;
+      const obs = allBranches
+        ? this.productionService.getMoliendaByCompany(this.idCompany)
+        : this.productionService.getMoliendaByCompanyAndSucursal(this.idCompany, this.idBranch);
+      const items = await lastValueFrom(obs);
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData = mapped;
@@ -211,7 +228,7 @@ export class MoliendaComponent {
       cantidadUso:   i.cantidad      ?? null,
       cuantoQueda:   i.cuantoQueda   ?? null,
       jugo:          i.jugo          ?? null,
-      liberPorCompra: i.liberCompra  ?? null,
+      liberPorCompra: !!i.liberCompra,
       adicional:     i.columna1      ?? '',
       __isNew:       false,
       __modified:    false,
@@ -228,7 +245,7 @@ export class MoliendaComponent {
       cantidad:    row.cantidadUso   ?? null,
       cuantoQueda: row.cuantoQueda   ?? null,
       jugo:        row.jugo          ?? null,
-      liberCompra: row.liberPorCompra ?? null,
+      liberCompra: row.liberPorCompra ?? false,
       columna1:    row.adicional      || null,
       active:      true,
     };
@@ -266,10 +283,9 @@ export class MoliendaComponent {
       }
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges = false;
-      alerts.basicAlert('Guardado', 'Cambios guardados correctamente', 'success');
     } catch (e) {
       console.error('Error guardando molienda:', e);
-      alerts.basicAlert('Error', 'Ocurrió un error al guardar', 'error');
+      alerts.reqErrorToast('Error al guardar');
     }
   }
 
@@ -289,18 +305,16 @@ export class MoliendaComponent {
       this.hasChanges = this.rowData.some(r => r.__isNew || r.__modified);
       return;
     }
-    const res = await alerts.confirmAlert('Eliminar', '¿Está seguro?', 'warning', 'Sí, eliminar');
-    if (!res.isConfirmed) return;
     try {
       await lastValueFrom(this.productionService.deleteMolienda(this.selectedRow.id));
       this.rowData = this.rowData.filter(r => r !== this.selectedRow);
       this.originalRowData = this.originalRowData.filter(r => r.id !== this.selectedRow.id);
       this.selectedRow = null;
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
-      alerts.basicAlert('Eliminado', 'Registro eliminado', 'success');
+      alerts.reqSuccessToast('Registro eliminado');
     } catch (e) {
       console.error('Error eliminando:', e);
-      alerts.basicAlert('Error', 'Ocurrió un error al eliminar', 'error');
+      alerts.reqErrorToast('Error al eliminar');
     }
   }
 }
