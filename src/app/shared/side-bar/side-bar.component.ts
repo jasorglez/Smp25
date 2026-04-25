@@ -160,7 +160,7 @@ error: (error) => {
           this.signalsService.setRootSelectedBySidebar(
             Number(this.selectedRoot)
           );
-          this.signalsService.setIsAdvanced(this.rootData[0].advanced);
+          this.signalsService.setIsAdvanced(false);
           this.signalsService.setCompanyNameSmall(this.rootData[0].nameSmall || this.rootData[0].name);
           this.trackingService.setCompany(this.selectedRoot);
           this.getHeadersCompanys(this.selectedRoot);
@@ -609,6 +609,8 @@ error: (error) => {
   }
 
   private loadPermissions() {
+    const perms = this.authService.getUserPermissions();
+    console.log('[SideBar] Permisos cargados:', perms);
     return EMPTY;
   }
 

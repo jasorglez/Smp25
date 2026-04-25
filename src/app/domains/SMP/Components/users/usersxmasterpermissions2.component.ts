@@ -8,6 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 import { tap } from 'rxjs/operators';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-usersxmasterpermissions2',
@@ -30,6 +31,7 @@ export class UsersxMasterPermissions2Component {
   private permissionService = inject(MasterPermissions2Service);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private authService = inject(AuthService);
   
   profile = computed(() => this.signalsService.profile);
 
@@ -84,10 +86,18 @@ export class UsersxMasterPermissions2Component {
       .updateUserPermissions(this.selectedUserId, this.userPermissions)
       .pipe(
         tap(() => {
-          console.log('Permisos actualizados correctamente');
           alerts.basicAlert('Mensaje', 'Se ha cambiado correctamente el permiso.', 'success');
+          // Refrescar caché de permisos del usuario actual para efecto inmediato
+          const currentUserId = this.signalsService.getIdUSer()();
+          this.authService.fetchUserPermissions(currentUserId).subscribe({
+            next: (data: any) => {
+              if (data?.permissions) {
+                this.authService.setUserPermissions(data.permissions);
+              }
+            }
+          });
         })
       )
-      .subscribe(); // Solo suscribirse sin manejar el resultado aquí
+      .subscribe();
   }
 }

@@ -140,14 +140,14 @@ export class ComploginComponent implements OnInit {
               this.signalsService.setrootChoose(datauser.userRoot);
               localStorage.setItem('userRoot', datauser.userRoot.toString());
               localStorage.setItem('mail', this.emailcapt);
-              this.signalsService.setIsAdvanced(!!datauser.advanced);
+              this.signalsService.setIsAdvanced(false);
               if (datauser.applybranch != null) {
                 this.signalsService.setBranchSelectedBySidebar(datauser.applybranch);
                 this.idBranch = datauser.applybranch;
               }
 
               const userId = datauser.id;
-              const isAdvancedLocal = !!datauser.advanced;
+              const isAdvancedLocal = false;
               const branchIdLocal = datauser.applybranch ?? this.idBranch;
 
               if (isAdvancedLocal && branchIdLocal != null && branchIdLocal !== 0) {

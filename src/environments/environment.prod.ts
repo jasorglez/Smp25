@@ -43,7 +43,7 @@ export const environment = {
   urlAdministration: 'https://hco-siaf.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
-  urlNotifications: 'https://bi2.com.mx/notifications/api', // 5011 -- NotificationsTelegram
+  urlNotifications: 'https://endpoints.biapp.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
   urlMantenimiento: 'https://hco-siaf.bi2.mx/maintenance/api',
@@ -76,5 +76,5 @@ export const environment = {
   urlRefreshToken:
     'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.0.26 (25 Abril 2026 10:39) - Diamond',
+  version: '6.0.26 (25 Abril 2026 12:08) - Diamond',
 };

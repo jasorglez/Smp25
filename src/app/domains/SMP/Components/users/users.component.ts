@@ -54,7 +54,7 @@ export class UsersComponent implements OnDestroy {
   departamentos: any[] = [];
   position: any[] = [];
   rowData: any[] = [];
-  
+
   paginationPageSize = 20;
   pagination = true;
   notSavedChanges: boolean = false;
@@ -81,17 +81,17 @@ export class UsersComponent implements OnDestroy {
   private editableColumnOrder = ['displayName', 'email', 'password', 'isRoot'];
   private enterPressed: boolean = false;
 
-  private usersService        = inject(UsersService);
+  private usersService = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
-  private usersxrootService   = inject(UsersxpermissionsService);
-  private trackingService     = inject(TrackingService);
-  private catalogService      = inject(CatalogsService);
-  private signalsService      = inject(SignalsService);
-  private rolesService        = inject(RolesService);  
-  private employeeService     = inject(EmployeesService);
-  private permitionsService   = inject(PermitionsService);
-  private modalService        = inject(ModalService);
-  authService                 = inject(AuthService);
+  private usersxrootService = inject(UsersxpermissionsService);
+  private trackingService = inject(TrackingService);
+  private catalogService = inject(CatalogsService);
+  private signalsService = inject(SignalsService);
+  private rolesService = inject(RolesService);
+  private employeeService = inject(EmployeesService);
+  private permitionsService = inject(PermitionsService);
+  private modalService = inject(ModalService);
+  authService = inject(AuthService);
 
   profile = computed(() => this.signalsService.profile);
 
@@ -444,7 +444,7 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'idRol',
         headerName: 'Security',
-        hide: !this.isAdvanced && this.idUser !== 42,
+        hide: this.idUser !== 42,
         cellStyle: { backgroundColor: '#d4edda' },
         onCellClicked: this.togglePermissions.bind(this)
       },
@@ -583,9 +583,7 @@ export class UsersComponent implements OnDestroy {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      if (!this.isAdvanced) {
-        this.enviarSignal();
-      }
+      this.enviarSignal();
     } else {
       this.selectedRowData = null;
     }

@@ -29,42 +29,71 @@ export class MasterPermissionsGuard implements CanActivate {
 
     const email = localStorage.getItem('mail');
     if (!email) {
+      console.warn('[Guard] Sin email en localStorage → redirigiendo a /login');
       this.router.navigate(['/login']);
       return of(false);
     }
-    
 
-    // Leemos los valores de los signals aquí, dentro de canActivate
+    // Usuario root tiene acceso a todo
+    const userRoot = this.signalsService.getUserRoot()();
+    console.log(`[Guard] userRoot=${userRoot} | isRoot=${userRoot == 1}`);
+    if (userRoot == 1) {
+      return of(true);
+    }
+
     const isAdvanced = this.signalsService.getIsAdvanced();
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-    // Si es avanzado pero aún no se selecciona una sucursal, no podemos verificar permisos avanzados.
+    console.log(`[Guard] Ruta: ${state.url} | Permiso requerido: master="${requiredPermissions.master}"${requiredPermissions.detailed ? ` detailed="${requiredPermissions.detailed}"` : ''} | isAdvanced=${isAdvanced} | idBranch=${idBranch}`);
+
     if (isAdvanced && !idBranch) {
-      // Podrías redirigir o simplemente denegar el acceso hasta que se seleccione una sucursal.
-      // Por ahora, lo trataremos como si no tuviera permisos.
+      console.warn('[Guard] BLOQUEADO: isAdvanced=true pero idBranch es null/0. El sidebar aún no cargó la sucursal.');
       this.router.navigate(['/unauthorized']);
       return of(false);
     }
 
+    // Si ya hay permisos cacheados del login, usarlos directamente
+    const cachedPermissions = this.permissionService.getUserPermissions();
+    if (cachedPermissions && Object.keys(cachedPermissions).length > 0) {
+      const hasMasterPermission = this.permissionService.hasMasterPermission(requiredPermissions.master);
+      const hasDetailedPermission = requiredPermissions.detailed
+        ? this.permissionService.hasDetailedPermission(requiredPermissions.master, requiredPermissions.detailed)
+        : true;
+
+      console.log(`[Guard] Usando permisos cacheados | hasMaster=${hasMasterPermission} | hasDetailed=${hasDetailedPermission}`);
+
+      if (hasMasterPermission && hasDetailedPermission) {
+        return of(true);
+      } else {
+        console.warn(`[Guard] BLOQUEADO (cache): master "${requiredPermissions.master}" → hasMaster=${hasMasterPermission}, hasDetailed=${hasDetailedPermission}`);
+        this.router.navigate(['/unauthorized']);
+        return of(false);
+      }
+    }
+
+    // Sin caché: fetch desde el servidor
     return this.permissionService.getUserId(email).pipe(
-      switchMap((userId) => isAdvanced
-                    ? this.permissionService.fetchUserPermissionsAdvanced(userId, idBranch)
-                    : this.permissionService.fetchUserPermissions(userId)),
+      switchMap((userId) => {
+        console.log(`[Guard] userId=${userId} | Modo: ${isAdvanced ? 'Advanced (branch=' + idBranch + ')' : 'Normal'}`);
+        return isAdvanced
+          ? this.permissionService.fetchUserPermissionsAdvanced(userId, idBranch)
+          : this.permissionService.fetchUserPermissions(userId);
+      }),
       map((permissions) => {
-        this.permissionService.setUserPermissions(permissions.permissions);
-        const hasMasterPermission = this.permissionService.hasMasterPermission(
-          requiredPermissions.master
-        );
+        if (permissions.permissions && Object.keys(permissions.permissions).length > 0) {
+          this.permissionService.setUserPermissions(permissions.permissions);
+        }
+        const hasMasterPermission = this.permissionService.hasMasterPermission(requiredPermissions.master);
         const hasDetailedPermission = requiredPermissions.detailed
-          ? this.permissionService.hasDetailedPermission(
-            requiredPermissions.master,
-            requiredPermissions.detailed
-          )
+          ? this.permissionService.hasDetailedPermission(requiredPermissions.master, requiredPermissions.detailed)
           : true;
+
+        console.log(`[Guard] hasMaster=${hasMasterPermission} | hasDetailed=${hasDetailedPermission} | permisos recibidos:`, permissions.permissions);
 
         if (hasMasterPermission && hasDetailedPermission) {
           return true;
         } else {
+          console.warn(`[Guard] BLOQUEADO: master "${requiredPermissions.master}" → hasMaster=${hasMasterPermission}, hasDetailed=${hasDetailedPermission}`);
           this.router.navigate(['/unauthorized']);
           return false;
         }
