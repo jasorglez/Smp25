@@ -4,6 +4,21 @@ import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
+export interface MoliendaProduccion {
+  id?: number;
+  idCompany?: number | null;
+  idSucursal?: number | null;
+  idMatPrima?: number | null;
+  fecha?: string | null;
+  nombre?: string | null;
+  cantidad?: number | null;
+  cuantoQueda?: number | null;
+  jugo?: number | null;
+  liberCompra?: boolean | null;
+  columna1?: string | null;
+  active?: boolean;
+}
+
 export interface MaterialJarabeConfig {
   id?: number;
   idMaterial: number;
@@ -107,5 +122,23 @@ export class ProductionService {
 
   saveMaterialJarabe(idMaterial: number, data: MaterialJarabeConfig): Observable<MaterialJarabeConfig> {
     return this.http.put<MaterialJarabeConfig>(`${environment.urlProduction}/materialjarabe/${idMaterial}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Molienda Producción ───────────────────────────────────────────────────
+
+  getMoliendaByCompany(idCompany: number): Observable<MoliendaProduccion[]> {
+    return this.http.get<MoliendaProduccion[]>(`${environment.urlProduction}/Molienda/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMolienda(data: MoliendaProduccion): Observable<MoliendaProduccion> {
+    return this.http.post<MoliendaProduccion>(`${environment.urlProduction}/Molienda`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateMolienda(id: number, data: MoliendaProduccion): Observable<MoliendaProduccion> {
+    return this.http.put<MoliendaProduccion>(`${environment.urlProduction}/Molienda/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMolienda(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/Molienda/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }
