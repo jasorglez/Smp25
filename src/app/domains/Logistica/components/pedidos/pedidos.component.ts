@@ -208,6 +208,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           const detallesDePedido = detallesByPedido.get(pedido.id) || [];
           const uniqueClientIds = [...new Set(detallesDePedido.map((d: any) => d.idCliente).filter(Boolean))];
           const clientesLabel = uniqueClientIds.length;
+          const remisionadosCount = detallesDePedido.filter((d: any) => {
+            const estado = String(d?.estado ?? '').toUpperCase();
+            return estado === 'REMISION' || estado === 'ENTREGADO';
+          }).length;
 
           // Total (nivel 1) = suma de (cantidad × venta + impuesto) de todos los detalles del pedido (nivel 2)
           const totalVenta = detallesDePedido.reduce((sum: number, d: any) => {
@@ -220,7 +224,17 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           // Número de artículos (cantidad de detalles)
           const numArticulos = detallesDePedido.length;
 
-          return { ...pedido, total: totalVenta, clientesLabel, numArticulos, impuesto: pedido.impuesto ?? 0, detailData: [], visible: true };
+          return {
+            ...pedido,
+            total: totalVenta,
+            clientesLabel,
+            numArticulos,
+            remisionadosCount,
+            enviadoRemision: remisionadosCount > 0 ? 'SI' : 'NO',
+            impuesto: pedido.impuesto ?? 0,
+            detailData: [],
+            visible: true
+          };
         });
 
         this.applyEstadoFilter();
@@ -287,6 +301,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       }
       // Recalcular numArticulos y total basado en el filtro activo
       const detallesDePedido = this.detallesByPedidoCache.get(p.id) || [];
+      const remisionadosCount = detallesDePedido.filter((d: any) => {
+        const estado = String(d?.estado ?? '').toUpperCase();
+        return estado === 'REMISION' || estado === 'ENTREGADO';
+      }).length;
       const detallesFiltrados = this.activeFilter === null
         ? detallesDePedido
         : detallesDePedido.filter((d: any) => this.normalizeDetalleEstado(d.estado) === this.activeFilter);
@@ -304,7 +322,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       return {
         ...p,
         numArticulos: numArticulosFiltrados,
-        total: totalFiltrado
+        total: totalFiltrado,
+        remisionadosCount,
+        enviadoRemision: remisionadosCount > 0 ? 'SI' : 'NO'
       };
     }).filter(
       (p: any) => p.__isNew || this.pedidoMatchesEstadoFilter(p.id)
@@ -516,6 +536,26 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           }
         },
         cellStyle: { backgroundColor: '#e3f2fd' }
+      },
+      {
+        field: 'enviadoRemision',
+        headerName: 'Enviado Remisión',
+        editable: false,
+        minWidth: 140,
+        maxWidth: 170,
+        valueGetter: (params) => {
+          const count = Number(params.data?.remisionadosCount || 0);
+          return count > 0 ? `SI (${count})` : 'NO';
+        },
+        cellStyle: (params) => {
+          const count = Number(params.data?.remisionadosCount || 0);
+          return {
+            backgroundColor: count > 0 ? '#ffe5d0' : '#f8f9fa',
+            color: count > 0 ? '#8a4b08' : '#6c757d',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          };
+        }
       },
       {
         field: 'total',
@@ -1004,6 +1044,10 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           }, 0);
 
           const uniqueClientIds = [...new Set(detallesActualizados.map((d: any) => d.idCliente).filter(Boolean))];
+          const remisionadosCount = detallesActualizados.filter((d: any) => {
+            const estado = String(d?.estado ?? '').toUpperCase();
+            return estado === 'REMISION' || estado === 'ENTREGADO';
+          }).length;
 
           const masterPedido = this.allPedidosRowData.find((pedido: any) => pedido.id === idPedido);
           if (masterPedido) {
@@ -1011,6 +1055,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             masterPedido.numArticulos = detallesVisibles.length;
             masterPedido.clientesLabel = uniqueClientIds.length;
             masterPedido.total = totalVenta;
+            masterPedido.remisionadosCount = remisionadosCount;
+            masterPedido.enviadoRemision = remisionadosCount > 0 ? 'SI' : 'NO';
           }
 
           const visiblePedido = this.rowData.find((pedido: any) => pedido.id === idPedido);
@@ -1019,6 +1065,8 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
             visiblePedido.numArticulos = detallesVisibles.length;
             visiblePedido.clientesLabel = uniqueClientIds.length;
             visiblePedido.total = totalVenta;
+            visiblePedido.remisionadosCount = remisionadosCount;
+            visiblePedido.enviadoRemision = remisionadosCount > 0 ? 'SI' : 'NO';
           }
 
           if (this.gridApi) {
@@ -1028,9 +1076,11 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
               rowNode.data.numArticulos = detallesVisibles.length;
               rowNode.data.clientesLabel = uniqueClientIds.length;
               rowNode.data.total = totalVenta;
+              rowNode.data.remisionadosCount = remisionadosCount;
+              rowNode.data.enviadoRemision = remisionadosCount > 0 ? 'SI' : 'NO';
               this.gridApi.refreshCells({
                 rowNodes: [rowNode],
-                columns: ['numArticulos', 'total'],
+                columns: ['numArticulos', 'enviadoRemision', 'total'],
                 force: true
               });
             }
