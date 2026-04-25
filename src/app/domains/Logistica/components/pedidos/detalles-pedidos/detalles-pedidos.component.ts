@@ -849,13 +849,21 @@ get colDefs(): ColDef[] {
     }
 
     const estadoActual = String(selectedItem.estado ?? '').toUpperCase();
+    if (estadoActual === 'REMISION') {
+      alerts.basicAlert(
+        'Sin disponible',
+        'Este detalle ya está en REMISIÓN. Usa el renglón pendiente en SOLICITADO para seguir enviando.',
+        'warning'
+      );
+      return;
+    }
     if (estadoActual === 'ENTREGADO') {
       alerts.basicAlert('No permitido', 'Un detalle ENTREGADO ya no puede volver a remisión.', 'warning');
       return;
     }
 
-    const cantidadMaxima = Number(selectedItem.cantidad) || 0;
-    if (cantidadMaxima <= 0) {
+    const cantidadDisponible = Number(selectedItem.cantidad) || 0;
+    if (cantidadDisponible <= 0) {
       alerts.basicAlert('Cantidad inválida', 'El detalle debe tener una cantidad válida para remisionar.', 'warning');
       return;
     }
@@ -864,7 +872,7 @@ get colDefs(): ColDef[] {
       'Cantidad a remisionar',
       'Indica la cantidad que deseas mandar a remisión.',
       'text',
-      String(cantidadMaxima),
+      String(cantidadDisponible),
       {
         confirmButtonText: 'Continuar',
         inputAttributes: {
@@ -877,8 +885,8 @@ get colDefs(): ColDef[] {
             if (!Number.isFinite(cantidad) || cantidad <= 0) {
               return 'La cantidad debe ser mayor a 0';
             }
-            if (cantidad > cantidadMaxima) {
-              return `La cantidad no puede ser mayor a ${cantidadMaxima}`;
+            if (cantidad > cantidadDisponible) {
+              return `No puedes agregar más de lo que tienes. Disponible: ${cantidadDisponible}`;
             }
             return cantidad;
           },
@@ -1097,10 +1105,18 @@ get colDefs(): ColDef[] {
       inputOptions,
       inputValue: defaultSelected,
       inputPlaceholder: 'Selecciona una remisión abierta',
+      width: '36rem',
       showCancelButton: true,
       confirmButtonText: 'Usar remisión',
       cancelButtonText: 'Cancelar',
-      customClass: { container: 'swal-over-modal' },
+      customClass: {
+        container: 'swal-over-modal',
+        popup: 'swal-remisiones-popup',
+        title: 'swal-remisiones-title',
+        htmlContainer: 'swal-remisiones-text',
+        input: 'swal-remisiones-radio',
+        actions: 'swal-remisiones-actions',
+      },
       inputValidator: (value) => {
         if (!value) return 'Debes seleccionar una remisión abierta';
         return null;
