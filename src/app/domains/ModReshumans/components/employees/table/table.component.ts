@@ -479,8 +479,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         width: 110,
         sortable: false,
         filter: false,
-        cellStyle: { backgroundColor: '#e8f4fd', cursor: 'pointer', textAlign: 'center', color: '#1a5276' },
-        cellRenderer: () => '<i class="bi bi-kanban"></i> Ver',
+        cellStyle: (params) => params.data?.__isNew
+          ? { backgroundColor: '#e9ecef', cursor: 'not-allowed', textAlign: 'center', color: '#adb5bd' }
+          : { backgroundColor: '#e8f4fd', cursor: 'pointer', textAlign: 'center', color: '#1a5276' },
+        cellRenderer: (params) => params.data?.__isNew
+          ? '<i class="bi bi-ban"></i>'
+          : '<i class="bi bi-kanban"></i> Ver',
       },
       {
         field: 'priceXHour',
@@ -1055,8 +1059,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         width: 110,
         sortable: false,
         filter: false,
-        cellStyle: { backgroundColor: '#e8f4fd', cursor: 'pointer', textAlign: 'center', color: '#1a5276' },
-        cellRenderer: () => '<i class="bi bi-kanban"></i> Ver',
+        cellStyle: (params) => params.data?.__isNew
+          ? { backgroundColor: '#e9ecef', cursor: 'not-allowed', textAlign: 'center', color: '#adb5bd' }
+          : { backgroundColor: '#e8f4fd', cursor: 'pointer', textAlign: 'center', color: '#1a5276' },
+        cellRenderer: (params) => params.data?.__isNew
+          ? '<i class="bi bi-ban"></i>'
+          : '<i class="bi bi-kanban"></i> Ver',
       },
       {
         field: 'priceXHour',
@@ -1808,7 +1816,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     this.selectedRowData = selectedRowData;
   
     // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    if (colId === 'loan' || colId === 'saving' || colId === 'proyectos') {
+    if (colId === 'loan' || colId === 'saving' || (colId === 'proyectos' && !selectedRowData.__isNew)) {
       if (this.gridApi) {
         const filterModel = {
           id: {
@@ -1843,6 +1851,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
     // Activar la pestaña de proyectos si la columna es 'proyectos'
     if (colId === 'proyectos') {
+      if (selectedRowData.__isNew) {
+        alerts.basicAlert('Proyectos', 'Debe guardar el empleado antes de asignar proyectos.', 'warning');
+        return;
+      }
       try {
         await this.activateProyectosTab();
       } catch (error) {
