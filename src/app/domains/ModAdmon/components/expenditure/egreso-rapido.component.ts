@@ -64,6 +64,7 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
             placeholder="Selecciona cuenta..."
             [clearable]="false"
             [searchable]="true"
+            appendTo="body"
             notFoundText="Sin cuentas disponibles">
           </ng-select>
         </div>
@@ -87,7 +88,8 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
             [(ngModel)]="form.idExpend"
             placeholder="Selecciona tipo..."
             [clearable]="false"
-            [searchable]="true">
+            [searchable]="true"
+            appendTo="body">
             <ng-template ng-label-tmp let-item="item">{{ item.codigo }} - {{ item.nombre }}</ng-template>
             <ng-template ng-option-tmp let-item="item">{{ item.codigo }} - {{ item.nombre }}</ng-template>
           </ng-select>
@@ -126,7 +128,8 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
             [(ngModel)]="form.idSpend"
             placeholder="Selecciona..."
             [clearable]="true"
-            [searchable]="true">
+            [searchable]="true"
+            appendTo="body">
             <ng-template ng-label-tmp let-item="item">{{ item.label }}</ng-template>
             <ng-template ng-option-tmp let-item="item">{{ item.label }}</ng-template>
           </ng-select>
@@ -145,6 +148,7 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
             placeholder="Selecciona sucursal..."
             [clearable]="true"
             [searchable]="true"
+            appendTo="body"
             notFoundText="Sin sucursales">
           </ng-select>
         </div>
@@ -162,6 +166,7 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
             placeholder="Selecciona proyecto..."
             [clearable]="true"
             [searchable]="true"
+            appendTo="body"
             notFoundText="Sin proyectos">
           </ng-select>
         </div>
@@ -222,6 +227,7 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
           placeholder="Filtrar cuenta..."
           [clearable]="true"
           [searchable]="false"
+          appendTo="body"
           (ngModelChange)="onFiltroChange()"
           style="min-width: 200px; font-size: 0.8rem;">
         </ng-select>
@@ -252,8 +258,10 @@ import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-
     :host { display: block; }
     .form-label-sm { font-size: 0.78rem; }
     ng-select { font-size: 0.85rem; }
+    :host ::ng-deep .ng-dropdown-panel { z-index: 1065; }
     @media (max-width: 576px) {
       .card-body { padding: 0.75rem !important; }
+      :host ::ng-deep .ng-select .ng-select-container { min-height: 42px; }
     }
   `]
 })
@@ -300,10 +308,10 @@ export class EgresoRapidoComponent {
 
   get beneficiariosList(): any[] {
     if (this.form.typeExpense === 'EMPLEADOS')
-      return this.employees.map(e => ({ id: e.id, label: e.name }));
+      return this.sortByLabel(this.employees.map(e => ({ id: e.id, label: e.name })));
     if (this.form.typeExpense === 'PROVEEDORES')
-      return this.providers.map(p => ({ id: p.id, label: p.name || p.company || p.nameContact }));
-    return this.cuentasContables.map(c => ({ id: c.id, label: `${c.codigo} - ${c.nombre}` }));
+      return this.sortByLabel(this.providers.map(p => ({ id: p.id, label: p.name || p.company || p.nameContact })));
+    return this.sortByLabel(this.cuentasContables.map(c => ({ id: c.id, label: `${c.codigo} - ${c.nombre}` })));
   }
 
   constructor() {
@@ -329,7 +337,10 @@ export class EgresoRapidoComponent {
   private loadBankAccounts(): Promise<void> {
     return new Promise(resolve => {
       this.adminSvc.getAccountBanks(this.idRoot).subscribe({
-        next: (data: any) => { this.bankAccounts = data || []; resolve(); },
+        next: (data: any) => {
+          this.bankAccounts = this.sortByField(data || [], 'nameAccount');
+          resolve();
+        },
         error: () => resolve()
       });
     });
@@ -339,7 +350,7 @@ export class EgresoRapidoComponent {
     return new Promise(resolve => {
       this.ccSvc.getHojas(this.idRoot).subscribe({
         next: (data: any) => {
-          this.tiposGasto = (data || []).filter((c: any) => c.nivel === 2);
+          this.tiposGasto = this.sortByField((data || []).filter((c: any) => c.nivel === 2), 'nombre');
           resolve();
         },
         error: () => resolve()
@@ -351,9 +362,9 @@ export class EgresoRapidoComponent {
     return new Promise(resolve => {
       this.custSvc.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
         next: (data: any) => {
-          this.providers = (data || []).map((p: any) => ({
+          this.providers = this.sortByField((data || []).map((p: any) => ({
             id: p.id, name: p.name || p.company || p.nameContact || 'Sin nombre'
-          }));
+          })), 'name');
           resolve();
         },
         error: () => resolve()
@@ -365,7 +376,7 @@ export class EgresoRapidoComponent {
     return new Promise(resolve => {
       this.empSvc.getEmployees(-Math.abs(this.idRoot)).subscribe({
         next: (data: any) => {
-          this.employees = (data || []).map((e: any) => ({ id: e.id, name: e.name }));
+          this.employees = this.sortByField((data || []).map((e: any) => ({ id: e.id, name: e.name || 'Sin nombre' })), 'name');
           resolve();
         },
         error: () => resolve()
@@ -377,7 +388,7 @@ export class EgresoRapidoComponent {
     return new Promise(resolve => {
       this.ccSvc.getHojas(this.idRoot).subscribe({
         next: (data: any) => {
-          this.cuentasContables = (data || []).filter((c: any) => c.nivel === 2);
+          this.cuentasContables = this.sortByField((data || []).filter((c: any) => c.nivel === 2), 'nombre');
           resolve();
         },
         error: () => resolve()
@@ -388,7 +399,10 @@ export class EgresoRapidoComponent {
   private loadBranches(): Promise<void> {
     return new Promise(resolve => {
       this.branchSvc.getBranches(this.idRoot).subscribe({
-        next: (data: any) => { this.branches = data || []; resolve(); },
+        next: (data: any) => {
+          this.branches = this.sortByField(data || [], 'name');
+          resolve();
+        },
         error: () => resolve()
       });
     });
@@ -397,7 +411,10 @@ export class EgresoRapidoComponent {
   private loadProjects(): Promise<void> {
     return new Promise(resolve => {
       this.projectSvc.getProjectListByCompany(this.idRoot).subscribe({
-        next: (data: any) => { this.projects = data || []; resolve(); },
+        next: (data: any) => {
+          this.projects = this.sortByField(data || [], 'name');
+          resolve();
+        },
         error: () => resolve()
       });
     });
@@ -572,6 +589,18 @@ export class EgresoRapidoComponent {
     this.subtotal = this.ivaAmount = this.total = 0;
   }
 
+  private sortByField(items: any[], field: string): any[] {
+    return [...items].sort((a: any, b: any) =>
+      String(a?.[field] || '').localeCompare(String(b?.[field] || ''), 'es', { sensitivity: 'base' })
+    );
+  }
+
+  private sortByLabel(items: any[]): any[] {
+    return [...items].sort((a: any, b: any) =>
+      String(a?.label || '').localeCompare(String(b?.label || ''), 'es', { sensitivity: 'base' })
+    );
+  }
+
   async guardarEgreso() {
     if (!this.form.idAccount)   { alerts.basicAlert('⚠️', 'Selecciona una cuenta bancaria', 'warning'); return; }
     if (!this.form.date)        { alerts.basicAlert('⚠️', 'Ingresa la fecha', 'warning'); return; }
@@ -579,8 +608,31 @@ export class EgresoRapidoComponent {
     if (!this.form.description?.trim()) { alerts.basicAlert('⚠️', 'Ingresa una descripción', 'warning'); return; }
     if ((this.form.price || 0) <= 0)    { alerts.basicAlert('⚠️', 'Ingresa un precio válido', 'warning'); return; }
 
+    const selectedAccount = this.bankAccounts.find((a: any) => a.id === this.form.idAccount);
+    if (!selectedAccount) {
+      alerts.basicAlert('Cuenta bancaria', 'No se encontró la cuenta bancaria seleccionada', 'warning');
+      return;
+    }
+
+    const missingExpenseFields: string[] = [];
+    if (!selectedAccount.maskex) missingExpenseFields.push('Máscara EX (maskex)');
+    if (selectedAccount.consecex === null || selectedAccount.consecex === undefined) {
+      missingExpenseFields.push('Consecutivo EX (consecex)');
+    }
+
+    if (missingExpenseFields.length > 0) {
+      alerts.basicAlert(
+        'Cuenta bancaria incompleta',
+        `La cuenta "${selectedAccount.nameAccount}" no tiene configurados:\n\n• ${missingExpenseFields.join('\n• ')}`,
+        'warning'
+      );
+      return;
+    }
+
     this.recalcular();
     this.saving = true;
+    const nextConsecutive = Number(selectedAccount.consecex || 0) + 1;
+    const numberDocument = `${selectedAccount.maskex}${nextConsecutive.toString().padStart(4, '0')}`;
 
     const cabecera = {
       idAccount:    this.form.idAccount,
@@ -593,6 +645,7 @@ export class EgresoRapidoComponent {
       subtotal:     this.subtotal,
       tax:          this.ivaAmount,
       total:        this.total,
+      numberDocument,
       countitems:   1,
       status:       'Pendiente',
       type:         'GASTO',
@@ -626,6 +679,13 @@ export class EgresoRapidoComponent {
       }
 
       alerts.basicAlert('✅', 'Egreso guardado correctamente', 'success');
+      const updatedAccount = { ...selectedAccount, consecex: nextConsecutive };
+      await lastValueFrom(this.adminSvc.updateAccountBanks(selectedAccount.id, updatedAccount));
+      const accountIndex = this.bankAccounts.findIndex((a: any) => a.id === selectedAccount.id);
+      if (accountIndex !== -1) {
+        this.bankAccounts[accountIndex].consecex = nextConsecutive;
+      }
+
       this.limpiarForm();
       await this.loadIncomes();
     } catch (err) {

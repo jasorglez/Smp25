@@ -351,10 +351,16 @@ export class ExpenditureComponent {
       const idBranchNegative = -Math.abs(this.idRoot);
       this.employeesService.getEmployees(idBranchNegative).subscribe(
         (data: any) => {
-          this.employees = (data || []).map((e: any) => ({
-            id: e.id,
-            name: e.name || 'Sin nombre'
-          }));
+          this.employees = (data || [])
+            .map((e: any) => ({
+              id: e.id,
+              name: e.name || 'Sin nombre'
+            }))
+            .sort((a: any, b: any) =>
+              String(a?.name || '').localeCompare(String(b?.name || ''), 'es', {
+                sensitivity: 'base'
+              })
+            );
           console.log('✅ Empleados cargados:', this.employees.length);
           resolve();
         },
@@ -371,10 +377,16 @@ export class ExpenditureComponent {
     return new Promise<void>((resolve) => {
       this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe(
         (data: any) => {
-          this.providers = (data || []).map((p: any) => ({
-            id: p.id,
-            name: p.name || 'Sin nombre'
-          }));
+          this.providers = (data || [])
+            .map((p: any) => ({
+              id: p.id,
+              name: p.name || p.company || p.nameContact || 'Sin nombre'
+            }))
+            .sort((a: any, b: any) =>
+              String(a?.name || '').localeCompare(String(b?.name || ''), 'es', {
+                sensitivity: 'base'
+              })
+            );
           console.log('✅ Proveedores cargados:', this.providers.length);
           resolve();
         },

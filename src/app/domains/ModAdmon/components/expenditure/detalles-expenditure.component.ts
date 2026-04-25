@@ -331,10 +331,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           // Configurar selectedEntity basado en el tipo y idExpense
           if (type === 'EMPLEADOS' && concept.idExpense) {
             const employee = employees.find((e: any) => e.id === concept.idExpense);
-            selectedEntity = employee?.name || null;
+            selectedEntity = employee ? this.getEmployeeDisplayName(employee) : null;
           } else if (type === 'PROVEEDORES' && concept.idExpense) {
             const provider = providers.find((p: any) => p.id === concept.idExpense);
-            selectedEntity = provider?.name || null;
+            selectedEntity = provider ? this.getProviderDisplayName(provider) : null;
           } else if (type === 'OTROS' && concept.idExpense) {
             const cuenta = cuentasContables.find((c: any) => c.id === concept.idExpense);
             selectedEntity = cuenta ? `${cuenta['codigo']} - ${cuenta['nombre']}` : null;
@@ -519,19 +519,19 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           let options = [];
           
           if (type === 'EMPLEADOS') {
-            options = employees.map((e: any) => ({
+            options = this.sortComboOptions(employees.map((e: any) => ({
               id: e.id,
-              description: e.name,
+              description: this.getEmployeeDisplayName(e),
               valueAddition: e.id.toString(),
-              valueAddition2: e.name
-            }));
+              valueAddition2: this.getEmployeeDisplayName(e)
+            })));
           } else if (type === 'PROVEEDORES') {
-            options = providers.map((p: any) => ({
+            options = this.sortComboOptions(providers.map((p: any) => ({
               id: p.id,
-              description: p.name,
+              description: this.getProviderDisplayName(p),
               valueAddition: p.id.toString(),
-              valueAddition2: p.name
-            }));
+              valueAddition2: this.getProviderDisplayName(p)
+            })));
             // Agregar opción "Agregar Proveedor" al final
             options.push({
               id: -999,
@@ -569,19 +569,21 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           if (type === 'EMPLEADOS') {
             const employee = employees.find((e: any) => e.id === params.newValue);
             if (employee) {
+              const employeeName = this.getEmployeeDisplayName(employee);
               params.data.idExpense = employee.id;
-              params.data.selectedEntity = employee.name;
+              params.data.selectedEntity = employeeName;
               params.data.groupEntity = this.getGroupEntityLabel(params.data);
               if (params.data.__isNew && !params.data.description) {
-                params.data.description = `Salario de ${employee.name}`;
+                params.data.description = `Salario de ${employeeName}`;
               }
               return true;
             }
           } else if (type === 'PROVEEDORES') {
             const provider = providers.find((p: any) => p.id === params.newValue);
             if (provider) {
+              const providerName = this.getProviderDisplayName(provider);
               params.data.idExpense = provider.id;
-              params.data.selectedEntity = provider.name;
+              params.data.selectedEntity = providerName;
               params.data.groupEntity = this.getGroupEntityLabel(params.data);
               return true;
             }
@@ -614,10 +616,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
           if (type === 'EMPLEADOS') {
             const employee = employees.find((e: any) => e.id === idExpense);
-            return employee ? employee.name : '';
+            return employee ? this.getEmployeeDisplayName(employee) : '';
           } else if (type === 'PROVEEDORES') {
             const provider = providers.find((p: any) => p.id === idExpense);
-            return provider ? provider.name : '';
+            return provider ? this.getProviderDisplayName(provider) : '';
           } else if (type === 'OTROS') {
             const cuenta = cuentasContables.find((c: any) => c.id === idExpense);
             return cuenta ? `${cuenta['codigo']} - ${cuenta['nombre']}` : '';
@@ -1128,6 +1130,22 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     return 'Sin asignar';
   }
 
+  private getEmployeeDisplayName(employee: any): string {
+    return employee?.name || employee?.fullName || employee?.nameEmployee || 'Sin nombre';
+  }
+
+  private getProviderDisplayName(provider: any): string {
+    return provider?.name || provider?.company || provider?.nameContact || 'Sin nombre';
+  }
+
+  private sortComboOptions(options: any[]): any[] {
+    return [...(options || [])].sort((a: any, b: any) =>
+      String(a?.description || '').localeCompare(String(b?.description || ''), 'es', {
+        sensitivity: 'base'
+      })
+    );
+  }
+
   private getDateSortValue(value: any): number {
     if (!value) {
       return 0;
@@ -1238,7 +1256,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           
           // Actualizar los valores directamente en el nodo
           selectedNode.data.idExpense = providerData.id;
-          selectedNode.data.selectedEntity = providerData.name;
+          selectedNode.data.selectedEntity = this.getProviderDisplayName(providerData);
           selectedNode.data.groupEntity = this.getGroupEntityLabel(selectedNode.data);
           selectedNode.data.__modified = true;
           this.hasUnsavedChanges = true;

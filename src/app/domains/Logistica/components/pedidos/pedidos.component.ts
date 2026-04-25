@@ -929,10 +929,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
     return new Promise(async (resolve, reject) => {
       try {
         const detallesData = data.detalles || data;
-        const expandedPedidoId = this.expandedRowId;
-
         const newRows = detallesData.filter((row: any) => row.__isNew);
         const modifiedRows = detallesData.filter((row: any) => row.__modified && !row.__isNew);
+        let detallesActualizados: any[] = detallesData;
 
         for (const row of newRows) {
           const dataToSend = {
@@ -971,26 +970,74 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           await lastValueFrom(this.pedidosService.updateDetalle(row.id, dataToSend));
         }
 
-        // Recargar toda la tabla desde el backend
         if (newRows.length > 0 || modifiedRows.length > 0) {
-          await new Promise(resolve => {
-            setTimeout(() => {
-              this.loadData();
-              // Re-expandir la fila que estaba expandida
-              if (expandedPedidoId !== null && this.gridApi) {
-                setTimeout(() => {
-                  const rowNode = this.gridApi.getRowNode(String(expandedPedidoId));
-                  if (rowNode) {
-                    rowNode.setExpanded(true);
-                  }
-                }, 100);
-              }
-              resolve(null);
-            }, 300);
-          });
+          const response: any = await lastValueFrom(this.pedidosService.getDetallesByPedido(idPedido));
+          detallesActualizados = [];
+
+          if (response?.data) {
+            if (Array.isArray(response.data)) {
+              detallesActualizados = response.data;
+            } else if (response.data.id) {
+              detallesActualizados = [response.data];
+            }
+          }
+
+          detallesActualizados = detallesActualizados.map(d => ({
+            ...d,
+            clienteName: (() => {
+              const c = this.clientesList.find((c: any) => c.id == d.idCliente);
+              return c?.nameContact || c?.company || '';
+            })()
+          }));
+
+          this.detallesByPedidoCache.set(idPedido, detallesActualizados);
+
+          const detallesVisibles = this.activeFilter === null
+            ? detallesActualizados
+            : detallesActualizados.filter((d: any) => this.normalizeDetalleEstado(d.estado) === this.activeFilter);
+
+          const totalVenta = detallesVisibles.reduce((sum: number, d: any) => {
+            const cantidad = Number(d?.cantidad) || 0;
+            const venta = Number(d?.venta) || 0;
+            const impuesto = Number(d?.impuesto) || 0;
+            return sum + (cantidad * venta) + impuesto;
+          }, 0);
+
+          const uniqueClientIds = [...new Set(detallesActualizados.map((d: any) => d.idCliente).filter(Boolean))];
+
+          const masterPedido = this.allPedidosRowData.find((pedido: any) => pedido.id === idPedido);
+          if (masterPedido) {
+            masterPedido.detailData = detallesActualizados;
+            masterPedido.numArticulos = detallesVisibles.length;
+            masterPedido.clientesLabel = uniqueClientIds.length;
+            masterPedido.total = totalVenta;
+          }
+
+          const visiblePedido = this.rowData.find((pedido: any) => pedido.id === idPedido);
+          if (visiblePedido) {
+            visiblePedido.detailData = detallesActualizados;
+            visiblePedido.numArticulos = detallesVisibles.length;
+            visiblePedido.clientesLabel = uniqueClientIds.length;
+            visiblePedido.total = totalVenta;
+          }
+
+          if (this.gridApi) {
+            const rowNode = this.gridApi.getRowNode(String(idPedido));
+            if (rowNode?.data) {
+              rowNode.data.detailData = detallesActualizados;
+              rowNode.data.numArticulos = detallesVisibles.length;
+              rowNode.data.clientesLabel = uniqueClientIds.length;
+              rowNode.data.total = totalVenta;
+              this.gridApi.refreshCells({
+                rowNodes: [rowNode],
+                columns: ['numArticulos', 'total'],
+                force: true
+              });
+            }
+          }
         }
 
-        resolve();
+        resolve(detallesActualizados as any);
       } catch (error) {
         console.error('Error saving detalles:', error);
         reject(error);
