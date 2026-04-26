@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.36 (25 Abril 2026) productos: parcialidades al cambiar SOLICITADO a RECIBIDO',
+  version: '5.37 (26 Abril 2026) logistica: fix captura de cantidad en recepción parcial (SOLICITADO -> RECIBIDO)',
 };

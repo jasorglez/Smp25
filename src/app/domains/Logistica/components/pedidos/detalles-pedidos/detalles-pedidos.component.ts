@@ -569,6 +569,16 @@ get colDefs(): ColDef[] {
       const colId = event.column?.getColId?.() ?? event.colDef?.field;
       const nextColId = this.NEXT_EDIT_COL[colId];
       if (!nextColId) return;
+      // Si cambiaron a RECIBIDO con cantidad > 1, se abrirá el Swal de recepción parcial:
+      // evitamos mover el foco con Enter porque eso roba foco al input del modal.
+      if (
+        colId === 'estado' &&
+        String(event?.data?.estado ?? '').toUpperCase() === 'RECIBIDO' &&
+        Number(event?.data?.cantidad) > 1
+      ) {
+        this.sawEnterDuringEdit = false;
+        return;
+      }
 
       const browserEvent = event.event as Event | undefined;
       if (browserEvent instanceof MouseEvent) {
