@@ -844,7 +844,8 @@ get colDefs(): ColDef[] {
 
     if (cantidadRestante <= 0) {
       this.handlingPartialReceipt = false;
-      return; // Recibe todo → sin cambios adicionales
+      await this.confirmAndSaveAfterReceipt();
+      return; // Recibe todo -> sin cambios adicionales
     }
 
     // Recepción parcial: ajustar fila actual y crear fila pendiente
@@ -876,6 +877,21 @@ get colDefs(): ColDef[] {
     this.gridApi?.refreshCells({ force: true });
     this.notifyTotalVentaToParent();
     this.handlingPartialReceipt = false;
+    await this.confirmAndSaveAfterReceipt();
+  }
+
+  private async confirmAndSaveAfterReceipt(): Promise<void> {
+    const saveResult = await Swal.fire({
+      title: 'Guardar registro',
+      text: 'Desea guardar el registro ahora?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Si, guardar',
+      cancelButtonText: 'No'
+    });
+
+    if (!saveResult.isConfirmed) return;
+    await this.saveChanges();
   }
 
   private notifyTotalVentaToParent(): void {
