@@ -85,5 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.37 (26 Abril 2026) logistica: fix captura de cantidad en recepciÃ³n parcial (SOLICITADO -> RECIBIDO)',
+  version: '5.38 (26 Abril 2026) logistica: confirmación y guardado automático tras recepción parcial (SOLICITADO -> RECIBIDO)',
 };
+
