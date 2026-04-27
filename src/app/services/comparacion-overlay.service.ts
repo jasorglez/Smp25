@@ -5,6 +5,7 @@ export interface ComparacionOverlayData {
   cotizacionId: number;
   requisitionId: number;
   selectedProviderIds: number[];
+  idBranchFromReq?: number;
 }
 
 @Injectable({ providedIn: 'root' })

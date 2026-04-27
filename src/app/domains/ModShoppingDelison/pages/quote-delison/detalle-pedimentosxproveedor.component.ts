@@ -560,7 +560,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     this.comparacionOverlayService.open({
       cotizacionId: node.data.cotizacionId,
       requisitionId: node.data.requisitionId,
-      selectedProviderIds: [node.data.idProvider, node.data.idProvider2, node.data.idProvider3].filter((id: number) => id > 0)
+      selectedProviderIds: [node.data.idProvider, node.data.idProvider2, node.data.idProvider3].filter((id: number) => id > 0),
+      idBranchFromReq: this.params.data.idReference || 0
     });
   }
 
