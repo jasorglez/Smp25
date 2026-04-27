@@ -84,6 +84,27 @@ export class DetalleMoliendaComponent {
       cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
     },
     {
+      field: 'folio',
+      headerName: 'Folio',
+      width: 160,
+      editable: true,
+      cellDataType: 'String',
+      cellEditor: 'agStringCellEditor',
+      valueFormatter: (p) => {
+        if (!p.value) return '';
+        const d = p.value instanceof Date ? p.value : new Date(p.value);
+        if (isNaN(d.getTime())) return '';
+        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      },
+      valueSetter: (p) => {
+        if (!p.newValue) return false;
+        p.data.fecha = p.newValue instanceof Date ? p.newValue : new Date(p.newValue);
+        p.data.__modified = true;
+        this.hasUnsavedChanges = true;
+        return true;
+      }
+    },
+    {
       field: 'fecha',
       headerName: 'Fecha',
       width: 160,

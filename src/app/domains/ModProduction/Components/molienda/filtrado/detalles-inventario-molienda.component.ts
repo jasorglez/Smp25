@@ -38,6 +38,12 @@ export class DetallesInventarioMoliendaComponent {
 
   colDefs: ColDef[] = [
     {
+      field: 'id',
+      headerName: 'Folio',
+      width: 80,
+      cellStyle: { backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }
+    },
+    {
       headerName: '#',
       width: 45,
       valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
