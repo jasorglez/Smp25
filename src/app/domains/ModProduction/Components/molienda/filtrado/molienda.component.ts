@@ -9,11 +9,13 @@ import { BranchsService } from 'app/services/branchs.service';
 import { ProductionService } from 'app/services/production.service';
 import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { MoliendaService } from 'app/services/molienda.service';
+import { DetallesEntradasMoliendaComponent } from './detalles-entradasmolienda.component';
 
 @Component({
   selector: 'app-molienda-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent],
   template: `
     <div class="col-12">
       <div class="row g-2">
@@ -62,6 +64,7 @@ export class MoliendaComponent {
   private productionService = inject(ProductionService);
   private mxmService        = inject(MaterialXModuloService);
   private materialsService  = inject(MaterialsService);
+  private moliendaService   = inject(MoliendaService);
 
   gridApi!: GridApi;
   rowData: any[] = [];
@@ -117,8 +120,29 @@ export class MoliendaComponent {
           return d && m && y ? `${d}/${m}/${y}` : p.value;
         },
       },
-      { field: 'nombre',         headerName: 'Nombre',          flex: 2,    editable: false, cellStyle: { backgroundColor: '#f8f9fa' } },
-      { field: 'cantidadUso',    headerName: 'Cantidad uso',    width: 120, editable: true, cellEditor: 'agNumberCellEditor' },
+      { field: 'nombre',      headerName: 'Nombre',       flex: 2, editable: false, cellStyle: { backgroundColor: '#f8f9fa' } },
+      {
+        field: 'cantidadUso',
+        headerName: 'Inventario',
+        width: 138,
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' },
+        cellRenderer: (params: any) => {
+          const value  = params.value;
+          const hasAlm = params.data?.idAlm != null;
+          const container = document.createElement('div');
+          container.style.cssText = hasAlm
+            ? 'display:flex;align-items:center;cursor:pointer;color:#2e7d32;text-decoration:underline;'
+            : 'display:flex;align-items:center;cursor:default;color:#999;';
+          container.innerHTML = value != null
+            ? `<span>${Math.trunc(Number(value))}</span>`
+            : '<span>—</span>';
+          if (hasAlm) {
+            container.addEventListener('click', () => this.toggleCascade(params.node));
+          }
+          return container;
+        },
+      },
       { field: 'cuantoQueda',    headerName: 'Cuanto queda',    width: 120, editable: true, cellEditor: 'agNumberCellEditor' },
       { field: 'jugo',           headerName: 'Jugo',            width: 90,  editable: true, cellEditor: 'agNumberCellEditor' },
       { field: 'liberPorCompra', headerName: 'Liber. x Compra', width: 130, editable: true, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
@@ -127,10 +151,15 @@ export class MoliendaComponent {
   }
 
   gridOptions: any = {
+    getRowId: (params: any) => String(params.data.id ?? params.data.__tempId),
     headerHeight: 25,
     rowHeight: 20,
     suppressRowClickSelection: true,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    masterDetail: true,
+    detailRowHeight: 260,
+    isRowMaster: (data: any) => !!data?.idAlm,
+    detailCellRenderer: DetallesEntradasMoliendaComponent,
     onRowSelected: (e: any) => {
       if (e.node.isSelected()) this.selectedRow = e.data;
     },
@@ -205,11 +234,23 @@ export class MoliendaComponent {
     if (!this.idCompany) return;
     try {
       const allBranches = this.idBranch <= 0;
-      const obs = allBranches
+      const prodObs = allBranches
         ? this.productionService.getMoliendaByCompany(this.idCompany)
         : this.productionService.getMoliendaByCompanyAndSucursal(this.idCompany, this.idBranch);
-      const items = await lastValueFrom(obs);
-      const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
+
+      const [items, almItems] = await Promise.all([
+        lastValueFrom(prodObs),
+        lastValueFrom(this.moliendaService.getAll(this.idCompany)),
+      ]);
+
+      const almExact    = new Map<string, any>();
+      const almByMat    = new Map<number, any>();
+      (Array.isArray(almItems) ? almItems : []).forEach((a: any) => {
+        almExact.set(`${a.idSucursal}_${a.idMaterial}`, a);
+        if (!almByMat.has(a.idMaterial)) almByMat.set(a.idMaterial, a);
+      });
+
+      const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i, almExact, almByMat));
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData = mapped;
       if (this.gridApi) this.gridApi.setGridOption('rowData', mapped);
@@ -218,14 +259,16 @@ export class MoliendaComponent {
     }
   }
 
-  private mapRow(i: any): any {
+  private mapRow(i: any, almExact?: Map<string, any>, almByMat?: Map<number, any>): any {
+    const almRecord = almExact?.get(`${i.idSucursal}_${i.idMatPrima}`) ?? almByMat?.get(i.idMatPrima);
     return {
       id:            i.id,
       sucursal:      i.idSucursal    ?? null,
       matPrima:      i.idMatPrima    ?? null,
       fecha:         i.fecha ? String(i.fecha).substring(0, 10) : null,
       nombre:        i.nombre        ?? '',
-      cantidadUso:   i.cantidad      ?? null,
+      cantidadUso:   almRecord?.totalInventarios ?? null,
+      idAlm:         almRecord?.id    ?? null,
       cuantoQueda:   i.cuantoQueda   ?? null,
       jugo:          i.jugo          ?? null,
       liberPorCompra: !!i.liberCompra,
@@ -242,13 +285,17 @@ export class MoliendaComponent {
       idMatPrima:  row.matPrima      ?? null,
       fecha:       row.fecha         || null,
       nombre:      row.nombre        || null,
-      cantidad:    row.cantidadUso   ?? null,
       cuantoQueda: row.cuantoQueda   ?? null,
       jugo:        row.jugo          ?? null,
       liberCompra: row.liberPorCompra ?? false,
       columna1:    row.adicional      || null,
       active:      true,
     };
+  }
+
+  toggleCascade(node: any) {
+    if (!node.data?.idAlm) return;
+    node.setExpanded(!node.expanded);
   }
 
   addRow() {
@@ -258,7 +305,8 @@ export class MoliendaComponent {
     const newRow = {
       id: null, __tempId: `new_${Date.now()}`, __isNew: true,
       sucursal: currentBranch, matPrima: null, fecha: today, nombre: userName,
-      cantidadUso: 0, cuantoQueda: 0, jugo: 0,
+      cantidadUso: null, idAlm: null,
+      cuantoQueda: 0, jugo: 0,
       liberPorCompra: false, adicional: '',
     };
     this.rowData = [newRow, ...this.rowData];
