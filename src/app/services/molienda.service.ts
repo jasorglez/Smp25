@@ -24,6 +24,7 @@ export interface DetailsMolienda {
   type: 'ENTRADA' | 'SALIDA';
   fecha?: string | null;
   cantidad: number;
+  idCatalog?: number | null;
   active?: boolean;
 }
 

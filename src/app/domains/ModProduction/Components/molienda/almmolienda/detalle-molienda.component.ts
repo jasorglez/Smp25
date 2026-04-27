@@ -4,6 +4,10 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { lastValueFrom } from 'rxjs';
 import { MoliendaService, DetailsMolienda } from '../../../../../services/molienda.service';
+import { CatalogsService } from '../../../../../services/catalogs.service';
+import { SignalsService } from '../../../../../services/signals.service';
+import { Icatalog } from '../../../../../interface/icatalog';
+import { SelectWithTooltipEditorV2Component } from '../../../../../shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -53,15 +57,21 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class DetalleMoliendaComponent {
   private moliendaService = inject(MoliendaService);
+  private catalogsService = inject(CatalogsService);
+  private signalsService = inject(SignalsService);
 
   private internalParams: any;
   private gridApi!: GridApi;
+
+  private readonly NEW_CATALOG = '__NEW_CATALOG__';
 
   detailType: 'entradas' | 'salidas' = 'entradas';
   rowData: any[] = [];
   private originalRowData: any[] = [];
   hasUnsavedChanges = false;
   selectedRow: any = null;
+  private catalogOptions: Icatalog[] = [];
+  private currentEditingNode: any = null;
 
   get fechaField() { return this.detailType === 'entradas' ? 'fechaEntrada' : 'fechaSalida'; }
   get fechaHeader() { return this.detailType === 'entradas' ? 'Fecha Entrada' : 'Fecha Salida'; }
@@ -89,6 +99,32 @@ export class DetalleMoliendaComponent {
       valueSetter: (p) => {
         if (!p.newValue) return false;
         p.data.fecha = p.newValue instanceof Date ? p.newValue : new Date(p.newValue);
+        p.data.__modified = true;
+        this.hasUnsavedChanges = true;
+        return true;
+      }
+    },
+    {
+      field: 'idCatalog',
+      headerName: 'Tipo',
+      minWidth: 160,
+      editable: true,
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => ({
+        options: [
+          ...this.catalogOptions.map(c => ({ id: c.id, description: c.description })),
+          { id: this.NEW_CATALOG, description: '➕ Nuevo tipo' }
+        ],
+        specialValues: [this.NEW_CATALOG],
+        onSpecialValue: (_value: any, params: any) => {
+          this.currentEditingNode = params.node;
+          this.addNewCatalog();
+        }
+      }),
+      valueFormatter: (p) => this.catalogOptions.find(c => c.id === p.value)?.description ?? '',
+      valueSetter: (p) => {
+        if (p.newValue === this.NEW_CATALOG) return false;
+        p.data.idCatalog = p.newValue ?? null;
         p.data.__modified = true;
         this.hasUnsavedChanges = true;
         return true;
@@ -146,6 +182,15 @@ export class DetalleMoliendaComponent {
 
   async loadData() {
     const idMolienda = this.internalParams?.data?.id;
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+    if (idRoot) {
+      const catalogType = this.detailType === 'entradas' ? 'TYPEENTRY' : 'TYPEOUT';
+      try {
+        this.catalogOptions = await lastValueFrom(this.catalogsService.getCatalogs(idRoot, catalogType));
+      } catch { this.catalogOptions = []; }
+    }
+
     if (!idMolienda || typeof idMolienda === 'string') {
       this.rowData = [];
       this.originalRowData = [];
@@ -161,6 +206,7 @@ export class DetalleMoliendaComponent {
         id: d.id,
         fecha: d.fecha ? new Date(d.fecha as string) : null,
         cantidad: d.cantidad ?? 0,
+        idCatalog: d.idCatalog ?? null,
         __isNew: false, __modified: false,
       }));
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
@@ -187,6 +233,7 @@ export class DetalleMoliendaComponent {
       id: null,
       fecha: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
       cantidad: 0,
+      idCatalog: null,
       __isNew: true
     };
     this.rowData = [newRow, ...this.rowData];
@@ -228,6 +275,7 @@ export class DetalleMoliendaComponent {
           type,
           fecha: row.fecha instanceof Date ? row.fecha.toISOString().substring(0, 10) : (row.fecha ?? null),
           cantidad: row.cantidad ?? 0,
+          idCatalog: row.idCatalog ?? null,
         };
         const created = await lastValueFrom(this.moliendaService.createDetail(payload));
         row.id = created.id;
@@ -239,6 +287,7 @@ export class DetalleMoliendaComponent {
           type,
           fecha: row.fecha instanceof Date ? row.fecha.toISOString().substring(0, 10) : (row.fecha ?? null),
           cantidad: row.cantidad ?? 0,
+          idCatalog: row.idCatalog ?? null,
         };
         await lastValueFrom(this.moliendaService.updateDetail(row.id, payload));
         row.__modified = false;
@@ -335,6 +384,32 @@ export class DetalleMoliendaComponent {
     }
 
     return null;
+  }
+
+  private async addNewCatalog() {
+    const result = await alerts.inputAlert('Nuevo tipo', 'Ingresa el nombre', 'text');
+    if (!result.isConfirmed || !result.value?.trim()) return;
+
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot) return;
+
+    const catalogType = this.detailType === 'entradas' ? 'TYPEENTRY' : 'TYPEOUT';
+    try {
+      const created = await lastValueFrom(this.catalogsService.addCatalog({
+        idCompany: idRoot,
+        description: result.value.trim(),
+        type: catalogType,
+        active: 1
+      }));
+      this.catalogOptions = await lastValueFrom(this.catalogsService.getCatalogs(idRoot, catalogType));
+      if (this.currentEditingNode && created?.id) {
+        this.currentEditingNode.setDataValue('idCatalog', created.id);
+        this.currentEditingNode.data.__modified = true;
+        this.hasUnsavedChanges = true;
+      }
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo crear el tipo.', 'error');
+    }
   }
 
   private updateParentCount() {
