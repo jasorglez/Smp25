@@ -145,4 +145,18 @@ export class ProductionService {
   deleteMolienda(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/Molienda/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  // ── Molienda Detalles (Entradas/Salidas) ──────────────────────────
+
+  getMoliendaDetalles(idMolienda: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/Molienda/${idMolienda}/detalles`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaDetalle(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/Molienda/detalle`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMoliendaDetalle(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/Molienda/detalle/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }
