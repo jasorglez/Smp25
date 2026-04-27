@@ -12,7 +12,8 @@ import {
   Timestamp,
   getDocs,
 } from '@angular/fire/firestore';
-import { Observable, from, switchMap } from 'rxjs';
+import { Observable, from, of, switchMap } from 'rxjs';
+import { SignalsService } from './signals.service';
 
 export interface Prospecto {
   id?: string;
@@ -65,13 +66,27 @@ export const ESTADOS_PROSPECTO = [
 @Injectable({ providedIn: 'root' })
 export class ProspectosService {
   private firestore = inject(Firestore);
+  private signalsSvc = inject(SignalsService);
   private readonly COL = 'prospectos';
 
-  // Consulta simple: solo por vendedor, sin índice compuesto
+  // Consulta simple: primero por vendedor; si no hay resultados, cae a la empresa
   getProspectos(idVendedor: number): Observable<Prospecto[]> {
     const ref = collection(this.firestore, this.COL);
-    const q = query(ref, where('idVendedorActual', '==', idVendedor));
-    return (collectionData(q, { idField: 'id' }) as Observable<Prospecto[]>).pipe(
+    const currentRoot = this.signalsSvc.getRootSelectedBySidebar()();
+    const byVendor$ = (collectionData(
+      query(ref, where('idVendedorActual', '==', idVendedor)),
+      { idField: 'id' },
+    ) as Observable<Prospecto[]>);
+
+    const byCompany$ = currentRoot
+      ? (collectionData(
+          query(ref, where('idCompany', '==', currentRoot)),
+          { idField: 'id' },
+        ) as Observable<Prospecto[]>)
+      : of([]);
+
+    return byVendor$.pipe(
+      switchMap((prospectos) => prospectos.length > 0 ? of(prospectos) : byCompany$),
       switchMap((prospectos) => from(this.syncProspectosWithInteracciones(prospectos))),
     );
   }

@@ -164,7 +164,10 @@ export class ProspectosComponent implements OnInit {
       {
         field: 'creadoPor', headerName: 'Canal', width: 90, editable: false,
         cellRenderer: (p: any) => {
-          const icon = p.value === 'telegram' ? '📱' : '🖥️';
+          const icon =
+            p.value === 'telegram' ? '📱' :
+            p.value === 'whatsapp' ? '💬' :
+            '🖥️';
           return `${icon} ${p.value ?? ''}`;
         },
       },
