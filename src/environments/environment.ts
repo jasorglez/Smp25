@@ -28,27 +28,30 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  urlSecurity: 'https://ms-pruebas-api.bi2.mx/api', // 5003
+  // ms-pruebas-api.bi2.mx son los endpoints de testing
+  // delison-api.biapp.com.mx son los endpoints de produccion
+
+  urlSecurity: 'https://delison-api.biapp.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
-  urlSmp: 'https://ms-pruebas-api.bi2.mx/smp/api', // 5004
+  urlSmp: 'https://delison-api.biapp.com.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
 
-  urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
+  urlBpi: 'https://delison-api.biapp.com.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
+  urlWarehouse: 'https://delison-api.biapp.com.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://delison-api.biapp.com.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
-  urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
+  urlNotifications: 'https://delison-api.biapp.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
+  urlProduction: 'https://delison-api.biapp.com.mx/production/api', // 5051 -- Production
   //urlProduction: 'http://localhost:5051/api',
 
-  urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
+  urlMantenimiento: 'https://delison-api.biapp.com.mx/maintenance/api',
 
   root: 'root@bi2.mx',
 
