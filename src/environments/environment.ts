@@ -36,8 +36,8 @@ export const environment = {
 
   urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
-  //urlWarehouse: 'http://localhost:5199/api',
+  //urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
+  urlWarehouse: 'http://localhost:5199/api',
 
   urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking

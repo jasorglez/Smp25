@@ -1916,7 +1916,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         typematerial: 'CONSUMABLE',
         active: true,
         vigente: true,
-        porAutorizar: false
+        porAutorizar: true
       };
 
       await lastValueFrom(this.materialsService.addMaterial(materialData));
