@@ -144,7 +144,7 @@ export class Cascada1OcComponent {
     { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
     { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
     { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
-    { field: 'dateuse', headerName: 'Fecha Entrega', width: 140 },
+    { field: 'dateuse', headerName: 'Fecha Entrada Almacén', width: 150 },
   ];
 
   itemsGridOptions: any = {
