@@ -342,7 +342,16 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         editable: false,
         cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500', cursor: 'pointer' },
         onCellClicked: (event: any) => {
-          event.node.setExpanded(!event.node.expanded);
+          const isExpanding = !event.node.expanded;
+          if (isExpanding) {
+            // Colapsa todas las demás filas antes de expandir esta
+            event.api.forEachNode((node: any) => {
+              if (node.id !== event.node.id && node.expanded) {
+                node.setExpanded(false);
+              }
+            });
+          }
+          event.node.setExpanded(isExpanding);
         }
       },
       {

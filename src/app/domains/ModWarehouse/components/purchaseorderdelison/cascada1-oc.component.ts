@@ -39,7 +39,7 @@ interface OcRow {
         </ag-grid-angular>
       </div>
 
-      <div *ngIf="selectedOcRow"
+      <div *ngIf="selectedOcRow && itemsData.length > 0"
            style="flex: 0 0 45%; min-height: 0; border-top: 2px solid #e67e22; background: #fff9e6;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
         <div style="font-size: 0.78rem; font-weight: bold; color: #e67e22; margin-bottom: 3px; flex-shrink: 0;">
@@ -67,6 +67,8 @@ export class Cascada1OcComponent {
   private internalParams: any;
   private gridApi!: GridApi;
   private itemsGridApi!: GridApi;
+  private providersLoaded = false;
+  private gridReady = false;
 
   rowData: OcRow[] = [];
   itemsData: any[] = [];
@@ -156,6 +158,7 @@ export class Cascada1OcComponent {
 
   agInit(params: any): void {
     this.internalParams = params;
+    this.providersLoaded = false;
     this.loadProviders();
   }
 
@@ -168,19 +171,27 @@ export class Cascada1OcComponent {
     this.customersService.getCustomersByCompany(this.internalParams?.data?.idCompany || 0, 'PROVIDERS').subscribe({
       next: (data: any) => {
         this.providers = Array.isArray(data) ? data : [];
-        if (this.gridApi && !this.gridApi.isDestroyed()) {
-          this.loadData();
-        }
+        this.providersLoaded = true;
+        this.tryLoadData();
       },
       error: () => {
         this.providers = [];
+        this.providersLoaded = true;
+        this.tryLoadData();
       }
     });
   }
 
+  private tryLoadData(): void {
+    if (this.gridReady && this.providersLoaded && this.gridApi && !this.gridApi.isDestroyed()) {
+      this.loadData();
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.loadData();
+    this.gridReady = true;
+    this.tryLoadData();
   }
 
   onItemsGridReady(params: GridReadyEvent) {
@@ -192,7 +203,6 @@ export class Cascada1OcComponent {
 
   loadData() {
     const idRequisition = this.internalParams?.data?.id;
-    console.log('🔍 Cascada1 loadData - idRequisition:', idRequisition, 'data:', this.internalParams?.data);
     if (!idRequisition) {
       this.rowData = [];
       if (this.gridApi && !this.gridApi.isDestroyed()) {
