@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.116 (27 Abril 2026 23:30) - remodel purchase order cascada maestro-1-2',
+  version: '3.117 (28 Abril 2026) - add global config setup for HR',
 };

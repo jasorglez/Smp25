@@ -1876,6 +1876,17 @@ export const routes: Routes = [
                   }
                 }
               },
+              {
+                path: 'global',
+                loadComponent: () => import('./domains/ModReshumans/components/setup/global/global.component').then(p => p.GlobalConfigComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Configuración Global de RH',
+                    category: 'HR'
+                  }
+                }
+              },
             ]
           },
           {
