@@ -1998,30 +1998,17 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.newArticle.idSubfamilia = null;
   }
 
-  getFamiliesByCategory(categoryId: number | null): any[] {
+  getFamiliesByCategory(categoryId: number | null | string): any[] {
     if (!categoryId) return [];
-    const result = this.familias.filter(f => f.parentId === categoryId);
-    console.log(`🔍 getFamiliesByCategory(${categoryId}):`, result.length, 'familias encontradas');
-    if (result.length === 0) {
-      console.log('   ❌ No hay match con parentId === ' + categoryId);
-      console.log('   Datos disponibles de familias:', this.familias.slice(0, 5).map(f => ({
-        id: f.id,
-        parentId: f.parentId,
-        desc: f.description,
-        allKeys: Object.keys(f)
-      })));
-    }
+    const catIdNum = Number(categoryId);
+    const result = this.familias.filter(f => Number(f.parentId) === catIdNum);
     return result;
   }
 
-  getSubfamiliesByFamily(familyId: number | null): any[] {
+  getSubfamiliesByFamily(familyId: number | null | string): any[] {
     if (!familyId) return [];
-    const result = this.subfamilias.filter(sf => sf.subParentId === familyId);
-    console.log(`🔍 getSubfamiliesByFamily(${familyId}):`, result.length, 'subfamilias encontradas');
-    if (result.length === 0) {
-      console.log('   Datos disponibles de subfamilias:', this.subfamilias.slice(0, 3).map(sf => ({ id: sf.id, subParentId: sf.subParentId, desc: sf.description })));
-    }
-    return result;
+    const famIdNum = Number(familyId);
+    return this.subfamilias.filter(sf => Number(sf.subParentId) === famIdNum);
   }
 
   onCellClicked(event: any): void {
