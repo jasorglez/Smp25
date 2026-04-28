@@ -97,9 +97,7 @@ export class Cascada1OcComponent {
     {
       field: 'providerName',
       headerName: 'Proveedor',
-      width: 67,
-      flex: 1,
-      minWidth: 60,
+      width: 60,
     },
     {
       field: 'datecreate',
