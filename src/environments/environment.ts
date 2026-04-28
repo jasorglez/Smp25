@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.113 (25 Abril 2026) - molienda fix tipos columnas DB',
+  version: '3.115 (27 Abril 2026 21:21) - valida cantidad por proveedor en comparacion precios',
 };

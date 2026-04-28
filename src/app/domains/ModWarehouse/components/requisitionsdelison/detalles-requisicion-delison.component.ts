@@ -494,7 +494,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log(`🔍 Iniciando validación para Material: ${materialId}, Sucursal Requisición: ${this.currentBranchId}`);
       
       // 1. Obtener datos maestros (Nombres y Tipos) de proveedores
       const [allProvidersRaw, warehouseProviders]: any = await Promise.all([
@@ -528,7 +527,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.providersService.getMaterXTable(materialId, 'MATERIAL')
       );
 
-      console.log(`📦 Relaciones encontradas en ProveedorXTabla:`, relations);
 
       if (!Array.isArray(relations)) return [];
 
@@ -543,7 +541,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           const realName = masterData?.name || rel.providerName || `Proveedor ${providerId}`;
           const realType = masterData?.type || rel.typeIntOrExt || 'Externo';
           
-          console.log(`⚙️ Validando relación ID: ${rel.id} (Proveedor: ${realName}, Tipo Real: ${realType})`);
           
           // Consultar sucursales autorizadas para esta relación específica
           const authBranches = await firstValueFrom(
@@ -570,7 +567,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         }
       }
 
-      console.log(`🏁 Total proveedores validados para material ${materialId}: ${validatedProviders.length}`);
       this.providersCache.set(cacheKey, validatedProviders);
       return validatedProviders;
     } catch (error) {

@@ -1,13 +1,15 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { Component, inject, signal, effect, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { DetalleMoliendaComponent } from './detalle-molienda.component';
+import { DetalleMoliendaComponent } from './detalle-almmolienda.component';
 import { lastValueFrom } from 'rxjs';
 import { SignalsService } from '../../../../../services/signals.service';
 import { BranchsService } from '../../../../../services/branchs.service';
 import { MaterialsService } from '../../../../../services/materials.service';
+import { MaterialXModuloService } from '../../../../../services/materialxmodulo.service';
 import { MoliendaService, Molienda } from '../../../../../services/molienda.service';
+import { OcAndReqsService } from '../../../../../services/ocandreqs.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
 
@@ -79,10 +81,14 @@ import { alerts } from 'app/helpers/alerts';
   `,
 })
 export class AlmmoliendaComponent {
+  @Input() tipo: string = 'Molienda';
+
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
   private materialsService = inject(MaterialsService);
-  private moliendaService = inject(MoliendaService);
+  private mxmService = inject(MaterialXModuloService);
+  private moliendaService  = inject(MoliendaService);
+  private ocAndReqsService = inject(OcAndReqsService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -96,8 +102,7 @@ export class AlmmoliendaComponent {
 
   userBranches: any[] = [];
   branchNames: string[] = [];
-  rawMaterials: any[] = [];
-  rawMaterialNames: string[] = [];
+  matPrimaOptions: { id: number; name: string }[] = [];
   activeBranchFilter: number | null = null;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
@@ -156,9 +161,19 @@ export class AlmmoliendaComponent {
       editable: true,
       cellDataType: 'text',
       cellEditor: 'selectV2',
-      cellEditorParams: () => ({
-        options: this.rawMaterialNames.map(name => ({ id: name, description: name })),
-      }),
+      cellEditorParams: (params: any) => {
+        const sucursal = params.data?.sucursal;
+        const usados = new Set(
+          this.rowData()
+            .filter(r => r !== params.data && r.sucursal === sucursal && r.id_articulo)
+            .map((r: any) => r.id_articulo)
+        );
+        return {
+          options: this.matPrimaOptions
+            .filter(m => !usados.has(m.name))
+            .map(m => ({ id: m.name, description: m.name })),
+        };
+      },
       valueSetter: (params) => {
         params.data.id_articulo = params.newValue ?? '';
         params.data.__modified = true;
@@ -207,24 +222,7 @@ export class AlmmoliendaComponent {
       },
       cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer' }
     },
-    {
-      headerName: 'Total Entradas',
-      field: 'totalEntradas',
-      width: 130,
-      editable: false,
-      type: 'numericColumn',
-      valueFormatter: (p) => p.value != null ? String(Math.trunc(p.value)) : '—',
-      cellStyle: { backgroundColor: '#e8f5e9', fontWeight: '600', color: '#2e7d32' }
-    },
-    {
-      headerName: 'Total Salidas',
-      field: 'totalSalidas',
-      width: 130,
-      editable: false,
-      type: 'numericColumn',
-      valueFormatter: (p) => p.value != null ? String(Math.trunc(p.value)) : '—',
-      cellStyle: { backgroundColor: '#fce4ec', fontWeight: '600', color: '#c62828' }
-    },
+   
     {
       headerName: 'Total Inventarios',
       field: 'totalInventarios',
@@ -303,7 +301,7 @@ export class AlmmoliendaComponent {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('rowData', this.rowData());
-    if (this.userBranches.length > 0 || this.rawMaterialNames.length > 0) {
+    if (this.userBranches.length > 0 || this.matPrimaOptions.length > 0) {
       this._columnDefs = [];
       this.gridApi.setGridOption('columnDefs', this.columnDefs);
     }
@@ -333,10 +331,16 @@ export class AlmmoliendaComponent {
 
   async loadRawMaterials(idCompany: number) {
     try {
-      const data = await lastValueFrom(this.materialsService.getMaterialsxview(idCompany));
-      const list: any[] = Array.isArray(data) ? data : [];
-      this.rawMaterials = list;
-      this.rawMaterialNames = list.map(m => m.articulo || m.description || m.insumo || '').filter(Boolean);
+      const [mxmData, matsData] = await Promise.all([
+        lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')),
+        lastValueFrom(this.materialsService.getMaterialsxview(idCompany)),
+      ]);
+      const matsMap = new Map<number, string>();
+      (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
+      this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
+        .filter((m: any) => m.active !== false)
+        .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
+        .filter(m => m.name);
       this._columnDefs = [];
       if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.columnDefs);
       await this.loadData(this.idRoot);
@@ -371,7 +375,7 @@ export class AlmmoliendaComponent {
 
   async loadData(idCompany: number) {
     try {
-      const items = await lastValueFrom(this.moliendaService.getAll(idCompany));
+      const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData.set(mapped);
@@ -384,14 +388,11 @@ export class AlmmoliendaComponent {
   }
 
   private mapRow(i: any): any {
-    // Convertir idMaterial (número) al nombre para mostrarlo en el selectV2
-    const material = this.rawMaterials.find(m => m.id === i.idMaterial);
-    const nombreMaterial = material
-      ? (material.articulo || material.description || material.insumo || '')
-      : (i.idMaterial ?? '');
+    const nombreMaterial = this.matPrimaOptions.find(m => m.id === i.idMaterial)?.name ?? '';
     return {
       id:                 i.id,
       sucursal:           i.idSucursal   ?? null,
+      idMaterial:         i.idMaterial   ?? null,
       id_articulo:        nombreMaterial,
       entradas:           i.entradas     ?? 0,
       salidas:            i.salidas      ?? 0,
@@ -406,24 +407,22 @@ export class AlmmoliendaComponent {
   }
 
   private toPayload(row: any): Molienda {
-    // Convertir el nombre del artículo de vuelta a su ID numérico
-    const material = this.rawMaterials.find(
-      m => (m.articulo || m.description || m.insumo || '') === row.id_articulo
-    );
+    const idMaterial = this.matPrimaOptions.find(m => m.name === row.id_articulo)?.id ?? null;
     return {
       idCompany:          this.idRoot,
       idSucursal:         row.sucursal       ?? null,
-      idMaterial:         material?.id       ?? null,
+      idMaterial:         idMaterial,
       entradas:           row.entradas       ?? 0,
       salidas:            row.salidas        ?? 0,
       totalInventarios:   row.totalInventarios   ?? 0,
       ajustesInventarios: row.ajustesInventarios ?? 0,
       comentarios:        row.comentarios    || null,
+      type:               this.tipo,
       active:             true,
     };
   }
 
-  toggleCascade(node: any, type: string) {
+  async toggleCascade(node: any, type: string) {
     if (node.data?.__isNew) return;
 
     if (this.expandedRowId === node.id && this.expandedDetailType === type) {
@@ -434,6 +433,10 @@ export class AlmmoliendaComponent {
       this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
       this.gridApi.onRowHeightChanged();
       return;
+    }
+
+    if (type === 'entradas') {
+      await this.syncEntradasDetails(node.data);
     }
 
     if (this.expandedRowId) {
@@ -453,6 +456,55 @@ export class AlmmoliendaComponent {
     setTimeout(() => node.setExpanded(true), 0);
   }
 
+  private async syncEntradasDetails(rowData: any) {
+    const { id: idMolienda, sucursal, idMaterial } = rowData;
+    if (!idMolienda || !sucursal || !idMaterial) return;
+
+    const today = new Date().toISOString().substring(0, 10);
+
+    const [reqs, existing] = await Promise.all([
+      lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(sucursal, idMaterial)),
+      lastValueFrom(this.moliendaService.getDetails(idMolienda, 'ENTRADA')),
+    ]);
+
+    const existingMap = new Map(existing.map((d: any) => [d.idRequisition, d]));
+    const reqIds = new Set(reqs.map((r: any) => r.id));
+
+    for (const detail of existing) {
+      if ((detail as any).idRequisition && !reqIds.has((detail as any).idRequisition)) {
+        await lastValueFrom(this.moliendaService.deleteDetail(detail.id!));
+      }
+    }
+
+    for (const req of reqs as any[]) {
+      const existingDetail = existingMap.get(req.id) as any;
+      if (!existingDetail) {
+        await lastValueFrom(this.moliendaService.createDetail({
+          idMolienda,
+          idRequisition: req.id,
+          type: 'ENTRADA',
+          cantidadReq:   req.cantidadReq,
+          numCantidadOc: req.numCantidadOc,
+          cantidad:      0,
+          fecha:         today,
+        }));
+      } else if (
+        existingDetail.cantidadReq   !== req.cantidadReq ||
+        existingDetail.numCantidadOc !== req.numCantidadOc
+      ) {
+        await lastValueFrom(this.moliendaService.updateDetail(existingDetail.id, {
+          idMolienda,
+          idRequisition: req.id,
+          type:          'ENTRADA',
+          cantidadReq:   req.cantidadReq,
+          numCantidadOc: req.numCantidadOc,
+          cantidad:      existingDetail.cantidad ?? 0,
+          fecha:         existingDetail.fecha ?? today,
+        }));
+      }
+    }
+  }
+
   add() {
     const branchName = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
     const currentBranch = this.userBranches.find(b => b.name === branchName);
@@ -460,6 +512,7 @@ export class AlmmoliendaComponent {
       id: null,
       __tempId: `new_${Date.now()}`,
       sucursal: currentBranch?.id ?? null,
+      tipo: this.tipo,
       id_articulo: '',
       entradas: 0,
       salidas: 0,
