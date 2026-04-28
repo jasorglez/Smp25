@@ -888,6 +888,19 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       if (savedState) {
         const columnState = JSON.parse(savedState);
+
+        // Verificar si el estado guardado incluye "Por autorizar"
+        // Si no lo incluye, es un estado antiguo y debe borrarse
+        const hasPorAutorizarColumn = columnState.some((col: any) =>
+          col.colId === 'Por autorizar' || col.headerName === 'Por autorizar'
+        );
+
+        if (!hasPorAutorizarColumn) {
+          // Estado antiguo, borrarlo
+          localStorage.removeItem(localStorageKey);
+          return;
+        }
+
         this.gridApi.applyColumnState({
           state: columnState,
           applyOrder: true
@@ -895,6 +908,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error cargando estado de columnas:', error);
+      // Si hay error, borrar el estado corrupto
+      try {
+        const localStorageKey = `materiales_column_state_${this.idRoot}`;
+        localStorage.removeItem(localStorageKey);
+      } catch (e) {}
     }
   }
 
