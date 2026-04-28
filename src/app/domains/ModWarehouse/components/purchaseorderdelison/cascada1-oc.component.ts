@@ -192,6 +192,7 @@ export class Cascada1OcComponent {
 
   loadData() {
     const idRequisition = this.internalParams?.data?.id;
+    console.log('🔍 Cascada1 loadData - idRequisition:', idRequisition, 'data:', this.internalParams?.data);
     if (!idRequisition) {
       this.rowData = [];
       if (this.gridApi && !this.gridApi.isDestroyed()) {

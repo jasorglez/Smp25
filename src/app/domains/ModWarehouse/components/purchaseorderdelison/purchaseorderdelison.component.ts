@@ -322,16 +322,6 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   get colMaster(): ColDef[] {
     return [
       {
-        field: 'expand',
-        cellRenderer: 'agGroupCellRenderer',
-        cellRendererParams: {
-          suppressCount: true,
-        },
-        width: 50,
-        suppressMovable: true,
-        suppressMenu: true,
-      },
-      {
         headerName: '#',
         width: 45,
         valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
