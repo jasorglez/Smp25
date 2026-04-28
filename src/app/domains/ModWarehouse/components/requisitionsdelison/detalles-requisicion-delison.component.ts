@@ -1862,7 +1862,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
   }
 
-  saveNewArticle() {
+  async saveNewArticle() {
     this.newArticleFormSubmitted = true;
 
     const name = (this.newArticle.description || '').trim();
@@ -1874,7 +1874,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       alerts.reqWarningToast('Validación', 'Completa todos los campos obligatorios antes de guardar');
       return;
     }
-
 
     // Guardar los datos del formulario en la fila actual
     // idSupplie = 0 indica que es un artículo nuevo (no recurrente)
@@ -1902,6 +1901,30 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       columns: ['article', 'numArticle'],
       force: true
     });
+
+    // Crear el material automáticamente en dbo.materiales
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      const materialData = {
+        id_company: idRoot,
+        articulo: name,
+        description: desc,
+        id_category: this.newArticle.idCategory,
+        id_familia: this.newArticle.idFamilia,
+        id_subfamilia: this.newArticle.idSubfamilia,
+        insumo: name.substring(0, 35),
+        typematerial: 'CONSUMABLE',
+        active: true,
+        vigente: true,
+        porAutorizar: false
+      };
+
+      await lastValueFrom(this.materialsService.addMaterial(materialData));
+      console.log('✅ Material creado automáticamente en materiales-maestro');
+    } catch (err) {
+      console.warn('⚠️ Error creando material en materiales-maestro:', err);
+      // No bloqueamos el proceso si falla la creación del material
+    }
 
     alerts.reqSuccessToast('Éxito', 'Datos guardados. Presione "Guardar" para enviar');
     this.closeNewArticleModal();
