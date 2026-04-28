@@ -1,0 +1,260 @@
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { AgGridAngular } from 'ag-grid-angular';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { CustomersService } from 'app/services/customers.service';
+import { lastValueFrom } from 'rxjs';
+
+interface OcRow {
+  id: number;
+  folio: string;
+  idProvider: number;
+  providerName: string;
+  datecreate: string;
+  typeoc: string;
+  conditions: string;
+  countitem: number;
+}
+
+@Component({
+  selector: 'app-cascada1-oc',
+  standalone: true,
+  imports: [CommonModule, AgGridAngular],
+  template: `
+    <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: #fff3e0;">
+      <div style="margin-bottom: 4px; flex-shrink: 0;">
+        <strong style="font-size: 0.85rem;">Órdenes de Compra (Cascada 1)</strong>
+      </div>
+
+      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          [rowData]="rowData"
+          [columnDefs]="colDefs"
+          [gridOptions]="gridOptions"
+          (gridReady)="onGridReady($event)"
+          (rowClicked)="onRowClicked($event)"
+          style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+        </ag-grid-angular>
+      </div>
+
+      <div *ngIf="selectedOcRow"
+           style="flex: 0 0 45%; min-height: 0; border-top: 2px solid #e67e22; background: #fff9e6;
+                  padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="font-size: 0.78rem; font-weight: bold; color: #e67e22; margin-bottom: 3px; flex-shrink: 0;">
+          Ítems de {{ selectedOcRow.folio }}
+        </div>
+        <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+          <ag-grid-angular
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="itemsData"
+            [columnDefs]="itemsColDefs"
+            [gridOptions]="itemsGridOptions"
+            (gridReady)="onItemsGridReady($event)"
+            style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+          </ag-grid-angular>
+        </div>
+      </div>
+    </div>
+  `,
+  styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
+})
+export class Cascada1OcComponent {
+  private ocAndReqsService = inject(OcAndReqsService);
+  private customersService = inject(CustomersService);
+
+  private internalParams: any;
+  private gridApi!: GridApi;
+  private itemsGridApi!: GridApi;
+
+  rowData: OcRow[] = [];
+  itemsData: any[] = [];
+  selectedOcRow: OcRow | null = null;
+  providers: any[] = [];
+
+  colDefs: ColDef[] = [
+    {
+      headerName: '#',
+      width: 45,
+      valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+    },
+    {
+      field: 'folio',
+      headerName: 'OC',
+      width: 140,
+      editable: false,
+      cellRenderer: (params: any) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'cursor:pointer;color:#d97706;text-decoration:underline;';
+        div.textContent = params.value || '—';
+        return div;
+      },
+    },
+    {
+      field: 'providerName',
+      headerName: 'Proveedor',
+      width: 180,
+      flex: 2,
+      minWidth: 140,
+    },
+    {
+      field: 'datecreate',
+      headerName: 'Fecha OC',
+      width: 130,
+      editable: false,
+      valueFormatter: (p) => {
+        if (!p.value) return '';
+        const date = new Date(p.value);
+        const d = String(date.getDate()).padStart(2, '0');
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const y = date.getFullYear();
+        return `${d}/${m}/${y}`;
+      },
+    },
+    {
+      field: 'typeoc',
+      headerName: 'Tipo',
+      width: 120,
+    },
+    {
+      field: 'conditions',
+      headerName: 'Condic. Compra',
+      width: 140,
+      cellStyle: { backgroundColor: '#e0f2f1' },
+    },
+  ];
+
+  gridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 25,
+    rowClassRules: {
+      'selected-row-highlight': (p: any) => p.data === this.selectedOcRow,
+    },
+    tooltipShowDelay: 300,
+    defaultColDef: { resizable: true, sortable: true },
+  };
+
+  itemsColDefs: ColDef[] = [
+    { field: 'numarticle', headerName: '# Item OC', width: 100 },
+    { field: 'namearticle', headerName: 'Artículo', flex: 2, minWidth: 140 },
+    { field: 'quantity', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
+    { field: 'price', headerName: 'Precio unitario', width: 130, type: 'numericColumn' },
+    { field: 'total', headerName: 'Total', width: 110, type: 'numericColumn' },
+    { field: 'dateuse', headerName: 'Fecha entrega', width: 130 },
+    { field: 'observation', headerName: 'Especial', flex: 2, minWidth: 130 },
+  ];
+
+  itemsGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 25,
+    defaultColDef: { resizable: true, sortable: true },
+  };
+
+  agInit(params: any): void {
+    this.internalParams = params;
+    this.loadProviders();
+  }
+
+  refresh(params: any): boolean {
+    this.internalParams = params;
+    return true;
+  }
+
+  private loadProviders() {
+    this.customersService.getCustomersByCompany(this.internalParams?.data?.idCompany || 0, 'PROVIDERS').subscribe({
+      next: (data: any) => {
+        this.providers = Array.isArray(data) ? data : [];
+        if (this.gridApi && !this.gridApi.isDestroyed()) {
+          this.loadData();
+        }
+      },
+      error: () => {
+        this.providers = [];
+      }
+    });
+  }
+
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
+    this.loadData();
+  }
+
+  onItemsGridReady(params: GridReadyEvent) {
+    this.itemsGridApi = params.api;
+    if (this.itemsData.length) {
+      this.itemsGridApi.setGridOption('rowData', this.itemsData);
+    }
+  }
+
+  loadData() {
+    const idRequisition = this.internalParams?.data?.id;
+    if (!idRequisition) {
+      this.rowData = [];
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', []);
+      }
+      return;
+    }
+
+    this.ocAndReqsService.getOcsByRequisition(idRequisition).subscribe({
+      next: (ocs: any[]) => {
+        this.rowData = (Array.isArray(ocs) ? ocs : []).map((oc: any) => {
+          const provider = this.providers.find(p => p.id === oc.idProvider || p.id === oc.id_provider);
+          return {
+            id: oc.id,
+            folio: oc.folio || '',
+            idProvider: oc.idProvider || oc.id_provider || 0,
+            providerName: provider?.name || provider?.description || `Proveedor ${oc.idProvider || oc.id_provider}`,
+            datecreate: oc.datecreate || oc.dateCreate || '',
+            typeoc: oc.typeoc || oc.typeOc || '',
+            conditions: oc.conditions || '',
+            countitem: oc.countitem || oc.countrow || 0,
+          };
+        });
+
+        if (this.gridApi && !this.gridApi.isDestroyed()) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
+      },
+      error: (error) => {
+        console.error('Error loading OCs:', error);
+        this.rowData = [];
+      }
+    });
+  }
+
+  onRowClicked(event: any) {
+    const row = event.data as OcRow;
+    if (!row?.id) {
+      this.selectedOcRow = null;
+      this.itemsData = [];
+      return;
+    }
+
+    if (this.selectedOcRow?.id === row.id) {
+      this.selectedOcRow = null;
+      this.itemsData = [];
+      if (this.gridApi) this.gridApi.refreshCells({ force: true });
+      return;
+    }
+
+    this.selectedOcRow = row;
+    this.ocAndReqsService.getReqItems(row.id).subscribe({
+      next: (items: any[]) => {
+        this.itemsData = Array.isArray(items) ? items : [];
+        if (this.itemsGridApi) {
+          this.itemsGridApi.setGridOption('rowData', this.itemsData);
+        }
+      },
+      error: () => {
+        this.itemsData = [];
+      }
+    });
+
+    if (this.gridApi) {
+      this.gridApi.refreshCells({ force: true });
+    }
+  }
+}

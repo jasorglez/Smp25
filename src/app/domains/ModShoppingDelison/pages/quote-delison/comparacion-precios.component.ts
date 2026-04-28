@@ -499,6 +499,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
+  private getValidatedCantidadConceptualizada(rawValue: any, row: any) {
+    const cantidadComprar = Number(row?.cantidadComprar) || 0;
+    const cantidadCapturada = Number(rawValue);
+    const cantidadNormalizada = Number.isFinite(cantidadCapturada) ? cantidadCapturada : 0;
+
+    return Math.min(Math.max(cantidadNormalizada, 0), cantidadComprar);
+  }
+
   onCellValueChanged(event: any) {
     this.hasUnsavedChanges = true;
     const field = event.colDef?.field;
@@ -523,8 +531,15 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
     if (field === 'cantidadConceptualizada') {
-      const v = Number(event.newValue);
-      event.data.cantidadConceptualizada = Number.isFinite(v) ? v : 0;
+      const cantidadValidada = this.getValidatedCantidadConceptualizada(event.newValue, event.data);
+      event.data.cantidadConceptualizada = cantidadValidada;
+      if (Number(event.newValue) > Number(event.data?.cantidadComprar ?? 0)) {
+        alerts.basicAlert(
+          'Cantidad inválida',
+          'La cantidad por proveedor no puede ser mayor a la cantidad a comprar.',
+          'warning'
+        );
+      }
       if (this.gridApi) {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }
@@ -544,6 +559,22 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   async save() {
     if (this.rowData.length === 0) return;
+
+    for (const row of this.rowData) {
+      const cantidadValidada = this.getValidatedCantidadConceptualizada(row.cantidadConceptualizada, row);
+      if (cantidadValidada !== (Number(row.cantidadConceptualizada) || 0)) {
+        row.cantidadConceptualizada = cantidadValidada;
+        alerts.basicAlert(
+          'Cantidad inválida',
+          'Existe una cantidad por proveedor mayor a la cantidad a comprar. Se ajustó antes de guardar.',
+          'warning'
+        );
+        if (this.gridApi) {
+          this.gridApi.refreshCells({ force: true });
+        }
+        return;
+      }
+    }
 
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
     const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
@@ -684,6 +715,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'articulo',
         headerName: 'ARTICULO',
         minWidth: 120,
+        pinned: 'left',
+        lockPinned: true,
+        lockPosition: 'left',
         editable: false,
         cellClass: 'cell-cantidad-comprar cell-col-articulo',
         headerClass: 'header-cantidad-comprar',
@@ -834,7 +868,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         },
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { precision: 2, isFloat: true },
+        cellEditorParams: (params: any) => ({
+          precision: 2,
+          isFloat: true,
+          min: 0,
+          max: Number(params.data?.cantidadComprar) || 0
+        }),
         valueFormatter: (params: any) =>
           params.value != null ? Number(params.value).toFixed(2) : '0.00',
         cellStyle: { textAlign: 'right', padding: '8px' }

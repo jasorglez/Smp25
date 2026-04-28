@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.113 (25 Abril 2026) - molienda fix tipos columnas DB',
+  version: '3.116 (27 Abril 2026 23:30) - remodel purchase order cascada maestro-1-2',
 };

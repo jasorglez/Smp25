@@ -138,6 +138,20 @@ export class OcAndReqsService {
     );
   }
 
+  getOcsByReqMaterial(idReq: number, idMaterial: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/oc-by-req-material?idReq=${idReq}&idMaterial=${idMaterial}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getReqsByBranchMaterial(idBranch: number, idMaterial: number): Observable<{ id: number; folio: string; cantidadReq: number; numCantidadOc: number }[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/reqs-by-branch-material?idBranch=${idBranch}&idMaterial=${idMaterial}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   patchProveedorXTablaCampo7(campo1: number, idTabla: number, valor: boolean): Observable<any> {
     return this.http.patch(
       `${environment.urlWarehouse}/ProveedorXTabla/campo7/by-material-provider/${campo1}/${idTabla}`,
@@ -150,6 +164,20 @@ export class OcAndReqsService {
     return this.http.patch(
       `${environment.urlWarehouse}/ProveedorXTabla/deactivate-for-material/${campo1}/${idTabla}`,
       {},
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getRequisitionsByBranch(idBranch: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq?typeReference=branch&idReference=${idBranch}&type=REQUIS`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getOcsByRequisition(idRequisition: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/ocs-by-requisition?idRequisition=${idRequisition}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

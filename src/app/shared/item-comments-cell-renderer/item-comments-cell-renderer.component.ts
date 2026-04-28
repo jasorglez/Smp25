@@ -38,7 +38,6 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.documentType = params.documentType || '';
     this.idDocument   = params.idDocument   || 0;
     this.locked       = params.locked       || false;
-    console.log('[ItemComments] documentType:', this.documentType, 'idDocument:', this.idDocument, 'numArticle:', this.numArticle);
     this.loadCount();
 
     this.commentsService.commentSaved$
