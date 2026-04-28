@@ -168,4 +168,18 @@ export class OcAndReqsService {
     );
   }
 
+  getRequisitionsByBranch(idBranch: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq?typeReference=branch&idReference=${idBranch}&type=REQUIS`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getOcsByRequisition(idRequisition: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/ocs-by-requisition?idRequisition=${idRequisition}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
 }
