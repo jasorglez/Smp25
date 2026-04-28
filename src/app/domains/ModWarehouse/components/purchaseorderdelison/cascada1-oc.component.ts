@@ -139,11 +139,12 @@ export class Cascada1OcComponent {
   itemsColDefs: ColDef[] = [
     { field: 'numarticle', headerName: '# Item OC', width: 100 },
     { field: 'namearticle', headerName: 'Artículo', flex: 2, minWidth: 140 },
-    { field: 'quantity', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
-    { field: 'price', headerName: 'Precio unitario', width: 130, type: 'numericColumn' },
-    { field: 'total', headerName: 'Total', width: 110, type: 'numericColumn' },
-    { field: 'dateuse', headerName: 'Fecha entrega', width: 130 },
-    { field: 'observation', headerName: 'Especial', flex: 2, minWidth: 130 },
+    { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
+    { field: 'caducidad', headerName: 'Caducidad', width: 120 },
+    { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
+    { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
+    { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
+    { field: 'dateuse', headerName: 'Fecha Entrega', width: 140 },
   ];
 
   itemsGridOptions: any = {
