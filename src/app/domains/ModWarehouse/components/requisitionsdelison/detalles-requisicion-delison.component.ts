@@ -161,7 +161,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
         </div>
 
         <!-- Categoría -->
-        <div class="mb-3">
+        <div class="mb-3" [hidden]="true">
           <label for="newArticleCategory" class="form-label">
             Categoría <span class="text-danger">*</span>
           </label>
@@ -179,8 +179,8 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           </select>
         </div>
 
-        <!-- Familia -->
-        <div class="mb-3">
+        <!-- Familia (Oculto) -->
+        <div class="mb-3" [hidden]="true">
           <label for="newArticleFamily" class="form-label">
             Familia <span class="text-danger">*</span>
           </label>
@@ -198,8 +198,8 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           </select>
         </div>
 
-        <!-- Subfamilia -->
-        <div class="mb-3">
+        <!-- Subfamilia (Oculto) -->
+        <div class="mb-3" [hidden]="true">
           <label for="newArticleSubFamily" class="form-label">
             Subfamilia <span class="text-danger">*</span>
           </label>
@@ -242,7 +242,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           type="button"
           class="btn btn-primary"
           (click)="saveNewArticle()"
-          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim() || !newArticle.idCategory || !newArticle.idFamilia || !newArticle.idSubfamilia">
+          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim()">
           Guardar
         </button>
       </div>
@@ -1869,8 +1869,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     const desc = (this.newArticle.descriptionNewArticle || '').trim();
     const usage = (this.newArticle.justificationNewArticle || '').trim();
 
-    // Validación: campos obligatorios
-    if (!name || !desc || !usage || !this.newArticle.idCategory || !this.newArticle.idFamilia || !this.newArticle.idSubfamilia) {
+    // Validación: campos obligatorios visibles
+    if (!name || !desc || !usage) {
       alerts.reqWarningToast('Validación', 'Completa todos los campos obligatorios antes de guardar');
       return;
     }
