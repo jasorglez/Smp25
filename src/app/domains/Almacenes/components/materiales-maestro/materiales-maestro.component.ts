@@ -378,6 +378,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         cellEditor: 'agCheckboxCellEditor'
       },
       {
+        colId: 'porAutorizar',
         headerName: 'Por autorizar',
         width: 130,
         editable: false,
@@ -892,11 +893,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         // Verificar si el estado guardado incluye "Por autorizar"
         // Si no lo incluye, es un estado antiguo y debe borrarse
         const hasPorAutorizarColumn = columnState.some((col: any) =>
-          col.colId === 'Por autorizar' || col.headerName === 'Por autorizar'
+          col.colId === 'porAutorizar'
         );
 
         if (!hasPorAutorizarColumn) {
-          // Estado antiguo, borrarlo
           localStorage.removeItem(localStorageKey);
           return;
         }

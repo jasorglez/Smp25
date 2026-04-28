@@ -60,7 +60,8 @@ import { SignalsService } from 'app/services/signals.service';
   `,
   styles: [`
     .chat-backdrop {
-      position: fixed; inset: 0; z-index: 9040;
+      /* Debe quedar por encima del modal de comparación (z-index 10000 en app.component.ts) */
+      position: fixed; inset: 0; z-index: 10040;
     }
     .chat-panel {
       position: fixed;
@@ -72,7 +73,8 @@ import { SignalsService } from 'app/services/signals.service';
       border: 1px solid #dee2e6;
       border-radius: 8px;
       box-shadow: 0 8px 32px rgba(0,0,0,.25);
-      z-index: 9050;
+      /* Debe quedar por encima del modal de comparación (z-index 10000 en app.component.ts) */
+      z-index: 10050;
       display: flex;
       flex-direction: column;
       overflow: hidden;

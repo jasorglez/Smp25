@@ -199,7 +199,9 @@ export class DetalleItemsProveedorComponent {
     this.catalogadmonService.getCatalogs(9, 'TYPEOC').subscribe({
       next: (items: any[]) => {
         this.typeocValues = items.filter(i => i.active).map(i => i.description as string);
-        this._colDefs = null;
+        if (this.gridApi) {
+          this.gridApi.setGridOption('columnDefs', this.colDefs);
+        }
       },
       error: () => { this.typeocValues = []; }
     });
@@ -509,9 +511,20 @@ export class DetalleItemsProveedorComponent {
     const rowsForDetails = type === 'OC' ? gridRows.filter((row: any) => this.AUTHORIZED_TYPES.includes(row.typeOC)) : gridRows;
     const details = rowsForDetails.map((row: any) => ({
       idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
-      price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: row.codigoExterno || '', typeOc: row.typeOC || '', comment: row.comment || ''
+      price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: row.codigoExterno || '', typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega || '', compraMinima: parseFloat(row.compraMinima) || 1
     }));
     for (const d of details) await lastValueFrom(this.ocandreqsService.addReqItem(d));
+
+    // Sincronizar codigoExterno → proveedorxtablas.campo11 para que materiales-maestro lo vea
+    if (this.selectedProviderId) {
+      for (const row of rowsForDetails) {
+        if (row.idSupplie > 0 && row.codigoExterno) {
+          this.providersService.patchProviderXTablaCampo11(row.idSupplie, this.selectedProviderId, row.codigoExterno)
+            .subscribe({ error: e => console.warn(`⚠️ No se pudo sincronizar campo11 para ${row.articulo}:`, e) });
+        }
+      }
+    }
+
     if (type === 'COTIZ') { this.savedCotizFolio = folio; this.savedOcId = newOcId; await this.loadSavedItems(newOcId); }
     return folio;
   }
@@ -555,22 +568,22 @@ export class DetalleItemsProveedorComponent {
   deleteItem() { alert('Eliminación no implementada.'); }
 
   get colDefs(): ColDef[] {
-    if (this._colDefs) return this._colDefs;
+    if (this._colDefs && this._colDefs.length > 0) return this._colDefs;
+
     this._colDefs = [
-      { field: 'active', headerName: 'Activo', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: true },
+      { field: 'active', headerName: 'Activo', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
       { field: 'numArticulo', headerName: '# Art', width: 130 },
       { field: 'articulo', headerName: 'Artículo', width: 140 },
-      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 120, editable: true },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 120, editable: true },
-      { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: true },
-      { field: 'costoUnitario', headerName: 'Costo Unit.', width: 130, editable: true, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 130, editable: true, hide: true },
+      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 120, editable: !this.ocGenerated },
+      { field: 'tiempoEntrega', headerName: 'T. Entrega x semana', width: 120, editable: !this.ocGenerated },
+      { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: !this.ocGenerated },
+      { field: 'costoUnitario', headerName: 'Costo Unit.', width: 130, editable: !this.ocGenerated, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
+      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 130, editable: !this.ocGenerated, hide: true },
       { field: 'costoTotal', headerName: 'Costo Total', width: 150, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
       { headerName: 'Comentarios💬', width: 140, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || '', locked: this.ocGenerated }) },
-      { field: 'typeOC', headerName: 'Tipo OC', width: 220, editable: true, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
-      { field: 'oc', headerName: 'OC', width: 80, editable: true, hide: true }
+      { field: 'typeOC', headerName: 'Tipo OC', width: 220, editable: !this.ocGenerated, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
+      { field: 'oc', headerName: 'OC', width: 80, editable: !this.ocGenerated, hide: true }
     ];
-    if (this.ocGenerated) this._colDefs = this._colDefs.map(col => ({ ...col, editable: false }));
     return this._colDefs;
   }
 
@@ -587,9 +600,7 @@ export class DetalleItemsProveedorComponent {
 
   private lockGrid() {
     if (!this.gridApi) return;
-    this._colDefs = null;
-    const lockedDefs = this.colDefs.map(col => ({ ...col, editable: false }));
-    this.gridApi.setGridOption('columnDefs', lockedDefs);
+    this.gridApi.setGridOption('columnDefs', this.colDefs);
     this.gridApi.setGridOption('suppressClickEdit', true);
     this.gridApi.refreshCells({ force: true });
   }

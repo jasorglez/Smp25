@@ -115,6 +115,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   fullRowData: any[] = []; // Store original unfiltered data
   gridHeight: string = '80vh';
   hasUnsavedChanges: boolean = false;
+  private pendingNewIds = new Set<number>(); // IDs de registros recién creados para mostrar al frente
   tempIdCounter: number = 0;
   expandedRowId: string | null = null;
 
@@ -321,6 +322,7 @@ export class RequisitionsDelisonComponent implements OnInit {
           branch: branchName,
           requisitionNumber: req.folio || '',
           requestDate: req.dateCreate || new Date().toISOString(),
+          dateModified: req.dateModified,
           departmentId: req.idDepartament || null,
           departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
           solicitedBy: req.solicit || '',
@@ -347,7 +349,15 @@ export class RequisitionsDelisonComponent implements OnInit {
       });
 
       // ✅ Ordenar por dateModified descendente (más recientemente modificado primero) - viene del backend
-      this.fullRowData.sort((a, b) => new Date(b.dateModified).getTime() - new Date(a.dateModified).getTime());
+      this.fullRowData.sort((a, b) => new Date(b.dateModified || b.requestDate).getTime() - new Date(a.dateModified || a.requestDate).getTime());
+
+      // ✅ Si hay registros recién creados, moverlos al frente
+      if (this.pendingNewIds.size > 0) {
+        const newRows = this.fullRowData.filter(r => this.pendingNewIds.has(r.id));
+        const otherRows = this.fullRowData.filter(r => !this.pendingNewIds.has(r.id));
+        this.fullRowData = [...newRows, ...otherRows];
+        this.pendingNewIds.clear();
+      }
 
       this.rowData = [...this.fullRowData];
 
@@ -357,18 +367,22 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       // Refrescar el grid
       if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.gridApi.refreshCells({ force: true });
+        this.gridApi.setGridOption('rowData', []);
+        setTimeout(() => {
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.refreshCells({ force: true });
+          this.gridApi.ensureIndexVisible(0);
 
-        // ✅ Reabrir la fila que estaba expandida
-        if (expandedRequisitionId) {
-          setTimeout(() => {
-            const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
-            if (nodeToExpand) {
-              nodeToExpand.setExpanded(true);
-            }
-          }, 100);
-        }
+          // ✅ Reabrir la fila que estaba expandida
+          if (expandedRequisitionId) {
+            setTimeout(() => {
+              const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
+              if (nodeToExpand) {
+                nodeToExpand.setExpanded(true);
+              }
+            }, 100);
+          }
+        }, 0);
       }
 
       // Cargar flags de typeOC desde COTIZs vinculadas
@@ -401,6 +415,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             branch: branchName, // Nombre de la sucursal desde el catálogo
             requisitionNumber: req.folio || '', // Número de requisición
             requestDate: req.dateCreate || new Date().toISOString(), // Fecha de creación
+            dateModified: req.dateModified,
             departmentId: req.idDepartament || null,
             departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
             solicitedBy: req.solicit || '', // Usuario que solicita
@@ -428,7 +443,15 @@ export class RequisitionsDelisonComponent implements OnInit {
         }) : [];
 
         // ✅ Ordenar por dateModified descendente (más recientemente modificado primero)
-        this.fullRowData.sort((a, b) => new Date(b.dateModified).getTime() - new Date(a.dateModified).getTime());
+        this.fullRowData.sort((a, b) => new Date(b.dateModified || b.requestDate).getTime() - new Date(a.dateModified || a.requestDate).getTime());
+
+        // ✅ Si hay registros recién creados, moverlos al frente
+        if (this.pendingNewIds.size > 0) {
+          const newRows = this.fullRowData.filter(r => this.pendingNewIds.has(r.id));
+          const otherRows = this.fullRowData.filter(r => !this.pendingNewIds.has(r.id));
+          this.fullRowData = [...newRows, ...otherRows];
+          this.pendingNewIds.clear();
+        }
 
         this.rowData = [...this.fullRowData];
 
@@ -439,19 +462,22 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // Refrescar el grid si ya existe
         if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-          // Forzar actualización de las columnas para que muestren los nombres correctos
-          this.gridApi.refreshCells({ force: true });
+          this.gridApi.setGridOption('rowData', []);
+          setTimeout(() => {
+            this.gridApi.setGridOption('rowData', this.rowData);
+            this.gridApi.refreshCells({ force: true });
+            this.gridApi.ensureIndexVisible(0);
 
-          // ✅ Reabrir la fila que estaba expandida
-          if (expandedRequisitionId) {
-            setTimeout(() => {
-              const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
-              if (nodeToExpand) {
-                nodeToExpand.setExpanded(true);
-              }
-            }, 100);
-          }
+            // ✅ Reabrir la fila que estaba expandida
+            if (expandedRequisitionId) {
+              setTimeout(() => {
+                const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
+                if (nodeToExpand) {
+                  nodeToExpand.setExpanded(true);
+                }
+              }, 100);
+            }
+          }, 0);
         }
 
         // Cargar flags de typeOC desde COTIZs vinculadas
@@ -541,6 +567,25 @@ export class RequisitionsDelisonComponent implements OnInit {
       setTimeout(() => {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }, 0);
+    },
+    onRowGroupOpened: (event: any) => {
+      // ✅ Si se cerró la fila (expanded === false), ejecutar el reordenamiento
+      if (!event.node.expanded) {
+        // Solo reordenar si hay datos
+        if (this.rowData.length > 0) {
+          // Reordenar por marca de tiempo (lo más reciente arriba)
+          this.rowData.sort((a, b) => {
+            const timeA = a.__lastModified ? new Date(a.__lastModified).getTime() : 0;
+            const timeB = b.__lastModified ? new Date(b.__lastModified).getTime() : 0;
+            return timeB - timeA;
+          });
+          
+          // Aplicar el nuevo orden al grid
+          if (this.gridApi) {
+            this.gridApi.setGridOption('rowData', [...this.rowData]);
+          }
+        }
+      }
     }
   };
 
@@ -1299,7 +1344,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     if (!event.expanded) {
       // Fila se ha colapsado - reordenar si hay cambios
       this.fullRowData.sort((a: any, b: any) =>
-        new Date(b.dateModified || 0).getTime() - new Date(a.dateModified || 0).getTime()
+        new Date(b.dateModified || b.requestDate).getTime() - new Date(a.dateModified || a.requestDate).getTime()
       );
       this.rowData = [...this.fullRowData];
 
@@ -1636,7 +1681,10 @@ export class RequisitionsDelisonComponent implements OnInit {
           try {
             await new Promise<void>((resolve, reject) => {
               this.ocAndReqsService.addOcAndReq(newReqData).subscribe({
-                next: (response) => {
+                next: (response: any) => {
+                  if (response?.id) {
+                    this.pendingNewIds.add(response.id);
+                  }
                   resolve();
                 },
                 error: (err) => {

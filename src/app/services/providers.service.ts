@@ -61,6 +61,10 @@ export class ProvidersService {
     return this.http.put(`${environment.urlWarehouse}/ProveedorXTabla/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  patchProviderXTablaCampo11(campo1: number, idTabla: number, valor: string) {
+    return this.http.patch(`${environment.urlWarehouse}/ProveedorXTabla/campo11/by-material-provider/${campo1}/${idTabla}`, { valor }, { headers: this.trackingService.getHeaders() });
+  }
+
   deleteProviderXTable(id: number) {
     return this.http.delete(`${environment.urlWarehouse}/ProveedorXTabla/${id}`, { headers: this.trackingService.getHeaders() });
   }

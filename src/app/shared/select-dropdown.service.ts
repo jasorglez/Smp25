@@ -16,7 +16,8 @@ export class SelectDropdownService {
   private renderer: Renderer2;
   private dropdownElement: HTMLElement | null = null;
   private searchInputElement: HTMLInputElement | null = null;
-  private tooltipElement: HTMLElement | null = null;
+  private tooltipElement: HTMLElement | null = null; // legacy (ya no se usa; dejamos para compat)
+  private infoPanelElement: HTMLElement | null = null;
   private documentClickListener: (() => void) | null = null;
   private onSelectCallback: ((value: any) => void) | null = null;
   private onCancelCallback: (() => void) | null = null;
@@ -74,6 +75,7 @@ export class SelectDropdownService {
 
   closeDropdown(): void {
     this.removeTooltipFromBody();
+    this.clearInfoPanel();
 
     if (this.documentClickListener) {
       this.documentClickListener();
@@ -84,6 +86,7 @@ export class SelectDropdownService {
       this.renderer.removeChild(document.body, this.dropdownElement);
       this.dropdownElement = null;
       this.searchInputElement = null;
+      this.infoPanelElement = null;
     }
 
     this.onSelectCallback = null;
@@ -97,7 +100,8 @@ export class SelectDropdownService {
     this.renderer.setStyle(this.dropdownElement, 'position', 'fixed');
     this.renderer.setStyle(this.dropdownElement, 'top', `${cellRect.bottom}px`);
     this.renderer.setStyle(this.dropdownElement, 'left', `${cellRect.left}px`);
-    this.renderer.setStyle(this.dropdownElement, 'width', `${Math.max(cellRect.width, 200)}px`);
+    // El wrapper ahora contiene lista (izquierda) + panel de info (derecha)
+    this.renderer.setStyle(this.dropdownElement, 'width', `${Math.max(cellRect.width, 200) + 320}px`);
     this.renderer.setStyle(this.dropdownElement, 'z-index', '10000');
     this.renderer.setStyle(this.dropdownElement, 'background', 'white');
     this.renderer.setStyle(this.dropdownElement, 'border', '1px solid #ccc');
@@ -143,23 +147,47 @@ export class SelectDropdownService {
     this.renderer.appendChild(searchContainer, this.searchInputElement);
     this.renderer.appendChild(this.dropdownElement, searchContainer);
 
-    // Crear contenedor de opciones
+    // Contenedor horizontal: opciones + panel de info
+    const bodyRow = this.renderer.createElement('div');
+    this.renderer.setStyle(bodyRow, 'display', 'flex');
+    this.renderer.setStyle(bodyRow, 'flex', '1 1 auto');
+    this.renderer.setStyle(bodyRow, 'min-height', '0');
+
+    // Crear contenedor de opciones (izquierda)
     const optionsContainer = this.renderer.createElement('div');
     this.renderer.setStyle(optionsContainer, 'overflow-y', 'auto');
     this.renderer.setStyle(optionsContainer, 'max-height', '250px');
-    this.renderer.setStyle(optionsContainer, 'flex-grow', '1');
+    this.renderer.setStyle(optionsContainer, 'flex', '1 1 auto');
+    this.renderer.setStyle(optionsContainer, 'min-width', `${Math.max(cellRect.width, 200)}px`);
+
+    // Panel de info (derecha) — se actualiza al hover
+    this.infoPanelElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.infoPanelElement, 'width', '320px');
+    this.renderer.setStyle(this.infoPanelElement, 'border-left', '1px solid #e5e7eb');
+    this.renderer.setStyle(this.infoPanelElement, 'background', '#ffffff');
+    this.renderer.setStyle(this.infoPanelElement, 'padding', '12px 14px');
+    this.renderer.setStyle(this.infoPanelElement, 'display', 'flex');
+    this.renderer.setStyle(this.infoPanelElement, 'flex-direction', 'column');
+    this.renderer.setStyle(this.infoPanelElement, 'gap', '10px');
+    this.renderer.setStyle(this.infoPanelElement, 'color', '#111827');
+    this.renderer.setStyle(this.infoPanelElement, 'font-size', '12px');
+    this.renderer.setStyle(this.infoPanelElement, 'min-height', '0');
 
     this.renderer.listen(optionsContainer, 'scroll', () => {
-      this.removeTooltipFromBody();
+      // Nada: ya no usamos tooltip flotante
     });
 
-    this.renderer.appendChild(this.dropdownElement, optionsContainer);
+    this.renderer.appendChild(bodyRow, optionsContainer);
+    this.renderer.appendChild(bodyRow, this.infoPanelElement);
+    this.renderer.appendChild(this.dropdownElement, bodyRow);
 
     // Agregar al body
     this.renderer.appendChild(document.body, this.dropdownElement);
 
     // Renderizar opciones
     this.renderOptions();
+    // Estado inicial del panel
+    this.clearInfoPanel();
 
     // Auto-focus
     setTimeout(() => {
@@ -172,7 +200,8 @@ export class SelectDropdownService {
   private renderOptions(): void {
     if (!this.dropdownElement) return;
 
-    const optionsContainer = this.dropdownElement.querySelector('div:nth-child(2)') as HTMLElement;
+    // searchContainer es child(1), bodyRow es child(2) y optionsContainer está dentro
+    const optionsContainer = this.dropdownElement.querySelector('div:nth-child(2) > div:nth-child(1)') as HTMLElement;
     if (!optionsContainer) return;
 
     // Limpiar opciones anteriores
@@ -190,6 +219,7 @@ export class SelectDropdownService {
       const text = this.renderer.createText('No se encontraron resultados');
       this.renderer.appendChild(noResults, text);
       this.renderer.appendChild(optionsContainer, noResults);
+      this.clearInfoPanel();
       return;
     }
 
@@ -257,9 +287,8 @@ export class SelectDropdownService {
           this.renderer.setStyle(optionElement, 'background-color', '#e3f2fd');
         }
 
-        // Crear y mostrar tooltip
-        const rect = optionElement.getBoundingClientRect();
-        this.createTooltip(option, rect);
+        // Mostrar info a la derecha, dentro del mismo dropdown
+        this.updateInfoPanel(option);
       });
 
       this.renderer.listen(optionElement, 'mouseleave', () => {
@@ -267,8 +296,7 @@ export class SelectDropdownService {
           this.renderer.setStyle(optionElement, 'background-color', 'transparent');
         }
 
-        // Ocultar tooltip
-        this.removeTooltipFromBody();
+        // No limpiamos al salir para evitar parpadeo; se actualiza con el siguiente hover.
       });
 
       this.renderer.appendChild(optionsContainer, optionElement);
@@ -314,6 +342,79 @@ export class SelectDropdownService {
     if (this.tooltipElement) {
       this.renderer.removeChild(document.body, this.tooltipElement);
       this.tooltipElement = null;
+    }
+  }
+
+  private clearInfoPanel(): void {
+    if (!this.infoPanelElement) return;
+    while (this.infoPanelElement.firstChild) {
+      this.renderer.removeChild(this.infoPanelElement, this.infoPanelElement.firstChild);
+    }
+    const hint = this.renderer.createElement('div');
+    this.renderer.setStyle(hint, 'color', '#6b7280');
+    this.renderer.setStyle(hint, 'font-style', 'italic');
+    this.renderer.setStyle(hint, 'font-size', '12px');
+    this.renderer.appendChild(hint, this.renderer.createText('Pasa el mouse sobre un elemento para ver detalles.'));
+    this.renderer.appendChild(this.infoPanelElement, hint);
+  }
+
+  private updateInfoPanel(option: SelectOption): void {
+    if (!this.infoPanelElement) return;
+    while (this.infoPanelElement.firstChild) {
+      this.renderer.removeChild(this.infoPanelElement, this.infoPanelElement.firstChild);
+    }
+
+    const title = this.renderer.createElement('div');
+    this.renderer.setStyle(title, 'font-weight', '700');
+    this.renderer.setStyle(title, 'font-size', '13px');
+    this.renderer.setStyle(title, 'display', 'flex');
+    this.renderer.setStyle(title, 'align-items', 'center');
+    this.renderer.setStyle(title, 'gap', '8px');
+    const icon = this.renderer.createElement('i');
+    this.renderer.addClass(icon, 'bi');
+    this.renderer.addClass(icon, 'bi-info-circle');
+    this.renderer.setStyle(icon, 'color', '#2563eb');
+    this.renderer.appendChild(title, icon);
+    this.renderer.appendChild(title, this.renderer.createText(option.description || ''));
+    this.renderer.appendChild(this.infoPanelElement, title);
+
+    const mat = option.valueAddition;
+    if (mat) {
+      const row = this.renderer.createElement('div');
+      this.renderer.setStyle(row, 'display', 'flex');
+      this.renderer.setStyle(row, 'gap', '8px');
+      this.renderer.setStyle(row, 'align-items', 'baseline');
+      const label = this.renderer.createElement('div');
+      this.renderer.setStyle(label, 'min-width', '110px');
+      this.renderer.setStyle(label, 'color', '#374151');
+      this.renderer.setStyle(label, 'font-weight', '600');
+      this.renderer.appendChild(label, this.renderer.createText('Num. Material:'));
+      const value = this.renderer.createElement('div');
+      this.renderer.setStyle(value, 'color', '#111827');
+      this.renderer.setStyle(value, 'font-family', 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace');
+      this.renderer.appendChild(value, this.renderer.createText(String(mat)));
+      this.renderer.appendChild(row, label);
+      this.renderer.appendChild(row, value);
+      this.renderer.appendChild(this.infoPanelElement, row);
+    }
+
+    const abbr = option.valueAddition2;
+    if (abbr && this.showAbbreviation) {
+      const row = this.renderer.createElement('div');
+      this.renderer.setStyle(row, 'display', 'flex');
+      this.renderer.setStyle(row, 'gap', '8px');
+      this.renderer.setStyle(row, 'align-items', 'baseline');
+      const label = this.renderer.createElement('div');
+      this.renderer.setStyle(label, 'min-width', '110px');
+      this.renderer.setStyle(label, 'color', '#374151');
+      this.renderer.setStyle(label, 'font-weight', '600');
+      this.renderer.appendChild(label, this.renderer.createText(option.label2 || 'Abreviatura:'));
+      const value = this.renderer.createElement('div');
+      this.renderer.setStyle(value, 'color', '#111827');
+      this.renderer.appendChild(value, this.renderer.createText(String(abbr)));
+      this.renderer.appendChild(row, label);
+      this.renderer.appendChild(row, value);
+      this.renderer.appendChild(this.infoPanelElement, row);
     }
   }
 

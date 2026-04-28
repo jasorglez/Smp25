@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, Input, Output, EventEmitter, TemplateRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, Input, Output, EventEmitter, TemplateRef, ViewChild, Renderer2, RendererFactory2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -83,6 +83,8 @@ import { lastValueFrom, Subscription } from 'rxjs';
             (firstDataRendered)="onFirstDataRendered($event)"
             (rowDataUpdated)="onRowDataUpdated()"
             (cellValueChanged)="onCellValueChanged($event)"
+            (cellMouseOver)="onCellMouseOver($event)"
+            (cellMouseOut)="onCellMouseOut($event)"
             style="width: 100%; flex: 1 1 auto; min-height: 0;">
           </ag-grid-angular>
         </div>
@@ -153,6 +155,15 @@ import { lastValueFrom, Subscription } from 'rxjs';
       width: 100%;
     }
 
+    /* Centrar todos los encabezados por defecto */
+    :host ::ng-deep .ag-header-cell-label {
+      justify-content: center;
+    }
+    :host ::ng-deep .ag-header-cell-text {
+      text-align: center;
+      width: 100%;
+    }
+
     /* columnas con rowSpan: bordes horiz. (entre artículos) y vert. (lados de la celda) */
     :host ::ng-deep .ag-cell.cell-col-articulo,
     :host ::ng-deep .ag-cell.cell-col-cantidad-a-comprar,
@@ -219,10 +230,16 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private ngbModal = inject(NgbModal);
   private materialsService = inject(MaterialsService);
+  private renderer: Renderer2;
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
   private providerSlotMap = new Map<number, { suffix: string; cotizId: number }>();
   private commentSub?: Subscription;
+  private tooltipEl: HTMLElement | null = null;
+
+  constructor(rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+  }
 
   @ViewChild('fechaModal') fechaModal!: TemplateRef<any>;
 
@@ -243,6 +260,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private originalRowData: any[] = [];
   articulos: any[] = [];
   proveedores: any[] = [];
+  // Cache para que AG Grid no re-renderice columnas en cada CD
+  private _colDefs: ColDef[] | null = null;
 
   hasUnsavedChanges = false;
   loading = false;
@@ -270,6 +289,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.commentSub?.unsubscribe();
+    this.hideArticuloTooltip();
   }
 
   private loadComparisonData() {
@@ -865,8 +885,88 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
+  onCellMouseOver(event: any): void {
+    if (event.colDef?.field !== 'articulo') return;
+    const data = event.data;
+    if (!data) return;
+    const cellEl = event.event?.target as HTMLElement;
+    if (!cellEl) return;
+    const rect = cellEl.getBoundingClientRect();
+    this.showArticuloTooltip(rect, data);
+  }
+
+  onCellMouseOut(event: any): void {
+    if (event.colDef?.field !== 'articulo') return;
+    this.hideArticuloTooltip();
+  }
+
+  private showArticuloTooltip(cellRect: DOMRect, data: any): void {
+    this.hideArticuloTooltip();
+
+    this.tooltipEl = this.renderer.createElement('div');
+    this.renderer.setStyle(this.tooltipEl, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipEl, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipEl, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipEl, 'min-width', '300px');
+    this.renderer.setStyle(this.tooltipEl, 'max-width', '400px');
+    this.renderer.setStyle(this.tooltipEl, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+    this.renderer.setStyle(this.tooltipEl, 'border-radius', '8px');
+    this.renderer.setStyle(this.tooltipEl, 'box-shadow', '0 8px 24px rgba(0,0,0,0.4)');
+    this.renderer.setStyle(this.tooltipEl, 'padding', '12px 14px');
+    this.renderer.setStyle(this.tooltipEl, 'color', '#ffffff');
+    this.renderer.setStyle(this.tooltipEl, 'font-size', '12px');
+    this.renderer.setStyle(this.tooltipEl, 'line-height', '1.6');
+
+    const rows = [
+      { label: 'Nuevo/Recurrente:', value: data.nuevoRecurrente || '—' },
+      { label: '# Artículo Interno:', value: data.numArticuloInterno || '—' },
+      { label: '# Artículo Externo:', value: data.numArticuloExterno || '—' },
+      { label: 'Prioridad:', value: data.prioridad || '—' }
+    ];
+
+    const title = this.renderer.createElement('div');
+    this.renderer.setStyle(title, 'font-weight', '600');
+    this.renderer.setStyle(title, 'font-size', '13px');
+    this.renderer.setStyle(title, 'margin-bottom', '8px');
+    this.renderer.appendChild(title, this.renderer.createText('Información del Artículo'));
+    this.renderer.appendChild(this.tooltipEl, title);
+
+    rows.forEach(({ label, value }, idx) => {
+      const row = this.renderer.createElement('div');
+      this.renderer.setStyle(row, 'display', 'flex');
+      this.renderer.setStyle(row, 'gap', '8px');
+      if (idx < rows.length - 1) this.renderer.setStyle(row, 'margin-bottom', '6px');
+
+      const labelEl = this.renderer.createElement('span');
+      this.renderer.setStyle(labelEl, 'color', 'rgba(255,255,255,0.8)');
+      this.renderer.setStyle(labelEl, 'font-weight', '600');
+      this.renderer.setStyle(labelEl, 'min-width', '140px');
+      this.renderer.setStyle(labelEl, 'flex-shrink', '0');
+      this.renderer.appendChild(labelEl, this.renderer.createText(label));
+      this.renderer.appendChild(row, labelEl);
+
+      const valueEl = this.renderer.createElement('span');
+      this.renderer.appendChild(valueEl, this.renderer.createText(value));
+      this.renderer.appendChild(row, valueEl);
+
+      this.renderer.appendChild(this.tooltipEl!, row);
+    });
+
+    this.renderer.appendChild(document.body, this.tooltipEl);
+    this.renderer.setStyle(this.tooltipEl, 'top', `${cellRect.top}px`);
+    this.renderer.setStyle(this.tooltipEl, 'left', `${cellRect.right + 10}px`);
+  }
+
+  private hideArticuloTooltip(): void {
+    if (this.tooltipEl) {
+      this.renderer.removeChild(document.body, this.tooltipEl);
+      this.tooltipEl = null;
+    }
+  }
+
   get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs) return this._colDefs;
+    this._colDefs = [
       {
         field: 'articulo',
         headerName: 'ARTICULO',
@@ -882,10 +982,31 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         wrapText: true
       },
       {
-        field: 'cantidadComprar',
-        headerName: 'CANTIDAD A COMPRAR',
+        field: 'proveedorNombre',
+        headerName: 'PROVEEDOR',
+        minWidth: 140,
+        cellStyle: { backgroundColor: '#e3f2fd', fontWeight: '500', padding: '8px' }
+      },
+      {
+        field: 'tiempoEntrega',
+        headerName: 'T. ENTREGA X SEMANA',
         minWidth: 120,
-        editable: (params: any) => !!params.data?.__isBlockStart,
+        editable: false,
+        cellStyle: { padding: '8px' }
+      },
+      {
+        field: 'compraMinima',
+        headerName: 'COMPRA MINIMA',
+        minWidth: 110,
+        editable: false,
+        type: 'numericColumn',
+        cellStyle: { textAlign: 'center', padding: '8px' }
+      },
+      {
+        field: 'cantidadComprar',
+        headerName: 'CANTIDAD REQUERIDA',
+        minWidth: 120,
+        editable: false,
         cellEditor: 'agNumberCellEditor',
         cellClass: 'cell-cantidad-comprar cell-col-cantidad-a-comprar',
         headerClass: 'header-cantidad-comprar',
@@ -894,67 +1015,36 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         wrapText: true
       },
       {
-        field: 'proveedorNombre',
-        headerName: 'PROVEEDOR',
-        minWidth: 140,
-        cellStyle: { backgroundColor: '#e3f2fd', fontWeight: '500', padding: '8px' }
-      },
-      {
         field: 'nuevoRecurrente',
         headerName: 'NUEVO RECURRENTE',
         minWidth: 130,
-        editable: false,
-        cellClass: 'cell-cantidad-comprar cell-col-nuevo-recurrente',
-        headerClass: 'header-cantidad-comprar',
-        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
-        wrapText: true
+        hide: true
       },
       {
         field: 'numArticuloInterno',
         headerName: '# ARTICULO INTERNO',
         minWidth: 130,
-        cellStyle: { padding: '8px' }
+        hide: true
       },
       {
         field: 'numArticuloExterno',
         headerName: '# ARTICULO EXTERNO',
         minWidth: 130,
-        cellStyle: { padding: '8px' }
+        hide: true
       },
       {
         field: 'prioridad',
         headerName: 'PRIORIDAD',
         minWidth: 120,
-        editable: false,
-        cellClass: 'cell-cantidad-comprar cell-col-prioridad',
-        headerClass: 'header-cantidad-comprar',
-        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
-        wrapText: true
-      },
-      {
-        field: 'tiempoEntrega',
-        headerName: 'TIEMPO DE ENTREGA',
-        minWidth: 120,
-        editable: true,
-        cellStyle: { padding: '8px' }
-      },
-      {
-        field: 'compraMinima',
-        headerName: 'COMPRA MINIMA',
-        minWidth: 110,
-        editable: true,
-        type: 'numericColumn',
-        cellStyle: { textAlign: 'right', padding: '8px' }
+        hide: true
       },
       {
         field: 'costoUnitario',
         headerName: 'COSTO UNITARIO',
         minWidth: 120,
-        editable: true,
+        editable: false,
         type: 'numericColumn',
-        cellStyle: { backgroundColor: '#fff9c4', textAlign: 'right', padding: '8px' },
+        cellStyle: { backgroundColor: '#fff9c4', textAlign: 'center', padding: '8px' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
@@ -963,7 +1053,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'COSTO TOTAL',
         minWidth: 120,
         editable: false,
-        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '8px', textAlign: 'right' },
+        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '8px', textAlign: 'center' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
@@ -972,7 +1062,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'COSTO X COMPRA MINIMA',
         minWidth: 150,
         editable: false,
-        cellStyle: { textAlign: 'right', padding: '8px' },
+        cellStyle: { textAlign: 'center', padding: '8px' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
@@ -1006,12 +1096,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         editable: true,
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
+        // Función para leer opciones actuales sin regenerar colDefs
+        cellEditorParams: () => ({
           values: this.tipoOcOptions.filter(opt => opt !== 'SELECCIONE UNA OPCION'),
           searchable: false,
           allowTyping: false
-        },
-        cellStyle: { textAlign: 'left', padding: '8px' }
+        }),
+        cellStyle: { textAlign: 'center', padding: '8px' }
       },
       {
         field: 'cantidadConceptualizada',
@@ -1031,9 +1122,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         }),
         valueFormatter: (params: any) =>
           params.value != null ? Number(params.value).toFixed(2) : '0.00',
-        cellStyle: { textAlign: 'right', padding: '8px' }
+        cellStyle: { textAlign: 'center', padding: '8px' }
       }
     ];
+    return this._colDefs;
   }
 
   public gridOptions: any = {
@@ -1054,7 +1146,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       resizable: true,
       sortable: true,
       filter: false,
-      minWidth: 90
+      minWidth: 90,
+      cellStyle: { textAlign: 'center' }
     },
     suppressCellFocus: false
   };

@@ -80,29 +80,6 @@ export class AuthService {
     if (!token) return;
 
     this.startIdleWatch();
-
-    const expiry = this.getTokenExpiry(token);
-    if (!expiry) return;
-
-    const now = Date.now();
-    const msUntilExpiry = expiry - now;
-
-    if (msUntilExpiry <= 0) {
-      // Token ya expiró
-      this.logout();
-      return;
-    }
-
-    // Programar cierre de sesión automático al expirar (sin alerta "Sesión por expirar")
-    this.sessionExpireTimer = setTimeout(() => {
-      this.ngZone.run(() => {
-        Swal.close();
-        try {
-          sessionStorage.setItem('sessionExpiredNotice', '1');
-        } catch { /* ignorar */ }
-        this.logout();
-      });
-    }, msUntilExpiry);
   }
 
   /**

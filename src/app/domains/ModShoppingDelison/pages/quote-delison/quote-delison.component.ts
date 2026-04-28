@@ -55,6 +55,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  private _colMaster: (ColDef | ColGroupDef)[] | null = null;
 
   constructor() {
     this.updateGridHeight();
@@ -461,7 +462,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             urlNewArticle: item.urlNewArticle || '',
             justificationNewArticle: item.justificationNewArticle || ''
           })),
-          createdAt: cotizacion.dateCreate
+          createdAt: cotizacion.dateCreate,
+          dateModified: cotizacion.dateModified
         };
       }));
 
@@ -470,8 +472,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
       const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
 
       // Calcular la fecha de modificación más reciente (entre requisición y sus pedimentos)
-      const lastModifiedFromPedimentos = pedimentosConItems.length > 0 
-        ? Math.max(...pedimentosConItems.map(p => new Date(p.createdAt).getTime()))
+      const lastModifiedFromPedimentos = pedimentosConItems.length > 0
+        ? Math.max(...pedimentosConItems.map(p => new Date(p.dateModified || p.createdAt).getTime()))
         : new Date(requisicion.dateCreate).getTime();
 
       return {
@@ -615,7 +617,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
                 urlNewArticle: item.urlNewArticle || '',
                 justificationNewArticle: item.justificationNewArticle || ''
               })),
-              createdAt: cotizacion.dateCreate
+              createdAt: cotizacion.dateCreate,
+              dateModified: cotizacion.dateModified
             };
           }));
 
@@ -623,8 +626,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
           const dept = this.departments.find(d => d.id === requisicion.idDepartament);
           const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
 
-          const lastModifiedFromPedimentos = pedimentosConItems.length > 0 
-            ? Math.max(...pedimentosConItems.map(p => new Date(p.createdAt).getTime()))
+          const lastModifiedFromPedimentos = pedimentosConItems.length > 0
+            ? Math.max(...pedimentosConItems.map(p => new Date(p.dateModified || p.createdAt).getTime()))
             : new Date(requisicion.dateCreate).getTime();
 
           return {
@@ -716,21 +719,25 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   }
 
   get colMaster(): (ColDef | ColGroupDef)[] {
-    return [
+    if (this._colMaster && this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'branch',
         headerName: 'Sucursal',
         width: 120,
         editable: false
       },
-    
+
       {
         field: 'requisition',
         headerName: 'Requisicion',
         width: 120,
         editable: false
       },
-    
+
       {
         field: 'pedimentos',
         headerName: 'Pedimentos',
@@ -775,6 +782,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     }
 
    ];
+
+    return this._colMaster;
   }
 
 
