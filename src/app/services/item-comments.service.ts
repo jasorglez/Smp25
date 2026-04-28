@@ -32,6 +32,9 @@ export class ItemCommentsService {
   /** Emite cuando un comentario es guardado exitosamente */
   readonly commentSaved$ = new Subject<ItemComment>();
 
+  /** Emite cuando el chat se cierra — útil para diferir acciones que afectan el foco */
+  readonly chatClosed$ = new Subject<void>();
+
   getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
       `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}`,

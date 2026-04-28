@@ -40,6 +40,19 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.locked       = params.locked       || false;
     console.log('[ItemComments] documentType:', this.documentType, 'idDocument:', this.idDocument, 'numArticle:', this.numArticle);
     this.loadCount();
+
+    this.commentsService.commentSaved$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((saved: ItemComment) => {
+        if (
+          saved.documentType === this.documentType &&
+          String(saved.idDocument) === String(this.idDocument) &&
+          String(saved.numArticle) === String(this.numArticle)
+        ) {
+          this.lastLoadKey = '';
+          this.loadCount();
+        }
+      });
   }
 
   refresh(params: ICellRendererParams & { documentType?: string; idDocument?: number; numArticle?: string; locked?: boolean }): boolean {

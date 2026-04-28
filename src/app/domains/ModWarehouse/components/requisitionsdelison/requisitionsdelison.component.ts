@@ -493,6 +493,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Se recalcula en caliente en updateDetailRowHeight() para ocupar el alto disponible.
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
+    getRowId: (params: any) => String(params.data.id),
     detailCellRenderer: DetallesRequisicionDelisonComponent,
     onFirstDataRendered: () => {
       this.autoAdjustColumns();
@@ -1188,7 +1189,14 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (row) {
               row.detailData = data;
               row.articlesCount = data.length;
-              this.gridApi.refreshCells({ force: true });
+              // ✅ Marcar como modificado para el futuro ordenamiento, pero no mover la fila aún
+              row.__lastModified = new Date().toISOString();
+              
+              const node = this.gridApi.getRowNode(String(requisitionId));
+              if (node) {
+                this.gridApi.refreshCells({ rowNodes: [node], force: true });
+              }
+
               if (showAlert) {
                 alerts.reqSuccessToast('Guardado', 'Los detalles han sido guardados correctamente');
               }
@@ -1202,7 +1210,12 @@ export class RequisitionsDelisonComponent implements OnInit {
             const row = this.rowData.find(r => r.id === requisitionId);
             if (row) {
               row.articlesCount = count;
-              this.gridApi.refreshCells({ force: true });
+              // ✅ Marcar como modificado
+              row.__lastModified = new Date().toISOString();
+              const node = this.gridApi.getRowNode(String(requisitionId));
+              if (node) {
+                this.gridApi.refreshCells({ rowNodes: [node], force: true });
+              }
             }
           },
           // Nueva función para forzar la actualización de la fila maestra
@@ -1213,13 +1226,17 @@ export class RequisitionsDelisonComponent implements OnInit {
             }
           },
           updateMasterUserAndDate: (requisitionId: number, solicitedBy: string, requestDate: string) => {
-            this.gridApi.forEachNode((node: any) => {
-              if (node.data && node.data.id === requisitionId) {
-                node.data.solicitedBy = solicitedBy;
-                node.data.requestDate = requestDate;
-                this.gridApi.refreshCells({ rowNodes: [node], columns: ['solicitedBy', 'requestDate'], force: true });
+            const row = this.rowData.find(r => r.id === requisitionId);
+            if (row) {
+              row.solicitedBy = solicitedBy;
+              row.requestDate = requestDate;
+              // ✅ Marcar como modificado
+              row.__lastModified = new Date().toISOString();
+              const node = this.gridApi.getRowNode(String(requisitionId));
+              if (node) {
+                this.gridApi.refreshCells({ rowNodes: [node], force: true });
               }
-            });
+            }
           }
         },
         PURCHASES: {
@@ -1275,6 +1292,35 @@ export class RequisitionsDelisonComponent implements OnInit {
           colKey: this.editableColumnOrder[currentIndex + 1]
         });
       }, 100);
+    }
+  }
+
+  onRowGroupOpened(event: any): void {
+    if (!event.expanded) {
+      // Fila se ha colapsado - reordenar si hay cambios
+      this.fullRowData.sort((a: any, b: any) =>
+        new Date(b.__lastModified || 0).getTime() - new Date(a.__lastModified || 0).getTime()
+      );
+      this.rowData = [...this.fullRowData];
+
+      // Guardar IDs de filas expandidas antes de vaciar
+      const expandedIds = new Set<string>();
+      this.gridApi.forEachNode((node: any) => {
+        if (node.expanded) expandedIds.add(node.id!);
+      });
+
+      // Forzar recarga: vaciar → repoblar → restaurar expansión
+      this.gridApi.setGridOption('rowData', []);
+      setTimeout(() => {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        if (expandedIds.size > 0) {
+          setTimeout(() => {
+            this.gridApi.forEachNode((node: any) => {
+              if (expandedIds.has(node.id!)) node.setExpanded(true);
+            });
+          }, 0);
+        }
+      }, 0);
     }
   }
 

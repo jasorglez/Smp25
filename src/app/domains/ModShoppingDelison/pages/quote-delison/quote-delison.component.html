@@ -13,7 +13,8 @@
         [rowData]="rowData"
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
-        (gridReady)="onGridReady($event)">
+        (gridReady)="onGridReady($event)"
+        (rowGroupOpened)="onRowGroupOpened($event)">
       </ag-grid-angular>
     </div>
   </div>

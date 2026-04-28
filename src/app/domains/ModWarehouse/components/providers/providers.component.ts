@@ -1227,7 +1227,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       total: 0,
       radio: 0,
       vigente: true,
-      autorizacion: true,
+      autorizacion: false,
       NumCliente: 0,
       latitud: '',
       longitud: '',
