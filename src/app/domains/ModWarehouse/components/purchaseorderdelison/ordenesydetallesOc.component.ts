@@ -60,7 +60,7 @@ interface OcRow {
   `,
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
 })
-export class Cascada1OcComponent {
+export class OrdenesydetallesOcComponent {
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
 
