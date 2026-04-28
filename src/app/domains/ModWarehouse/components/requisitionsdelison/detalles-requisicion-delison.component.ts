@@ -1919,10 +1919,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         porAutorizar: true
       };
 
-      await lastValueFrom(this.materialsService.addMaterial(materialData));
+      console.log('📤 Enviando material a crear:', materialData);
+      const response = await lastValueFrom(this.materialsService.addMaterial(materialData));
       console.log('✅ Material creado automáticamente en materiales-maestro');
+      console.log('   Respuesta del servidor:', response);
     } catch (err) {
-      console.warn('⚠️ Error creando material en materiales-maestro:', err);
+      console.error('❌ Error creando material en materiales-maestro:', err);
       // No bloqueamos el proceso si falla la creación del material
     }
 
