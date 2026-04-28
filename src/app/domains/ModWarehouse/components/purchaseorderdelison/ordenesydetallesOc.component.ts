@@ -149,9 +149,9 @@ export class Cascada1OcComponent {
   ];
 
   itemsGridOptions: any = {
-    headerHeight: 25,
+    headerHeight: 45,
     rowHeight: 25,
-    defaultColDef: { resizable: true, sortable: true },
+    defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true, autoHeaderHeight: true },
   };
 
   agInit(params: any): void {
