@@ -1901,6 +1901,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     // Crear el material automáticamente en dbo.materiales
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      console.log('🔍 Valores de newArticle antes de enviar:');
+      console.log('   idCategory:', this.newArticle.idCategory);
+      console.log('   idFamilia:', this.newArticle.idFamilia);
+      console.log('   idSubfamilia:', this.newArticle.idSubfamilia);
+
       const materialData = {
         id_company: idRoot,
         articulo: name,
