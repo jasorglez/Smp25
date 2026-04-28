@@ -18,7 +18,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-quote-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent],
   templateUrl: './quote-delison.component.html',
   styleUrl: './quote-delison.component.scss'
 })
@@ -39,6 +39,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   private gridApi: GridApi;
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
   private expandedRequisitionId: number | null = null; // Almacenar ID de la requisición expandida
+  private editingRequisitionId: number | null = null; // ID de requisición en edición (filtro)
   private modificationSub?: Subscription;
 
   idRoot: number = null;
@@ -105,6 +106,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
       flex: 1,
       minWidth: 120,
     },
+    getRowId: (params: any) => String(params.data.id),
     detailCellRendererParams: {
       autoHeight: false,
       context: {}
@@ -116,7 +118,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     this.updateGridHeight();
 
     // ✅ Suscribirse a modificaciones de pedimentos para reordenar el Nivel 1
-    this.modificationSub = this.pedimentoModificationService.pedimentoModified$.subscribe((cotizacionId: number) => {
+    this.modificationSub = this.pedimentoModificationService.requisitionModified$.subscribe((cotizacionId: number) => {
       this.reorderRequisitions(cotizacionId);
     });
 
@@ -151,32 +153,47 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   }
 
   private reorderRequisitions(cotizacionId: number) {
-    if (!this.rowData.length) return;
+    if (!this.rowData.length || !this.gridApi) return;
 
     // 1. Encontrar cuál requisición contiene este pedimento
-    let targetRequisition: any = null;
-    for (const req of this.rowData) {
-      if (req.pedimentos?.some((p: any) => p.id === cotizacionId)) {
-        targetRequisition = req;
+    let targetRequisitionIndex = -1;
+    for (let i = 0; i < this.rowData.length; i++) {
+      if (this.rowData[i].pedimentos?.some((p: any) => p.id === cotizacionId)) {
+        targetRequisitionIndex = i;
         break;
       }
     }
 
-    if (targetRequisition) {
-      // 2. Actualizar marca de tiempo local para esta requisición
-      targetRequisition.__lastModifiedSort = new Date().getTime();
+    // 2. Si la requisición no está ya al inicio, moverla
+    if (targetRequisitionIndex > 0) {
+      console.log('🎯 Reordenando requisición en nivel 1, moviéndola al inicio');
+      const [targetRequisition] = this.rowData.splice(targetRequisitionIndex, 1);
+      this.rowData.unshift(targetRequisition);
+      this.fullRowData = [...this.rowData];
 
-      // 3. Reordenar rowData: lo más reciente arriba
-      this.rowData.sort((a, b) => {
-        const timeA = a.__lastModifiedSort || 0;
-        const timeB = b.__lastModifiedSort || 0;
-        return timeB - timeA;
-      });
+      // 3. Actualizar el grid sin hacer vaciar→repoblar (preserva nivel 2 y 3 abiertos)
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+  }
 
-      // 4. Notificar a AG Grid del cambio
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', [...this.rowData]);
-      }
+  onRowGroupOpened(event: any): void {
+    // Este evento se dispara cuando el usuario colapsa/expande una fila manualmente
+    // No hacemos nada aquí porque el reordenamiento se maneja en reorderRequisitions
+  }
+
+  filterToEditingRequisition(requisitionId: number): void {
+    this.editingRequisitionId = requisitionId;
+    this.rowData = this.fullRowData.filter(r => r.id === requisitionId);
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+  }
+
+  restoreAllRequisitions(): void {
+    this.editingRequisitionId = null;
+    this.rowData = [...this.fullRowData];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
     }
   }
 
@@ -227,7 +244,10 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     this.gridApi = params.api;
     // ✅ Pasar el método reloadParentGrid al contexto
     this.gridApi.setGridOption('context', {
-      reloadParentGrid: () => this.reloadParentGrid()
+      reloadParentGrid: () => this.reloadParentGrid(),
+      reorderRequisition: (cotizacionId: number) => this.reorderRequisitions(cotizacionId),
+      filterToEditingRequisition: (requisitionId: number) => this.filterToEditingRequisition(requisitionId),
+      restoreAllRequisitions: () => this.restoreAllRequisitions()
     });
     this.autoAdjustColumns();
   }

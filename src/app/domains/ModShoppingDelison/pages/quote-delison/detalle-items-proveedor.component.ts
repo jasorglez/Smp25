@@ -422,7 +422,8 @@ export class DetalleItemsProveedorComponent {
       if (maestro) {
         maestro.dateModified = new Date().toISOString();
         await lastValueFrom(this.ocandreqsService.updateOcAndReq(cotizId, maestro));
-        this.pedimentoModificationService.pedimentoModified$.next(cotizId);
+        // Se elimina la notificación global para evitar el cierre de tablas por reordenamiento
+        // this.pedimentoModificationService.pedimentoModified$.next(cotizId);
       }
       await alerts.ocCotizSaved(this.savedCotizFolio);
       const hasAuthorized = this.rowData.some(row => this.AUTHORIZED_TYPES.includes(row.typeOC));
@@ -544,7 +545,8 @@ export class DetalleItemsProveedorComponent {
     this.hasUnsavedChanges = true;
     if (event.column.getColId() === 'costoUnitario' || event.column.getColId() === 'cantidadConfirmada') {
       const row = event.data; row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
-      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      // Usar force: false para actualizar datos sin destruir el editor (evita perder el focus)
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: false });
     }
     this.updateTotal(); this.updateHasRowsWithTypeOC();
   }

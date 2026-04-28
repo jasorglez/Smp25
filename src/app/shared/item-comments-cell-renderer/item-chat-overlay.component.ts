@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, firstValueFrom } from 'rxjs';
@@ -12,7 +12,7 @@ import { SignalsService } from 'app/services/signals.service';
   template: `
     <ng-container *ngIf="showChat">
       <div class="chat-backdrop" (click)="close()"></div>
-      <div class="chat-panel">
+      <div class="chat-panel" (mousedown)="$event.stopPropagation()" (click)="$event.stopPropagation()">
         <div class="chat-header">
           <span class="chat-title"><i class="bi bi-chat-dots me-1"></i>{{ numArticle }}</span>
           <button class="btn-close btn-close-white btn-sm" (click)="close()"></button>
@@ -34,7 +34,7 @@ import { SignalsService } from 'app/services/signals.service';
             <div *ngIf="editingId !== c.id" class="chat-text">{{ getBody(c.text) }}</div>
             <div *ngIf="editingId === c.id" class="chat-edit-row">
               <textarea class="form-control form-control-sm" [(ngModel)]="editingText" rows="2"
-                        (click)="$event.stopPropagation()"></textarea>
+                        (mousedown)="$event.stopPropagation()" (click)="$event.stopPropagation()"></textarea>
               <div class="chat-edit-actions">
                 <button class="btn btn-sm btn-primary" (click)="saveEdit(c)" [disabled]="saving">Guardar</button>
                 <button class="btn btn-sm btn-secondary" (click)="cancelEdit()">Cancelar</button>
@@ -46,9 +46,9 @@ import { SignalsService } from 'app/services/signals.service';
           <div *ngIf="pendingTag" class="chat-pending-tag">
             <i class="bi bi-tag-fill me-1"></i>{{ pendingTag }}
           </div>
-          <textarea class="form-control form-control-sm" [(ngModel)]="newText"
+          <textarea #chatInput class="form-control form-control-sm" [(ngModel)]="newText"
                     placeholder="Escribe un comentario..."
-                    rows="2" (click)="$event.stopPropagation()"
+                    rows="2" (mousedown)="$event.stopPropagation()" (click)="$event.stopPropagation()"
                     (keydown.enter)="$event.preventDefault(); send()"></textarea>
           <button class="btn btn-sm btn-primary mt-1 w-100"
                   (click)="send()" [disabled]="!newText.trim() || saving">
@@ -108,6 +108,9 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   private commentsService = inject(ItemCommentsService);
   private signalsService  = inject(SignalsService);
   private sub?: Subscription;
+  private focusTimer?: ReturnType<typeof setTimeout>;
+
+  @ViewChild('chatInput') chatInput?: ElementRef<HTMLTextAreaElement>;
 
   showChat = false;
   comments: ItemComment[] = [];
@@ -133,6 +136,7 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.newText = '';
       this.cancelEdit();
       this.showChat = true;
+      this.focusComposer();
       this.commentsService.getComments(req.documentType, req.idDocument, req.numArticle).subscribe({
         next: d => { this.comments = d; },
         error: () => { this.comments = []; }
@@ -140,7 +144,13 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.sub?.unsubscribe(); }
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
+    if (this.focusTimer) {
+      clearTimeout(this.focusTimer);
+      this.focusTimer = undefined;
+    }
+  }
 
   loadComments() {
     if (!this.documentType || !this.idDocument || !this.numArticle) return;
@@ -150,7 +160,30 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
     });
   }
 
-  close() { this.showChat = false; }
+  close() {
+    this.showChat = false;
+    if (this.focusTimer) {
+      clearTimeout(this.focusTimer);
+      this.focusTimer = undefined;
+    }
+    this.commentsService.chatClosed$.next();
+  }
+
+  private focusComposer(): void {
+    if (this.focusTimer) {
+      clearTimeout(this.focusTimer);
+    }
+    this.focusTimer = setTimeout(() => {
+      this.focusTimer = undefined;
+      this.chatInput?.nativeElement.focus();
+      const valueLength = this.chatInput?.nativeElement.value?.length ?? 0;
+      try {
+        this.chatInput?.nativeElement.setSelectionRange(valueLength, valueLength);
+      } catch {
+        // Some browsers do not allow selection changes while focus is still settling.
+      }
+    }, 0);
+  }
 
   async send() {
     if (!this.newText.trim() || this.saving) return;

@@ -12,6 +12,16 @@ import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.comp
 import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
 
+/** Snapshot del detalle expandido (nivel 3); debe ir solo como `type` y antes del decorador @Component. */
+type ExpandedPedimentoDetailState = {
+  cotizacionId: number;
+  detailType: 'articulos' | 'proveedor' | 'report';
+  providerField?: string;
+  providerLabel?: string;
+  reportProviderField?: string;
+  reportProviderLabel?: string;
+};
+
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
@@ -52,6 +62,7 @@ import { DetailCellRendererPedimentoReportComponent } from './detail-cell-render
 export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy {
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
+  private context: any;
   private pedimentoModificationService = inject(PedimentoModificationService);
   private comparacionOverlayService = inject(ComparacionOverlayService);
   private modificationSub?: Subscription;
@@ -60,9 +71,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   private expandedRowId: string | null = null;
 
   ngOnInit() {
-    this.modificationSub = this.pedimentoModificationService.pedimentoModified$.subscribe((cotizacionId: number) => {
-      this.reorderPedimentos(cotizacionId);
-    });
   }
 
   ngOnDestroy() {
@@ -71,12 +79,20 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
+    this.context = params.context;
     this.buildRowData();
   }
 
   onGridReady(params: any) {
     this.gridApi = params.api;
     this.autoAdjustColumns();
+
+    // Suscribirse a cambios de pedimentos cuando el grid esté listo
+    this.modificationSub?.unsubscribe();
+    this.modificationSub = this.pedimentoModificationService.pedimentoModified$.subscribe((cotizacionId: number) => {
+      console.log('🔔 Nivel 2 recibió notificación de reorden para cotizacionId:', cotizacionId);
+      this.reorderPedimentos(cotizacionId);
+    });
   }
 
   @HostListener('window:resize')
@@ -139,24 +155,136 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     });
   }
 
-  private reorderPedimentos(cotizacionId: number) {
-    // Actualizar lastModified en memoria del pedimento que fue modificado
-    const now = new Date().toISOString();
-    const pedimento = this.rowData.find(row => row.cotizacionId === cotizacionId);
-    if (pedimento) {
-      pedimento.lastModified = now;
-    }
+  private captureExpandedDetailState(): ExpandedPedimentoDetailState | null {
+    if (!this.gridApi) return null;
+    let found: ExpandedPedimentoDetailState | null = null;
+    this.gridApi.forEachNode((n: any) => {
+      if (n.expanded && n.data?.cotizacionId) {
+        const d = n.data;
+        found = {
+          cotizacionId: d.cotizacionId,
+          detailType: d.detailType || 'articulos',
+          providerField: d.providerField,
+          providerLabel: d.providerLabel,
+          reportProviderField: d.reportProviderField,
+          reportProviderLabel: d.reportProviderLabel
+        };
+      }
+    });
+    return found;
+  }
 
-    // Reordenar por lastModified (más reciente primero)
-    this.rowData.sort((a, b) => {
-      const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
-      const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
-      return dateB - dateA;
+  private restoreExpandedDetailState(s: ExpandedPedimentoDetailState): void {
+    if (!this.gridApi) return;
+    let target: any = null;
+    this.gridApi.forEachNode((n: any) => {
+      if (n.data?.cotizacionId === s.cotizacionId) {
+        target = n;
+      }
+    });
+    if (!target) return;
+
+    this.gridApi.forEachNode((otherNode: any) => {
+      if (otherNode.expanded) {
+        otherNode.setExpanded(false);
+        if (otherNode.data) {
+          otherNode.data.isExpanded = false;
+        }
+      }
     });
 
-    // Actualizar el grid sin cerrar las cascadas
+    this.gridApi.forEachNode((otherNode: any) => {
+      if (otherNode.id !== target.id) {
+        otherNode.setRowHeight(0);
+      } else {
+        otherNode.setRowHeight(undefined);
+      }
+    });
+
+    if (target.data) {
+      target.data.isExpanded = true;
+      target.data.detailType = s.detailType;
+    }
+
+    if (s.detailType === 'proveedor') {
+      if (target.data) {
+        target.data.providerField = s.providerField;
+        target.data.providerLabel = s.providerLabel;
+      }
+      this.gridOptions.context.providerField = s.providerField;
+      this.gridOptions.context.providerLabel = s.providerLabel;
+      this.activeProviderField = s.providerField || '';
+      this.activeProviderLabel = s.providerLabel || '';
+    } else if (s.detailType === 'report' && target.data) {
+      target.data.reportProviderField = s.reportProviderField;
+      target.data.reportProviderLabel = s.reportProviderLabel;
+    }
+
+    this.expandedRowId = target.id;
+    this.activeDetailType = s.detailType;
+    this.gridApi.onRowHeightChanged();
+    this.gridApi.redrawRows();
+    setTimeout(() => {
+      if (!target) return;
+      try {
+        target.setExpanded(true);
+      } catch {
+        /* nodo pudo desmontarse en carrera */
+      }
+    }, 0);
+  }
+
+  private reorderPedimentos(cotizacionId: number) {
+    console.log('🔄 reorderPedimentos() llamado con cotizacionId:', cotizacionId);
+    console.log('📊 ANTES - rowData:', this.rowData.map((r, i) => `[${i}] ID: ${r.cotizacionId}, nombre: ${r.pedimento}, lastModified: ${r.lastModified}`));
+
+    const wasExpanded = this.captureExpandedDetailState();
+    console.log('📍 Expansión capturada:', wasExpanded ? `ID ${wasExpanded.cotizacionId}` : 'ninguna');
+
+    // Actualizar lastModified en memoria del pedimento que fue modificado
+    const now = new Date().toISOString();
+    console.log('⏱️ NOW (tiempo actual):', now);
+    const pedimento = this.rowData.find(row => row.cotizacionId === cotizacionId);
+    console.log('🔍 Pedimento encontrado:', pedimento ? `SÍ - ${pedimento.pedimento}` : 'NO');
+    if (pedimento) {
+      console.log('⏰ ANTES de actualizar:', pedimento.lastModified);
+      pedimento.lastModified = now;
+      console.log('✅ DESPUÉS de actualizar:', pedimento.lastModified);
+    }
+
+    // Reordenar: mover el pedimento modificado al inicio
+    const modifiedIndex = this.rowData.findIndex(r => r.cotizacionId === cotizacionId);
+    if (modifiedIndex > 0) {
+      const modified = this.rowData.splice(modifiedIndex, 1)[0];
+      this.rowData.unshift(modified);
+      console.log('✨ Pedimento movido al inicio mediante splice/unshift');
+    }
+
+    console.log('📋 DESPUÉS - rowData:', this.rowData.map((r, i) => `[${i}] ID: ${r.cotizacionId}, nombre: ${r.pedimento}, lastModified: ${r.lastModified}`));
+
+    // ✅ Sincronizar el orden también en params.data.pedimentos para que cuando
+    // el nivel 1 recree la grid, el nivel 2 se reinicialice con el nuevo orden
+    if (this.params?.data?.pedimentos) {
+      const pedimentoIds = new Set(this.rowData.map(r => r.cotizacionId));
+      this.params.data.pedimentos.sort((a: any, b: any) => {
+        const aIndex = this.rowData.findIndex(r => r.cotizacionId === a.id);
+        const bIndex = this.rowData.findIndex(r => r.cotizacionId === b.id);
+        return aIndex - bIndex;
+      });
+    }
+
     if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', [...this.rowData]);
+      console.log('🎬 Actualizando grid con vaciar→repoblar');
+      // Patrón vaciar→repoblar para forzar reordenamiento visual con getRowId
+      this.gridApi.setGridOption('rowData', []);
+      setTimeout(() => {
+        this.gridApi.setGridOption('rowData', [...this.rowData]);
+        if (wasExpanded) {
+          setTimeout(() => this.restoreExpandedDetailState(wasExpanded), 0);
+        }
+      }, 0);
+    } else {
+      console.log('⚠️ gridApi NO está disponible!');
     }
   }
 
@@ -333,6 +461,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 460,
+    getRowId: (params: any) => String(params.data.cotizacionId),
     defaultColDef: {
       resizable: true,
       sortable: true,
@@ -373,7 +502,10 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     context: {
       componentParent: this,
       providerField: '',
-      providerLabel: ''
+      providerLabel: '',
+      reorderRequisition: (cotizacionId: number) => this.context?.reorderRequisition?.(cotizacionId),
+      filterToEditingRequisition: (requisitionId: number) => this.context?.filterToEditingRequisition?.(requisitionId),
+      restoreAllRequisitions: () => this.context?.restoreAllRequisitions?.()
     }
   };
 

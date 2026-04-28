@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2, HostListener, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -8,10 +8,11 @@ import { alerts } from 'app/helpers/alerts';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { firstValueFrom, lastValueFrom, Subscription } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
@@ -21,6 +22,7 @@ import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CustomersService } from 'app/services/customers.service';
+import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
@@ -103,97 +105,148 @@ import { CustomersService } from 'app/services/customers.service';
       </div>
     </div>
 
-     <!-- Modal para Nuevo Artículo -->
-    <div class="modal" tabindex="-1" [ngStyle]="{'display': isNewArticleModalVisible ? 'block' : 'none'}">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Registrar Nuevo Artículo</h5>
-            <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
-          </div>
-          <form class="modal-body" #newArticleForm="ngForm" (ngSubmit)="saveNewArticle()">
-            <div class="mb-3">
-              <label for="newArticleName" class="form-label">
-                Nombre del Artículo <span class="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                class="form-control"
-                id="newArticleName"
-                name="newArticleName"
-                required
-                #newArticleNameModel="ngModel"
-                [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
-                [(ngModel)]="newArticle.description"
-                (input)="newArticle.description = $any($event.target).value.toUpperCase()"
-                style="text-transform: uppercase;">
-              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleNameModel.invalid">
-                El nombre del artículo es obligatorio.
-              </div>
-            </div>
-            <div class="mb-3">
-              <label for="newArticleDesc" class="form-label">
-                Descripción del Artículo <span class="text-danger">*</span>
-              </label>
-              <textarea
-                class="form-control"
-                id="newArticleDesc"
-                name="newArticleDesc"
-                rows="2"
-                required
-                #newArticleDescModel="ngModel"
-                [class.is-invalid]="newArticleFormSubmitted && newArticleDescModel.invalid"
-                [(ngModel)]="newArticle.descriptionNewArticle"
-                (input)="newArticle.descriptionNewArticle = $any($event.target).value.toUpperCase()"
-                style="text-transform: uppercase;"></textarea>
-              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleDescModel.invalid">
-                La descripción del artículo es obligatoria.
-              </div>
-            </div>
-            <div class="mb-3">
-              <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
-              <input
-                type="text"
-                class="form-control"
-                id="newArticleLink"
-                name="newArticleLink"
-                [(ngModel)]="newArticle.urlNewArticle">
-            </div>
-            <div class="mb-3">
-              <label for="newArticleUsage" class="form-label">
-                ¿Para qué se va a usar? <span class="text-danger">*</span>
-              </label>
-              <textarea
-                class="form-control"
-                id="newArticleUsage"
-                name="newArticleUsage"
-                rows="2"
-                required
-                #newArticleUsageModel="ngModel"
-                [class.is-invalid]="newArticleFormSubmitted && newArticleUsageModel.invalid"
-                [(ngModel)]="newArticle.justificationNewArticle"
-                (input)="newArticle.justificationNewArticle = $any($event.target).value.toUpperCase()"
-                style="text-transform: uppercase;"></textarea>
-              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleUsageModel.invalid">
-                Este campo es obligatorio.
-              </div>
-            </div>
-          </form>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              (click)="saveNewArticle()"
-              [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim()">
-              Guardar
-            </button>
+     <!-- Modal para Nuevo Artículo (NgbModal lo monta en <body> para quedar por encima de todo) -->
+    <ng-template #newArticleModalTpl>
+      <div class="modal-header">
+        <h5 class="modal-title">Registrar Nuevo Artículo</h5>
+        <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
+      </div>
+      <form class="modal-body" #newArticleForm="ngForm" (ngSubmit)="saveNewArticle()">
+        <div class="mb-3">
+          <label for="newArticleName" class="form-label">
+            Nombre del Artículo <span class="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="newArticleName"
+            name="newArticleName"
+            required
+            #newArticleNameModel="ngModel"
+            [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
+            [(ngModel)]="newArticle.description"
+            (input)="newArticle.description = $any($event.target).value.toUpperCase()"
+            style="text-transform: uppercase;">
+          <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleNameModel.invalid">
+            El nombre del artículo es obligatorio.
           </div>
         </div>
+        <div class="mb-3">
+          <label for="newArticleDesc" class="form-label">
+            Descripción del Artículo <span class="text-danger">*</span>
+          </label>
+          <textarea
+            class="form-control"
+            id="newArticleDesc"
+            name="newArticleDesc"
+            rows="2"
+            required
+            #newArticleDescModel="ngModel"
+            [class.is-invalid]="newArticleFormSubmitted && newArticleDescModel.invalid"
+            [(ngModel)]="newArticle.descriptionNewArticle"
+            (input)="newArticle.descriptionNewArticle = $any($event.target).value.toUpperCase()"
+            style="text-transform: uppercase;"></textarea>
+          <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleDescModel.invalid">
+            La descripción del artículo es obligatoria.
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
+          <input
+            type="text"
+            class="form-control"
+            id="newArticleLink"
+            name="newArticleLink"
+            [(ngModel)]="newArticle.urlNewArticle">
+        </div>
+
+        <!-- Categoría -->
+        <div class="mb-3">
+          <label for="newArticleCategory" class="form-label">
+            Categoría <span class="text-danger">*</span>
+          </label>
+          <select
+            class="form-control"
+            id="newArticleCategory"
+            name="newArticleCategory"
+            required
+            [(ngModel)]="newArticle.idCategory"
+            (change)="onCategoryChange()">
+            <option value="">Seleccionar categoría</option>
+            <option *ngFor="let cat of categories" [value]="cat.id">
+              {{ cat.description }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Familia -->
+        <div class="mb-3">
+          <label for="newArticleFamily" class="form-label">
+            Familia <span class="text-danger">*</span>
+          </label>
+          <select
+            class="form-control"
+            id="newArticleFamily"
+            name="newArticleFamily"
+            required
+            [(ngModel)]="newArticle.idFamilia"
+            (change)="onFamilyChange()">
+            <option value="">Seleccionar familia</option>
+            <option *ngFor="let fam of filteredFamilias" [value]="fam.id">
+              {{ fam.description }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Subfamilia -->
+        <div class="mb-3">
+          <label for="newArticleSubFamily" class="form-label">
+            Subfamilia <span class="text-danger">*</span>
+          </label>
+          <select
+            class="form-control"
+            id="newArticleSubFamily"
+            name="newArticleSubFamily"
+            required
+            [(ngModel)]="newArticle.idSubfamilia">
+            <option value="">Seleccionar subfamilia</option>
+            <option *ngFor="let subfam of filteredSubfamilias" [value]="subfam.id">
+              {{ subfam.description }}
+            </option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="newArticleUsage" class="form-label">
+            ¿Para qué se va a usar? <span class="text-danger">*</span>
+          </label>
+          <textarea
+            class="form-control"
+            id="newArticleUsage"
+            name="newArticleUsage"
+            rows="2"
+            required
+            #newArticleUsageModel="ngModel"
+            [class.is-invalid]="newArticleFormSubmitted && newArticleUsageModel.invalid"
+            [(ngModel)]="newArticle.justificationNewArticle"
+            (input)="newArticle.justificationNewArticle = $any($event.target).value.toUpperCase()"
+            style="text-transform: uppercase;"></textarea>
+          <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleUsageModel.invalid">
+            Este campo es obligatorio.
+          </div>
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="saveNewArticle()"
+          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim() || !newArticle.idCategory || !newArticle.idFamilia || !newArticle.idSubfamilia">
+          Guardar
+        </button>
       </div>
-    </div>
-    <!-- Backdrop para el modal -->
-    <div class="modal-backdrop fade show" *ngIf="isNewArticleModalVisible"></div>
+    </ng-template>
 
     <!-- Multi-line editor component -->
     <app-multi-line-editor></app-multi-line-editor>
@@ -246,6 +299,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
+  private catalogsService = inject(CatalogsService);
   private modalService = inject(ModalService);
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
@@ -254,6 +308,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private providersService = inject(ProvidersService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private customersService = inject(CustomersService);
+  private ngbModal = inject(NgbModal);
   private commentSub?: Subscription;
   private sucursalSub?: Subscription;
   authService = inject(AuthService);
@@ -303,12 +358,24 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   // Propiedades para el modal de nuevo artículo
   isNewArticleModalVisible = false;
   newArticleFormSubmitted = false;
+  @ViewChild('newArticleModalTpl') newArticleModalTpl?: TemplateRef<unknown>;
+  private newArticleModalRef: NgbModalRef | null = null;
   newArticle = {
     description: '',
     descriptionNewArticle: '',
     urlNewArticle: '',
-    justificationNewArticle: ''
+    justificationNewArticle: '',
+    idCategory: null as number | null,
+    idFamilia: null as number | null,
+    idSubfamilia: null as number | null
   };
+
+  // Catálogos para los selects
+  categories: any[] = [];
+  familias: any[] = [];
+  subfamilias: any[] = [];
+  filteredFamilias: any[] = [];
+  filteredSubfamilias: any[] = [];
   private currentRowForNewArticle: any = null;
   private originalRecurrentValue: string | null = null;
 
@@ -344,6 +411,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     if (this.detailType === 'items') {
       this.loadMaterials();
       this.loadData();
+      this.loadCatalogs();
     } else if (this.detailType === 'pdf') {
       this.generatePDF();
     }
@@ -816,9 +884,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
               description: params.data.nameArticle || '',
               descriptionNewArticle: params.data.descriptionNewArticle || '',
               urlNewArticle: params.data.urlNewArticle || '',
-              justificationNewArticle: params.data.justificationNewArticle || ''
+              justificationNewArticle: params.data.justificationNewArticle || '',
+              idCategory: params.data.idCategory || null,
+              idFamilia: params.data.idFamilia || null,
+              idSubfamilia: params.data.idSubfamilia || null
             };
-            this.isNewArticleModalVisible = true;
+            this.openNewArticleModal();
           }
         },
         cellStyle: (params: any) => {
@@ -1162,10 +1233,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   private refreshParentGridAfterSave(): void {
-    // ✅ Después de guardar, recargar la tabla nivel 1 completa
+    // Se comenta la recarga global del padre para evitar que se cierren las tablas expandidas.
+    // Al haber añadido getRowId, si se requiere refrescar en el futuro, AG Grid mantendrá el estado.
+    /*
     if (this.context?.reloadParentGrid) {
       this.context.reloadParentGrid();
     }
+    */
   }
 
   public gridOptions: any = {
@@ -1178,6 +1252,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       defaultMinWidth: 90,
     },
     rowSelection: 'multiple',
+    getRowId: (params: any) => String(params.data.id),
     singleClickEdit: false, // Doble-click para editar (como tipo-proveedor)
     domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
     suppressHorizontalScroll: false,
@@ -1462,7 +1537,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Recargar datos desde el servidor
         this.loadData();
 
-        // ✅ Actualizar y reordenar tabla padre inmediatamente
+        // ✅ Forzar reordenamiento en tiempo real en el padre
+        if (this.context?.ITEMS?.updateCount) {
+          this.context.ITEMS.updateCount(this.requisitionId, this.rowData.length);
+        }
+
+        // ✅ Actualizar y reordenar tabla padre inmediatamente (ahora solo como respaldo)
         this.refreshParentGridAfterSave();
       })
       .catch(() => {
@@ -1782,8 +1862,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     const usage = (this.newArticle.justificationNewArticle || '').trim();
 
     // Validación: campos obligatorios
-    if (!name || !desc || !usage) {
-      alerts.reqWarningToast('Validación', 'Completa los campos obligatorios antes de guardar');
+    if (!name || !desc || !usage || !this.newArticle.idCategory || !this.newArticle.idFamilia || !this.newArticle.idSubfamilia) {
+      alerts.reqWarningToast('Validación', 'Completa todos los campos obligatorios antes de guardar');
       return;
     }
 
@@ -1800,6 +1880,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.currentRowForNewArticle.data.code = '';
     this.currentRowForNewArticle.data.numArticle = '';
     this.currentRowForNewArticle.data.description = this.newArticle.description.trim();
+    // Guardar categoría, familia y subfamilia
+    this.currentRowForNewArticle.data.idCategory = this.newArticle.idCategory;
+    this.currentRowForNewArticle.data.idFamilia = this.newArticle.idFamilia;
+    this.currentRowForNewArticle.data.idSubfamilia = this.newArticle.idSubfamilia;
     this.currentRowForNewArticle.data.__modified = true;
     this.hasUnsavedChanges = true;
     this.isAddingNewItem = true;
@@ -1815,10 +1899,87 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.closeNewArticleModal();
   }
 
+  private openNewArticleModal() {
+    this.isNewArticleModalVisible = true;
+    this.newArticleFormSubmitted = false;
+
+    // Asegurar que el catálogo esté disponible antes de abrir (evita selects vacíos)
+    if (!this.categories?.length || !this.familias?.length || !this.subfamilias?.length) {
+      void this.loadCatalogs();
+    }
+
+    if (!this.newArticleModalTpl) {
+      // El ViewChild podría no estar listo en algunos ciclos
+      setTimeout(() => this.openNewArticleModal(), 0);
+      return;
+    }
+
+    // Cerrar uno previo si existiera
+    try { this.newArticleModalRef?.close(); } catch {}
+
+    this.newArticleModalRef = this.ngbModal.open(this.newArticleModalTpl, {
+      centered: true,
+      backdrop: 'static',
+      keyboard: false,
+      size: 'lg',
+      windowClass: 'new-article-modal-top'
+    });
+
+    this.newArticleModalRef.result.finally(() => {
+      // Si el usuario cierra por cualquier vía, limpiar bandera
+      this.isNewArticleModalVisible = false;
+      this.newArticleModalRef = null;
+    });
+  }
+
   closeNewArticleModal() {
     this.isNewArticleModalVisible = false;
+    try { this.newArticleModalRef?.close(); } catch {}
+    this.newArticleModalRef = null;
     this.currentRowForNewArticle = null;
     this.newArticleFormSubmitted = false;
+  }
+
+  // ==================== CATÁLOGOS PARA NUEVO ARTÍCULO ====================
+
+  private async loadCatalogs(): Promise<void> {
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (!idRoot) return;
+
+      // Cargar catálogos usando los mismos métodos que materiales-maestro
+      [this.categories, this.familias, this.subfamilias] = await Promise.all([
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'CATEGORY')),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'SUB-FAM'))
+      ]);
+    } catch (err) {
+      console.warn('Error cargando catálogos:', err);
+    }
+  }
+
+  onCategoryChange(): void {
+    // Filtrar familias por categoría seleccionada (usando parentId como en materiales-maestro)
+    if (this.newArticle.idCategory) {
+      this.filteredFamilias = this.familias.filter(f => f.parentId === this.newArticle.idCategory);
+    } else {
+      this.filteredFamilias = [];
+    }
+    // Limpiar selecciones dependientes
+    this.newArticle.idFamilia = null;
+    this.newArticle.idSubfamilia = null;
+    this.filteredSubfamilias = [];
+  }
+
+  onFamilyChange(): void {
+    // Filtrar subfamilias por familia seleccionada (usando subParentId como en materiales-maestro)
+    if (this.newArticle.idFamilia) {
+      this.filteredSubfamilias = this.subfamilias.filter(sf => sf.subParentId === this.newArticle.idFamilia);
+    } else {
+      this.filteredSubfamilias = [];
+    }
+    // Limpiar selección dependiente
+    this.newArticle.idSubfamilia = null;
   }
 
   onCellClicked(event: any): void {

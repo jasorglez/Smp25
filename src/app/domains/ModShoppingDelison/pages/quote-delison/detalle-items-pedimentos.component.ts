@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp, AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -6,9 +6,10 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
+import { ItemCommentsService } from 'app/services/item-comments.service';
 
 @Component({
   selector: 'app-detalle-items-pedimentos',
@@ -72,13 +73,17 @@ import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell
     }
   `]
 })
-export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp {
+export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp, OnDestroy {
   private params!: ICellRendererParams;
   private context: any;
   private gridApi!: GridApi;
   private ocAndReqsService = inject(OcAndReqsService);
   private signalsService = inject(SignalsService);
   private pedimentoModificationService = inject(PedimentoModificationService);
+  private itemCommentsService = inject(ItemCommentsService);
+  private commentSub?: Subscription;
+  private chatClosedSub?: Subscription;
+  private pendingReorder = false;
 
   // Cache para evitar re-renderizado
   private _colDefs: ColDef[] | null = null;
@@ -106,6 +111,31 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     this._colDefs = null;
     this.buildRowData();
     void this.hydrateArticulosLockIfNeeded();
+
+    this.commentSub?.unsubscribe();
+    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
+      // Refrescar contador inmediatamente sin tocar el grid padre
+      if (this.gridApi) {
+        this.gridApi.refreshCells({ force: true });
+      }
+      // Marcar que hay un reordenamiento pendiente — se ejecutará al cerrar el chat
+      this.pendingReorder = true;
+    });
+
+    this.chatClosedSub?.unsubscribe();
+    this.chatClosedSub = this.itemCommentsService.chatClosed$.subscribe(() => {
+      if (this.pendingReorder && this.cotizacionId) {
+        this.pendingReorder = false;
+        // Notificar al nivel 2 para que reordene cuando se cierra el chat
+        console.log('📤 Nivel 3 emitiendo pedimentoModified$ (desde chat closed) para cotizacionId:', this.cotizacionId);
+        this.pedimentoModificationService.pedimentoModified$.next(this.cotizacionId);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.commentSub?.unsubscribe();
+    this.chatClosedSub?.unsubscribe();
   }
 
   /** Si ya hay COTIZ/OC en cualquier slot (p. ej. tras F5 sin abrir proveedor), alinear el candado con el servidor. */
@@ -173,6 +203,70 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     const apiAny = this.gridApi as any;
     if (typeof apiAny.sizeColumnsToFit === 'function') {
       apiAny.sizeColumnsToFit();
+    }
+  }
+
+  /**
+   * Mapeo alineado con `quote-delison.component.ts` (items de cotización).
+   * Sirve para refrescar el nivel 3 desde API sin recargar todo el grid padre.
+   */
+  private mapCotizItemFromApi(item: any): any {
+    return {
+      id: item.id,
+      idSupplie: item.idSupplie || 0,
+      nameArticle: item.nameArticle || '',
+      recurrent: item.recurrent || '',
+      article: item.description || item.nameArticle || '',
+      quantity: item.quantity || 0,
+      tipo: item.intorext || 'Externo',
+      intorext: item.intorext || 'Externo',
+      proveedorInterno: item.provint || '',
+      priority: item.typePriority || 'Normal',
+      comment: item.comment || '',
+      pedimento: item.pedimento || false,
+      numArticle: item.numArticle || '',
+      code: item.code || '',
+      pedimentoNumber: item.pedimentoNum || '',
+      idMovement: item.idMovement || 0,
+      measure: item.measure || '',
+      price: item.price || 0,
+      total: item.total || 0,
+      type: item.type || 'COTIZ',
+      idProvider: item.idProvider || 0,
+      dateuse: item.dateuse || '',
+      active: item.active !== undefined ? item.active : true,
+      typePriority: item.typePriority || 'Normal',
+      descriptionNewArticle: item.descriptionNewArticle || '',
+      urlNewArticle: item.urlNewArticle || '',
+      justificationNewArticle: item.justificationNewArticle || ''
+    };
+  }
+
+  /** Recarga artículos del pedimento desde el servidor sin tocar el grid de cotizaciones (nivel 1/2 abiertos). */
+  private async refreshArticulosFromServer(): Promise<void> {
+    if (!this.cotizacionId) return;
+    try {
+      const itemsData = await firstValueFrom(
+        this.ocAndReqsService.getReqItems(this.cotizacionId)
+      );
+      const items = Array.isArray(itemsData) ? itemsData : [];
+      const mapped = items.map((it: any) => this.mapCotizItemFromApi(it));
+      if (this.params?.data) {
+        this.params.data.articulos = mapped;
+      }
+      this.buildRowData();
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.refreshCells({ force: true });
+      }
+      if (this.params.api && this.params.node) {
+        this.params.api.refreshCells({
+          rowNodes: [this.params.node],
+          columns: ['articulos'],
+        });
+      }
+    } catch (e) {
+      console.warn('refreshArticulosFromServer', e);
     }
   }
 
@@ -289,19 +383,25 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         if (maestroCotizacion) {
           maestroCotizacion.dateModified = new Date().toISOString();
           await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.cotizacionId, maestroCotizacion));
-          // ✅ Notificar que el pedimento fue modificado para que se reordene
-          this.pedimentoModificationService.pedimentoModified$.next(this.cotizacionId);
+          // Se elimina la notificación global para evitar el cierre de tablas por reordenamiento
+          // this.pedimentoModificationService.pedimentoModified$.next(this.cotizacionId);
         }
       } catch (error) {
         console.warn('⚠️ No se pudo actualizar dateModified:', error);
       }
 
-      alerts.basicAlert('Guardado', `Se guardaron ${changedItems.length} cambio(s) exitosamente.`, 'success');
+      // Sincronizar ítems con el servidor sin recargar el grid de «Cotizaciones» (evita cerrar niveles 1–2).
+      await this.refreshArticulosFromServer();
 
-      // ✅ Recargar el grid del nivel 1 para que la cotización se reordene si fue modificada
-      if (this.context?.reloadParentGrid) {
-        this.context.reloadParentGrid();
-      }
+      // Notificar al nivel 2 para que suba este pedimento al inicio sin perder la expansión.
+      console.log('📤 Nivel 3 emitiendo pedimentoModified$ para cotizacionId:', this.cotizacionId);
+      this.pedimentoModificationService.pedimentoModified$.next(this.cotizacionId);
+
+      // Notificar al nivel 1 para que suba esta requisición al inicio sin cerrar nivel 2 y 3.
+      console.log('📤 Nivel 3 emitiendo requisitionModified$ para cotizacionId:', this.cotizacionId);
+      this.pedimentoModificationService.requisitionModified$.next(this.cotizacionId);
+
+      alerts.basicAlert('Guardado', `Se guardaron ${changedItems.length} cambio(s) exitosamente.`, 'success');
 
     } catch (error) {
       console.error('❌ Error al guardar cambios:', error);
@@ -562,6 +662,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
+    getRowId: (params: any) => String(params.data.id),
     autoSizeStrategy: {
       type: 'fitGridWidth',
       defaultMinWidth: 90,
