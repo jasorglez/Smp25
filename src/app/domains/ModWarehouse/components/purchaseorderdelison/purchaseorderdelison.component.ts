@@ -8,7 +8,7 @@ import { ButtonCellRendererComponent } from '../purchaseorder/button-cell-render
 import { PdfButtonCellRendererPurchaseOrderComponent } from '../purchaseorder/pdf-button-cell-renderer-purchaseorder.component';
 import { DetailCellRendererPurchaseOrderItemsComponent } from '../purchaseorder/detail-cell-renderer-purchase-order-items.component';
 import { DetailCellRendererPurchaseOrderReportComponent } from '../purchaseorder/detail-cell-renderer-purchaseorder-report.component';
-import { Cascada1OcComponent } from './cascada1-oc.component';
+import { OrdenesydetallesOcComponent } from './ordenesydetallesOc.component';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -27,7 +27,7 @@ import { alerts } from 'app/helpers/alerts';
     PdfButtonCellRendererPurchaseOrderComponent,
     DetailCellRendererPurchaseOrderItemsComponent,
     DetailCellRendererPurchaseOrderReportComponent,
-    Cascada1OcComponent
+    OrdenesydetallesOcComponent
   ],
   templateUrl: './purchaseorderdelison.component.html',
   styleUrl: './purchaseorderdelison.component.scss',
@@ -297,7 +297,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     detailRowHeight: 800,
     isRowMaster: () => true,
     detailCellRendererSelector: (params: any) => {
-      return { component: Cascada1OcComponent };
+      return { component: OrdenesydetallesOcComponent };
     },
     getRowClass: (params: any) => {
       if (params.node.isSelected())   return 'selected-row';
@@ -340,7 +340,19 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         width: 160,
         filter: true,
         editable: false,
-        cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500' }
+        cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500', cursor: 'pointer' },
+        onCellClicked: (event: any) => {
+          const isExpanding = !event.node.expanded;
+          if (isExpanding) {
+            // Colapsa todas las demás filas antes de expandir esta
+            event.api.forEachNode((node: any) => {
+              if (node.id !== event.node.id && node.expanded) {
+                node.setExpanded(false);
+              }
+            });
+          }
+          event.node.setExpanded(isExpanding);
+        }
       },
       {
         field: 'ocCount',

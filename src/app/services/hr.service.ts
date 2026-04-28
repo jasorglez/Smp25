@@ -36,6 +36,16 @@ export class HRService {
     return this.http.put(`${environment.urlAdministration}/HRManagementByRoot/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  getGlobalConfig(idRoot: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/GlobalConfig/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
 
+  createGlobalConfig(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/GlobalConfig`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateGlobalConfig(idRoot: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/GlobalConfig/${idRoot}`, data, { headers: this.trackingService.getHeaders() });
+  }
 
 }

@@ -18,7 +18,7 @@ interface OcRow {
 }
 
 @Component({
-  selector: 'app-cascada1-oc',
+  selector: 'app-ordenesydetallesoc',
   standalone: true,
   imports: [CommonModule, AgGridAngular],
   template: `
@@ -39,7 +39,7 @@ interface OcRow {
         </ag-grid-angular>
       </div>
 
-      <div *ngIf="selectedOcRow"
+      <div *ngIf="selectedOcRow && itemsData.length > 0"
            style="flex: 0 0 45%; min-height: 0; border-top: 2px solid #e67e22; background: #fff9e6;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
         <div style="font-size: 0.78rem; font-weight: bold; color: #e67e22; margin-bottom: 3px; flex-shrink: 0;">
@@ -60,13 +60,15 @@ interface OcRow {
   `,
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
 })
-export class Cascada1OcComponent {
+export class OrdenesydetallesOcComponent {
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
 
   private internalParams: any;
   private gridApi!: GridApi;
   private itemsGridApi!: GridApi;
+  private providersLoaded = false;
+  private gridReady = false;
 
   rowData: OcRow[] = [];
   itemsData: any[] = [];
@@ -95,9 +97,7 @@ export class Cascada1OcComponent {
     {
       field: 'providerName',
       headerName: 'Proveedor',
-      width: 180,
-      flex: 2,
-      minWidth: 140,
+      width: 250,
     },
     {
       field: 'datecreate',
@@ -137,23 +137,26 @@ export class Cascada1OcComponent {
   };
 
   itemsColDefs: ColDef[] = [
-    { field: 'numarticle', headerName: '# Item OC', width: 100 },
+    { field: 'numarticle', headerName: '# Item OC', width: 140 },
     { field: 'namearticle', headerName: 'Artículo', flex: 2, minWidth: 140 },
-    { field: 'quantity', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
-    { field: 'price', headerName: 'Precio unitario', width: 130, type: 'numericColumn' },
-    { field: 'total', headerName: 'Total', width: 110, type: 'numericColumn' },
-    { field: 'dateuse', headerName: 'Fecha entrega', width: 130 },
-    { field: 'observation', headerName: 'Especial', flex: 2, minWidth: 130 },
+    { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
+    { field: 'caducidad', headerName: 'Caducidad', width: 120 },
+    { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
+    { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
+    { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
+    { field: 'dateuse', headerName: 'Fecha Entrada Almacén', width: 150 },
+    { field: 'datepostpone', headerName: 'Fecha Entrega', width: 130 },
   ];
 
   itemsGridOptions: any = {
-    headerHeight: 25,
+    headerHeight: 45,
     rowHeight: 25,
-    defaultColDef: { resizable: true, sortable: true },
+    defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true, autoHeaderHeight: true },
   };
 
   agInit(params: any): void {
     this.internalParams = params;
+    this.providersLoaded = false;
     this.loadProviders();
   }
 
@@ -166,19 +169,27 @@ export class Cascada1OcComponent {
     this.customersService.getCustomersByCompany(this.internalParams?.data?.idCompany || 0, 'PROVIDERS').subscribe({
       next: (data: any) => {
         this.providers = Array.isArray(data) ? data : [];
-        if (this.gridApi && !this.gridApi.isDestroyed()) {
-          this.loadData();
-        }
+        this.providersLoaded = true;
+        this.tryLoadData();
       },
       error: () => {
         this.providers = [];
+        this.providersLoaded = true;
+        this.tryLoadData();
       }
     });
   }
 
+  private tryLoadData(): void {
+    if (this.gridReady && this.providersLoaded && this.gridApi && !this.gridApi.isDestroyed()) {
+      this.loadData();
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.loadData();
+    this.gridReady = true;
+    this.tryLoadData();
   }
 
   onItemsGridReady(params: GridReadyEvent) {
