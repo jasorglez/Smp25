@@ -893,6 +893,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
               idFamilia: params.data.idFamilia || null,
               idSubfamilia: params.data.idSubfamilia || null
             };
+            // Si no hay valores cargados, establecer valores por defecto
+            if (!this.newArticle.idCategory && !this.newArticle.idFamilia && !this.newArticle.idSubfamilia) {
+              this.setDefaultCatalogValues();
+            }
             this.openNewArticleModal();
           }
         },
@@ -1996,6 +2000,32 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   onFamilyChange(): void {
     // Limpiar selección dependiente
     this.newArticle.idSubfamilia = null;
+  }
+
+  private setDefaultCatalogValues(): void {
+    // Buscar "MATERIA PRIMA" en categorías
+    const materiaPrima = this.categories.find(c =>
+      c.description?.toUpperCase().includes('MATERIA PRIMA')
+    );
+    if (materiaPrima) {
+      this.newArticle.idCategory = materiaPrima.id;
+    }
+
+    // Buscar "PRODUCTO NUEVO" en familias
+    const productoNuevoFam = this.familias.find(f =>
+      f.description?.toUpperCase().includes('PRODUCTO NUEVO')
+    );
+    if (productoNuevoFam) {
+      this.newArticle.idFamilia = productoNuevoFam.id;
+    }
+
+    // Buscar "PRODUCTO NUEVO" en subfamilias
+    const productoNuevoSubfam = this.subfamilias.find(sf =>
+      sf.description?.toUpperCase().includes('PRODUCTO NUEVO')
+    );
+    if (productoNuevoSubfam) {
+      this.newArticle.idSubfamilia = productoNuevoSubfam.id;
+    }
   }
 
   getFamiliesByCategory(categoryId: number | null | string): any[] {
