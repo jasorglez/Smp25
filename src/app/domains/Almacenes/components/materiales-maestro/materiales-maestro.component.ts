@@ -378,6 +378,28 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         cellEditor: 'agCheckboxCellEditor'
       },
       {
+        headerName: 'Por autorizar',
+        width: 130,
+        editable: false,
+        sortable: false,
+        filter: false,
+        valueGetter: (params: any) => {
+          // En algunos endpoints el flag puede venir con nombres distintos.
+          // Si no existe, por defecto mostramos "false".
+          return !!(params?.data?.autorizacion ?? params?.data?.porAutorizar ?? params?.data?.pendingAuthorization);
+        },
+        cellRenderer: (params: any) => {
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.disabled = true;
+          input.checked = !!params.value;
+          input.title = 'Por autorizar (solo lectura)';
+          input.style.margin = '0 auto';
+          return input;
+        },
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      },
+      {
         field: 'insumo',
         headerName: 'Num Mat',
         width: 130,
