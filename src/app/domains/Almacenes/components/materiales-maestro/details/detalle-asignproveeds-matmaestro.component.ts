@@ -688,8 +688,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         typeIntOrExt: typeMap.get(p.id) || null
       }));
 
-      console.log('📦 Total proveedores vigentes:', this.providers.length);
-
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
 
@@ -894,10 +892,14 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         (row: any) => (row.__modified || row.__isNew) && row.idTabla > 0 && row.campo1 > 0
       ).map((row: any) => ({ campo1: row.campo1, idTabla: row.idTabla, campo11: row.campo11 || '' }));
 
+      // Capturar filas nuevas para marcar como "por autorizar"
+      const newProvidersToAuthorize = this.proveedorRowData.filter(
+        (row: any) => row.__isNew && row.idTabla > 0 && row.campo1 > 0
+      ).map((row: any) => ({ idSupplie: row.campo1, idProveedor: row.idTabla }));
+
       try {
         // Guardar los cambios
         await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
-
 
         // Esperar un poco para que el servidor procese
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -907,6 +909,13 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
           firstValueFrom(
             this.ocAndReqsService.syncObservationBySupplieAndProvider(row.campo1, row.idTabla, row.campo11)
           ).catch(e => console.warn(`⚠️ No se pudo sincronizar observation para ${row.campo1}:`, e));
+        }
+
+        // Actualizar campo7 (por autorizar) a true para proveedores nuevos
+        for (const prov of newProvidersToAuthorize) {
+          firstValueFrom(
+            this.ocAndReqsService.patchProveedorXTablaCampo7(prov.idSupplie, prov.idProveedor, true)
+          ).catch(e => console.warn(`⚠️ No se pudo marcar "Por autorizar" para material ${prov.idSupplie} proveedor ${prov.idProveedor}:`, e));
         }
 
         this.hasProveedorChanges = false;

@@ -385,8 +385,18 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
+    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(async () => {
+      // Actualizar la fecha de modificación del maestro para que se reordene en el padre
+      try {
+        const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+          ...maestro,
+          dateModified: new Date().toISOString()
+        }));
+      } catch { /* no bloquear el flujo */ }
+
       this.loadData();
+      this.refreshParentGridAfterSave();
     });
 
     // ✅ Sincronización en tiempo real:
@@ -1038,16 +1048,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           // Buscar proveedores en el caché (clave solo por material)
           const providers = this.providersCache.get(`${materialId}`) || [];
 
-          // 🔍 DEBUG: Ver TODOS los proveedores y sus tipos
-          console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo fila: ${type}, Total en caché: ${providers.length}`);
-          if (providers.length > 0) {
-            console.log('📦 Todos los proveedores en caché:', providers.map(p => ({ id: p.idProvider, name: p.providerName, type: p.typeIntOrExt })));
-          }
-
-          // ✅ FILTRAR: Solo mostrar proveedores que sean typeIntOrExt === 'Interno'
+          // FILTRAR: Solo mostrar proveedores que sean typeIntOrExt === 'Interno'
           const filteredProviders = providers.filter(p => p.typeIntOrExt === 'Interno');
-
-          console.log(`✅ Filtrados (Interno): ${filteredProviders.length}`);
 
           return {
             options: filteredProviders.map(p => {
@@ -1237,13 +1239,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   private refreshParentGridAfterSave(): void {
-    // Se comenta la recarga global del padre para evitar que se cierren las tablas expandidas.
-    // Al haber añadido getRowId, si se requiere refrescar en el futuro, AG Grid mantendrá el estado.
-    /*
+    // Recargar grilla padre para reordenar la requisición al tope
+    // Con getRowId implementado, AG Grid mantiene el estado de expansión
     if (this.context?.reloadParentGrid) {
       this.context.reloadParentGrid();
     }
-    */
   }
 
   public gridOptions: any = {
@@ -1358,6 +1358,19 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
       }
 
+      // Actualizar fecha de modificación del maestro
+      try {
+        const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+          ...maestro,
+          dateModified: new Date().toISOString()
+        }));
+      } catch { /* no bloquear el flujo */ }
+
+      // Recargar datos para sincronizar con servidor
+      this.loadData();
+      this.refreshParentGridAfterSave();
+
       alerts.reqSuccessToast('Eliminado', 'Item eliminado correctamente');
     } catch (error) {
       console.error('❌ Error al eliminar item:', error);
@@ -1421,12 +1434,14 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     // Guardar items nuevos (POST)
     const newItemsPromises = newItems.map(item => {
-      // Si el artículo fue creado como "Nuevo", idSupplie debe ser 0
+      // Si el artículo fue creado como "Nuevo", usar materialId si existe, sino 0
       const isNewArticle = item.recurrent === 'Nuevo';
+      const materialId = item.materialId || item.idSupplie || 0;
+      const idSupplieValue = isNewArticle ? (materialId > 0 ? materialId : 0) : (materialId || 0);
 
       const payload = {
         idMovement: this.requisitionId,
-        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        idSupplie: idSupplieValue,
         description: item.article || '',
         nameArticle: item.article || '', // Guardar el nombre en nameArticle
         code: item.code || '',
@@ -1457,13 +1472,15 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     // Guardar items modificados (PUT) - enviar la fila completa
     const modifiedItemsPromises = modifiedItems.map(item => {
-      // Si el artículo fue cambiado a "Nuevo", idSupplie debe ser 0
+      // Si el artículo fue cambiado a "Nuevo", usar materialId si existe, sino 0
       const isNewArticle = item.recurrent === 'Nuevo';
+      const materialId = item.materialId || item.idSupplie || 0;
+      const idSupplieValue = isNewArticle ? (materialId > 0 ? materialId : 0) : (materialId || 0);
 
       const payload = {
         id: item.id,
         idMovement: this.requisitionId,
-        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        idSupplie: idSupplieValue,
         description: item.article || '',
         nameArticle: item.article || '', // Guardar el nombre en nameArticle
         code: item.code || '',
@@ -1517,7 +1534,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Propagar cambios a todos los pedimentos existentes
         await this.propagateChangesToPedimentos(newItemsData, modifiedItemsData);
 
-        // Actualizar solicit y dateCreate del maestro con el usuario actual y fecha de hoy
+        // Actualizar dateModified del maestro para que se reordene en el padre
         try {
           const currentUser = this.signalsService.getDisplayName()();
           const today = new Date();
@@ -1527,7 +1544,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
             ...maestro,
             solicit: currentUser,
-            dateCreate: todayStr
+            dateModified: new Date().toISOString()
           }));
 
           // Actualizar el maestro vía contexto (actualiza rowData + refresca celdas del grid padre)
@@ -1599,7 +1616,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           requisicionOriginal = { ...requisicionOriginal, ...reqFresca };
         }
       } catch (err) {
-        console.warn('⚠️ No se pudieron cargar datos frescos, usando datos locales:', err);
+        // Usar datos locales si falla la carga fresca
       }
 
       // 3. Consultar cuántas cotizaciones ya existen para esta requisición
@@ -1797,6 +1814,20 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       // 12. Cerrar alerta de progreso y mostrar mensaje de éxito
       alerts.closeLoading();
 
+      // ✅ Actualizar dateModified del maestro para que se reordene en el padre
+      try {
+        const maestroActual: any = await firstValueFrom(
+          this.ocAndReqsService.getDetailedReq(requisicionOriginal.id)
+        );
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(requisicionOriginal.id, {
+          ...maestroActual,
+          dateModified: new Date().toISOString()
+        }));
+        this.refreshParentGridAfterSave();
+      } catch (err) {
+        // No se pudo actualizar dateModified
+      }
+
       setTimeout(() => {
         const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s)`;
         alerts.reqSuccessToast('Cotización Creada', message);
@@ -1804,7 +1835,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
 
     } catch (error) {
-      console.error('❌ Error al crear cotización:', error);
       alerts.closeLoading();
       alerts.reqErrorToast('Error', 'No se pudo crear la cotización');
     }
@@ -1871,10 +1901,34 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Guardar los datos del formulario en la fila actual
-    // idSupplie = 0 indica que es un artículo nuevo (no recurrente)
-    this.currentRowForNewArticle.data.idSupplie = 0;
-    this.currentRowForNewArticle.data.materialId = 0;
+    // Crear el material automáticamente en dbo.materiales PRIMERO
+    let materialId = 0;
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+      const materialData = {
+        idCompany: idRoot,
+        articulo: '',
+        description: name,
+        idCategory: this.newArticle.idCategory,
+        idFamilia: this.newArticle.idFamilia,
+        idSubfamilia: this.newArticle.idSubfamilia,
+        insumo: name.substring(0, 35),
+        typeMaterial: 'CONSUMABLE',
+        active: true,
+        vigente: true,
+        porAutorizar: false
+      };
+
+      const response = await lastValueFrom(this.materialsService.addMaterial(materialData));
+      materialId = response.id || response.ID || 0;
+    } catch (err) {
+      // No bloqueamos el proceso si falla la creación del material
+    }
+
+    // Guardar los datos del formulario en la fila actual CON EL ID DEL MATERIAL
+    this.currentRowForNewArticle.data.idSupplie = materialId;
+    this.currentRowForNewArticle.data.materialId = materialId;
     this.currentRowForNewArticle.data.article = name;
     this.currentRowForNewArticle.data.nameArticle = name;
     this.currentRowForNewArticle.data.descriptionNewArticle = desc;
@@ -1898,37 +1952,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       force: true
     });
 
-    // Crear el material automáticamente en dbo.materiales
-    try {
-      const idRoot = this.signalsService.getRootSelectedBySidebar()();
-      console.log('🔍 Valores de newArticle antes de enviar:');
-      console.log('   idCategory:', this.newArticle.idCategory);
-      console.log('   idFamilia:', this.newArticle.idFamilia);
-      console.log('   idSubfamilia:', this.newArticle.idSubfamilia);
-
-      const materialData = {
-        id_company: idRoot,
-        articulo: name,
-        description: desc,
-        id_category: this.newArticle.idCategory,
-        id_familia: this.newArticle.idFamilia,
-        id_subfamilia: this.newArticle.idSubfamilia,
-        insumo: name.substring(0, 35),
-        typematerial: 'CONSUMABLE',
-        active: true,
-        vigente: true,
-        porAutorizar: true
-      };
-
-      console.log('📤 Enviando material a crear:', materialData);
-      const response = await lastValueFrom(this.materialsService.addMaterial(materialData));
-      console.log('✅ Material creado automáticamente en materiales-maestro');
-      console.log('   Respuesta del servidor:', response);
-    } catch (err) {
-      console.error('❌ Error creando material en materiales-maestro:', err);
-      // No bloqueamos el proceso si falla la creación del material
-    }
-
     alerts.reqSuccessToast('Éxito', 'Datos guardados. Presione "Guardar" para enviar');
     this.closeNewArticleModal();
   }
@@ -1936,6 +1959,17 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private openNewArticleModal() {
     this.isNewArticleModalVisible = true;
     this.newArticleFormSubmitted = false;
+
+    // Resetear valores del formulario al abrir
+    this.newArticle = {
+      description: '',
+      descriptionNewArticle: '',
+      urlNewArticle: '',
+      justificationNewArticle: '',
+      idCategory: null,
+      idFamilia: null,
+      idSubfamilia: null
+    };
 
     // Asegurar que el catálogo esté disponible antes de abrir (evita selects vacíos)
     if (!this.categories?.length || !this.familias?.length || !this.subfamilias?.length) {
@@ -1947,6 +1981,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       setTimeout(() => this.openNewArticleModal(), 0);
       return;
     }
+
+    // Establecer valores por defecto después de resetear
+    this.setDefaultCatalogValues();
 
     // Cerrar uno previo si existiera
     try { this.newArticleModalRef?.close(); } catch {}
@@ -1990,30 +2027,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'FAM-CAT')),
         lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'SUB-FAM'))
       ]);
-
-      console.log('📦 Catálogos cargados:');
-      console.log('  Categorías:', this.categories.length, 'items');
-      console.log('  Primeras categorías:', this.categories.slice(0, 3).map(c => ({
-        id: c.id,
-        description: c.description,
-        keys: Object.keys(c)
-      })));
-      console.log('  Familias:', this.familias.length, 'items');
-      console.log('  Primeras familias:', this.familias.slice(0, 5).map(f => ({
-        id: f.id,
-        parentId: f.parentId,
-        description: f.description,
-        keys: Object.keys(f)
-      })));
-      console.log('  Subfamilias:', this.subfamilias.length, 'items');
-      console.log('  Primeras subfamilias:', this.subfamilias.slice(0, 3).map(sf => ({
-        id: sf.id,
-        subParentId: sf.subParentId,
-        description: sf.description,
-        keys: Object.keys(sf)
-      })));
     } catch (err) {
-      console.error('❌ Error cargando catálogos:', err);
+      // Error cargando catálogos
     }
   }
 
@@ -2266,7 +2281,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       const hasCotiz = Array.isArray(existingCotiz) && existingCotiz.some((c: any) => c.idReq === this.requisitionId);
       if (hasCotiz) {
-        console.log('ℹ️ La cotización ya existe para esta requisición');
         return;
       }
 
@@ -2332,10 +2346,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       } catch (err) {
         console.warn('⚠️ No se pudo confirmar el folio de cotización:', err);
       }
-
-      console.log(`✅ Cotización ${folioCotiz} creada automáticamente`);
     } catch (error) {
-      console.error('❌ Error al crear cotización automáticamente:', error);
       throw error;
     }
   }

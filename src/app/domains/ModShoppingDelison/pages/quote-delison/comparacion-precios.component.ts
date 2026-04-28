@@ -1,13 +1,16 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, Input, Output, EventEmitter, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { SignalsService } from 'app/services/signals.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
+import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, Subscription } from 'rxjs';
 
@@ -15,7 +18,7 @@ import { lastValueFrom, Subscription } from 'rxjs';
 @Component({
   selector: 'app-comparacion-precios',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ItemCommentsCellRendererComponent],
   template: `
     <div class="comparacion-container">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
@@ -90,6 +93,26 @@ import { lastValueFrom, Subscription } from 'rxjs';
         <i class="bi bi-info-circle me-2"></i>No hay artículos para comparar en este pedimento.
       </div>
     </div>
+
+    <!-- Overlay para modal de fecha -->
+    <div *ngIf="showDatePicker" class="date-picker-overlay">
+      <div class="date-picker-modal">
+        <div class="modal-header">
+          <h5 class="modal-title">Seleccionar Fecha de Compra</h5>
+          <button type="button" class="btn-close" (click)="closeDatePicker()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Fecha:</label>
+            <input type="date" class="form-control" [(ngModel)]="selectedDate">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeDatePicker()">Cancelar</button>
+          <button type="button" class="btn btn-primary" (click)="confirmDatePicker()">Guardar</button>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     .comparacion-container {
@@ -141,6 +164,51 @@ import { lastValueFrom, Subscription } from 'rxjs';
         inset 1px 0 0 rgba(33, 50, 83, 0.2),
         inset -1px 0 0 rgba(33, 50, 83, 0.2);
     }
+
+    .date-picker-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+    }
+
+    .date-picker-modal {
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+      min-width: 350px;
+      z-index: 100000;
+    }
+
+    .modal-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      margin: 0;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+    }
+
+    .modal-footer {
+      padding: 1.25rem;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
   `]
 })
 export class ComparacionPreciosComponent implements OnInit, OnDestroy {
@@ -149,10 +217,19 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private itemCommentsService = inject(ItemCommentsService);
   private signalsService = inject(SignalsService);
   private cdr = inject(ChangeDetectorRef);
+  private ngbModal = inject(NgbModal);
+  private materialsService = inject(MaterialsService);
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
   private providerSlotMap = new Map<number, { suffix: string; cotizId: number }>();
   private commentSub?: Subscription;
+
+  @ViewChild('fechaModal') fechaModal!: TemplateRef<any>;
+
+  selectedDate: string = '';
+  private currentRowBeingEdited: any = null;
+  private dateModalRef?: NgbModalRef;
+  showDatePicker: boolean = false;
 
   @Input() cotizacionId: number = 0;
   @Input() requisitionId: number = 0;
@@ -206,7 +283,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     this.ocAndReqsService.getComparisonData(this.cotizacionId).subscribe({
       next: async (data: any) => {
-        console.log('[Comparacion] raw response:', JSON.stringify(data));
         let proveedores = data.proveedores || [];
         this.articulos = data.articulos || [];
 
@@ -259,7 +335,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
             map.set(campo1, campo11);
           }
         });
-        console.log(`[Comparacion] Proveedor ${prov.id} (${prov.nombre}):`, Array.from(map.entries()));
         this.codigosExternos.set(prov.id, map);
       } catch (err) {
         console.warn(`[Comparacion] Error cargando códigos externos para proveedor ${prov.id}:`, err);
@@ -510,6 +585,15 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   onCellValueChanged(event: any) {
     this.hasUnsavedChanges = true;
     const field = event.colDef?.field;
+
+    // Detectar cambio a "COMPRA AUTORIZADA EN OTRA FECHA"
+    if (field === 'tipoOc' && event.newValue === 'COMPRA AUTORIZADA EN OTRA FECHA') {
+      this.currentRowBeingEdited = event.data;
+      this.selectedDate = event.data.datePostpone ? String(event.data.datePostpone).substring(0, 10) : '';
+      this.openDateModal();
+      return;
+    }
+
     if (field === 'cantidadComprar') {
       const v = Number(event.newValue);
       const qty = Number.isFinite(v) ? v : 0;
@@ -682,6 +766,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
 
+    // Desmarcar porAutorizar para artículos "Nuevo" con OC generada
+    if (generatedFolios.length > 0) {
+      await this.updatePorAutorizarAfterOC();
+    }
+
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
 
@@ -709,6 +798,73 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
+  private openDateModal() {
+    this.showDatePicker = true;
+  }
+
+  closeDatePicker() {
+    this.showDatePicker = false;
+    this.currentRowBeingEdited = null;
+  }
+
+  confirmDatePicker() {
+    if (this.currentRowBeingEdited && this.selectedDate) {
+      this.currentRowBeingEdited.datePostpone = this.selectedDate;
+    }
+    this.showDatePicker = false;
+    this.currentRowBeingEdited = null;
+    if (this.gridApi) {
+      this.gridApi.refreshCells({ force: true });
+    }
+  }
+
+  private async updatePorAutorizarAfterOC(): Promise<void> {
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+
+    for (const row of this.rowData) {
+      const isNewArticle = (row.nuevoRecurrente || '').toLowerCase() === 'nuevo';
+      const hasAuthorizedType = AUTHORIZED.includes(row.tipoOc);
+      const hasMaterialId = row.idSupplie && row.idSupplie > 0;
+
+      if (isNewArticle && hasAuthorizedType && hasMaterialId) {
+        const materialData = {
+          idCompany: idRoot,
+          idBranch: null,
+          idCustomer: null,
+          insumo: row.articulo || '',
+          articulo: row.articulo || '',
+          idCategory: null,
+          idFamilia: null,
+          idSubfamilia: null,
+          idMedida: null,
+          idUbication: null,
+          description: row.articulo || '',
+          merma: 0,
+          fecha: new Date().toISOString(),
+          aplicaResg: false,
+          costoMN: 0,
+          costoDLL: 0,
+          ventaMN: 0,
+          ventaDLL: 0,
+          stockMin: 0,
+          stockMax: 0,
+          picture: '',
+          typeMaterial: 'CONSUMABLE',
+          vigente: true,
+          active: true,
+          porAutorizar: false
+        };
+
+        await lastValueFrom(
+          this.materialsService.updateMaterial(row.idSupplie.toString(), materialData)
+        ).catch(() => {
+          // Error silencioso
+        });
+      }
+    }
+  }
+
   get colDefs(): ColDef[] {
     return [
       {
@@ -729,7 +885,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'cantidadComprar',
         headerName: 'CANTIDAD A COMPRAR',
         minWidth: 120,
-        editable: (params: any) => !!params.data?.__isBlockStart && !this.ocGenerada,
+        editable: (params: any) => !!params.data?.__isBlockStart,
         cellEditor: 'agNumberCellEditor',
         cellClass: 'cell-cantidad-comprar cell-col-cantidad-a-comprar',
         headerClass: 'header-cantidad-comprar',
@@ -781,14 +937,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'tiempoEntrega',
         headerName: 'TIEMPO DE ENTREGA',
         minWidth: 120,
-        editable: !this.ocGenerada,
+        editable: true,
         cellStyle: { padding: '8px' }
       },
       {
         field: 'compraMinima',
         headerName: 'COMPRA MINIMA',
         minWidth: 110,
-        editable: !this.ocGenerada,
+        editable: true,
         type: 'numericColumn',
         cellStyle: { textAlign: 'right', padding: '8px' }
       },
@@ -796,7 +952,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'costoUnitario',
         headerName: 'COSTO UNITARIO',
         minWidth: 120,
-        editable: !this.ocGenerada,
+        editable: true,
         type: 'numericColumn',
         cellStyle: { backgroundColor: '#fff9c4', textAlign: 'right', padding: '8px' },
         valueFormatter: (params: any) =>
@@ -847,7 +1003,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'tipoOc',
         headerName: 'TIPO OC',
         minWidth: 320,
-        editable: !this.ocGenerada,
+        editable: true,
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
@@ -862,7 +1018,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'CANTIDAD X PROVEEDOR',
         minWidth: 200,
         editable: (params: any) => {
-          if (this.ocGenerada) return false;
           const tipoOc = params.data?.tipoOc;
           return tipoOc === 'COMPRA INMEDIATA' || tipoOc === 'COMPRA AUTORIZADA EN OTRA FECHA';
         },
