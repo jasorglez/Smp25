@@ -18,7 +18,7 @@ interface OcRow {
 }
 
 @Component({
-  selector: 'app-cascada1-oc',
+  selector: 'app-ordenesydetallesoc',
   standalone: true,
   imports: [CommonModule, AgGridAngular],
   template: `
@@ -97,7 +97,7 @@ export class Cascada1OcComponent {
     {
       field: 'providerName',
       headerName: 'Proveedor',
-      width: 60,
+      width: 250,
     },
     {
       field: 'datecreate',
@@ -137,7 +137,7 @@ export class Cascada1OcComponent {
   };
 
   itemsColDefs: ColDef[] = [
-    { field: 'numarticle', headerName: '# Item OC', width: 100 },
+    { field: 'numarticle', headerName: '# Item OC', width: 140 },
     { field: 'namearticle', headerName: 'Artículo', flex: 2, minWidth: 140 },
     { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
     { field: 'caducidad', headerName: 'Caducidad', width: 120 },
