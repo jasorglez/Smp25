@@ -340,7 +340,10 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         width: 160,
         filter: true,
         editable: false,
-        cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500' }
+        cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500', cursor: 'pointer' },
+        onCellClicked: (event: any) => {
+          event.node.setExpanded(!event.node.expanded);
+        }
       },
       {
         field: 'ocCount',
