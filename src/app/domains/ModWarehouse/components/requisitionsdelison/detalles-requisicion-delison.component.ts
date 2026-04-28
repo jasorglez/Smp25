@@ -192,7 +192,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
             [(ngModel)]="newArticle.idFamilia"
             (change)="onFamilyChange()">
             <option value="">Seleccionar familia</option>
-            <option *ngFor="let fam of filteredFamilias" [value]="fam.id">
+            <option *ngFor="let fam of getFamiliesByCategory(newArticle.idCategory)" [value]="fam.id">
               {{ fam.description }}
             </option>
           </select>
@@ -210,7 +210,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
             required
             [(ngModel)]="newArticle.idSubfamilia">
             <option value="">Seleccionar subfamilia</option>
-            <option *ngFor="let subfam of filteredSubfamilias" [value]="subfam.id">
+            <option *ngFor="let subfam of getSubfamiliesByFamily(newArticle.idFamilia)" [value]="subfam.id">
               {{ subfam.description }}
             </option>
           </select>
@@ -1949,7 +1949,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private async loadCatalogs(): Promise<void> {
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
-      if (!idRoot) return;
+      if (!idRoot) {
+        console.warn('⚠️ No idRoot disponible para cargar catálogos');
+        return;
+      }
 
       // Cargar catálogos usando los mismos métodos que materiales-maestro
       [this.categories, this.familias, this.subfamilias] = await Promise.all([
@@ -1957,33 +1960,68 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'FAM-CAT')),
         lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'SUB-FAM'))
       ]);
+
+      console.log('📦 Catálogos cargados:');
+      console.log('  Categorías:', this.categories.length, 'items');
+      console.log('  Primeras categorías:', this.categories.slice(0, 3).map(c => ({
+        id: c.id,
+        description: c.description,
+        keys: Object.keys(c)
+      })));
+      console.log('  Familias:', this.familias.length, 'items');
+      console.log('  Primeras familias:', this.familias.slice(0, 5).map(f => ({
+        id: f.id,
+        parentId: f.parentId,
+        description: f.description,
+        keys: Object.keys(f)
+      })));
+      console.log('  Subfamilias:', this.subfamilias.length, 'items');
+      console.log('  Primeras subfamilias:', this.subfamilias.slice(0, 3).map(sf => ({
+        id: sf.id,
+        subParentId: sf.subParentId,
+        description: sf.description,
+        keys: Object.keys(sf)
+      })));
     } catch (err) {
-      console.warn('Error cargando catálogos:', err);
+      console.error('❌ Error cargando catálogos:', err);
     }
   }
 
   onCategoryChange(): void {
-    // Filtrar familias por categoría seleccionada (usando parentId como en materiales-maestro)
-    if (this.newArticle.idCategory) {
-      this.filteredFamilias = this.familias.filter(f => f.parentId === this.newArticle.idCategory);
-    } else {
-      this.filteredFamilias = [];
-    }
     // Limpiar selecciones dependientes
     this.newArticle.idFamilia = null;
     this.newArticle.idSubfamilia = null;
-    this.filteredSubfamilias = [];
   }
 
   onFamilyChange(): void {
-    // Filtrar subfamilias por familia seleccionada (usando subParentId como en materiales-maestro)
-    if (this.newArticle.idFamilia) {
-      this.filteredSubfamilias = this.subfamilias.filter(sf => sf.subParentId === this.newArticle.idFamilia);
-    } else {
-      this.filteredSubfamilias = [];
-    }
     // Limpiar selección dependiente
     this.newArticle.idSubfamilia = null;
+  }
+
+  getFamiliesByCategory(categoryId: number | null): any[] {
+    if (!categoryId) return [];
+    const result = this.familias.filter(f => f.parentId === categoryId);
+    console.log(`🔍 getFamiliesByCategory(${categoryId}):`, result.length, 'familias encontradas');
+    if (result.length === 0) {
+      console.log('   ❌ No hay match con parentId === ' + categoryId);
+      console.log('   Datos disponibles de familias:', this.familias.slice(0, 5).map(f => ({
+        id: f.id,
+        parentId: f.parentId,
+        desc: f.description,
+        allKeys: Object.keys(f)
+      })));
+    }
+    return result;
+  }
+
+  getSubfamiliesByFamily(familyId: number | null): any[] {
+    if (!familyId) return [];
+    const result = this.subfamilias.filter(sf => sf.subParentId === familyId);
+    console.log(`🔍 getSubfamiliesByFamily(${familyId}):`, result.length, 'subfamilias encontradas');
+    if (result.length === 0) {
+      console.log('   Datos disponibles de subfamilias:', this.subfamilias.slice(0, 3).map(sf => ({ id: sf.id, subParentId: sf.subParentId, desc: sf.description })));
+    }
+    return result;
   }
 
   onCellClicked(event: any): void {
