@@ -12,6 +12,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { AuthService } from 'app/services/auth.service';
 import { alerts } from 'app/helpers/alerts';
 
@@ -39,6 +41,8 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService   = inject(BranchsService);
   private providersService = inject(ProvidersService);
+  private customersService = inject(CustomersService);
+  private materialsService = inject(MaterialsService);
   public  authService      = inject(AuthService);
 
   private gridApi!: GridApi;
@@ -56,6 +60,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
 
   branches: any[]   = [];
   proveedores: any[] = [];
+  productos: any[] = [];
   branchesLoaded    = false;
 
   /** Contexto del grid maestro: AG Grid lo inyecta en params.context del detalle (ITEMS.load, proveedores…). */
@@ -107,12 +112,14 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       if (this.idRoot) {
         this.loadBranches();
         this.loadProviders();
+        this.loadMaterials();
       } else {
         setTimeout(() => {
           this.idRoot = this.signalsService.getRootSelectedBySidebar()();
           if (this.idRoot) {
             this.loadBranches();
             this.loadProviders();
+            this.loadMaterials();
           }
         }, 300);
       }
@@ -145,17 +152,33 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   }
 
   loadProviders() {
-    this.providersService.getProviders(this.idRoot).subscribe({
+    this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
       next: (data: any) => {
-        this.proveedores = Array.isArray(data) ? data : [];
+        this.proveedores = (Array.isArray(data) ? data : []).map((p: any) => ({
+          id:   p.id,
+          name: (p.name ?? '').trim() || (p.Description ?? p.description ?? '').trim() || `Proveedor ${p.id}`
+        }));
         this.patchGridContext();
       },
       error: () => {}
     });
   }
 
+  loadMaterials() {
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.productos = Array.isArray(data) ? data : [];
+        this.patchGridContext();
+      },
+      error: () => {
+        console.warn('Error cargando materiales', this.idRoot);
+      }
+    });
+  }
+
   private patchGridContext(): void {
-    this.gridContext = { ...this.gridContext, proveedores: this.proveedores };
+    this.gridContext['proveedores'] = this.proveedores;
+    this.gridContext['productos'] = this.productos;
     this.gridApi?.setGridOption('context', this.gridContext);
   }
 
@@ -163,7 +186,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     this.gridContext = {
       componentParent: this,
       proveedores: this.proveedores,
-      productos: [],
+      productos: this.productos,
       ITEMS: {
         load: (ocId: number, callback: (data: any[]) => void) => {
           this.ocAndReqsService.getReqItems(ocId).subscribe({

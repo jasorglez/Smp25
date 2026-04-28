@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { Subscription, interval } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-purchase-order-items',
@@ -65,11 +66,12 @@ import { alerts } from 'app/helpers/alerts';
     }
   `]
 })
-export class DetailCellRendererPurchaseOrderItemsComponent {
+export class DetailCellRendererPurchaseOrderItemsComponent implements OnDestroy {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   private context: any;
+  private contextUpdateSub?: Subscription;
 
   rowData: any[] = [];
   totalGeneral: number = 0;
@@ -87,6 +89,35 @@ export class DetailCellRendererPurchaseOrderItemsComponent {
     this.productos = this.context?.productos || [];
     this.proveedores = this.context?.proveedores || [];
     this.loadData();
+
+    // Si los proveedores llegan después (asincrónico), refrescar el grid
+    if ((this.context?.proveedores || []).length === 0) {
+      this.contextUpdateSub = interval(300).subscribe(() => {
+        if ((this.context?.proveedores || []).length > 0) {
+          if (this.gridApi) {
+            this.gridApi.refreshCells({ force: true });
+          }
+          this.contextUpdateSub?.unsubscribe();
+        }
+      });
+    }
+  }
+
+  ngOnDestroy() {
+    this.contextUpdateSub?.unsubscribe();
+  }
+
+  private getProveedoresIds(): any[] {
+    const currentProveedores = (this.params as any)?.api?.getGridOption?.('context')?.proveedores || this.proveedores;
+    return currentProveedores.map((item: any) => item.id);
+  }
+
+  private formatProveedorValue(value: any): string {
+    if (!value) return '';
+    const currentProveedores = (this.params as any)?.api?.getGridOption?.('context')?.proveedores || this.proveedores;
+    const foundItem = currentProveedores.find((item: any) => Number(item.id) === Number(value));
+    if (!foundItem) return value;
+    return foundItem.name || foundItem.description || value;
   }
 
   loadData() {
@@ -156,13 +187,15 @@ export class DetailCellRendererPurchaseOrderItemsComponent {
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
             const foundItem = this.productos.find((item) => item.id === value);
-            return foundItem ? foundItem.description : value;
+            if (!foundItem) return value;
+            return foundItem.description || foundItem.insumo || foundItem.articulo || value;
           }
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
           const foundItem = this.productos.find((item) => item.id === params.value);
-          return foundItem ? foundItem.description : params.value;
+          if (!foundItem) return params.value;
+          return foundItem.description || foundItem.insumo || foundItem.articulo || params.value;
         },
         valueSetter: (params: any) => {
           // Validar si el material ya existe
@@ -183,17 +216,16 @@ export class DetailCellRendererPurchaseOrderItemsComponent {
         width: 200,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
-          values: this.proveedores.map((item) => item.id),
+          values: this.getProveedoresIds(),
           valueListMaxHeight: 220,
-          formatValue: (value: any) => {
-            const foundItem = this.proveedores.find((item) => item.id === value);
-            return foundItem ? foundItem.name : value;
-          }
+          formatValue: (value: any) => this.formatProveedorValue(value)
         },
-        valueFormatter: (params) => {
+        valueFormatter: (params: any) => {
           if (!params.value) return '';
-          const foundItem = this.proveedores.find((item) => item.id === params.value);
-          return foundItem ? foundItem.name : params.value;
+          const proveedores = this.context?.proveedores || [];
+          const foundItem = proveedores.find((item: any) => Number(item.id) === Number(params.value));
+          if (!foundItem) return params.value;
+          return foundItem.name || foundItem.description || params.value;
         }
       },
       {

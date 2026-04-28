@@ -42,11 +42,12 @@ import { lastValueFrom, Subscription } from 'rxjs';
               type="button"
               class="btn btn-sm btn-success position-relative"
               (click)="save()"
-              [disabled]="rowData.length === 0 || !hasUnsavedChanges">
+              [disabled]="rowData.length === 0 || !hasUnsavedChanges || ocGenerada"
+              [title]="ocGenerada ? 'Orden de compra ya fue generada' : ''">
               Guardar
               <span
                 class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-                *ngIf="hasUnsavedChanges">
+                *ngIf="hasUnsavedChanges && !ocGenerada">
               </span>
             </button>
 
@@ -54,10 +55,17 @@ import { lastValueFrom, Subscription } from 'rxjs';
               type="button"
               class="btn btn-sm btn-warning"
               (click)="revert()"
-              [disabled]="rowData.length === 0 || !hasUnsavedChanges">
+              [disabled]="rowData.length === 0 || !hasUnsavedChanges || ocGenerada"
+              [title]="ocGenerada ? 'Orden de compra ya fue generada' : ''">
               Deshacer
             </button>
           </div>
+        </div>
+
+        <!-- OC Generated notification -->
+        <div *ngIf="ocGenerada" class="alert alert-info mb-3" style="flex-shrink: 0;">
+          <i class="bi bi-check-circle me-2"></i>
+          <strong>Orden de Compra generada:</strong> Esta comparación ya ha sido procesada y no puede ser modificada.
         </div>
 
         <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
@@ -149,6 +157,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   @Input() cotizacionId: number = 0;
   @Input() requisitionId: number = 0;
   @Input() selectedProviderIds: number[] = [];
+  @Input() idBranchFromReq: number = 0;
   @Output() closed = new EventEmitter<void>();
 
   ocGenerada = false;
@@ -287,7 +296,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     rows: any[]
   ): Promise<string> {
     const idRoot   = this.signalsService.getRootSelectedBySidebar()();
-    const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
     const folio    = `OC-${this.cotizacionId}-${slot.suffix}-${Date.now()}`;
 
     const ocPayload = {
@@ -570,6 +579,25 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
     const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
 
+    // Verificar si hay OCs autorizadas para generar
+    const hasAuthorizedRows = this.rowData.some((row: any) =>
+      AUTHORIZED.includes(row.tipoOc) && Number(row.cantidadConceptualizada) > 0
+    );
+
+    if (hasAuthorizedRows) {
+      // Mostrar confirmación antes de generar
+      const result = await alerts.confirmAlert(
+        'Generar Orden de Compra',
+        'Vas a generar la orden de compra. Una vez generada, ya no podrás modificar la información de esta comparación. ¿Deseas continuar?',
+        'question',
+        'Sí, continuar'
+      );
+
+      if (!result.isConfirmed) {
+        return;
+      }
+    }
+
     // 1. Guardar typeOc por slot COTIZ (independiente por proveedor)
     for (const row of this.rowData) {
       if (row.slotItemId > 0) {
@@ -623,6 +651,17 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const generatedFolios: string[] = [];
 
     if (rowsByProvider.size > 0) {
+      const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
+
+      if (!idBranch || idBranch <= 0 || idBranch === -9) {
+        alerts.basicAlert(
+          'Sucursal inválida',
+          'No se puede generar orden de compra sin una sucursal válida. Por favor, verifique la requisición.',
+          'error'
+        );
+        return;
+      }
+
       const count = rowsByProvider.size;
       const loadingTitle = count === 1 ? 'Generando orden de compra' : 'Generando órdenes de compra';
       const loadingText = count === 1
@@ -648,6 +687,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     if (generatedFolios.length > 0) {
       this.ocGenerada = true;
+      this.cdr.detectChanges();
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+      }
       alerts.closeLoading();
       alerts.basicAlert('OC Generada', `Órdenes de compra generadas:\n${generatedFolios.join('\n')}`, 'success');
     } else {
@@ -686,7 +729,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'cantidadComprar',
         headerName: 'CANTIDAD A COMPRAR',
         minWidth: 120,
-        editable: (params: any) => !!params.data?.__isBlockStart,
+        editable: (params: any) => !!params.data?.__isBlockStart && !this.ocGenerada,
         cellEditor: 'agNumberCellEditor',
         cellClass: 'cell-cantidad-comprar cell-col-cantidad-a-comprar',
         headerClass: 'header-cantidad-comprar',
@@ -738,14 +781,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'tiempoEntrega',
         headerName: 'TIEMPO DE ENTREGA',
         minWidth: 120,
-        editable: true,
+        editable: !this.ocGenerada,
         cellStyle: { padding: '8px' }
       },
       {
         field: 'compraMinima',
         headerName: 'COMPRA MINIMA',
         minWidth: 110,
-        editable: true,
+        editable: !this.ocGenerada,
         type: 'numericColumn',
         cellStyle: { textAlign: 'right', padding: '8px' }
       },
@@ -753,7 +796,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'costoUnitario',
         headerName: 'COSTO UNITARIO',
         minWidth: 120,
-        editable: true,
+        editable: !this.ocGenerada,
         type: 'numericColumn',
         cellStyle: { backgroundColor: '#fff9c4', textAlign: 'right', padding: '8px' },
         valueFormatter: (params: any) =>
@@ -804,7 +847,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'tipoOc',
         headerName: 'TIPO OC',
         minWidth: 320,
-        editable: true,
+        editable: !this.ocGenerada,
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
@@ -819,6 +862,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'CANTIDAD X PROVEEDOR',
         minWidth: 200,
         editable: (params: any) => {
+          if (this.ocGenerada) return false;
           const tipoOc = params.data?.tipoOc;
           return tipoOc === 'COMPRA INMEDIATA' || tipoOc === 'COMPRA AUTORIZADA EN OTRA FECHA';
         },
