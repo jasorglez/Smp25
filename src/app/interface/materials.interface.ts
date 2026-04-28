@@ -52,6 +52,7 @@ export interface MaterialsResponse {
   // Propiedades de control para el grid
   __isNew?: boolean;
   __modified?: boolean;
+  porAutorizar?: boolean;
 }
 
 export interface PricePresentations {

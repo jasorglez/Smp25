@@ -1,0 +1,32 @@
+@if (idRoot > 0) {
+  <div class="container-fluid mt-4 mb-4 border light-blue-background py-3">
+    <h6 class="mb-3 fw-semibold">Configuración global</h6>
+
+    @if (loading) {
+      <div class="text-muted small">Cargando...</div>
+    } @else {
+      <div class="d-flex align-items-center gap-3">
+        <div class="form-check form-switch">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
+            id="useServerTime"
+            [checked]="useServerTime"
+            (change)="toggle()"
+          />
+          <label class="form-check-label" for="useServerTime">
+            Usar hora del servidor
+          </label>
+        </div>
+      </div>
+    }
+  </div>
+} @else {
+  <div class="container-fluid mt-4 mb-4">
+    <div class="alert alert-warning text-center">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      Por favor, seleccione una empresa para ver la configuración global.
+    </div>
+  </div>
+}

@@ -427,8 +427,8 @@ export class RequisitionsDelisonComponent implements OnInit {
           };
         }) : [];
 
-        // ✅ Ordenar por __lastModified descendente (más recientemente modificado primero)
-        this.fullRowData.sort((a, b) => new Date(b.__lastModified).getTime() - new Date(a.__lastModified).getTime());
+        // ✅ Ordenar por dateModified descendente (más recientemente modificado primero)
+        this.fullRowData.sort((a, b) => new Date(b.dateModified).getTime() - new Date(a.dateModified).getTime());
 
         this.rowData = [...this.fullRowData];
 
@@ -1190,7 +1190,7 @@ export class RequisitionsDelisonComponent implements OnInit {
               row.detailData = data;
               row.articlesCount = data.length;
               // ✅ Marcar como modificado para el futuro ordenamiento, pero no mover la fila aún
-              row.__lastModified = new Date().toISOString();
+              row.dateModified = new Date().toISOString();
               
               const node = this.gridApi.getRowNode(String(requisitionId));
               if (node) {
@@ -1211,7 +1211,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (row) {
               row.articlesCount = count;
               // ✅ Marcar como modificado
-              row.__lastModified = new Date().toISOString();
+              row.dateModified = new Date().toISOString();
               const node = this.gridApi.getRowNode(String(requisitionId));
               if (node) {
                 this.gridApi.refreshCells({ rowNodes: [node], force: true });
@@ -1231,7 +1231,7 @@ export class RequisitionsDelisonComponent implements OnInit {
               row.solicitedBy = solicitedBy;
               row.requestDate = requestDate;
               // ✅ Marcar como modificado
-              row.__lastModified = new Date().toISOString();
+              row.dateModified = new Date().toISOString();
               const node = this.gridApi.getRowNode(String(requisitionId));
               if (node) {
                 this.gridApi.refreshCells({ rowNodes: [node], force: true });
@@ -1299,7 +1299,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     if (!event.expanded) {
       // Fila se ha colapsado - reordenar si hay cambios
       this.fullRowData.sort((a: any, b: any) =>
-        new Date(b.__lastModified || 0).getTime() - new Date(a.__lastModified || 0).getTime()
+        new Date(b.dateModified || 0).getTime() - new Date(a.dateModified || 0).getTime()
       );
       this.rowData = [...this.fullRowData];
 

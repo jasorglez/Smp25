@@ -161,7 +161,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
         </div>
 
         <!-- Categoría -->
-        <div class="mb-3">
+        <div class="mb-3" [hidden]="true">
           <label for="newArticleCategory" class="form-label">
             Categoría <span class="text-danger">*</span>
           </label>
@@ -179,8 +179,8 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           </select>
         </div>
 
-        <!-- Familia -->
-        <div class="mb-3">
+        <!-- Familia (Oculto) -->
+        <div class="mb-3" [hidden]="true">
           <label for="newArticleFamily" class="form-label">
             Familia <span class="text-danger">*</span>
           </label>
@@ -192,14 +192,14 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
             [(ngModel)]="newArticle.idFamilia"
             (change)="onFamilyChange()">
             <option value="">Seleccionar familia</option>
-            <option *ngFor="let fam of filteredFamilias" [value]="fam.id">
+            <option *ngFor="let fam of getFamiliesByCategory(newArticle.idCategory)" [value]="fam.id">
               {{ fam.description }}
             </option>
           </select>
         </div>
 
-        <!-- Subfamilia -->
-        <div class="mb-3">
+        <!-- Subfamilia (Oculto) -->
+        <div class="mb-3" [hidden]="true">
           <label for="newArticleSubFamily" class="form-label">
             Subfamilia <span class="text-danger">*</span>
           </label>
@@ -210,7 +210,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
             required
             [(ngModel)]="newArticle.idSubfamilia">
             <option value="">Seleccionar subfamilia</option>
-            <option *ngFor="let subfam of filteredSubfamilias" [value]="subfam.id">
+            <option *ngFor="let subfam of getSubfamiliesByFamily(newArticle.idFamilia)" [value]="subfam.id">
               {{ subfam.description }}
             </option>
           </select>
@@ -242,7 +242,7 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           type="button"
           class="btn btn-primary"
           (click)="saveNewArticle()"
-          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim() || !newArticle.idCategory || !newArticle.idFamilia || !newArticle.idSubfamilia">
+          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim()">
           Guardar
         </button>
       </div>
@@ -385,8 +385,18 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
+    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(async () => {
+      // Actualizar la fecha de modificación del maestro para que se reordene en el padre
+      try {
+        const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+          ...maestro,
+          dateModified: new Date().toISOString()
+        }));
+      } catch { /* no bloquear el flujo */ }
+
       this.loadData();
+      this.refreshParentGridAfterSave();
     });
 
     // ✅ Sincronización en tiempo real:
@@ -889,6 +899,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
               idFamilia: params.data.idFamilia || null,
               idSubfamilia: params.data.idSubfamilia || null
             };
+            // Si no hay valores cargados, establecer valores por defecto
+            if (!this.newArticle.idCategory && !this.newArticle.idFamilia && !this.newArticle.idSubfamilia) {
+              this.setDefaultCatalogValues();
+            }
             this.openNewArticleModal();
           }
         },
@@ -1034,16 +1048,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           // Buscar proveedores en el caché (clave solo por material)
           const providers = this.providersCache.get(`${materialId}`) || [];
 
-          // 🔍 DEBUG: Ver TODOS los proveedores y sus tipos
-          console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo fila: ${type}, Total en caché: ${providers.length}`);
-          if (providers.length > 0) {
-            console.log('📦 Todos los proveedores en caché:', providers.map(p => ({ id: p.idProvider, name: p.providerName, type: p.typeIntOrExt })));
-          }
-
-          // ✅ FILTRAR: Solo mostrar proveedores que sean typeIntOrExt === 'Interno'
+          // FILTRAR: Solo mostrar proveedores que sean typeIntOrExt === 'Interno'
           const filteredProviders = providers.filter(p => p.typeIntOrExt === 'Interno');
-
-          console.log(`✅ Filtrados (Interno): ${filteredProviders.length}`);
 
           return {
             options: filteredProviders.map(p => {
@@ -1233,13 +1239,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   private refreshParentGridAfterSave(): void {
-    // Se comenta la recarga global del padre para evitar que se cierren las tablas expandidas.
-    // Al haber añadido getRowId, si se requiere refrescar en el futuro, AG Grid mantendrá el estado.
-    /*
+    // Recargar grilla padre para reordenar la requisición al tope
+    // Con getRowId implementado, AG Grid mantiene el estado de expansión
     if (this.context?.reloadParentGrid) {
       this.context.reloadParentGrid();
     }
-    */
   }
 
   public gridOptions: any = {
@@ -1354,6 +1358,19 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
       }
 
+      // Actualizar fecha de modificación del maestro
+      try {
+        const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+          ...maestro,
+          dateModified: new Date().toISOString()
+        }));
+      } catch { /* no bloquear el flujo */ }
+
+      // Recargar datos para sincronizar con servidor
+      this.loadData();
+      this.refreshParentGridAfterSave();
+
       alerts.reqSuccessToast('Eliminado', 'Item eliminado correctamente');
     } catch (error) {
       console.error('❌ Error al eliminar item:', error);
@@ -1417,12 +1434,14 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     // Guardar items nuevos (POST)
     const newItemsPromises = newItems.map(item => {
-      // Si el artículo fue creado como "Nuevo", idSupplie debe ser 0
+      // Si el artículo fue creado como "Nuevo", usar materialId si existe, sino 0
       const isNewArticle = item.recurrent === 'Nuevo';
+      const materialId = item.materialId || item.idSupplie || 0;
+      const idSupplieValue = isNewArticle ? (materialId > 0 ? materialId : 0) : (materialId || 0);
 
       const payload = {
         idMovement: this.requisitionId,
-        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        idSupplie: idSupplieValue,
         description: item.article || '',
         nameArticle: item.article || '', // Guardar el nombre en nameArticle
         code: item.code || '',
@@ -1453,13 +1472,15 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     // Guardar items modificados (PUT) - enviar la fila completa
     const modifiedItemsPromises = modifiedItems.map(item => {
-      // Si el artículo fue cambiado a "Nuevo", idSupplie debe ser 0
+      // Si el artículo fue cambiado a "Nuevo", usar materialId si existe, sino 0
       const isNewArticle = item.recurrent === 'Nuevo';
+      const materialId = item.materialId || item.idSupplie || 0;
+      const idSupplieValue = isNewArticle ? (materialId > 0 ? materialId : 0) : (materialId || 0);
 
       const payload = {
         id: item.id,
         idMovement: this.requisitionId,
-        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        idSupplie: idSupplieValue,
         description: item.article || '',
         nameArticle: item.article || '', // Guardar el nombre en nameArticle
         code: item.code || '',
@@ -1513,7 +1534,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Propagar cambios a todos los pedimentos existentes
         await this.propagateChangesToPedimentos(newItemsData, modifiedItemsData);
 
-        // Actualizar solicit y dateCreate del maestro con el usuario actual y fecha de hoy
+        // Actualizar dateModified del maestro para que se reordene en el padre
         try {
           const currentUser = this.signalsService.getDisplayName()();
           const today = new Date();
@@ -1523,7 +1544,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
             ...maestro,
             solicit: currentUser,
-            dateCreate: todayStr
+            dateModified: new Date().toISOString()
           }));
 
           // Actualizar el maestro vía contexto (actualiza rowData + refresca celdas del grid padre)
@@ -1595,7 +1616,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           requisicionOriginal = { ...requisicionOriginal, ...reqFresca };
         }
       } catch (err) {
-        console.warn('⚠️ No se pudieron cargar datos frescos, usando datos locales:', err);
+        // Usar datos locales si falla la carga fresca
       }
 
       // 3. Consultar cuántas cotizaciones ya existen para esta requisición
@@ -1793,6 +1814,20 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       // 12. Cerrar alerta de progreso y mostrar mensaje de éxito
       alerts.closeLoading();
 
+      // ✅ Actualizar dateModified del maestro para que se reordene en el padre
+      try {
+        const maestroActual: any = await firstValueFrom(
+          this.ocAndReqsService.getDetailedReq(requisicionOriginal.id)
+        );
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(requisicionOriginal.id, {
+          ...maestroActual,
+          dateModified: new Date().toISOString()
+        }));
+        this.refreshParentGridAfterSave();
+      } catch (err) {
+        // No se pudo actualizar dateModified
+      }
+
       setTimeout(() => {
         const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s)`;
         alerts.reqSuccessToast('Cotización Creada', message);
@@ -1800,7 +1835,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
 
     } catch (error) {
-      console.error('❌ Error al crear cotización:', error);
       alerts.closeLoading();
       alerts.reqErrorToast('Error', 'No se pudo crear la cotización');
     }
@@ -1854,24 +1888,47 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
   }
 
-  saveNewArticle() {
+  async saveNewArticle() {
     this.newArticleFormSubmitted = true;
 
     const name = (this.newArticle.description || '').trim();
     const desc = (this.newArticle.descriptionNewArticle || '').trim();
     const usage = (this.newArticle.justificationNewArticle || '').trim();
 
-    // Validación: campos obligatorios
-    if (!name || !desc || !usage || !this.newArticle.idCategory || !this.newArticle.idFamilia || !this.newArticle.idSubfamilia) {
+    // Validación: campos obligatorios visibles
+    if (!name || !desc || !usage) {
       alerts.reqWarningToast('Validación', 'Completa todos los campos obligatorios antes de guardar');
       return;
     }
 
+    // Crear el material automáticamente en dbo.materiales PRIMERO
+    let materialId = 0;
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-    // Guardar los datos del formulario en la fila actual
-    // idSupplie = 0 indica que es un artículo nuevo (no recurrente)
-    this.currentRowForNewArticle.data.idSupplie = 0;
-    this.currentRowForNewArticle.data.materialId = 0;
+      const materialData = {
+        idCompany: idRoot,
+        articulo: '',
+        description: name,
+        idCategory: this.newArticle.idCategory,
+        idFamilia: this.newArticle.idFamilia,
+        idSubfamilia: this.newArticle.idSubfamilia,
+        insumo: name.substring(0, 35),
+        typeMaterial: 'CONSUMABLE',
+        active: true,
+        vigente: true,
+        porAutorizar: false
+      };
+
+      const response = await lastValueFrom(this.materialsService.addMaterial(materialData));
+      materialId = response.id || response.ID || 0;
+    } catch (err) {
+      // No bloqueamos el proceso si falla la creación del material
+    }
+
+    // Guardar los datos del formulario en la fila actual CON EL ID DEL MATERIAL
+    this.currentRowForNewArticle.data.idSupplie = materialId;
+    this.currentRowForNewArticle.data.materialId = materialId;
     this.currentRowForNewArticle.data.article = name;
     this.currentRowForNewArticle.data.nameArticle = name;
     this.currentRowForNewArticle.data.descriptionNewArticle = desc;
@@ -1903,6 +1960,17 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.isNewArticleModalVisible = true;
     this.newArticleFormSubmitted = false;
 
+    // Resetear valores del formulario al abrir
+    this.newArticle = {
+      description: '',
+      descriptionNewArticle: '',
+      urlNewArticle: '',
+      justificationNewArticle: '',
+      idCategory: null,
+      idFamilia: null,
+      idSubfamilia: null
+    };
+
     // Asegurar que el catálogo esté disponible antes de abrir (evita selects vacíos)
     if (!this.categories?.length || !this.familias?.length || !this.subfamilias?.length) {
       void this.loadCatalogs();
@@ -1913,6 +1981,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       setTimeout(() => this.openNewArticleModal(), 0);
       return;
     }
+
+    // Establecer valores por defecto después de resetear
+    this.setDefaultCatalogValues();
 
     // Cerrar uno previo si existiera
     try { this.newArticleModalRef?.close(); } catch {}
@@ -1945,7 +2016,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private async loadCatalogs(): Promise<void> {
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
-      if (!idRoot) return;
+      if (!idRoot) {
+        console.warn('⚠️ No idRoot disponible para cargar catálogos');
+        return;
+      }
 
       // Cargar catálogos usando los mismos métodos que materiales-maestro
       [this.categories, this.familias, this.subfamilias] = await Promise.all([
@@ -1954,32 +2028,58 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'SUB-FAM'))
       ]);
     } catch (err) {
-      console.warn('Error cargando catálogos:', err);
+      // Error cargando catálogos
     }
   }
 
   onCategoryChange(): void {
-    // Filtrar familias por categoría seleccionada (usando parentId como en materiales-maestro)
-    if (this.newArticle.idCategory) {
-      this.filteredFamilias = this.familias.filter(f => f.parentId === this.newArticle.idCategory);
-    } else {
-      this.filteredFamilias = [];
-    }
     // Limpiar selecciones dependientes
     this.newArticle.idFamilia = null;
     this.newArticle.idSubfamilia = null;
-    this.filteredSubfamilias = [];
   }
 
   onFamilyChange(): void {
-    // Filtrar subfamilias por familia seleccionada (usando subParentId como en materiales-maestro)
-    if (this.newArticle.idFamilia) {
-      this.filteredSubfamilias = this.subfamilias.filter(sf => sf.subParentId === this.newArticle.idFamilia);
-    } else {
-      this.filteredSubfamilias = [];
-    }
     // Limpiar selección dependiente
     this.newArticle.idSubfamilia = null;
+  }
+
+  private setDefaultCatalogValues(): void {
+    // Buscar "MATERIA PRIMA" en categorías
+    const materiaPrima = this.categories.find(c =>
+      c.description?.toUpperCase().includes('MATERIA PRIMA')
+    );
+    if (materiaPrima) {
+      this.newArticle.idCategory = materiaPrima.id;
+    }
+
+    // Buscar "PRODUCTO NUEVO" en familias
+    const productoNuevoFam = this.familias.find(f =>
+      f.description?.toUpperCase().includes('PRODUCTO NUEVO')
+    );
+    if (productoNuevoFam) {
+      this.newArticle.idFamilia = productoNuevoFam.id;
+    }
+
+    // Buscar "PRODUCTO NUEVO" en subfamilias
+    const productoNuevoSubfam = this.subfamilias.find(sf =>
+      sf.description?.toUpperCase().includes('PRODUCTO NUEVO')
+    );
+    if (productoNuevoSubfam) {
+      this.newArticle.idSubfamilia = productoNuevoSubfam.id;
+    }
+  }
+
+  getFamiliesByCategory(categoryId: number | null | string): any[] {
+    if (!categoryId) return [];
+    const catIdNum = Number(categoryId);
+    const result = this.familias.filter(f => Number(f.parentId) === catIdNum);
+    return result;
+  }
+
+  getSubfamiliesByFamily(familyId: number | null | string): any[] {
+    if (!familyId) return [];
+    const famIdNum = Number(familyId);
+    return this.subfamilias.filter(sf => Number(sf.subParentId) === famIdNum);
   }
 
   onCellClicked(event: any): void {
@@ -2181,7 +2281,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       const hasCotiz = Array.isArray(existingCotiz) && existingCotiz.some((c: any) => c.idReq === this.requisitionId);
       if (hasCotiz) {
-        console.log('ℹ️ La cotización ya existe para esta requisición');
         return;
       }
 
@@ -2247,10 +2346,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       } catch (err) {
         console.warn('⚠️ No se pudo confirmar el folio de cotización:', err);
       }
-
-      console.log(`✅ Cotización ${folioCotiz} creada automáticamente`);
     } catch (error) {
-      console.error('❌ Error al crear cotización automáticamente:', error);
       throw error;
     }
   }
