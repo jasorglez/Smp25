@@ -1240,7 +1240,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       typeMaterial: 'CONSUMABLE',
       folioOcorReq: '',
       vigente: row.vigente === true || row.vigente === 1 ? true : false,
-      active: row.active ?? true
+      active: row.active ?? true,
+      porAutorizar: false
     };
   }
 
