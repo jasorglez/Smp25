@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.118 (28 Abril 2026) - add detail clock for employees'
+  version: '3.120 (29 Abril 2026) - add Visualizador Almacen molienda Depto column to Roles'
 };
