@@ -480,6 +480,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
         id: requisicion.id,
         branch: branchName,
         requisition: requisicion.folio || '',
+        locked: requisicion.locked === true,
         pedimentos: pedimentosConItems,
         requiredDate: requisicion.dateCreate || new Date().toISOString(),
         requestedBy: requisicion.solicit || '',
@@ -634,7 +635,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             id: requisicion.id,
             branch: branchName,
             requisition: requisicion.folio || '',
-            pedimentos: pedimentosConItems, // ✅ Array de cotizaciones (no un solo objeto)
+            locked: requisicion.locked === true,
+            pedimentos: pedimentosConItems,
             requiredDate: requisicion.dateCreate || new Date().toISOString(),
             requestedBy: requisicion.solicit || '',
             department: departmentName,
@@ -734,8 +736,22 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'requisition',
         headerName: 'Requisicion',
-        width: 120,
-        editable: false
+        width: 150,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const div = document.createElement('div');
+          div.style.cssText = 'display:flex;align-items:center;gap:5px;';
+          if (params.data?.locked) {
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-lock-fill';
+            icon.style.cssText = 'color:#b71c1c;font-size:0.85rem;flex-shrink:0;';
+            div.appendChild(icon);
+          }
+          const text = document.createElement('span');
+          text.textContent = params.value || '';
+          div.appendChild(text);
+          return div;
+        }
       },
 
       {

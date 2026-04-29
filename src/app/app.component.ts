@@ -22,7 +22,7 @@ import { ComparacionOverlayService, ComparacionOverlayData } from './services/co
     <div *ngIf="comparacionData"
          style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;"
          (click)="closeComparacion()">
-      <div style="background:#fff; border-radius:10px; width:99vw; max-width:100%; height:95vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.3); overflow:hidden;"
+      <div style="background:#fff; border-radius:10px; width:82vw; max-width:100%; height:95vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.3); overflow:hidden;"
            (click)="$event.stopPropagation()">
         <app-comparacion-precios
           [cotizacionId]="comparacionData.cotizacionId"

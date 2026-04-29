@@ -574,7 +574,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       if (this.gridApi) {
         this.gridApi.setGridOption('columnDefs', this.colDefs);
         this.gridApi.setGridOption('rowData', this.rowData);
-        this.scheduleAutoSizeColumns();
       }
     }, 0);
   }
@@ -585,40 +584,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     if (this.rowData?.length) {
       this.gridApi.setGridOption('rowData', this.rowData);
     }
-    this.scheduleAutoSizeColumns();
   }
 
-  onFirstDataRendered(_params: any) {
-    this.scheduleAutoSizeColumns();
-  }
+  onFirstDataRendered(_params: any) {}
 
-  onRowDataUpdated() {
-    this.scheduleAutoSizeColumns();
-  }
-
-  /** Reajusta anchos al contenido (incluye texto de encabezados). */
-  private scheduleAutoSizeColumns() {
-    queueMicrotask(() => {
-      setTimeout(() => this.autoAdjustColumns(), 0);
-    });
-  }
-
-  private autoAdjustColumns() {
-    if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    // false = incluir encabezados en el cálculo (evita títulos cortados en mayúsculas)
-    if (typeof apiAny.autoSizeAllColumns === 'function') {
-      apiAny.autoSizeAllColumns(false);
-      return;
-    }
-    if (typeof apiAny.autoSizeColumns === 'function') {
-      apiAny.autoSizeColumns({ columns: 'all', skipHeader: false });
-      return;
-    }
-    if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-    }
-  }
+  onRowDataUpdated() {}
 
   private getValidatedCantidadConceptualizada(rawValue: any, row: any) {
     const cantidadComprar = Number(row?.cantidadComprar) || 0;
@@ -716,18 +686,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
 
-    // Validar que todos los ítems tengan tipoOc asignado
+    // Items sin tipoOc — pendientes de decisión
     const sinTipo = this.rowData.filter(
       (row: any) => !row.tipoOc || row.tipoOc === '' || row.tipoOc === 'SELECCIONE UNA OPCION'
     );
-    if (sinTipo.length > 0) {
-      alerts.basicAlert(
-        'Tipo OC requerido',
-        `Hay ${sinTipo.length} fila(s) sin tipo de OC asignado. Asigna un tipo a todas las filas antes de generar.`,
-        'warning'
-      );
-      return;
-    }
+    const allTotalizado = sinTipo.length === 0;
 
     // Agrupar filas autorizadas con cantidadConceptualizada > 0 por proveedor
     const rowsByProvider = new Map<number, any[]>();
@@ -750,18 +713,18 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
     if (!idBranch || idBranch <= 0 || idBranch === -9) {
-      alerts.basicAlert(
-        'Sucursal inválida',
-        'No se puede generar orden de compra sin una sucursal válida.',
-        'error'
-      );
+      alerts.basicAlert('Sucursal inválida', 'No se puede generar orden de compra sin una sucursal válida.', 'error');
       return;
     }
 
     const count = rowsByProvider.size;
+    const confirmMsg = allTotalizado
+      ? `Se generará${count > 1 ? 'n' : ''} ${count} orden${count > 1 ? 'es' : ''} de compra. Todos los artículos tienen tipo OC — la requisición quedará CERRADA y bloqueada. ¿Continuar?`
+      : `Se generará${count > 1 ? 'n' : ''} ${count} orden${count > 1 ? 'es' : ''} de compra. Hay ${sinTipo.length} artículo(s) sin tipo OC — la requisición seguirá abierta. ¿Continuar?`;
+
     const result = await alerts.confirmAlert(
       count === 1 ? 'Generar Orden de Compra' : 'Generar Órdenes de Compra',
-      `Se generará${count > 1 ? 'n' : ''} ${count} orden${count > 1 ? 'es' : ''} de compra. Una vez generada${count > 1 ? 's' : ''}, esta comparación quedará cerrada y no podrá modificarse. ¿Continuar?`,
+      confirmMsg,
       'question',
       'Sí, generar'
     );
@@ -795,14 +758,27 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
     this.ocGenerada = true;
+
+    // Bloquear la requisición solo si todos los ítems están totalizados
+    if (allTotalizado && this.requisitionId) {
+      await lastValueFrom(
+        this.ocAndReqsService.lockRequisition(this.requisitionId, true)
+      ).catch(() => {});
+    }
+
     this.cdr.detectChanges();
     if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
     alerts.closeLoading();
-    alerts.basicAlert(
-      generatedFolios.length === 1 ? 'OC Generada' : 'OCs Generadas',
-      `Órdenes de compra generadas:\n${generatedFolios.join('\n')}`,
-      'success'
-    );
+
+    const titulo = allTotalizado
+      ? (generatedFolios.length === 1 ? 'OC Generada — CERRADA' : 'OCs Generadas — CERRADA')
+      : (generatedFolios.length === 1 ? 'OC Generada — Pendiente' : 'OCs Generadas — Pendiente');
+
+    const mensaje = allTotalizado
+      ? `Órdenes de compra generadas:\n${generatedFolios.join('\n')}\n\n✅ Requisición cerrada y bloqueada.`
+      : `Órdenes de compra generadas:\n${generatedFolios.join('\n')}\n\n⚠️ Hay ${sinTipo.length} artículo(s) sin tipo OC. La requisición sigue abierta.`;
+
+    alerts.basicAlert(titulo, mensaje, allTotalizado ? 'success' : 'warning');
   }
 
   private async patchRegistros(): Promise<void> {
@@ -997,7 +973,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       {
         field: 'articulo',
         headerName: 'ARTICULO',
-        minWidth: 120,
+        width: 150,
         pinned: 'left',
         lockPinned: true,
         lockPosition: 'left',
@@ -1005,98 +981,98 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         cellClass: 'cell-cantidad-comprar cell-col-articulo',
         headerClass: 'header-cantidad-comprar',
         rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
+        cellStyle: { padding: '4px', backgroundColor: '#e8f4fd' },
         wrapText: true
       },
       {
         field: 'proveedorNombre',
         headerName: 'PROVEEDOR',
-        minWidth: 140,
-        cellStyle: { backgroundColor: '#e3f2fd', fontWeight: '500', padding: '8px' }
+        width: 190,
+        cellStyle: { backgroundColor: '#e3f2fd', fontWeight: '500', padding: '4px' }
       },
       {
         field: 'tiempoEntrega',
-        headerName: 'T. ENTREGA X SEMANA',
-        minWidth: 120,
+        headerName: 'T.ENTREGA X SEM.',
+        width: 115,
         editable: false,
-        cellStyle: { padding: '8px' }
+        cellStyle: { padding: '4px', textAlign: 'center' }
       },
       {
         field: 'compraMinima',
         headerName: 'COMPRA MINIMA',
-        minWidth: 110,
+        width: 110,
         editable: false,
         type: 'numericColumn',
-        cellStyle: { textAlign: 'center', padding: '8px' }
+        cellStyle: { textAlign: 'center', padding: '4px' }
       },
       {
         field: 'cantidadComprar',
         headerName: 'CANTIDAD REQUERIDA',
-        minWidth: 120,
+        width: 125,
         editable: false,
         cellEditor: 'agNumberCellEditor',
         cellClass: 'cell-cantidad-comprar cell-col-cantidad-a-comprar',
         headerClass: 'header-cantidad-comprar',
         rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: { padding: '8px', backgroundColor: '#e8f4fd' },
+        cellStyle: { padding: '4px', backgroundColor: '#e8f4fd', textAlign: 'center' },
         wrapText: true
       },
       {
         field: 'nuevoRecurrente',
         headerName: 'NUEVO RECURRENTE',
-        minWidth: 130,
+        width: 120,
         hide: true
       },
       {
         field: 'numArticuloInterno',
-        headerName: '# ARTICULO INTERNO',
-        minWidth: 130,
+        headerName: '# ART. INTERNO',
+        width: 130,
         hide: true
       },
       {
         field: 'numArticuloExterno',
-        headerName: '# ARTICULO EXTERNO',
-        minWidth: 130,
+        headerName: '# ART. EXTERNO',
+        width: 130,
         hide: true
       },
       {
         field: 'prioridad',
         headerName: 'PRIORIDAD',
-        minWidth: 120,
+        width: 90,
         hide: true
       },
       {
         field: 'costoUnitario',
         headerName: 'COSTO UNITARIO',
-        minWidth: 120,
+        width: 110,
         editable: false,
         type: 'numericColumn',
-        cellStyle: { backgroundColor: '#fff9c4', textAlign: 'center', padding: '8px' },
+        cellStyle: { backgroundColor: '#fff9c4', textAlign: 'center', padding: '4px' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
       {
         field: 'costoTotal',
         headerName: 'COSTO TOTAL',
-        minWidth: 120,
+        width: 105,
         editable: false,
-        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '8px', textAlign: 'center' },
+        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
       {
         field: 'costoXCompraMinima',
-        headerName: 'COSTO X COMPRA MINIMA',
-        minWidth: 150,
+        headerName: 'COSTO X COMPRA MIN.',
+        width: 120,
         editable: false,
-        cellStyle: { textAlign: 'center', padding: '8px' },
+        cellStyle: { textAlign: 'center', padding: '4px' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
       {
         field: 'comentario',
-        headerName: 'COMENTAR',
-        minWidth: 100,
+        headerName: 'CHAT',
+        width: 88,
         editable: false,
         cellRenderer: ItemCommentsCellRendererComponent,
         cellRendererParams: (params: any) => ({
@@ -1114,27 +1090,28 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
             numArticle
           });
         },
-        cellStyle: { padding: '8px', cursor: 'pointer' }
+        cellStyle: { padding: '4px', cursor: 'pointer' }
       },
       {
         field: 'tipoOc',
         headerName: 'TIPO OC',
-        minWidth: 320,
+        width: 150,
+        minWidth: 120,
         editable: true,
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
-        // Función para leer opciones actuales sin regenerar colDefs
         cellEditorParams: () => ({
           values: this.tipoOcOptions.filter(opt => opt !== 'SELECCIONE UNA OPCION'),
           searchable: false,
           allowTyping: false
         }),
-        cellStyle: { textAlign: 'center', padding: '8px' }
+        tooltipValueGetter: (p: any) => p.data?.tipoOc || '',
+        cellStyle: { textAlign: 'center', padding: '4px', fontSize: '10px', lineHeight: '1.2' }
       },
       {
         field: 'cantidadConceptualizada',
-        headerName: 'CANTIDAD X PROVEEDOR',
-        minWidth: 200,
+        headerName: 'CANTIDAD X PROV.',
+        width: 135,
         editable: (params: any) => {
           const tipoOc = params.data?.tipoOc;
           return tipoOc === 'COMPRA INMEDIATA' || tipoOc === 'COMPRA AUTORIZADA EN OTRA FECHA';
@@ -1149,20 +1126,16 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         }),
         valueFormatter: (params: any) =>
           params.value != null ? Number(params.value).toFixed(2) : '0.00',
-        cellStyle: { textAlign: 'center', padding: '8px' }
+        cellStyle: { textAlign: 'center', padding: '4px' }
       }
     ];
     return this._colDefs;
   }
 
   public gridOptions: any = {
-    headerHeight: 35,
     rowHeight: 40,
-    // AG Grid 32: tamaño inicial según contenido de celdas y encabezados
-    autoSizeStrategy: {
-      type: 'fitCellContents',
-      defaultMinWidth: 90
-    },
+    enableBrowserTooltips: true,
+    autoSizeStrategy: { type: 'fitGridWidth' },
     // Obligatorio para que colDef.rowSpan fusione celdas (sin esto cada fila sigue mostrando su propia celda)
     suppressRowTransform: true,
     animateRows: false,
@@ -1173,7 +1146,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       resizable: true,
       sortable: true,
       filter: false,
-      minWidth: 90,
+      minWidth: 50,
+      wrapHeaderText: true,
+      autoHeaderHeight: true,
       cellStyle: { textAlign: 'center' }
     },
     suppressCellFocus: false
