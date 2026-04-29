@@ -172,6 +172,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     isRowMaster: () => true,
     detailCellRendererSelector: () => ({ component: 'detailEmployeeClock' }),
     detailRowHeight: 680,
+    onRowGroupOpened: (event: any) => {
+      if (!event.expanded) {
+        event.api.setFilterModel(null);
+      }
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -381,16 +386,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           valueFormatter: (params) => params.value || '',
         },
         {
-          headerName: 'Horario',
-          colId: 'horario',
-          width: 100,
-          editable: false,
-          suppressMovable: true,
-          pinned: 'left',
-          cellRenderer: () => `<span class="text-primary" style="cursor:pointer;font-size:0.8rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver horario</span>`,
-          onCellClicked: (params: any) => params.node.setExpanded(!params.node.expanded),
-        },
-        {
           field: 'employeeCode',
           headerName: 'UserName22',
           headerClass: 'required-header',
@@ -561,14 +556,23 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           headerName: 'Horas base',
           hide: this.idRoot == 18,
           editable: false,
-          valueFormatter: (params) => {
-            const value = params.value;
-            if (typeof value !== 'number' || isNaN(value)) return '';
-
-            const hours = Math.floor(value);
-            const minutes = Math.round((value - hours) * 60);
-
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+          cellRenderer: (params: any) => {
+            const v = params.value;
+            let hoursStr = '';
+            if (typeof v === 'number' && !isNaN(v)) {
+              const h = Math.floor(v);
+              const m = Math.round((v - h) * 60);
+              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
+          },
+          onCellClicked: (params: any) => {
+            const expand = !params.node.expanded;
+            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+            if (expand) {
+              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+              params.node.setExpanded(true);
+            }
           },
         },
         {
@@ -1102,15 +1106,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           valueFormatter: (params) => params.value || '',
         },
         {
-          headerName: 'Horario',
-          colId: 'horario',
-          width: 100,
-          editable: false,
-          suppressMovable: true,
-          cellRenderer: () => `<span class="text-primary" style="cursor:pointer;font-size:0.8rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver horario</span>`,
-          onCellClicked: (params: any) => params.node.setExpanded(!params.node.expanded),
-        },
-        {
           field: 'employeeCode',
           headerName: 'UserName',
           headerClass: 'required-header',
@@ -1323,14 +1318,23 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           headerName: 'Horas base',
           hide: this.idRoot == 18,
           editable: false,
-          valueFormatter: (params) => {
-            const value = params.value;
-            if (typeof value !== 'number' || isNaN(value)) return '';
-
-            const hours = Math.floor(value);
-            const minutes = Math.round((value - hours) * 60);
-
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+          cellRenderer: (params: any) => {
+            const v = params.value;
+            let hoursStr = '';
+            if (typeof v === 'number' && !isNaN(v)) {
+              const h = Math.floor(v);
+              const m = Math.round((v - h) * 60);
+              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
+          },
+          onCellClicked: (params: any) => {
+            const expand = !params.node.expanded;
+            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+            if (expand) {
+              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+              params.node.setExpanded(true);
+            }
           },
         },
         {
