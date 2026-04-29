@@ -172,6 +172,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     isRowMaster: () => true,
     detailCellRendererSelector: () => ({ component: 'detailEmployeeClock' }),
     detailRowHeight: 680,
+    onRowGroupOpened: (event: any) => {
+      if (!event.expanded) {
+        event.api.setFilterModel(null);
+      }
+    },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -388,7 +393,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           suppressMovable: true,
           pinned: 'left',
           cellRenderer: () => `<span class="text-primary" style="cursor:pointer;font-size:0.8rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver horario</span>`,
-          onCellClicked: (params: any) => params.node.setExpanded(!params.node.expanded),
+          onCellClicked: (params: any) => {
+            const expand = !params.node.expanded;
+            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+            if (expand) {
+              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+              params.node.setExpanded(true);
+            }
+          },
         },
         {
           field: 'employeeCode',
@@ -1108,7 +1120,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           editable: false,
           suppressMovable: true,
           cellRenderer: () => `<span class="text-primary" style="cursor:pointer;font-size:0.8rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver horario</span>`,
-          onCellClicked: (params: any) => params.node.setExpanded(!params.node.expanded),
+          onCellClicked: (params: any) => {
+            const expand = !params.node.expanded;
+            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+            if (expand) {
+              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+              params.node.setExpanded(true);
+            }
+          },
         },
         {
           field: 'employeeCode',
