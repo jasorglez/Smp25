@@ -2,11 +2,13 @@ import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { LoyaltyService } from 'app/services/loyalty.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
-import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY } from 'rxjs';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-loyalty',
@@ -16,50 +18,102 @@ import { catchError, EMPTY } from 'rxjs';
   styleUrl: './loyalty.component.scss',
 })
 export class LoyaltyComponent implements OnInit {
-  private loyaltyService  = inject(LoyaltyService);
-  private signalsService  = inject(SignalsService);
+  private loyaltyService   = inject(LoyaltyService);
+  private materialsService = inject(MaterialsService);
+  private signalsService   = inject(SignalsService);
 
+  AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   activeTab: 'programs' | 'cards' = 'programs';
   idCompany = 0;
 
+  // ── Productos para el combo ────────────────────────────────────────────────
+  productos: { id: number; description: string }[] = [];
+
+  // ── Grid options (mismo patrón que prospectos) ────────────────────────────
+  gridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 28,
+    suppressDragLeaveHidesColumns: true,
+    rowSelection: 'single',
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+    },
+  };
+
+  defaultColDef: ColDef = {
+    sortable: true,
+    resizable: true,
+    minWidth: 80,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        setTimeout(() => { if (this.programsGridApi) this.programsGridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    },
+  };
+
   // ── Programas ────────────────────────────────────────────────────────────
   programsRowData: any[] = [];
-  private programsGridApi: GridApi;
+  private programsGridApi!: GridApi;
   selectedProgram: any = null;
   private programTempCounter = 0;
 
-  programsColDefs: ColDef[] = [
-    { field: 'id',                 headerName: 'ID',           width: 70, editable: false },
-    { field: 'name',               headerName: 'Programa',     flex: 1,   editable: true },
-    { field: 'idProduct',          headerName: 'ID Producto',  width: 120, editable: true },
-    { field: 'stampsRequired',     headerName: 'Sellos Req.',  width: 120, editable: true },
-    { field: 'rewardDescription',  headerName: 'Recompensa',   flex: 2,   editable: true },
-    { field: 'active',             headerName: 'Activo',       width: 90,  editable: true },
-  ];
+  get programsColDefs(): ColDef[] {
+    return [
+      { field: 'id',   headerName: 'ID', width: 65, editable: false },
+      { field: 'name', headerName: 'Programa', flex: 1, editable: true },
+      {
+        field: 'productDescription',
+        headerName: 'Producto',
+        width: 230,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: ['Sin producto', ...this.productos.map(p => p.description)] }),
+        valueSetter: (params: any) => {
+          params.data.productDescription = params.newValue;
+          if (params.newValue === 'Sin producto') {
+            params.data.idProduct = null;
+          } else {
+            const found = this.productos.find(p => p.description === params.newValue);
+            if (found) params.data.idProduct = found.id;
+          }
+          return true;
+        },
+      },
+      { field: 'stampsRequired',    headerName: 'Sellos req.', width: 120, editable: true },
+      { field: 'rewardDescription', headerName: 'Recompensa',  flex: 2,   editable: true },
+      {
+        field: 'active', headerName: 'Activo', width: 90, editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: [true, false] },
+        cellRenderer: (p: any) => p.value ? '✅ Sí' : '❌ No',
+      },
+    ];
+  }
 
   // ── Tarjetas ─────────────────────────────────────────────────────────────
   cardsRowData: any[] = [];
-  private cardsGridApi: GridApi;
+  private cardsGridApi!: GridApi;
   selectedProgramForCards: number | null = null;
 
   cardsColDefs: ColDef[] = [
     { field: 'id',                  headerName: 'ID',          width: 70 },
-    { field: 'idCustomer',          headerName: 'ID Cliente',  width: 110 },
+    { field: 'idCustomer',          headerName: 'ID Cliente',  width: 120 },
     { field: 'currentStamps',       headerName: 'Sellos',      width: 90 },
-    { field: 'totalRewardsEarned',  headerName: 'Recompensas', width: 110 },
-    { field: 'lastStampDate',       headerName: 'Último Sello', flex: 1,
-      valueFormatter: p => p.value ? new Date(p.value).toLocaleDateString('es-MX') : '' },
+    { field: 'totalRewardsEarned',  headerName: 'Recompensas', width: 120 },
+    {
+      field: 'lastStampDate', headerName: 'Último Sello', flex: 1,
+      valueFormatter: p => p.value ? new Date(p.value).toLocaleDateString('es-MX') : '',
+    },
   ];
-
-  public defaultColDef: ColDef = {
-    sortable: true, filter: true, resizable: true, flex: 1,
-  };
 
   constructor() {
     effect(() => {
       const id = this.signalsService.getRootSelectedBySidebar()();
       if (id) {
         this.idCompany = id;
+        this.loadProductos();
         this.loadPrograms();
       }
     });
@@ -69,86 +123,114 @@ export class LoyaltyComponent implements OnInit {
     const id = this.signalsService.getRootSelectedBySidebar()();
     if (id) {
       this.idCompany = id;
+      this.loadProductos();
       this.loadPrograms();
     }
+  }
+
+  // ── Productos ─────────────────────────────────────────────────────────────
+  loadProductos() {
+    this.materialsService.getMaterials2Fields(this.idCompany).subscribe({
+      next: (data: any) => {
+        this.productos = (data ?? []).map((p: any) => ({
+          id: p.id,
+          description: p.description ?? p.Description ?? '',
+        }));
+      },
+      error: err => console.error('Error cargando productos', err),
+    });
   }
 
   // ── Programas ────────────────────────────────────────────────────────────
   onProgramsGridReady(e: GridReadyEvent) { this.programsGridApi = e.api; }
 
-  onProgramSelected(e: CellDoubleClickedEvent) {
-    this.selectedProgram = e.data;
-  }
+  onProgramRowClicked(e: any) { this.selectedProgram = e.data; }
 
   loadPrograms() {
     if (!this.idCompany) return;
     this.loyaltyService.getPrograms(this.idCompany).subscribe({
-      next: d => this.programsRowData = d,
+      next: data => {
+        this.programsRowData = data.map(p => ({
+          ...p,
+          productDescription: this.productos.find(pr => pr.id === p.idProduct)?.description ?? 'Sin producto',
+          __isNew: false,
+          __modified: false,
+        }));
+      },
       error: err => console.error(err),
     });
   }
 
   addProgram() {
     const temp = `temp_${this.programTempCounter++}`;
-    const row = {
+    const row: any = {
       id: temp, idCompany: this.idCompany,
-      name: '', idProduct: null, stampsRequired: 5,
-      rewardDescription: '', active: true, __isNew: true,
+      name: '', idProduct: null, productDescription: 'Sin producto',
+      stampsRequired: 5, rewardDescription: '', active: true,
+      __isNew: true, __modified: false,
     };
-    this.programsRowData = [...this.programsRowData, row];
+    this.programsRowData = [row, ...this.programsRowData];
     this.programsGridApi?.setGridOption('rowData', this.programsRowData);
+    setTimeout(() => this.programsGridApi?.startEditingCell({ rowIndex: 0, colKey: 'name' }), 50);
+  }
+
+  onProgramCellValueChanged(e: any) {
+    if (!e.data.__isNew) e.data.__modified = true;
   }
 
   async savePrograms() {
+    this.programsGridApi?.stopEditing();
     const newRows      = this.programsRowData.filter(r => r.__isNew);
     const modifiedRows = this.programsRowData.filter(r => r.__modified && !r.__isNew);
 
     if (!newRows.length && !modifiedRows.length) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes.', 'info');
+      Swal.fire({ icon: 'info', title: 'Sin cambios', timer: 1200, showConfirmButton: false });
       return;
     }
 
     try {
       for (const row of newRows) {
-        const { id, __isNew, __modified, ...data } = row;
-        await this.loyaltyService.createProgram(data).toPromise();
+        const { id, __isNew, __modified, productDescription, ...data } = row;
+        await this.loyaltyService.createProgram({ ...data, idCompany: this.idCompany }).toPromise();
       }
       for (const row of modifiedRows) {
-        const { __modified, ...data } = row;
+        const { __modified, __isNew, productDescription, ...data } = row;
         await this.loyaltyService.updateProgram(row.id, data).toPromise();
       }
-      alerts.basicAlert('Guardado', 'Cambios guardados correctamente.', 'success');
+      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
       this.loadPrograms();
     } catch {
-      alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
+      Swal.fire('Error', 'No se pudieron guardar los cambios.', 'error');
     }
   }
 
   deleteProgram() {
-    const nodes = this.programsGridApi?.getSelectedNodes();
-    if (!nodes?.length) {
-      alerts.basicAlert('Eliminar', 'Seleccione un programa.', 'warning');
+    if (!this.selectedProgram) {
+      Swal.fire({ icon: 'warning', title: 'Selecciona un programa', timer: 1500, showConfirmButton: false });
       return;
     }
-    const row = nodes[0].data;
+    const row = this.selectedProgram;
     if (typeof row.id === 'string') {
       this.programsRowData = this.programsRowData.filter(r => r.id !== row.id);
       this.programsGridApi.setGridOption('rowData', this.programsRowData);
+      this.selectedProgram = null;
       return;
     }
-    this.loyaltyService.deleteProgram(row.id).pipe(
-      catchError(() => {
-        alerts.basicAlert('Error', 'No se pudo eliminar el programa.', 'error');
-        return EMPTY;
-      })
-    ).subscribe(() => {
-      alerts.basicAlert('Eliminado', 'Programa eliminado.', 'success');
-      this.loadPrograms();
+    Swal.fire({
+      title: '¿Eliminar programa?', text: row.name,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+    }).then(res => {
+      if (!res.isConfirmed) return;
+      this.loyaltyService.deleteProgram(row.id).pipe(
+        catchError(() => { Swal.fire('Error', 'No se pudo eliminar.', 'error'); return EMPTY; })
+      ).subscribe(() => {
+        Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
+        this.selectedProgram = null;
+        this.loadPrograms();
+      });
     });
-  }
-
-  onProgramCellValueChanged(e: any) {
-    if (!e.data.__isNew) e.data.__modified = true;
   }
 
   // ── Tarjetas ─────────────────────────────────────────────────────────────
@@ -165,22 +247,23 @@ export class LoyaltyComponent implements OnInit {
   addStamp() {
     const nodes = this.cardsGridApi?.getSelectedNodes();
     if (!nodes?.length) {
-      alerts.basicAlert('Agregar sello', 'Seleccione una tarjeta.', 'warning');
+      Swal.fire({ icon: 'warning', title: 'Selecciona una tarjeta', timer: 1500, showConfirmButton: false });
       return;
     }
     const card = nodes[0].data;
     this.loyaltyService.addStamp(card.idCustomer, this.selectedProgramForCards!).pipe(
-      catchError(() => {
-        alerts.basicAlert('Error', 'No se pudo agregar el sello.', 'error');
-        return EMPTY;
-      })
+      catchError(() => { Swal.fire('Error', 'No se pudo agregar el sello.', 'error'); return EMPTY; })
     ).subscribe((result: any) => {
       if (result.rewardEarned) {
-        alerts.basicAlert('¡Recompensa!', `El cliente ganó: ${result.rewardDescription}`, 'success');
+        Swal.fire('🎉 ¡Recompensa!', result.rewardDescription, 'success');
       } else {
-        alerts.basicAlert('Sello agregado', `Sellos actuales: ${result.card.currentStamps}`, 'success');
+        Swal.fire({ icon: 'success', title: 'Sello agregado', text: `Sellos: ${result.card.currentStamps}`, timer: 1500, showConfirmButton: false });
       }
       this.loadCards();
     });
+  }
+
+  get programsForSelector() {
+    return this.programsRowData.filter(p => typeof p.id === 'number');
   }
 }
