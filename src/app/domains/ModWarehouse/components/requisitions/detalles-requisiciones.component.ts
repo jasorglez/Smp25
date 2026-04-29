@@ -27,6 +27,12 @@ export class DetallesRequisicionesComponent implements OnInit {
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
+  public defaultColDef: ColDef = {
+    flex: 0,
+    resizable: true,
+    suppressSizeToFit: true
+  };
+
   ngOnInit() {
     // Load initial data
     this.loadData();
@@ -68,7 +74,7 @@ export class DetallesRequisicionesComponent implements OnInit {
     return [
       {
         headerName: '#',
-        width: 50,
+        width: 100,
         valueGetter: (params) => params.node!.rowIndex! + 1,
         pinned: 'left',
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
@@ -77,7 +83,7 @@ export class DetallesRequisicionesComponent implements OnInit {
         field: 'idSupplie',
         headerName: 'Producto',
         editable: () => !this.isLocked,
-        width: 300,
+        width: 100,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: this.productos.map((item) => item.id),
@@ -119,7 +125,7 @@ export class DetallesRequisicionesComponent implements OnInit {
         field: 'dateuse',
         headerName: 'Fecha de uso',
         editable: () => !this.isLocked,
-        width: 150,
+        width: 100,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
           if (params.value) {
@@ -133,10 +139,33 @@ export class DetallesRequisicionesComponent implements OnInit {
         }
       },
       {
+        field: 'compraRapida',
+        headerName: 'Compra Rapida',
+        width: 100,
+        editable: false,
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        cellRenderer: (params: any) => {
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = params.value === true;
+          input.disabled = this.isLocked;
+          input.style.cursor = this.isLocked ? 'not-allowed' : 'pointer';
+          input.style.width = '16px';
+          input.style.height = '16px';
+          input.addEventListener('change', () => {
+            params.data.compraRapida = input.checked;
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+            params.api.refreshCells({ rowNodes: [params.node], columns: ['compraRapida'] });
+          });
+          return input;
+        }
+      },
+      {
         field: 'comment',
         headerName: 'Comentario',
         editable: () => !this.isLocked,
-        width: 250,
+        width: 100,
         cellEditor: 'agLargeTextCellEditor',
         cellEditorParams: {
           maxLength: 500,
@@ -152,13 +181,14 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   public gridOptions: any = {
-    headerHeight: 30,
+    defaultColDef: this.defaultColDef,
+    headerHeight: 42,
     rowHeight: 28,
     animateRows: true,
     rowSelection: 'single',
     domLayout: 'normal', // Cambiar a normal para permitir expansión manual
     suppressDragLeaveHidesColumns: true,
-    suppressHorizontalScroll: true,
+    suppressHorizontalScroll: false,
     onCellValueChanged: (event: any) => {
       event.data.__modified = true;
       this.hasUnsavedChanges = true;

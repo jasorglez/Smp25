@@ -29,7 +29,8 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let dia of horario; let i = index">
+        <ng-container *ngFor="let dia of horario; let i = index">
+        <tr>
 
           <td>
             <div class="day-cell">
@@ -39,6 +40,7 @@
                 [name]="'active_' + dia.id"
                 [id]="'active_' + dia.id"
                 [disabled]="!idEmployee"
+                (ngModelChange)="validarDia(dia)"
                 *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Hor_prin', 'create')"
               />
               <label [for]="'active_' + dia.id">{{ dia.day }}</label>
@@ -48,30 +50,32 @@
           <td>
             <ngb-timepicker [(ngModel)]="dia.entry1" [name]="'entry1_' + dia.id"
               [disabled]="!dia.enabled" [required]="dia.enabled"
-              [meridian]="true" [seconds]="false" [minuteStep]="1" size="small">
+              [meridian]="true" [seconds]="false" [minuteStep]="1" [spinners]="true" size="small"
+              (ngModelChange)="validarDia(dia)">
             </ngb-timepicker>
-            <div *ngIf="dia.enabled && !dia.entry1?.hour" class="field-error">Requerido</div>
           </td>
 
           <td>
             <ngb-timepicker [(ngModel)]="dia.exit1" [name]="'exit1_' + dia.id"
               [disabled]="!dia.enabled" [required]="dia.enabled"
-              [meridian]="true" [seconds]="false" [minuteStep]="1" size="small">
+              [meridian]="true" [seconds]="false" [minuteStep]="1" [spinners]="true" size="small"
+              (ngModelChange)="validarDia(dia)">
             </ngb-timepicker>
-            <div *ngIf="dia.enabled && !dia.exit1?.hour" class="field-error">Requerido</div>
           </td>
 
           <td>
             <ngb-timepicker [(ngModel)]="dia.entry2" [name]="'entry2_' + dia.id"
               [disabled]="!dia.enabled"
-              [meridian]="true" [seconds]="false" [minuteStep]="1" size="small">
+              [meridian]="true" [seconds]="false" [minuteStep]="1" [spinners]="true" size="small"
+              (ngModelChange)="validarDia(dia)">
             </ngb-timepicker>
           </td>
 
           <td>
             <ngb-timepicker [(ngModel)]="dia.exit2" [name]="'exit2_' + dia.id"
               [disabled]="!dia.enabled"
-              [meridian]="true" [seconds]="false" [minuteStep]="1" size="small">
+              [meridian]="true" [seconds]="false" [minuteStep]="1" [spinners]="true" size="small"
+              (ngModelChange)="validarDia(dia)">
             </ngb-timepicker>
           </td>
 
@@ -91,12 +95,16 @@
           </td>
 
         </tr>
+        <tr *ngIf="errores[dia.day]" class="error-row">
+          <td colspan="6" class="error-cell">{{ errores[dia.day] }}</td>
+        </tr>
+        </ng-container>
       </tbody>
     </table>
 
     <div class="clock-footer">
       <span>Total: <strong>{{ calcularTotalHoras() }}</strong></span>
-      <button type="submit" class="btn-save" [disabled]="!idEmployee"
+      <button type="submit" class="btn-save" [disabled]="!idEmployee || hasErrors"
         *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Hor_prin', 'create') || authService.getCrudPermissionDetail('hr', 'employees','Hor_prin', 'update') || authService.getCrudPermissionDetail('hr', 'employees','Hor_prin', 'delete')">
         Guardar horario
       </button>

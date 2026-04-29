@@ -58,10 +58,10 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           <i class="bi bi-trash"></i> Eliminar
         </button>
         
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem && !hasUnsavedChanges" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="isAddingNewItem">
+            *ngIf="isAddingNewItem || hasUnsavedChanges">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
@@ -485,6 +485,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
           justificationNewArticle: item.justificationNewArticle || '', // Justificación del artículo nuevo
           typeOC: item.typeoc || item.typeOC || '',
+          compraRapida: item.compraRapida === true,
           __isNew: false,
           __modified: false,
           saved: true
@@ -745,8 +746,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'recurrent',
         headerName: 'Recurrente',
-        minWidth: 130,
-        flex: 0,
+        width: 110,
         suppressSizeToFit: true,
         editable: true,
         cellEditor: 'agSelectCellEditor',
@@ -934,8 +934,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'numArticle',
         headerName: '# del Articulo',
-        minWidth: 140,
-        flex: 0,
+        width: 140,        
         suppressSizeToFit: true,
         editable: false,
         cellStyle: { textAlign: 'left' },
@@ -946,9 +945,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       {
         field: 'quantity',
-        headerName: 'cantidad',
-        minWidth: 110,
-        flex: 0,
+        headerName: 'Cantidad',
+        width: 100,
         suppressSizeToFit: true,
         editable: true,
         type: 'numericColumn',
@@ -992,9 +990,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       {
         field: 'intorext',
-        headerName: 'Proveedor',
-        minWidth: 130,
-        flex: 0,
+        headerName: 'Proveedor',        
+        width: 110,
         suppressSizeToFit: true,
         editable: (params) => params.data.recurrent !== 'Nuevo',
         cellEditor: 'agSelectCellEditor',
@@ -1034,9 +1031,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'idProvider',
         headerName: 'Proveedor Interno',
-        minWidth: 190,
-        flex: 0,
-        suppressSizeToFit: true,
+        width: 139,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
         editable: (params) => {
           // Solo editable si hay un material seleccionado Y el tipo es "Interno"
           const materialId = params.data.idSupplie || params.data.materialId || 0;
@@ -1129,9 +1126,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'typePriority',
         headerName: 'Prioridad',
-        minWidth: 120,
-        flex: 0,
-        suppressSizeToFit: true,
+        width: 135,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -1142,7 +1137,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
      /* {
         field: 'comment',
         headerName: 'Observaciones',
-        width: 160,
+        width: 100,
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Obs'),
         editable: true,
         // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
@@ -1161,9 +1156,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       {
         headerName: 'Comentarios💬',
-        minWidth: 140,
-        flex: 0,
-        suppressSizeToFit: true,
+        width: 165,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
@@ -1175,28 +1168,66 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
 
       {
+        field: 'compraRapida',
+        headerName: 'Compra Rapida',
+        width: 110,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
+        suppressSizeToFit: true,
+        editable: false,
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        cellRenderer: (params: any) => {
+          const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
+          if (isInterno && params.data.compraRapida) {
+            params.data.compraRapida = false;
+          }
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = isInterno ? false : params.value === true;
+          input.disabled = isInterno;
+          input.style.width = '16px';
+          input.style.height = '16px';
+          input.style.cursor = isInterno ? 'not-allowed' : 'pointer';
+          input.style.opacity = isInterno ? '0.4' : '1';
+          input.title = isInterno ? 'No disponible para Proveedor Interno' : '';
+          input.addEventListener('change', () => {
+            params.data.compraRapida = input.checked;
+            if (input.checked) {
+              params.data.pedimiento = false;
+            }
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+            params.api.refreshCells({ rowNodes: [params.node], columns: ['compraRapida', 'pedimiento'] });
+            this.checkPedimentoSelection();
+          });
+          return input;
+        }
+      },
+
+      {
         field: 'pedimiento',
-        headerName: 'Pedimiento',
-        minWidth: 120,
-        flex: 0,
+        headerName: 'Pedimento',
+        width: 112,
         suppressSizeToFit: true,
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Ped'),
         editable: true,
         cellRenderer: (params: any) => {
           const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
+          const isCompraRapida = params.data.compraRapida === true;
+          const isDisabled = isInterno || isCompraRapida;
 
-          // Forzar apagado si es Interno
-          if (isInterno && params.data.pedimiento) {
+          // Forzar apagado si es Interno o Compra Rapida
+          if (isDisabled && params.data.pedimiento) {
             params.data.pedimiento = false;
           }
 
           const input = document.createElement('input');
           input.type = 'checkbox';
-          input.checked = isInterno ? false : params.value === true;
-          input.disabled = isInterno;
-          input.style.cursor = isInterno ? 'not-allowed' : 'pointer';
-          input.style.opacity = isInterno ? '0.4' : '1';
-          input.title = isInterno ? 'No disponible para Proveedor Interno' : '';
+          input.checked = isDisabled ? false : params.value === true;
+          input.disabled = isDisabled;
+          input.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+          input.style.opacity = isDisabled ? '0.4' : '1';
+          input.title = isInterno ? 'No disponible para Proveedor Interno' : isCompraRapida ? 'No disponible cuando Compra Rapida está activa' : '';
 
           input.addEventListener('change', () => {
             params.data.pedimiento = input.checked;
@@ -1212,8 +1243,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         field: 'pedimentoNumber',
         headerName: 'Pedimento #',
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_PeN'),
-        minWidth: 150,
-        flex: 0,
+        width: 110,
         suppressSizeToFit: true,
         editable: false,
         cellRenderer: (params: any) => {
@@ -1243,7 +1273,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   checkPedimentoSelection() {
-    const anyChecked = this.rowData.some(item => item.pedimiento === true);
+    const anyChecked = this.rowData.some(item => item.pedimiento === true && !item.compraRapida);
     this.hasPedimentoSelection = anyChecked;
   }
 
@@ -1298,6 +1328,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       internalProvider: '',
       typePriority: 'Normal',
       comment: '',
+      compraRapida: false,
       __isNew: true,
       __modified: false
     };
@@ -1388,7 +1419,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   saveChanges() {
-    if (!this.isAddingNewItem) {
+    if (!this.isAddingNewItem && !this.hasUnsavedChanges) {
       alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
@@ -1469,11 +1500,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
         provint: item.provint || '',
-        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
-        pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma
-        descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
-        urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
-        justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
+        pedimento: item.pedimiento || false,
+        pedimentoNum: item.pedimentoNumber || '',
+        compraRapida: item.compraRapida === true,
+        descriptionNewArticle: item.descriptionNewArticle || '',
+        urlNewArticle: item.urlNewArticle || '',
+        justificationNewArticle: item.justificationNewArticle || ''
       };
 
       return firstValueFrom(this.ocAndReqsService.addReqItem(payload));
@@ -1508,11 +1540,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
         provint: item.provint || '',
-        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
-        pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma
-        descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
-        urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
-        justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
+        pedimento: item.pedimiento || false,
+        pedimentoNum: item.pedimentoNumber || '',
+        compraRapida: item.compraRapida === true,
+        descriptionNewArticle: item.descriptionNewArticle || '',
+        urlNewArticle: item.urlNewArticle || '',
+        justificationNewArticle: item.justificationNewArticle || ''
       };
 
       return firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), payload));

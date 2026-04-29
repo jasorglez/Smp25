@@ -142,7 +142,16 @@ $ag-fs:          13px;
   &:disabled { opacity: 0.4; cursor: default; }
 }
 
-// ── Mensaje de error ────────────────────────────────────────────────────
+// ── Filas de error inline ───────────────────────────────────────────────
+tr.error-row { background: #fff5f5 !important; }
+
+.error-cell {
+  padding: 1px 10px 3px;
+  color: #dc3545;
+  font-size: 11px;
+  font-style: italic;
+}
+
 .field-error {
   color: #dc3545;
   font-size: 9px;
@@ -191,14 +200,25 @@ $ag-fs:          13px;
     &:focus { box-shadow: none; }
   }
 
-  .ngb-tp-meridian .btn {
-    font-size: 11px;
-    padding: 1px 4px;
-    height: 22px;
-    line-height: 1;
-    color: $ag-fg;
-    background: $ag-bg;
-    border-color: $ag-border-in;
-    &:hover:not(:disabled) { background: $ag-hover; }
+  .ngb-tp-meridian {
+    .ngb-tp-arrow {
+      background: transparent !important;
+      border: none !important;
+      height: auto !important;
+      padding: 0 !important;
+      color: $ag-fg !important;
+      box-shadow: none !important;
+      &:focus { box-shadow: none !important; }
+    }
+    .btn:not(.ngb-tp-arrow) {
+      font-size: 11px;
+      padding: 1px 4px;
+      height: 22px;
+      line-height: 1;
+      color: $ag-fg;
+      background: $ag-bg;
+      border-color: $ag-border-in;
+      &:hover:not(:disabled) { background: $ag-hover; }
+    }
   }
 }
