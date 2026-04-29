@@ -390,6 +390,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
               return false;
             }
 
+            if (!/^[A-ZÁÉÍÓÚÑÜ\s'-]+$/i.test(normalizedValue)) {
+              alerts.basicAlert('Nombre inválido', 'El nombre solo puede contener letras, espacios, guiones y apóstrofes.', 'error');
+              return false;
+            }
+
             const duplicateExists = this.rowData.some(
               (row, index) =>
                 index !== params.node.rowIndex &&
@@ -1108,6 +1113,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
             if (!normalizedValue) {
               alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+              return false;
+            }
+
+            if (!/^[A-ZÁÉÍÓÚÑÜ\s'-]+$/i.test(normalizedValue)) {
+              alerts.basicAlert('Nombre inválido', 'El nombre solo puede contener letras, espacios, guiones y apóstrofes.', 'error');
               return false;
             }
 
