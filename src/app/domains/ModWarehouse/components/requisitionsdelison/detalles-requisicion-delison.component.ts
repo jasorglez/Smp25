@@ -58,10 +58,10 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           <i class="bi bi-trash"></i> Eliminar
         </button>
         
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem && !hasUnsavedChanges" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="isAddingNewItem">
+            *ngIf="isAddingNewItem || hasUnsavedChanges">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
@@ -1419,7 +1419,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   saveChanges() {
-    if (!this.isAddingNewItem) {
+    if (!this.isAddingNewItem && !this.hasUnsavedChanges) {
       alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
