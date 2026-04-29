@@ -8,7 +8,7 @@ import {
 } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -72,6 +72,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   id: number;
   idBranch: number;
   idRoot: number;
+  idUser: number;
   idEmployee: number;
   idPosicionSelect: number;
 
@@ -144,22 +145,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      if (this.idBranch == null) {
-        this.rowData = [];
-        alerts.basicAlert(
-          'Empleados',
-          'Debe elegir una sucursal primero.',
-          'error'
-        );
-      } else {
-        this.getGeneralPosicion();
-        this.getRoles()
-        this.obtenerDatos();
-        this.obtenerBranchs();
-        this.getBanks();
-        this.getDeptoandPosition();
-        this.getStates();
-      }
+      this.idUser = this.signalsService.getIdUSer()();
+      if (!this.idRoot) return;
+      this.getGeneralPosicion();
+      this.getRoles();
+      this.obtenerBranchs();
+      this.getBanks();
+      this.getDeptoandPosition();
+      this.getStates();
     });
 
     effect(() => {
@@ -240,9 +233,30 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
       // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
       params.api.autoSizeColumns(allColumnIds, false);
-    }
+    },
+    onColumnPinned: () => this.saveColumnState(),
+    onColumnVisible: () => this.saveColumnState(),
+    onColumnMoved: (event) => { if (event.finished) this.saveColumnState(); },
+    onColumnResized: (event) => { if (event.finished) this.saveColumnState(); },
   };
 
+
+  private readonly COLUMN_STATE_KEY = 'employees-table-column-state';
+
+  private saveColumnState(): void {
+    if (!this.gridApi) return;
+    localStorage.setItem(this.COLUMN_STATE_KEY, JSON.stringify(this.gridApi.getColumnState()));
+  }
+
+  private restoreColumnState(): void {
+    const saved = localStorage.getItem(this.COLUMN_STATE_KEY);
+    if (!saved || !this.gridApi) return;
+    try {
+      this.gridApi.applyColumnState({ state: JSON.parse(saved), applyOrder: true });
+    } catch {
+      localStorage.removeItem(this.COLUMN_STATE_KEY);
+    }
+  }
 
   // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
   // que causa re-renderizado de filtros en cada ciclo de change detection
@@ -1743,40 +1757,48 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   // ==================== MASTER METHODS ====================
 
   obtenerBranchs() {
-    // alert('this.branchs'+ this.idBranch)
-    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
-      (data: any) => {
-        this.branchs = data;
+    this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe({
+      next: (data: any) => {
+        this.branchs = (data.project || []).map((row: any) => ({
+          id: row.idPermission || row.idBranch || row.id,
+          name: row.name || row.description || ''
+        }));
+        this.obtenerDatos();
       },
-      (error) => console.error('Error fetching data:', error)
-    );
+      error: (error) => console.error('Error fetching branches:', error)
+    });
   }
 
   obtenerDatos() {
     return new Promise((resolve) => {
-      this.employeeService.getEmployees(this.idBranch).subscribe(
-        (data: any) => {
+      if (!this.branchs || this.branchs.length === 0) {
+        this.rowData = [];
+        this.gridApi?.setGridOption('rowData', this.rowData);
+        resolve(false);
+        return;
+      }
+
+      const requests = this.branchs.map(branch =>
+        this.employeeService.getEmployees(branch.id).pipe(catchError(() => of([])))
+      );
+
+      forkJoin(requests).subscribe({
+        next: (results: any[]) => {
+          const allEmployees = results.flat();
           if (this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'read')) {
-            this.rowData = data;
+            this.rowData = allEmployees;
           } else {
             this.rowData = [];
           }
-
           this.captureOriginalRows(this.rowData);
-
-          // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
-
-          // Dar tiempo al grid para actualizar los datos
-          setTimeout(() => {
-            resolve(true);
-          }, 100);
+          setTimeout(() => resolve(true), 100);
         },
-        (error) => {
-          console.error('Error fetching data:', error);
+        error: (error) => {
+          console.error('Error fetching employees:', error);
           resolve(false);
         }
-      );
+      });
     });
   }
 
@@ -1923,7 +1945,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-
+    this.restoreColumnState();
   }
 
   onMasterRowSelected(event: any) {
@@ -1935,7 +1957,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: this.idBranch > 0 ? this.idBranch : null,
+      idBranch: this.idBranch > 0 ? this.idBranch : (this.branchs.length > 0 ? this.branchs[0].id : null),
       name: '',
       address: '',
       cp: '',
