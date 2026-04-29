@@ -556,6 +556,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           headerName: 'Horas base',
           hide: this.idRoot == 18,
           editable: false,
+          cellStyle: { backgroundColor: '#d4edda' },
           cellRenderer: (params: any) => {
             const v = params.value;
             let hoursStr = '';
@@ -1318,6 +1319,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           headerName: 'Horas base',
           hide: this.idRoot == 18,
           editable: false,
+          cellStyle: { backgroundColor: '#d4edda' },
           cellRenderer: (params: any) => {
             const v = params.value;
             let hoursStr = '';
