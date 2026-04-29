@@ -760,9 +760,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           width: 200,
           cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
+          cellEditorParams: () => ({
             values: this.banks.map((user) => user.id),
-          },
+          }),
           valueGetter: (params) => {
             if (!params.data || !params.data.idBank) return 'EFECTIVO';
             const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
@@ -1515,9 +1515,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           width: 200,
           cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
+          cellEditorParams: () => ({
             values: this.banks.map((user) => user.id),
-          },
+          }),
           valueGetter: (params) => {
             if (!params.data || !params.data.idBank) return 'EFECTIVO';
             const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
@@ -1788,7 +1788,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         return;
       }
 
-      const requests = this.branchs.map(branch =>
+      const branchesToLoad = this.idBranch > 0
+        ? this.branchs.filter(b => b.id === this.idBranch)
+        : this.branchs;
+
+      const requests = branchesToLoad.map(branch =>
         this.employeeService.getEmployees(branch.id).pipe(catchError(() => of([])))
       );
 
@@ -1889,7 +1893,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ idBank: '', name: 'EFECTIVO' }, ...data];
+        this.banks = [{ id: null, name: 'EFECTIVO' }, ...data];
       },
       (error) => {
         if (error.status == 404) this.banks = [];

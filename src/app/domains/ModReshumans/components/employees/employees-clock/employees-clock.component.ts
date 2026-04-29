@@ -221,20 +221,27 @@ export class EmployeesClockComponent {
   }
 
   guardarHoras() {
-    const index = this.employees.findIndex(emp => emp.id === this.idEmployee);
-    if (index !== -1) {
-      this.employees[index].baseHours = this.baseHours;
-  
-      this.employeesService.updateEmployee(this.idEmployee, this.employees[index])
-        .subscribe({
-          next: () => {
-            this.trackingService.addLog(this.trackingService.getnameComp(),'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
-          },
-          error: (err) => {
-            console.error(err);
-          }
-        });
+    const doUpdate = (emp: any) => {
+      emp.baseHours = this.baseHours;
+      this.employeesService.updateEmployee(this.idEmployee, emp).subscribe({
+        next: () => {
+          this.trackingService.addLog(this.trackingService.getnameComp(), 'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado', this.trackingService.getEmail());
+        },
+        error: (err) => console.error(err)
+      });
+    };
+
+    const found = this.employees.find(emp => emp.id === this.idEmployee);
+    if (found) {
+      doUpdate(found);
     } else {
+      this.employeesService.getEmployeeById(this.idEmployee).subscribe({
+        next: (data: any) => {
+          const emp = Array.isArray(data) ? data[0] : data;
+          if (emp) doUpdate(emp);
+        },
+        error: (err) => console.error(err)
+      });
     }
   }
   
