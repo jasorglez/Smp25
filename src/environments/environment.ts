@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.118 (28 Abril 2026) - fix requisition request date update',
+  version: '3.118 (28 Abril 2026) - add detail clock for employees'
 };
