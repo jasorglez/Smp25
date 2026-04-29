@@ -102,15 +102,36 @@ export class LoyaltyComponent implements OnInit {
   cardsRowData: any[] = [];
   private cardsGridApi!: GridApi;
   selectedProgramForCards: number | null = null;
+  productosCompradosPorCliente: Map<number, any[]> = new Map();
 
   cardsColDefs: ColDef[] = [
     { field: 'id',                  headerName: 'ID',          width: 70 },
     { field: 'idCustomer',          headerName: 'ID Cliente',  width: 120 },
+    {
+      field: 'customerName', headerName: 'Cliente', flex: 1,
+      valueGetter: (p: any) => {
+        const customerId = p.data?.idCustomer;
+        if (!customerId) return '';
+        const cliente = this.todosLosClientes.find(c => c.id === customerId);
+        return cliente?.label || `Cliente #${customerId}`;
+      }
+    },
     { field: 'currentStamps',       headerName: 'Sellos',      width: 90 },
     { field: 'totalRewardsEarned',  headerName: 'Recompensas', width: 120 },
     {
       field: 'lastStampDate', headerName: 'Último Sello', flex: 1,
       valueFormatter: p => p.value ? new Date(p.value).toLocaleDateString('es-MX') : '',
+    },
+    {
+      field: 'productoComprado', headerName: 'Productos Comprados', flex: 2,
+      cellRenderer: (p: any) => {
+        const customerId = p.data?.idCustomer;
+        if (!customerId) return '<em style="color:#999">-</em>';
+        const productos = this.productosCompradosPorCliente.get(customerId);
+        if (!productos) return '<span style="color:#666">Cargando...</span>';
+        if (productos.length === 0) return '<em style="color:#999">Sin compras</em>';
+        return productos.map((p: any) => `${p.totalQuantity} un.`).join(', ');
+      }
     },
   ];
 
@@ -293,8 +314,28 @@ export class LoyaltyComponent implements OnInit {
   loadCards() {
     if (!this.selectedProgramForCards) return;
     this.loyaltyService.getCardsByProgram(this.selectedProgramForCards).subscribe({
-      next: d => this.cardsRowData = d,
+      next: (d: any[]) => {
+        this.cardsRowData = d;
+        this.productosCompradosPorCliente.clear();
+        d.forEach(card => {
+          if (card.idCustomer) {
+            this.loadProductsPurchasedByCustomer(card.idCustomer);
+          }
+        });
+      },
       error: err => console.error(err),
+    });
+  }
+
+  private loadProductsPurchasedByCustomer(customerId: number) {
+    this.customersService.getProductsPurchased(customerId).subscribe({
+      next: (products: any[]) => {
+        this.productosCompradosPorCliente.set(customerId, products);
+        if (this.cardsGridApi) {
+          this.cardsGridApi.redrawRows();
+        }
+      },
+      error: err => console.error(`Error loading products for customer ${customerId}:`, err),
     });
   }
 
