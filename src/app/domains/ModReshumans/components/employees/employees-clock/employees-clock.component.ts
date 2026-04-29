@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, input } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgbTimepickerModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectComponent } from '@ng-select/ng-select';
@@ -24,6 +24,8 @@ export class EmployeesClockComponent {
   authService = inject(AuthService);
   
 
+  externalIdEmployee = input<number | null>(null);
+
   idEmployee: number = null;
   horario: any = [];
   diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -35,6 +37,7 @@ export class EmployeesClockComponent {
   baseHours: string;
 
   ngOnInit() {
+    if (this.externalIdEmployee() != null) return;
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getEmployees();
     this.initializeWeek();
@@ -42,11 +45,21 @@ export class EmployeesClockComponent {
   }
 
   constructor() {
+    // Modo standalone: reacciona al cambio de sucursal
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      if (this.externalIdEmployee() != null) return;
       this.idEmployee = null;
       this.getEmployees();
       this.initializeWeek();
+      this.getEmployeeClock();
+    });
+
+    // Modo cascada: carga el horario del empleado externo
+    effect(() => {
+      const extId = this.externalIdEmployee();
+      if (extId == null) return;
+      this.idEmployee = extId;
       this.getEmployeeClock();
     });
   }
