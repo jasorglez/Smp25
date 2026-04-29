@@ -329,6 +329,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       next: async (data: any) => {
         let proveedores = data.proveedores || [];
         this.articulos = data.articulos || [];
+        this.ocGenerada = data.locked === true;
 
         // Filtrar proveedores para mostrar solo los seleccionados en nivel 2
         if (this.selectedProviderIds.length > 0) {
