@@ -22,7 +22,17 @@ import { lastValueFrom, Subscription } from 'rxjs';
   template: `
     <div class="comparacion-container">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-        <h5 class="mb-0">Comparación de Precios por Proveedor</h5>
+        <h5 class="mb-0">
+          Comparación de Precios por Proveedor
+          <span *ngIf="requisitionFolio"
+                style="background:#2e7d32; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:8px; letter-spacing:1px;">
+            {{ requisitionFolio }}
+          </span>
+          <span *ngIf="cotizacionFolio"
+                style="background:#1565c0; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:6px; letter-spacing:1px;">
+            {{ cotizacionFolio }}
+          </span>
+        </h5>
         <button type="button" class="btn-close" (click)="closed.emit()"></button>
       </div>
 
@@ -44,9 +54,9 @@ import { lastValueFrom, Subscription } from 'rxjs';
             <button
               type="button"
               class="btn btn-sm btn-success position-relative"
-              (click)="save()"
+              (click)="saveOnly()"
               [disabled]="rowData.length === 0 || !hasUnsavedChanges || ocGenerada"
-              [title]="ocGenerada ? 'Orden de compra ya fue generada' : ''">
+              [title]="ocGenerada ? 'Comparación cerrada' : ''">
               Guardar
               <span
                 class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
@@ -56,19 +66,31 @@ import { lastValueFrom, Subscription } from 'rxjs';
 
             <button
               type="button"
+              class="btn btn-sm btn-primary position-relative"
+              (click)="generateOC()"
+              [disabled]="rowData.length === 0 || ocGenerada"
+              [title]="ocGenerada ? 'Comparación cerrada' : 'Generar Orden(es) de Compra'">
+              <i class="bi bi-file-earmark-check me-1"></i>Generar OC
+            </button>
+
+            <button
+              type="button"
               class="btn btn-sm btn-warning"
               (click)="revert()"
               [disabled]="rowData.length === 0 || !hasUnsavedChanges || ocGenerada"
-              [title]="ocGenerada ? 'Orden de compra ya fue generada' : ''">
+              [title]="ocGenerada ? 'Comparación cerrada' : ''">
               Deshacer
             </button>
           </div>
         </div>
 
-        <!-- OC Generated notification -->
-        <div *ngIf="ocGenerada" class="alert alert-info mb-3" style="flex-shrink: 0;">
-          <i class="bi bi-check-circle me-2"></i>
-          <strong>Orden de Compra generada:</strong> Esta comparación ya ha sido procesada y no puede ser modificada.
+        <!-- Banner CERRADA -->
+        <div *ngIf="ocGenerada"
+             style="flex-shrink: 0; background: #b71c1c; color: #fff; font-weight: 700; font-size: 1rem;
+                    letter-spacing: 2px; text-align: center; padding: 8px 16px; border-radius: 6px;
+                    margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <i class="bi bi-lock-fill"></i>
+          CERRADA — Órdenes de compra generadas. Esta comparación no puede modificarse.
         </div>
 
         <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
@@ -249,7 +271,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   showDatePicker: boolean = false;
 
   @Input() cotizacionId: number = 0;
+  @Input() cotizacionFolio: string = '';
   @Input() requisitionId: number = 0;
+  @Input() requisitionFolio: string = '';
   @Input() selectedProviderIds: number[] = [];
   @Input() idBranchFromReq: number = 0;
   @Output() closed = new EventEmitter<void>();
@@ -392,7 +416,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   ): Promise<string> {
     const idRoot   = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
-    const folio    = `OC-${this.cotizacionId}-${slot.suffix}-${Date.now()}`;
+    const reqFolio = this.requisitionFolio || `REQ-${this.requisitionId}`;
+    const ts       = Date.now().toString().slice(-6);
+    const folio    = `OC-${reqFolio}-${slot.suffix}-${ts}`;
 
     const ocPayload = {
       idRoot,
@@ -661,7 +687,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
-  async save() {
+  async saveOnly() {
     if (this.rowData.length === 0) return;
 
     for (const row of this.rowData) {
@@ -673,76 +699,37 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           'Existe una cantidad por proveedor mayor a la cantidad a comprar. Se ajustó antes de guardar.',
           'warning'
         );
-        if (this.gridApi) {
-          this.gridApi.refreshCells({ force: true });
-        }
+        if (this.gridApi) this.gridApi.refreshCells({ force: true });
         return;
       }
     }
+
+    await this.patchRegistros();
+
+    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+    this.hasUnsavedChanges = false;
+    alerts.basicAlert('Guardado', 'Registro guardado correctamente', 'success');
+  }
+
+  async generateOC() {
+    if (this.rowData.length === 0 || this.ocGenerada) return;
 
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
-    const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
 
-    // Verificar si hay OCs autorizadas para generar
-    const hasAuthorizedRows = this.rowData.some((row: any) =>
-      AUTHORIZED.includes(row.tipoOc) && Number(row.cantidadConceptualizada) > 0
+    // Validar que todos los ítems tengan tipoOc asignado
+    const sinTipo = this.rowData.filter(
+      (row: any) => !row.tipoOc || row.tipoOc === '' || row.tipoOc === 'SELECCIONE UNA OPCION'
     );
-
-    if (hasAuthorizedRows) {
-      // Mostrar confirmación antes de generar
-      const result = await alerts.confirmAlert(
-        'Generar Orden de Compra',
-        'Vas a generar la orden de compra. Una vez generada, ya no podrás modificar la información de esta comparación. ¿Deseas continuar?',
-        'question',
-        'Sí, continuar'
+    if (sinTipo.length > 0) {
+      alerts.basicAlert(
+        'Tipo OC requerido',
+        `Hay ${sinTipo.length} fila(s) sin tipo de OC asignado. Asigna un tipo a todas las filas antes de generar.`,
+        'warning'
       );
-
-      if (!result.isConfirmed) {
-        return;
-      }
+      return;
     }
 
-    // 1. Guardar typeOc por slot COTIZ (independiente por proveedor)
-    for (const row of this.rowData) {
-      if (row.slotItemId > 0) {
-        await lastValueFrom(
-          this.ocAndReqsService.patchTypeOc(row.slotItemId, row.tipoOc || '')
-        ).catch(e =>
-          console.warn(`⚠️ No se pudo guardar typeOc para slotItem ${row.slotItemId}:`, e)
-        );
-
-        // Si el tipo es positivo, desmarcar "Por autorizar" en proveedorxtablas
-        if (AUTHORIZED.includes(row.tipoOc) && row.idSupplie > 0 && row.proveedorId > 0) {
-          await lastValueFrom(
-            this.ocAndReqsService.patchProveedorXTablaCampo7(row.idSupplie, row.proveedorId, false)
-          ).catch(e =>
-            console.warn(`⚠️ No se pudo desmarcar "Por autorizar" para material ${row.idSupplie} proveedor ${row.proveedorId}:`, e)
-          );
-        }
-
-        // Si el tipo es NEGATIVO, desactivar proveedor y sucursales para este material
-        if (NOT_AUTHORIZED.includes(row.tipoOc) && row.idSupplie > 0 && row.proveedorId > 0) {
-          await lastValueFrom(
-            this.ocAndReqsService.deactivateProveedorForMaterial(row.idSupplie, row.proveedorId)
-          ).catch(e =>
-            console.warn(`⚠️ No se pudo desactivar proveedor para material ${row.idSupplie} proveedor ${row.proveedorId}:`, e)
-          );
-        }
-      }
-    }
-
-    // 1.5. Guardar cantidadConceptualizada en cada item del slot COTIZ
-    for (const row of this.rowData) {
-      if (row.slotItemId > 0) {
-        await lastValueFrom(
-          this.ocAndReqsService.patchCantidadConceptualizada(row.slotItemId, row.cantidadConceptualizada ?? 0)
-        ).catch(e =>
-          console.warn(`⚠️ No se pudo guardar cantidadConceptualizada para slotItem ${row.slotItemId}:`, e)
-        );
-      }
-    }
-
-    // 2. Generar OC por slot si hay filas autorizadas con cantidadConceptualizada > 0
+    // Agrupar filas autorizadas con cantidadConceptualizada > 0 por proveedor
     const rowsByProvider = new Map<number, any[]>();
     for (const row of this.rowData) {
       if (AUTHORIZED.includes(row.tipoOc) && Number(row.cantidadConceptualizada) > 0) {
@@ -752,28 +739,43 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
 
-    const generatedFolios: string[] = [];
-
-    if (rowsByProvider.size > 0) {
-      const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
-
-      if (!idBranch || idBranch <= 0 || idBranch === -9) {
-        alerts.basicAlert(
-          'Sucursal inválida',
-          'No se puede generar orden de compra sin una sucursal válida. Por favor, verifique la requisición.',
-          'error'
-        );
-        return;
-      }
-
-      const count = rowsByProvider.size;
-      const loadingTitle = count === 1 ? 'Generando orden de compra' : 'Generando órdenes de compra';
-      const loadingText = count === 1
-        ? 'Creando la orden de compra, por favor espere...'
-        : `Creando ${count} órdenes de compra, por favor espere...`;
-      alerts.showLoading(loadingTitle, loadingText);
+    if (rowsByProvider.size === 0) {
+      alerts.basicAlert(
+        'Sin filas para generar',
+        'No hay filas con tipo autorizado y cantidad asignada. Verifica los tipos de OC y las cantidades por proveedor.',
+        'warning'
+      );
+      return;
     }
 
+    const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
+    if (!idBranch || idBranch <= 0 || idBranch === -9) {
+      alerts.basicAlert(
+        'Sucursal inválida',
+        'No se puede generar orden de compra sin una sucursal válida.',
+        'error'
+      );
+      return;
+    }
+
+    const count = rowsByProvider.size;
+    const result = await alerts.confirmAlert(
+      count === 1 ? 'Generar Orden de Compra' : 'Generar Órdenes de Compra',
+      `Se generará${count > 1 ? 'n' : ''} ${count} orden${count > 1 ? 'es' : ''} de compra. Una vez generada${count > 1 ? 's' : ''}, esta comparación quedará cerrada y no podrá modificarse. ¿Continuar?`,
+      'question',
+      'Sí, generar'
+    );
+    if (!result.isConfirmed) return;
+
+    alerts.showLoading(
+      count === 1 ? 'Generando orden de compra' : 'Generando órdenes de compra',
+      count === 1 ? 'Creando la orden de compra, por favor espere...' : `Creando ${count} órdenes de compra, por favor espere...`
+    );
+
+    // Guardar registro antes de generar
+    await this.patchRegistros();
+
+    const generatedFolios: string[] = [];
     for (const [provId, rows] of rowsByProvider) {
       const slot = this.providerSlotMap.get(provId);
       if (!slot) { console.warn(`⚠️ Sin slot COTIZ para proveedor ${provId}`); continue; }
@@ -786,24 +788,49 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Desmarcar porAutorizar para artículos "Nuevo" con OC generada
     if (generatedFolios.length > 0) {
       await this.updatePorAutorizarAfterOC();
     }
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
+    this.ocGenerada = true;
+    this.cdr.detectChanges();
+    if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+    alerts.closeLoading();
+    alerts.basicAlert(
+      generatedFolios.length === 1 ? 'OC Generada' : 'OCs Generadas',
+      `Órdenes de compra generadas:\n${generatedFolios.join('\n')}`,
+      'success'
+    );
+  }
 
-    if (generatedFolios.length > 0) {
-      this.ocGenerada = true;
-      this.cdr.detectChanges();
-      if (this.gridApi) {
-        this.gridApi.setGridOption('columnDefs', this.colDefs);
+  private async patchRegistros(): Promise<void> {
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
+
+    for (const row of this.rowData) {
+      if (row.slotItemId > 0) {
+        await lastValueFrom(
+          this.ocAndReqsService.patchTypeOc(row.slotItemId, row.tipoOc || '')
+        ).catch(e => console.warn(`⚠️ No se pudo guardar typeOc para slotItem ${row.slotItemId}:`, e));
+
+        if (AUTHORIZED.includes(row.tipoOc) && row.idSupplie > 0 && row.proveedorId > 0) {
+          await lastValueFrom(
+            this.ocAndReqsService.patchProveedorXTablaCampo7(row.idSupplie, row.proveedorId, false)
+          ).catch(e => console.warn(`⚠️ No se pudo desmarcar "Por autorizar":`, e));
+        }
+
+        if (NOT_AUTHORIZED.includes(row.tipoOc) && row.idSupplie > 0 && row.proveedorId > 0) {
+          await lastValueFrom(
+            this.ocAndReqsService.deactivateProveedorForMaterial(row.idSupplie, row.proveedorId)
+          ).catch(e => console.warn(`⚠️ No se pudo desactivar proveedor:`, e));
+        }
+
+        await lastValueFrom(
+          this.ocAndReqsService.patchCantidadConceptualizada(row.slotItemId, row.cantidadConceptualizada ?? 0)
+        ).catch(e => console.warn(`⚠️ No se pudo guardar cantidadConceptualizada:`, e));
       }
-      alerts.closeLoading();
-      alerts.basicAlert('OC Generada', `Órdenes de compra generadas:\n${generatedFolios.join('\n')}`, 'success');
-    } else {
-      alerts.basicAlert('Guardado', 'Tipos de OC guardados correctamente', 'success');
     }
   }
 

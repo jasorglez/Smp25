@@ -561,7 +561,9 @@ export class RequisitionsDelisonComponent implements OnInit {
 
 
       event.data.__modified = true;
+      event.data.dateModified = new Date().toISOString();
       this.hasUnsavedChanges = true;
+      this.moveRowToTop(event.data.id);
 
 
       setTimeout(() => {
@@ -575,8 +577,8 @@ export class RequisitionsDelisonComponent implements OnInit {
         if (this.rowData.length > 0) {
           // Reordenar por marca de tiempo (lo más reciente arriba)
           this.rowData.sort((a, b) => {
-            const timeA = a.__lastModified ? new Date(a.__lastModified).getTime() : 0;
-            const timeB = b.__lastModified ? new Date(b.__lastModified).getTime() : 0;
+            const timeA = new Date(a.dateModified || a.requestDate).getTime();
+            const timeB = new Date(b.dateModified || b.requestDate).getTime();
             return timeB - timeA;
           });
           
@@ -1236,11 +1238,9 @@ export class RequisitionsDelisonComponent implements OnInit {
               row.articlesCount = data.length;
               // ✅ Marcar como modificado para el futuro ordenamiento, pero no mover la fila aún
               row.dateModified = new Date().toISOString();
-              
-              const node = this.gridApi.getRowNode(String(requisitionId));
-              if (node) {
-                this.gridApi.refreshCells({ rowNodes: [node], force: true });
-              }
+              row.__modified = true;
+              this.hasUnsavedChanges = true;
+              this.moveRowToTop(requisitionId);
 
               if (showAlert) {
                 alerts.reqSuccessToast('Guardado', 'Los detalles han sido guardados correctamente');
@@ -1257,10 +1257,9 @@ export class RequisitionsDelisonComponent implements OnInit {
               row.articlesCount = count;
               // ✅ Marcar como modificado
               row.dateModified = new Date().toISOString();
-              const node = this.gridApi.getRowNode(String(requisitionId));
-              if (node) {
-                this.gridApi.refreshCells({ rowNodes: [node], force: true });
-              }
+              row.__modified = true;
+              this.hasUnsavedChanges = true;
+              this.moveRowToTop(requisitionId);
             }
           },
           // Nueva función para forzar la actualización de la fila maestra
@@ -1277,10 +1276,9 @@ export class RequisitionsDelisonComponent implements OnInit {
               row.requestDate = requestDate;
               // ✅ Marcar como modificado
               row.dateModified = new Date().toISOString();
-              const node = this.gridApi.getRowNode(String(requisitionId));
-              if (node) {
-                this.gridApi.refreshCells({ rowNodes: [node], force: true });
-              }
+              row.__modified = true;
+              this.hasUnsavedChanges = true;
+              this.moveRowToTop(requisitionId);
             }
           }
         },
@@ -1620,7 +1618,70 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.localConsecutivesByBranch.clear();
   }
 
+  private normalizeRequestDate(requestDate: any): string {
+    if (!requestDate) {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    if (requestDate instanceof Date) {
+      const y = requestDate.getFullYear();
+      const m = String(requestDate.getMonth() + 1).padStart(2, '0');
+      const d = String(requestDate.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    return String(requestDate).substring(0, 10);
+  }
+
+  private moveRowToTop(rowId: string | number): void {
+    const rowIndex = this.rowData.findIndex(row => row.id === rowId);
+    if (rowIndex <= 0) {
+      if (this.gridApi) {
+        this.gridApi.ensureIndexVisible(0);
+      }
+      return;
+    }
+
+    const [targetRow] = this.rowData.splice(rowIndex, 1);
+    this.rowData = [targetRow, ...this.rowData];
+    this.fullRowData = [...this.rowData];
+
+    if (!this.gridApi) {
+      return;
+    }
+
+    const currentNode = this.gridApi.getRowNode(String(rowId));
+    const wasExpanded = !!currentNode?.expanded;
+    const wasSelected = !!currentNode?.isSelected?.();
+
+    this.gridApi.setGridOption('rowData', this.rowData);
+
+    setTimeout(() => {
+      this.gridApi.ensureIndexVisible(0);
+      const movedNode = this.gridApi.getRowNode(String(rowId));
+      if (wasSelected && movedNode) {
+        movedNode.setSelected(true);
+      }
+      if (wasExpanded && movedNode) {
+        movedNode.setExpanded(true);
+      }
+      this.gridApi.refreshCells({ force: true });
+    }, 0);
+  }
+
+  private async flushPendingGridEdits(): Promise<void> {
+    if (!this.gridApi) {
+      return;
+    }
+
+    this.gridApi.stopEditing();
+    await new Promise(resolve => setTimeout(resolve, 0));
+  }
+
   async saveChanges(): Promise<void> {
+    await this.flushPendingGridEdits();
+
     // Filtrar las filas nuevas o modificadas
     const itemsToSave = this.rowData.filter(row => row.__isNew || row.__modified);
 
@@ -1719,14 +1780,14 @@ export class RequisitionsDelisonComponent implements OnInit {
       if (modifiedItems.length > 0) {
 
 
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
         for (const item of modifiedItems) {
           // Validar que tenga un ID válido (no temporal)
           if (!item.id || String(item.id).startsWith('temp_')) {
             continue;
           }
+
+          const requestDateToSave = this.normalizeRequestDate(item.requestDate);
+          const solicitToSave = item.solicitedBy || this.currentUserName;
 
           const updateReqData = {
             id: item.id,
@@ -1734,7 +1795,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             typeReference: 'branch',
             idReq: 0,
             idReference: item.idReference,
-            dateCreate: todayStr,
+            dateCreate: requestDateToSave,
             idProvider: 0,
             idDepartament: item.departmentId || 0,
             delivery: item.delivery || 'NO APLICA',
@@ -1746,7 +1807,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             conditions: item.conditions || null,
             idAuthorize: 0,
             priority: item.column8 || null,
-            solicit: this.currentUserName,
+            solicit: solicitToSave,
             discount: 0,
             ivaRetention: 0,
             idSolicit: 0,
@@ -1765,8 +1826,8 @@ export class RequisitionsDelisonComponent implements OnInit {
             this.ocAndReqsService.updateOcAndReq(item.id, updateReqData).subscribe({
               next: () => {
                 // Actualizar display local
-                item.solicitedBy = this.currentUserName;
-                item.requestDate = todayStr;
+                item.solicitedBy = solicitToSave;
+                item.requestDate = requestDateToSave;
                 resolve();
               },
               error: (err) => {

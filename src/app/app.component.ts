@@ -26,7 +26,9 @@ import { ComparacionOverlayService, ComparacionOverlayData } from './services/co
            (click)="$event.stopPropagation()">
         <app-comparacion-precios
           [cotizacionId]="comparacionData.cotizacionId"
+          [cotizacionFolio]="comparacionData.cotizacionFolio"
           [requisitionId]="comparacionData.requisitionId"
+          [requisitionFolio]="comparacionData.requisitionFolio"
           [selectedProviderIds]="comparacionData.selectedProviderIds"
           [idBranchFromReq]="comparacionData.idBranchFromReq"
           (closed)="closeComparacion()"

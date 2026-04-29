@@ -691,7 +691,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   toggleComparacionCascade(node: any) {
     this.comparacionOverlayService.open({
       cotizacionId: node.data.cotizacionId,
+      cotizacionFolio: node.data.pedimento || '',
       requisitionId: node.data.requisitionId,
+      requisitionFolio: this.params.data.requisition || '',
       selectedProviderIds: [node.data.idProvider, node.data.idProvider2, node.data.idProvider3].filter((id: number) => id > 0),
       idBranchFromReq: this.params.data.idReference || 0
     });
