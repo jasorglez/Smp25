@@ -31,6 +31,15 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
   template: `
     <!-- Items Grid View -->
     <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+      <!-- Banner BLOQUEADA -->
+      <div *ngIf="hasProviderAssigned"
+           style="flex-shrink:0;background:#b71c1c;color:#fff;font-weight:700;font-size:0.8rem;
+                  letter-spacing:1px;text-align:center;padding:4px 10px;border-radius:4px;
+                  margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <i class="bi bi-lock-fill"></i>
+        REQUISICIÓN BLOQUEADA — No se pueden agregar ni eliminar artículos
+      </div>
+
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
         <strong>Artículos de la Requisición</strong>
         <div class="d-flex gap-2">
