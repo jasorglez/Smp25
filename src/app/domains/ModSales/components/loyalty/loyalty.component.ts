@@ -96,6 +96,7 @@ export class LoyaltyComponent implements OnInit {
   cardsRowData: any[] = [];
   private cardsGridApi!: GridApi;
   selectedProgramForCards: number | null = null;
+  idClienteSello: number | null = null;
 
   cardsColDefs: ColDef[] = [
     { field: 'id',                  headerName: 'ID',          width: 70 },
@@ -245,13 +246,11 @@ export class LoyaltyComponent implements OnInit {
   }
 
   addStamp() {
-    const nodes = this.cardsGridApi?.getSelectedNodes();
-    if (!nodes?.length) {
-      Swal.fire({ icon: 'warning', title: 'Selecciona una tarjeta', timer: 1500, showConfirmButton: false });
+    if (!this.idClienteSello || !this.selectedProgramForCards) {
+      Swal.fire({ icon: 'warning', title: 'Ingresa el ID del cliente y selecciona un programa', timer: 1800, showConfirmButton: false });
       return;
     }
-    const card = nodes[0].data;
-    this.loyaltyService.addStamp(card.idCustomer, this.selectedProgramForCards!).pipe(
+    this.loyaltyService.addStamp(this.idClienteSello, this.selectedProgramForCards!).pipe(
       catchError(() => { Swal.fire('Error', 'No se pudo agregar el sello.', 'error'); return EMPTY; })
     ).subscribe((result: any) => {
       if (result.rewardEarned) {
