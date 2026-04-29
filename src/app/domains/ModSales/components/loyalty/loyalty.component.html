@@ -124,3 +124,43 @@
     />
   </div>
 </div>
+
+<!-- Modal: Seleccionar productos para programa -->
+<div class="modal" [class.show]="mostrarModalProductos" [style.display]="mostrarModalProductos ? 'block' : 'none'" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">📦 Seleccionar Productos — {{ programaEnEdicion?.name }}</h5>
+        <button type="button" class="btn-close" (click)="cerrarModalProductos()"></button>
+      </div>
+
+      <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+        <p class="text-muted small mb-2">
+          Selecciona todos los productos que activarán este programa:
+        </p>
+
+        <div class="list-group">
+          <label *ngFor="let prod of productos" class="list-group-item">
+            <input type="checkbox"
+              [checked]="productosSeleccionadosModal.includes(prod.id)"
+              (change)="toggleProductoModal(prod.id)"
+              class="form-check-input me-2">
+            {{ prod.description }}
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cerrarModalProductos()">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" (click)="guardarProductosModal()">
+          Guardar productos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fondo del modal -->
+<div class="modal-backdrop fade" [class.show]="mostrarModalProductos" *ngIf="mostrarModalProductos"></div>

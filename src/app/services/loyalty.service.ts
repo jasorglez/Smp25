@@ -57,4 +57,27 @@ export class LoyaltyService {
   createCard(data: any): Observable<any> {
     return this.http.post(`${environment.urlWarehouse}/CustomerLoyaltyCard`, data, this.headers);
   }
+
+  // ── Productos en Programas ───────────────────────────────────────────────
+  addProductToProgram(idProgram: number, idProduct: number): Observable<any> {
+    return this.http.post(
+      `${environment.urlWarehouse}/LoyaltyProgramProduct`,
+      { idLoyaltyProgram: idProgram, idProduct },
+      this.headers
+    );
+  }
+
+  removeProductFromProgram(idProgram: number, idProduct: number): Observable<any> {
+    return this.http.delete(
+      `${environment.urlWarehouse}/LoyaltyProgramProduct/${idProgram}/${idProduct}`,
+      this.headers
+    );
+  }
+
+  clearProductsFromProgram(idProgram: number): Observable<any> {
+    return this.http.delete(
+      `${environment.urlWarehouse}/LoyaltyProgramProduct/program/${idProgram}`,
+      this.headers
+    );
+  }
 }
