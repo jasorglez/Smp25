@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { LoyaltyService } from 'app/services/loyalty.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { catchError, EMPTY } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -20,6 +21,7 @@ import Swal from 'sweetalert2';
 export class LoyaltyComponent implements OnInit {
   private loyaltyService   = inject(LoyaltyService);
   private materialsService = inject(MaterialsService);
+  private customersService = inject(CustomersService);
   private signalsService   = inject(SignalsService);
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -28,6 +30,10 @@ export class LoyaltyComponent implements OnInit {
 
   // ── Productos para el combo ────────────────────────────────────────────────
   productos: { id: number; description: string }[] = [];
+
+  // ── Clientes para el combo de sellos ──────────────────────────────────────
+  clientes: { id: number; label: string }[] = [];
+  clienteSeleccionado: number | null = null;
 
   // ── Grid options (mismo patrón que prospectos) ────────────────────────────
   gridOptions: any = {
@@ -96,7 +102,6 @@ export class LoyaltyComponent implements OnInit {
   cardsRowData: any[] = [];
   private cardsGridApi!: GridApi;
   selectedProgramForCards: number | null = null;
-  idClienteSello: number | null = null;
 
   cardsColDefs: ColDef[] = [
     { field: 'id',                  headerName: 'ID',          width: 70 },
@@ -115,6 +120,7 @@ export class LoyaltyComponent implements OnInit {
       if (id) {
         this.idCompany = id;
         this.loadProductos();
+        this.loadClientes();
         this.loadPrograms();
       }
     });
@@ -125,7 +131,37 @@ export class LoyaltyComponent implements OnInit {
     if (id) {
       this.idCompany = id;
       this.loadProductos();
+      this.loadClientes();
       this.loadPrograms();
+    }
+  }
+
+  // ── Clientes (búsqueda por teléfono) ─────────────────────────────────────
+  private todosLosClientes: any[] = [];
+  telefonoBusqueda  = '';
+  clienteEncontrado: { id: number; nombre: string; telefono: string } | null = null;
+  clienteNoEncontrado = false;
+
+  loadClientes() {
+    this.customersService.getCustomersByCompany(this.idCompany, 'CUSTOMERS').subscribe({
+      next: (data: any) => { this.todosLosClientes = data ?? []; },
+      error: err => console.error('Error cargando clientes', err),
+    });
+  }
+
+  buscarClientePorTelefono() {
+    const tel = this.telefonoBusqueda.trim();
+    if (!tel) return;
+    const found = this.todosLosClientes.find(
+      c => (c.phone ?? '').replace(/\s/g, '') === tel.replace(/\s/g, '') ||
+           (c.mobile ?? '').replace(/\s/g, '') === tel.replace(/\s/g, '')
+    );
+    if (found) {
+      this.clienteEncontrado    = { id: found.id, nombre: found.nameContact ?? found.company ?? '', telefono: tel };
+      this.clienteNoEncontrado  = false;
+    } else {
+      this.clienteEncontrado    = null;
+      this.clienteNoEncontrado  = true;
     }
   }
 
@@ -246,11 +282,11 @@ export class LoyaltyComponent implements OnInit {
   }
 
   addStamp() {
-    if (!this.idClienteSello || !this.selectedProgramForCards) {
-      Swal.fire({ icon: 'warning', title: 'Ingresa el ID del cliente y selecciona un programa', timer: 1800, showConfirmButton: false });
+    if (!this.clienteEncontrado || !this.selectedProgramForCards) {
+      Swal.fire({ icon: 'warning', title: 'Busca un cliente y selecciona un programa', timer: 1800, showConfirmButton: false });
       return;
     }
-    this.loyaltyService.addStamp(this.idClienteSello, this.selectedProgramForCards!).pipe(
+    this.loyaltyService.addStamp(this.clienteEncontrado.id, this.selectedProgramForCards!).pipe(
       catchError(() => { Swal.fire('Error', 'No se pudo agregar el sello.', 'error'); return EMPTY; })
     ).subscribe((result: any) => {
       if (result.rewardEarned) {
