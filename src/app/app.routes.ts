@@ -1855,6 +1855,13 @@ export const routes: Routes = [
                 './domains/ModSales/components/demos/demos.component'
               ).then((d) => d.DemosComponent),
           },
+          {
+            path: 'loyalty',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/loyalty/loyalty.component'
+              ).then((l) => l.LoyaltyComponent),
+          },
         ],
       },
       {

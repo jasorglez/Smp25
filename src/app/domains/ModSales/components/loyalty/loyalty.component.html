@@ -1,0 +1,85 @@
+<div class="loyalty-container">
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'programs'" (click)="activeTab = 'programs'; loadPrograms()">
+        <i class="bi bi-card-checklist"></i> Programas de Lealtad
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'cards'" (click)="activeTab = 'cards'">
+        <i class="bi bi-credit-card-2-front"></i> Tarjetas de Clientes
+      </button>
+    </li>
+  </ul>
+
+  <!-- ── Programas ──────────────────────────────────────────────────────── -->
+  <div *ngIf="activeTab === 'programs'">
+    <div class="d-flex gap-2 mb-2">
+      <button class="btn btn-sm btn-success" (click)="addProgram()">
+        <i class="bi bi-plus-lg"></i> Agregar
+      </button>
+      <button class="btn btn-sm btn-primary" (click)="savePrograms()">
+        <i class="bi bi-floppy"></i> Guardar
+      </button>
+      <button class="btn btn-sm btn-danger" (click)="deleteProgram()">
+        <i class="bi bi-trash"></i> Eliminar
+      </button>
+      <button class="btn btn-sm btn-secondary" (click)="loadPrograms()">
+        <i class="bi bi-arrow-clockwise"></i> Recargar
+      </button>
+    </div>
+
+    <p class="text-muted small mb-1">
+      <i class="bi bi-info-circle"></i>
+      Un programa de lealtad puede vincularse opcionalmente a un producto (ID Producto).
+      Define cuántos sellos se requieren y qué recompensa recibe el cliente.
+    </p>
+
+    <ag-grid-angular
+      class="ag-theme-alpine loyalty-grid"
+      [rowData]="programsRowData"
+      [columnDefs]="programsColDefs"
+      [defaultColDef]="defaultColDef"
+      rowSelection="single"
+      [stopEditingWhenCellsLoseFocus]="true"
+      (gridReady)="onProgramsGridReady($event)"
+      (cellValueChanged)="onProgramCellValueChanged($event)"
+      (cellDoubleClicked)="onProgramSelected($event)"
+    />
+  </div>
+
+  <!-- ── Tarjetas ───────────────────────────────────────────────────────── -->
+  <div *ngIf="activeTab === 'cards'">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <label class="form-label mb-0">Programa:</label>
+      <select class="form-select form-select-sm" style="max-width:300px"
+        [(ngModel)]="selectedProgramForCards" (change)="loadCards()">
+        <option [ngValue]="null" disabled>-- Seleccionar programa --</option>
+        <option *ngFor="let p of programsRowData" [ngValue]="p.id">
+          {{ p.name }} ({{ p.stampsRequired }} sellos → {{ p.rewardDescription }})
+        </option>
+      </select>
+      <button class="btn btn-sm btn-warning" (click)="addStamp()" [disabled]="!selectedProgramForCards">
+        <i class="bi bi-star-fill"></i> Agregar Sello
+      </button>
+      <button class="btn btn-sm btn-secondary" (click)="loadCards()" [disabled]="!selectedProgramForCards">
+        <i class="bi bi-arrow-clockwise"></i> Recargar
+      </button>
+    </div>
+
+    <p class="text-muted small mb-1">
+      <i class="bi bi-info-circle"></i>
+      Selecciona un programa para ver las tarjetas de los clientes.
+      Selecciona una tarjeta y usa "Agregar Sello" para registrar una compra.
+    </p>
+
+    <ag-grid-angular
+      class="ag-theme-alpine loyalty-grid"
+      [rowData]="cardsRowData"
+      [columnDefs]="cardsColDefs"
+      [defaultColDef]="defaultColDef"
+      rowSelection="single"
+      (gridReady)="onCardsGridReady($event)"
+    />
+  </div>
+</div>
