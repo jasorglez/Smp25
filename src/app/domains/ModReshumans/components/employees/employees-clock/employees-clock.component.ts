@@ -33,6 +33,7 @@ export class EmployeesClockComponent {
   idBranch: number;
   employees: any= [];
   totalHoras: number = 0;
+  errores: { [day: string]: string } = {};
 
   baseHours: string;
 
@@ -128,30 +129,52 @@ export class EmployeesClockComponent {
     return { hour: hours, minute: minutes };
   }
 
+  private toMin(t: { hour: number; minute: number } | null): number | null {
+    if (!t || t.hour == null) return null;
+    return t.hour * 60 + (t.minute || 0);
+  }
+
   guardarHorario() {
-    // Validación de campos requeridos
-    const diasInvalidos = this.horario.filter(dia =>
-      dia.enabled && (!dia.entry1?.hour || !dia.exit1?.hour)
-    );
-
-    if (diasInvalidos.length > 0) {
-      alerts.basicAlert('Error', 'Los días activados deben tener horarios de entrada y salida 1 completos', 'error');
-      return;
-    }
-
+    if (this.hasErrors) return;
     if (this.horario.length !== 7) {
       alerts.basicAlert('Días no completos', 'Todos los días deberían ser enviados. Este error no debería ocurrir, por favor contacte al administrador', 'error');
       return;
     }
 
-    // Validación de que entry_1 no puede ser mayor que exit_1
-    const diasInvalidos2 = this.horario.filter(dia =>
-      dia.enabled && dia.entry1 && dia.exit1 && dia.entry1.hour > dia.exit1.hour
-    );
+    for (const dia of this.horario) {
+      if (!dia.enabled) continue;
+      const name = dia.day;
+      const e1 = this.toMin(dia.entry1);
+      const s1 = this.toMin(dia.exit1);
+      const e2 = this.toMin(dia.entry2);
+      const s2 = this.toMin(dia.exit2);
 
-    if (diasInvalidos2.length > 0) {
-      alerts.basicAlert('Error', 'Los horarios de entrada no pueden ser mayores que los horarios de salida', 'error');
-      return;
+      if (e1 == null || s1 == null) {
+        alerts.basicAlert('Error', `${name}: la Entrada 1 y Salida 1 son requeridas.`, 'error');
+        return;
+      }
+      if (s1 <= e1) {
+        alerts.basicAlert('Error', `${name}: la Salida 1 debe ser posterior a la Entrada 1.`, 'error');
+        return;
+      }
+      if (e2 != null) {
+        if (e2 <= s1) {
+          alerts.basicAlert('Error', `${name}: la Entrada 2 no puede estar dentro o antes del turno 1 (debe ser posterior a la Salida 1).`, 'error');
+          return;
+        }
+        if (s2 == null) {
+          alerts.basicAlert('Error', `${name}: la Salida 2 es requerida cuando se establece Entrada 2.`, 'error');
+          return;
+        }
+        if (s2 <= s1) {
+          alerts.basicAlert('Error', `${name}: la Salida 2 debe ser posterior a la Salida 1.`, 'error');
+          return;
+        }
+        if (s2 <= e2) {
+          alerts.basicAlert('Error', `${name}: la Salida 2 debe ser posterior a la Entrada 2.`, 'error');
+          return;
+        }
+      }
     }
 
     const horarioFormateado = this.horario.map((dia: any) => ({
@@ -193,6 +216,7 @@ export class EmployeesClockComponent {
     // Opcional: Mostrar confirmación al usuario
     alerts.basicAlert('Horario guardado', `Horario ${this.isNew ? 'creado' : 'actualizado'} correctamente`, 'success');
     this.guardarHoras();
+    this.signalsService.setEmployeeBaseHoursUpdate(this.idEmployee, this.baseHours);
     this.trackingService.addLog(this.trackingService.getnameComp(),'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
   }
 
@@ -233,6 +257,34 @@ export class EmployeesClockComponent {
         enabled: originDay.enabled
       };
     });
+  }
+
+  get hasErrors(): boolean {
+    return Object.keys(this.errores).length > 0;
+  }
+
+  validarDia(dia: any): void {
+    if (!dia.enabled) { delete this.errores[dia.day]; return; }
+    const e1 = this.toMin(dia.entry1);
+    const s1 = this.toMin(dia.exit1);
+    const e2 = this.toMin(dia.entry2);
+    const s2 = this.toMin(dia.exit2);
+
+    if (e1 == null || s1 == null) {
+      this.errores[dia.day] = 'Entrada 1 y Salida 1 son requeridas.';
+    } else if (s1 <= e1) {
+      this.errores[dia.day] = 'Salida 1 debe ser posterior a Entrada 1.';
+    } else if (e2 != null && e2 <= s1) {
+      this.errores[dia.day] = 'Entrada 2 debe ser posterior a Salida 1.';
+    } else if (e2 != null && s2 == null) {
+      this.errores[dia.day] = 'Salida 2 es requerida cuando hay Entrada 2.';
+    } else if (e2 != null && s2 != null && s2 <= s1) {
+      this.errores[dia.day] = 'Salida 2 debe ser posterior a Salida 1.';
+    } else if (e2 != null && s2 != null && s2 <= e2) {
+      this.errores[dia.day] = 'Salida 2 debe ser posterior a Entrada 2.';
+    } else {
+      delete this.errores[dia.day];
+    }
   }
 
   onEmployeeChange(): void {

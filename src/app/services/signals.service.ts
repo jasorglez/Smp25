@@ -970,4 +970,16 @@ getMasterUpdateTrigger() {
   getReqTypeOcMap() {
     return this.reqTypeOcMap;
   }
+
+  // ── HR: actualizar horas base de empleado tras guardar horario ──────────
+  private employeeBaseHoursUpdate = signal<{ id: number; baseHours: string } | null>(null);
+
+  setEmployeeBaseHoursUpdate(id: number, baseHours: string) {
+    this.employeeBaseHoursUpdate.set({ id, baseHours });
+    setTimeout(() => this.employeeBaseHoursUpdate.set(null), 0);
+  }
+
+  getEmployeeBaseHoursUpdate() {
+    return this.employeeBaseHoursUpdate;
+  }
 }

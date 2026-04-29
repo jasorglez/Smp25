@@ -161,6 +161,17 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.getStates();
       }
     });
+
+    effect(() => {
+      const update = this.signalsService.getEmployeeBaseHoursUpdate()();
+      if (!update || !this.gridApi) return;
+      this.gridApi.forEachNode((node: any) => {
+        if (node.data?.id === update.id) {
+          node.data.baseHours = parseFloat(update.baseHours);
+          this.gridApi.refreshCells({ rowNodes: [node], columns: ['baseHours'], force: true });
+        }
+      });
+    });
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -1280,6 +1291,31 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellStyle: { backgroundColor: '#d4edda' },
         },
         {
+          field: 'baseHours',
+          headerName: 'Horas base',
+          hide: this.idRoot == 18,
+          editable: false,
+          cellStyle: { backgroundColor: '#d4edda' },
+          cellRenderer: (params: any) => {
+            const v = params.value;
+            let hoursStr = '';
+            if (typeof v === 'number' && !isNaN(v)) {
+              const h = Math.floor(v);
+              const m = Math.round((v - h) * 60);
+              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
+          },
+          onCellClicked: (params: any) => {
+            const expand = !params.node.expanded;
+            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+            if (expand) {
+              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+              params.node.setExpanded(true);
+            }
+          },
+        },
+        {
           field: 'priceXHour',
           headerName: 'Precio por hora *',
           hide: this.idRoot == 18,
@@ -1312,31 +1348,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
               }).format(params.value);
             }
             return '';
-          },
-        },
-        {
-          field: 'baseHours',
-          headerName: 'Horas base',
-          hide: this.idRoot == 18,
-          editable: false,
-          cellStyle: { backgroundColor: '#d4edda' },
-          cellRenderer: (params: any) => {
-            const v = params.value;
-            let hoursStr = '';
-            if (typeof v === 'number' && !isNaN(v)) {
-              const h = Math.floor(v);
-              const m = Math.round((v - h) * 60);
-              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            }
-            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
-          },
-          onCellClicked: (params: any) => {
-            const expand = !params.node.expanded;
-            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-            if (expand) {
-              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
-              params.node.setExpanded(true);
-            }
           },
         },
         {
