@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.123 (30 Abril 2026) - Documentos de empleado con subida de PDFs'
+  version: '3.125 (30 Abril 2026) - Fix OC number en comparacion-precios (race condition + gate)'
 };

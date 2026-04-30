@@ -758,6 +758,16 @@ export class RequisitionsDelisonComponent implements OnInit {
           if (flags.changeSpec)
             return { backgroundColor: '#FFF59D', fontWeight: '600' };
           return { backgroundColor: '#f0f0f0' };
+        },
+        cellRenderer: (params: any) => {
+          const folio = params.value || '';
+          if (!params.data?.locked) return folio;
+          const wrap = document.createElement('span');
+          wrap.style.display = 'flex';
+          wrap.style.alignItems = 'center';
+          wrap.style.gap = '5px';
+          wrap.innerHTML = `${folio} <i class="bi bi-lock-fill" style="color:#b71c1c; font-size:0.85rem; flex-shrink:0;" title="Requisición procesada — OC generada"></i>`;
+          return wrap;
         }
       },
       {
