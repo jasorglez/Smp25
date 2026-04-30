@@ -72,6 +72,7 @@ export class DetalleMoliendaComponent {
   private gridApi!: GridApi;
   private cascadeOcGridApi!: GridApi;
   private deptsCsv: string = '';
+  private initCompleted = false;
 
   detailType: 'entradas' | 'salidas' = 'entradas';
   rowData: any[] = [];
@@ -168,42 +169,41 @@ export class DetalleMoliendaComponent {
   refresh(params: any): boolean { this.internalParams = params; return true; }
 
   private async init(params: any) {
+    this.initCompleted = false;
     this.internalParams = params;
     this.detailType = params?.data?.detailType ?? 'entradas';
 
-    // Usar departamentos del tooltip
     const departmentOptions = params?.departmentOptions ?? [];
-    console.log('💠 init: params recibidos =', params);
-    console.log('💠 init: departmentOptions =', departmentOptions);
     this.deptsCsv = departmentOptions
       .map((d: any) => d.id)
       .filter((id: any) => id)
       .join(',');
-    console.log('💠 init: deptsCsv final =', this.deptsCsv);
 
     await this.loadReqOptions();
+    this.initCompleted = true;
+
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
   }
 
   private async loadReqOptions() {
     const idBranch   = this.internalParams?.data?.sucursal;
     const idMaterial = this.internalParams?.data?.idMaterial;
-    console.log('💠 loadReqOptions: idBranch =', idBranch, ', idMaterial =', idMaterial, ', deptsCsv =', this.deptsCsv);
     if (!idBranch || !idMaterial) { this.reqOptions = []; return; }
     try {
       this.reqOptions = await lastValueFrom(
         this.ocAndReqsService.getReqsByBranchMaterial(idBranch, idMaterial, this.deptsCsv)
       );
-      console.log('💠 loadReqOptions: requisiciones cargadas =', this.reqOptions);
     } catch (err) {
-      console.error('💠 loadReqOptions: error =', err);
+      console.error('Error cargando requisiciones:', err);
       this.reqOptions = [];
     }
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.loadData();
+    // Solo carga datos si init() ya terminó (reqOptions listo).
+    // Si init() aún está corriendo, él mismo llamará loadData() al terminar.
+    if (this.initCompleted) this.loadData();
   }
 
   onCascadeOcGridReady(params: GridReadyEvent) {
@@ -246,7 +246,6 @@ export class DetalleMoliendaComponent {
 
   async onRowClicked(event: any) {
     const row = event.data;
-    console.log('💠 onRowClicked: row =', row, ', deptsCsv =', this.deptsCsv);
     if (!row?.idRequisition) { this.selectedReqRow = null; this.cascadeOcData = []; return; }
 
     if (this.selectedReqRow === row) {
@@ -258,14 +257,12 @@ export class DetalleMoliendaComponent {
 
     this.selectedReqRow = row;
     const idMaterial = this.internalParams?.data?.idMaterial;
-    console.log('💠 onRowClicked: cargando OCs con idReq =', row.idRequisition, ', idMaterial =', idMaterial, ', deptsCsv =', this.deptsCsv);
     try {
       this.cascadeOcData = await lastValueFrom(
         this.ocAndReqsService.getOcsByReqMaterial(row.idRequisition, idMaterial, this.deptsCsv)
       );
-      console.log('💠 onRowClicked: OCs cargadas =', this.cascadeOcData);
     } catch (err) {
-      console.error('💠 onRowClicked: error cargando OCs =', err);
+      console.error('Error cargando OCs:', err);
       this.cascadeOcData = [];
     }
 

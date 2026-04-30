@@ -982,4 +982,16 @@ getMasterUpdateTrigger() {
   getEmployeeBaseHoursUpdate() {
     return this.employeeBaseHoursUpdate;
   }
+
+  // ── Notificación de OC creada: para actualizar almmolienda counters ──────
+  private ocCreatedNotification = signal<{ idRequisition: number; idMaterial: number; idBranch: number; timestamp: number } | null>(null);
+
+  notifyOcCreated(idRequisition: number, idMaterial: number, idBranch: number) {
+    this.ocCreatedNotification.set({ idRequisition, idMaterial, idBranch, timestamp: Date.now() });
+    setTimeout(() => this.ocCreatedNotification.set(null), 0);
+  }
+
+  getOcCreatedNotification() {
+    return this.ocCreatedNotification;
+  }
 }

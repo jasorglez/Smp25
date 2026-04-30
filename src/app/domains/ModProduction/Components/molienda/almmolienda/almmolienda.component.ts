@@ -353,6 +353,14 @@ export class AlmmoliendaComponent {
         this.gridApi.onFilterChanged();
       }
     });
+
+    // Escucha notificación de OC creada para actualizar contador afectado
+    effect(() => {
+      const notification = this.signalsService.getOcCreatedNotification()();
+      if (notification) {
+        this.updateCounterForOcCreation(notification.idRequisition, notification.idMaterial, notification.idBranch);
+      }
+    });
   }
 
   private showDepartmentTooltip(departments: any[], cellRect: DOMRect): void {
@@ -539,6 +547,31 @@ export class AlmmoliendaComponent {
     try {
       const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
+
+      const detailsPromises = mapped
+        .filter(row => row.id)
+        .map(row =>
+          Promise.all([
+            lastValueFrom(this.moliendaService.getDetails(row.id, 'ENTRADA')),
+            lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA'))
+          ]).then(([entradas, salidas]) => ({
+            id: row.id,
+            entradas: entradas.length,
+            salidas: salidas.length
+          }))
+        );
+
+      const detailsCounts = await Promise.all(detailsPromises);
+      const countsMap = new Map(detailsCounts.map(d => [d.id, d]));
+
+      mapped.forEach(row => {
+        const counts = countsMap.get(row.id);
+        if (counts) {
+          row.entradas = counts.entradas;
+          row.salidas = counts.salidas;
+        }
+      });
+
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData.set(mapped);
       if (this.gridApi) this.gridApi.setGridOption('rowData', mapped);
@@ -546,6 +579,36 @@ export class AlmmoliendaComponent {
       console.error('Error loading molienda:', error);
       this.rowData.set([]);
       if (this.gridApi) this.gridApi.setGridOption('rowData', []);
+    }
+  }
+
+  private async updateCounterForOcCreation(idRequisition: number, idMaterial: number, idBranch: number) {
+    try {
+      const currentRowData = this.rowData();
+      const affectedRow = currentRowData.find(r => r.idMaterial === idMaterial && r.sucursal === idBranch);
+
+      if (!affectedRow || !affectedRow.id) return;
+
+      const [entradas, salidas] = await Promise.all([
+        lastValueFrom(this.moliendaService.getDetails(affectedRow.id, 'ENTRADA')),
+        lastValueFrom(this.moliendaService.getDetails(affectedRow.id, 'SALIDA'))
+      ]);
+
+      affectedRow.entradas = entradas.length;
+      affectedRow.salidas = salidas.length;
+
+      if (this.gridApi) {
+        const node = this.gridApi.getRowNode(affectedRow.id.toString());
+        if (node) {
+          node.setData(affectedRow);
+          this.gridApi.refreshCells({ rowNodes: [node], columns: ['entradas', 'salidas'], force: true });
+        }
+      }
+
+      this.toastMsg.set(`✓ Contador actualizado`);
+      setTimeout(() => this.toastMsg.set(''), 1500);
+    } catch (error) {
+      console.warn('Error updating counter for OC creation:', error);
     }
   }
 
@@ -640,51 +703,44 @@ export class AlmmoliendaComponent {
     const existingMap = new Map(existing.map((d: any) => [d.idRequisition, d]));
     const reqIds = new Set(reqs.map((r: any) => r.id));
 
-    for (const detail of existing) {
-      if ((detail as any).idRequisition && !reqIds.has((detail as any).idRequisition)) {
-        await lastValueFrom(this.moliendaService.deleteDetail(detail.id!));
-      }
-    }
+    const deletePromises = existing
+      .filter((detail: any) => detail.idRequisition && !reqIds.has(detail.idRequisition))
+      .map(detail => lastValueFrom(this.moliendaService.deleteDetail(detail.id!)));
 
+    const createUpdatePromises: Promise<any>[] = [];
     for (const req of reqs as any[]) {
       const existingDetail = existingMap.get(req.id) as any;
       if (!existingDetail) {
-        await lastValueFrom(this.moliendaService.createDetail({
-          idMolienda,
-          idRequisition: req.id,
-          type: 'ENTRADA',
-          cantidadReq:   req.cantidadReq,
-          numCantidadOc: req.numCantidadOc,
-          cantidad:      0,
-          fecha:         today,
-        }));
+        createUpdatePromises.push(
+          lastValueFrom(this.moliendaService.createDetail({
+            idMolienda,
+            idRequisition: req.id,
+            type: 'ENTRADA',
+            cantidadReq:   req.cantidadReq,
+            numCantidadOc: req.numCantidadOc,
+            cantidad:      0,
+            fecha:         today,
+          }))
+        );
       } else if (
         existingDetail.cantidadReq   !== req.cantidadReq ||
         existingDetail.numCantidadOc !== req.numCantidadOc
       ) {
-        await lastValueFrom(this.moliendaService.updateDetail(existingDetail.id, {
-          idMolienda,
-          idRequisition: req.id,
-          type:          'ENTRADA',
-          cantidadReq:   req.cantidadReq,
-          numCantidadOc: req.numCantidadOc,
-          cantidad:      existingDetail.cantidad ?? 0,
-          fecha:         existingDetail.fecha ?? today,
-        }));
+        createUpdatePromises.push(
+          lastValueFrom(this.moliendaService.updateDetail(existingDetail.id, {
+            idMolienda,
+            idRequisition: req.id,
+            type:          'ENTRADA',
+            cantidadReq:   req.cantidadReq,
+            numCantidadOc: req.numCantidadOc,
+            cantidad:      existingDetail.cantidad ?? 0,
+            fecha:         existingDetail.fecha ?? today,
+          }))
+        );
       }
     }
 
-    const updatedMolienda = await lastValueFrom(this.moliendaService.getById(idMolienda));
-    if (updatedMolienda) {
-      const mappedRow = this.mapRow(updatedMolienda);
-      const currentData = this.rowData();
-      const idx = currentData.findIndex(r => r.id === idMolienda);
-      if (idx !== -1) {
-        currentData[idx] = { ...currentData[idx], entradas: mappedRow.entradas, salidas: mappedRow.salidas };
-        this.rowData.set([...currentData]);
-        if (this.gridApi) this.gridApi.applyTransaction({ update: [currentData[idx]] });
-      }
-    }
+    await Promise.all([...deletePromises, ...createUpdatePromises]);
   }
 
   add() {
