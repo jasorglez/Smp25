@@ -179,9 +179,35 @@ export class DetalleMoliendaComponent {
       .filter((id: any) => id)
       .join(',');
 
+    // Si el padre ya sincronizó y pasó los datos, úsalos directamente sin HTTP
+    const preloadedReqs    = params?.preloadedReqs    as any[] | undefined;
+    const preloadedDetails = params?.preloadedDetails as any[] | undefined;
+
+    if (preloadedReqs?.length && preloadedDetails !== undefined) {
+      this.reqOptions = preloadedReqs;
+      this.rowData = preloadedDetails.map((d: any) => {
+        const req = this.reqOptions.find((r: any) => r.id === d.idRequisition);
+        return {
+          id:            d.id,
+          idRequisition: d.idRequisition ?? null,
+          folio:         req?.folio ?? '',
+          cantidadReq:   d.cantidadReq   ?? 0,
+          numCantidadOc: d.numCantidadOc ?? 0,
+          cantidad:      d.cantidad ?? 0,
+          idCatalog:     d.idCatalog ?? null,
+        };
+      });
+      this.initCompleted = true;
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.updateParentCount();
+      }
+      return;
+    }
+
+    // Flujo normal (salidas o sin precarga)
     await this.loadReqOptions();
     this.initCompleted = true;
-
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
   }
 
@@ -201,9 +227,16 @@ export class DetalleMoliendaComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    // Solo carga datos si init() ya terminó (reqOptions listo).
-    // Si init() aún está corriendo, él mismo llamará loadData() al terminar.
-    if (this.initCompleted) this.loadData();
+    if (this.initCompleted) {
+      // Si hay datos ya cargados por el path rápido, solo los setea en el grid
+      if (this.rowData.length) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.updateParentCount();
+      } else {
+        this.loadData();
+      }
+    }
+    // Si init() aún no terminó, él mismo llamará loadData() al terminar
   }
 
   onCascadeOcGridReady(params: GridReadyEvent) {

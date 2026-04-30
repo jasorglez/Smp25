@@ -23,7 +23,7 @@ interface OcRow {
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: #fff3e0;">
       <div style="margin-bottom: 4px; flex-shrink: 0;">
-        <strong style="font-size: 0.85rem;">Órdenes de Compra (Cascada 1)</strong>
+        <strong style="font-size: 0.85rem;">Órdenes de Compra del pedimento</strong>
       </div>
 
       <div
@@ -169,7 +169,10 @@ export class OrdenesydetallesOcComponent {
   private loadProviders() {
     this.customersService.getCustomersByCompany(this.internalParams?.data?.idCompany || 0, 'PROVIDERS').subscribe({
       next: (data: any) => {
-        this.providers = Array.isArray(data) ? data : [];
+        this.providers = (Array.isArray(data) ? data : []).map((p: any) => ({
+          id: p.id,
+          name: (p.name ?? '').trim() || (p.Description ?? p.description ?? '').trim() || `Proveedor ${p.id}`
+        }));
         this.providersLoaded = true;
         this.tryLoadData();
       },
@@ -201,8 +204,8 @@ export class OrdenesydetallesOcComponent {
   }
 
   loadData() {
-    const idRequisition = this.internalParams?.data?.id;
-    if (!idRequisition) {
+    const idPedimento = this.internalParams?.data?.idPedimento ?? this.internalParams?.data?.id;
+    if (!idPedimento) {
       this.rowData = [];
       if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.setGridOption('rowData', []);
@@ -210,7 +213,7 @@ export class OrdenesydetallesOcComponent {
       return;
     }
 
-    this.ocAndReqsService.getOcsByRequisition(idRequisition).subscribe({
+    this.ocAndReqsService.getOcsByPedimento(idPedimento).subscribe({
       next: (ocs: any[]) => {
         this.rowData = (Array.isArray(ocs) ? ocs : []).map((oc: any) => {
           const provider = this.providers.find((p) => p.id === oc.idProvider || p.id === oc.id_provider);

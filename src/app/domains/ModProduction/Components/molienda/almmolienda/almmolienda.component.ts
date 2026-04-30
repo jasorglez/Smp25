@@ -113,6 +113,10 @@ export class AlmmoliendaComponent {
   expandedDetailType: string | null = null;
   private _columnDefs: ColDef[] = [];
 
+  // Datos precargados del último sync — se pasan al detalle para evitar HTTP redundante
+  private lastSyncedReqs: any[]    = [];
+  private lastSyncedDetails: any[] = [];
+
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
 
@@ -314,9 +318,11 @@ export class AlmmoliendaComponent {
     isRowMaster: () => true,
     detailCellRenderer: DetalleMoliendaComponent,
     detailCellRendererParams: (params: any) => {
-      console.log('💠 detailCellRendererParams: departmentOptions =', this.departmentOptions);
+      const isEntradas = params.data?.detailType === 'entradas';
       return {
         departmentOptions: this.departmentOptions,
+        preloadedReqs:     isEntradas ? this.lastSyncedReqs    : [],
+        preloadedDetails:  isEntradas ? this.lastSyncedDetails : [],
       };
     },
     defaultColDef: {
@@ -548,27 +554,36 @@ export class AlmmoliendaComponent {
       const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
 
-      const detailsPromises = mapped
-        .filter(row => row.id)
-        .map(row =>
-          Promise.all([
-            lastValueFrom(this.moliendaService.getDetails(row.id, 'ENTRADA')),
-            lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA'))
-          ]).then(([entradas, salidas]) => ({
-            id: row.id,
-            entradas: entradas.length,
-            salidas: salidas.length
-          }))
-        );
+      const deptsCsv = this.departmentOptions
+        .map((d: any) => d.id)
+        .filter((id: any) => id)
+        .join(',');
 
-      const detailsCounts = await Promise.all(detailsPromises);
+      // Entradas: contar requisiciones reales en ocandreq (no DetailsMolienda).
+      // Esto da el valor correcto sin necesidad de abrir la cascada.
+      // Salidas: sigue contando DetailsMolienda (no hay sync automático para salidas).
+      const countsPromises = mapped
+        .filter(row => row.id && row.sucursal && row.idMaterial)
+        .map(async row => {
+          const [reqs, salidas] = await Promise.all([
+            lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(row.sucursal, row.idMaterial, deptsCsv)),
+            lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA')),
+          ]);
+          return {
+            id: row.id,
+            entradas: (reqs as any[]).length,
+            salidas: salidas.length,
+          };
+        });
+
+      const detailsCounts = await Promise.all(countsPromises);
       const countsMap = new Map(detailsCounts.map(d => [d.id, d]));
 
       mapped.forEach(row => {
         const counts = countsMap.get(row.id);
         if (counts) {
           row.entradas = counts.entradas;
-          row.salidas = counts.salidas;
+          row.salidas  = counts.salidas;
         }
       });
 
@@ -589,19 +604,23 @@ export class AlmmoliendaComponent {
 
       if (!affectedRow || !affectedRow.id) return;
 
-      const [entradas, salidas] = await Promise.all([
-        lastValueFrom(this.moliendaService.getDetails(affectedRow.id, 'ENTRADA')),
-        lastValueFrom(this.moliendaService.getDetails(affectedRow.id, 'SALIDA'))
-      ]);
+      const deptsCsv = this.departmentOptions
+        .map((d: any) => d.id)
+        .filter((id: any) => id)
+        .join(',');
 
-      affectedRow.entradas = entradas.length;
-      affectedRow.salidas = salidas.length;
+      // Cuenta requisiciones reales (no DetailsMolienda — esos solo existen tras abrir cascada)
+      const reqs = await lastValueFrom(
+        this.ocAndReqsService.getReqsByBranchMaterial(affectedRow.sucursal, affectedRow.idMaterial, deptsCsv)
+      );
+
+      affectedRow.entradas = (reqs as any[]).length;
 
       if (this.gridApi) {
         const node = this.gridApi.getRowNode(affectedRow.id.toString());
         if (node) {
           node.setData(affectedRow);
-          this.gridApi.refreshCells({ rowNodes: [node], columns: ['entradas', 'salidas'], force: true });
+          this.gridApi.refreshCells({ rowNodes: [node], columns: ['entradas'], force: true });
         }
       }
 
@@ -684,7 +703,6 @@ export class AlmmoliendaComponent {
 
   private async syncEntradasDetails(rowData: any) {
     const { id: idMolienda, sucursal, idMaterial } = rowData;
-    console.log('💠 syncEntradasDetails: rowData =', rowData);
     if (!idMolienda || !sucursal || !idMaterial) return;
 
     const today = new Date().toISOString().substring(0, 10);
@@ -692,8 +710,6 @@ export class AlmmoliendaComponent {
       .map((d: any) => d.id)
       .filter((id: any) => id)
       .join(',');
-    console.log('💠 syncEntradasDetails: departmentOptions =', this.departmentOptions);
-    console.log('💠 syncEntradasDetails: deptsCsv =', deptsCsv);
 
     const [reqs, existing] = await Promise.all([
       lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(sucursal, idMaterial, deptsCsv)),
@@ -741,6 +757,20 @@ export class AlmmoliendaComponent {
     }
 
     await Promise.all([...deletePromises, ...createUpdatePromises]);
+
+    // Guardar estado final en memoria para pasarlo al componente detalle sin HTTP extra
+    this.lastSyncedReqs = reqs as any[];
+    this.lastSyncedDetails = (reqs as any[]).map(req => {
+      const ex = existingMap.get(req.id) as any;
+      return {
+        id:            ex?.id ?? null,
+        idRequisition: req.id,
+        cantidadReq:   req.cantidadReq,
+        numCantidadOc: req.numCantidadOc,
+        cantidad:      ex?.cantidad ?? 0,
+        idCatalog:     ex?.idCatalog ?? null,
+      };
+    });
   }
 
   add() {

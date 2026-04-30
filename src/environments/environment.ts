@@ -36,8 +36,8 @@ export const environment = {
 
   urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
-  //urlWarehouse: 'http://localhost:5199/api',
+  //urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
+  urlWarehouse: 'http://localhost:5199/api',
 
   urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.125 (30 Abril 2026 15:00) - Fix lag cascada entradas: N+1 query backend + doble loadData frontend'
+  version: '3.128 (30 Abril 2026 17:30) - OC Delison agrupadas por pedimento: Nivel 1=Requisiciones, Nivel 2=Pedimentos, Nivel 3=OCs del pedimento'
 };

@@ -185,4 +185,18 @@ export class OcAndReqsService {
     );
   }
 
+  getPedimentosByRequisicion(idRequisicion: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq?typeReference=requisition&idReference=${idRequisicion}&type=COTIZ`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getOcsByPedimento(idPedimento: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/ocs-by-pedimento?idPedimento=${idPedimento}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
 }

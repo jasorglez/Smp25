@@ -8,7 +8,7 @@ import { ButtonCellRendererComponent } from '../purchaseorder/button-cell-render
 import { PdfButtonCellRendererPurchaseOrderComponent } from '../purchaseorder/pdf-button-cell-renderer-purchaseorder.component';
 import { DetailCellRendererPurchaseOrderItemsComponent } from '../purchaseorder/detail-cell-renderer-purchase-order-items.component';
 import { DetailCellRendererPurchaseOrderReportComponent } from '../purchaseorder/detail-cell-renderer-purchaseorder-report.component';
-import { OrdenesydetallesOcComponent } from './ordenesydetallesOc.component';
+import { PedimentosXRequisicionComponent } from './pedimentos-x-requisicion.component';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -28,7 +28,7 @@ import { lastValueFrom } from 'rxjs';
     PdfButtonCellRendererPurchaseOrderComponent,
     DetailCellRendererPurchaseOrderItemsComponent,
     DetailCellRendererPurchaseOrderReportComponent,
-    OrdenesydetallesOcComponent
+    PedimentosXRequisicionComponent
   ],
   templateUrl: './purchaseorderdelison.component.html',
   styleUrl: './purchaseorderdelison.component.scss',
@@ -252,7 +252,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     );
 
     const mapped = await Promise.all(allReqs.map(async ({ req, branchName }) => {
-      const ocCount = await this.getOcCount(req.id);
+      const ocCount = await this.getPedimentoCount(req.id);
       return this.mapRequisitionRow(req, branchName, ocCount);
     }));
 
@@ -273,7 +273,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       const reqs = Array.isArray(data) ? data : [];
 
       const allMapped = await Promise.all(reqs.map(async (req: any) => {
-        const ocCount = await this.getOcCount(req.id);
+        const ocCount = await this.getPedimentoCount(req.id);
         return this.mapRequisitionRow(req, branchName, ocCount);
       }));
       this.fullRowData = allMapped.filter(row => row.ocCount > 0);
@@ -290,10 +290,10 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     }
   }
 
-  private async getOcCount(idRequisition: number): Promise<number> {
+  private async getPedimentoCount(idRequisicion: number): Promise<number> {
     try {
-      const ocs = await lastValueFrom(this.ocAndReqsService.getOcsByRequisition(idRequisition));
-      return Array.isArray(ocs) ? ocs.length : 0;
+      const pedimentos = await lastValueFrom(this.ocAndReqsService.getPedimentosByRequisicion(idRequisicion));
+      return Array.isArray(pedimentos) ? pedimentos.length : 0;
     } catch {
       return 0;
     }
@@ -309,7 +309,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     detailRowHeight: 1200,
     isRowMaster: () => true,
     detailCellRendererSelector: (params: any) => {
-      return { component: OrdenesydetallesOcComponent };
+      return { component: PedimentosXRequisicionComponent };
     },
     getRowClass: (params: any) => {
       if (params.node.isSelected())   return 'selected-row';
@@ -375,11 +375,11 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       },
       {
         field: 'ocCount',
-        headerName: 'OC',
-        width: 100,
+        headerName: 'Pedimentos',
+        width: 110,
         editable: false,
         type: 'numericColumn',
-        cellStyle: { fontWeight: 'bold', textAlign: 'center' }
+        cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#f1f8e9' }
       },
       {
         field: 'catalogo',
