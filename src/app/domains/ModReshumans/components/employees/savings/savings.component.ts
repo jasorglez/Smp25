@@ -1,12 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject, input } from '@angular/core';
+import { Component, effect, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import {
   ColDef,
   GridApi,
   GridReadyEvent,
-  SelectionChangedEvent,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
@@ -16,6 +15,7 @@ import { TimeService } from 'app/services/time.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { AuthService } from 'app/services/auth.service';
+import { DetailSavingsWithdrawalsComponent } from '../detail-savings-withdrawals/detail-savings-withdrawals.component';
 
 @Component({
   selector: 'app-employeesxsavings',
@@ -37,36 +37,23 @@ export class EmployeesxSavingsComponent {
     resizable: true,
     sortable: true,
     filter: true,
-    editable: (params) => {
-      // Permitir edición solo si la fila es nueva
-      return params.data?.__isNew === true;
-    },
+    editable: (params) => params.data?.__isNew === true,
   };
 
   maestroRowData: any[] = [];
-  detalleRowData: any[] = [];
-  loanIds: number;
   gridApi: any;
   idEmployee: number;
-  idLoan: number = null;
-  nameLoan: string = null;
   id: number;
   userRoot: number = 0;
-  authorizedPass:boolean = false;
+  authorizedPass: boolean = false;
   masterNotSavedChanges: boolean = false;
-  detailNotSavedChanges: boolean = false;
-  selectedLoanId: any;
   ahorros: number = 0;
   private tempIdCounter: number = 0;
   masterNewlyAddedRows: string[] = [];
-  detailedNewlyAddedRows: string[] = [];
-  private selectedLoanIdBeforeRefresh: number;
-  showDetail: boolean = false;
   externalIdEmployee = input<number | null>(null);
-  modal:boolean = false;
-  seccion: string = 'employees'
-  subSeccion: string = 'Emp_Aho'
-
+  modal: boolean = false;
+  seccion: string = 'employees';
+  subSeccion: string = 'Emp_Aho';
 
   ngOnInit() {}
 
@@ -85,148 +72,92 @@ export class EmployeesxSavingsComponent {
       if (this.signalsService.getInitSaving()() == true) {
         this.obtenerAhorroEmpleado();
         this.modal = true;
-        this.seccion = 'payroll'
-        this.subSeccion = 'Nom_Aho'
+        this.seccion = 'payroll';
+        this.subSeccion = 'Nom_Aho';
         setTimeout(() => {
-        this.addRow('Master');
-        this.signalsService.resetInitSaving();
-      }, 300);
+          this.addRow();
+          this.signalsService.resetInitSaving();
+        }, 300);
       }
       this.authorizedPass = this.userRoot == 1;
-
     }, { allowSignalWrites: true });
   }
+
+  components = { detailSavingsWithdrawals: DetailSavingsWithdrawalsComponent };
 
   public maestroGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
+    masterDetail: true,
+    isRowMaster: () => true,
+    detailCellRendererSelector: () => ({ component: 'detailSavingsWithdrawals' }),
+    detailRowHeight: 250,
+    context: {
+      refreshMaster: (id?: number) => this.loadData(id),
+      getSeccion: () => this.seccion,
+      getSubSeccion: () => this.subSeccion,
+    },
+    onCellClicked: (params: any) => {
+      if (params.column.getColId() !== 'expandBtn') return;
+      if (params.data?.__isNew) return;
+      const rowNode = params.node;
+      if (rowNode.expanded) {
+        rowNode.setExpanded(false);
+        params.api.setFilterModel(null);
+        params.api.onFilterChanged();
+      } else {
+        params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+        params.api.onFilterChanged();
+        rowNode.setExpanded(true);
       }
-      return '';
+      params.api.refreshCells({ rowNodes: [rowNode], columns: ['expandBtn'], force: true });
     },
-    onMaestroRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onMaestroRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
+    onRowGroupOpened: (event: any) => {
+      if (!event.expanded) {
+        event.api.setFilterModel(null);
       }
     },
+    getRowClass: (params) => params.node.isSelected() ? 'selected-row' : '',
   };
 
-  public detalleGridOptions: any = {
-    headerHeight: 25,
-    rowHeight: 20,
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onDetalleRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-    onDetalleRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-  };
-  obtenerAhorroEmpleado(){
+  obtenerAhorroEmpleado() {
     const idEmployee = this.signalsService.getIdEmployee()();
     this.employeeService.getEmployeeById(idEmployee).subscribe(
       (data) => {
-        this.ahorros = data[0].saving || 0; // Asegurarse de que ahorros tenga un valor numérico
+        this.ahorros = data[0].saving || 0;
       },
       (error) => {
         console.error('Error al obtener el ahorro del empleado:', error);
-        alerts.basicAlert(
-          'Error',
-          'No se pudo obtener el ahorro del empleado.',
-          'error'
-        );
-      });
+        alerts.basicAlert('Error', 'No se pudo obtener el ahorro del empleado.', 'error');
+      }
+    );
   }
 
-  loadData(preserveSelection: boolean = false) {
-    if (this.idEmployee === null || this.idEmployee === undefined) {
-      return;
-    }
+  loadData(selectId?: number) {
+    if (this.idEmployee === null || this.idEmployee === undefined) return;
 
     this.employeesxloansService
       .getLoansByEmployee(this.idEmployee, 'AHORRO')
       .subscribe(
         (maestroRowData: any[]) => {
           if (!maestroRowData || maestroRowData.length === 0) {
-            this.maestroRowData = this.detalleRowData = [];
+            this.maestroRowData = [];
           } else {
             this.maestroRowData = maestroRowData;
-
             setTimeout(() => {
               if (this.maestroGridApi && this.maestroRowData.length > 0) {
-                // Buscar la fila que coincide con el ID guardado
-                const rowToSelect =
-                  preserveSelection && this.selectedLoanIdBeforeRefresh
-                    ? this.maestroRowData.findIndex(
-                        (row) => row.id === this.selectedLoanIdBeforeRefresh
-                      )
-                    : 0;
-
+                const rowToSelect = selectId
+                  ? this.maestroRowData.findIndex((row) => row.id === selectId)
+                  : 0;
                 this.maestroGridApi
-                  .getDisplayedRowAtIndex(rowToSelect)
+                  .getDisplayedRowAtIndex(rowToSelect < 0 ? 0 : rowToSelect)
                   ?.setSelected(true);
-
-                // Restablecer el ID guardado
-                this.selectedLoanIdBeforeRefresh = null;
               }
             });
           }
         },
-        (error) => {
-          console.error('Error loading loans data:', error);
-        }
+        (error) => console.error('Error loading savings data:', error)
       );
-  }
-
-  loadDetailedData() {
-    if (this.idLoan === null || this.idLoan === undefined) {
-      return;
-    }
-
-    this.employeesxloansService.getConceptsxLoansCredit(this.idLoan).subscribe(
-      (detalleRowData) => {
-        if (!detalleRowData || detalleRowData.length === 0) {
-          this.detalleRowData = [];
-        } else {
-          this.detalleRowData = detalleRowData;
-          setTimeout(() => {
-            if (this.detalleGridApi && this.detalleRowData.length > 0) {
-              this.detalleGridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
-            }
-          });
-        }
-      },
-      (error) => {
-        console.error('Error loading detailed loan data:', error);
-        alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
-      }
-    );
   }
 
   maestroColumnDefs: ColDef[] = [
@@ -235,356 +166,161 @@ export class EmployeesxSavingsComponent {
       field: 'id',
       flex: 1,
       editable: false,
+      filter: 'agNumberColumnFilter',
       valueFormatter: (params) => {
-        // Ocultar IDs temporales
-        if (params.value && params.value.toString().startsWith('temp_')) {
-          return '';
-        }
+        if (params.value && params.value.toString().startsWith('temp_')) return '';
         return params.value;
       },
     },
     {
       headerName: 'Fecha',
       field: 'date',
-      valueGetter: (params) =>
-        params.data.date ? new Date(params.data.date) : null,
+      valueGetter: (params) => params.data.date ? new Date(params.data.date) : null,
       cellRenderer: 'agDateCellRenderer',
       cellEditor: 'agDateCellEditor',
       valueFormatter: (params) => {
         if (params.value) {
           const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
-            '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
         }
         return '';
       },
       flex: 1,
       editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
-        },
+        if (params.data.__isNew) return true;
+        return this.authService.getCrudPermissionDetail('hr', this.seccion, this.subSeccion, 'update');
+      },
     },
     {
       headerName: 'Ahorro *',
       headerClass: 'required-header',
       field: 'monto',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '';
-      },
+      valueFormatter: (params) => params.value
+        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+        : '',
       flex: 1,
       editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
-        },
+        if (params.data.__isNew) return true;
+        return this.authService.getCrudPermissionDetail('hr', this.seccion, this.subSeccion, 'update');
+      },
     },
     {
       headerName: 'Retirado',
       field: 'payments',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '$0.00';
-      },
+      valueFormatter: (params) => params.value
+        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+        : '$0.00',
       flex: 1,
       editable: false,
     },
     {
       headerName: 'Restante',
       field: 'remain',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '$0.00';
-      },
+      valueFormatter: (params) => params.value
+        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value)
+        : '$0.00',
       flex: 1,
       editable: false,
     },
     {
       headerName: '',
-      field: 'id',
+      colId: 'expandBtn',
+      valueGetter: () => '',
       width: 110,
       editable: false,
       sortable: false,
       filter: false,
       cellRenderer: (params) => {
         if (params.data?.__isNew) return '';
-        const active = this.showDetail && this.idLoan === params.data?.id;
+        const active = params.node.expanded;
         return `<button class="btn btn-xs btn-${active ? 'info' : 'outline-info'}" style="font-size:11px;padding:1px 6px;">Ver retiros</button>`;
       },
-      onCellClicked: (params) => {
-        if (params.data?.__isNew) return;
-        if (this.showDetail && this.idLoan === params.data.id) {
-          this.showDetail = false;
-        } else {
-          this.idLoan = params.data.id;
-          this.loadDetailedData();
-          this.showDetail = true;
-        }
-        params.api.refreshCells({ columns: ['id'], force: true });
-      },
-    },
-  ];
-
-  detalleColumnDefs: ColDef[] = [
-    {
-      headerName: 'Fecha',
-      field: 'date',
-      valueGetter: (params) =>
-        params.data.date ? new Date(params.data.date) : null,
-      cellEditor: 'agDateCellEditor',
-      cellEditorParams: {
-        min: new Date(2000, 0, 1),
-        max: new Date(2050, 11, 31),
-      },
-      valueFormatter: (params) => {
-        if (params.value) {
-          const date = new Date(params.value);
-          return `${('0' + date.getDate()).slice(-2)}-${(
-            '0' +
-            (date.getMonth() + 1)
-          ).slice(-2)}-${date.getFullYear()}`;
-        }
-        return '';
-      },
-      flex: 1,
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
-        },
-    },
-    {
-      headerName: 'Abono *',
-      headerClass: 'required-header',
-      field: 'total',
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-          }).format(params.value);
-        }
-        return '$0.00';
-      },
-      flex: 2,
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
-        },
-    },
-    {
-      headerName: 'Comentario',
-      field: 'descripcion',
-      flex: 1,
-      editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', this.seccion , this.subSeccion, 'update');
-        },
     },
   ];
 
   private maestroGridApi: GridApi;
-  private detalleGridApi: GridApi;
 
   private async getTime(): Promise<{ dateObj: Date; formatted: string }> {
     const time = await lastValueFrom(this.timeService.getTime());
     const date = new Date(time.localTime);
     return {
       dateObj: date,
-      formatted: `${('0' + date.getDate()).slice(-2)}-${(
-        '0' +
-        (date.getMonth() + 1)
-      ).slice(-2)}-${date.getFullYear()}`,
+      formatted: `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`,
     };
   }
 
-  async addRow(type: string) {
+  async addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const timeData = await this.getTime();
-
-    if (type === 'Master') {
-      const newRow = {
-        id: tempId,
-        idEmpleado: this.idEmployee,
-        date: this.modal? this.signalsService.getFechaNomina().fechaFin : timeData.dateObj,
-        type: 'AHORRO',
-        fromPayroll: this.modal,
-        monto: 0,
-        payments: 0,
-        __isNew: true,
-        active: true,
-      };
-      this.maestroRowData = [newRow, ...this.maestroRowData];
-      this.masterNotSavedChanges = true;
-
-      setTimeout(() => {
-        if (this.maestroGridApi) {
-          const rowNode = this.maestroGridApi.getDisplayedRowAtIndex(0);
-          rowNode?.setSelected(true);
-
-          this.maestroGridApi.startEditingCell({
-            rowIndex: 0,
-            colKey: 'monto',
-          });
-        }
-      }, 500);
-    } else if (type === 'Detailed') {
-      const newRow = {
-        id: tempId,
-        idLoanAndCredit: this.idLoan,
-        date: timeData.dateObj,
-        status: 'Pendiente',
-        total: 0,
-        comments: '',
-        __isNew: true,
-        active: true,
-      };
-      this.detalleRowData = [newRow, ...this.detalleRowData];
-      this.detailNotSavedChanges = true;
-
-      setTimeout(() => {
-        if (this.detalleGridApi) {
-          const rowNode = this.detalleGridApi.getDisplayedRowAtIndex(0);
-          rowNode?.setSelected(true);
-
-          this.detalleGridApi.startEditingCell({
-            rowIndex: 0,
-            colKey: 'total',
-          });
-        }
-      });
-    }
+    const newRow = {
+      id: tempId,
+      idEmpleado: this.idEmployee,
+      date: this.modal ? this.signalsService.getFechaNomina().fechaFin : timeData.dateObj,
+      type: 'AHORRO',
+      fromPayroll: this.modal,
+      monto: 0,
+      payments: 0,
+      __isNew: true,
+      active: true,
+    };
+    this.maestroRowData = [newRow, ...this.maestroRowData];
+    this.masterNotSavedChanges = true;
+    setTimeout(() => {
+      if (this.maestroGridApi) {
+        this.maestroGridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
+        this.maestroGridApi.startEditingCell({ rowIndex: 0, colKey: 'monto' });
+      }
+    }, 500);
   }
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
   }
 
-  onDetalleGridReady(params: GridReadyEvent) {
-    this.detalleGridApi = params.api;
-  }
-
-  onMaestroSelectionChanged(event: SelectionChangedEvent) {
-    const selectedRows = this.maestroGridApi.getSelectedRows();
-    if (selectedRows.length > 0) {
-      const selectedMaestro = selectedRows[0];
-
-      // Verificar si la fila maestra es nueva
-      if (selectedMaestro?.__isNew === true) {
-        this.detalleRowData = [];
-        return;
-      }
-
-      this.idLoan = selectedMaestro.id;
-      this.loadDetailedData();
-    } else {
-      this.detalleRowData = [];
-      this.showDetail = false;
-    }
-  }
-
-  toggleDetail() {
-    this.showDetail = !this.showDetail;
-  }
-
   async saveMasterChanges() {
     const isValid = this.maestroRowData.every((item) => item.monto);
     if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe ingresar un valor de préstamo.',
-        'error'
-      );
+      alerts.basicAlert('Añadir entrada', 'Debe ingresar un valor de préstamo.', 'error');
       return;
     }
-
     const newRows = this.maestroRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.maestroRowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
+    const modifiedRows = this.maestroRowData.filter((row) => row.__modified && !row.__isNew);
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.employeesxloansService.addLoan(cleanedData);
     });
-
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       return this.employeesxloansService.updateLoan(row.id, cleanedData);
     });
-    
     try {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-
-      if(this.modal){
+      if (this.modal) {
         const idEmployeePayroll = this.signalsService.getIdEmployeePayroll()();
         this.administrationService.updateSavingNormalPayroll(
           idEmployeePayroll,
           responses[0].monto
         ).subscribe(
-          (res) => {
-            alerts.basicAlert(
-              'Ahorro actualizado',
-              'El ahorro se ha actualizado correctamente.',
-              'success'
-            );
+          () => {
+            alerts.basicAlert('Ahorro actualizado', 'El ahorro se ha actualizado correctamente.', 'success');
             this.obtenerAhorroEmpleado();
             this.signalsService.triggerRefreshNomina();
             this.masterNotSavedChanges = false;
           },
           (error) => {
             console.error('Error al actualizar el ahorro:', error);
-            alerts.basicAlert(
-              'Error',
-              error?.error?.message || 'No se pudo actualizar el ahorro.',
-              'error'
-            );
+            alerts.basicAlert('Error', error?.error?.message || 'No se pudo actualizar el ahorro.', 'error');
           }
         );
       }
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.detailedNewlyAddedRows = [];
-      await this.loadData(); // Refrescar los datos
+      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      await this.loadData();
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
+      alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
   }
 
@@ -593,82 +329,9 @@ export class EmployeesxSavingsComponent {
     this.masterNotSavedChanges = false;
   }
 
-  async saveDetailChanges() {
-    // Guardar el ID actual antes de actualizar
-    this.selectedLoanIdBeforeRefresh = this.idLoan;
-
-    const isValid = this.detalleRowData.every((item) => item.total);
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe ingresar un valor de abono.',
-        'error'
-      );
-      return;
-    }
-
-    const newRows = this.detalleRowData.filter((row) => row.__isNew);
-    const modifiedRows = this.detalleRowData.filter(
-      (row) => row.__modified && !row.__isNew
-    );
-
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.addConcept(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.employeesxloansService.updateConcept(row.id, cleanedData);
-    });
-
-    try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-      this.detailNotSavedChanges = false;
-      this.detailedNewlyAddedRows = [];
-
-      // Recargar datos manteniendo la selección
-      await this.loadData(true); // Pasar true para indicar que es una recarga post-guardado
-      this.signalsService.triggerRefreshEmployees();
-    } catch (error) {
-      if (error.status === 400) {
-        alerts.basicAlert(
-          'Añadir entrada',
-          error.error.message || 'Error al actualizar los datos.',
-          'error'
-        );
-      } else {
-        alerts.basicAlert(
-          'Error',
-          'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-          'error'
-        );
-      }
-      console.error(error);
-    }
-  }
-
-  revertDetailData() {
-    this.loadDetailedData();
-    this.detailNotSavedChanges = false;
-  }
-
   onMasterCellValueChanged(event: any): void {
     event.data.__modified = true;
     this.masterNotSavedChanges = true;
-  }
-
-  onDetailCellValueChanged($event) {
-    $event.data.__modified = true;
-    this.detailNotSavedChanges = true;
   }
 
   private cleanDataForServer(data: any): any {
@@ -684,96 +347,27 @@ export class EmployeesxSavingsComponent {
   async deleteMasterEntry() {
     const selectedNodes = this.maestroGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
-      );
+      alerts.basicAlert('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.', 'error');
       return;
     }
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-
+    const id = selectedNodes[0].data.id;
     this.employeesxloansService
       .deleteLoan(id)
       .pipe(
         catchError((error) => {
-          // Verificar si el error es un 400 y mostrar un mensaje específico
           if (error.status === 400) {
-            alerts.basicAlert(
-              'Eliminar entrada',
-              error.error.message || 'Error al eliminar la entrada.',
-              'error'
-            );
+            alerts.basicAlert('Eliminar entrada', error.error.message || 'Error al eliminar la entrada.', 'error');
           } else {
-            alerts.basicAlert(
-              'Eliminar entrada',
-              'Error al eliminar la entrada.',
-              'error'
-            );
+            alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
           }
           console.error(error);
           return EMPTY;
         })
       )
       .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
+        alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
         this.loadData();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.masterNotSavedChanges = false;
-      });
-  }
-
-  async deleteDetalleEntry() {
-    const selectedNodes = this.detalleGridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
-        'error'
-      );
-      return;
-    }
-    const selectedData = selectedNodes[0].data;
-    const id = selectedData.id;
-
-    this.employeesxloansService
-      .deleteConcept(id)
-      .pipe(
-        catchError((error) => {
-            alerts.basicAlert(
-              'Eliminar entrada',
-              'Error al eliminar la entrada.',
-              'error'
-            );
-          console.error(error);
-          return EMPTY;
-        })
-      )
-      .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
-        this.loadData();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
-        this.detailNotSavedChanges = false;
-        this.signalsService.triggerRefreshEmployees();
       });
   }
 }
