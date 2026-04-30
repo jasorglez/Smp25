@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect, Input } from '@angular/core';
+import { Component, inject, signal, effect, Input, Renderer2, RendererFactory2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -10,6 +10,8 @@ import { MaterialsService } from '../../../../../services/materials.service';
 import { MaterialXModuloService } from '../../../../../services/materialxmodulo.service';
 import { MoliendaService, Molienda } from '../../../../../services/molienda.service';
 import { OcAndReqsService } from '../../../../../services/ocandreqs.service';
+import { DepartmentsService } from '../../../../../services/departments.service';
+import { RolesService } from '../../../../../services/roles.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
 
@@ -89,6 +91,8 @@ export class AlmmoliendaComponent {
   private mxmService = inject(MaterialXModuloService);
   private moliendaService  = inject(MoliendaService);
   private ocAndReqsService = inject(OcAndReqsService);
+  private departmentsService = inject(DepartmentsService);
+  private rolesService = inject(RolesService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -103,15 +107,33 @@ export class AlmmoliendaComponent {
   userBranches: any[] = [];
   branchNames: string[] = [];
   matPrimaOptions: { id: number; name: string }[] = [];
+  departmentOptions: any[] = [];
   activeBranchFilter: number | null = null;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
   private _columnDefs: ColDef[] = [];
 
+  private renderer: Renderer2;
+  private tooltipElement: HTMLElement | null = null;
+
   get columnDefs(): ColDef[] {
     if (this._columnDefs.length > 0) return this._columnDefs;
 
     this._columnDefs = [
+    {
+      headerName: 'Activo',
+      field: 'active',
+      width: 80,
+      editable: true,
+      cellDataType: 'boolean',
+      cellStyle: { textAlign: 'center' },
+      valueSetter: (params) => {
+        params.data.active = params.newValue ?? false;
+        params.data.__modified = true;
+        this.hasUnsavedChanges = true;
+        return true;
+      }
+    },
     {
       headerName: 'Sucursal',
       field: 'sucursal',
@@ -151,6 +173,33 @@ export class AlmmoliendaComponent {
         this.hasUnsavedChanges = true;
         return true;
       }
+    },
+
+    {
+      headerName: 'Departamentos Autorizados',
+      field: 'departmentCount',
+      width: 150,
+      editable: false,
+      cellRenderer: (params: any) => {
+        const count = this.departmentOptions.length;
+        const container = document.createElement('div');
+        container.style.cssText = 'cursor: pointer; text-align: center; font-weight: bold;';
+        container.innerHTML = `${count} Departamento${count !== 1 ? 's' : ''}`;
+
+        container.addEventListener('mouseenter', () => {
+          if (this.departmentOptions.length > 0) {
+            const rect = container.getBoundingClientRect();
+            this.showDepartmentTooltip(this.departmentOptions, rect);
+          }
+        });
+
+        container.addEventListener('mouseleave', () => {
+          this.hideDepartmentTooltip();
+        });
+
+        return container;
+      },
+      cellStyle: { backgroundColor: '#e3f2fd', textAlign: 'center', cursor: 'pointer' }
     },
 
     {
@@ -276,7 +325,9 @@ export class AlmmoliendaComponent {
     },
   };
 
-  constructor() {
+  constructor(rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+
     effect(() => {
       const idUser = this.signalsService.idUser();
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
@@ -296,6 +347,108 @@ export class AlmmoliendaComponent {
         this.gridApi.onFilterChanged();
       }
     });
+  }
+
+  private showDepartmentTooltip(departments: any[], cellRect: DOMRect): void {
+    this.hideDepartmentTooltip();
+
+    this.tooltipElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.tooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipElement, 'min-width', '280px');
+    this.renderer.setStyle(this.tooltipElement, 'max-width', '400px');
+
+    const arrow = this.renderer.createElement('div');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #1e40af');
+    this.renderer.appendChild(this.tooltipElement, arrow);
+
+    const content = this.renderer.createElement('div');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-building');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const headerTextNode = this.renderer.createText(`${departments.length} Departamento${departments.length !== 1 ? 's' : ''}`);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+    this.renderer.appendChild(content, header);
+
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#e2e8f0');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    departments.forEach((dept: any, index: number) => {
+      if (index > 0) {
+        const separator = this.renderer.createElement('hr');
+        this.renderer.setStyle(separator, 'margin', '6px 0');
+        this.renderer.setStyle(separator, 'border', 'none');
+        this.renderer.setStyle(separator, 'border-top', '1px solid rgba(255, 255, 255, 0.1)');
+        this.renderer.appendChild(body, separator);
+      }
+
+      const row = this.renderer.createElement('div');
+      this.renderer.setStyle(row, 'display', 'flex');
+      this.renderer.setStyle(row, 'align-items', 'center');
+      this.renderer.setStyle(row, 'gap', '8px');
+
+      const icon = this.renderer.createElement('i');
+      this.renderer.addClass(icon, 'bi');
+      this.renderer.addClass(icon, 'bi-check-circle-fill');
+      this.renderer.setStyle(icon, 'color', '#22c55e');
+      this.renderer.setStyle(icon, 'font-size', '14px');
+      this.renderer.appendChild(row, icon);
+
+      const text = this.renderer.createElement('span');
+      this.renderer.setStyle(text, 'color', '#ffffff');
+      const textNode = this.renderer.createText(dept.name || dept.description || '');
+      this.renderer.appendChild(text, textNode);
+      this.renderer.appendChild(row, text);
+      this.renderer.appendChild(body, row);
+    });
+
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.tooltipElement, content);
+    this.renderer.appendChild(document.body, this.tooltipElement);
+
+    const top = cellRect.top;
+    const left = cellRect.right + 8;
+    this.renderer.setStyle(this.tooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.tooltipElement, 'left', `${left}px`);
+  }
+
+  private hideDepartmentTooltip(): void {
+    if (this.tooltipElement) {
+      this.renderer.removeChild(document.body, this.tooltipElement);
+      this.tooltipElement = null;
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -331,16 +484,19 @@ export class AlmmoliendaComponent {
 
   async loadRawMaterials(idCompany: number) {
     try {
-      const [mxmData, matsData] = await Promise.all([
+      const [mxmData, matsData, deptsResponse] = await Promise.all([
         lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')),
         lastValueFrom(this.materialsService.getMaterialsxview(idCompany)),
+        lastValueFrom(this.rolesService.getAuthorizedDepartments(idCompany)),
       ]);
+      const deptsData = (deptsResponse as any)?.data || deptsResponse || [];
       const matsMap = new Map<number, string>();
       (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
       this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
         .filter((m: any) => m.active !== false)
         .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
         .filter(m => m.name);
+      this.departmentOptions = Array.isArray(deptsData) ? deptsData : [];
       this._columnDefs = [];
       if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.columnDefs);
       await this.loadData(this.idRoot);
@@ -391,6 +547,7 @@ export class AlmmoliendaComponent {
     const nombreMaterial = this.matPrimaOptions.find(m => m.id === i.idMaterial)?.name ?? '';
     return {
       id:                 i.id,
+      active:             i.active ?? true,
       sucursal:           i.idSucursal   ?? null,
       idMaterial:         i.idMaterial   ?? null,
       id_articulo:        nombreMaterial,
@@ -418,7 +575,7 @@ export class AlmmoliendaComponent {
       ajustesInventarios: row.ajustesInventarios ?? 0,
       comentarios:        row.comentarios    || null,
       type:               this.tipo,
-      active:             true,
+      active:             row.active ?? true,
     };
   }
 
@@ -511,7 +668,9 @@ export class AlmmoliendaComponent {
     const newRow = {
       id: null,
       __tempId: `new_${Date.now()}`,
+      active: true,
       sucursal: currentBranch?.id ?? null,
+      idDepartamento: 62, // EXTRACCION Y FERMENTACION por defecto
       tipo: this.tipo,
       id_articulo: '',
       entradas: 0,

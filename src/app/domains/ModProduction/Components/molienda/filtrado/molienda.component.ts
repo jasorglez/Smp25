@@ -105,11 +105,20 @@ export class MoliendaComponent {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorPopup: true,
-        cellEditorParams: () => ({
-          values: this.matPrimaOptions.map(m => m.id),
-          valueListMaxHeight: 220,
-          formatValue: (val: any) => this.matPrimaOptions.find(m => m.id === val)?.name ?? String(val ?? ''),
-        }),
+        cellEditorParams: (params: any) => {
+          const currentSucursal = params.data?.sucursal;
+          const usedMatPrimas = this.rowData
+            .filter(row => row.sucursal === currentSucursal && row.matPrima != null)
+            .map(row => row.matPrima);
+          const availableMatPrimas = this.matPrimaOptions
+            .filter(m => !usedMatPrimas.includes(m.id))
+            .map(m => m.id);
+          return {
+            values: availableMatPrimas,
+            valueListMaxHeight: 220,
+            formatValue: (val: any) => this.matPrimaOptions.find(m => m.id === val)?.name ?? String(val ?? ''),
+          };
+        },
         valueFormatter: p => this.matPrimaOptions.find(m => m.id === p.value)?.name ?? '',
         valueSetter: p => { p.data.matPrima = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
       },
