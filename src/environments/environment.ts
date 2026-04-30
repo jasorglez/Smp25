@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.121 (29 Abril 2026) - Loans y Savings dentro de master-detail AG Grid'
+  version: '3.123 (30 Abril 2026) - Documentos de empleado con subida de PDFs'
 };

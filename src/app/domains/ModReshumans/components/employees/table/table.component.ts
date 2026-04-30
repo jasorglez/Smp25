@@ -35,6 +35,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { DetailEmployeeClockComponent } from '../detail-employee-clock/detail-employee-clock.component';
 import { DetailEmployeeLoansComponent } from '../detail-employee-loans/detail-employee-loans.component';
 import { DetailEmployeeSavingsComponent } from '../detail-employee-savings/detail-employee-savings.component';
+import { DetailEmployeeDocumentsComponent } from '../detail-employee-documents/detail-employee-documents.component';
 
 @Component({
   selector: 'app-employees-table',
@@ -47,6 +48,7 @@ import { DetailEmployeeSavingsComponent } from '../detail-employee-savings/detai
     DetailEmployeeClockComponent,
     DetailEmployeeLoansComponent,
     DetailEmployeeSavingsComponent,
+    DetailEmployeeDocumentsComponent,
   ],
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.scss'],
@@ -131,9 +133,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     detailEmployeeClock: DetailEmployeeClockComponent,
     detailEmployeeLoans: DetailEmployeeLoansComponent,
     detailEmployeeSavings: DetailEmployeeSavingsComponent,
+    detailEmployeeDocuments: DetailEmployeeDocumentsComponent,
   };
 
-  detailMode: 'clock' | 'loans' | 'savings' = 'clock';
+  detailMode: 'clock' | 'loans' | 'savings' | 'documents' = 'clock';
   private expandingViaColumn = false;
 
   constructor() {
@@ -181,6 +184,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     detailCellRendererSelector: () => {
       if (this.detailMode === 'loans') return { component: 'detailEmployeeLoans' };
       if (this.detailMode === 'savings') return { component: 'detailEmployeeSavings' };
+      if (this.detailMode === 'documents') return { component: 'detailEmployeeDocuments' };
       return { component: 'detailEmployeeClock' };
     },
     detailRowHeight: 680,
@@ -557,6 +561,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return '$0.00';
           },
           cellStyle: { backgroundColor: '#d4edda' },
+        },
+        {
+          field: 'documents',
+          headerName: 'Docs',
+          editable: false,
+          suppressMovable: true,
+          width: 70,
+          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
+          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
         },
         {
           field: 'priceXHour',
@@ -1325,6 +1338,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return '$0.00';
           },
           cellStyle: { backgroundColor: '#d4edda' },
+        },
+        {
+          field: 'documents',
+          headerName: 'Docs',
+          editable: false,
+          suppressMovable: true,
+          width: 70,
+          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
+          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
         },
         {
           field: 'baseHours',
@@ -2689,9 +2711,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.catalogPosiciones = [];
       }
     }
-    if (colId === 'loan' || colId === 'saving') {
+    if (colId === 'loan' || colId === 'saving' || colId === 'documents') {
       const rowNode = event.node;
-      const newMode = colId === 'loan' ? 'loans' : 'savings';
+      const newMode = colId === 'loan' ? 'loans' : colId === 'saving' ? 'savings' : 'documents';
       if (rowNode.expanded && this.detailMode === newMode) {
         rowNode.setExpanded(false);
         this.gridApi.setFilterModel(null);
