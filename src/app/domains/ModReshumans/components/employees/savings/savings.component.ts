@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import {
@@ -61,33 +61,39 @@ export class EmployeesxSavingsComponent {
   masterNewlyAddedRows: string[] = [];
   detailedNewlyAddedRows: string[] = [];
   private selectedLoanIdBeforeRefresh: number;
+  showDetail: boolean = false;
+  externalIdEmployee = input<number | null>(null);
   modal:boolean = false;
   seccion: string = 'employees'
   subSeccion: string = 'Emp_Aho'
-  
+
 
   ngOnInit() {}
 
   constructor() {
     effect(() => {
+      const extId = this.externalIdEmployee();
+      if (extId != null) {
+        this.idEmployee = extId;
+        this.loadData();
+        this.authorizedPass = false;
+        return;
+      }
       this.idEmployee = this.signalsService.getIdEmployee()();
       this.userRoot = this.signalsService.getUserRoot()();
       this.loadData();
       if (this.signalsService.getInitSaving()() == true) {
         this.obtenerAhorroEmpleado();
-        this.modal = true; // Abrir modal si la señal está activa
+        this.modal = true;
         this.seccion = 'payroll'
         this.subSeccion = 'Nom_Aho'
         setTimeout(() => {
-        this.addRow('Master'); // Espera a que se renderice el modal y grid
+        this.addRow('Master');
         this.signalsService.resetInitSaving();
       }, 300);
       }
-      if(this.userRoot == 1){
-        return this.authorizedPass = true;
-      }
-      return this.authorizedPass = false;
-      
+      this.authorizedPass = this.userRoot == 1;
+
     }, { allowSignalWrites: true });
   }
 
@@ -313,6 +319,30 @@ export class EmployeesxSavingsComponent {
       flex: 1,
       editable: false,
     },
+    {
+      headerName: '',
+      field: 'id',
+      width: 110,
+      editable: false,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params) => {
+        if (params.data?.__isNew) return '';
+        const active = this.showDetail && this.idLoan === params.data?.id;
+        return `<button class="btn btn-xs btn-${active ? 'info' : 'outline-info'}" style="font-size:11px;padding:1px 6px;">Ver retiros</button>`;
+      },
+      onCellClicked: (params) => {
+        if (params.data?.__isNew) return;
+        if (this.showDetail && this.idLoan === params.data.id) {
+          this.showDetail = false;
+        } else {
+          this.idLoan = params.data.id;
+          this.loadDetailedData();
+          this.showDetail = true;
+        }
+        params.api.refreshCells({ columns: ['id'], force: true });
+      },
+    },
   ];
 
   detalleColumnDefs: ColDef[] = [
@@ -474,7 +504,12 @@ export class EmployeesxSavingsComponent {
       this.loadDetailedData();
     } else {
       this.detalleRowData = [];
+      this.showDetail = false;
     }
+  }
+
+  toggleDetail() {
+    this.showDetail = !this.showDetail;
   }
 
   async saveMasterChanges() {

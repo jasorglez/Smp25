@@ -20,9 +20,7 @@ import { ModalService } from 'app/services/modal.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { States } from 'app/interface/states';
-import { EmployeesxLoansComponent } from '../loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
-import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -35,6 +33,8 @@ import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { DetailEmployeeClockComponent } from '../detail-employee-clock/detail-employee-clock.component';
+import { DetailEmployeeLoansComponent } from '../detail-employee-loans/detail-employee-loans.component';
+import { DetailEmployeeSavingsComponent } from '../detail-employee-savings/detail-employee-savings.component';
 
 @Component({
   selector: 'app-employees-table',
@@ -44,9 +44,9 @@ import { DetailEmployeeClockComponent } from '../detail-employee-clock/detail-em
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
-    EmployeesxLoansComponent,
-    EmployeesxSavingsComponent,
     DetailEmployeeClockComponent,
+    DetailEmployeeLoansComponent,
+    DetailEmployeeSavingsComponent,
   ],
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.scss'],
@@ -99,7 +99,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   tempIdCounter: number = 0; // Contador para IDs temporales
   private digits: number = 4; // Nueva variable para configuración de dígitos
   private gridApi: GridApi; // API del grid
-  private isOpen: boolean = false; // Variable para controlar el modal de edición
   public defaultColDef: ColDef = {
     sortable: true,
     filter: false,
@@ -113,8 +112,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   // Declare the missing properties
   gridHeight: string = '80vh';
-  showLoansTab: boolean = false;
-  showSavingsTab: boolean = false;
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -132,7 +129,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
     detailEmployeeClock: DetailEmployeeClockComponent,
+    detailEmployeeLoans: DetailEmployeeLoansComponent,
+    detailEmployeeSavings: DetailEmployeeSavingsComponent,
   };
+
+  detailMode: 'clock' | 'loans' | 'savings' = 'clock';
+  private expandingViaColumn = false;
 
   constructor() {
     effect(async () => {
@@ -176,12 +178,20 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     rowBuffer: 20,
     masterDetail: true,
     isRowMaster: () => true,
-    detailCellRendererSelector: () => ({ component: 'detailEmployeeClock' }),
+    detailCellRendererSelector: () => {
+      if (this.detailMode === 'loans') return { component: 'detailEmployeeLoans' };
+      if (this.detailMode === 'savings') return { component: 'detailEmployeeSavings' };
+      return { component: 'detailEmployeeClock' };
+    },
     detailRowHeight: 680,
     onRowGroupOpened: (event: any) => {
       if (!event.expanded) {
         event.api.setFilterModel(null);
+        this.detailMode = 'clock';
+      } else if (!this.expandingViaColumn) {
+        this.detailMode = 'clock';
       }
+      this.expandingViaColumn = false;
     },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -2638,9 +2648,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   }
 
   resetGridSize() {
-    this.gridHeight = '80vh'; // Reset to default height
-    this.showLoansTab = false;
-    this.showSavingsTab = false;
+    this.gridHeight = '80vh';
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
@@ -2660,44 +2668,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
     this.notSavedChanges = true;
     this.selectedRowData = selectedRowData;
-
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    if (colId === 'loan' || colId === 'saving') {
-      if (this.gridApi) {
-        const filterModel = {
-          id: {
-            type: 'equals',
-            filter: selectedId,
-          },
-        };
-        this.gridApi.setFilterModel(filterModel);
-        this.gridApi.onFilterChanged();
-      } else {
-        alert('gridApi no disponible');
-      }
-    }
-
-    // Activar la pestaña de préstamos si la columna es 'loan'
-    if (colId === 'loan') {
-      try {
-        await this.activateLoansTab();
-      } catch (error) {
-        console.error('Error activando la pestaña de préstamos:', error);
-      }
-    }
-
-    // Activar la pestaña de ahorros si la columna es 'saving'
-    if (colId === 'saving') {
-      try {
-        await this.activateSavingsTab();
-      } catch (error) {
-        console.error('Error activando la pestaña de ahorros:', error);
-      }
-    }
-
-    // Eliminar la asignación duplicada de selectedRowData
-    // this.selectedRowData = selectedRowData; // Esta línea ya se encuentra al principio
   }
+
   async onCellClicked(event: any): Promise<void> {
     const colId = event.column.getColId();
     if (colId === 'idDepto') {
@@ -2709,7 +2681,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     }
     if (colId === 'idPosition') {
-      const selectedData = event.data;
       const roleId = event.data.idDepto;
       this.idPosicionSelect = event.data.idPosition
       if (roleId) {
@@ -2718,34 +2689,21 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.catalogPosiciones = [];
       }
     }
-  }
-
-  async activateLoansTab() {
-    if (!this.isOpen || this.showSavingsTab) {
-      await this.adjustGridSize();
-      this.showLoansTab = true;
-      this.showSavingsTab = false;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
+    if (colId === 'loan' || colId === 'saving') {
+      const rowNode = event.node;
+      const newMode = colId === 'loan' ? 'loans' : 'savings';
+      if (rowNode.expanded && this.detailMode === newMode) {
+        rowNode.setExpanded(false);
+        this.gridApi.setFilterModel(null);
+        this.gridApi.onFilterChanged();
+      } else {
+        this.detailMode = newMode;
+        this.expandingViaColumn = true;
+        this.gridApi.setFilterModel({ id: { type: 'equals', filter: event.data.id } });
+        this.gridApi.onFilterChanged();
+        rowNode.setExpanded(true);
+      }
     }
-  }
-
-  async activateSavingsTab() {
-    if (!this.isOpen || this.showLoansTab) {
-      await this.adjustGridSize();
-      this.showLoansTab = false;
-      this.showSavingsTab = true;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
-    }
-  }
-
-  async adjustGridSize() {
-    this.gridHeight = '20vh'; // Adjust as needed
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

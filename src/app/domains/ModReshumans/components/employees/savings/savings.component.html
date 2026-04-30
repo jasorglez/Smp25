@@ -2,7 +2,7 @@
   <div class="row align-items-start">
 
     <!-- Grupo Ahorros -->
-    <div class="col-7">
+    <div [class]="showDetail ? 'col-7' : 'col-12'">
       <div class="shadow-sm" id="cartPrin">
         <div class="card-header">
           <h3 class="card-title mb-0">Ahorros</h3>
@@ -45,10 +45,13 @@
     </div>
 
     <!-- Grupo Detalles del Ahorro -->
-    <div class="col-5">
+    <div class="col-5" *ngIf="showDetail">
       <div class=" shadow-sm" id="cartPrin">
-        <div class="card-header">
-          <h3 class="card-title mb-0">Retiros del abono {{idLoan}}</h3>
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3 class="card-title mb-0">Retiros del ahorro {{idLoan}}</h3>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggleDetail()" title="Cerrar retiros">
+            <i class="bi bi-x-lg"></i>
+          </button>
         </div>
         <div class="" id="cartSec">
           <div class="row">
