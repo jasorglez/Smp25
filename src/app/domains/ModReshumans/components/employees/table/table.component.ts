@@ -222,7 +222,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     onCellKeyDown: (params) => {
       if (params.event.key === 'Enter') {
         // Obtener todas las columnas editables
-        const editableColumns = this.colMaster.filter((col) => col.editable);
+        const editableColumns = this.colMaster.filter((col) => col.field && col.editable);
         const currentColIndex = editableColumns.findIndex(
           (col) => col.field === params.column.getColDef().field
         );
@@ -2044,12 +2044,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find((col) => col.editable);
-    const firstEditableColKey = firstEditableCol
-      ? firstEditableCol.field
-      : null;
-
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
     setTimeout(() => {
       // Refrescar la celda de fecha para aplicar el valueFormatter
@@ -2062,12 +2056,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         });
       }
 
-      if (firstEditableColKey) {
-        this.gridApi.startEditingCell({
-          rowIndex: newRowIndex,
-          colKey: 'idBranch', // Editar la primera columna editable
-        });
-      }
+      this.gridApi.startEditingCell({
+        rowIndex: newRowIndex,
+        colKey: 'name',
+      });
     }, 100);
 
   }
