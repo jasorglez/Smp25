@@ -1236,10 +1236,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (row) {
               row.detailData = data;
               row.articlesCount = data.length;
-              // ✅ Marcar como modificado para el futuro ordenamiento, pero no mover la fila aún
               row.dateModified = new Date().toISOString();
-              row.__modified = true;
-              this.hasUnsavedChanges = true;
               this.moveRowToTop(requisitionId);
 
               if (showAlert) {
@@ -1255,10 +1252,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             const row = this.rowData.find(r => r.id === requisitionId);
             if (row) {
               row.articlesCount = count;
-              // ✅ Marcar como modificado
               row.dateModified = new Date().toISOString();
-              row.__modified = true;
-              this.hasUnsavedChanges = true;
               this.moveRowToTop(requisitionId);
             }
           },
@@ -1274,10 +1268,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (row) {
               row.solicitedBy = solicitedBy;
               row.requestDate = requestDate;
-              // ✅ Marcar como modificado
               row.dateModified = new Date().toISOString();
-              row.__modified = true;
-              this.hasUnsavedChanges = true;
               this.moveRowToTop(requisitionId);
             }
           }
