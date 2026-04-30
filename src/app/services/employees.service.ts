@@ -64,6 +64,22 @@ export class EmployeesService {
 
   addEmployeeClock(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/EmployeesXClock`, data, { headers: this.trackingService.getHeaders() });
-  } 
+  }
+
+  getEmployeeDocuments(idEmployee: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/EmployeeDocument/employee/${idEmployee}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addEmployeeDocument(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/EmployeeDocument`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateEmployeeDocument(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/EmployeeDocument/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteEmployeeDocument(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/EmployeeDocument/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 
 }
