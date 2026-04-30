@@ -138,19 +138,22 @@ export class OcAndReqsService {
     );
   }
 
-  getOcsByReqMaterial(idReq: number, idMaterial: number): Observable<any[]> {
+  getOcsByReqMaterial(idReq: number, idMaterial: number, depts?: string): Observable<any[]> {
+    const deptsParam = depts ? `&depts=${encodeURIComponent(depts)}` : '';
     return this.http.get<any[]>(
-      `${environment.urlWarehouse}/Ocandreq/oc-by-req-material?idReq=${idReq}&idMaterial=${idMaterial}`,
+      `${environment.urlWarehouse}/Ocandreq/oc-by-req-material?idReq=${idReq}&idMaterial=${idMaterial}${deptsParam}`,
       { headers: this.trackingService.getHeaders() }
     );
   }
 
-  getReqsByBranchMaterial(idBranch: number, idMaterial: number): Observable<{ id: number; folio: string; cantidadReq: number; numCantidadOc: number }[]> {
+  getReqsByBranchMaterial(idBranch: number, idMaterial: number, depts?: string): Observable<{ id: number; folio: string; cantidadReq: number; numCantidadOc: number }[]> {
+    const deptsParam = depts ? `&depts=${encodeURIComponent(depts)}` : '';
     return this.http.get<any[]>(
-      `${environment.urlWarehouse}/Ocandreq/reqs-by-branch-material?idBranch=${idBranch}&idMaterial=${idMaterial}`,
+      `${environment.urlWarehouse}/Ocandreq/reqs-by-branch-material?idBranch=${idBranch}&idMaterial=${idMaterial}${deptsParam}`,
       { headers: this.trackingService.getHeaders() }
     );
   }
+
 
   patchProveedorXTablaCampo7(campo1: number, idTabla: number, valor: boolean): Observable<any> {
     return this.http.patch(
