@@ -296,8 +296,12 @@ export class CatalogosProduccionComponent {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
       if (idRoot) {
         this.idRoot = idRoot;
-        this.loadMateriales(idRoot);
-        this.loadGridData();
+        this.materialsService.getMaterialsxview(idRoot).subscribe((res: any) => {
+          this.materiales = res ?? [];
+          this.materialesIdToDesc.clear();
+          this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
+          this.loadGridData();
+        });
       }
     });
   }
@@ -320,14 +324,6 @@ export class CatalogosProduccionComponent {
 
   private showToast(msg: string)  { this.toastMsg.set(msg);  setTimeout(() => this.toastMsg.set(''),  1500); }
 
-  loadMateriales(idRoot: number) {
-    this.materialsService.getMaterialsxview(idRoot).subscribe((res: any) => {
-      this.materiales = res ?? [];
-      this.materialesIdToDesc.clear();
-      this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
-    });
-  }
-
   loadGridData() {
     this.mxmService.getAll(this.idRoot).subscribe((modulos: any[]) => {
       const rows = (modulos ?? []).map(m => ({ id: m.id, type: m.type, idArticulo: m.idArticulo, valor: m.active }));
@@ -337,7 +333,7 @@ export class CatalogosProduccionComponent {
   }
 
   add() {
-    this.rowData.set([{ id: null, type: '', idArticulo: null, valor: false, __isNew: true }, ...this.rowData()]);
+    this.rowData.set([{ id: null, type: 'MOLIENDA', idArticulo: null, valor: false, __isNew: true }, ...this.rowData()]);
     this.hasUnsavedChanges = true;
     setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idArticulo' }), 0);
   }

@@ -256,7 +256,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       return this.mapRequisitionRow(req, branchName, ocCount);
     }));
 
-    this.fullRowData = mapped;
+    this.fullRowData = mapped.filter(row => row.ocCount > 0);
     this.rowData = [...this.fullRowData];
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
@@ -272,10 +272,11 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       const data: any = await lastValueFrom(this.ocAndReqsService.getRequisitionsByBranch(branchId));
       const reqs = Array.isArray(data) ? data : [];
 
-      this.fullRowData = await Promise.all(reqs.map(async (req: any) => {
+      const allMapped = await Promise.all(reqs.map(async (req: any) => {
         const ocCount = await this.getOcCount(req.id);
         return this.mapRequisitionRow(req, branchName, ocCount);
       }));
+      this.fullRowData = allMapped.filter(row => row.ocCount > 0);
 
       this.rowData = [...this.fullRowData];
       if (this.gridApi) {
