@@ -257,7 +257,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   };
 
 
-  private readonly COLUMN_STATE_KEY = 'employees-table-column-state';
+  private readonly COLUMN_STATE_KEY = 'employees-table-column-state-v2';
 
   private saveColumnState(): void {
     if (!this.gridApi) return;
@@ -1324,7 +1324,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
           cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
         },
-
         {
           field: 'loan',
           headerName: 'Préstamos',

@@ -9,34 +9,65 @@ import { EmployeesService } from 'app/services/employees.service';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
+type DocKind = 'pdf' | 'image' | 'office' | null;
+
+function detectKind(url: string): DocKind {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+  if (lower.includes('/pdf/') || lower.includes('.pdf')) return 'pdf';
+  if (lower.includes('/images/') || /\.(jpe?g|png)/.test(lower)) return 'image';
+  return 'office';
+}
+
+function officeIcon(url: string): string {
+  const lower = url.toLowerCase();
+  if (/\.xlsx?/.test(lower)) return 'bi-file-earmark-excel text-success';
+  if (/\.docx?/.test(lower)) return 'bi-file-earmark-word text-primary';
+  if (/\.pptx?/.test(lower)) return 'bi-file-earmark-ppt text-danger';
+  return 'bi-file-earmark text-secondary';
+}
+
 // ── Preview detail (nested master-detail renderer) ──────────────────────────
 @Component({
   selector: 'app-document-preview-detail',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div style="height:500px; padding:8px; background:#f8f9fa;">
-      <iframe *ngIf="safeUrl && ispdf" [src]="safeUrl"
+    <div style="height:500px; padding:8px; background:#f8f9fa; display:flex; align-items:center; justify-content:center;">
+      <!-- PDF -->
+      <iframe *ngIf="kind === 'pdf'" [src]="safeUrl"
         style="width:100%;height:100%;border:none;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
       </iframe>
-      <div *ngIf="safeUrl && !ispdf"
-        class="d-flex justify-content-center align-items-center h-100">
-        <img [src]="safeUrl" style="max-width:100%;max-height:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);" alt="Documento">
+      <!-- Imagen -->
+      <img *ngIf="kind === 'image'" [src]="safeUrl"
+        style="max-width:100%;max-height:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);" alt="Documento">
+      <!-- Office / sin preview nativo -->
+      <div *ngIf="kind === 'office'" class="text-center">
+        <i class="bi {{ iconClass }}" style="font-size:4rem;"></i>
+        <p class="mt-2 text-muted" style="font-size:0.85rem;">Vista previa no disponible para este formato.</p>
+        <a [href]="rawUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-1">
+          <i class="bi bi-download me-1"></i> Descargar archivo
+        </a>
       </div>
-      <div *ngIf="!safeUrl" class="d-flex justify-content-center align-items-center h-100">
+      <!-- Sin archivo -->
+      <div *ngIf="!kind">
         <p class="text-muted">Sin documento adjunto</p>
       </div>
     </div>`,
 })
 export class DocumentPreviewDetailComponent {
   safeUrl: SafeResourceUrl | null = null;
-  ispdf = false;
+  rawUrl = '';
+  kind: DocKind = null;
+  iconClass = '';
   private sanitizer = inject(DomSanitizer);
 
   agInit(params: any) {
     const url: string = params.data?.urlDocument ?? null;
     if (!url) return;
-    this.ispdf = url.includes('/pdf/') || url.toLowerCase().includes('.pdf');
+    this.rawUrl = url;
+    this.kind = detectKind(url);
+    this.iconClass = this.kind === 'office' ? officeIcon(url) : '';
     this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 }
@@ -107,10 +138,17 @@ export class DetailEmployeeDocumentsComponent {
       editable: false,
       cellRenderer: (params) => {
         if (params.value) {
-          return `<i class="bi bi-paperclip" style="font-size:1rem;vertical-align:middle;margin-right:4px;"></i>
+          const icon = officeIcon(params.value)
+            .replace('text-success', 'color:#198754')
+            .replace('text-primary', 'color:#0d6efd')
+            .replace('text-danger', 'color:#dc3545')
+            .replace('text-secondary', 'color:#6c757d');
+          const [cls] = icon.split(' ');
+          const col = icon.match(/color:[^;]+/)?.[0] ?? 'color:#555';
+          return `<i class="bi ${cls}" style="font-size:1rem;vertical-align:middle;margin-right:4px;${col}"></i>
                   <span style="font-size:0.72rem;color:#555;">Doble clic p/ reemplazar</span>`;
         }
-        return `<span style="font-size:0.72rem;color:#888;">Doble clic p/ subir (PDF/JPG/PNG)</span>`;
+        return `<span style="font-size:0.72rem;color:#888;">Doble clic p/ subir (PDF/JPG/PNG/Office)</span>`;
       },
       onCellDoubleClicked: async (params) => {
         try {
@@ -187,7 +225,7 @@ export class DetailEmployeeDocumentsComponent {
   async saveChanges() {
     const valid = this.rowData.every((r) => r.documentName && r.urlDocument);
     if (!valid) {
-      alerts.basicAlert('Guardar documentos', 'Cada documento necesita nombre y archivo PDF.', 'error');
+      alerts.userSaveErrorToast('Guardar documentos', 'Cada documento necesita nombre y archivo.');
       return;
     }
     const newRows = this.rowData.filter((r) => r.__isNew);
@@ -196,11 +234,11 @@ export class DetailEmployeeDocumentsComponent {
     const updates = modifiedRows.map((r) => this.employeesService.updateEmployeeDocument(r.id, this.cleanRow(r)));
     try {
       await lastValueFrom(concat(...adds, ...updates).pipe(toArray()));
-      alerts.basicAlert('Documentos', 'Guardado correctamente.', 'success');
+      alerts.userSaveSuccessToast('Documentos', 'Guardado correctamente.');
       this.hasUnsavedChanges = false;
       this.loadData();
     } catch {
-      alerts.basicAlert('Error', 'No se pudieron guardar los documentos.', 'error');
+      alerts.userSaveErrorToast('Error', 'No se pudieron guardar los documentos.');
     }
   }
 
@@ -212,7 +250,7 @@ export class DetailEmployeeDocumentsComponent {
   deleteEntry() {
     const selected = this.gridApi?.getSelectedNodes();
     if (!selected?.length) {
-      alerts.basicAlert('Eliminar', 'Seleccione un documento para eliminar.', 'error');
+      alerts.userSaveErrorToast('Eliminar', 'Seleccione un documento para eliminar.');
       return;
     }
     const data = selected[0].data;
@@ -223,11 +261,11 @@ export class DetailEmployeeDocumentsComponent {
     }
     this.employeesService.deleteEmployeeDocument(data.id)
       .pipe(catchError(() => {
-        alerts.basicAlert('Error', 'No se pudo eliminar el documento.', 'error');
+        alerts.userSaveErrorToast('Error', 'No se pudo eliminar el documento.');
         return EMPTY;
       }))
       .subscribe(() => {
-        alerts.basicAlert('Eliminar', 'Documento eliminado.', 'success');
+        alerts.userDeleteSuccessToast('Eliminar', 'Documento eliminado.');
         this.loadData();
       });
   }
