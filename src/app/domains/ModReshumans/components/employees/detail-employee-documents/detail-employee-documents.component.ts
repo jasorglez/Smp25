@@ -2,11 +2,30 @@ import { Component, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesService } from 'app/services/employees.service';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+
+type DocKind = 'pdf' | 'image' | 'office' | null;
+
+function detectKind(url: string): DocKind {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+  if (lower.includes('/pdf/') || lower.includes('.pdf')) return 'pdf';
+  if (lower.includes('/images/') || /\.(jpe?g|png)/.test(lower)) return 'image';
+  return 'office';
+}
+
+function officeIcon(url: string): string {
+  const lower = url.toLowerCase();
+  if (/\.xlsx?/.test(lower)) return 'bi-file-earmark-excel text-success';
+  if (/\.docx?/.test(lower)) return 'bi-file-earmark-word text-primary';
+  if (/\.pptx?/.test(lower)) return 'bi-file-earmark-ppt text-danger';
+  return 'bi-file-earmark text-secondary';
+}
 
 // ── Preview detail (nested master-detail renderer) ──────────────────────────
 @Component({
@@ -14,22 +33,42 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div style="height:500px; padding:8px; background:#f8f9fa;">
-      <iframe *ngIf="safeUrl" [src]="safeUrl"
+    <div style="height:500px; padding:8px; background:#f8f9fa; display:flex; align-items:center; justify-content:center;">
+      <!-- PDF -->
+      <iframe *ngIf="kind === 'pdf'" [src]="safeUrl"
         style="width:100%;height:100%;border:none;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
       </iframe>
-      <div *ngIf="!safeUrl" class="d-flex justify-content-center align-items-center h-100">
+      <!-- Imagen -->
+      <img *ngIf="kind === 'image'" [src]="safeUrl"
+        style="max-width:100%;max-height:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);" alt="Documento">
+      <!-- Office / sin preview nativo -->
+      <div *ngIf="kind === 'office'" class="text-center">
+        <i class="bi {{ iconClass }}" style="font-size:4rem;"></i>
+        <p class="mt-2 text-muted" style="font-size:0.85rem;">Vista previa no disponible para este formato.</p>
+        <a [href]="rawUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-1">
+          <i class="bi bi-download me-1"></i> Descargar archivo
+        </a>
+      </div>
+      <!-- Sin archivo -->
+      <div *ngIf="!kind">
         <p class="text-muted">Sin documento adjunto</p>
       </div>
     </div>`,
 })
 export class DocumentPreviewDetailComponent {
   safeUrl: SafeResourceUrl | null = null;
+  rawUrl = '';
+  kind: DocKind = null;
+  iconClass = '';
   private sanitizer = inject(DomSanitizer);
 
   agInit(params: any) {
     const url: string = params.data?.urlDocument ?? null;
-    this.safeUrl = url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+    if (!url) return;
+    this.rawUrl = url;
+    this.kind = detectKind(url);
+    this.iconClass = this.kind === 'office' ? officeIcon(url) : '';
+    this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 }
 
@@ -37,7 +76,7 @@ export class DocumentPreviewDetailComponent {
 @Component({
   selector: 'app-detail-employee-documents',
   standalone: true,
-  imports: [CommonModule, AgGridModule, DocumentPreviewDetailComponent],
+  imports: [CommonModule, AgGridModule, FormsModule],
   templateUrl: './detail-employee-documents.component.html',
 })
 export class DetailEmployeeDocumentsComponent {
@@ -48,6 +87,7 @@ export class DetailEmployeeDocumentsComponent {
   rowData: any[] = [];
   gridApi: GridApi;
   hasUnsavedChanges = false;
+  quickFilter = '';
   private tempIdCounter = 0;
 
   // Register the nested preview renderer
@@ -98,14 +138,21 @@ export class DetailEmployeeDocumentsComponent {
       editable: false,
       cellRenderer: (params) => {
         if (params.value) {
-          return `<img src="assets/img/pdf.png" alt="PDF" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;" title="Doble clic para reemplazar">
+          const icon = officeIcon(params.value)
+            .replace('text-success', 'color:#198754')
+            .replace('text-primary', 'color:#0d6efd')
+            .replace('text-danger', 'color:#dc3545')
+            .replace('text-secondary', 'color:#6c757d');
+          const [cls] = icon.split(' ');
+          const col = icon.match(/color:[^;]+/)?.[0] ?? 'color:#555';
+          return `<i class="bi ${cls}" style="font-size:1rem;vertical-align:middle;margin-right:4px;${col}"></i>
                   <span style="font-size:0.72rem;color:#555;">Doble clic p/ reemplazar</span>`;
         }
-        return `<span style="font-size:0.72rem;color:#888;">Doble clic p/ subir PDF</span>`;
+        return `<span style="font-size:0.72rem;color:#888;">Doble clic p/ subir (PDF/JPG/PNG/Office)</span>`;
       },
       onCellDoubleClicked: async (params) => {
         try {
-          const url = await this.attachHandlerService.uploadPdf();
+          const { url } = await this.attachHandlerService.uploadEmployeeDoc();
           params.node.setDataValue('urlDocument', url);
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
@@ -144,6 +191,15 @@ export class DetailEmployeeDocumentsComponent {
     this.gridApi = params.api;
   }
 
+  onQuickFilter(value: string) {
+    this.gridApi?.setGridOption('quickFilterText', value);
+  }
+
+  clearFilter() {
+    this.quickFilter = '';
+    this.gridApi?.setGridOption('quickFilterText', '');
+  }
+
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasUnsavedChanges = true;
@@ -169,7 +225,7 @@ export class DetailEmployeeDocumentsComponent {
   async saveChanges() {
     const valid = this.rowData.every((r) => r.documentName && r.urlDocument);
     if (!valid) {
-      alerts.basicAlert('Guardar documentos', 'Cada documento necesita nombre y archivo PDF.', 'error');
+      alerts.userSaveErrorToast('Guardar documentos', 'Cada documento necesita nombre y archivo.');
       return;
     }
     const newRows = this.rowData.filter((r) => r.__isNew);
@@ -178,11 +234,11 @@ export class DetailEmployeeDocumentsComponent {
     const updates = modifiedRows.map((r) => this.employeesService.updateEmployeeDocument(r.id, this.cleanRow(r)));
     try {
       await lastValueFrom(concat(...adds, ...updates).pipe(toArray()));
-      alerts.basicAlert('Documentos', 'Guardado correctamente.', 'success');
+      alerts.userSaveSuccessToast('Documentos', 'Guardado correctamente.');
       this.hasUnsavedChanges = false;
       this.loadData();
     } catch {
-      alerts.basicAlert('Error', 'No se pudieron guardar los documentos.', 'error');
+      alerts.userSaveErrorToast('Error', 'No se pudieron guardar los documentos.');
     }
   }
 
@@ -194,7 +250,7 @@ export class DetailEmployeeDocumentsComponent {
   deleteEntry() {
     const selected = this.gridApi?.getSelectedNodes();
     if (!selected?.length) {
-      alerts.basicAlert('Eliminar', 'Seleccione un documento para eliminar.', 'error');
+      alerts.userSaveErrorToast('Eliminar', 'Seleccione un documento para eliminar.');
       return;
     }
     const data = selected[0].data;
@@ -205,11 +261,11 @@ export class DetailEmployeeDocumentsComponent {
     }
     this.employeesService.deleteEmployeeDocument(data.id)
       .pipe(catchError(() => {
-        alerts.basicAlert('Error', 'No se pudo eliminar el documento.', 'error');
+        alerts.userSaveErrorToast('Error', 'No se pudo eliminar el documento.');
         return EMPTY;
       }))
       .subscribe(() => {
-        alerts.basicAlert('Eliminar', 'Documento eliminado.', 'success');
+        alerts.userDeleteSuccessToast('Eliminar', 'Documento eliminado.');
         this.loadData();
       });
   }

@@ -22,7 +22,7 @@ import { lastValueFrom, Subscription } from 'rxjs';
   template: `
     <div class="comparacion-container">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-        <h5 class="mb-0">
+        <h5 class="mb-0" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
           Comparación de Precios por Proveedor
           <span *ngIf="requisitionFolio"
                 style="background:#2e7d32; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:8px; letter-spacing:1px;">
@@ -31,6 +31,18 @@ import { lastValueFrom, Subscription } from 'rxjs';
           <span *ngIf="cotizacionFolio"
                 style="background:#1565c0; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:6px; letter-spacing:1px;">
             {{ cotizacionFolio }}
+          </span>
+          <!-- Estado OC -->
+          <span [style.background]="ocGenerada ? '#b71c1c' : '#388e3c'"
+                style="color:#fff; border-radius:4px; padding:2px 8px; font-size:0.75rem; font-weight:700; margin-left:6px; letter-spacing:1px; display:inline-flex; align-items:center; gap:4px;">
+            <i [class]="ocGenerada ? 'bi bi-lock-fill' : 'bi bi-unlock-fill'" style="font-size:0.7rem;"></i>
+            {{ ocGenerada ? 'CERRADA' : 'ABIERTA' }}
+          </span>
+          <!-- Pares Pedimento → OC generadas -->
+          <span *ngFor="let par of ocPairs"
+                style="background:#e65100; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.78rem; font-weight:700; margin-left:4px; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:4px;">
+            <i class="bi bi-file-earmark-check" style="font-size:0.7rem;"></i>
+            {{ par.pedimento }} → {{ par.oc }}
           </span>
         </h5>
         <button type="button" class="btn-close" (click)="closed.emit()"></button>
@@ -256,6 +268,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
   private providerSlotMap = new Map<number, { suffix: string; cotizId: number }>();
+  private slotFolioMap   = new Map<string, string>(); // suffix → folio COTIZ (Pedimento-1, -2, -3)
   private commentSub?: Subscription;
   private tooltipEl: HTMLElement | null = null;
 
@@ -279,6 +292,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   @Output() closed = new EventEmitter<void>();
 
   ocGenerada = false;
+  ocPairs: { pedimento: string; oc: string }[] = [];
 
   rowData: any[] = [];
   private originalRowData: any[] = [];
@@ -340,9 +354,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
         this.proveedores = proveedores;
 
-        // Cargar asignaciones de materiales (campo11 = Cód. Externo) y slots COTIZ en paralelo
+        // loadCotizSlots PRIMERO: loadExistingOcFolios depende de slotFolioMap
         try {
-          await Promise.all([this.loadCodigosExternos(), this.loadCotizSlots()]);
+          await this.loadCotizSlots();
+          const auxLoads: Promise<void>[] = [this.loadCodigosExternos()];
+          if (this.requisitionId) auxLoads.push(this.loadExistingOcFolios());
+          await Promise.all(auxLoads);
         } catch (err) {
           console.warn('[Comparacion] Error cargando datos auxiliares:', err);
         }
@@ -395,17 +412,41 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       );
       const cotizList: any[] = Array.isArray(cotizData) ? cotizData : [];
       this.providerSlotMap.clear();
+      this.slotFolioMap.clear();
       for (const cotiz of cotizList) {
         if (!cotiz.idProvider || cotiz.idProvider <= 0) continue;
         const suffix = cotiz.folio?.includes('-A-') ? 'A'
                      : cotiz.folio?.includes('-B-') ? 'B'
                      : cotiz.folio?.includes('-C-') ? 'C' : null;
-        if (suffix && !this.providerSlotMap.has(cotiz.idProvider)) {
-          this.providerSlotMap.set(cotiz.idProvider, { suffix, cotizId: cotiz.id });
+        if (suffix) {
+          if (!this.providerSlotMap.has(cotiz.idProvider)) {
+            this.providerSlotMap.set(cotiz.idProvider, { suffix, cotizId: cotiz.id });
+          }
+          if (!this.slotFolioMap.has(suffix)) {
+            this.slotFolioMap.set(suffix, cotiz.folio || `Pedimento-${suffix}`);
+          }
         }
       }
     } catch (e) {
       console.warn('[Comparacion] Error cargando slots COTIZ:', e);
+    }
+  }
+
+  private async loadExistingOcFolios(): Promise<void> {
+    try {
+      const ocs: any = await lastValueFrom(this.ocAndReqsService.getOcsByRequisition(this.requisitionId));
+      const list = Array.isArray(ocs) ? ocs : [];
+      this.ocPairs = list
+        .map((oc: any) => {
+          const folio = oc.folio || '';
+          if (!folio) return null;
+          const suffix = folio.includes('-A-') ? 'A' : folio.includes('-B-') ? 'B' : folio.includes('-C-') ? 'C' : '';
+          const pedimento = suffix ? (this.slotFolioMap.get(suffix) || `Pedimento-${suffix}`) : '';
+          return { pedimento, oc: folio };
+        })
+        .filter(Boolean) as { pedimento: string; oc: string }[];
+    } catch {
+      this.ocPairs = [];
     }
   }
 
@@ -740,6 +781,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     await this.patchRegistros();
 
     const generatedFolios: string[] = [];
+    const generatedPairs: { pedimento: string; oc: string }[] = [];
     for (const [provId, rows] of rowsByProvider) {
       const slot = this.providerSlotMap.get(provId);
       if (!slot) { console.warn(`⚠️ Sin slot COTIZ para proveedor ${provId}`); continue; }
@@ -747,6 +789,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       try {
         const folio = await this.generateOCForSlot(provId, provName, slot, rows);
         generatedFolios.push(folio);
+        const pedimento = this.slotFolioMap.get(slot.suffix) || `Pedimento-${slot.suffix}`;
+        generatedPairs.push({ pedimento, oc: folio });
       } catch (e) {
         console.error(`❌ Error generando OC para proveedor ${provId}:`, e);
       }
@@ -759,6 +803,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
     this.ocGenerada = true;
+    this.ocPairs = generatedPairs;
 
     // Bloquear la requisición solo si todos los ítems están totalizados
     if (allTotalizado && this.requisitionId) {
