@@ -6,18 +6,9 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { forkJoin } from 'rxjs';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ConfiguracionPageComponent } from '../configuracion/configuracion-page/configuracion-page.component';
-import { CatalogsService } from '../../../../services/catalogs.service';
 import { MaterialsService } from '../../../../services/materials.service';
 import { MaterialXModuloService } from '../../../../services/materialxmodulo.service';
 import { SignalsService } from '../../../../services/signals.service';
-
-interface CatalogItem {
-  id: number;
-  description: string;
-  valueAddition: string;
-  parentId: number;
-  children?: CatalogItem[];
-}
 
 @Component({
   selector: 'app-catalogosproduccion',
@@ -60,59 +51,39 @@ interface CatalogItem {
           <!-- ── TAB MOLIENDA ── -->
           <ng-container *ngIf="activeTab === 'molienda'">
 
-            <div class="col-md-6 mb-2">
-              <select class="form-select form-select-sm w-auto"
-                      [(ngModel)]="selectedType"
-                      (ngModelChange)="onTypeChange($event)">
-                <option value="">-- Selecciona proceso --</option>
-                <optgroup *ngFor="let item of tree()" [label]="item.valueAddition">
-                  <option [value]="item.valueAddition">{{ item.description }}</option>
-                  <option *ngFor="let child of item.children" [value]="child.valueAddition">
-                    {{ child.description }}
-                  </option>
-                </optgroup>
-              </select>
+            <div *ngIf="toastMsg()" class="toast-mini">{{ toastMsg() }}</div>
+
+            <div class="d-flex gap-2 mb-2">
+              <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi">
+                <i class="bi bi-plus-lg"></i> Agregar
+              </button>
+              <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges">
+                <i class="bi bi-floppy"></i> Guardar
+                <span *ngIf="hasUnsavedChanges"
+                      class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+                </span>
+              </button>
+              <button class="btn btn-sm btn-warning" (click)="revertChanges()">
+                <i class="bi bi-arrow-clockwise"></i> Deshacer
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="deleteRow()" [disabled]="!selectedRow">
+                <i class="bi bi-trash"></i> Borrar
+              </button>
             </div>
 
-            <p class="text-muted" *ngIf="!selectedType">
-              Selecciona un proceso para ver los materiales
-            </p>
-
-            <ng-container *ngIf="selectedType">
-              <div *ngIf="toastMsg()" class="toast-mini">{{ toastMsg() }}</div>
-
-              <div class="d-flex gap-2 mb-2 col-md-6">
-                <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi">
-                  <i class="bi bi-plus-lg"></i> Agregar
-                </button>
-                <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges">
-                  <i class="bi bi-floppy"></i> Guardar
-                  <span *ngIf="hasUnsavedChanges"
-                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
-                  </span>
-                </button>
-                <button class="btn btn-sm btn-warning" (click)="revertChanges()">
-                  <i class="bi bi-arrow-clockwise"></i> Deshacer
-                </button>
-                <button class="btn btn-sm btn-danger" (click)="deleteRow()" [disabled]="!selectedRow">
-                  <i class="bi bi-trash"></i> Borrar
-                </button>
-              </div>
-
-              <div class="col-md-6">
-                <ag-grid-angular
-                  class="ag-theme-quartz small-text-ag-grid"
-                  [rowData]="rowData()"
-                  [columnDefs]="columnDefs"
-                  [gridOptions]="gridOptions"
-                  (gridReady)="onGridReady($event)"
-                  (cellValueChanged)="onCellValueChanged($event)"
-                  (rowClicked)="onRowClicked($event)"
-                  (cellEditingStopped)="onCellEditingStopped($event)"
-                  style="height: 300px; width: 100%;">
-                </ag-grid-angular>
-              </div>
-            </ng-container>
+            <div>
+              <ag-grid-angular
+                class="ag-theme-quartz small-text-ag-grid"
+                [rowData]="rowData()"
+                [columnDefs]="columnDefs"
+                [gridOptions]="gridOptions"
+                (gridReady)="onGridReady($event)"
+                (cellValueChanged)="onCellValueChanged($event)"
+                (rowClicked)="onRowClicked($event)"
+                (cellEditingStopped)="onCellEditingStopped($event)"
+                style="height: 400px; width: 100%;">
+              </ag-grid-angular>
+            </div>
 
           </ng-container>
 
@@ -184,7 +155,6 @@ interface CatalogItem {
   `,
 })
 export class CatalogosProduccionComponent {
-  private catalogsService   = inject(CatalogsService);
   private materialsService  = inject(MaterialsService);
   private mxmService        = inject(MaterialXModuloService);
   private signalsService    = inject(SignalsService);
@@ -195,11 +165,9 @@ export class CatalogosProduccionComponent {
   private materialesIdToDesc = new Map<number, string>();
 
   // ── Molienda ──
-  selectedType      = '';
   hasUnsavedChanges = false;
   selectedRow: any  = null;
   toastMsg          = signal('');
-  tree              = signal<CatalogItem[]>([]);
   rowData           = signal<any[]>([]);
   private originalRowData: any[] = [];
   gridApi!: GridApi;
@@ -238,7 +206,7 @@ export class CatalogosProduccionComponent {
   // ── Columnas Molienda ──
   columnDefs: ColDef[] = [
     {
-      headerName: 'Articulos',
+      headerName: 'Artículo',
       field: 'idArticulo',
       flex: 1,
       minWidth: 150,
@@ -255,9 +223,9 @@ export class CatalogosProduccionComponent {
       valueFormatter: (p: any) => this.materialesIdToDesc.get(p.value) ?? '',
     },
     {
-      headerName: 'Valor',
+      headerName: 'Activo',
       field: 'valor',
-      width: 140,
+      width: 90,
       editable: true,
       cellRenderer: 'agCheckboxCellRenderer',
     },
@@ -282,7 +250,7 @@ export class CatalogosProduccionComponent {
   // ── Columnas Preparación 1 ──
   columnDefs1: ColDef[] = [
     {
-      headerName: 'Articulos',
+      headerName: 'Articulos1',
       field: 'idArticulo',
       flex: 1,
       minWidth: 150,
@@ -328,8 +296,8 @@ export class CatalogosProduccionComponent {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
       if (idRoot) {
         this.idRoot = idRoot;
-        this.loadCatalog(idRoot);
         this.loadMateriales(idRoot);
+        this.loadGridData();
       }
     });
   }
@@ -352,15 +320,6 @@ export class CatalogosProduccionComponent {
 
   private showToast(msg: string)  { this.toastMsg.set(msg);  setTimeout(() => this.toastMsg.set(''),  1500); }
 
-  loadCatalog(idRoot: number) {
-    this.catalogsService.getCatalogs(idRoot, 'MCATPRODU').subscribe((res: CatalogItem[]) => {
-      const roots    = (res ?? []).filter(i => i.parentId === 0);
-      const children = (res ?? []).filter(i => i.parentId !== 0);
-      roots.forEach(r => r.children = children.filter(c => c.parentId === r.id));
-      this.tree.set(roots);
-    });
-  }
-
   loadMateriales(idRoot: number) {
     this.materialsService.getMaterialsxview(idRoot).subscribe((res: any) => {
       this.materiales = res ?? [];
@@ -369,33 +328,27 @@ export class CatalogosProduccionComponent {
     });
   }
 
-  onTypeChange(type: string) {
-    this.selectedType = type; this.hasUnsavedChanges = false; this.selectedRow = null; this.rowData.set([]);
-    if (!type || !this.idRoot) return;
-    this.loadGridData(type);
-  }
-
-  loadGridData(type: string) {
-    this.mxmService.getByType(this.idRoot, type).subscribe((modulos: any[]) => {
-      const rows = (modulos ?? []).map(m => ({ id: m.id, idArticulo: m.idArticulo, valor: m.active }));
+  loadGridData() {
+    this.mxmService.getAll(this.idRoot).subscribe((modulos: any[]) => {
+      const rows = (modulos ?? []).map(m => ({ id: m.id, type: m.type, idArticulo: m.idArticulo, valor: m.active }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
       this.rowData.set(rows);
     });
   }
 
   add() {
-    this.rowData.set([{ id: null, idArticulo: null, valor: false, __isNew: true }, ...this.rowData()]);
+    this.rowData.set([{ id: null, type: '', idArticulo: null, valor: false, __isNew: true }, ...this.rowData()]);
     this.hasUnsavedChanges = true;
     setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idArticulo' }), 0);
   }
 
   saveChanges() {
     const saves = this.rowData().filter(r => r.__isNew || r.__modified).map(r => {
-      const payload = { idCompany: this.idRoot, idArticulo: r.idArticulo, cantidad: 1, type: this.selectedType, active: r.valor };
+      const payload = { idCompany: this.idRoot, idArticulo: r.idArticulo, cantidad: 1, type: r.type, active: r.valor };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
     });
     if (!saves.length) return;
-    forkJoin(saves).subscribe(() => { this.hasUnsavedChanges = false; this.showToast('Guardado'); this.loadGridData(this.selectedType); });
+    forkJoin(saves).subscribe(() => { this.hasUnsavedChanges = false; this.showToast('Guardado'); this.loadGridData(); });
   }
 
   revertChanges() { this.rowData.set(JSON.parse(JSON.stringify(this.originalRowData))); this.hasUnsavedChanges = false; this.selectedRow = null; }
@@ -406,7 +359,7 @@ export class CatalogosProduccionComponent {
       this.rowData.set(this.rowData().filter(r => r !== this.selectedRow)); this.selectedRow = null;
       this.hasUnsavedChanges = this.rowData().some(r => r.__isNew || r.__modified); return;
     }
-    this.mxmService.delete(this.selectedRow.id).subscribe(() => { this.selectedRow = null; this.showToast('Borrado'); this.loadGridData(this.selectedType); });
+    this.mxmService.delete(this.selectedRow.id).subscribe(() => { this.selectedRow = null; this.showToast('Borrado'); this.loadGridData(); });
   }
 
   // ──────────────────── Preparación 1 ────────────────────

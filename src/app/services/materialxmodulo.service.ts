@@ -9,6 +9,13 @@ export class MaterialXModuloService {
   private http            = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  getAll(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/MaterialXModulo?idCompany=${idCompany}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getByType(idCompany: number, type: string): Observable<any[]> {
     return this.http.get<any[]>(
       `${environment.urlWarehouse}/MaterialXModulo/ByType?idCompany=${idCompany}&type=${type}`,
