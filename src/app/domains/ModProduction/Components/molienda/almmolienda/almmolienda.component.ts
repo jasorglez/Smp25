@@ -73,7 +73,7 @@ import { alerts } from 'app/helpers/alerts';
             (cellValueChanged)="onCellValueChanged($event)"
             (rowClicked)="onRowClicked($event)"
             (cellEditingStopped)="onCellEditingStopped($event)"
-            style="height: 350px; width: 100%;">
+            style="height: 80vh; width: 100%;">
           </ag-grid-angular>
         </div>
 
@@ -313,6 +313,12 @@ export class AlmmoliendaComponent {
     detailRowHeight: 280,
     isRowMaster: () => true,
     detailCellRenderer: DetalleMoliendaComponent,
+    detailCellRendererParams: (params: any) => {
+      console.log('💠 detailCellRendererParams: departmentOptions =', this.departmentOptions);
+      return {
+        departmentOptions: this.departmentOptions,
+      };
+    },
     defaultColDef: {
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
@@ -615,12 +621,19 @@ export class AlmmoliendaComponent {
 
   private async syncEntradasDetails(rowData: any) {
     const { id: idMolienda, sucursal, idMaterial } = rowData;
+    console.log('💠 syncEntradasDetails: rowData =', rowData);
     if (!idMolienda || !sucursal || !idMaterial) return;
 
     const today = new Date().toISOString().substring(0, 10);
+    const deptsCsv = this.departmentOptions
+      .map((d: any) => d.id)
+      .filter((id: any) => id)
+      .join(',');
+    console.log('💠 syncEntradasDetails: departmentOptions =', this.departmentOptions);
+    console.log('💠 syncEntradasDetails: deptsCsv =', deptsCsv);
 
     const [reqs, existing] = await Promise.all([
-      lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(sucursal, idMaterial)),
+      lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(sucursal, idMaterial, deptsCsv)),
       lastValueFrom(this.moliendaService.getDetails(idMolienda, 'ENTRADA')),
     ]);
 
@@ -660,6 +673,18 @@ export class AlmmoliendaComponent {
         }));
       }
     }
+
+    const updatedMolienda = await lastValueFrom(this.moliendaService.getById(idMolienda));
+    if (updatedMolienda) {
+      const mappedRow = this.mapRow(updatedMolienda);
+      const currentData = this.rowData();
+      const idx = currentData.findIndex(r => r.id === idMolienda);
+      if (idx !== -1) {
+        currentData[idx] = { ...currentData[idx], entradas: mappedRow.entradas, salidas: mappedRow.salidas };
+        this.rowData.set([...currentData]);
+        if (this.gridApi) this.gridApi.applyTransaction({ update: [currentData[idx]] });
+      }
+    }
   }
 
   add() {
@@ -670,7 +695,6 @@ export class AlmmoliendaComponent {
       __tempId: `new_${Date.now()}`,
       active: true,
       sucursal: currentBranch?.id ?? null,
-      idDepartamento: 62, // EXTRACCION Y FERMENTACION por defecto
       tipo: this.tipo,
       id_articulo: '',
       entradas: 0,
