@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.128 (30 Abril 2026 17:30) - OC Delison agrupadas por pedimento: Nivel 1=Requisiciones, Nivel 2=Pedimentos, Nivel 3=OCs del pedimento'
+  version: '3.129 (30 Abril 2026 18:00) - Fix numarticle fallback en quote-delison, detalle-items, detalles-pedimentos, quote y detalles-requisicion'
 };

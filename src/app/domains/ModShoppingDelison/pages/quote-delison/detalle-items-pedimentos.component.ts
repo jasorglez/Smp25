@@ -224,7 +224,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       priority: item.typePriority || 'Normal',
       comment: item.comment || '',
       pedimento: item.pedimento || false,
-      numArticle: item.numArticle || '',
+      numArticle: item.numarticle || item.numArticle || '',
       code: item.code || '',
       pedimentoNumber: item.pedimentoNum || '',
       idMovement: item.idMovement || 0,

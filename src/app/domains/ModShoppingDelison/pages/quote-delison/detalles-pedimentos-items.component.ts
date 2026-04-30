@@ -116,7 +116,7 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
         nameArticle: item.nameArticle || '',
         recurrent: item.recurrent || '',
         articulo: item.nameArticle || item.description || item.article,
-        numeroArticulo: item.numArticle || (index + 1),
+        numeroArticulo: item.numArticle || item.numarticle || (index + 1),
         cantidad: item.quantity,
         tipo: item.intorext || item.tipo,
         proveedorInterno: item.proveedorInterno,

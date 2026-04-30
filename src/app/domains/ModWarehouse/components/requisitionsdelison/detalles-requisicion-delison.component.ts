@@ -475,8 +475,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           dateuse: item.dateuse || new Date().toISOString(),
           active: item.active !== undefined ? item.active : true,
           recurrent: item.recurrent || 'Recurrente', // Por defecto recurrente
-          nameArticle: item.nameArticle || '',
-          numArticle: item.numArticle || '',
+          nameArticle: item.namearticle || item.nameArticle || '',
+          numArticle: item.numarticle || item.numArticle || '',
           provint: item.provint || '',
           typePriority: item.typePriority || 'Normal',
           pedimiento: item.pedimento || false, // ✅ Cargar desde backend, siempre debe ser false después de Multiguardar
