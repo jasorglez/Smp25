@@ -85,6 +85,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   rowData: any[] = [];
   banks: any[] = [];
+  usersCatalog: any[] = [];
   catalogGeneralPosiciones: any[] = [];
   depto: any[] = [];
   catalogPosiciones: any[] = [];
@@ -151,6 +152,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       this.getRoles();
       this.obtenerBranchs();
       this.getBanks();
+      this.loadUsersCatalog();
       this.getDeptoandPosition();
       this.getStates();
     });
@@ -370,12 +372,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           cellStyle: (params) => this.validateRequiredField(params.value),
           cellEditor: 'autocompleteEditor',
-          cellEditorParams: {
-            filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
+          cellEditorParams: () => ({
+            filterList: this.usersCatalog.map((u: any) => u.displayName?.toUpperCase() ?? '').filter(Boolean),
             filterKey: 'name',
-            placeholder: 'Buscar empleado...',
+            placeholder: 'Buscar usuario...',
             minLength: 1,
-          },
+          }),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -1096,12 +1098,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           cellStyle: (params) => this.validateRequiredField(params.value),
           cellEditor: 'autocompleteEditor',
-          cellEditorParams: {
-            filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
+          cellEditorParams: () => ({
+            filterList: this.usersCatalog.map((u: any) => u.displayName?.toUpperCase() ?? '').filter(Boolean),
             filterKey: 'name',
-            placeholder: 'Buscar empleado...',
+            placeholder: 'Buscar usuario...',
             minLength: 1,
-          },
+          }),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -1902,6 +1904,13 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     );
   }
 
+  loadUsersCatalog() {
+    this.usersService.get2fieldsUsers(this.idRoot).subscribe({
+      next: (data: any) => { this.usersCatalog = data?.data || data || []; },
+      error: () => { this.usersCatalog = []; }
+    });
+  }
+
   getDeptoandPosition() {
     this.catalogService.getCatalogsVigente(this.idRoot, 'DEPARTAMENT').subscribe(
       (data: any) => {
@@ -2101,6 +2110,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       this.newlyAddedRows = [];
 
       await this.obtenerDatos(); // Esperar a que se actualicen los datos
+
+      // Vincular empleados nuevos a su usuario si existe match por nombre
+      for (const newRow of newRows) {
+        await this.linkNewEmployeeToUser(newRow);
+      }
 
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
@@ -2395,6 +2409,50 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     }
 
     return [...candidateIds];
+  }
+
+  private async linkNewEmployeeToUser(newRow: any): Promise<void> {
+    const targetName = this.normalizeMatchString(newRow?.name);
+    if (!targetName) return;
+
+    // Find the saved employee in reloaded rowData to get its real ID
+    const saved = this.rowData.find(
+      r => typeof r.id === 'number' && this.normalizeMatchString(r.name) === targetName
+    );
+    if (!saved) return;
+    const employeeId = Number(saved.id);
+
+    // Fetch users for this company
+    const rawUsers = await lastValueFrom(
+      this.usersService.getDataUsers(this.idRoot).pipe(catchError(() => of([])))
+    );
+    let users = this.toUsersArray(rawUsers);
+    if (users.length === 0) {
+      const allRaw = await lastValueFrom(this.usersService.getAllUsers().pipe(catchError(() => of([]))));
+      users = this.toUsersArray(allRaw);
+    }
+    if (users.length === 0) return;
+
+    const activeUsers = users.filter((u: any) => Number(u?.active ?? 1) !== 0);
+    const pool = activeUsers.length > 0 ? activeUsers : users;
+
+    const matches = pool.filter(
+      (u: any) => this.normalizeMatchString(u?.displayName) === targetName
+    );
+    if (matches.length !== 1) return; // No match or ambiguous — skip
+
+    const user = matches[0];
+    const userId = Number(user?.id ?? 0);
+    if (userId <= 0) return;
+
+    // Don't overwrite an existing employee link
+    const existingLink = Number(user?.idEmpleado ?? user?.idEmployee ?? 0);
+    if (existingLink > 0) return;
+
+    await lastValueFrom(
+      this.usersService.updateUser(String(userId), { ...user, idEmpleado: employeeId })
+        .pipe(catchError(() => of(null)))
+    );
   }
 
   private async syncSingleUserPrincipalBranch(idUser: number, row: any): Promise<void> {
