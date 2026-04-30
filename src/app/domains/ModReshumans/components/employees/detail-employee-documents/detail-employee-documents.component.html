@@ -2,9 +2,16 @@
 
   <!-- Toolbar -->
   <div class="d-flex align-items-center gap-2 mb-2">
-    <span class="fw-semibold me-auto">
+    <span class="fw-semibold">
       <i class="bi bi-file-earmark-text me-1"></i> Documentos del Empleado
     </span>
+    <div class="input-group input-group-sm me-auto" style="max-width:220px;">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control" placeholder="Filtrar…"
+        [(ngModel)]="quickFilter" (ngModelChange)="onQuickFilter($event)">
+      <button *ngIf="quickFilter" class="btn btn-outline-secondary" type="button"
+        (click)="clearFilter()"><i class="bi bi-x"></i></button>
+    </div>
     <button class="btn btn-sm btn-success" (click)="addRow()" title="Agregar documento">
       <i class="bi bi-plus-lg"></i>
     </button>

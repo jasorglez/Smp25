@@ -514,6 +514,40 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
         },
         {
+          field: 'baseHours',
+          headerName: 'Horas base',
+          hide: this.idRoot == 18,
+          editable: false,
+          cellStyle: { backgroundColor: '#d4edda' },
+          cellRenderer: (params: any) => {
+            const v = params.value;
+            let hoursStr = '';
+            if (typeof v === 'number' && !isNaN(v)) {
+              const h = Math.floor(v);
+              const m = Math.round((v - h) * 60);
+              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
+          },
+          onCellClicked: (params: any) => {
+            const expand = !params.node.expanded;
+            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+            if (expand) {
+              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+              params.node.setExpanded(true);
+            }
+          },
+        },
+        {
+          field: 'documents',
+          headerName: 'Docs',
+          editable: false,
+          suppressMovable: true,
+          width: 70,
+          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
+          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
+        },
+        {
           field: 'loan',
           headerName: 'Préstamos',
           editable: false,
@@ -563,15 +597,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellStyle: { backgroundColor: '#d4edda' },
         },
         {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
-        },
-        {
           field: 'priceXHour',
           headerName: 'Precio por hora *',
           hide: this.idRoot == 18,
@@ -604,31 +629,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
               }).format(params.value);
             }
             return '';
-          },
-        },
-        {
-          field: 'baseHours',
-          headerName: 'Horas base',
-          hide: this.idRoot == 18,
-          editable: false,
-          cellStyle: { backgroundColor: '#d4edda' },
-          cellRenderer: (params: any) => {
-            const v = params.value;
-            let hoursStr = '';
-            if (typeof v === 'number' && !isNaN(v)) {
-              const h = Math.floor(v);
-              const m = Math.round((v - h) * 60);
-              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            }
-            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
-          },
-          onCellClicked: (params: any) => {
-            const expand = !params.node.expanded;
-            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-            if (expand) {
-              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
-              params.node.setExpanded(true);
-            }
           },
         },
         {
@@ -1291,6 +1291,41 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
         },
         {
+          field: 'baseHours',
+          headerName: 'Horas base',
+          hide: this.idRoot == 18,
+          editable: false,
+          cellStyle: { backgroundColor: '#d4edda' },
+          cellRenderer: (params: any) => {
+            const v = params.value;
+            let hoursStr = '';
+            if (typeof v === 'number' && !isNaN(v)) {
+              const h = Math.floor(v);
+              const m = Math.round((v - h) * 60);
+              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
+          },
+          onCellClicked: (params: any) => {
+            const expand = !params.node.expanded;
+            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+            if (expand) {
+              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+              params.node.setExpanded(true);
+            }
+          },
+        },
+        {
+          field: 'documents',
+          headerName: 'Docs',
+          editable: false,
+          suppressMovable: true,
+          width: 70,
+          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
+          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
+        },
+
+        {
           field: 'loan',
           headerName: 'Préstamos',
           editable: false,
@@ -1338,40 +1373,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return '$0.00';
           },
           cellStyle: { backgroundColor: '#d4edda' },
-        },
-        {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
-        },
-        {
-          field: 'baseHours',
-          headerName: 'Horas base',
-          hide: this.idRoot == 18,
-          editable: false,
-          cellStyle: { backgroundColor: '#d4edda' },
-          cellRenderer: (params: any) => {
-            const v = params.value;
-            let hoursStr = '';
-            if (typeof v === 'number' && !isNaN(v)) {
-              const h = Math.floor(v);
-              const m = Math.round((v - h) * 60);
-              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            }
-            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
-          },
-          onCellClicked: (params: any) => {
-            const expand = !params.node.expanded;
-            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-            if (expand) {
-              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
-              params.node.setExpanded(true);
-            }
-          },
         },
         {
           field: 'priceXHour',

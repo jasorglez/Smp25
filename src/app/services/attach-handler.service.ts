@@ -82,6 +82,36 @@ export class AttachHandlerService {
     });
   }
 
+  uploadEmployeeDoc(): Promise<{ url: string; type: 'pdf' | 'image' }> {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf, image/jpeg, image/png';
+      input.onchange = async (event: any) => {
+        const file: File = event.target.files[0];
+        if (!file) { reject('Sin archivo'); return; }
+        const isPdf = file.type === 'application/pdf';
+        const isImage = file.type === 'image/jpeg' || file.type === 'image/png';
+        if (!isPdf && !isImage) {
+          alerts.basicAlert('Subir archivo', 'Solo se permiten PDF, JPG o PNG.', 'error');
+          reject('Tipo no válido');
+          return;
+        }
+        const path = isPdf
+          ? `pdf/${Date.now()}_${file.name}`
+          : `images/${this.storagesService.generateRandom()}${file.name}`;
+        try {
+          const url = await this.storagesService.uploadFile(file, path);
+          resolve({ url, type: isPdf ? 'pdf' : 'image' });
+        } catch (error) {
+          alerts.basicAlert('Subir archivo', 'Error al subir el archivo.', 'error');
+          reject(error);
+        }
+      };
+      input.click();
+    });
+  }
+
   getBaseFilenameFromUrl(url: string): string {
     // Decodifica la URL para manejar caracteres especiales
     const decodedUrl = decodeURIComponent(url);
