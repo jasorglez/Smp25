@@ -221,28 +221,20 @@ export class EmployeesClockComponent {
   }
 
   guardarHoras() {
-    const doUpdate = (emp: any) => {
-      emp.baseHours = this.baseHours;
-      this.employeesService.updateEmployee(this.idEmployee, emp).subscribe({
-        next: () => {
-          this.trackingService.addLog(this.trackingService.getnameComp(), 'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado', this.trackingService.getEmail());
-        },
-        error: (err) => console.error(err)
-      });
-    };
-
-    const found = this.employees.find(emp => emp.id === this.idEmployee);
-    if (found) {
-      doUpdate(found);
-    } else {
-      this.employeesService.getEmployeeById(this.idEmployee).subscribe({
-        next: (data: any) => {
-          const emp = Array.isArray(data) ? data[0] : data;
-          if (emp) doUpdate(emp);
-        },
-        error: (err) => console.error(err)
-      });
-    }
+    this.employeesService.getEmployeeById(this.idEmployee).subscribe({
+      next: (data: any) => {
+        const emp = Array.isArray(data) ? data[0] : data;
+        if (!emp) return;
+        emp.baseHours = this.totalHoras;
+        this.employeesService.updateEmployee(this.idEmployee, emp).subscribe({
+          next: () => {
+            this.trackingService.addLog(this.trackingService.getnameComp(), 'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado', this.trackingService.getEmail());
+          },
+          error: (err) => console.error(err)
+        });
+      },
+      error: (err) => console.error(err)
+    });
   }
   
 
