@@ -8,7 +8,7 @@ import {
 } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -20,9 +20,7 @@ import { ModalService } from 'app/services/modal.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { States } from 'app/interface/states';
-import { EmployeesxLoansComponent } from '../loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
-import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -35,6 +33,8 @@ import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { DetailEmployeeClockComponent } from '../detail-employee-clock/detail-employee-clock.component';
+import { DetailEmployeeLoansComponent } from '../detail-employee-loans/detail-employee-loans.component';
+import { DetailEmployeeSavingsComponent } from '../detail-employee-savings/detail-employee-savings.component';
 
 @Component({
   selector: 'app-employees-table',
@@ -44,9 +44,9 @@ import { DetailEmployeeClockComponent } from '../detail-employee-clock/detail-em
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
-    EmployeesxLoansComponent,
-    EmployeesxSavingsComponent,
     DetailEmployeeClockComponent,
+    DetailEmployeeLoansComponent,
+    DetailEmployeeSavingsComponent,
   ],
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.scss'],
@@ -72,6 +72,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   id: number;
   idBranch: number;
   idRoot: number;
+  idUser: number;
   idEmployee: number;
   idPosicionSelect: number;
 
@@ -84,6 +85,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   rowData: any[] = [];
   banks: any[] = [];
+  usersCatalog: any[] = [];
   catalogGeneralPosiciones: any[] = [];
   depto: any[] = [];
   catalogPosiciones: any[] = [];
@@ -97,7 +99,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   tempIdCounter: number = 0; // Contador para IDs temporales
   private digits: number = 4; // Nueva variable para configuración de dígitos
   private gridApi: GridApi; // API del grid
-  private isOpen: boolean = false; // Variable para controlar el modal de edición
   public defaultColDef: ColDef = {
     sortable: true,
     filter: false,
@@ -111,8 +112,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   // Declare the missing properties
   gridHeight: string = '80vh';
-  showLoansTab: boolean = false;
-  showSavingsTab: boolean = false;
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -130,7 +129,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
     detailEmployeeClock: DetailEmployeeClockComponent,
+    detailEmployeeLoans: DetailEmployeeLoansComponent,
+    detailEmployeeSavings: DetailEmployeeSavingsComponent,
   };
+
+  detailMode: 'clock' | 'loans' | 'savings' = 'clock';
+  private expandingViaColumn = false;
 
   constructor() {
     effect(async () => {
@@ -144,22 +148,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      if (this.idBranch == null) {
-        this.rowData = [];
-        alerts.basicAlert(
-          'Empleados',
-          'Debe elegir una sucursal primero.',
-          'error'
-        );
-      } else {
-        this.getGeneralPosicion();
-        this.getRoles()
-        this.obtenerDatos();
-        this.obtenerBranchs();
-        this.getBanks();
-        this.getDeptoandPosition();
-        this.getStates();
-      }
+      this.idUser = this.signalsService.getIdUSer()();
+      if (!this.idRoot) return;
+      this.getGeneralPosicion();
+      this.getRoles();
+      this.obtenerBranchs();
+      this.getBanks();
+      this.loadUsersCatalog();
+      this.getDeptoandPosition();
+      this.getStates();
     });
 
     effect(() => {
@@ -181,12 +178,20 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     rowBuffer: 20,
     masterDetail: true,
     isRowMaster: () => true,
-    detailCellRendererSelector: () => ({ component: 'detailEmployeeClock' }),
+    detailCellRendererSelector: () => {
+      if (this.detailMode === 'loans') return { component: 'detailEmployeeLoans' };
+      if (this.detailMode === 'savings') return { component: 'detailEmployeeSavings' };
+      return { component: 'detailEmployeeClock' };
+    },
     detailRowHeight: 680,
     onRowGroupOpened: (event: any) => {
       if (!event.expanded) {
         event.api.setFilterModel(null);
+        this.detailMode = 'clock';
+      } else if (!this.expandingViaColumn) {
+        this.detailMode = 'clock';
       }
+      this.expandingViaColumn = false;
     },
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -240,9 +245,30 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
       // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
       params.api.autoSizeColumns(allColumnIds, false);
-    }
+    },
+    onColumnPinned: () => this.saveColumnState(),
+    onColumnVisible: () => this.saveColumnState(),
+    onColumnMoved: (event) => { if (event.finished) this.saveColumnState(); },
+    onColumnResized: (event) => { if (event.finished) this.saveColumnState(); },
   };
 
+
+  private readonly COLUMN_STATE_KEY = 'employees-table-column-state';
+
+  private saveColumnState(): void {
+    if (!this.gridApi) return;
+    localStorage.setItem(this.COLUMN_STATE_KEY, JSON.stringify(this.gridApi.getColumnState()));
+  }
+
+  private restoreColumnState(): void {
+    const saved = localStorage.getItem(this.COLUMN_STATE_KEY);
+    if (!saved || !this.gridApi) return;
+    try {
+      this.gridApi.applyColumnState({ state: JSON.parse(saved), applyOrder: true });
+    } catch {
+      localStorage.removeItem(this.COLUMN_STATE_KEY);
+    }
+  }
 
   // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
   // que causa re-renderizado de filtros en cada ciclo de change detection
@@ -356,12 +382,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           cellStyle: (params) => this.validateRequiredField(params.value),
           cellEditor: 'autocompleteEditor',
-          cellEditorParams: {
-            filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
+          cellEditorParams: () => ({
+            filterList: this.usersCatalog.map((u: any) => u.displayName?.toUpperCase() ?? '').filter(Boolean),
             filterKey: 'name',
-            placeholder: 'Buscar empleado...',
+            placeholder: 'Buscar usuario...',
             minLength: 1,
-          },
+          }),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -373,6 +399,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
             if (!normalizedValue) {
               alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+              return false;
+            }
+
+            if (!/^[A-ZÁÉÍÓÚÑÜ\s'-]+$/i.test(normalizedValue)) {
+              alerts.basicAlert('Nombre inválido', 'El nombre solo puede contener letras, espacios, guiones y apóstrofes.', 'error');
               return false;
             }
 
@@ -741,9 +772,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           width: 200,
           cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
+          cellEditorParams: () => ({
             values: this.banks.map((user) => user.id),
-          },
+          }),
           valueGetter: (params) => {
             if (!params.data || !params.data.idBank) return 'EFECTIVO';
             const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
@@ -1077,12 +1108,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           cellStyle: (params) => this.validateRequiredField(params.value),
           cellEditor: 'autocompleteEditor',
-          cellEditorParams: {
-            filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
+          cellEditorParams: () => ({
+            filterList: this.usersCatalog.map((u: any) => u.displayName?.toUpperCase() ?? '').filter(Boolean),
             filterKey: 'name',
-            placeholder: 'Buscar empleado...',
+            placeholder: 'Buscar usuario...',
             minLength: 1,
-          },
+          }),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -1094,6 +1125,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
             if (!normalizedValue) {
               alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+              return false;
+            }
+
+            if (!/^[A-ZÁÉÍÓÚÑÜ\s'-]+$/i.test(normalizedValue)) {
+              alerts.basicAlert('Nombre inválido', 'El nombre solo puede contener letras, espacios, guiones y apóstrofes.', 'error');
               return false;
             }
 
@@ -1491,9 +1527,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           width: 200,
           cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
+          cellEditorParams: () => ({
             values: this.banks.map((user) => user.id),
-          },
+          }),
           valueGetter: (params) => {
             if (!params.data || !params.data.idBank) return 'EFECTIVO';
             const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
@@ -1743,40 +1779,52 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   // ==================== MASTER METHODS ====================
 
   obtenerBranchs() {
-    // alert('this.branchs'+ this.idBranch)
-    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
-      (data: any) => {
-        this.branchs = data;
+    this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe({
+      next: (data: any) => {
+        this.branchs = (data.project || []).map((row: any) => ({
+          id: row.idPermission || row.idBranch || row.id,
+          name: row.name || row.description || ''
+        }));
+        this.obtenerDatos();
       },
-      (error) => console.error('Error fetching data:', error)
-    );
+      error: (error) => console.error('Error fetching branches:', error)
+    });
   }
 
   obtenerDatos() {
     return new Promise((resolve) => {
-      this.employeeService.getEmployees(this.idBranch).subscribe(
-        (data: any) => {
+      if (!this.branchs || this.branchs.length === 0) {
+        this.rowData = [];
+        this.gridApi?.setGridOption('rowData', this.rowData);
+        resolve(false);
+        return;
+      }
+
+      const branchesToLoad = this.idBranch > 0
+        ? this.branchs.filter(b => b.id === this.idBranch)
+        : this.branchs;
+
+      const requests = branchesToLoad.map(branch =>
+        this.employeeService.getEmployees(branch.id).pipe(catchError(() => of([])))
+      );
+
+      forkJoin(requests).subscribe({
+        next: (results: any[]) => {
+          const allEmployees = results.flat();
           if (this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'read')) {
-            this.rowData = data;
+            this.rowData = allEmployees;
           } else {
             this.rowData = [];
           }
-
           this.captureOriginalRows(this.rowData);
-
-          // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
-
-          // Dar tiempo al grid para actualizar los datos
-          setTimeout(() => {
-            resolve(true);
-          }, 100);
+          setTimeout(() => resolve(true), 100);
         },
-        (error) => {
-          console.error('Error fetching data:', error);
+        error: (error) => {
+          console.error('Error fetching employees:', error);
           resolve(false);
         }
-      );
+      });
     });
   }
 
@@ -1857,13 +1905,20 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ idBank: '', name: 'EFECTIVO' }, ...data];
+        this.banks = [{ id: null, name: 'EFECTIVO' }, ...data];
       },
       (error) => {
         if (error.status == 404) this.banks = [];
         console.error('Error fetching data:', error);
       }
     );
+  }
+
+  loadUsersCatalog() {
+    this.usersService.get2fieldsUsers(this.idRoot).subscribe({
+      next: (data: any) => { this.usersCatalog = data?.data || data || []; },
+      error: () => { this.usersCatalog = []; }
+    });
   }
 
   getDeptoandPosition() {
@@ -1923,7 +1978,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-
+    this.restoreColumnState();
   }
 
   onMasterRowSelected(event: any) {
@@ -1935,7 +1990,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: this.idBranch > 0 ? this.idBranch : null,
+      idBranch: this.idBranch > 0 ? this.idBranch : (this.branchs.length > 0 ? this.branchs[0].id : null),
       name: '',
       address: '',
       cp: '',
@@ -2065,6 +2120,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       this.newlyAddedRows = [];
 
       await this.obtenerDatos(); // Esperar a que se actualicen los datos
+
+      // Vincular empleados nuevos a su usuario si existe match por nombre
+      for (const newRow of newRows) {
+        await this.linkNewEmployeeToUser(newRow);
+      }
 
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
@@ -2361,6 +2421,50 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     return [...candidateIds];
   }
 
+  private async linkNewEmployeeToUser(newRow: any): Promise<void> {
+    const targetName = this.normalizeMatchString(newRow?.name);
+    if (!targetName) return;
+
+    // Find the saved employee in reloaded rowData to get its real ID
+    const saved = this.rowData.find(
+      r => typeof r.id === 'number' && this.normalizeMatchString(r.name) === targetName
+    );
+    if (!saved) return;
+    const employeeId = Number(saved.id);
+
+    // Fetch users for this company
+    const rawUsers = await lastValueFrom(
+      this.usersService.getDataUsers(this.idRoot).pipe(catchError(() => of([])))
+    );
+    let users = this.toUsersArray(rawUsers);
+    if (users.length === 0) {
+      const allRaw = await lastValueFrom(this.usersService.getAllUsers().pipe(catchError(() => of([]))));
+      users = this.toUsersArray(allRaw);
+    }
+    if (users.length === 0) return;
+
+    const activeUsers = users.filter((u: any) => Number(u?.active ?? 1) !== 0);
+    const pool = activeUsers.length > 0 ? activeUsers : users;
+
+    const matches = pool.filter(
+      (u: any) => this.normalizeMatchString(u?.displayName) === targetName
+    );
+    if (matches.length !== 1) return; // No match or ambiguous — skip
+
+    const user = matches[0];
+    const userId = Number(user?.id ?? 0);
+    if (userId <= 0) return;
+
+    // Don't overwrite an existing employee link
+    const existingLink = Number(user?.idEmpleado ?? user?.idEmployee ?? 0);
+    if (existingLink > 0) return;
+
+    await lastValueFrom(
+      this.usersService.updateUser(String(userId), { ...user, idEmpleado: employeeId })
+        .pipe(catchError(() => of(null)))
+    );
+  }
+
   private async syncSingleUserPrincipalBranch(idUser: number, row: any): Promise<void> {
     const newBranchId = Number(row?.idBranch ?? 0) || 0;
     const oldBranchId = this.getOriginalBranchId(row);
@@ -2544,9 +2648,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   }
 
   resetGridSize() {
-    this.gridHeight = '80vh'; // Reset to default height
-    this.showLoansTab = false;
-    this.showSavingsTab = false;
+    this.gridHeight = '80vh';
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
@@ -2566,44 +2668,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
     this.notSavedChanges = true;
     this.selectedRowData = selectedRowData;
-
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    if (colId === 'loan' || colId === 'saving') {
-      if (this.gridApi) {
-        const filterModel = {
-          id: {
-            type: 'equals',
-            filter: selectedId,
-          },
-        };
-        this.gridApi.setFilterModel(filterModel);
-        this.gridApi.onFilterChanged();
-      } else {
-        alert('gridApi no disponible');
-      }
-    }
-
-    // Activar la pestaña de préstamos si la columna es 'loan'
-    if (colId === 'loan') {
-      try {
-        await this.activateLoansTab();
-      } catch (error) {
-        console.error('Error activando la pestaña de préstamos:', error);
-      }
-    }
-
-    // Activar la pestaña de ahorros si la columna es 'saving'
-    if (colId === 'saving') {
-      try {
-        await this.activateSavingsTab();
-      } catch (error) {
-        console.error('Error activando la pestaña de ahorros:', error);
-      }
-    }
-
-    // Eliminar la asignación duplicada de selectedRowData
-    // this.selectedRowData = selectedRowData; // Esta línea ya se encuentra al principio
   }
+
   async onCellClicked(event: any): Promise<void> {
     const colId = event.column.getColId();
     if (colId === 'idDepto') {
@@ -2615,7 +2681,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     }
     if (colId === 'idPosition') {
-      const selectedData = event.data;
       const roleId = event.data.idDepto;
       this.idPosicionSelect = event.data.idPosition
       if (roleId) {
@@ -2624,34 +2689,21 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.catalogPosiciones = [];
       }
     }
-  }
-
-  async activateLoansTab() {
-    if (!this.isOpen || this.showSavingsTab) {
-      await this.adjustGridSize();
-      this.showLoansTab = true;
-      this.showSavingsTab = false;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
+    if (colId === 'loan' || colId === 'saving') {
+      const rowNode = event.node;
+      const newMode = colId === 'loan' ? 'loans' : 'savings';
+      if (rowNode.expanded && this.detailMode === newMode) {
+        rowNode.setExpanded(false);
+        this.gridApi.setFilterModel(null);
+        this.gridApi.onFilterChanged();
+      } else {
+        this.detailMode = newMode;
+        this.expandingViaColumn = true;
+        this.gridApi.setFilterModel({ id: { type: 'equals', filter: event.data.id } });
+        this.gridApi.onFilterChanged();
+        rowNode.setExpanded(true);
+      }
     }
-  }
-
-  async activateSavingsTab() {
-    if (!this.isOpen || this.showLoansTab) {
-      await this.adjustGridSize();
-      this.showLoansTab = false;
-      this.showSavingsTab = true;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
-    }
-  }
-
-  async adjustGridSize() {
-    this.gridHeight = '20vh'; // Adjust as needed
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

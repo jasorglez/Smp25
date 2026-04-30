@@ -1,79 +1,30 @@
 <div class="col-12">
-  <div class="row align-items-start">
-
-    <div class="col-7">
-      <div class="shadow-sm" id="cartPrin">
-        <div class="card-header">
-          <h3 class="card-title mb-0">Prestamos</h3>
-        </div>
-        <div id="cartSec">
-          <div class="row">
-            <div class="col-auto">
-              <div class="d-flex flex-column gap-0 me-0">
-                <button type="button" class="btn btn-primary" (click)="addRow('Master')" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'create')">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'create') || authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'update')">
-                  <i class="bi bi-floppy"></i>
-                  <span
-                    class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
-                    *ngIf="masterNotSavedChanges">
-                    <span class="visually-hidden">Hay cambios sin guardar</span>
-                  </span>
-                </button>
-                <button type="button" class="btn btn-warning" (click)="revertMasterData()">
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'delete')"><i class="bi bi-trash"></i></button>
-
-              </div>
-            </div>
-            <div class="col p-0">
-              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid master-grid" style="width: 100%; height: 55vh;"
-                [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
-                (selectionChanged)="onMaestroSelectionChanged($event)"
-                (cellValueChanged)="onMasterCellValueChanged($event)" (gridReady)="onMaestroGridReady($event)"
-                [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true">
-              </ag-grid-angular>
-            </div>
-          </div>
-        </div>
+  <div class="shadow-sm" id="cartPrin">
+    <div class="card-header d-flex align-items-center">
+      <h3 class="card-title mb-0">Prestamos</h3>
+      <div class="d-flex gap-1 ms-auto">
+        <button type="button" class="btn btn-sm btn-primary" (click)="addRow()" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'create')">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveMasterChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'create') || authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'update')">
+          <i class="bi bi-floppy"></i>
+          <span class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="masterNotSavedChanges">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
+        <button type="button" class="btn btn-sm btn-warning" (click)="revertMasterData()">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-danger" (click)="deleteMasterEntry()" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'delete')">
+          <i class="bi bi-trash"></i>
+        </button>
       </div>
     </div>
-
-    <div class="col-5">
-      <div  class="shadow-sm" id="cartPrin">
-        <div class="card-header">
-          <h3 class="card-title mb-0">Abonos del préstamo {{idLoan}}</h3>
-        </div>
-        <div id="cartSec">
-          <div class="row">
-            <div class="col-auto">
-              <div class="d-flex flex-column gap-0 me-0">
-                <button type="button" class="btn btn-primary" (click)="addRow('Detailed')" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'create')">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-                <button type="button" class="btn btn-success position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'create') || authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'update')">
-                  <i class="bi bi-floppy"></i>
-                  <span
-                    class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle"
-                    *ngIf="detailNotSavedChanges">
-                    <span class="visually-hidden">Hay cambios sin guardar</span>
-                  </span>
-                </button>
-                <button type="button" class="btn btn-warning" (click)="revertDetailData()">
-                  <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" class="btn btn-danger" (click)="deleteDetalleEntry()" *ngIf="authService.getCrudPermissionDetail('hr', 'employees','Emp_Pre', 'delete')"><i class="bi bi-trash"></i></button>
-
-              </div>
-            </div>
-            <div class="col p-0">
-              <ag-grid-angular class="ag-theme-quartz small-text-ag-grid detail-grid" style="height: 55vh;"
-                [rowData]="detalleRowData" [columnDefs]="detalleColumnDefs" [gridOptions]="detalleGridOptions"
-                (gridReady)="onDetalleGridReady($event)" [rowSelection]="'single'"
-                (cellValueChanged)="onDetailCellValueChanged($event)"
-                [stopEditingWhenCellsLoseFocus]="true">
-              </ag-grid-angular>
-            </div>
-          </div>
+    <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" style="width: 100%; height: 55vh;"
+      [rowData]="maestroRowData" [columnDefs]="maestroColumnDefs" [gridOptions]="maestroGridOptions"
+      [components]="components"
+      (cellValueChanged)="onMasterCellValueChanged($event)" (gridReady)="onMaestroGridReady($event)"
+      [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true">
+    </ag-grid-angular>
+  </div>
+</div>
