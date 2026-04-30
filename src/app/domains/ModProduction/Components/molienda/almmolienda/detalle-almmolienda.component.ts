@@ -28,7 +28,7 @@ interface ReqOption {
       </div>
 
       <!-- Grid nivel 2 (requisiciones) -->
-      <div [style.flex]="selectedReqRow ? '0 0 45%' : '1 1 auto'"
+      <div [style.flex]="selectedReqRow ? '0 0 70%' : '1 1 auto'"
            style="min-height: 0; position: relative; overflow: hidden;">
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -71,6 +71,7 @@ export class DetalleMoliendaComponent {
   private internalParams: any;
   private gridApi!: GridApi;
   private cascadeOcGridApi!: GridApi;
+  private deptsCsv: string = '';
 
   detailType: 'entradas' | 'salidas' = 'entradas';
   rowData: any[] = [];
@@ -169,6 +170,17 @@ export class DetalleMoliendaComponent {
   private async init(params: any) {
     this.internalParams = params;
     this.detailType = params?.data?.detailType ?? 'entradas';
+
+    // Usar departamentos del tooltip
+    const departmentOptions = params?.departmentOptions ?? [];
+    console.log('💠 init: params recibidos =', params);
+    console.log('💠 init: departmentOptions =', departmentOptions);
+    this.deptsCsv = departmentOptions
+      .map((d: any) => d.id)
+      .filter((id: any) => id)
+      .join(',');
+    console.log('💠 init: deptsCsv final =', this.deptsCsv);
+
     await this.loadReqOptions();
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
   }
@@ -176,12 +188,17 @@ export class DetalleMoliendaComponent {
   private async loadReqOptions() {
     const idBranch   = this.internalParams?.data?.sucursal;
     const idMaterial = this.internalParams?.data?.idMaterial;
+    console.log('💠 loadReqOptions: idBranch =', idBranch, ', idMaterial =', idMaterial, ', deptsCsv =', this.deptsCsv);
     if (!idBranch || !idMaterial) { this.reqOptions = []; return; }
     try {
       this.reqOptions = await lastValueFrom(
-        this.ocAndReqsService.getReqsByBranchMaterial(idBranch, idMaterial)
+        this.ocAndReqsService.getReqsByBranchMaterial(idBranch, idMaterial, this.deptsCsv)
       );
-    } catch { this.reqOptions = []; }
+      console.log('💠 loadReqOptions: requisiciones cargadas =', this.reqOptions);
+    } catch (err) {
+      console.error('💠 loadReqOptions: error =', err);
+      this.reqOptions = [];
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -229,6 +246,7 @@ export class DetalleMoliendaComponent {
 
   async onRowClicked(event: any) {
     const row = event.data;
+    console.log('💠 onRowClicked: row =', row, ', deptsCsv =', this.deptsCsv);
     if (!row?.idRequisition) { this.selectedReqRow = null; this.cascadeOcData = []; return; }
 
     if (this.selectedReqRow === row) {
@@ -240,11 +258,16 @@ export class DetalleMoliendaComponent {
 
     this.selectedReqRow = row;
     const idMaterial = this.internalParams?.data?.idMaterial;
+    console.log('💠 onRowClicked: cargando OCs con idReq =', row.idRequisition, ', idMaterial =', idMaterial, ', deptsCsv =', this.deptsCsv);
     try {
       this.cascadeOcData = await lastValueFrom(
-        this.ocAndReqsService.getOcsByReqMaterial(row.idRequisition, idMaterial)
+        this.ocAndReqsService.getOcsByReqMaterial(row.idRequisition, idMaterial, this.deptsCsv)
       );
-    } catch { this.cascadeOcData = []; }
+      console.log('💠 onRowClicked: OCs cargadas =', this.cascadeOcData);
+    } catch (err) {
+      console.error('💠 onRowClicked: error cargando OCs =', err);
+      this.cascadeOcData = [];
+    }
 
     if (this.cascadeOcGridApi) this.cascadeOcGridApi.setGridOption('rowData', this.cascadeOcData);
     if (this.gridApi) this.gridApi.refreshCells({ force: true });

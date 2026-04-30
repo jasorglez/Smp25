@@ -17,6 +17,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { AuthService } from 'app/services/auth.service';
 import { alerts } from 'app/helpers/alerts';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-purchaseorderdelison',
@@ -228,7 +229,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     };
   }
 
-  private loadFromAllBranches() {
+  private async loadFromAllBranches() {
     if (!this.branches || this.branches.length === 0) {
       this.fullRowData = [];
       this.rowData = [];
@@ -236,55 +237,65 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       return;
     }
 
-    const promises = this.branches.map(branch =>
-      new Promise<any[]>((resolve) => {
+    const branchPromises = this.branches.map(branch =>
+      new Promise<{ reqs: any[]; branch: any }>((resolve) => {
         this.ocAndReqsService.getRequisitionsByBranch(branch.id).subscribe({
-          next: (data: any) => {
-            const reqs = Array.isArray(data) ? data : [];
-            const mapped = reqs.map((req: any) => {
-              const ocCount = req.countitem || 0;
-              return this.mapRequisitionRow(req, branch.name, ocCount);
-            });
-            resolve(mapped);
-          },
-          error: () => resolve([])
+          next: (data: any) => resolve({ reqs: Array.isArray(data) ? data : [], branch }),
+          error: () => resolve({ reqs: [], branch })
         });
       })
     );
 
-    Promise.all(promises).then((allData: any[][]) => {
-      this.fullRowData = allData.flat();
+    const branchResults: any[] = await Promise.all(branchPromises);
+    const allReqs = branchResults.flatMap(({ reqs, branch }) =>
+      reqs.map((req: any) => ({ req, branchName: branch.name }))
+    );
+
+    const mapped = await Promise.all(allReqs.map(async ({ req, branchName }) => {
+      const ocCount = await this.getOcCount(req.id);
+      return this.mapRequisitionRow(req, branchName, ocCount);
+    }));
+
+    this.fullRowData = mapped;
+    this.rowData = [...this.fullRowData];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.refreshCells({ force: true });
+    }
+  }
+
+  private async loadFromSingleBranch(branchId: number) {
+    const branch = this.branches.find(b => b.id === branchId);
+    const branchName = branch?.name || '';
+
+    try {
+      const data: any = await lastValueFrom(this.ocAndReqsService.getRequisitionsByBranch(branchId));
+      const reqs = Array.isArray(data) ? data : [];
+
+      this.fullRowData = await Promise.all(reqs.map(async (req: any) => {
+        const ocCount = await this.getOcCount(req.id);
+        return this.mapRequisitionRow(req, branchName, ocCount);
+      }));
+
       this.rowData = [...this.fullRowData];
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.refreshCells({ force: true });
       }
-    });
+    } catch {
+      alerts.basicAlert('Error', 'No se pudieron cargar las requisiciones', 'error');
+      this.fullRowData = [];
+      this.rowData = [];
+    }
   }
 
-  private loadFromSingleBranch(branchId: number) {
-    const branch = this.branches.find(b => b.id === branchId);
-    const branchName = branch?.name || '';
-
-    this.ocAndReqsService.getRequisitionsByBranch(branchId).subscribe({
-      next: (data: any) => {
-        const reqs = Array.isArray(data) ? data : [];
-        this.fullRowData = reqs.map((req: any) => {
-          const ocCount = req.countitem || 0;
-          return this.mapRequisitionRow(req, branchName, ocCount);
-        });
-        this.rowData = [...this.fullRowData];
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-          this.gridApi.refreshCells({ force: true });
-        }
-      },
-      error: () => {
-        alerts.basicAlert('Error', 'No se pudieron cargar las requisiciones', 'error');
-        this.fullRowData = [];
-        this.rowData = [];
-      }
-    });
+  private async getOcCount(idRequisition: number): Promise<number> {
+    try {
+      const ocs = await lastValueFrom(this.ocAndReqsService.getOcsByRequisition(idRequisition));
+      return Array.isArray(ocs) ? ocs.length : 0;
+    } catch {
+      return 0;
+    }
   }
 
   // ==================== GRID CONFIG ====================
@@ -294,7 +305,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 800,
+    detailRowHeight: 1200,
     isRowMaster: () => true,
     detailCellRendererSelector: (params: any) => {
       return { component: OrdenesydetallesOcComponent };
@@ -340,16 +351,23 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         width: 160,
         filter: true,
         editable: false,
-        cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500', cursor: 'pointer' },
+        // Mismo color de “casilla” que Materiales Maestro (columnas clickeables).
+        cellStyle: { backgroundColor: '#e8f5e9', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' },
         onCellClicked: (event: any) => {
           const isExpanding = !event.node.expanded;
           if (isExpanding) {
-            // Colapsa todas las demás filas antes de expandir esta
             event.api.forEachNode((node: any) => {
-              if (node.id !== event.node.id && node.expanded) {
+              if (node.id !== event.node.id) {
                 node.setExpanded(false);
+                node.setRowHeight(0);
               }
             });
+            event.api.onRowHeightChanged();
+          } else {
+            event.api.forEachNode((node: any) => {
+              node.setRowHeight(undefined);
+            });
+            event.api.onRowHeightChanged();
           }
           event.node.setExpanded(isExpanding);
         }
@@ -360,7 +378,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         width: 100,
         editable: false,
         type: 'numericColumn',
-        cellStyle: { backgroundColor: '#fff3e0', fontWeight: 'bold', textAlign: 'center' }
+        cellStyle: { fontWeight: 'bold', textAlign: 'center' }
       },
       {
         field: 'catalogo',

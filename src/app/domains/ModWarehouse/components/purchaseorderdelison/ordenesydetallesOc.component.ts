@@ -1,10 +1,9 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { CustomersService } from 'app/services/customers.service';
-import { lastValueFrom } from 'rxjs';
 
 interface OcRow {
   id: number;
@@ -27,7 +26,9 @@ interface OcRow {
         <strong style="font-size: 0.85rem;">Órdenes de Compra (Cascada 1)</strong>
       </div>
 
-      <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+      <div
+        [style.flex]="selectedOcRow && itemsData.length > 0 ? '0 0 58px' : '1 1 auto'"
+        style="min-height: 58px; position: relative; overflow: hidden;">
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
           [rowData]="rowData"
@@ -40,7 +41,7 @@ interface OcRow {
       </div>
 
       <div *ngIf="selectedOcRow && itemsData.length > 0"
-           style="flex: 0 0 45%; min-height: 0; border-top: 2px solid #e67e22; background: #fff9e6;
+           style="flex: 1 1 auto; min-height: 0; border-top: 2px solid #e67e22; background: #fff9e6;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
         <div style="font-size: 0.78rem; font-weight: bold; color: #e67e22; margin-bottom: 3px; flex-shrink: 0;">
           Ítems de {{ selectedOcRow.folio }}
@@ -212,7 +213,7 @@ export class OrdenesydetallesOcComponent {
     this.ocAndReqsService.getOcsByRequisition(idRequisition).subscribe({
       next: (ocs: any[]) => {
         this.rowData = (Array.isArray(ocs) ? ocs : []).map((oc: any) => {
-          const provider = this.providers.find(p => p.id === oc.idProvider || p.id === oc.id_provider);
+          const provider = this.providers.find((p) => p.id === oc.idProvider || p.id === oc.id_provider);
           return {
             id: oc.id,
             folio: oc.folio || '',
@@ -232,7 +233,7 @@ export class OrdenesydetallesOcComponent {
       error: (error) => {
         console.error('Error loading OCs:', error);
         this.rowData = [];
-      }
+      },
     });
   }
 
@@ -247,11 +248,30 @@ export class OrdenesydetallesOcComponent {
     if (this.selectedOcRow?.id === row.id) {
       this.selectedOcRow = null;
       this.itemsData = [];
-      if (this.gridApi) this.gridApi.refreshCells({ force: true });
+
+      if (this.gridApi) {
+        this.gridApi.forEachNode((node: any) => {
+          node.setRowHeight(undefined);
+        });
+        this.gridApi.onRowHeightChanged();
+        this.gridApi.refreshCells({ force: true });
+      }
       return;
     }
 
     this.selectedOcRow = row;
+
+    if (this.gridApi) {
+      this.gridApi.forEachNode((node: any) => {
+        if (node.data?.id === row.id) {
+          node.setRowHeight(undefined);
+        } else {
+          node.setRowHeight(0);
+        }
+      });
+      this.gridApi.onRowHeightChanged();
+    }
+
     this.ocAndReqsService.getReqItems(row.id).subscribe({
       next: (items: any[]) => {
         this.itemsData = Array.isArray(items) ? items : [];
@@ -261,7 +281,7 @@ export class OrdenesydetallesOcComponent {
       },
       error: () => {
         this.itemsData = [];
-      }
+      },
     });
 
     if (this.gridApi) {
