@@ -100,7 +100,11 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   }
 
   afterGuiAttached() {
-    this.input.nativeElement.focus();
+    setTimeout(() => {
+      if (this.input && this.input.nativeElement) {
+        this.input.nativeElement.focus();
+      }
+    }, 50);
   }
 
   onKeyDown(event: any): void {
@@ -109,15 +113,10 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
       this.params.stopEditing();
     }
     if (event.key === 'Enter') {
-      event.preventDefault();
-      event.stopPropagation();
       if (this.showSuggestions && this.filteredList.length > 0) {
         this.selectValue(this.filteredList[0]);
       }
-      if (this.params.onEnterPressed) {
-        this.params.onEnterPressed();
-      }
-      this.params.stopEditing();
+      // Bubbles to ag-grid
     }
   }
 }

@@ -108,6 +108,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     resizable: true,
     lockPosition: false,
     enableRowGroup: true,
+    suppressKeyboardEvent: (params) => {
+      // Suppress Enter so we can handle it in onCellKeyDown
+      return params.event.key === 'Enter';
+    }
   };
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -225,21 +229,39 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     },
     onCellKeyDown: (params) => {
       if (params.event.key === 'Enter') {
-        // Obtener todas las columnas editables
-        const editableColumns = this.colMaster.filter((col) => col.field && col.editable);
+        // Obtener todas las columnas editables en el orden mostrado
+        const displayedCols = params.api.getAllDisplayedColumns();
+        const editableColumns = displayedCols.filter((col: any) => {
+          const colDef = col.getColDef();
+          if (typeof colDef.editable === 'function') {
+            return colDef.editable({ ...params, column: col, colDef: colDef });
+          }
+          return colDef.editable === true;
+        });
+
         const currentColIndex = editableColumns.findIndex(
-          (col) => col.field === params.column.getColDef().field
+          (col: any) => col.getColId() === params.column.getColId()
         );
 
-        if (currentColIndex < editableColumns.length - 1) {
-          // Añadir delay de 50ms antes de mover el foco
-          requestAnimationFrame(() => {
-            // Mover a la siguiente columna editable
+        if (currentColIndex >= 0 && currentColIndex < editableColumns.length - 1) {
+          params.api.stopEditing();
+          
+          const nextColId = editableColumns[currentColIndex + 1].getColId();
+          params.api.setFocusedCell(params.node.rowIndex, nextColId);
+          
+          // CRITICAL: AG-Grid ignores startEditingCell if called synchronously inside an event handler
+          setTimeout(() => {
+            const nextColDef = params.api.getColumn(nextColId)?.getColDef();
+            const isSelect = nextColDef?.cellEditor === 'agSelectCellEditor';
+            
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
-              colKey: editableColumns[currentColIndex + 1].field,
+              colKey: nextColId,
+              key: isSelect ? ' ' : undefined // Usa espacio para abrir agSelect, evita Enter
             });
-          }); // Retraso para permitir que termine la edición actual
+          }, 50);
+        } else {
+          params.api.stopEditing();
         }
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
@@ -1761,7 +1783,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
-        colKey: 'name',
+        colKey: 'idBranch',
+        key: ' '
       });
     }, 100);
 
