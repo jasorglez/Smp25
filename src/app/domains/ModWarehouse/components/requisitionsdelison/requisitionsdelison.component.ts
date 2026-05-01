@@ -1579,6 +1579,53 @@ export class RequisitionsDelisonComponent implements OnInit {
     });
   }
 
+  private async ensureRolesForBranch(branchId: number): Promise<any[]> {
+    if (!this.idUser || !branchId || branchId <= 0) return [];
+
+    const cachedRoles = this.rolesByBranchCache.get(branchId);
+    if (cachedRoles) {
+      return cachedRoles;
+    }
+
+    try {
+      const rolesRaw: any = await firstValueFrom(this.rolesService.getRolesByBranchDelison(this.idUser, branchId));
+      const roles = Array.isArray(rolesRaw)
+        ? rolesRaw.map(r => ({
+            id: r.id,
+            description: r.description,
+            name: r.description
+          }))
+        : [];
+
+      this.rolesByBranchCache.set(branchId, roles);
+      return roles;
+    } catch {
+      return [];
+    }
+  }
+
+  private async validateDepartmentsBeforeSave(itemsToSave: any[]): Promise<string | null> {
+    for (const item of itemsToSave) {
+      const branchId = Number(item?.idReference || 0);
+      const departmentId = Number(item?.departmentId || 0);
+
+      if (branchId <= 0 || departmentId <= 0) {
+        const requisitionLabel = item?.requisitionNumber || `fila ${this.rowData.indexOf(item) + 1}`;
+        return `La requisición ${requisitionLabel} no tiene un Departamento que solicita válido.`;
+      }
+
+      const roles = await this.ensureRolesForBranch(branchId);
+      const departmentExists = roles.some((role: any) => Number(role?.id || 0) === departmentId);
+
+      if (!departmentExists) {
+        const requisitionLabel = item?.requisitionNumber || `fila ${this.rowData.indexOf(item) + 1}`;
+        return `El Departamento que solicita de la requisición ${requisitionLabel} no existe o no está autorizado para la sucursal seleccionada.`;
+      }
+    }
+
+    return null;
+  }
+
   private preloadRolesForRequisitions(): void {
     if (!this.idUser) return;
 
@@ -1690,9 +1737,14 @@ export class RequisitionsDelisonComponent implements OnInit {
 
     // Filtrar las filas nuevas o modificadas
     const itemsToSave = this.rowData.filter(row => row.__isNew || row.__modified);
+    const invalidDepartmentMessage = await this.validateDepartmentsBeforeSave(itemsToSave);
 
     if (itemsToSave.length === 0) {
       alerts.reqBasicAlert('Información', 'No hay cambios que guardar', 'info');
+      return;
+    }
+    if (invalidDepartmentMessage) {
+      alerts.reqWarningToast('Departamento invÃ¡lido', invalidDepartmentMessage);
       return;
     }
 
