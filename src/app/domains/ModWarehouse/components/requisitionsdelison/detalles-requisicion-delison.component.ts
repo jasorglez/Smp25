@@ -1424,6 +1424,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   saveChanges() {
+    if (!this.params?.data?.departmentId) {
+      alerts.reqWarningToast('Departamento requerido', 'Asigna un departamento a la requisición antes de guardar artículos');
+      return;
+    }
+
     if (!this.isAddingNewItem && !this.hasUnsavedChanges) {
       alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
