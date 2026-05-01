@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.129 (30 Abril 2026 18:00) - Fix numarticle fallback en quote-delison, detalle-items, detalles-pedimentos, quote y detalles-requisicion'
+  version: '3.132 (30 Abril 2026 20:00) - Fix ng-select bloqueado en detalle-items-proveedor: getter→propiedad estable para filteredProviders'
 };

@@ -145,6 +145,7 @@ export class DetalleItemsProveedorComponent {
 
   rowData: any[] = [];
   providers: any[] = [];
+  filteredProviders: any[] = [];
   selectedProviderId: number | null = null;
   selectedProviderObj: any = null;
   fechaProveedor: string = new Date().toISOString().split('T')[0];
@@ -211,6 +212,7 @@ export class DetalleItemsProveedorComponent {
       if (this.selectedProviderId) {
         this.selectedProviderObj = this.providers.find(p => p.id === this.selectedProviderId) || null;
       }
+      this.refreshFilteredProviders();
       this.loadExistingCotiz();
     });
   }
@@ -241,8 +243,10 @@ export class DetalleItemsProveedorComponent {
       });
 
       this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }, ...active];
+      this.refreshFilteredProviders();
     } catch (error) {
       this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
+      this.refreshFilteredProviders();
     }
   }
 
@@ -317,6 +321,7 @@ export class DetalleItemsProveedorComponent {
           this.selectedProviderObj = null;
           this.rowData.forEach(row => { row.codigoExterno = ''; row.proveedorXTablaId = 0; });
           this.gridApi?.setGridOption('rowData', this.rowData);
+          this.refreshFilteredProviders();
           return;
         }
       }
@@ -416,6 +421,7 @@ export class DetalleItemsProveedorComponent {
       this.params.node.data[this.providerField] = this.selectedProviderId;
       this.params.node.data['name_' + this.providerField] = providerName;
       this.params.api?.refreshCells({ rowNodes: [this.params.node], columns: [this.providerField], force: true });
+      this.refreshFilteredProviders();
       const cotizId = this.params.data.cotizacionId;
       const maestro: any = await lastValueFrom(this.ocandreqsService.getDetailedReq(cotizId));
       if (maestro) {
@@ -566,7 +572,7 @@ export class DetalleItemsProveedorComponent {
       { field: 'numArticulo', headerName: '# Art', width: 169 },
       { field: 'articulo', headerName: 'Artículo', width: 260 },
       { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 150, editable: !this.ocGenerated,
+      { field: 'tiempoEntrega', headerName: 'T. Entrega22', width: 150, editable: !this.ocGenerated,
         cellEditor: 'agNumberCellEditor', cellEditorParams: { precision: 0, min: 0 },
         valueSetter: (params: any) => { const n = Number(params.newValue); params.data.tiempoEntrega = isNaN(n) ? '' : String(n); return true; } },
       { field: 'compraMinima', headerName: 'Compra Mín.', width: 145, editable: !this.ocGenerated },
@@ -611,13 +617,16 @@ export class DetalleItemsProveedorComponent {
   updateHasRowsWithTypeOC() { this.hasRowsWithTypeOC = this.rowData.some(row => !!(row.typeOC && row.typeOC.trim() !== '')); }
   get allCostosValid(): boolean { return this.rowData.some(r => r.costoUnitario > 0); }
 
-  get filteredProviders(): any[] {
+  private refreshFilteredProviders(): void {
     const siblingFields = ['idProvider', 'idProvider2', 'idProvider3'].filter(f => f !== this.providerField);
     const usedIds = new Set(
-      siblingFields.map(f => this.params?.data?.[f]).filter(id => id && id > 0)
+      siblingFields.map(f => this.params?.data?.[f]).filter((id: any) => id && id > 0)
     );
-    if (usedIds.size === 0) return this.providers;
-    return this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
+    if (usedIds.size === 0) {
+      this.filteredProviders = this.providers;
+    } else {
+      this.filteredProviders = this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
+    }
   }
   onCellValueChanged(event: any) {
     this.hasUnsavedChanges = true;

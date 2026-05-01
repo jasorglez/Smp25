@@ -321,7 +321,7 @@ export class RequisitionsDelisonComponent implements OnInit {
           id: req.id,
           branch: branchName,
           requisitionNumber: req.folio || '',
-          requestDate: req.dateCreate || new Date().toISOString(),
+          requestDate: req.dateCreate || this.localISOString(),
           dateModified: req.dateModified,
           departmentId: req.idDepartament || null,
           departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
@@ -414,7 +414,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             id: req.id,
             branch: branchName, // Nombre de la sucursal desde el catálogo
             requisitionNumber: req.folio || '', // Número de requisición
-            requestDate: req.dateCreate || new Date().toISOString(), // Fecha de creación
+            requestDate: req.dateCreate || this.localISOString(), // Fecha de creación
             dateModified: req.dateModified,
             departmentId: req.idDepartament || null,
             departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
@@ -561,7 +561,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
 
       event.data.__modified = true;
-      event.data.dateModified = new Date().toISOString();
+      event.data.dateModified = this.localISOString();
       this.hasUnsavedChanges = true;
       this.moveRowToTop(event.data.id);
 
@@ -1246,7 +1246,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (row) {
               row.detailData = data;
               row.articlesCount = data.length;
-              row.dateModified = new Date().toISOString();
+              row.dateModified = this.localISOString();
               this.moveRowToTop(requisitionId);
 
               if (showAlert) {
@@ -1262,7 +1262,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             const row = this.rowData.find(r => r.id === requisitionId);
             if (row) {
               row.articlesCount = count;
-              row.dateModified = new Date().toISOString();
+              row.dateModified = this.localISOString();
               this.moveRowToTop(requisitionId);
             }
           },
@@ -1278,7 +1278,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (row) {
               row.solicitedBy = solicitedBy;
               row.requestDate = requestDate;
-              row.dateModified = new Date().toISOString();
+              row.dateModified = this.localISOString();
               this.moveRowToTop(requisitionId);
             }
           }
@@ -1422,7 +1422,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       id: newId,
       branch: branchName,
       requisitionNumber: requisitionNumber,
-      requestDate: new Date().toISOString(),
+      requestDate: this.localISOString(),
       departmentId: defaultDeptId,
       departmentName: defaultDeptName,
       solicitedBy: this.currentUserName,
@@ -1619,6 +1619,11 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.localConsecutivesByBranch.clear();
   }
 
+  private localISOString(): string {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+  }
+
   private normalizeRequestDate(requestDate: any): string {
     if (!requestDate) {
       const today = new Date();
@@ -1717,7 +1722,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             delivery: item.delivery || 'NO APLICA', // ✅ Valor por defecto del backend
             deliveryTime: item.deliveryTime || '1 DAY', // ✅ Valor por defecto del backend
             typeOc: item.typeOc || 'INSUMOS', // ✅ Valor por defecto del backend
-            dateSupply: item.dateSupply || new Date().toISOString(),
+            dateSupply: item.dateSupply || this.localISOString(),
             idPayment: item.idPayment || 0,
             idCurrency: item.idCurrency || 0,
             conditions: item.conditions || null, // ✅ null en lugar de string vacío
@@ -1802,7 +1807,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             delivery: item.delivery || 'NO APLICA',
             deliveryTime: item.deliveryTime || '1 DAY',
             typeOc: item.typeOc || 'INSUMOS',
-            dateSupply: item.dateSupply || new Date().toISOString(),
+            dateSupply: item.dateSupply || this.localISOString(),
             idPayment: item.idPayment || 0,
             idCurrency: item.idCurrency || 0,
             conditions: item.conditions || null,

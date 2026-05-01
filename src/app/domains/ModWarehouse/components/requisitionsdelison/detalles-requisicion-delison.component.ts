@@ -329,6 +329,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.renderer = rendererFactory.createRenderer(null, null);
   }
 
+  private localISOString(): string {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+  }
+
   readonly actionMap: Record<string, () => void> = {
     'Req_Mul': () => this.saveMultiGuardar(),
   };
@@ -400,7 +405,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
         await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
           ...maestro,
-          dateModified: new Date().toISOString()
+          dateModified: this.localISOString()
         }));
       } catch { /* no bloquear el flujo */ }
 
@@ -472,7 +477,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           idProvider: item.idProvider || 0,
           nameProvider: item.nameProvider || '',
           comment: item.comment || '',
-          dateuse: item.dateuse || new Date().toISOString(),
+          dateuse: item.dateuse || this.localISOString(),
           active: item.active !== undefined ? item.active : true,
           recurrent: item.recurrent || 'Recurrente', // Por defecto recurrente
           nameArticle: item.namearticle || item.nameArticle || '',
@@ -1403,7 +1408,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
         await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
           ...maestro,
-          dateModified: new Date().toISOString()
+          dateModified: this.localISOString()
         }));
       } catch { /* no bloquear el flujo */ }
 
@@ -1496,7 +1501,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         idProvider: item.idProvider || 0,
         nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
-        dateuse: item.dateuse || new Date().toISOString(),
+        dateuse: item.dateuse || this.localISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
         provint: item.provint || '',
@@ -1536,7 +1541,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         idProvider: item.idProvider || 0,
         nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
-        dateuse: item.dateuse || new Date().toISOString(),
+        dateuse: item.dateuse || this.localISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
         provint: item.provint || '',
@@ -1586,7 +1591,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
             ...maestro,
             solicit: currentUser,
-            dateModified: new Date().toISOString()
+            dateModified: this.localISOString()
           }));
 
           // Actualizar el maestro vía contexto (actualiza rowData + refresca celdas del grid padre)
@@ -1688,13 +1693,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         typeReference: 'requisition',
         idReq: requisicionOriginal.id,
         idReference: requisicionOriginal.id, // ✅ Relación con la requisición original
-        dateCreate: new Date().toISOString(),
+        dateCreate: this.localISOString(),
         idProvider: 0,
         idDepartament: requisicionOriginal.idDepartament || 0,
         delivery: requisicionOriginal.delivery || 'NO APLICA',
         deliveryTime: requisicionOriginal.deliveryTime || '1 DAY',
         typeOc: requisicionOriginal.typeOc || 'INSUMOS',
-        dateSupply: requisicionOriginal.dateSupply || new Date().toISOString(),
+        dateSupply: requisicionOriginal.dateSupply || this.localISOString(),
         idPayment: requisicionOriginal.idPayment || 0,
         idCurrency: requisicionOriginal.idCurrency || 0,
         conditions: requisicionOriginal.conditions || null,
@@ -1767,7 +1772,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           type: 'COTIZ', // ✅ Tipo = COTIZ
           idProvider: item.idProvider || 0,
           comment: item.comment || '',
-          dateuse: item.dateuse || new Date().toISOString(),
+          dateuse: item.dateuse || this.localISOString(),
           active: true,
           recurrent: item.recurrent || 'Recurrente',
           numArticle: item.numArticle || '',
@@ -1822,7 +1827,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           type: item.type || 'REQUIS',
           idProvider: item.idProvider || 0,
           comment: item.comment || '',
-          dateuse: item.dateuse || new Date().toISOString(),
+          dateuse: item.dateuse || this.localISOString(),
           active: item.active !== undefined ? item.active : true,
           recurrent: item.recurrent || 'Recurrente',
           numArticle: item.numArticle || '',
@@ -1863,7 +1868,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         );
         await firstValueFrom(this.ocAndReqsService.updateOcAndReq(requisicionOriginal.id, {
           ...maestroActual,
-          dateModified: new Date().toISOString()
+          dateModified: this.localISOString()
         }));
         this.refreshParentGridAfterSave();
       } catch (err) {
@@ -2196,7 +2201,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             type: 'COTIZ',
             idProvider: newItem.idProvider || 0,
             comment: newItem.comment || '',
-            dateuse: newItem.dateuse || new Date().toISOString(),
+            dateuse: newItem.dateuse || this.localISOString(),
             active: true,
             recurrent: newItem.recurrent || 'Recurrente',
             numArticle: newItem.numArticle || '',
@@ -2244,7 +2249,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             type: matchingItem.type || 'COTIZ',
             idProvider: matchingItem.idProvider || 0,
             comment: modItem.comment || '', // Observación actualizada
-            dateuse: matchingItem.dateuse || new Date().toISOString(),
+            dateuse: matchingItem.dateuse || this.localISOString(),
             active: matchingItem.active !== undefined ? matchingItem.active : true,
             recurrent: matchingItem.recurrent || 'Recurrente',
             numArticle: matchingItem.numArticle || '',
@@ -2346,13 +2351,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         typeReference: 'requisition', // ✅ Las cotizaciones se relacionan a requisiciones
         idReq: this.requisitionId, // ✅ Vinculado a la requisición
         idReference: this.requisitionId, // ✅ Para que se encuentre con getOcAndReqs('requisition', idReq, 'COTIZ')
-        dateCreate: new Date().toISOString(),
+        dateCreate: this.localISOString(),
         idProvider: requisitionData.idProvider || 0,
         idDepartament: requisitionData.idDepartament || 0,
         delivery: requisitionData.delivery || 'NO APLICA',
         deliveryTime: requisitionData.deliveryTime || '1 DAY',
         typeOc: requisitionData.typeOc || 'INSUMOS',
-        dateSupply: requisitionData.dateSupply || new Date().toISOString(),
+        dateSupply: requisitionData.dateSupply || this.localISOString(),
         idPayment: requisitionData.idPayment || 0,
         idCurrency: requisitionData.idCurrency || 0,
         conditions: requisitionData.conditions || null,
