@@ -286,6 +286,30 @@ export class EmployeesClockComponent {
     }
   }
 
+  onKeyNav(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    const isMeridianBtn = target.closest('.ngb-tp-meridian') != null;
+
+    if (isMeridianBtn && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      event.preventDefault();
+      (target as HTMLButtonElement).click();
+      return;
+    }
+
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+
+    const inputs = Array.from(
+      document.querySelectorAll('.clock-table input.ngb-tp-input, .clock-table .ngb-tp-meridian button')
+    ) as HTMLElement[];
+    const idx = inputs.indexOf(target);
+    if (idx >= 0 && idx < inputs.length - 1) {
+      const next = inputs[idx + 1];
+      next.focus();
+      if (next instanceof HTMLInputElement) next.select();
+    }
+  }
+
   onEmployeeChange(): void {
     this.getEmployeeClock();
   }

@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, Renderer2, RendererFactory2, OnDestroy } from '@angular/core';
+import { Component, inject, Renderer2, RendererFactory2, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -40,7 +40,7 @@ pdfMake.vfs = pdfFonts.vfs;
       <div style="margin-bottom: 5px; padding: 6px 10px; flex-shrink: 0; display: flex; align-items: center;">
         <label class="form-label small mb-0 me-1" style="white-space: nowrap;">Proveedor:</label>
         <ng-select
-          [items]="providers"
+          [items]="filteredProviders"
           bindValue="id"
           bindLabel="description"
           [groupBy]="'group'"
@@ -63,7 +63,7 @@ pdfMake.vfs = pdfFonts.vfs;
         <button class="btn btn-sm btn-outline-secondary" type="button" (click)="generatePlaceholderPdf()" [disabled]="ocGenerated" title="Ver PDF">
           <i class="bi bi-file-earmark-pdf text-danger"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="savingChanges || ocGenerated" title="Guardar cotización">
+        <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="savingChanges || ocGenerated || !allCostosValid" title="Guardar cotización">
           <span *ngIf="savingChanges" class="spinner-border spinner-border-sm"></span>
           <i *ngIf="!savingChanges" class="bi bi-floppy"></i>
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="hasUnsavedChanges && !savingChanges && !ocGenerated">
@@ -218,23 +218,8 @@ export class DetalleItemsProveedorComponent {
   onGridReady(params: any) {
     this.gridApi = params.api;
     if (this.ocGenerated) this.lockGrid();
-    this.autoAdjustColumns();
   }
 
-  @HostListener('window:resize')
-  onWindowResize() {
-    this.autoAdjustColumns();
-  }
-
-  private autoAdjustColumns() {
-    if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    if (typeof apiAny.autoSizeAllColumns === 'function') {
-      apiAny.autoSizeAllColumns(true);
-    } else if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-    }
-  }
 
   async loadProviders(): Promise<void> {
     try {
@@ -410,6 +395,12 @@ export class DetalleItemsProveedorComponent {
     if (!this.selectedProviderId) { alert('Seleccione un proveedor.'); return; }
     if (this.savingChanges) return;
     this.gridApi?.stopEditing();
+    const rowsInvalid = this.rowData.filter(r => !(r.costoUnitario > 0));
+    if (rowsInvalid.length > 0) {
+      const nombres = rowsInvalid.map((r: any) => `• ${r.articulo}`).join('\n');
+      alerts.reqErrorToast('Costo requerido', `Los siguientes artículos no tienen costo unitario:\n${nombres}`);
+      return;
+    }
     this.savingChanges = true;
     try {
       await this.saveCotizOrOC('COTIZ');
@@ -571,25 +562,35 @@ export class DetalleItemsProveedorComponent {
     if (this._colDefs && this._colDefs.length > 0) return this._colDefs;
 
     this._colDefs = [
-      { field: 'active', headerName: 'Activo', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
-      { field: 'numArticulo', headerName: '# Art', width: 130 },
-      { field: 'articulo', headerName: 'Artículo', width: 140 },
-      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 120, editable: !this.ocGenerated },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega x semana', width: 120, editable: !this.ocGenerated },
-      { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: !this.ocGenerated },
-      { field: 'costoUnitario', headerName: 'Costo Unit.', width: 130, editable: !this.ocGenerated, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 130, editable: !this.ocGenerated, hide: true },
-      { field: 'costoTotal', headerName: 'Costo Total', width: 150, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { headerName: 'Comentarios💬', width: 140, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || '', locked: this.ocGenerated }) },
-      { field: 'typeOC', headerName: 'Tipo OC', width: 220, editable: !this.ocGenerated, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
-      { field: 'oc', headerName: 'OC', width: 80, editable: !this.ocGenerated, hide: true }
+      { field: 'active', headerName: 'Activo', width: 120, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
+      { field: 'numArticulo', headerName: '# Art', width: 169 },
+      { field: 'articulo', headerName: 'Artículo', width: 260 },
+      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated },
+      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 150, editable: !this.ocGenerated,
+        cellEditor: 'agNumberCellEditor', cellEditorParams: { precision: 0, min: 0 },
+        valueSetter: (params: any) => { const n = Number(params.newValue); params.data.tiempoEntrega = isNaN(n) ? '' : String(n); return true; } },
+      { field: 'compraMinima', headerName: 'Compra Mín.', width: 145, editable: !this.ocGenerated },
+      { field: 'costoUnitario', headerName: 'Costo Unit.', width: 140, editable: !this.ocGenerated,
+        valueFormatter: (params: any) => params.value ? `$${Number(params.value).toFixed(2)}` : '$0.00',
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          if (isNaN(val) || val <= 0) { alerts.reqErrorToast('Costo inválido', 'El costo unitario debe ser mayor que cero'); return false; }
+          params.data.costoUnitario = val;
+          params.data.costoTotal = val * (params.data.cantidadConfirmada || 0);
+          return true;
+        } },
+      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 120, editable: !this.ocGenerated, hide: true },
+      { field: 'costoTotal', headerName: 'Costo Total', width: 170, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
+      { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || '', locked: this.ocGenerated }) },
+      { field: 'typeOC', headerName: 'Tipo OC', width: 130, editable: !this.ocGenerated, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
+      { field: 'oc', headerName: 'OC', width: 100, editable: !this.ocGenerated, hide: true }
     ];
     return this._colDefs;
   }
 
   public gridOptions: any = {
     headerHeight: 30, rowHeight: 28, animateRows: true, suppressCellFocus: false, stopEditingWhenCellsLoseFocus: true, tooltipShowDelay: 400,
-    defaultColDef: { resizable: true, sortable: true, filter: true, flex: 1, minWidth: 120 },
+    defaultColDef: { resizable: true, sortable: true, filter: true },
     onCellEditingStarted: () => { if (this.ocGenerated) this.gridApi?.stopEditing(true); }
   };
 
@@ -608,6 +609,16 @@ export class DetalleItemsProveedorComponent {
   private getSelectedProviderName(): string { return this.selectedProviderObj?.description || 'Sin seleccionar'; }
   updateTotal() { this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0); }
   updateHasRowsWithTypeOC() { this.hasRowsWithTypeOC = this.rowData.some(row => !!(row.typeOC && row.typeOC.trim() !== '')); }
+  get allCostosValid(): boolean { return this.rowData.some(r => r.costoUnitario > 0); }
+
+  get filteredProviders(): any[] {
+    const siblingFields = ['idProvider', 'idProvider2', 'idProvider3'].filter(f => f !== this.providerField);
+    const usedIds = new Set(
+      siblingFields.map(f => this.params?.data?.[f]).filter(id => id && id > 0)
+    );
+    if (usedIds.size === 0) return this.providers;
+    return this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
+  }
   onCellValueChanged(event: any) {
     this.hasUnsavedChanges = true;
     if (event.column.getColId() === 'costoUnitario' || event.column.getColId() === 'cantidadConfirmada') {

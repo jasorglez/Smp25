@@ -16,7 +16,7 @@
     ></ng-select>
   </div>
 
-  <form #scheduleForm="ngForm" (ngSubmit)="guardarHorario()">
+  <form #scheduleForm="ngForm" (ngSubmit)="guardarHorario()" (keydown)="onKeyNav($event)">
     <table class="clock-table">
       <thead>
         <tr>

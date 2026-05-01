@@ -140,7 +140,7 @@ export class DetailLoanPaymentsComponent {
       },
       (error) => {
         console.error('Error loading detailed loan data:', error);
-        alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
+        alerts.userSaveErrorToast('Error', 'Error al cargar los datos.');
       }
     );
   }
@@ -176,7 +176,7 @@ export class DetailLoanPaymentsComponent {
   async saveDetailChanges() {
     const isValid = this.detalleRowData.every((item) => item.total);
     if (!isValid) {
-      alerts.basicAlert('Añadir entrada', 'Debe ingresar un valor de abono.', 'error');
+      alerts.userSaveErrorToast('Añadir entrada', 'Debe ingresar un valor de abono.');
       return;
     }
     const newRows = this.detalleRowData.filter((row) => row.__isNew);
@@ -191,16 +191,15 @@ export class DetailLoanPaymentsComponent {
     });
     try {
       await lastValueFrom(concat(...addObservables, ...updateObservables).pipe(toArray()));
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.userSaveSuccessToast('Abonos', 'Se han actualizado los datos correctamente.');
       this.detailNotSavedChanges = false;
       this.loadDetailedData();
       this.refreshMaster?.(this.idLoan);
-      this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       if (error.status === 400) {
-        alerts.basicAlert('Añadir entrada', error.error.message || 'Error al actualizar los datos.', 'error');
+        alerts.userSaveErrorToast('Añadir entrada', error.error.message || 'Error al actualizar los datos.');
       } else {
-        alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
+        alerts.userSaveErrorToast('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.');
       }
       console.error(error);
     }
@@ -220,17 +219,16 @@ export class DetailLoanPaymentsComponent {
     const id = selectedNodes[0].data.id;
     this.employeesxloansService.deleteConcept(id)
       .pipe(catchError((error) => {
-        alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
+        alerts.userSaveErrorToast('Eliminar entrada', 'Error al eliminar la entrada.');
         console.error(error);
         return EMPTY;
       }))
       .subscribe(() => {
-        alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+        alerts.userDeleteSuccessToast('Eliminar entrada', 'Entrada eliminada satisfactoriamente.');
         this.detailNotSavedChanges = false;
         this.loadDetailedData();
         this.refreshMaster?.(this.idLoan);
         this.trackingService.addLog(this.trackingService.getnameComp(), 'Delete Detalle Registro en Prestamos', 'Menu Administracion Prestamos', this.trackingService.getEmail());
-        this.signalsService.triggerRefreshEmployees();
       });
   }
 
