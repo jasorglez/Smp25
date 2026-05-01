@@ -185,9 +185,23 @@ export class OcAndReqsService {
     );
   }
 
+  getOcsDetailsForRequisition(idRequisition: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/ocs-details-by-requisition?idRequisition=${idRequisition}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getPedimentosByRequisicion(idRequisicion: number): Observable<any[]> {
     return this.http.get<any[]>(
       `${environment.urlWarehouse}/Ocandreq?typeReference=requisition&idReference=${idRequisicion}&type=COTIZ`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getOcsByBranch(idBranch: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/ocs-by-branch?idBranch=${idBranch}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

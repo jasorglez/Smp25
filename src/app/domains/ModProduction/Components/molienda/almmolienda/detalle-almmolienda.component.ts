@@ -66,7 +66,7 @@ interface ReqOption {
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
 })
 export class DetalleMoliendaComponent {
-  private moliendaService  = inject(MoliendaService);
+  private moliendaService = inject(MoliendaService);
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
 
@@ -151,12 +151,14 @@ export class DetalleMoliendaComponent {
 
   // ── Nivel 3: OCs ──────────────────────────────────────────────────
   cascadeOcColDefs: ColDef[] = [
-    { field: 'folio',        headerName: 'OC',              width: 110 },
-    { field: 'proveedor',    headerName: 'Proveedor',        flex: 2, minWidth: 140 },
-    { field: 'cantidad',     headerName: 'Cantidad',         width: 110, type: 'numericColumn' },
-    { field: 'condEspecial', headerName: 'Cond. Especial',   flex: 2, minWidth: 130 },
-    { field: 'resta',        headerName: 'Resta',            width: 90, type: 'numericColumn',
-      cellStyle: { backgroundColor: '#fff9c4' } },
+    { field: 'folio', headerName: 'OC', width: 110 },
+    { field: 'proveedor', headerName: 'Proveedor', flex: 2, minWidth: 140 },
+    { field: 'cantidad', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
+    { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130 },
+    {
+      field: 'resta', headerName: 'Resta', width: 90, type: 'numericColumn',
+      cellStyle: { backgroundColor: '#fff9c4' }
+    },
   ];
 
   cascadeOcGridOptions: any = {
@@ -166,7 +168,7 @@ export class DetalleMoliendaComponent {
   };
 
   // ── Lifecycle ─────────────────────────────────────────────────────
-  agInit(params: any) { this.init(params); }
+  async agInit(params: any) { await this.init(params); }
   refresh(params: any): boolean { this.internalParams = params; return true; }
 
   private async init(params: any) {
@@ -181,7 +183,7 @@ export class DetalleMoliendaComponent {
       .join(',');
 
     // Si el padre ya sincronizó y pasó los datos, úsalos directamente sin HTTP
-    const preloadedReqs    = params?.preloadedReqs    as any[] | undefined;
+    const preloadedReqs = params?.preloadedReqs as any[] | undefined;
     const preloadedDetails = params?.preloadedDetails as any[] | undefined;
 
     if (preloadedReqs?.length && preloadedDetails !== undefined) {
@@ -189,13 +191,13 @@ export class DetalleMoliendaComponent {
       this.rowData = preloadedDetails.map((d: any) => {
         const req = this.reqOptions.find((r: any) => r.id === d.idRequisition);
         return {
-          id:            d.id,
+          id: d.id,
           idRequisition: d.idRequisition ?? null,
-          folio:         req?.folio ?? '',
-          cantidadReq:   d.cantidadReq   ?? 0,
+          folio: req?.folio ?? '',
+          cantidadReq: d.cantidadReq ?? 0,
           numCantidadOc: d.numCantidadOc ?? 0,
-          cantidad:      d.cantidad ?? 0,
-          idCatalog:     d.idCatalog ?? null,
+          cantidad: d.cantidad ?? 0,
+          idCatalog: d.idCatalog ?? null,
         };
       });
       this.initCompleted = true;
@@ -213,7 +215,7 @@ export class DetalleMoliendaComponent {
   }
 
   private async loadReqOptions() {
-    const idBranch   = this.internalParams?.data?.sucursal;
+    const idBranch = this.internalParams?.data?.sucursal;
     const idMaterial = this.internalParams?.data?.idMaterial;
     if (!idBranch || !idMaterial) { this.reqOptions = []; return; }
     try {
@@ -229,7 +231,6 @@ export class DetalleMoliendaComponent {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     if (this.initCompleted) {
-      // Si hay datos ya cargados por el path rápido, solo los setea en el grid
       if (this.rowData.length) {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.updateParentCount();
@@ -237,7 +238,6 @@ export class DetalleMoliendaComponent {
         this.loadData();
       }
     }
-    // Si init() aún no terminó, él mismo llamará loadData() al terminar
   }
 
   onCascadeOcGridReady(params: GridReadyEvent) {
@@ -256,18 +256,18 @@ export class DetalleMoliendaComponent {
     }
 
     try {
-      const type  = this.detailType === 'entradas' ? 'ENTRADA' : 'SALIDA';
+      const type = this.detailType === 'entradas' ? 'ENTRADA' : 'SALIDA';
       const items = await lastValueFrom(this.moliendaService.getDetails(idMolienda, type));
       this.rowData = (Array.isArray(items) ? items : []).map((d: any) => {
         const req = this.reqOptions.find(r => r.id === d.idRequisition);
         return {
-          id:            d.id,
+          id: d.id,
           idRequisition: d.idRequisition ?? null,
-          folio:         req?.folio ?? '',
-          cantidadReq:   d.cantidadReq   ?? 0,
-          numCantidadOc: d.numCantidadOc ?? 0,
-          cantidad:      d.cantidad ?? 0,
-          idCatalog:     d.idCatalog ?? null,
+          folio: req?.folio ?? '',
+          cantidadReq: d.cantidadReq ?? 0,
+          numCantidadOc: req?.numCantidadOc ?? 0,
+          cantidad: d.cantidad ?? 0,
+          idCatalog: d.idCatalog ?? null,
         };
       });
       if (this.gridApi && !this.gridApi.isDestroyed())
@@ -282,19 +282,19 @@ export class DetalleMoliendaComponent {
     if (event.column?.getColId() !== 'folio') return;
 
     const row = event.data;
-    if (!row?.idRequisition) { 
-      this.selectedReqRow = null; 
-      this.cascadeOcData = []; 
+    if (!row?.idRequisition) {
+      this.selectedReqRow = null;
+      this.cascadeOcData = [];
       if (this.gridApi) {
         this.gridApi.forEachNode((node: any) => node.setRowHeight(undefined));
         this.gridApi.onRowHeightChanged();
       }
-      return; 
+      return;
     }
 
     if (this.selectedReqRow === row) {
       this.selectedReqRow = null;
-      this.cascadeOcData  = [];
+      this.cascadeOcData = [];
       if (this.gridApi) {
         this.gridApi.forEachNode((node: any) => node.setRowHeight(undefined));
         this.gridApi.onRowHeightChanged();
@@ -304,7 +304,7 @@ export class DetalleMoliendaComponent {
     }
 
     this.selectedReqRow = row;
-    
+
     if (this.gridApi) {
       this.gridApi.forEachNode((node: any) => {
         if (node.data === row) {
@@ -316,81 +316,15 @@ export class DetalleMoliendaComponent {
       this.gridApi.onRowHeightChanged();
     }
 
-    const idMaterial = this.internalParams?.data?.idMaterial;
     try {
       const { lastValueFrom } = await import('rxjs');
-      
-      // 1. Obtener Pedimentos de la Requisición
-      const pedsRes: any = await lastValueFrom(
-        this.ocAndReqsService.getPedimentosByRequisicion(row.idRequisition)
+
+      // Obtenemos todas las OCs de la requisición seleccionada con detalles y nombres de proveedores
+      const matchedOcs: any = await lastValueFrom(
+        this.ocAndReqsService.getOcsDetailsForRequisition(row.idRequisition)
       ).catch(() => []);
-      const pedimentos = Array.isArray(pedsRes) ? pedsRes : [];
 
-      // 2. Obtener OCs de cada Pedimento
-      let allOcs = [];
-      for (const p of pedimentos) {
-        const ocsRes: any = await lastValueFrom(
-          this.ocAndReqsService.getOcsByPedimento(p.id)
-        ).catch(() => []);
-        const ocsArray = Array.isArray(ocsRes) ? ocsRes : [];
-        allOcs.push(...ocsArray);
-      }
-
-      // 3. Filtrar OCs por idMaterial buscando en sus ítems
-      const matchedOcs = [];
-      for (const oc of allOcs) {
-        const itemsRes: any = await lastValueFrom(
-          this.ocAndReqsService.getReqItems(oc.id)
-        ).catch(() => []);
-        const itemsArray = Array.isArray(itemsRes) ? itemsRes : (itemsRes?.data || itemsRes?.project || itemsRes?.items || []);
-        
-        const matchingItem = itemsArray.find((item: any) => 
-          item.idMaterial === idMaterial || 
-          item.id_material === idMaterial || 
-          item.idarticle === idMaterial ||
-          item.idArticle === idMaterial ||
-          item.id_article === idMaterial
-        );
-
-        if (matchingItem) {
-          // Obtener nombre del proveedor dinámicamente
-          let provName = `Prov. ${oc.idProvider || oc.id_provider || ''}`;
-          try {
-            const idCompany = this.internalParams?.data?.idCompany || this.internalParams?.context?.idCompany || 0;
-            if (idCompany && (oc.idProvider || oc.id_provider)) {
-              if (!this.providersMap) {
-                 const { CustomersService } = await import('app/services/customers.service');
-                 const customersSvc = this.internalParams?.context?.componentParent?.customersService;
-                 if (customersSvc) {
-                    // Try to get from parent context if it exists
-                    const pList = customersSvc.proveedores || [];
-                    this.providersMap = new Map(pList.map(p => [p.id, p.name]));
-                 } else {
-                    // Fallback to fetch (if injector allows, but safer to just use injected service)
-                    const data = await lastValueFrom(this.customersService.getCustomersByCompany(idCompany, 'PROVIDERS')).catch(() => []);
-                    const pList = Array.isArray(data) ? data : [];
-                    this.providersMap = new Map(pList.map(p => [p.id, p.name || p.Description || p.description]));
-                 }
-              }
-              if (this.providersMap?.has(oc.idProvider || oc.id_provider)) {
-                 provName = this.providersMap.get(oc.idProvider || oc.id_provider);
-              }
-            }
-          } catch (e) {
-            console.warn('No se pudo mapear el proveedor', e);
-          }
-          
-          matchedOcs.push({
-            folio: oc.folio || '',
-            proveedor: provName,
-            cantidad: matchingItem.quantity || matchingItem.cantidad || 0,
-            condEspecial: oc.conditions || '',
-            resta: matchingItem.resta || matchingItem.rest || 0
-          });
-        }
-      }
-
-      this.cascadeOcData = matchedOcs;
+      this.cascadeOcData = Array.isArray(matchedOcs) ? matchedOcs : [];
     } catch (err) {
       console.error('Error cargando OCs:', err);
       this.cascadeOcData = [];

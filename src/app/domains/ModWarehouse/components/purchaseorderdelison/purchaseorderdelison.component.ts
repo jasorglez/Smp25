@@ -215,17 +215,35 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     }
   }
 
+  private mapOcRow(oc: any, branchName: string): any {
+    return {
+      id:           oc.id,
+      sucursal:     branchName,
+      folio:        oc.folio || '',
+      ocCount:      oc.countItems ?? 0,
+      catalogo:     '', // TODO: get catalog info from materials if available
+      idReference:  oc.idReq || oc.id,
+      idCompany:    this.idRoot,
+      active:       oc.active !== false,
+      detailType:   null,
+      idProvider:   oc.idProvider,
+      reqFolio:     oc.reqFolio || ''
+    };
+  }
+
   private mapRequisitionRow(req: any, branchName: string, ocCount: number): any {
     return {
       id:           req.id,
       sucursal:     branchName,
       folio:        req.folio || '',
       ocCount:      ocCount,
-      catalogo:     '', // TODO: get catalog info from materials if available
+      catalogo:     '',
       idReference:  req.idReference || req.id_reference,
       idCompany:    this.idRoot,
       active:       req.active !== false,
-      detailType:   null
+      detailType:   null,
+      dateModified: req.dateModified || null,
+      dateCreate:   req.dateCreate || null
     };
   }
 
@@ -251,12 +269,13 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       reqs.map((req: any) => ({ req, branchName: branch.name }))
     );
 
-    const mapped = await Promise.all(allReqs.map(async ({ req, branchName }) => {
-      const ocCount = await this.getPedimentoCount(req.id);
-      return this.mapRequisitionRow(req, branchName, ocCount);
-    }));
+    const mapped = allReqs.map(({ req, branchName }) => this.mapRequisitionRow(req, branchName, req.countrow ?? 0));
 
-    this.fullRowData = mapped.filter(row => row.ocCount > 0);
+    this.fullRowData = mapped.sort((a, b) => {
+      const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
+      const dateB = new Date(b.dateModified || b.dateCreate || 0).getTime();
+      return dateB - dateA;
+    });
     this.rowData = [...this.fullRowData];
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
@@ -272,11 +291,12 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       const data: any = await lastValueFrom(this.ocAndReqsService.getRequisitionsByBranch(branchId));
       const reqs = Array.isArray(data) ? data : [];
 
-      const allMapped = await Promise.all(reqs.map(async (req: any) => {
-        const ocCount = await this.getPedimentoCount(req.id);
-        return this.mapRequisitionRow(req, branchName, ocCount);
-      }));
-      this.fullRowData = allMapped.filter(row => row.ocCount > 0);
+      const allMapped = reqs.map((req: any) => this.mapRequisitionRow(req, branchName, req.countrow ?? 0));
+      this.fullRowData = allMapped.sort((a, b) => {
+        const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
+        const dateB = new Date(b.dateModified || b.dateCreate || 0).getTime();
+        return dateB - dateA;
+      });
 
       this.rowData = [...this.fullRowData];
       if (this.gridApi) {

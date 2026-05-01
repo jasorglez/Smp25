@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.132 (30 Abril 2026 20:00) - Fix ng-select bloqueado en detalle-items-proveedor: getter→propiedad estable para filteredProviders'
+  version: '2.50.6 (1 Mayo 2026 12:30) - Fix almmolienda: corregido contador # OC - GroupBy int? en EF Core causaba Dictionary lookup fallido'
 };
