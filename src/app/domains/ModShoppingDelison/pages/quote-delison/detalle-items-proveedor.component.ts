@@ -553,7 +553,7 @@ export class DetalleItemsProveedorComponent {
     try {
       const items: any = await lastValueFrom(this.ocandreqsService.getReqItems(ocId));
       this.rowData = (Array.isArray(items) ? items : []).map((item: any) => ({
-        idSupplie: item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numArticle || '', articulo: item.description || item.nameArticle || '',
+        idSupplie: item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.description || item.nameArticle || '',
         codigoExterno: item.observation || '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima || 1, tiempoEntrega: item.tiempoEntrega || '',
         cantidadConfirmada: item.quantity || 0, costoTotal: item.total || 0, autorizado: item.autorizado || false, oc: '', typeOC: item.typeOc || '', comment: item.comment || ''
       }));

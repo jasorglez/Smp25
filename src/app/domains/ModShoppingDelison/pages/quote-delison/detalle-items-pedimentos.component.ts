@@ -522,7 +522,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         dateuse: matchingReqItem.dateuse || new Date().toISOString(),
         active: matchingReqItem.active !== undefined ? matchingReqItem.active : true,
         recurrent: matchingReqItem.recurrent || 'Recurrente',
-        numArticle: matchingReqItem.numArticle || '',
+        numArticle: matchingReqItem.numarticle || matchingReqItem.numArticle || '',
         provint: matchingReqItem.provint || '',
         typePriority: matchingReqItem.typePriority || 'Normal',
         pedimento: false,

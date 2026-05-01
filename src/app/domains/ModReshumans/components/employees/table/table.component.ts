@@ -19,6 +19,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { States } from 'app/interface/states';
 import { AdministrationService } from 'app/services/administration.service';
 import { TimeService } from 'app/services/time.service';
@@ -46,6 +47,7 @@ import { DetailEmployeePersonalDataComponent } from '../detail-employee-personal
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
+    SearchableSelectComponent,
     DetailEmployeeClockComponent,
     DetailEmployeeLoansComponent,
     DetailEmployeeSavingsComponent,
@@ -135,6 +137,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    searchableSelectComponent: SearchableSelectComponent,
     detailEmployeeClock: DetailEmployeeClockComponent,
     detailEmployeeLoans: DetailEmployeeLoansComponent,
     detailEmployeeSavings: DetailEmployeeSavingsComponent,
@@ -411,13 +414,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             defaultToNothingSelected: true,
           },
           cellStyle: (params) => this.validateRequiredField(params.value),
-          cellEditor: 'autocompleteEditor',
-          cellEditorParams: () => ({
-            filterList: this.usersCatalog.map((u: any) => u.displayName?.toUpperCase() ?? '').filter(Boolean),
-            filterKey: 'name',
-            placeholder: 'Buscar usuario...',
-            minLength: 1,
-          }),
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeNameEditorParams(params),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -475,13 +473,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             defaultToNothingSelected: true,
           },
           //cellStyle: (params) => this.validateRequiredField(params.value),
-          cellEditor: 'autocompleteEditor',
-          cellEditorParams: {
-            filterList: this.rowData?.map((e) => e.employeeCode?.toUpperCase()) || [],
-            filterKey: 'employeeCode',
-            placeholder: 'Buscar código...',
-            minLength: 1,
-          },
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeCodeEditorParams(params),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -1008,13 +1001,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             defaultToNothingSelected: true,
           },
           cellStyle: (params) => this.validateRequiredField(params.value),
-          cellEditor: 'autocompleteEditor',
-          cellEditorParams: () => ({
-            filterList: this.usersCatalog.map((u: any) => u.displayName?.toUpperCase() ?? '').filter(Boolean),
-            filterKey: 'name',
-            placeholder: 'Buscar usuario...',
-            minLength: 1,
-          }),
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeNameEditorParams(params),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -1072,13 +1060,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             defaultToNothingSelected: true,
           },
           //cellStyle: (params) => this.validateRequiredField(params.value),
-          cellEditor: 'autocompleteEditor',
-          cellEditorParams: {
-            filterList: this.rowData?.map((e) => e.employeeCode?.toUpperCase()) || [],
-            filterKey: 'employeeCode',
-            placeholder: 'Buscar código...',
-            minLength: 1,
-          },
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeCodeEditorParams(params),
           valueSetter: (params) => {
             const rawValue = params.newValue;
             if (!rawValue || typeof rawValue !== 'string') {
@@ -1661,6 +1644,99 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     );
   }
 
+  private getEmployeeNameEditorParams(params: any) {
+    return {
+      options: this.buildEmployeeNameOptions(params),
+      displayField: 'name',
+      valueField: 'name',
+      searchFields: ['name', 'email', 'employeeCode'],
+      placeholder: 'Buscar empleado...',
+      popupWidth: 310,
+      onOptionSelected: (option: any) => this.applySelectedEmployeeToRow(option, params),
+    };
+  }
+
+  private getEmployeeCodeEditorParams(params: any) {
+    return {
+      options: this.buildEmployeeCodeOptions(params),
+      displayField: 'employeeCode',
+      valueField: 'employeeCode',
+      searchFields: ['employeeCode', 'name', 'email'],
+      placeholder: 'Buscar código...',
+      popupWidth: 310,
+    };
+  }
+
+  private buildEmployeeNameOptions(params: any): any[] {
+    const currentRowId = params?.data?.id;
+
+    return (this.rowData || [])
+      .filter((employee: any) => !employee?.__isNew && employee?.id !== currentRowId)
+      .map((employee: any) => ({
+        id: employee?.id ?? null,
+        name: String(employee?.name ?? '').trim().toUpperCase(),
+        email: String(employee?.email ?? '').trim(),
+        employeeCode: String(employee?.employeeCode ?? '').trim().toUpperCase(),
+        idBranch: employee?.idBranch ?? null,
+      }))
+      .filter((employee: any) => employee.name)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private buildEmployeeCodeOptions(params: any): any[] {
+    const currentRowId = params?.data?.id;
+
+    return (this.rowData || [])
+      .filter((employee: any) => !employee?.__isNew && employee?.id !== currentRowId)
+      .map((employee: any) => ({
+        id: employee?.id ?? null,
+        employeeCode: String(employee?.employeeCode ?? '').trim().toUpperCase(),
+        name: String(employee?.name ?? '').trim().toUpperCase(),
+        email: String(employee?.email ?? '').trim(),
+      }))
+      .filter((employee: any) => employee.employeeCode)
+      .sort((a, b) => a.employeeCode.localeCompare(b.employeeCode));
+  }
+
+  private applySelectedEmployeeToRow(option: any, params: any): void {
+    const row = params?.data;
+    if (!row || !option) return;
+
+    const selectedName = String(option.name ?? '').trim().toUpperCase();
+    if (!selectedName) return;
+
+    const rowIndex = params?.node?.rowIndex ?? -1;
+    if (this.hasDuplicateEmployeeName(selectedName, rowIndex)) {
+      return;
+    }
+
+    if (row.__isNew || !String(row.email ?? '').trim()) {
+      row.email = option.email || '';
+    }
+
+    if (row.__isNew || !String(row.employeeCode ?? '').trim()) {
+      row.employeeCode = option.employeeCode || '';
+    }
+
+    row.__linkedEmployeeId = option.id ?? null;
+
+    if (this.gridApi && params?.node) {
+      this.gridApi.refreshCells({
+        rowNodes: [params.node],
+        columns: ['employeeCode', 'email'],
+        force: true,
+      });
+    }
+  }
+
+  private hasDuplicateEmployeeName(name: string, currentRowIndex: number): boolean {
+    return this.rowData.some(
+      (row, index) =>
+        index !== currentRowIndex &&
+        String(row?.name ?? '').trim().toUpperCase() === name
+    );
+  }
+
   loadUsersCatalog() {
     this.usersService.get2fieldsUsers(this.idRoot).subscribe({
       next: (data: any) => { this.usersCatalog = data?.data || data || []; },
@@ -1978,6 +2054,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.__linkedUserId;
+    delete cleanedData.__linkedEmployeeId;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

@@ -270,7 +270,7 @@ export class DetallesProveedorComponent {
 
     this.rowData = articulos.map((item: any, index: number) => ({
       active: true,
-      numArticulo: item.numArticle || (index + 1),
+      numArticulo: item.numarticle || item.numArticle || (index + 1),
       articulo: item.nameArticle || item.article || item.description || '',
       codigoExterno: '',
       costoUnitario: 0,
