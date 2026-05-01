@@ -266,14 +266,14 @@ export class AlmmoliendaComponent {
         const container = document.createElement('div');
         container.style.cssText = isNew
           ? 'display:flex;align-items:center;cursor:not-allowed;color:#aaa;'
-          : 'display:flex;align-items:center;cursor:pointer;color:#c62828;text-decoration:underline;';
+          : 'display:flex;align-items:center;cursor:pointer;color:#2e7d32;text-decoration:underline;';
         container.innerHTML = `<span>${count} registro(s)</span>`;
         if (!isNew) {
           container.addEventListener('click', () => this.toggleCascade(params.node, 'salidas'));
         }
         return container;
       },
-      cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer' }
+      cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
     },
    
     {
@@ -314,7 +314,7 @@ export class AlmmoliendaComponent {
     isExternalFilterPresent: () => this.activeBranchFilter != null,
     doesExternalFilterPass: (node: any) => node.data?.sucursal === this.activeBranchFilter,
     masterDetail: true,
-    detailRowHeight: 280,
+    detailRowHeight: 700,
     isRowMaster: () => true,
     detailCellRenderer: DetalleMoliendaComponent,
     detailCellRendererParams: (params: any) => {
