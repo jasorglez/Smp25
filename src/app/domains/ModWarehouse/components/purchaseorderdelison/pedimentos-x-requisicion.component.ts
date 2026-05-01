@@ -146,17 +146,36 @@ export class PedimentosXRequisicionComponent {
     }
 
     this.ocAndReqsService.getPedimentosByRequisicion(idRequisicion).subscribe({
-      next: (pedimentos: any[]) => {
-        this.rowData = (Array.isArray(pedimentos) ? pedimentos : []).map((p: any) => ({
-          id:             p.id,
-          idPedimento:    p.id,      // para que OrdenesydetallesOcComponent lo lea como params.data.idPedimento
-          idCompany:      idCompany,
-          folio:          p.folio || '',
-          pedimento:      p.pedimento || 0,
-          fechaPedimento: p.dateCreate || p.dateModified || '',
-          ocCount:        p.countrow || 0,
-          articulos:      p.articulos || [],
+      next: async (pedimentos: any[]) => {
+        const peds = Array.isArray(pedimentos) ? pedimentos : [];
+        
+        // Import lastValueFrom dynamically to avoid touching top-level imports
+        const { lastValueFrom } = await import('rxjs');
+
+        // Cargar los artículos de cada pedimento
+        const pedsConArticulos = await Promise.all(peds.map(async (p: any) => {
+          let articulos = p.articulos || [];
+          if (!articulos.length) {
+            try {
+              const items = await lastValueFrom(this.ocAndReqsService.getReqItems(p.id));
+              articulos = items || [];
+            } catch(e) {
+              console.error('Error loading items for pedimento', p.id, e);
+            }
+          }
+          return {
+            id:             p.id,
+            idPedimento:    p.id,
+            idCompany:      idCompany,
+            folio:          p.folio || '',
+            pedimento:      p.pedimento || 0,
+            fechaPedimento: p.dateCreate || p.dateModified || '',
+            ocCount:        p.countrow || 0,
+            articulos:      articulos,
+          };
         }));
+
+        this.rowData = pedsConArticulos;
 
         if (this.gridApi && !this.gridApi.isDestroyed()) {
           this.gridApi.setGridOption('rowData', this.rowData);
