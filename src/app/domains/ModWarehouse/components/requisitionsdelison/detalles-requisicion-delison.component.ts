@@ -23,7 +23,6 @@ import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CustomersService } from 'app/services/customers.service';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { RolesService } from 'app/services/roles.service';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
@@ -319,7 +318,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private customersService = inject(CustomersService);
   private ngbModal = inject(NgbModal);
-  private rolesService = inject(RolesService);
   private commentSub?: Subscription;
   private sucursalSub?: Subscription;
   authService = inject(AuthService);
@@ -363,7 +361,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   requisitionId: number = 0;
   currentBranchId: number = 0;
   idRoot: number | null = null;
-  idUser: number | null = null;
   providersCache: Map<string, any[]> = new Map(); // Cache para proveedores por material+tipo
 
   // PDF properties
@@ -434,7 +431,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.detailType = params.data.detailType || 'items';
     this.hasProviderAssigned = params.data?.locked === true;
     this.currentBranchId = params.data?.idReference || 0;
-    this.idUser = this.signalsService.getIdUSer()();
 
     if (this.detailType === 'items') {
       this.loadMaterials();
@@ -1428,11 +1424,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges() {
-    const isDepartmentValid = await this.validateRequestedDepartment();
-    if (!isDepartmentValid) {
-      return;
-    }
-
     if (!this.params?.data?.departmentId) {
       alerts.reqWarningToast('Departamento requerido', 'Asigna un departamento a la requisición antes de guardar artículos');
       return;
@@ -1630,54 +1621,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       .catch(() => {
         alerts.reqErrorToast('Error', 'Ocurrió un error al guardar los artículos');
       });
-  }
-
-  private async validateRequestedDepartment(): Promise<boolean> {
-    const currentDepartmentId = Number(this.params?.data?.departmentId || 0);
-    const currentBranchId = Number(this.params?.data?.idReference || 0);
-
-    if (currentDepartmentId <= 0 || currentBranchId <= 0 || !this.idUser) {
-      alerts.reqWarningToast(
-        'Departamento requerido',
-        'No se encontró el Departamento que solicita. Corrige la requisición antes de guardar artículos'
-      );
-      return false;
-    }
-
-    try {
-      const requisitionData: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
-      const branchId = Number(requisitionData?.idReference || currentBranchId);
-      const departmentId = Number(requisitionData?.idDepartament || currentDepartmentId);
-
-      if (branchId <= 0 || departmentId <= 0) {
-        alerts.reqWarningToast(
-          'Departamento requerido',
-          'No se encontró el Departamento que solicita. Corrige la requisición antes de guardar artículos'
-        );
-        return false;
-      }
-
-      const rolesRaw: any = await firstValueFrom(this.rolesService.getRolesByBranchDelison(this.idUser, branchId));
-      const roles = Array.isArray(rolesRaw) ? rolesRaw : [];
-      const departmentExists = roles.some((role: any) => Number(role?.id || 0) === departmentId);
-
-      if (!departmentExists) {
-        alerts.reqWarningToast(
-          'Departamento inválido',
-          'El Departamento que solicita ya no existe o no está autorizado para esta sucursal. Corrige la requisición antes de guardar artículos'
-        );
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error validando departamento solicitante:', error);
-      alerts.reqErrorToast(
-        'Error',
-        'No se pudo validar el Departamento que solicita. Intenta nuevamente antes de guardar'
-      );
-      return false;
-    }
   }
 
   async saveMultiGuardar() {
@@ -2625,3 +2568,4 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
 }
+
