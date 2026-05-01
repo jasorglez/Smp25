@@ -36,6 +36,7 @@ import { DetailEmployeeClockComponent } from '../detail-employee-clock/detail-em
 import { DetailEmployeeLoansComponent } from '../detail-employee-loans/detail-employee-loans.component';
 import { DetailEmployeeSavingsComponent } from '../detail-employee-savings/detail-employee-savings.component';
 import { DetailEmployeeDocumentsComponent } from '../detail-employee-documents/detail-employee-documents.component';
+import { DetailEmployeePersonalDataComponent } from '../detail-employee-personal-data/detail-employee-personal-data.component';
 
 @Component({
   selector: 'app-employees-table',
@@ -134,9 +135,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     detailEmployeeLoans: DetailEmployeeLoansComponent,
     detailEmployeeSavings: DetailEmployeeSavingsComponent,
     detailEmployeeDocuments: DetailEmployeeDocumentsComponent,
+    detailEmployeePersonalData: DetailEmployeePersonalDataComponent,
   };
 
-  detailMode: 'clock' | 'loans' | 'savings' | 'documents' = 'clock';
+  detailMode: 'clock' | 'loans' | 'savings' | 'documents' | 'personalData' = 'clock';
   private expandingViaColumn = false;
 
   constructor() {
@@ -147,6 +149,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.signalsService.resetRefreshEmployees(); // Resetear la señal después de actualizar
       }
     }, { allowSignalWrites: true });
+
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -185,9 +188,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       if (this.detailMode === 'loans') return { component: 'detailEmployeeLoans' };
       if (this.detailMode === 'savings') return { component: 'detailEmployeeSavings' };
       if (this.detailMode === 'documents') return { component: 'detailEmployeeDocuments' };
+      if (this.detailMode === 'personalData') return { component: 'detailEmployeePersonalData' };
       return { component: 'detailEmployeeClock' };
     },
-    detailRowHeight: 680,
+    detailRowHeight: 980,
     onRowGroupOpened: (event: any) => {
       if (!event.expanded) {
         event.api.setFilterModel(null);
@@ -632,6 +636,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
         },
         {
+          field: 'personalData',
+          headerName: 'Datos Personales',
+          editable: false,
+          suppressMovable: true,
+          width: 120,
+          cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
+          cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+        },
+        {
           field: 'idDepto',
           headerName: 'Departamento',
           headerClass: 'required-header',
@@ -854,153 +867,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
               return '';
             }
           },
-        },
-        {
-          field: 'phone',
-          headerName: 'Teléfono',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: false,
-          width: 150,
-          valueSetter: (params) => {
-            const phoneValue = params.newValue;
-            // Verificar que el número tenga exactamente 10 dígitos y sea numérico
-            const isValidPhone = /^\d{10}$/.test(phoneValue);
-            if (!isValidPhone) {
-              alerts.basicAlert(
-                'Teléfono inválido',
-                'El teléfono debe contener exactamente 10 dígitos numéricos.',
-                'error'
-              );
-              return false; // No se permite el cambio
-            }
-            params.data[params.colDef.field] = phoneValue;
-            return true;
-          },
-        },
-        {
-          field: 'cp',
-          headerName: 'CP',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 100,
-        },
-        {
-          field: 'address',
-          headerName: 'Dirección',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          filter: 'agTextColumnFilter',
-          width: 300,
-          valueSetter: (params) => {
-            params.data[params.colDef.field] = params.newValue.toUpperCase();
-            return true;
-          },
-
-        },
-
-        {
-          field: 'state',
-          headerName: 'Estado',
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 150,
-          editable: false,
-          cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
-            values: this.estados,
-          },
-        },
-        {
-          field: 'city',
-          headerName: 'Ciudad',
-          editable: false,
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 150,
-        },
-        {
-          field: 'neighborhood',
-          headerName: 'Colonia',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 300,
-          cellEditor: 'agSelectCellEditor',
-          cellEditorParams: (params) => {
-            if (this.infoCp && this.infoCp.length > 0) {
-              const asentamientos = this.infoCp[0].asentamientos;
-              // Ordenar los asentamientos alfabéticamente
-              const sortedAsentamientos = asentamientos.sort((a, b) =>
-                a.localeCompare(b)
-              );
-              return {
-                values: sortedAsentamientos,
-              };
-            }
-            return { values: [] };
-          },
-          valueFormatter: (params) => {
-            return params.value || 'Seleccionar asentamiento';
-          },
-        },
-
-        {
-          field: 'rfc',
-          headerName: 'RFC',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 150,
         },
       ];
     } else {
@@ -1409,6 +1275,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
         },
         {
+          field: 'personalData',
+          headerName: 'Datos Personales',
+          editable: false,
+          suppressMovable: true,
+          width: 120,
+          cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
+          cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+        },
+        {
           field: 'idDepto',
           headerName: 'Departamento',
           headerClass: 'required-header',
@@ -1618,178 +1493,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
               return '';
             }
           },
-        },
-        {
-          field: 'phone',
-          headerName: 'Teléfono',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: false,
-          width: 150,
-          valueSetter: (params) => {
-            const phoneValue = params.newValue;
-            // Verificar que el número tenga exactamente 10 dígitos y sea numérico
-            const isValidPhone = /^\d{10}$/.test(phoneValue);
-            if (!isValidPhone) {
-              alerts.basicAlert(
-                'Teléfono inválido',
-                'El teléfono debe contener exactamente 10 dígitos numéricos.',
-                'error'
-              );
-              return false; // No se permite el cambio
-            }
-            params.data[params.colDef.field] = phoneValue;
-            return true;
-          },
-        },
-        {
-          field: 'cp',
-          headerName: 'CP',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 100,
-        },
-        {
-          field: 'address',
-          headerName: 'Dirección',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          filter: 'agTextColumnFilter',
-          width: 300,
-          valueSetter: (params) => {
-            params.data[params.colDef.field] = params.newValue.toUpperCase();
-            return true;
-          },
-          /*cellEditor: 'agPopupTextCellEditor',
-          cellEditorParams: {
-            maxLength: 100,
-            cols: 50,
-            rows: 3,
-            onKeyDown: (event: KeyboardEvent) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.stopPropagation();
-              }
-            },
-          },
-          // Modal deshabilitado para evitar conflictos entre componentes
-          // onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-          //   if (!event.node.group) {
-          //     this.modalServiceTable.showModal({
-          //       params: event,
-          //       value: event.value,
-          //     });
-          //   }
-          // },
-          cellRenderer: (params: ICellRendererParams) => {
-            if (params.node.group) {
-              return params.value.toUpperCase();
-            }
-            return params.value.toUpperCase();
-          },*/
-        },
-
-        {
-          field: 'state',
-          headerName: 'Estado',
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 150,
-          editable: false,
-          cellEditor: 'agSelectCellEditor',
-          cellEditorParams: {
-            values: this.estados,
-          },
-        },
-        {
-          field: 'city',
-          headerName: 'Ciudad',
-          editable: false,
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 150,
-        },
-        {
-          field: 'neighborhood',
-          headerName: 'Colonia',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 300,
-          cellEditor: 'agSelectCellEditor',
-          cellEditorParams: (params) => {
-            if (this.infoCp && this.infoCp.length > 0) {
-              const asentamientos = this.infoCp[0].asentamientos;
-              // Ordenar los asentamientos alfabéticamente
-              const sortedAsentamientos = asentamientos.sort((a, b) =>
-                a.localeCompare(b)
-              );
-              return {
-                values: sortedAsentamientos,
-              };
-            }
-            return { values: [] };
-          },
-          valueFormatter: (params) => {
-            return params.value || 'Seleccionar asentamiento';
-          },
-        },
-
-        {
-          field: 'rfc',
-          headerName: 'RFC',
-          editable: (params) => {
-            if (params.data.__isNew) {
-              return true;
-            }
-            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-          },
-          filter: true,
-          filterParams: {
-            // can be 'windows' or 'mac'
-            defaultToNothingSelected: true,
-            //excelMode: 'mac',
-          },
-          width: 150,
         },
       ];
     }
@@ -2703,9 +2406,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.catalogPosiciones = [];
       }
     }
-    if (colId === 'loan' || colId === 'saving' || colId === 'documents') {
+    if (colId === 'loan' || colId === 'saving' || colId === 'documents' || colId === 'personalData') {
       const rowNode = event.node;
-      const newMode = colId === 'loan' ? 'loans' : colId === 'saving' ? 'savings' : 'documents';
+      const newMode = colId === 'loan' ? 'loans' : colId === 'saving' ? 'savings' : colId === 'personalData' ? 'personalData' : 'documents';
       if (rowNode.expanded && this.detailMode === newMode) {
         rowNode.setExpanded(false);
         this.gridApi.setFilterModel(null);

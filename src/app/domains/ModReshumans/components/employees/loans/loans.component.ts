@@ -257,7 +257,7 @@ export class EmployeesxLoansComponent {
   async saveMasterChanges() {
     const isValid = this.maestroRowData.every((item) => item.monto);
     if (!isValid) {
-      alerts.basicAlert('Añadir entrada', 'Debe ingresar un valor de préstamo.', 'error');
+      alerts.userSaveErrorToast('Añadir entrada', 'Debe ingresar un valor de préstamo.');
       return;
     }
     const newRows = this.maestroRowData.filter((row) => row.__isNew);
@@ -274,14 +274,14 @@ export class EmployeesxLoansComponent {
     });
     try {
       await lastValueFrom(concat(...addObservables, ...updateObservables).pipe(toArray()));
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.userSaveSuccessToast('Préstamos', 'Se han actualizado los datos correctamente.');
       this.masterNotSavedChanges = false;
       this.masterNewlyAddedRows = [];
       await this.loadData();
       this.signalsService.triggerRefreshEmployees();
     } catch (error) {
       console.error(error);
-      alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
+      alerts.userSaveErrorToast('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.');
     }
   }
 
@@ -309,7 +309,7 @@ export class EmployeesxLoansComponent {
   async deleteMasterEntry() {
     const selectedNodes = this.maestroGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
-      alerts.basicAlert('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.', 'error');
+      alerts.userSaveErrorToast('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.');
       return;
     }
     const id = selectedNodes[0].data.id;
@@ -318,16 +318,16 @@ export class EmployeesxLoansComponent {
       .pipe(
         catchError((error) => {
           if (error.status === 400) {
-            alerts.basicAlert('Eliminar entrada', error.error.message || 'Error al eliminar la entrada.', 'error');
+            alerts.userSaveErrorToast('Eliminar entrada', error.error.message || 'Error al eliminar la entrada.');
           } else {
-            alerts.basicAlert('Eliminar entrada', 'Error al eliminar la entrada.', 'error');
+            alerts.userSaveErrorToast('Eliminar entrada', 'Error al eliminar la entrada.');
           }
           console.error(error);
           return EMPTY;
         })
       )
       .subscribe(() => {
-        alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
+        alerts.userDeleteSuccessToast('Eliminar entrada', 'Entrada eliminada satisfactoriamente.');
         this.loadData();
         this.masterNotSavedChanges = false;
         this.trackingService.addLog(this.trackingService.getnameComp(), 'Delete Registro en Prestamos', 'Menu Administracion Prestamos', this.trackingService.getEmail());
