@@ -56,7 +56,7 @@ export class ExpensedashboardComponent {
   // Opciones para cada una de las gráficas
   public groupedAnnualChartOptions: Partial<BarChartOptions>;
   public currentYearChartOptions: Partial<BarChartOptions>;
-  public expensesTrendChartOptions: Partial<LineChartOptions>;
+  public expensesTrendChartOptions: Partial<BarChartOptions>;
   public pieChartOptions: Partial<PieChartOptions>;
 
   constructor() {
@@ -84,10 +84,10 @@ export class ExpensedashboardComponent {
   // --- LÓGICA DE DATOS ---
 
   private getExpenses(rootId: number): void {
-     this.incomesAndExpensesService.getExpensesxroot(rootId).subscribe(data => {
-       this.allExpensesData = data;
-       this.processAllData(); // Punto de entrada inicial para procesar datos
-     });
+    this.incomesAndExpensesService.getExpensesxroot(rootId).subscribe(data => {
+      this.allExpensesData = data || [];
+      this.processAllData();
+    });
   }
 
   private getProjects(rootId: number): void {
@@ -121,10 +121,10 @@ export class ExpensedashboardComponent {
     this.providerList = this.calculateTopProviders(filteredData);
 
     // 3. Preparar cada una de las gráficas
-    this.prepareGroupedAnnualChart(this.allExpensesData); // Usa TODOS los datos para comparar años
-    this.prepareCurrentYearChart(this.allExpensesData);   // Usa TODOS los datos para encontrar el año actual
-    this.prepareExpensesTrendChart(filteredData);         // Usa datos FILTRADOS
-    this.prepareExpensesByProviderPieChart(filteredData); // Usa datos FILTRADOS
+    this.prepareGroupedAnnualChart(this.allExpensesData);
+    this.prepareCurrentYearChart(this.allExpensesData);
+    this.prepareExpensesByDayStackedChart(this.allExpensesData);
+    this.prepareExpensesByProviderPieChart(filteredData);
   }
 
   private filterDataByDateRange(data: any[], startDate: string, endDate: string): any[] {
@@ -264,27 +264,67 @@ export class ExpensedashboardComponent {
       .slice(0, 5); // Tomamos los 5 proveedores principales
   }
 
-  private prepareExpensesTrendChart(data: any[]): void {
-    const expensesByMonth = data.reduce((acc, expense) => {
-      const date = new Date(expense.date);
-      const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-      if (!acc[key]) acc[key] = { total: 0, label: date.toLocaleString('es-MX', { month: 'short', year: '2-digit' }).replace('.','') };
-      acc[key].total += expense.total;
-      return acc;
-    }, {});
+  private prepareExpensesByDayStackedChart(data: any[]): void {
+    if (!data || data.length === 0) {
+      this.expensesTrendChartOptions = null;
+      return;
+    }
 
-    const sortedKeys = Object.keys(expensesByMonth).sort();
-    const chartLabels = sortedKeys.map(key => expensesByMonth[key].label);
-    const chartData = sortedKeys.map(key => expensesByMonth[key].total);
+    const start = this.startDate ? new Date(this.startDate) : null;
+    const end   = this.endDate   ? new Date(this.endDate)   : null;
+    if (end) end.setHours(23, 59, 59, 999);
+
+    // dateexpend = fecha real del concepto (view expensexroot, ya disponible en producción)
+    const filtered = data.filter(c => {
+      if (!c.dateexpend) return false;
+      const d = new Date(c.dateexpend);
+      if (start && d < start) return false;
+      if (end   && d > end)   return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      this.expensesTrendChartOptions = null;
+      return;
+    }
+
+    const dayMap = new Map<string, Map<string, number>>();
+    const categoriesSet = new Set<string>();
+
+    filtered.forEach(c => {
+      const day = String(c.dateexpend).substring(0, 10);
+      // typeexpense del view: "PROVEEDORES    " / "EMPLEADOS      " → trim
+      const cat = (c.typeexpense ?? 'SIN CLASIFICAR').toString().trim() || 'SIN CLASIFICAR';
+      const amount = Number(c.totalconcepto ?? 0);
+
+      categoriesSet.add(cat);
+      if (!dayMap.has(day)) dayMap.set(day, new Map());
+      const catMap = dayMap.get(day)!;
+      catMap.set(cat, (catMap.get(cat) || 0) + amount);
+    });
+
+    const sortedDays = Array.from(dayMap.keys()).sort();
+    const categories = Array.from(categoriesSet).sort();
+
+    const series = categories.map(cat => ({
+      name: cat,
+      data: sortedDays.map(day => +(dayMap.get(day)?.get(cat) || 0).toFixed(2))
+    }));
+
+    const xLabels = sortedDays.map(d => {
+      const parts = d.split('-');
+      return `${parts[2]}/${parts[1]}`;
+    });
 
     this.expensesTrendChartOptions = {
-      series: [{ name: 'Egresos', data: chartData }],
-      chart: { type: 'line', height: 250, toolbar: { show: false } },
-      stroke: { curve: 'smooth', width: 3, colors: ['#ffc107'] },
-      xaxis: { categories: chartLabels },
+      series,
+      chart: { type: 'bar', height: 250, stacked: true, toolbar: { show: false } } as any,
+      plotOptions: { bar: { horizontal: false, columnWidth: '70%' } },
+      dataLabels: { enabled: false },
+      xaxis: { categories: xLabels, labels: { rotate: -45, style: { fontSize: '10px' } } },
       yaxis: { labels: { formatter: (val) => '$' + (val / 1000).toFixed(0) + 'K' } },
-      title: { text: 'TENDENCIA DE EGRESOS', align: 'left' },
-      tooltip: { y: { formatter: (val) => `$${val.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` } }
+      title: { text: 'EGRESOS POR DÍA Y TIPO', align: 'left', style: { color: '#ffc107', fontSize: '14px' } },
+      tooltip: { y: { formatter: (val) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` } }
     };
   }
 

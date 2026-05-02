@@ -92,10 +92,11 @@
       <apx-chart *ngIf="expensesTrendChartOptions?.series"
         [series]="expensesTrendChartOptions.series"
         [chart]="expensesTrendChartOptions.chart"
+        [plotOptions]="expensesTrendChartOptions.plotOptions"
+        [dataLabels]="expensesTrendChartOptions.dataLabels"
         [xaxis]="expensesTrendChartOptions.xaxis"
         [yaxis]="expensesTrendChartOptions.yaxis"
         [title]="expensesTrendChartOptions.title"
-        [stroke]="expensesTrendChartOptions.stroke"
         [tooltip]="expensesTrendChartOptions.tooltip"
       ></apx-chart>
     </div>

@@ -146,4 +146,8 @@ export class CustomersService {
   deleteAbonoCustomer(id: number): Observable<any> {
     return this.http.delete(`${environment.urlAdministration}/CustomerCreditsDelison/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getProductsPurchased(customerId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Salesxcustomer/productsPurchased/${customerId}`, { headers: this.trackingService.getHeaders() });
+  }
 }

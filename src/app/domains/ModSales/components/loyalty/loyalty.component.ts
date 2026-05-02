@@ -65,27 +65,27 @@ export class LoyaltyComponent implements OnInit {
   selectedProgram: any = null;
   private programTempCounter = 0;
 
+  // Modal de productos
+  mostrarModalProductos = false;
+  programaEnEdicion: any = null;
+  productosSeleccionadosModal: number[] = [];
+
   get programsColDefs(): ColDef[] {
     return [
       { field: 'id',   headerName: 'ID', width: 65, editable: false },
       { field: 'name', headerName: 'Programa', flex: 1, editable: true },
       {
-        field: 'productDescription',
-        headerName: 'Producto',
-        width: 230,
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: ['Sin producto', ...this.productos.map(p => p.description)] }),
-        valueSetter: (params: any) => {
-          params.data.productDescription = params.newValue;
-          if (params.newValue === 'Sin producto') {
-            params.data.idProduct = null;
-          } else {
-            const found = this.productos.find(p => p.description === params.newValue);
-            if (found) params.data.idProduct = found.id;
-          }
-          return true;
+        field: 'productosSeleccionados',
+        headerName: 'Productos',
+        width: 250,
+        editable: false,
+        cellRenderer: (p: any) => {
+          const ids: number[] = p.data.productIds ?? [];
+          if (ids.length === 0) return '<em style="color:#999">Sin productos</em>';
+          const descs = ids.map(id => this.productos.find(pr => pr.id === id)?.description).filter(d => d);
+          return descs.length > 0 ? descs.join(', ') : '<em style="color:#999">Sin productos</em>';
         },
+        onCellClicked: (e: any) => this.abrirModalProductos(e.data),
       },
       { field: 'stampsRequired',    headerName: 'Sellos req.', width: 120, editable: true },
       { field: 'rewardDescription', headerName: 'Recompensa',  flex: 2,   editable: true },
@@ -102,15 +102,36 @@ export class LoyaltyComponent implements OnInit {
   cardsRowData: any[] = [];
   private cardsGridApi!: GridApi;
   selectedProgramForCards: number | null = null;
+  productosCompradosPorCliente: Map<number, any[]> = new Map();
 
   cardsColDefs: ColDef[] = [
     { field: 'id',                  headerName: 'ID',          width: 70 },
     { field: 'idCustomer',          headerName: 'ID Cliente',  width: 120 },
+    {
+      field: 'customerName', headerName: 'Cliente', flex: 1,
+      valueGetter: (p: any) => {
+        const customerId = p.data?.idCustomer;
+        if (!customerId) return '';
+        const cliente = this.todosLosClientes.find(c => c.id === customerId);
+        return cliente?.label || `Cliente #${customerId}`;
+      }
+    },
     { field: 'currentStamps',       headerName: 'Sellos',      width: 90 },
     { field: 'totalRewardsEarned',  headerName: 'Recompensas', width: 120 },
     {
       field: 'lastStampDate', headerName: 'Último Sello', flex: 1,
       valueFormatter: p => p.value ? new Date(p.value).toLocaleDateString('es-MX') : '',
+    },
+    {
+      field: 'productoComprado', headerName: 'Productos Comprados', flex: 2,
+      cellRenderer: (p: any) => {
+        const customerId = p.data?.idCustomer;
+        if (!customerId) return '<em style="color:#999">-</em>';
+        const productos = this.productosCompradosPorCliente.get(customerId);
+        if (!productos) return '<span style="color:#666">Cargando...</span>';
+        if (productos.length === 0) return '<em style="color:#999">Sin compras</em>';
+        return productos.map((p: any) => `${p.totalQuantity} un.`).join(', ');
+      }
     },
   ];
 
@@ -227,13 +248,30 @@ export class LoyaltyComponent implements OnInit {
 
     try {
       for (const row of newRows) {
-        const { id, __isNew, __modified, productDescription, ...data } = row;
-        await this.loyaltyService.createProgram({ ...data, idCompany: this.idCompany }).toPromise();
+        const { id, __isNew, __modified, productDescription, productIds, ...data } = row;
+        const created = await this.loyaltyService.createProgram({ ...data, idCompany: this.idCompany }).toPromise();
+
+        // Agregar los productos seleccionados al nuevo programa
+        if (created?.id && productIds?.length) {
+          for (const idProduct of productIds) {
+            await this.loyaltyService.addProductToProgram(created.id, idProduct).toPromise();
+          }
+        }
       }
+
       for (const row of modifiedRows) {
-        const { __modified, __isNew, productDescription, ...data } = row;
+        const { __modified, __isNew, productDescription, productIds, ...data } = row;
         await this.loyaltyService.updateProgram(row.id, data).toPromise();
+
+        // Limpiar y reagregar los productos del programa modificado
+        if (productIds) {
+          await this.loyaltyService.clearProductsFromProgram(row.id).toPromise();
+          for (const idProduct of productIds) {
+            await this.loyaltyService.addProductToProgram(row.id, idProduct).toPromise();
+          }
+        }
       }
+
       Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
       this.loadPrograms();
     } catch {
@@ -276,8 +314,28 @@ export class LoyaltyComponent implements OnInit {
   loadCards() {
     if (!this.selectedProgramForCards) return;
     this.loyaltyService.getCardsByProgram(this.selectedProgramForCards).subscribe({
-      next: d => this.cardsRowData = d,
+      next: (d: any[]) => {
+        this.cardsRowData = d;
+        this.productosCompradosPorCliente.clear();
+        d.forEach(card => {
+          if (card.idCustomer) {
+            this.loadProductsPurchasedByCustomer(card.idCustomer);
+          }
+        });
+      },
       error: err => console.error(err),
+    });
+  }
+
+  private loadProductsPurchasedByCustomer(customerId: number) {
+    this.customersService.getProductsPurchased(customerId).subscribe({
+      next: (products: any[]) => {
+        this.productosCompradosPorCliente.set(customerId, products);
+        if (this.cardsGridApi) {
+          this.cardsGridApi.redrawRows();
+        }
+      },
+      error: err => console.error(`Error loading products for customer ${customerId}:`, err),
     });
   }
 
@@ -300,5 +358,30 @@ export class LoyaltyComponent implements OnInit {
 
   get programsForSelector() {
     return this.programsRowData.filter(p => typeof p.id === 'number');
+  }
+
+  abrirModalProductos(programa: any) {
+    this.programaEnEdicion = programa;
+    this.productosSeleccionadosModal = [...(programa.productIds ?? [])];
+    this.mostrarModalProductos = true;
+  }
+
+  cerrarModalProductos() {
+    this.mostrarModalProductos = false;
+    this.programaEnEdicion = null;
+    this.productosSeleccionadosModal = [];
+  }
+
+  guardarProductosModal() {
+    if (!this.programaEnEdicion) return;
+    this.programaEnEdicion.productIds = this.productosSeleccionadosModal;
+    if (!this.programaEnEdicion.__isNew) this.programaEnEdicion.__modified = true;
+    this.cerrarModalProductos();
+  }
+
+  toggleProductoModal(idProduct: number) {
+    const idx = this.productosSeleccionadosModal.indexOf(idProduct);
+    if (idx > -1) this.productosSeleccionadosModal.splice(idx, 1);
+    else this.productosSeleccionadosModal.push(idProduct);
   }
 }
