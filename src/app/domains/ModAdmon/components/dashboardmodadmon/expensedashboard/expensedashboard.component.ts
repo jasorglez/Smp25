@@ -47,7 +47,6 @@ export class ExpensedashboardComponent {
   public endDate: string = '';
   public selectedProjectId: number | null = null;
   private allExpensesData: any[] = [];
-  private allConceptsData: any[] = [];
   public projectsList: Iproject[] = [];
 
   // Propiedades para cada elemento del dashboard
@@ -86,11 +85,7 @@ export class ExpensedashboardComponent {
 
   private getExpenses(rootId: number): void {
     this.incomesAndExpensesService.getExpensesxroot(rootId).subscribe(data => {
-      this.allExpensesData = data;
-      this.processAllData();
-    });
-    this.incomesAndExpensesService.getConceptsDailyByRoot(rootId).subscribe(data => {
-      this.allConceptsData = data || [];
+      this.allExpensesData = data || [];
       this.processAllData();
     });
   }
@@ -128,7 +123,7 @@ export class ExpensedashboardComponent {
     // 3. Preparar cada una de las gráficas
     this.prepareGroupedAnnualChart(this.allExpensesData);
     this.prepareCurrentYearChart(this.allExpensesData);
-    this.prepareExpensesByDayStackedChart(this.allConceptsData);
+    this.prepareExpensesByDayStackedChart(this.allExpensesData);
     this.prepareExpensesByProviderPieChart(filteredData);
   }
 
@@ -269,8 +264,8 @@ export class ExpensedashboardComponent {
       .slice(0, 5); // Tomamos los 5 proveedores principales
   }
 
-  private prepareExpensesByDayStackedChart(concepts: any[]): void {
-    if (!concepts || concepts.length === 0) {
+  private prepareExpensesByDayStackedChart(data: any[]): void {
+    if (!data || data.length === 0) {
       this.expensesTrendChartOptions = null;
       return;
     }
@@ -279,9 +274,11 @@ export class ExpensedashboardComponent {
     const end   = this.endDate   ? new Date(this.endDate)   : null;
     if (end) end.setHours(23, 59, 59, 999);
 
-    const filtered = concepts.filter(c => {
-      if (!c.dateExpend) return false;
-      const d = new Date(c.dateExpend);
+    // Filtrar por dateexpend (fecha real del concepto) — viene del view expensexroot
+    const filtered = data.filter(c => {
+      const rawDate = c.dateexpend ?? c.dateExpend;
+      if (!rawDate) return false;
+      const d = new Date(rawDate);
       if (start && d < start) return false;
       if (end   && d > end)   return false;
       return true;
@@ -292,17 +289,20 @@ export class ExpensedashboardComponent {
       return;
     }
 
-    // Agrupar por día y cuenta contable
     const dayMap = new Map<string, Map<string, number>>();
     const categoriesSet = new Set<string>();
 
     filtered.forEach(c => {
-      const day = String(c.dateExpend).substring(0, 10);
-      const cat = c.cuentaContable || 'SIN CLASIFICAR';
+      const rawDate = c.dateexpend ?? c.dateExpend;
+      const day = String(rawDate).substring(0, 10);
+      // typeexpense viene con espacios desde el view → trim(); usar cuentaContable si llega
+      const cat = (c.cuentaContable ?? (c.typeexpense ?? c.typeExpense ?? 'SIN CLASIFICAR')).toString().trim() || 'SIN CLASIFICAR';
+      const amount = Number(c.totalconcepto ?? c.total ?? 0);
+
       categoriesSet.add(cat);
       if (!dayMap.has(day)) dayMap.set(day, new Map());
       const catMap = dayMap.get(day)!;
-      catMap.set(cat, (catMap.get(cat) || 0) + Number(c.total || 0));
+      catMap.set(cat, (catMap.get(cat) || 0) + amount);
     });
 
     const sortedDays = Array.from(dayMap.keys()).sort();
@@ -314,8 +314,8 @@ export class ExpensedashboardComponent {
     }));
 
     const xLabels = sortedDays.map(d => {
-      const [, m, dy] = d.split('-');
-      return `${dy}/${m}`;
+      const parts = d.split('-');
+      return `${parts[2]}/${parts[1]}`;
     });
 
     this.expensesTrendChartOptions = {
