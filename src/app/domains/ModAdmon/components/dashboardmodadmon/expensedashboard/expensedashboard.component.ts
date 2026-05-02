@@ -47,7 +47,6 @@ export class ExpensedashboardComponent {
   public endDate: string = '';
   public selectedProjectId: number | null = null;
   private allExpensesData: any[] = [];
-  private allConceptsData: any[] = [];
   public projectsList: Iproject[] = [];
 
   // Propiedades para cada elemento del dashboard
@@ -89,10 +88,6 @@ export class ExpensedashboardComponent {
       this.allExpensesData = data || [];
       this.processAllData();
     });
-    this.incomesAndExpensesService.getConceptsDailyByRoot(rootId).subscribe(data => {
-      this.allConceptsData = data || [];
-      this.processAllData();
-    });
   }
 
   private getProjects(rootId: number): void {
@@ -128,7 +123,7 @@ export class ExpensedashboardComponent {
     // 3. Preparar cada una de las gráficas
     this.prepareGroupedAnnualChart(this.allExpensesData);
     this.prepareCurrentYearChart(this.allExpensesData);
-    this.prepareExpensesByDayStackedChart(this.allConceptsData);
+    this.prepareExpensesByDayStackedChart(this.allExpensesData);
     this.prepareExpensesByProviderPieChart(filteredData);
   }
 
@@ -269,8 +264,8 @@ export class ExpensedashboardComponent {
       .slice(0, 5); // Tomamos los 5 proveedores principales
   }
 
-  private prepareExpensesByDayStackedChart(concepts: any[]): void {
-    if (!concepts || concepts.length === 0) {
+  private prepareExpensesByDayStackedChart(data: any[]): void {
+    if (!data || data.length === 0) {
       this.expensesTrendChartOptions = null;
       return;
     }
@@ -279,10 +274,10 @@ export class ExpensedashboardComponent {
     const end   = this.endDate   ? new Date(this.endDate)   : null;
     if (end) end.setHours(23, 59, 59, 999);
 
-    // dateExpend = fecha real del concepto (ConceptDailyDto)
-    const filtered = concepts.filter(c => {
-      if (!c.dateExpend) return false;
-      const d = new Date(c.dateExpend);
+    // dateexpend = fecha real del concepto (view expensexroot, ya disponible en producción)
+    const filtered = data.filter(c => {
+      if (!c.dateexpend) return false;
+      const d = new Date(c.dateexpend);
       if (start && d < start) return false;
       if (end   && d > end)   return false;
       return true;
@@ -297,10 +292,10 @@ export class ExpensedashboardComponent {
     const categoriesSet = new Set<string>();
 
     filtered.forEach(c => {
-      const day = String(c.dateExpend).substring(0, 10);
-      // cuentaContable = nombre de cuenta contable (SALARIOS/VIATICOS/OPERACION)
-      const cat = (c.cuentaContable ?? c.typeExpense ?? 'SIN CLASIFICAR').toString().trim() || 'SIN CLASIFICAR';
-      const amount = Number(c.total ?? 0);
+      const day = String(c.dateexpend).substring(0, 10);
+      // typeexpense del view: "PROVEEDORES    " / "EMPLEADOS      " → trim
+      const cat = (c.typeexpense ?? 'SIN CLASIFICAR').toString().trim() || 'SIN CLASIFICAR';
+      const amount = Number(c.totalconcepto ?? 0);
 
       categoriesSet.add(cat);
       if (!dayMap.has(day)) dayMap.set(day, new Map());
