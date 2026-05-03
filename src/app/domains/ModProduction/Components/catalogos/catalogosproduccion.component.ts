@@ -10,6 +10,7 @@ import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService
 import { MaterialsService } from '../../../../services/materials.service';
 import { MaterialXModuloService } from '../../../../services/materialxmodulo.service';
 import { SignalsService } from '../../../../services/signals.service';
+import { CatalogProductionService, CatalogProductionItem } from '../../../../services/catalog-production.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -745,6 +746,7 @@ export class CatalogosProduccionComponent {
   private mxmService        = inject(MaterialXModuloService);
   private signalsService    = inject(SignalsService);
   private catalogService    = inject(ExtractionFermentationCatalogService);
+  private hierService       = inject(CatalogProductionService);
   activeTab = 'molienda';
   private idRoot = 0;
   private materiales: any[] = [];
@@ -1200,6 +1202,7 @@ export class CatalogosProduccionComponent {
       {
         headerName: 'Sub Familia',
         field: 'subfamilyDisplay',
+        hide: true,
         width: 300,
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'subfamily') {
@@ -1227,6 +1230,7 @@ export class CatalogosProduccionComponent {
       {
         headerName: 'Material Maestro',
         field: 'valueAdditionBit',
+        hide: true,
         width: 210,
         editable: true,
         onCellClicked: (params: any) => {
@@ -1238,6 +1242,7 @@ export class CatalogosProduccionComponent {
       {
         headerName: 'Requisiciones',
         field: 'valueAdditionBit2',
+        hide: true,
         width: 120,
         cellRenderer: (params: any) => {
           if (params.data.nodeLevel === 'subfamily') {
@@ -1563,31 +1568,44 @@ export class CatalogosProduccionComponent {
       return;
     }
 
-    const id = ++this.hierarchicalNextTempId;
-    const idCo = this.idRoot || 0;
-    this.hierarchicalData.push({
-      id,
-      idCompany: idCo,
+    const payload: CatalogProductionItem = {
+      idCompany: this.idRoot,
       description: this.modalForm.description.trim().toUpperCase(),
+      type: 'CATEGORY',
+      parentId: null,
+      subParentId: null,
       valueAddition: (this.modalForm.valueAddition || '').trim() || 'NA',
       valueAddition2: (this.modalForm.valueAddition2 || '').trim() || 'NA',
       valueAdditionBit: false,
       valueAdditionBit2: false,
-      type: 'CATEGORY',
-      parentId: 0,
-      subParentId: 0,
       vigente: true,
       price: 0,
       active: this.modalForm.active ? 1 : 0,
+    };
+
+    const tempId = this.hierarchicalNextTempId++;
+    const newNode = {
+      ...payload,
+      id: tempId,
       nodeLevel: 'category',
-      originalId: id,
+      originalId: tempId,
       isExpanded: false,
       isVisible: true,
-    });
+    };
 
-    this.closeHierarchicalModals();
+    this.hierarchicalData.push(newNode);
     this.refreshHierarchicalVisibleRows();
-    await alerts.basicAlert('Éxito', 'Categoría creada (solo en esta vista demo).', 'success');
+    this.closeHierarchicalModals();
+    alerts.basicAlert('Éxito', 'Categoría creada.', 'success');
+
+    this.hierService.create(payload).subscribe({
+      error: (err) => {
+        console.error('Error creating category:', err);
+        this.hierarchicalData = this.hierarchicalData.filter(n => n.originalId !== tempId);
+        this.refreshHierarchicalVisibleRows();
+        alerts.basicAlert('Error', 'No se pudo crear la categoría.', 'error');
+      }
+    });
   }
 
   async saveNewHierarchicalFamily() {
@@ -1598,57 +1616,53 @@ export class CatalogosProduccionComponent {
 
     let parentId: number;
     if (this.selectedHierarchicalNodeLevel === 'category') {
-      parentId = this.selectedHierarchicalRow.originalId;
+      parentId = this.selectedHierarchicalRow.id || this.selectedHierarchicalRow.originalId;
     } else if (this.selectedHierarchicalNodeLevel === 'family') {
-      parentId = this.selectedHierarchicalRow.parentCategoryId;
+      parentId = this.selectedHierarchicalRow.parentId;
     } else {
       await alerts.basicAlert('Validación', 'Seleccione una categoría o familia en el grid.', 'warning');
       return;
     }
 
-    const id = ++this.hierarchicalNextTempId;
-    const idCo = this.idRoot || 0;
-    const catIdx = this.hierarchicalData.findIndex(
-      n => n.nodeLevel === 'category' && n.originalId === parentId
-    );
-    if (catIdx < 0) return;
-    let insertIdx = catIdx + 1;
-    while (
-      insertIdx < this.hierarchicalData.length &&
-      this.hierarchicalData[insertIdx].nodeLevel === 'family' &&
-      this.hierarchicalData[insertIdx].parentCategoryId === parentId
-    ) {
-      insertIdx++;
-    }
-
-    const cat = this.hierarchicalData.find(
-      n => n.nodeLevel === 'category' && n.originalId === parentId
-    );
-    const familyNode = {
-      id,
-      idCompany: idCo,
+    const payload: CatalogProductionItem = {
+      idCompany: this.idRoot,
       description: this.modalForm.description.trim().toUpperCase(),
+      type: 'FAM-CAT',
+      parentId: parentId,
+      subParentId: null,
       valueAddition: (this.modalForm.valueAddition || '').trim() || 'NA',
       valueAddition2: (this.modalForm.valueAddition2 || '').trim() || 'NA',
       valueAdditionBit: false,
       valueAdditionBit2: false,
-      type: 'FAM-CAT',
-      parentId,
-      subParentId: 0,
       vigente: true,
       price: 0,
       active: this.modalForm.active ? 1 : 0,
+    };
+
+    const tempId = this.hierarchicalNextTempId++;
+    const newNode = {
+      ...payload,
+      id: tempId,
       nodeLevel: 'family',
-      originalId: id,
+      originalId: tempId,
       parentCategoryId: parentId,
       isExpanded: false,
-      isVisible: !!(cat && cat.isExpanded),
+      isVisible: false,
     };
-    this.hierarchicalData.splice(insertIdx, 0, familyNode);
 
-    this.closeHierarchicalModals();
+    this.hierarchicalData.push(newNode);
     this.refreshHierarchicalVisibleRows();
-    await alerts.basicAlert('Éxito', 'Familia creada (solo en esta vista demo).', 'success');
+    this.closeHierarchicalModals();
+    alerts.basicAlert('Éxito', 'Familia creada.', 'success');
+
+    this.hierService.create(payload).subscribe({
+      error: (err) => {
+        console.error('Error creating family:', err);
+        this.hierarchicalData = this.hierarchicalData.filter(n => n.originalId !== tempId);
+        this.refreshHierarchicalVisibleRows();
+        alerts.basicAlert('Error', 'No se pudo crear la familia.', 'error');
+      }
+    });
   }
 
   async saveNewHierarchicalSubfamily() {
@@ -1661,59 +1675,55 @@ export class CatalogosProduccionComponent {
     let subParentId: number;
 
     if (this.selectedHierarchicalNodeLevel === 'family') {
-      parentId = this.selectedHierarchicalRow.parentCategoryId;
-      subParentId = this.selectedHierarchicalRow.originalId;
+      parentId = this.selectedHierarchicalRow.parentId;
+      subParentId = this.selectedHierarchicalRow.id || this.selectedHierarchicalRow.originalId;
     } else if (this.selectedHierarchicalNodeLevel === 'subfamily') {
-      parentId = this.selectedHierarchicalRow.parentCategoryId;
-      subParentId = this.selectedHierarchicalRow.parentFamilyId;
+      parentId = this.selectedHierarchicalRow.parentId;
+      subParentId = this.selectedHierarchicalRow.subParentId;
     } else {
       await alerts.basicAlert('Validación', 'Seleccione una familia o subfamilia en el grid.', 'warning');
       return;
     }
 
-    const id = ++this.hierarchicalNextTempId;
-    const idCo = this.idRoot || 0;
-    const famIdx = this.hierarchicalData.findIndex(
-      n => n.nodeLevel === 'family' && n.originalId === subParentId
-    );
-    if (famIdx < 0) return;
-    let insertIdx = famIdx + 1;
-    while (
-      insertIdx < this.hierarchicalData.length &&
-      this.hierarchicalData[insertIdx].nodeLevel === 'subfamily' &&
-      this.hierarchicalData[insertIdx].parentFamilyId === subParentId
-    ) {
-      insertIdx++;
-    }
-
-    const fam = this.hierarchicalData.find(
-      n => n.nodeLevel === 'family' && n.originalId === subParentId
-    );
-    const subNode = {
-      id,
-      idCompany: idCo,
+    const payload: CatalogProductionItem = {
+      idCompany: this.idRoot,
       description: this.modalForm.description.trim().toUpperCase(),
+      type: 'SUB-FAM',
+      parentId: parentId,
+      subParentId: subParentId,
       valueAddition: (this.modalForm.valueAddition || '').trim() || 'NA',
       valueAddition2: (this.modalForm.valueAddition2 || '').trim() || 'NA',
-      valueAdditionBit: false,
-      valueAdditionBit2: false,
-      type: 'SUB-FAM',
-      parentId,
-      subParentId,
+      valueAdditionBit: this.modalForm.valueAdditionBit,
+      valueAdditionBit2: this.modalForm.valueAdditionBit2,
       vigente: true,
       price: 0,
       active: this.modalForm.active ? 1 : 0,
+    };
+
+    const tempId = this.hierarchicalNextTempId++;
+    const newNode = {
+      ...payload,
+      id: tempId,
       nodeLevel: 'subfamily',
-      originalId: id,
+      originalId: tempId,
       parentCategoryId: parentId,
       parentFamilyId: subParentId,
-      isVisible: !!(fam && fam.isExpanded),
+      isVisible: false,
     };
-    this.hierarchicalData.splice(insertIdx, 0, subNode);
 
-    this.closeHierarchicalModals();
+    this.hierarchicalData.push(newNode);
     this.refreshHierarchicalVisibleRows();
-    await alerts.basicAlert('Éxito', 'Subfamilia creada (solo en esta vista demo).', 'success');
+    this.closeHierarchicalModals();
+    alerts.basicAlert('Éxito', 'Subfamilia creada.', 'success');
+
+    this.hierService.create(payload).subscribe({
+      error: (err) => {
+        console.error('Error creating subfamily:', err);
+        this.hierarchicalData = this.hierarchicalData.filter(n => n.originalId !== tempId);
+        this.refreshHierarchicalVisibleRows();
+        alerts.basicAlert('Error', 'No se pudo crear la subfamilia.', 'error');
+      }
+    });
   }
 
   async saveHierarchicalEditChanges() {
@@ -1722,27 +1732,38 @@ export class CatalogosProduccionComponent {
       return;
     }
 
-    const row = this.hierarchicalData.find(n => n.originalId === this.editingItem.originalId);
-    if (!row) {
-      await alerts.basicAlert('Error', 'No se encontró el registro.', 'error');
-      return;
+    const payload: CatalogProductionItem = {
+      description: this.modalForm.description.trim().toUpperCase(),
+      valueAddition: (this.modalForm.valueAddition || '').trim() || 'NA',
+      valueAddition2: (this.modalForm.valueAddition2 || '').trim() || 'NA',
+      valueAdditionBit: this.modalForm.valueAdditionBit,
+      valueAdditionBit2: this.modalForm.valueAdditionBit2,
+      active: this.modalForm.active ? 1 : 0,
+    };
+
+    const itemId = this.editingItem.id || this.editingItem.originalId;
+
+    const row = this.hierarchicalData.find(n => n.originalId === itemId);
+    if (row) {
+      row.description = payload.description;
+      row.valueAddition = payload.valueAddition;
+      row.valueAddition2 = payload.valueAddition2;
+      row.valueAdditionBit = payload.valueAdditionBit;
+      row.valueAdditionBit2 = payload.valueAdditionBit2;
+      row.active = payload.active;
     }
 
-    row.description = this.modalForm.description.trim().toUpperCase();
-    row.valueAddition = (this.modalForm.valueAddition || '').trim() || 'NA';
-    row.valueAddition2 = (this.modalForm.valueAddition2 || '').trim() || 'NA';
-    row.active = this.modalForm.active ? 1 : 0;
-    if (row.nodeLevel === 'subfamily') {
-      row.valueAdditionBit = this.modalForm.valueAdditionBit;
-      row.valueAdditionBit2 = this.modalForm.valueAdditionBit2;
-    }
-
-    this.closeHierarchicalModals();
     this.refreshHierarchicalVisibleRows();
-    if (this.hierarchicalGridApi) {
-      this.hierarchicalGridApi.refreshCells({ force: true });
-    }
-    await alerts.basicAlert('Éxito', 'Registro actualizado (solo en esta vista demo).', 'success');
+    this.closeHierarchicalModals();
+    alerts.basicAlert('Éxito', 'Registro actualizado.', 'success');
+
+    this.hierService.update(itemId, payload).subscribe({
+      error: (err) => {
+        console.error('Error updating item:', err);
+        this.loadHierarchicalData();
+        alerts.basicAlert('Error', 'No se pudo actualizar el registro.', 'error');
+      }
+    });
   }
 
   async deleteHierarchicalItem() {
@@ -1753,17 +1774,28 @@ export class CatalogosProduccionComponent {
 
     const r = await alerts.confirmAlert(
       'Confirmar eliminación',
-      `¿Eliminar «${this.selectedHierarchicalRow.description}»? (solo en memoria, vista demo)`,
+      `¿Eliminar «${this.selectedHierarchicalRow.description}»?`,
       'warning',
       'Sí, eliminar'
     );
     if (!r.isConfirmed) return;
 
-    this.deleteHierarchicalNodeLocal(this.selectedHierarchicalRow);
+    const itemId = this.selectedHierarchicalRow.id || this.selectedHierarchicalRow.originalId;
+    const row = this.selectedHierarchicalRow;
+
+    this.deleteHierarchicalNodeLocal(row);
+    this.refreshHierarchicalVisibleRows();
     this.selectedHierarchicalRow = null;
     this.selectedHierarchicalNodeLevel = null;
-    this.refreshHierarchicalVisibleRows();
-    await alerts.basicAlert('Listo', 'Elemento eliminado (demo local).', 'success');
+    alerts.basicAlert('Listo', 'Elemento eliminado.', 'success');
+
+    this.hierService.delete(itemId).subscribe({
+      error: (err) => {
+        console.error('Error deleting item:', err);
+        this.loadHierarchicalData();
+        alerts.basicAlert('Error', 'No se pudo eliminar el registro.', 'error');
+      }
+    });
   }
 
   onSelectCatalogSidebar(item: ExtractionFermentationCatalogItem) {
@@ -1825,17 +1857,32 @@ export class CatalogosProduccionComponent {
   }
 
   private loadHierarchicalData() {
-    const seed = this.buildAppleCharacteristicsSeed();
-    this.buildHierarchicalStructure(seed.categories, seed.families, seed.subfamilies);
-    const maxId = this.hierarchicalData.reduce(
-      (m, n) => Math.max(m, Number(n.originalId) || 0),
-      0
-    );
-    this.hierarchicalNextTempId = Math.max(this.hierarchicalNextTempId, maxId + 1);
-    this.selectedHierarchicalRow = null;
-    this.selectedHierarchicalNodeLevel = null;
-    this.selectedColumnContext = null;
-    this.refreshHierarchicalVisibleRows();
+    if (!this.idRoot) return;
+
+    this.hierService.getAll(this.idRoot).subscribe({
+      next: (items: CatalogProductionItem[]) => {
+        const categories = items.filter(i => i.type === 'CATEGORY');
+        const families = items.filter(i => i.type === 'FAM-CAT');
+        const subfamilies = items.filter(i => i.type === 'SUB-FAM');
+
+        this.buildHierarchicalStructure(categories, families, subfamilies);
+
+        const maxId = this.hierarchicalData.reduce(
+          (m, n) => Math.max(m, Number(n.originalId) || 0),
+          0
+        );
+        this.hierarchicalNextTempId = Math.max(this.hierarchicalNextTempId, maxId + 1);
+        this.selectedHierarchicalRow = null;
+        this.selectedHierarchicalNodeLevel = null;
+        this.selectedColumnContext = null;
+        this.refreshHierarchicalVisibleRows();
+      },
+      error: (err) => {
+        console.error('Error loading hierarchical data:', err);
+        this.hierarchicalData = [];
+        this.hierarchicalVisibleRows = [];
+      }
+    });
   }
 
   /** Datos demo en frontend (misma forma que API Catalog): categoría → familia → subfamilia */
@@ -1916,8 +1963,13 @@ export class CatalogosProduccionComponent {
 
   private buildHierarchicalStructure(categories: any[], families: any[], subfamilies: any[]) {
     const treeData: any[] = [];
+    const nameCollator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+    const byDescription = (a: { description?: string }, b: { description?: string }) =>
+      nameCollator.compare(String(a.description ?? ''), String(b.description ?? ''));
 
-    categories.forEach(category => {
+    const sortedCategories = [...categories].sort(byDescription);
+
+    sortedCategories.forEach(category => {
       const categoryNode = {
         ...category,
         nodeLevel: 'category',
@@ -1928,7 +1980,7 @@ export class CatalogosProduccionComponent {
       };
       treeData.push(categoryNode);
 
-      const categoryFamilies = families.filter(f => f.parentId === category.id);
+      const categoryFamilies = [...families.filter(f => f.parentId === category.id)].sort(byDescription);
       categoryFamilies.forEach(family => {
         const familyNode = {
           ...family,
@@ -1941,7 +1993,7 @@ export class CatalogosProduccionComponent {
         };
         treeData.push(familyNode);
 
-        const familySubfamilies = subfamilies.filter(sf => sf.subParentId === family.id);
+        const familySubfamilies = [...subfamilies.filter(sf => sf.subParentId === family.id)].sort(byDescription);
         familySubfamilies.forEach(subfamily => {
           const subfamilyNode = {
             ...subfamily,

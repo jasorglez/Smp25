@@ -6,6 +6,10 @@ import { lastValueFrom } from 'rxjs';
 import { MoliendaService } from '../../../../../services/molienda.service';
 import { OcAndReqsService } from '../../../../../services/ocandreqs.service';
 import { CustomersService } from '../../../../../services/customers.service';
+import { SignalsService } from '../../../../../services/signals.service';
+import { TrackingService } from '../../../../../services/tracking.service';
+import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
+import { alerts } from 'app/helpers/alerts';
 
 interface ReqOption {
   id: number;
@@ -65,8 +69,25 @@ interface ReqOption {
         <div *ngIf="selectedOcRow"
              style="flex: 1 1 auto; min-height: 0; border-top: 2px solid #0d47a1; background: #eceff1;
                     padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
-          <div style="font-size: 0.76rem; font-weight: bold; color: #0d47a1; margin-bottom: 3px; flex-shrink: 0;">
-            Entradas — {{ selectedOcRow.folio }}
+          <!-- Título + Botones CRUD Entradas -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 3px; flex-shrink: 0;">
+            <div style="font-size: 0.76rem; font-weight: bold; color: #0d47a1;">
+              Entradas — {{ selectedOcRow.folio }}
+            </div>
+            <div style="display: flex; gap: 4px; flex-shrink: 0;">
+              <button class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+                <i class="bi bi-plus-lg" style="margin-right: 2px; font-size: 0.7rem;"></i>Agregar
+              </button>
+              <button class="btn btn-sm btn-primary" (click)="saveEntradas()" [disabled]="!hasUnsavedChangesEntradas" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+                <i class="bi bi-floppy" style="margin-right: 2px; font-size: 0.7rem;"></i>Guardar
+              </button>
+              <button class="btn btn-sm btn-warning" (click)="revertEntradas()" title="Deshacer cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+                <i class="bi bi-arrow-clockwise" style="margin-right: 2px; font-size: 0.7rem;"></i>Deshacer
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="deleteEntrada()" [disabled]="!selectedEntradaRow" title="Eliminar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+                <i class="bi bi-trash" style="margin-right: 2px; font-size: 0.7rem;"></i>Eliminar
+              </button>
+            </div>
           </div>
           <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
             <ag-grid-angular
@@ -92,11 +113,14 @@ export class DetalleMoliendaComponent {
   private moliendaService = inject(MoliendaService);
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
+  private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
+  private entradaService = inject(EntradaMoliendaService);
 
   private internalParams: any;
   private gridApi!: GridApi;
   private cascadeOcGridApi!: GridApi;
-  private nivel4GridApi!: GridApi;
+  nivel4GridApi!: GridApi;
   private deptsCsv: string = '';
   private initCompleted = false;
   private providersMap: Map<number, string> | null = null;
@@ -109,6 +133,11 @@ export class DetalleMoliendaComponent {
   cascadeOcData: any[] = [];
   selectedOcRow: any = null;
   cascadeEntradaData: any[] = [];
+  private originalCascadeEntradaData: any[] = [];
+  hasUnsavedChangesEntradas = false;
+  selectedEntradaRow: any = null;
+  private editableEntradaColumnOrder = ['fechaRecepcion', 'cantidadEntrada', 'bultos', 'revisionConfigu', 'liberacion'];
+  private enterPressed = false;
 
   // ── Nivel 2: Requisiciones ────────────────────────────────────────
   colDefs: ColDef[] = [
@@ -220,21 +249,49 @@ export class DetalleMoliendaComponent {
       field: 'fechaRecepcion',
       headerName: 'Fecha recepción',
       width: 120,
+      editable: true,
+      cellEditor: 'agTextCellEditor',
       valueFormatter: (p) => this.fmtFecha(p.value),
+      valueParser: (p) => {
+        if (!p.newValue) return p.oldValue;
+        const parts = String(p.newValue).split('/');
+        if (parts.length === 3) {
+          const d = Number(parts[0]), m = Number(parts[1]) - 1, y = Number(parts[2]);
+          const date = new Date(y, m, d);
+          return isNaN(date.getTime()) ? p.oldValue : date;
+        }
+        const date = new Date(p.newValue);
+        return isNaN(date.getTime()) ? p.oldValue : date;
+      },
+      cellEditorParams: (p: any) => ({
+        value: this.fmtFecha(p.value),
+      }),
+      onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
     {
       field: 'cantidadEntrada',
       headerName: 'Cantidad Entrada',
       width: 130,
       type: 'numericColumn',
+      editable: true,
       valueFormatter: (p) => this.fmtEntero(p.value),
+      onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
-    { field: 'bultos', headerName: 'Bultos', width: 85, type: 'numericColumn' },
+    {
+      field: 'bultos',
+      headerName: 'Bultos',
+      width: 85,
+      type: 'numericColumn',
+      editable: true,
+      onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
+    },
     {
       field: 'revisionConfigu',
       headerName: 'Revisión Configu.',
       width: 125,
       type: 'numericColumn',
+      editable: true,
+      onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
     {
       field: 'carat',
@@ -280,7 +337,32 @@ export class DetalleMoliendaComponent {
   nivel4GridOptions: any = {
     headerHeight: 25,
     rowHeight: 25,
-    defaultColDef: { resizable: true, sortable: true },
+    rowSelection: 'single',
+    onSelectionChanged: (event: any) => {
+      const selectedRows = event.api.getSelectedRows();
+      this.selectedEntradaRow = selectedRows.length > 0 ? selectedRows[0] : null;
+    },
+    onCellValueChanged: () => {
+      this.hasUnsavedChangesEntradas = true;
+    },
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+    },
+    defaultColDef: {
+      resizable: true,
+      sortable: true,
+      suppressKeyboardEvent: (params: any) => {
+        if (params.event.key === 'Enter' && params.editing) {
+          this.enterPressed = true;
+          setTimeout(() => {
+            if (this.nivel4GridApi) this.nivel4GridApi.stopEditing();
+          }, 0);
+          return true;
+        }
+        return false;
+      },
+    },
+    onCellEditingStopped: (event: any) => this.onEntradaCellEditingStopped(event),
     tooltipShowDelay: 300,
   };
 
@@ -370,7 +452,7 @@ export class DetalleMoliendaComponent {
   }
 
   /** Click en columna OC: comprime otras filas y muestra nivel 4 (entradas). */
-  onCascadeOcCellClicked(event: any): void {
+  async onCascadeOcCellClicked(event: any): Promise<void> {
     if (event.column?.getColId() !== 'folio') return;
 
     const row = event.data;
@@ -385,7 +467,10 @@ export class DetalleMoliendaComponent {
     }
 
     this.selectedOcRow = row;
-    this.cascadeEntradaData = this.buildMockEntradasForOc(row);
+    this.cascadeEntradaData = [];
+    this.originalCascadeEntradaData = [];
+    this.hasUnsavedChangesEntradas = false;
+    this.selectedEntradaRow = null;
 
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
       this.cascadeOcGridApi.forEachNode((node: any) => {
@@ -397,7 +482,31 @@ export class DetalleMoliendaComponent {
     }
 
     if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
-      this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+      this.nivel4GridApi.setGridOption('rowData', []);
+
+    try {
+      const idMaterial = this.internalParams?.data?.idMaterial;
+      const entradas = idMaterial
+        ? await lastValueFrom(this.entradaService.getByOcAndMaterial(row.id, idMaterial))
+        : await lastValueFrom(this.entradaService.getByOc(row.id));
+      this.cascadeEntradaData = (Array.isArray(entradas) ? entradas : []).map((e: EntradaMolienda) => ({
+        id: e.id,
+        idEntrada: e.id,
+        fechaRecepcion: e.fechaRecepcion ? new Date(e.fechaRecepcion) : null,
+        cantidadEntrada: e.cantidadEntrada ?? 0,
+        bultos: e.bultos ?? 0,
+        revisionConfigu: e.revisionConfigu ?? 0,
+        pago: e.pago ?? 0,
+        pdfCount: 0,
+        usuario: e.usuario ?? '',
+        liberacion: e.liberacion ?? false,
+      }));
+      this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
+      if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
+        this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+    } catch (err) {
+      console.error('Error cargando entradas:', err);
+    }
   }
 
   private clearOcSelection(): void {
@@ -565,5 +674,162 @@ export class DetalleMoliendaComponent {
         force: true,
       });
     }
+  }
+
+  // ── CRUD Methods para tabla Entradas (Nivel 4) ──
+
+  addEntrada() {
+    if (!this.nivel4GridApi) return;
+
+    const usuarioLogueado = this.signalsService.getDisplayName()() || 'Usuario';
+
+    const newRow = {
+      idEntrada: null,
+      fechaRecepcion: new Date(),
+      cantidadEntrada: 0,
+      bultos: 0,
+      revisionConfigu: 0,
+      carat: false,
+      pago: 0,
+      pdfCount: 0,
+      usuario: usuarioLogueado,
+      liberacion: false,
+      __isNew: true,
+    };
+
+    this.cascadeEntradaData = [newRow, ...this.cascadeEntradaData];
+    this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+    this.hasUnsavedChangesEntradas = true;
+
+    setTimeout(() => {
+      this.nivel4GridApi.startEditingCell({ rowIndex: 0, colKey: 'fechaRecepcion' });
+    }, 0);
+  }
+
+  async saveEntradas() {
+    if (!this.hasUnsavedChangesEntradas || !this.selectedOcRow) return;
+
+    const toSave = this.cascadeEntradaData.filter(r => r.__isNew || r.__modified);
+    if (!toSave.length) { this.hasUnsavedChangesEntradas = false; return; }
+
+    try {
+      const idMaterial = this.internalParams?.data?.idMaterial;
+      for (const row of toSave) {
+        const payload: EntradaMolienda = {
+          idOc: this.selectedOcRow.id,
+          idMaterial: idMaterial ?? null,
+          fechaRecepcion: row.fechaRecepcion instanceof Date
+            ? row.fechaRecepcion.toISOString().split('T')[0]
+            : (row.fechaRecepcion ?? null),
+          cantidadEntrada: row.cantidadEntrada ?? 0,
+          bultos: row.bultos ?? 0,
+          revisionConfigu: row.revisionConfigu ?? 0,
+          pago: row.pago ?? 0,
+          usuario: row.usuario ?? '',
+          liberacion: row.liberacion ?? false,
+        };
+
+        if (row.__isNew) {
+          const created = await lastValueFrom(this.entradaService.create(payload));
+          row.id = created.id;
+          row.idEntrada = created.id;
+          row.__isNew = false;
+        } else {
+          await lastValueFrom(this.entradaService.update(row.id, payload));
+          row.__modified = false;
+        }
+      }
+
+      this.hasUnsavedChangesEntradas = false;
+      this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
+      if (this.nivel4GridApi) this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+      await alerts.basicAlert('Éxito', 'Cambios guardados.', 'success');
+    } catch (err) {
+      console.error('Error guardando entradas:', err);
+      await alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
+    }
+  }
+
+  revertEntradas() {
+    this.cascadeEntradaData = JSON.parse(JSON.stringify(this.originalCascadeEntradaData));
+    this.hasUnsavedChangesEntradas = false;
+    this.selectedEntradaRow = null;
+    if (this.nivel4GridApi) {
+      this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+    }
+  }
+
+  async deleteEntrada() {
+    if (!this.selectedEntradaRow) {
+      await alerts.basicAlert('Eliminar', 'Seleccione una fila.', 'warning');
+      return;
+    }
+
+    const r = await alerts.confirmAlert(
+      'Confirmar eliminación',
+      `¿Eliminar esta entrada?`,
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!r.isConfirmed) return;
+
+    try {
+      if (this.selectedEntradaRow.__isNew) {
+        this.cascadeEntradaData = this.cascadeEntradaData.filter(row => row !== this.selectedEntradaRow);
+      } else {
+        await lastValueFrom(this.entradaService.delete(this.selectedEntradaRow.id));
+        this.cascadeEntradaData = this.cascadeEntradaData.filter(row => row !== this.selectedEntradaRow);
+        this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
+      }
+
+      this.selectedEntradaRow = null;
+      if (this.nivel4GridApi) this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+      await alerts.basicAlert('Éxito', 'Entrada eliminada.', 'success');
+    } catch (err) {
+      console.error('Error eliminando entrada:', err);
+      await alerts.basicAlert('Error', 'No se pudo eliminar la entrada.', 'error');
+    }
+  }
+
+  private onEntradaCellValueChanged(event: any) {
+    const row = event.data;
+    if (!row.__isNew) {
+      row.__modified = true;
+    }
+    this.hasUnsavedChangesEntradas = true;
+  }
+
+  private onEntradaCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+
+    const currentColKey = event.colDef.field;
+    const currentRowIndex = event.rowIndex;
+    const currentColIndex = this.editableEntradaColumnOrder.indexOf(currentColKey);
+
+    if (currentColIndex === -1) return;
+
+    let nextRowIndex = currentRowIndex;
+    let nextColIndex = currentColIndex + 1;
+
+    if (nextColIndex >= this.editableEntradaColumnOrder.length) {
+      nextRowIndex++;
+      nextColIndex = 0;
+    }
+
+    if (nextRowIndex >= this.cascadeEntradaData.length) {
+      return;
+    }
+
+    const nextColKey = this.editableEntradaColumnOrder[nextColIndex];
+
+    setTimeout(() => {
+      if (this.nivel4GridApi) {
+        this.nivel4GridApi.startEditingCell({
+          rowIndex: nextRowIndex,
+          colKey: nextColKey,
+        });
+      }
+    }, 0);
   }
 }
