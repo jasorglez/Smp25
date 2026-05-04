@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.2 (2 Mayo 2026 18:50) - Entradas Molienda: filtrado por artículo (idMaterial) al cargar desde OC'
+  version: '2.52.3 (4 Mayo 2026 19:30) - Requisiciones: chat bloqueado para ítems no guardados; fallback a id de fila cuando numArticle está vacío'
 };

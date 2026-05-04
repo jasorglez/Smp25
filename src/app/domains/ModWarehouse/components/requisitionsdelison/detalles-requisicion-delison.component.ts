@@ -1168,7 +1168,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         cellRendererParams: (params: any) => ({
           documentType: 'REQ',
           idDocument: this.requisitionId,
-          numArticle: params.data?.numArticle || ''
+          numArticle: params.data?.numArticle || (!params.data?.__isNew && params.data?.id ? String(params.data.id) : ''),
+          locked: !!params.data?.__isNew
         }),
       },
 
