@@ -906,10 +906,13 @@ export class DetalleMoliendaComponent {
     try {
       const { lastValueFrom } = await import('rxjs');
 
-      // Obtenemos todas las OCs de la requisición seleccionada con detalles y nombres de proveedores
-      const matchedOcs: any = await lastValueFrom(
-        this.ocAndReqsService.getOcsDetailsForRequisition(row.idRequisition)
-      ).catch(() => []);
+      // Obtenemos las OCs filtradas por requisición + material + departamentos autorizados
+      const idMaterial = this.internalParams?.data?.idMaterial;
+      const matchedOcs: any = idMaterial
+        ? await lastValueFrom(
+            this.ocAndReqsService.getOcsByReqMaterial(row.idRequisition, idMaterial, this.deptsCsv)
+          ).catch(() => [])
+        : [];
 
       this.cascadeOcData = Array.isArray(matchedOcs) ? matchedOcs : [];
     } catch (err) {

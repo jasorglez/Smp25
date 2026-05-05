@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.4 (4 Mayo 2026 19:50) - purchas_eorder: ahora muestra OCs en lugar de requisiciones'
+  version: '2.52.5 (5 Mayo 2026 14:35) - almmolienda: fix filtrado Nivel 3 (OCs sin validar material)'
 };
