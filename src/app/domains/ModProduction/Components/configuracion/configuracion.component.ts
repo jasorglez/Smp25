@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
+import { ExtractionFermentationBultosService, ExtractionFermentationBultosItem } from 'app/services/extraction-fermentation-bultos.service';
 import { SignalsService } from 'app/services/signals.service';
 
 @Component({
@@ -330,6 +331,59 @@ import { SignalsService } from 'app/services/signals.service';
                     </div>
                   </div>
                 </article>
+
+                <article class="group">
+                  <button type="button" class="group-toggle" (click)="toggleSection('bultos')">
+                    <div>
+                      <p class="group-name">Cantidad de bultos a revisar</p>
+                      <p class="group-subtitle">Define la cantidad total de bultos a revisar en la sucursal.</p>
+                    </div>
+                    <span class="chevron" [class.open]="openSection === 'bultos'">⌄</span>
+                  </button>
+
+                  <div class="group-body" [class.open]="openSection === 'bultos'">
+                    <div class="group-body-inner">
+                      <div class="group-content">
+                        <div class="status-row" *ngIf="!idRoot">
+                          Selecciona una empresa para cargar los datos.
+                        </div>
+                        <div class="status-row" *ngIf="idRoot && bultosGuardando">
+                          Guardando cambios...
+                        </div>
+                        <div class="stack" *ngIf="idRoot && idBranch && idBranch > 0" style="gap: 8px;">
+                          <div style="display: flex; align-items: flex-end; gap: 8px;">
+                            <div style="flex: 1;">
+                              <label style="display: block; font-size: 0.85rem; color: #6b7a8a; margin-bottom: 4px; font-weight: 500;">Cantidad a revisar</label>
+                              <input
+                                class="minimal-input"
+                                type="number"
+                                placeholder="0"
+                                [(ngModel)]="bultosCantidadARevisar"
+                                min="0"
+                                [disabled]="!idRoot || !idBranch || idBranch < 0 || bultosGuardando">
+                            </div>
+                          </div>
+                          <div style="display: flex; align-items: flex-end; gap: 8px;">
+                            <div style="flex: 1;">
+                              <label style="display: block; font-size: 0.85rem; color: #6b7a8a; margin-bottom: 4px; font-weight: 500;">Cantidad total de bultos</label>
+                              <input
+                                class="minimal-input"
+                                type="number"
+                                placeholder="0"
+                                [(ngModel)]="bultosCantidad"
+                                min="0"
+                                (keydown.enter)="saveBultos()"
+                                [disabled]="!idRoot || !idBranch || idBranch < 0 || bultosGuardando">
+                            </div>
+                          </div>
+                          <button class="minimal-btn" type="button" (click)="saveBultos()" [disabled]="bultosCantidad === null || bultosCantidad < 0 || bultosCantidadARevisar === null || bultosCantidadARevisar < 0 || !idRoot || !idBranch || idBranch < 0 || bultosGuardando">
+                            {{ bultosId ? 'Actualizar' : 'Guardar' }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
               </div>
             </section>
           </div>
@@ -345,10 +399,11 @@ import { SignalsService } from 'app/services/signals.service';
 })
 export class ConfiguracionProdComponent {
   private catalogService = inject(ExtractionFermentationCatalogService);
+  private bultosService = inject(ExtractionFermentationBultosService);
   private signalsService = inject(SignalsService);
 
   activeTab = 'molienda';
-  openSection: 'catalogo' = 'catalogo';
+  openSection: 'catalogo' | 'bultos' = 'catalogo';
   idRoot = 0;
   idBranch: number | null = null;
   isLoading = false;
@@ -359,6 +414,11 @@ export class ConfiguracionProdComponent {
   editingCategoriaText = '';
 
   catalogoCategorias: ExtractionFermentationCatalogItem[] = [];
+
+  bultosCantidad: number | null = null;
+  bultosCantidadARevisar: number | null = null;
+  bultosGuardando = false;
+  bultosId: number | null = null;
 
   tabs = [
     { key: 'molienda', label: 'Extraccion y fermentacion' },
@@ -393,7 +453,7 @@ export class ConfiguracionProdComponent {
     return this.catalogoCategorias.length;
   }
 
-  toggleSection(section: 'catalogo') {
+  toggleSection(section: 'catalogo' | 'bultos') {
     this.openSection = this.openSection === section ? section : section;
   }
 
@@ -486,5 +546,70 @@ export class ConfiguracionProdComponent {
         this.isLoading = false;
       },
     });
+
+    this.loadBultos();
+  }
+
+  private loadBultos() {
+    if (!this.idRoot || !this.idBranch || this.idBranch < 0) return;
+
+    this.bultosService.getByBranch(this.idRoot, this.idBranch).subscribe({
+      next: (item) => {
+        if (item) {
+          this.bultosId = item.id ?? null;
+          this.bultosCantidad = item.cantidadBultos ?? 0;
+          this.bultosCantidadARevisar = item.cantidadARevisar ?? 0;
+        } else {
+          this.bultosId = null;
+          this.bultosCantidad = null;
+          this.bultosCantidadARevisar = null;
+        }
+      },
+      error: () => {
+        this.bultosId = null;
+        this.bultosCantidad = null;
+        this.bultosCantidadARevisar = null;
+      },
+    });
+  }
+
+  saveBultos() {
+    if (this.bultosCantidad === null || this.bultosCantidad < 0 || this.bultosCantidadARevisar === null || this.bultosCantidadARevisar < 0 || !this.idRoot || !this.idBranch || this.idBranch < 0 || this.bultosGuardando) return;
+
+    this.bultosGuardando = true;
+
+    const proporcion = this.bultosCantidadARevisar > 0 && this.bultosCantidad > 0
+      ? Math.round((this.bultosCantidadARevisar / this.bultosCantidad) * 10) / 10
+      : null;
+
+    const data: ExtractionFermentationBultosItem = {
+      idCompany: this.idRoot,
+      idBranch: this.idBranch,
+      cantidadBultos: this.bultosCantidad,
+      cantidadARevisar: this.bultosCantidadARevisar,
+      proporcionRevision: proporcion,
+      active: true,
+    };
+
+    if (this.bultosId) {
+      this.bultosService.update(this.bultosId, data).subscribe({
+        next: () => {
+          this.bultosGuardando = false;
+        },
+        error: () => {
+          this.bultosGuardando = false;
+        },
+      });
+    } else {
+      this.bultosService.create(data).subscribe({
+        next: (created) => {
+          this.bultosId = created.id ?? null;
+          this.bultosGuardando = false;
+        },
+        error: () => {
+          this.bultosGuardando = false;
+        },
+      });
+    }
   }
 }

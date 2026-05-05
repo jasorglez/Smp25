@@ -14,6 +14,8 @@ import { DepartmentsService } from '../../../../../services/departments.service'
 import { RolesService } from '../../../../../services/roles.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
+import { ExtractionFermentationBultosService } from '../../../../../services/extraction-fermentation-bultos.service';
+import { CatalogProductionService } from '../../../../../services/catalog-production.service';
 
 @Component({
   selector: 'app-almmolienda',
@@ -93,6 +95,8 @@ export class AlmmoliendaComponent {
   private ocAndReqsService = inject(OcAndReqsService);
   private departmentsService = inject(DepartmentsService);
   private rolesService = inject(RolesService);
+  private bultosService = inject(ExtractionFermentationBultosService);
+  private catalogService = inject(CatalogProductionService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -112,6 +116,11 @@ export class AlmmoliendaComponent {
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
   private _columnDefs: ColDef[] = [];
+  bultosCantidad: number | null = null;
+  bultosCantidadARevisar: number | null = null;
+  proporcionRevision: number | null = null;
+  caracteristicasCategories: any[] = [];
+  caracteristicasFamilies: any[] = [];
 
   // Datos precargados del último sync — se pasan al detalle para evitar HTTP redundante
   private lastSyncedReqs: any[]    = [];
@@ -323,9 +332,15 @@ export class AlmmoliendaComponent {
         departmentOptions: this.departmentOptions,
         preloadedReqs:     isEntradas ? this.lastSyncedReqs    : [],
         preloadedDetails:  isEntradas ? this.lastSyncedDetails : [],
+        bultosCantidad:    this.bultosCantidad,
+        bultosCantidadARevisar: this.bultosCantidadARevisar,
+        proporcionRevision: this.proporcionRevision,
+        caracteristicasCategories: this.caracteristicasCategories,
+        caracteristicasFamilies: this.caracteristicasFamilies,
       };
     },
     defaultColDef: {
+      textAlign: 'center',
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
           this.enterPressed = true;
@@ -335,6 +350,7 @@ export class AlmmoliendaComponent {
         return false;
       },
     },
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
   constructor(rendererFactory: RendererFactory2) {
@@ -519,7 +535,10 @@ export class AlmmoliendaComponent {
       this.departmentOptions = Array.isArray(deptsData) ? deptsData : [];
       this._columnDefs = [];
       if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.columnDefs);
-      await this.loadData(this.idRoot);
+      await Promise.all([
+        this.loadData(this.idRoot),
+        this.loadCaracteristicasCategories(this.idRoot),
+      ]);
     } catch (error) {
       console.error('Error loading raw materials:', error);
     }
@@ -528,6 +547,47 @@ export class AlmmoliendaComponent {
   private showToast(msg: string) {
     this.toastMsg.set(msg);
     setTimeout(() => this.toastMsg.set(''), 1500);
+  }
+
+  private async loadBultosCantidad(idCompany: number, idBranch: number) {
+    try {
+      const result = await lastValueFrom(this.bultosService.getByBranch(idCompany, idBranch));
+      this.bultosCantidad = result?.cantidadBultos ?? null;
+      this.bultosCantidadARevisar = result?.cantidadARevisar ?? null;
+      this.proporcionRevision = result?.proporcionRevision ?? null;
+    } catch (error) {
+      console.error('Error loading bultos cantidad:', error);
+      this.bultosCantidad = null;
+      this.bultosCantidadARevisar = null;
+      this.proporcionRevision = null;
+    }
+  }
+
+  private async loadCaracteristicasCategories(idCompany: number) {
+    try {
+      const allItems = await lastValueFrom(this.catalogService.getAll(idCompany));
+      const itemsArray = Array.isArray(allItems) ? allItems : [];
+
+      this.caracteristicasCategories = itemsArray
+        .filter((item: any) => item.type === 'CATEGORY')
+        .sort((a: any, b: any) => {
+          const aDesc = (a.description || '').toLowerCase();
+          const bDesc = (b.description || '').toLowerCase();
+          return aDesc.localeCompare(bDesc);
+        });
+
+      this.caracteristicasFamilies = itemsArray
+        .filter((item: any) => item.type === 'FAM-CAT')
+        .sort((a: any, b: any) => {
+          const aDesc = (a.description || '').toLowerCase();
+          const bDesc = (b.description || '').toLowerCase();
+          return aDesc.localeCompare(bDesc);
+        });
+    } catch (error) {
+      console.error('Error loading características:', error);
+      this.caracteristicasCategories = [];
+      this.caracteristicasFamilies = [];
+    }
   }
 
   onRowClicked(event: any)       { this.selectedRow = event.data; }
@@ -704,6 +764,8 @@ export class AlmmoliendaComponent {
   private async syncEntradasDetails(rowData: any) {
     const { id: idMolienda, sucursal, idMaterial } = rowData;
     if (!idMolienda || !sucursal || !idMaterial) return;
+
+    await this.loadBultosCantidad(this.idRoot, sucursal);
 
     const today = new Date().toISOString().substring(0, 10);
     const deptsCsv = this.departmentOptions

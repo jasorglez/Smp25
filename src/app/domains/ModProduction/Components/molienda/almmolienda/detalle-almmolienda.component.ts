@@ -9,7 +9,9 @@ import { CustomersService } from '../../../../../services/customers.service';
 import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
 import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
+import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
 import { alerts } from 'app/helpers/alerts';
+import { FechaEditorComponent } from '../../../../../shared/fecha-editor.component';
 
 interface ReqOption {
   id: number;
@@ -78,8 +80,12 @@ interface ReqOption {
               <button class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-plus-lg" style="margin-right: 2px; font-size: 0.7rem;"></i>Agregar
               </button>
-              <button class="btn btn-sm btn-primary" (click)="saveEntradas()" [disabled]="!hasUnsavedChangesEntradas" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-primary position-relative" (click)="saveEntradas()" [disabled]="!hasUnsavedChangesEntradas" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-floppy" style="margin-right: 2px; font-size: 0.7rem;"></i>Guardar
+                <span *ngIf="hasUnsavedChangesEntradas"
+                      class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                      style="width: 10px; height: 10px; padding: 0 !important;">
+                </span>
               </button>
               <button class="btn btn-sm btn-warning" (click)="revertEntradas()" title="Deshacer cambios" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-arrow-clockwise" style="margin-right: 2px; font-size: 0.7rem;"></i>Deshacer
@@ -89,7 +95,8 @@ interface ReqOption {
               </button>
             </div>
           </div>
-          <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+          <div [style.flex]="selectedEntradaCaratRow ? '0 0 58px' : '1 1 auto'"
+               style="min-height: 58px; position: relative; overflow: hidden;">
             <ag-grid-angular
               class="ag-theme-quartz small-text-ag-grid"
               [rowData]="cascadeEntradaData"
@@ -98,6 +105,36 @@ interface ReqOption {
               (gridReady)="onNivel4GridReady($event)"
               style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
             </ag-grid-angular>
+          </div>
+
+          <!-- Level 5: Características (cascada) -->
+          <div *ngIf="selectedEntradaCaratRow"
+               style="flex: 1 1 auto; min-height: 0; border-top: 2px solid #558b2f; background: #f1f8e9;
+                      padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 3px; flex-shrink: 0;">
+              <div style="font-size: 0.76rem; font-weight: bold; color: #558b2f;">
+                Características — Entrada {{ selectedEntradaCaratRow.idEntrada }}
+              </div>
+              <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                <button class="btn btn-sm btn-primary position-relative" (click)="saveCaracteristicas()" [disabled]="!hasUnsavedChangesCaracteristicas" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+                  <i class="bi bi-floppy" style="margin-right: 2px; font-size: 0.7rem;"></i>Guardar
+                  <span *ngIf="hasUnsavedChangesCaracteristicas"
+                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                        style="width: 10px; height: 10px; padding: 0 !important;">
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+              <ag-grid-angular
+                class="ag-theme-quartz small-text-ag-grid"
+                [rowData]="cascadeCaratData"
+                [columnDefs]="nivel5ColDefs"
+                [gridOptions]="nivel5GridOptions"
+                (gridReady)="onNivel5GridReady($event)"
+                style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+              </ag-grid-angular>
+            </div>
           </div>
         </div>
       </div>
@@ -116,11 +153,13 @@ export class DetalleMoliendaComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private entradaService = inject(EntradaMoliendaService);
+  private caracteristicasService = inject(CaracteristicasEntradaService);
 
   private internalParams: any;
   private gridApi!: GridApi;
   private cascadeOcGridApi!: GridApi;
   nivel4GridApi!: GridApi;
+  private nivel5GridApi!: GridApi;
   private deptsCsv: string = '';
   private initCompleted = false;
   private providersMap: Map<number, string> | null = null;
@@ -136,8 +175,18 @@ export class DetalleMoliendaComponent {
   private originalCascadeEntradaData: any[] = [];
   hasUnsavedChangesEntradas = false;
   selectedEntradaRow: any = null;
+  selectedEntradaCaratRow: any = null;
+  cascadeCaratData: any[] = [];
+  hasUnsavedChangesCaracteristicas = false;
+  private originalCaracteristicasData: any[] = [];
+  private existingCaratIds = new Map<number, number>(); // categoryId → recordId en BD
   private editableEntradaColumnOrder = ['fechaRecepcion', 'cantidadEntrada', 'bultos', 'revisionConfigu', 'liberacion'];
   private enterPressed = false;
+  bultosCantidad: number | null = null;
+  bultosCantidadARevisar: number | null = null;
+  proporcionRevision: number | null = null;
+  caracteristicasCategories: any[] = [];
+  caracteristicasFamilies: any[] = [];
 
   // ── Nivel 2: Requisiciones ────────────────────────────────────────
   colDefs: ColDef[] = [
@@ -201,7 +250,8 @@ export class DetalleMoliendaComponent {
       'selected-row-highlight': (p: any) => p.data === this.selectedReqRow,
     },
     tooltipShowDelay: 300,
-    defaultColDef: { resizable: true, sortable: true },
+    defaultColDef: { resizable: true, sortable: true, textAlign: 'center' },
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
   // ── Nivel 3: OCs ──────────────────────────────────────────────────
@@ -238,8 +288,9 @@ export class DetalleMoliendaComponent {
     rowClassRules: {
       'selected-oc-highlight': (p: any) => p.data === this.selectedOcRow,
     },
-    defaultColDef: { resizable: true, sortable: true },
+    defaultColDef: { resizable: true, sortable: true, textAlign: 'center' },
     tooltipShowDelay: 300,
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
   // ── Nivel 4: Entradas por OC (demo local; sustituir por API cuando exista) ──
@@ -250,23 +301,19 @@ export class DetalleMoliendaComponent {
       headerName: 'Fecha recepción',
       width: 120,
       editable: true,
-      cellEditor: 'agTextCellEditor',
+      cellEditor: 'fechaEditor',
       valueFormatter: (p) => this.fmtFecha(p.value),
-      valueParser: (p) => {
-        if (!p.newValue) return p.oldValue;
-        const parts = String(p.newValue).split('/');
-        if (parts.length === 3) {
-          const d = Number(parts[0]), m = Number(parts[1]) - 1, y = Number(parts[2]);
-          const date = new Date(y, m, d);
-          return isNaN(date.getTime()) ? p.oldValue : date;
+      valueSetter: (params) => {
+        if (params.newValue instanceof Date || typeof params.newValue === 'string') {
+          const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
+          if (!isNaN(date.getTime())) {
+            params.data.fechaRecepcion = date;
+            this.onEntradaCellValueChanged(params);
+            return true;
+          }
         }
-        const date = new Date(p.newValue);
-        return isNaN(date.getTime()) ? p.oldValue : date;
+        return false;
       },
-      cellEditorParams: (p: any) => ({
-        value: this.fmtFecha(p.value),
-      }),
-      onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
     {
       field: 'cantidadEntrada',
@@ -283,31 +330,117 @@ export class DetalleMoliendaComponent {
       width: 85,
       type: 'numericColumn',
       editable: true,
+      valueSetter: (params) => {
+        const newVal = params.newValue;
+        if (newVal === null || newVal === undefined || newVal === '') {
+          params.data.bultos = 0;
+        } else {
+          const numVal = parseInt(String(newVal), 10);
+          params.data.bultos = isNaN(numVal) ? (params.oldValue ?? 0) : numVal;
+        }
+        // Recalcular revisionConfigu: ceil(bultos × proporcionRevision)
+        if (this.proporcionRevision !== null && this.proporcionRevision > 0) {
+          params.data.revisionConfigu = Math.ceil(params.data.bultos * this.proporcionRevision);
+        }
+        this.onEntradaCellValueChanged(params);
+        return true;
+      },
       onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
     {
       field: 'revisionConfigu',
       headerName: 'Revisión Configu.',
       width: 125,
-      type: 'numericColumn',
-      editable: true,
-      onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
+      editable: false,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: {
+        min: 0,
+        max: 999999,
+      },
+      valueFormatter: (p) => {
+        const val = p.value ?? 0;
+        return String(Math.ceil(val));
+      },
+      valueSetter: (params) => {
+        let newVal = params.newValue;
+        if (newVal === null || newVal === undefined || newVal === '') {
+          newVal = 0;
+        } else {
+          newVal = parseInt(String(newVal), 10);
+          if (isNaN(newVal)) newVal = params.oldValue ?? 0;
+        }
+        params.data.revisionConfigu = newVal;
+        this.onEntradaCellValueChanged(params);
+        return true;
+      },
+      cellStyle: { backgroundColor: '#fff9c4' },
     },
     {
       field: 'carat',
-      headerName: 'Carat. ▾',
+      headerName: 'Características',
       width: 100,
       sortable: false,
+      cellStyle: { backgroundColor: '#c8e6c9', textAlign: 'center' },
       cellRenderer: (params: any) => {
-        const span = document.createElement('span');
-        span.style.cssText =
-          'color:#1565c0;cursor:pointer;text-decoration:underline;font-weight:500;';
-        span.textContent = 'Click';
-        span.addEventListener('click', (ev) => {
+        const carat = params.data?.carat;
+        const hasData = carat && typeof carat === 'string' && carat.trim().length > 0;
+
+        const container = document.createElement('div');
+        container.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;cursor:pointer;';
+
+        if (hasData) {
+          container.style.cssText += 'font-size:0.68rem;font-weight:600;color:#1b5e20;flex-wrap:wrap;gap:2px;';
+          container.textContent = carat;
+        } else {
+          container.style.cssText += 'color:#2e7d32;font-weight:500;font-size:1.2rem;';
+          container.textContent = '↓';
+        }
+
+        container.addEventListener('click', async (ev) => {
           ev.stopPropagation();
-          /* TODO: abrir características */
+          if (this.selectedEntradaCaratRow === params.data) {
+            this.selectedEntradaCaratRow = null;
+            this.cascadeCaratData = [];
+            this.existingCaratIds.clear();
+            this.hasUnsavedChangesCaracteristicas = false;
+          } else {
+            this.selectedEntradaCaratRow = params.data;
+            this.hasUnsavedChangesCaracteristicas = false;
+            this.existingCaratIds.clear();
+
+            const idEntrada = params.data.idEntrada;
+            let row: any = { idEntrada };
+            const savedCategoryIds = new Set<number>();
+
+            try {
+              const existing = await lastValueFrom(this.caracteristicasService.getByEntrada(idEntrada));
+              if (existing && existing.length > 0) {
+                existing.forEach((item: any) => {
+                  row[`cat_${item.idCategory}`] = item.familySelected;
+                  this.existingCaratIds.set(item.idCategory, item.id);
+                  savedCategoryIds.add(item.idCategory);
+                });
+              } else {
+                row.__isNew = true;
+              }
+            } catch {
+              row.__isNew = true;
+            }
+
+            // Reconstruir columnas incluyendo categorías inactivas con datos guardados
+            this.buildNivel5ColumnDefs(savedCategoryIds);
+            if (this.nivel5GridApi && !this.nivel5GridApi.isDestroyed()) {
+              this.nivel5GridApi.setGridOption('columnDefs', this.nivel5ColDefs);
+            }
+
+            this.cascadeCaratData = [row];
+            this.originalCaracteristicasData = JSON.parse(JSON.stringify(this.cascadeCaratData));
+            if (this.nivel5GridApi && !this.nivel5GridApi.isDestroyed()) {
+              this.nivel5GridApi.setGridOption('rowData', this.cascadeCaratData);
+            }
+          }
         });
-        return span;
+        return container;
       },
     },
     {
@@ -335,6 +468,9 @@ export class DetalleMoliendaComponent {
   ];
 
   nivel4GridOptions: any = {
+    components: {
+      fechaEditor: FechaEditorComponent,
+    },
     headerHeight: 25,
     rowHeight: 25,
     rowSelection: 'single',
@@ -351,6 +487,7 @@ export class DetalleMoliendaComponent {
     defaultColDef: {
       resizable: true,
       sortable: true,
+      textAlign: 'center',
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
           this.enterPressed = true;
@@ -364,6 +501,39 @@ export class DetalleMoliendaComponent {
     },
     onCellEditingStopped: (event: any) => this.onEntradaCellEditingStopped(event),
     tooltipShowDelay: 300,
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+  };
+
+  // ── Nivel 5: Características ───────────────────────────────────────
+  nivel5ColDefs: ColDef[] = [];
+
+  nivel5GridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 25,
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+    },
+    onCellValueChanged: () => {
+      this.hasUnsavedChangesCaracteristicas = true;
+    },
+    singleClickEdit: false,
+    suppressClickEdit: false,
+    defaultColDef: {
+      resizable: true,
+      sortable: true,
+      textAlign: 'center',
+      suppressKeyboardEvent: (params: any) => {
+        if (params.event.key === 'Enter' && params.editing) {
+          setTimeout(() => {
+            if (this.nivel5GridApi) this.nivel5GridApi.stopEditing();
+          }, 0);
+          return true;
+        }
+        return false;
+      },
+    },
+    tooltipShowDelay: 300,
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
   // ── Lifecycle ─────────────────────────────────────────────────────
@@ -374,6 +544,12 @@ export class DetalleMoliendaComponent {
     this.initCompleted = false;
     this.internalParams = params;
     this.detailType = params?.data?.detailType ?? 'entradas';
+    this.bultosCantidad = params?.bultosCantidad ?? null;
+    this.bultosCantidadARevisar = params?.bultosCantidadARevisar ?? null;
+    this.proporcionRevision = params?.proporcionRevision ?? null;
+    this.caracteristicasCategories = params?.caracteristicasCategories ?? [];
+    this.caracteristicasFamilies = params?.caracteristicasFamilies ?? [];
+    this.buildNivel5ColumnDefs();
 
     const departmentOptions = params?.departmentOptions ?? [];
     this.deptsCsv = departmentOptions
@@ -451,6 +627,68 @@ export class DetalleMoliendaComponent {
       this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
   }
 
+  onNivel5GridReady(params: GridReadyEvent) {
+    this.nivel5GridApi = params.api;
+    if (this.nivel5ColDefs.length > 0) {
+      this.nivel5GridApi.setGridOption('columnDefs', this.nivel5ColDefs);
+    }
+    if (this.cascadeCaratData.length)
+      this.nivel5GridApi.setGridOption('rowData', this.cascadeCaratData);
+  }
+
+  private buildNivel5ColumnDefs(savedCategoryIds: Set<number> = new Set()): void {
+    const colDefs: ColDef[] = [
+      {
+        headerName: '#',
+        width: 45,
+        valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+        cellStyle: { fontWeight: 'bold' },
+      },
+    ];
+
+    // Incluir categorías activas + categorías inactivas que ya tienen registro guardado
+    if (Array.isArray(this.caracteristicasCategories) && this.caracteristicasCategories.length > 0) {
+      this.caracteristicasCategories
+        .filter((category: any) => {
+          const id = category.id || category.originalId;
+          const isActive = category.active && category.vigente !== false;
+          return isActive || savedCategoryIds.has(id);
+        })
+        .forEach((category: any) => {
+          const categoryId = category.id || category.originalId;
+          const categoryName = category.description || `Categoría ${categoryId}`;
+
+          // Familias activas (active=1 y vigente≠false) para este categoría
+          const activeFamilies = this.caracteristicasFamilies
+            .filter((family: any) => family.parentId === categoryId && family.active && family.vigente !== false)
+            .map((family: any) => family.description);
+
+          const fieldName = `cat_${categoryId}`;
+
+          colDefs.push({
+            field: fieldName,
+            headerName: categoryName,
+            flex: 1,
+            minWidth: 150,
+            editable: true,
+            cellEditor: 'agRichSelectCellEditor',
+            cellEditorParams: (params: any) => {
+              const savedValue = params.data?.[fieldName];
+              // Si hay un valor guardado que ya no está entre los activos, incluirlo igual
+              const values = savedValue && !activeFamilies.includes(savedValue)
+                ? [savedValue, ...activeFamilies]
+                : activeFamilies;
+              return { values, allowTyping: false };
+            },
+            cellEditorPopup: false,
+            cellStyle: { backgroundColor: '#fff9c4' },
+          });
+        });
+    }
+
+    this.nivel5ColDefs = colDefs;
+  }
+
   /** Click en columna OC: comprime otras filas y muestra nivel 4 (entradas). */
   async onCascadeOcCellClicked(event: any): Promise<void> {
     if (event.column?.getColId() !== 'folio') return;
@@ -500,7 +738,30 @@ export class DetalleMoliendaComponent {
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
+        carat: '',
       }));
+
+      // Cargar abreviaciones de características para cada entrada en paralelo
+      const familyAbrevMap = new Map<string, string>();
+      this.caracteristicasFamilies.forEach((f: any) =>
+        familyAbrevMap.set(f.description, f.valueAddition2 ?? f.description)
+      );
+
+      await Promise.all(this.cascadeEntradaData.map(async (entradaRow: any) => {
+        try {
+          const carats = await lastValueFrom(this.caracteristicasService.getByEntrada(entradaRow.idEntrada));
+          if (carats && carats.length > 0) {
+            const parts = carats.map((c: any) => {
+              const cat = this.caracteristicasCategories.find((x: any) => (x.id || x.originalId) === c.idCategory);
+              const catAbrev = cat?.valueAddition2 || c.categoryName || '';
+              const famAbrev = familyAbrevMap.get(c.familySelected) ?? c.familySelected ?? '';
+              return `${catAbrev}-${famAbrev}`;
+            });
+            entradaRow.carat = parts.join(' / ');
+          }
+        } catch { /* sin características, carat queda vacío */ }
+      }));
+
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
       if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
         this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
@@ -831,5 +1092,77 @@ export class DetalleMoliendaComponent {
         });
       }
     }, 0);
+  }
+
+  async saveCaracteristicas() {
+    if (!this.hasUnsavedChangesCaracteristicas || this.cascadeCaratData.length === 0) {
+      return;
+    }
+
+    try {
+      const row = this.cascadeCaratData[0];
+      const savePromises: any[] = [];
+      const abrevParts: string[] = [];
+
+      // Mapa de nombre de familia → abreviatura para búsqueda rápida
+      const familyAbrevMap = new Map<string, string>();
+      this.caracteristicasFamilies.forEach((f: any) => {
+        familyAbrevMap.set(f.description, f.valueAddition2 ?? f.description);
+      });
+
+      // Guardar una característica por cada categoría y construir el string de abreviaturas
+      this.caracteristicasCategories.forEach((category: any) => {
+        const categoryId = category.id || category.originalId;
+        const categoryName = category.description || '';
+        const categoryAbrev = category.valueAddition2 || categoryName;
+        const fieldName = `cat_${categoryId}`;
+        const familySelected = row[fieldName] ?? null;
+
+        if (familySelected) {
+          const familyAbrev = familyAbrevMap.get(familySelected) ?? familySelected;
+          abrevParts.push(`${categoryAbrev}-${familyAbrev}`);
+
+          const payload = {
+            idEntrada: row.idEntrada,
+            idCategory: categoryId,
+            categoryName: categoryName,
+            familySelected: familySelected,
+            active: true,
+          };
+
+          const existingId = this.existingCaratIds.get(categoryId);
+          if (existingId) {
+            savePromises.push(lastValueFrom(this.caracteristicasService.update(existingId, payload)));
+          } else if (this.existingCaratIds.size === 0) {
+            // Solo crear si no hay ningún registro previo para esta entrada
+            savePromises.push(
+              lastValueFrom(this.caracteristicasService.create(payload)).then((created: any) => {
+                if (created?.id) this.existingCaratIds.set(categoryId, created.id);
+              })
+            );
+          }
+        }
+      });
+
+      if (savePromises.length > 0) {
+        await Promise.all(savePromises);
+      }
+
+      // Actualizar el campo carat de la fila en Level 4 con las abreviaturas
+      const caratString = abrevParts.join(' / ');
+      if (this.selectedEntradaCaratRow && caratString) {
+        this.selectedEntradaCaratRow.carat = caratString;
+        if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
+          this.nivel4GridApi.refreshCells({ columns: ['carat'], force: true });
+        }
+      }
+
+      this.hasUnsavedChangesCaracteristicas = false;
+      this.originalCaracteristicasData = JSON.parse(JSON.stringify(this.cascadeCaratData));
+      await alerts.basicAlert('Éxito', 'Características guardadas.', 'success');
+    } catch (err) {
+      console.error('Error guardando características:', err);
+      await alerts.basicAlert('Error', 'No se pudieron guardar las características.', 'error');
+    }
   }
 }

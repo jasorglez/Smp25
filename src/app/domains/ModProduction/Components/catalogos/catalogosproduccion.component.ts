@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
-import { forkJoin } from 'rxjs';
+import { forkJoin, lastValueFrom } from 'rxjs';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ConfiguracionPageComponent } from '../configuracion/configuracion-page/configuracion-page.component';
 import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from '../../../../services/extraction-fermentation-catalog.service';
@@ -463,6 +463,10 @@ import { alerts } from 'app/helpers/alerts';
             <button class="action-btn add" (click)="addHierarchicalCatalogItem()" title="Agregar (según selección y columna)">
               <i class="bi bi-plus-lg"></i>
             </button>
+            <button class="action-btn save" (click)="saveHierarchicalChanges()" [disabled]="!hasUnsavedChangesHier" title="Guardar cambios">
+              <i class="bi bi-floppy"></i>
+              <span *ngIf="hasUnsavedChangesHier" class="dirty-dot"></span>
+            </button>
             <button class="action-btn delete" (click)="deleteHierarchicalItem()" [disabled]="!selectedHierarchicalRow" title="Borrar elemento">
               <i class="bi bi-trash"></i>
             </button>
@@ -776,6 +780,7 @@ export class CatalogosProduccionComponent {
   private hierarchicalNextTempId = 400000;
   private _hierarchicalColumnDefsCache: ColDef[] | null = null;
   private _hierarchicalGridOptionsCache: any = null;
+  hasUnsavedChangesHier = false;
 
   // Modales jerárquicos
   showAddCategoryModal = false;
@@ -1457,8 +1462,42 @@ export class CatalogosProduccionComponent {
       }
     }
 
+    // Marcar todas las filas afectadas como modificadas
+    this.hierarchicalData.forEach(n => { if (n.__touched) n.__modified = true; });
+    event.data.__modified = true;
+    this.hasUnsavedChangesHier = true;
+
     if (this.hierarchicalGridApi) {
       this.hierarchicalGridApi.refreshCells({ force: true });
+    }
+  }
+
+  async saveHierarchicalChanges() {
+    const modified = this.hierarchicalData.filter(n => n.__modified && n.originalId);
+    if (modified.length === 0) return;
+
+    try {
+      await Promise.all(modified.map(node => {
+        const payload: CatalogProductionItem = {
+          description: node.description,
+          type: node.type,
+          parentId: node.parentCategoryId ?? node.parentFamilyId ?? null,
+          valueAddition: node.valueAddition ?? null,
+          valueAddition2: node.valueAddition2 ?? null,
+          valueAdditionBit: node.valueAdditionBit ?? null,
+          valueAdditionBit2: node.valueAdditionBit2 ?? null,
+          vigente: node.vigente ?? null,
+          active: node.active ?? 1,
+        };
+        return lastValueFrom(this.hierService.update(node.originalId, payload));
+      }));
+
+      this.hierarchicalData.forEach(n => { n.__modified = false; });
+      this.hasUnsavedChangesHier = false;
+      alerts.basicAlert('Éxito', 'Cambios guardados.', 'success');
+    } catch (err) {
+      console.error('Error guardando cambios jerárquicos:', err);
+      alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
     }
   }
 
