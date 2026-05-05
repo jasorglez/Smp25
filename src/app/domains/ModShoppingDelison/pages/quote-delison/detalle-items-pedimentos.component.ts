@@ -595,7 +595,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         cellRendererParams: (params: any) => ({
           documentType: 'REQ',
           idDocument: this.requisitionId,
-          numArticle: params.data?.numeroArticulo || '',
+          numArticle: params.data?.numeroArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''),
           locked: false
         }),
       },

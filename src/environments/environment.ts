@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.3 (4 Mayo 2026 12:00) - CaracteristicasEntrada: backend C# añadido'
+  version: '2.52.4 (4 Mayo 2026 19:50) - purchas_eorder: ahora muestra OCs en lugar de requisiciones'
 };

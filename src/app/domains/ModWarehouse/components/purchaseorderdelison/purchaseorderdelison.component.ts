@@ -221,13 +221,15 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       sucursal:     branchName,
       folio:        oc.folio || '',
       ocCount:      oc.countItems ?? 0,
-      catalogo:     '', // TODO: get catalog info from materials if available
+      catalogo:     '',
       idReference:  oc.idReq || oc.id,
       idCompany:    this.idRoot,
       active:       oc.active !== false,
       detailType:   null,
       idProvider:   oc.idProvider,
-      reqFolio:     oc.reqFolio || ''
+      reqFolio:     oc.reqFolio || '',
+      dateModified: oc.dateModified || null,
+      dateCreate:   oc.dateCreate   || null
     };
   }
 
@@ -256,20 +258,20 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     }
 
     const branchPromises = this.branches.map(branch =>
-      new Promise<{ reqs: any[]; branch: any }>((resolve) => {
-        this.ocAndReqsService.getRequisitionsByBranch(branch.id).subscribe({
-          next: (data: any) => resolve({ reqs: Array.isArray(data) ? data : [], branch }),
-          error: () => resolve({ reqs: [], branch })
+      new Promise<{ ocs: any[]; branch: any }>((resolve) => {
+        this.ocAndReqsService.getOcsByBranch(branch.id).subscribe({
+          next: (data: any) => resolve({ ocs: Array.isArray(data) ? data : [], branch }),
+          error: () => resolve({ ocs: [], branch })
         });
       })
     );
 
     const branchResults: any[] = await Promise.all(branchPromises);
-    const allReqs = branchResults.flatMap(({ reqs, branch }) =>
-      reqs.map((req: any) => ({ req, branchName: branch.name }))
+    const allOcs = branchResults.flatMap(({ ocs, branch }) =>
+      ocs.map((oc: any) => ({ oc, branchName: branch.name }))
     );
 
-    const mapped = allReqs.map(({ req, branchName }) => this.mapRequisitionRow(req, branchName, req.countrow ?? 0));
+    const mapped = allOcs.map(({ oc, branchName }) => this.mapOcRow(oc, branchName));
 
     this.fullRowData = mapped.sort((a, b) => {
       const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
@@ -288,10 +290,10 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     const branchName = branch?.name || '';
 
     try {
-      const data: any = await lastValueFrom(this.ocAndReqsService.getRequisitionsByBranch(branchId));
-      const reqs = Array.isArray(data) ? data : [];
+      const data: any = await lastValueFrom(this.ocAndReqsService.getOcsByBranch(branchId));
+      const ocs = Array.isArray(data) ? data : [];
 
-      const allMapped = reqs.map((req: any) => this.mapRequisitionRow(req, branchName, req.countrow ?? 0));
+      const allMapped = ocs.map((oc: any) => this.mapOcRow(oc, branchName));
       this.fullRowData = allMapped.sort((a, b) => {
         const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
         const dateB = new Date(b.dateModified || b.dateCreate || 0).getTime();
@@ -304,7 +306,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         this.gridApi.refreshCells({ force: true });
       }
     } catch {
-      alerts.basicAlert('Error', 'No se pudieron cargar las requisiciones', 'error');
+      alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de compra', 'error');
       this.fullRowData = [];
       this.rowData = [];
     }
@@ -368,11 +370,10 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       },
       {
         field: 'folio',
-        headerName: '# Requisición',
+        headerName: '# OC',
         width: 160,
         filter: true,
         editable: false,
-        // Mismo color de “casilla” que Materiales Maestro (columnas clickeables).
         cellStyle: { backgroundColor: '#e8f5e9', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' },
         onCellClicked: (event: any) => {
           const isExpanding = !event.node.expanded;
@@ -394,19 +395,20 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         }
       },
       {
+        field: 'reqFolio',
+        headerName: '# Requisición',
+        width: 160,
+        filter: true,
+        editable: false,
+        cellStyle: { backgroundColor: '#fff8e1', fontWeight: '400' }
+      },
+      {
         field: 'ocCount',
-        headerName: 'Pedimentos',
-        width: 110,
+        headerName: 'Artículos',
+        width: 100,
         editable: false,
         type: 'numericColumn',
         cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#f1f8e9' }
-      },
-      {
-        field: 'catalogo',
-        headerName: 'Catálogo',
-        width: 200,
-        filter: true,
-        editable: false
       }
     ];
   }
