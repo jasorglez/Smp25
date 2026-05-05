@@ -450,6 +450,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
 
       {
+        field: 'typeIntOrExt',
+        headerName: 'Tipo',
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Interno', 'Externo']
+        },
+      },
+
+      {
         field: 'autorizacion',
         headerName: 'Por autorizar',
         width: 130,
@@ -608,17 +618,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           params.data[params.colDef.field] = rawValue.toString().toUpperCase();
           return true;
         }
-      },
-
-      // Nuevo campo: Tipo (Interno/Externo)
-      {
-        field: 'typeIntOrExt',
-        headerName: 'Tipo',
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Interno', 'Externo']
-        },
       },
 
       //Es un combo de Tipo de Proveedor qe le compro
