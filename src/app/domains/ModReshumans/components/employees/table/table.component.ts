@@ -248,10 +248,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
         if (currentColIndex >= 0 && currentColIndex < editableColumns.length - 1) {
           params.api.stopEditing();
-          
+
           const nextColId = editableColumns[currentColIndex + 1].getColId();
           params.api.setFocusedCell(params.node.rowIndex, nextColId);
-          
+
           // CRITICAL: AG-Grid ignores startEditingCell if called synchronously inside an event handler
           setTimeout(() => {
             const nextColDef = params.api.getColumn(nextColId)?.getColDef();
@@ -562,15 +562,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
               params.node.setExpanded(true);
             }
           },
-        },
-        {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
         },
         {
           field: 'loan',
@@ -1195,15 +1186,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
               params.node.setExpanded(true);
             }
           },
-        },
-        {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
         },
         {
           field: 'loan',
@@ -1877,12 +1859,24 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         });
       }
 
-      this.gridApi.startEditingCell({
-        rowIndex: newRowIndex,
-        colKey: 'idBranch',
+      // Detectar la primera columna editable en orden visual (respeta columnas pineadas)
+      const displayedCols = this.gridApi.getAllDisplayedColumns();
+      const firstEditableCol = displayedCols.find((col: any) => {
+        const colDef = col.getColDef();
+        if (typeof colDef.editable === 'function') {
+          return colDef.editable({ data: newItem, node: rowNode, column: col, colDef });
+        }
+        return colDef.editable === true;
       });
-      // Abrir el dropdown de sucursal automáticamente
-      setTimeout(() => this.openAgSelectDropdown(), 120);
+
+      if (firstEditableCol) {
+        const firstColKey = firstEditableCol.getColId();
+        this.gridApi.startEditingCell({ rowIndex: newRowIndex, colKey: firstColKey });
+        // Abrir dropdown si es un agSelectCellEditor
+        if (firstEditableCol.getColDef()?.cellEditor === 'agSelectCellEditor') {
+          setTimeout(() => this.openAgSelectDropdown(), 120);
+        }
+      }
     }, 100);
 
   }
