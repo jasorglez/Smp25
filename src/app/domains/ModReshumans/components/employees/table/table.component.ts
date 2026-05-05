@@ -1674,6 +1674,16 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       searchFields: ['employeeCode', 'name', 'email'],
       placeholder: 'Buscar código...',
       popupWidth: 310,
+      postEnterAction: (editorParams: any) => {
+        // Saltar a Precio por Hora al dar Enter en Username
+        const targetCol = this.idRoot !== 18 ? 'priceXHour' : 'idDepto';
+        const rowIndex = editorParams.node?.rowIndex ?? editorParams.rowIndex;
+        if (rowIndex == null) return;
+        this.gridApi.setFocusedCell(rowIndex, targetCol);
+        setTimeout(() => {
+          this.gridApi.startEditingCell({ rowIndex, colKey: targetCol });
+        }, 50);
+      },
     };
   }
 
