@@ -256,12 +256,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           setTimeout(() => {
             const nextColDef = params.api.getColumn(nextColId)?.getColDef();
             const isSelect = nextColDef?.cellEditor === 'agSelectCellEditor';
-            
+
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: nextColId,
-              key: isSelect ? ' ' : undefined // Usa espacio para abrir agSelect, evita Enter
             });
+            if (isSelect) {
+              setTimeout(() => this.openAgSelectDropdown(), 120);
+            }
           }, 50);
         } else {
           params.api.stopEditing();
@@ -373,21 +375,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return {
               values: this.branchs
                 ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
                 : [],
             };
           },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
+            return true;
+          },
 
           valueFormatter: (params) => {
-            // Handle potential null values and properly format the displayed value
             if (!params.value) return '';
-
             const foundBranch = this.branchs
               ? this.branchs.find((item) => item.id === params.value)
               : null;
-
             return foundBranch ? foundBranch.name : params.value;
           },
           valueGetter: (params) => {
@@ -959,21 +965,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return {
               values: this.branchs
                 ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
                 : [],
             };
           },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
+            return true;
+          },
 
           valueFormatter: (params) => {
-            // Handle potential null values and properly format the displayed value
             if (!params.value) return '';
-
             const foundBranch = this.branchs
               ? this.branchs.find((item) => item.id === params.value)
               : null;
-
             return foundBranch ? foundBranch.name : params.value;
           },
           valueGetter: (params) => {
@@ -1860,10 +1870,40 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       this.gridApi.startEditingCell({
         rowIndex: newRowIndex,
         colKey: 'idBranch',
-        key: ' '
       });
+      // Abrir el dropdown de sucursal automáticamente
+      setTimeout(() => this.openAgSelectDropdown(), 120);
     }, 100);
 
+  }
+
+  /** Abre el dropdown del agSelectCellEditor activo disparando mousedown+click en su trigger. */
+  private openAgSelectDropdown(): void {
+    // 1. Intentar via la instancia del editor (más fiable)
+    const editors = this.gridApi?.getCellEditorInstances?.();
+    if (editors && editors.length > 0) {
+      const editorInstance = editors[0] as any;
+      const editorEl: HTMLElement =
+        editorInstance.getGui?.() ?? editorInstance.eGui ?? null;
+      if (editorEl) {
+        const picker = editorEl.querySelector(
+          '.ag-picker-field-wrapper'
+        ) as HTMLElement;
+        if (picker) {
+          picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+          picker.click();
+          return;
+        }
+      }
+    }
+    // 2. Fallback: buscar en el documento completo
+    const picker = document.querySelector(
+      '.ag-popup-editor .ag-picker-field-wrapper, .ag-cell-editor .ag-picker-field-wrapper'
+    ) as HTMLElement;
+    if (picker) {
+      picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      picker.click();
+    }
   }
 
   async saveMasterChanges() {
