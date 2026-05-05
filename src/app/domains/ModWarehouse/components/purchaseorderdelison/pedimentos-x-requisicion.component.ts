@@ -119,7 +119,7 @@ export class PedimentosXRequisicionComponent {
 
   agInit(params: any): void {
     this.internalParams = params;
-    this.requisiconFolio = params?.data?.folio || '';
+    this.requisiconFolio = params?.data?.reqFolio || params?.data?.folio || '';
     // onGridReady cargará los datos
   }
 
@@ -134,7 +134,7 @@ export class PedimentosXRequisicionComponent {
   }
 
   private loadData() {
-    const idRequisicion = this.internalParams?.data?.id;
+    const idRequisicion = this.internalParams?.data?.idReference || this.internalParams?.data?.id;
     const idCompany     = this.internalParams?.data?.idCompany;
 
     if (!idRequisicion) {

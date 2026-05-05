@@ -523,7 +523,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           next: (req: any) => {
             this.hasProviderAssigned = req?.locked === true;
           },
-          error: () => {} // silencioso
+          error: () => { } // silencioso
         });
       },
       error: (error) => {
@@ -587,7 +587,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
-      
+
       // 1. Obtener datos maestros (Nombres y Tipos) de proveedores
       const [allProvidersRaw, warehouseProviders]: any = await Promise.all([
         firstValueFrom(this.customersService.getCustomersByCompany(this.idRoot || 0, 'PROVIDERS')),
@@ -596,7 +596,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       // Mapa para búsqueda rápida de datos maestros
       const providerDataMap = new Map<number, { name: string, type: string }>();
-      
+
       // Llenar mapa con nombres desde CustomersService
       (allProvidersRaw || []).forEach((p: any) => {
         const name = p.name || p.company || p.description || `Proveedor ${p.id}`;
@@ -630,11 +630,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         try {
           const providerId = rel.idTabla;
           const masterData = providerDataMap.get(providerId);
-          
+
           const realName = masterData?.name || rel.providerName || `Proveedor ${providerId}`;
           const realType = masterData?.type || rel.typeIntOrExt || 'Externo';
-          
-          
+
+
           // Consultar sucursales autorizadas para esta relación específica
           const authBranches = await firstValueFrom(
             this.sucursalByMaterialProveedorService.getSucursalByMaterial(rel.id)
@@ -643,7 +643,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           // 4. EL FILTRO DE TRES NIVELES:
           const isAuthorized = Array.isArray(authBranches) && authBranches.some(branch => {
             const match = Number(branch.idSucursal) === Number(this.currentBranchId) &&
-                         (branch.vigente === true || branch.vigente === 1);
+              (branch.vigente === true || branch.vigente === 1);
             return match;
           });
 
@@ -939,7 +939,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'numArticle',
         headerName: '# del Articulo',
-        width: 140,        
+        width: 140,
         suppressSizeToFit: true,
         editable: false,
         cellStyle: { textAlign: 'left' },
@@ -995,7 +995,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       {
         field: 'intorext',
-        headerName: 'Proveedor',        
+        headerName: 'Proveedor',
         width: 110,
         suppressSizeToFit: true,
         editable: (params) => params.data.recurrent !== 'Nuevo',
@@ -1139,25 +1139,25 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         },
       },
 
-     /* {
-        field: 'comment',
-        headerName: 'Observaciones',
-        width: 100,
-        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Obs'),
-        editable: true,
-        // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
-        onCellClicked: (params: any) => {
-          if (params.event.target.classList.contains('ag-cell')) {
-            this.modalService.showModal({ params });
-          }
-        },
-        valueSetter: (params: any) => {
-          params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
-
-          return true;
-        },
-        cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
-      },*/
+      /* {
+         field: 'comment',
+         headerName: 'Observaciones',
+         width: 100,
+         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Obs'),
+         editable: true,
+         // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
+         onCellClicked: (params: any) => {
+           if (params.event.target.classList.contains('ag-cell')) {
+             this.modalService.showModal({ params });
+           }
+         },
+         valueSetter: (params: any) => {
+           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
+ 
+           return true;
+         },
+         cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
+       },*/
 
       {
         headerName: 'Comentarios💬',
@@ -1168,7 +1168,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         cellRendererParams: (params: any) => ({
           documentType: 'REQ',
           idDocument: this.requisitionId,
-          numArticle: params.data?.numArticle || (!params.data?.__isNew && params.data?.id ? String(params.data.id) : ''),
+          numArticle: params.data?.numArticle || (!params.data?.__isNew && params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''),
           locked: !!params.data?.__isNew
         }),
       },
@@ -2039,7 +2039,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.setDefaultCatalogValues();
 
     // Cerrar uno previo si existiera
-    try { this.newArticleModalRef?.close(); } catch {}
+    try { this.newArticleModalRef?.close(); } catch { }
 
     this.newArticleModalRef = this.ngbModal.open(this.newArticleModalTpl, {
       centered: true,
@@ -2058,7 +2058,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   closeNewArticleModal() {
     this.isNewArticleModalVisible = false;
-    try { this.newArticleModalRef?.close(); } catch {}
+    try { this.newArticleModalRef?.close(); } catch { }
     this.newArticleModalRef = null;
     this.currentRowForNewArticle = null;
     this.newArticleFormSubmitted = false;

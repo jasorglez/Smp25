@@ -253,6 +253,7 @@ export class DetalleItemsProveedorComponent {
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter((item: any) => !!item.pedimento);
     this.rowData = articulos.map((item: any, index: number) => ({
+      id: item.id || 0,
       active: true,
       idSupplie: item.idSupplie || 0,
       recurrent: item.recurrent || 'Recurrente',
@@ -553,7 +554,7 @@ export class DetalleItemsProveedorComponent {
     try {
       const items: any = await lastValueFrom(this.ocandreqsService.getReqItems(ocId));
       this.rowData = (Array.isArray(items) ? items : []).map((item: any) => ({
-        idSupplie: item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.description || item.nameArticle || '',
+        id: item.id || 0, idSupplie: item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.description || item.nameArticle || '',
         codigoExterno: item.observation || '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima || 1, tiempoEntrega: item.tiempoEntrega || '',
         cantidadConfirmada: item.quantity || 0, costoTotal: item.total || 0, autorizado: item.autorizado || false, oc: '', typeOC: item.typeOc || '', comment: item.comment || ''
       }));
@@ -587,7 +588,7 @@ export class DetalleItemsProveedorComponent {
         } },
       { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 120, editable: !this.ocGenerated, hide: true },
       { field: 'costoTotal', headerName: 'Costo Total', width: 170, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || '', locked: this.ocGenerated }) },
+      { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''), locked: this.ocGenerated }) },
       { field: 'typeOC', headerName: 'Tipo OC', width: 130, editable: !this.ocGenerated, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
       { field: 'oc', headerName: 'OC', width: 100, editable: !this.ocGenerated, hide: true }
     ];
