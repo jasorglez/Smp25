@@ -46,6 +46,14 @@ export class SucursalByMaterialProveedorService {
     return this.http.delete(`${environment.urlWarehouse}/SucursalByMaterialProveedor/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  patchTiempoDeEntrega(idMaterial: number, idProveedor: number, idSucursal: number, valor: number) {
+    return this.http.patch(
+      `${environment.urlWarehouse}/SucursalByMaterialProveedor/tiempo-entrega/by-material-proveedor-sucursal/${idMaterial}/${idProveedor}/${idSucursal}`,
+      { valor },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
 }
 
 

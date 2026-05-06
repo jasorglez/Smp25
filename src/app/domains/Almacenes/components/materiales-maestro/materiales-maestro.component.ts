@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { DetalleAsignProveedsMaestroComponent } from './details/detalle-asignproveeds-matmaestro.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
@@ -357,7 +358,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       onColumnResized: (event: any) => {
         this.saveColumnState();
-      }
+      },
+      onFirstDataRendered: (params: any) => {
+        runAutosizeAllColumns(params.api);
+      },
     };
 
     return this._gridOptions;

@@ -46,6 +46,7 @@ import { InegiService } from 'app/services/inegi.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { RolesService } from 'app/services/roles.service';
 import { Icatalog } from 'app/interface/icatalog';
 import { ICustomer } from 'app/interface/icustomer';
 import { HttpClient } from '@angular/common/http';
@@ -90,9 +91,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
   authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
   private sucursalByMpService = inject(SucursalByMaterialProveedorService);
+  private rolesService = inject(RolesService);
 
   invited: boolean = false;
-
+  departmentOptions: any[] = [];
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -115,6 +117,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         this.obtenerDatos();
         this.obtenerBranchs();
         this.getTypecop();
+        this.loadDepartments();
       }
     }, { allowSignalWrites: true });
   }
@@ -475,22 +478,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         headerName: 'Compañía *',
         editable: true,
         headerClass: 'my-header-red',
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: (params: any) => {
-          const companyList = this.rowData && Array.isArray(this.rowData)
-            ? this.rowData
-                .map(e => e.company)
-                .filter(name => name && typeof name === 'string' && name.trim() !== '')
-            : [];
-          
-          return {
-            filterList: companyList,
-            filterKey: 'company',
-            placeholder: 'Nombre Compañía',
-            minLength: 1,
-            onEnterPressed: () => { this.enterPressedFlag = true; }
-          };
-        },
+        cellEditorSelector: (params: any) => this.companyEditorSelector(params),
         valueSetter: (params) => {
           const rawValue = params.newValue;
 
@@ -771,6 +759,70 @@ export class ProvidersComponent implements CanComponentDeactivate {
     if (colId === 'typeProvider') return 'tipoProveedor';
     if (colId === 'fieldMaterial') return 'materiales';
     return null;
+  }
+
+  // Carga los departamentos desde la BD
+  private loadDepartments() {
+    if (!this.idCompany) return;
+
+    this.rolesService.getRoles(this.idCompany).subscribe({
+      next: (data: any) => {
+        const raw = data?.data ?? data ?? [];
+        this.departmentOptions = Array.isArray(raw) ? raw : [];
+      },
+      error: (error) => {
+        console.error('Error cargando departamentos:', error);
+        this.departmentOptions = [];
+      }
+    });
+  }
+
+  // Selector de editor para columna Compañía (dropdown si es Interno, autocomplete si es Externo)
+  private companyEditorSelector(params: any) {
+    const typeIntOrExt = params.data?.typeIntOrExt;
+
+    if (typeIntOrExt === 'Interno') {
+      // Obtener nombres de departamentos desde departmentOptions
+      const allDepartments = this.departmentOptions
+        .filter(dept => dept.active)
+        .map(dept => dept.description)
+        .sort();
+
+      // Obtener departamentos ya asignados en otras filas
+      const assignedDepartments = this.rowData
+        .filter((row, index) => index !== params.node.rowIndex && row.typeIntOrExt === 'Interno' && row.company)
+        .map(row => row.company.toUpperCase());
+
+      // Filtrar departamentos disponibles (excluir los ya asignados)
+      const availableDepartments = allDepartments.filter(
+        dept => !assignedDepartments.includes(dept.toUpperCase())
+      );
+
+      return {
+        component: 'agSelectCellEditor',
+        params: {
+          values: availableDepartments
+        }
+      };
+    } else {
+      // Autocomplete para Externo (comportamiento original)
+      const companyList = this.rowData && Array.isArray(this.rowData)
+        ? this.rowData
+            .map(e => e.company)
+            .filter(name => name && typeof name === 'string' && name.trim() !== '')
+        : [];
+
+      return {
+        component: 'autocompleteEditor',
+        params: {
+          filterList: companyList,
+          filterKey: 'company',
+          placeholder: 'Nombre Compañía',
+          minLength: 1,
+          onEnterPressed: () => { this.enterPressedFlag = true; }
+        }
+      };
+    }
   }
 
 

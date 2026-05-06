@@ -252,6 +252,7 @@ export class DetalleItemsProveedorComponent {
 
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter((item: any) => !!item.pedimento);
+    console.log('🔨 buildRowData: Construyendo datos iniciales con', articulos.length, 'artículos');
     this.rowData = articulos.map((item: any, index: number) => ({
       id: item.id || 0,
       active: true,
@@ -263,7 +264,7 @@ export class DetalleItemsProveedorComponent {
       proveedorXTablaId: 0,
       costoUnitario: item.price || 0,
       compraMinima: 1,
-      tiempoEntrega: '',
+      tiempoEntrega: 0,
       cantidadConfirmada: item.quantity || 0,
       costoTotal: (item.price || 0) * (item.quantity || 0),
       autorizado: false,
@@ -272,6 +273,7 @@ export class DetalleItemsProveedorComponent {
       comment: '',
       datePostpone: ''
     }));
+    console.log('✅ buildRowData: rowData inicial:', this.rowData);
     this.updateTotal();
     this.updateHasRowsWithTypeOC();
   }
@@ -300,10 +302,12 @@ export class DetalleItemsProveedorComponent {
         const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
         if (match) {
           row.codigoExterno = match.campo11 || '';
+          row.compraMinima = match.minCompra || 0;
           row.proveedorXTablaId = match.id || 0;
           row.proveedorXTablaObj = match;
         } else {
           row.codigoExterno = '';
+          row.compraMinima = 0;
           row.proveedorXTablaId = 0;
           row.proveedorXTablaObj = null;
           if (row.idSupplie) missingCodes.push(row);
@@ -359,7 +363,7 @@ export class DetalleItemsProveedorComponent {
         if (!materialProviderId || materialProviderId === 0) {
           const provPayload = {
             idTabla: this.selectedProviderId, campo1: row.idSupplie, campo2: 'NA', campo3: 'NA', campo4: 'NA', campo5: 'NA', campo6: 'NA',
-            campo7: true, campo11: row.codigoExterno || '', campo9: row.costoUnitario || 0, campo10: this.idBranch, type: 'MATERIAL', vigente: true, principal: false, active: true
+            campo7: true, campo11: row.codigoExterno || '', campo9: row.costoUnitario || 0, campo10: this.idBranch, minCompra: row.compraMinima || 0, type: 'MATERIAL', vigente: true, principal: false, active: true
           };
           const createdProv: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
           materialProviderId = createdProv?.id ?? createdProv?.ID ?? 0;
@@ -503,33 +507,94 @@ export class DetalleItemsProveedorComponent {
       idDepartament: 0, delivery: 'NO APLICA', deliveryTime: '1 DAY', typeOc: 'INSUMOS', idPayment: 0, idCurrency: 0, type, datesupply: this.fechaProveedor, active: true
     };
     const created: any = await lastValueFrom(this.ocandreqsService.addOcAndReq(ocPayload));
+    console.log('🔑 Respuesta addOcAndReq:', JSON.stringify(created));
     const newOcId = Number(created?.id ?? created?.data?.id ?? created?.project?.id);
+    console.log('🔑 newOcId calculado:', newOcId);
     const gridRows: any[] = [];
     this.gridApi.forEachNode((node: any) => gridRows.push(node.data));
     const rowsForDetails = type === 'OC' ? gridRows.filter((row: any) => this.AUTHORIZED_TYPES.includes(row.typeOC)) : gridRows;
     const details = rowsForDetails.map((row: any) => ({
       idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
-      price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: row.codigoExterno || '', typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega || '', compraMinima: parseFloat(row.compraMinima) || 1
+      price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima))
     }));
-    for (const d of details) await lastValueFrom(this.ocandreqsService.addReqItem(d));
+    console.log('📝 saveCotizOrOC: Guardando', details.length, 'items con estos datos:');
+    console.log(JSON.stringify(details, null, 2));
+    for (const d of details) {
+      console.log('💾 saveCotizOrOC: Guardando item:', d);
+      try {
+        await lastValueFrom(this.ocandreqsService.addReqItem(d));
+        console.log('✅ saveCotizOrOC: Item guardado exitosamente');
+      } catch (err) {
+        console.error('❌ saveCotizOrOC: Error guardando item:', err);
+      }
+    }
 
-    // Sincronizar codigoExterno → proveedorxtablas.campo11 para que materiales-maestro lo vea
+    // Sincronizar codigoExterno (campo11), compraMinima (minima_compra) y costoUnitario (campo9) → proveedorxtablas en un solo PUT
     if (this.selectedProviderId) {
       for (const row of rowsForDetails) {
-        if (row.idSupplie > 0 && row.codigoExterno) {
-          this.providersService.patchProviderXTablaCampo11(row.idSupplie, this.selectedProviderId, row.codigoExterno)
-            .subscribe({ error: e => console.warn(`⚠️ No se pudo sincronizar campo11 para ${row.articulo}:`, e) });
+        if (row.proveedorXTablaId > 0 && row.proveedorXTablaObj) {
+          const updatedProv = {
+            ...row.proveedorXTablaObj,
+            campo11: String(row.codigoExterno ?? '').trim(),
+            minCompra: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)),
+            campo9: isNaN(parseFloat(String(row.costoUnitario))) ? 0 : parseFloat(String(row.costoUnitario))
+          };
+          this.providersService.updateProviderXTable(row.proveedorXTablaId, updatedProv)
+            .subscribe({ error: e => console.warn(`⚠️ No se pudo sincronizar proveedorxtabla para ${row.articulo}:`, e) });
         }
       }
     }
 
-    if (type === 'COTIZ') { this.savedCotizFolio = folio; this.savedOcId = newOcId; await this.loadSavedItems(newOcId); }
+    if (type === 'COTIZ') {
+      this.savedCotizFolio = folio;
+      this.savedOcId = newOcId;
+      await this.loadSavedItems(newOcId);
+      if (this.selectedProviderId) {
+        await this.syncProveedorXTablaFields(this.selectedProviderId);
+        // Sincronizar tiempoEntrega DESPUÉS de obtener proveedorXTablaId
+        await this.syncTiempoEntregaFields(rowsForDetails);
+      }
+    }
     return folio;
+  }
+
+  private async syncProveedorXTablaFields(idProvider: number): Promise<void> {
+    try {
+      const assignments: any = await lastValueFrom(this.providersService.getProvidersXTable(idProvider, 'MATERIAL'));
+      const list: any[] = Array.isArray(assignments) ? assignments : [];
+      this.rowData.forEach(row => {
+        const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
+        if (match) {
+          // codigoExterno NO se sobreescribe: cada cotización conserva su propio valor de detailsreqoc
+          // compraMinima NO se sobreescribe: cada cotización conserva su propio valor de detailsreqoc
+          row.proveedorXTablaId = match.id || 0;
+          row.proveedorXTablaObj = match;
+        }
+      });
+      if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
+    } catch (e) {
+      console.warn('⚠️ syncProveedorXTablaFields: Error cargando proveedorxtablas', e);
+    }
+  }
+
+  private async syncTiempoEntregaFields(rowsForDetails: any[]): Promise<void> {
+    try {
+      for (const row of rowsForDetails) {
+        if (this.idBranch > 0 && row.proveedorXTablaId > 0 && row.tiempoEntrega !== undefined && row.tiempoEntrega !== null && row.tiempoEntrega > 0) {
+          await lastValueFrom(
+            this.sucursalByMaterialProveedorService.patchTiempoDeEntrega(row.proveedorXTablaId, this.selectedProviderId, this.idBranch, row.tiempoEntrega)
+          ).catch(e => console.warn(`⚠️ No se pudo sincronizar tiempo de entrega para ${row.articulo}:`, e));
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ syncTiempoEntregaFields: Error sincronizando tiempoEntrega', e);
+    }
   }
 
   async loadExistingCotiz(): Promise<void> {
     const cotizacionId = this.params.data.cotizacionId;
-    if (!cotizacionId) return;
+    console.log('🔍 loadExistingCotiz: Iniciando con cotizacionId:', cotizacionId);
+    if (!cotizacionId) { console.log('⚠️ loadExistingCotiz: No hay cotizacionId'); return; }
     const slotSuffix = this.providerField === 'idProvider' ? '-A-' : this.providerField === 'idProvider2' ? '-B-' : '-C-';
     try {
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -538,28 +603,60 @@ export class DetalleItemsProveedorComponent {
         lastValueFrom(this.ocandreqsService.getOcAndReqs('delison', cotizacionId, 'COTIZ')),
         lastValueFrom(this.ocandreqsService.getOcAndReqs('branch', idBranch, 'OC'))
       ]);
+      console.log('📦 loadExistingCotiz: Datos recibidos - cotizData:', cotizData, 'ocData:', ocData);
       const ocList = (Array.isArray(ocData) ? ocData : []).filter((c: any) => Number(c.idReq) === Number(reqId));
-      if (ocList.some((c: any) => c.folio?.includes(slotSuffix))) { this.ocGenerated = true; this.cotizacionSaved = true; this.lockGrid(); this.setArticulosPedimentoLocked(true); }
+      if (ocList.some((c: any) => c.folio?.includes(slotSuffix))) {
+        console.log('⚠️ loadExistingCotiz: OC ya generada, bloqueando grid');
+        this.ocGenerated = true; this.cotizacionSaved = true; this.lockGrid(); this.setArticulosPedimentoLocked(true);
+      }
       const existing = (Array.isArray(cotizData) ? cotizData : []).filter((c: any) => c.folio?.includes(slotSuffix)).sort((a: any, b: any) => b.id - a.id)[0];
+      console.log('🔎 loadExistingCotiz: Cotización existente encontrada:', existing);
       if (existing) {
         this.savedOcId = existing.id; this.cotizacionSaved = true; this.savedCotizFolio = existing.folio;
         if (existing.idProvider) { this.selectedProviderId = existing.idProvider; this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null; }
         if (existing.datesupply) this.fechaProveedor = String(existing.datesupply).substring(0, 10);
-        await this.loadSavedItems(existing.id); this.setArticulosPedimentoLocked(true);
+        console.log('📥 loadExistingCotiz: Llamando loadSavedItems con ocId:', existing.id);
+        await this.loadSavedItems(existing.id);
+        // Sincronizar campos de proveedorxtablas (minCompra, codigoExterno) para cotización existente
+        if (existing.idProvider) await this.syncProveedorXTablaFields(existing.idProvider);
+        console.log('✅ loadExistingCotiz: loadSavedItems completado');
+        this.setArticulosPedimentoLocked(true);
       }
-    } catch (err) { console.error('Error loadExistingCotiz', err); }
+    } catch (err) { console.error('❌ Error loadExistingCotiz:', err); }
   }
 
   async loadSavedItems(ocId: number): Promise<void> {
     try {
+      console.log('🔍 loadSavedItems: Cargando items para ocId:', ocId);
       const items: any = await lastValueFrom(this.ocandreqsService.getReqItems(ocId));
-      this.rowData = (Array.isArray(items) ? items : []).map((item: any) => ({
-        id: item.id || 0, idSupplie: item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.description || item.nameArticle || '',
-        codigoExterno: item.observation || '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima || 1, tiempoEntrega: item.tiempoEntrega || '',
-        cantidadConfirmada: item.quantity || 0, costoTotal: item.total || 0, autorizado: item.autorizado || false, oc: '', typeOC: item.typeOc || '', comment: item.comment || ''
+      console.log('📦 loadSavedItems: Items recibidos del servidor:', items);
+
+      // Si no hay items guardados, mantener los datos originales de buildRowData
+      if (!Array.isArray(items) || items.length === 0) {
+        console.warn('⚠️ loadSavedItems: No hay items guardados para ocId:', ocId, '- Manteniendo datos originales de buildRowData');
+        console.log('📊 loadSavedItems: rowData original (sin cambios):', this.rowData);
+        return; // No sobrescribir, mantener datos originales
+      }
+
+      const mappedData = items.map((item: any) => ({
+        id: item.id || 0, idSupplie: item.id_supplie || item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.namearticle || item.description || item.nameArticle || '',
+        codigoExterno: item.observation ?? '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima ?? item.compraminima ?? 0, tiempoEntrega: parseInt(item.tiempoentrega ?? item.tiempoEntrega ?? '0') || 0,
+        cantidadConfirmada: item.quantity || 0, costoTotal: item.total || 0, autorizado: item.autorizado || false, oc: '', typeOC: item.typeoc || item.typeOc || '', comment: item.comment || ''
       }));
-      this.gridApi?.setGridOption('rowData', this.rowData); this.updateTotal(); this.updateHasRowsWithTypeOC();
-    } catch (err) { console.error('Error loadSavedItems', err); }
+
+      console.log('✅ loadSavedItems: Datos mapeados:', mappedData);
+      this.rowData = mappedData;
+      console.log('📊 loadSavedItems: rowData asignado:', this.rowData);
+
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        console.log('✅ loadSavedItems: Grid actualizado');
+      } else {
+        console.warn('⚠️ loadSavedItems: gridApi no disponible');
+      }
+      this.updateTotal();
+      this.updateHasRowsWithTypeOC();
+    } catch (err) { console.error('❌ Error loadSavedItems:', err); }
   }
 
   revertChanges() { this.buildRowData(); this.updateTotal(); this.hasUnsavedChanges = false; this.gridApi?.setGridOption('rowData', this.rowData); }
@@ -573,10 +670,24 @@ export class DetalleItemsProveedorComponent {
       { field: 'numArticulo', headerName: '# Art', width: 169 },
       { field: 'articulo', headerName: 'Artículo', width: 260 },
       { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega22', width: 150, editable: !this.ocGenerated,
+      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 150, editable: !this.ocGenerated,
         cellEditor: 'agNumberCellEditor', cellEditorParams: { precision: 0, min: 0 },
-        valueSetter: (params: any) => { const n = Number(params.newValue); params.data.tiempoEntrega = isNaN(n) ? '' : String(n); return true; } },
-      { field: 'compraMinima', headerName: 'Compra Mín.', width: 145, editable: !this.ocGenerated },
+        valueFormatter: (params: any) => (params.value > 0 ? String(params.value) : ''),
+        valueSetter: (params: any) => {
+          const n = parseInt(String(params.newValue));
+          params.data.tiempoEntrega = isNaN(n) || n < 0 ? 0 : n;
+          return true;
+        }
+      },
+      { field: 'compraMinima', headerName: 'Compra Mín.', width: 145, editable: !this.ocGenerated,
+        cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0, precision: 0 },
+        valueFormatter: (params: any) => (params.value > 0 ? String(Math.floor(params.value)) : ''),
+        valueSetter: (params: any) => {
+          const n = parseInt(String(params.newValue));
+          params.data.compraMinima = isNaN(n) || n < 0 ? 0 : n;
+          return true;
+        }
+      },
       { field: 'costoUnitario', headerName: 'Costo Unit.', width: 140, editable: !this.ocGenerated,
         valueFormatter: (params: any) => params.value ? `$${Number(params.value).toFixed(2)}` : '$0.00',
         valueSetter: (params: any) => {
@@ -616,7 +727,7 @@ export class DetalleItemsProveedorComponent {
   private getSelectedProviderName(): string { return this.selectedProviderObj?.description || 'Sin seleccionar'; }
   updateTotal() { this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0); }
   updateHasRowsWithTypeOC() { this.hasRowsWithTypeOC = this.rowData.some(row => !!(row.typeOC && row.typeOC.trim() !== '')); }
-  get allCostosValid(): boolean { return this.rowData.some(r => r.costoUnitario > 0); }
+  get allCostosValid(): boolean { return !!this.selectedProviderId; }
 
   private refreshFilteredProviders(): void {
     const siblingFields = ['idProvider', 'idProvider2', 'idProvider3'].filter(f => f !== this.providerField);

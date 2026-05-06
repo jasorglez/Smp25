@@ -16,6 +16,7 @@ import { DetallesSucursalesProveedorComponent } from './detalles-sucursalesprove
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { firstValueFrom } from 'rxjs';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 
 @Component({
   selector: 'app-detalle-asignproveeds-matmaestro',
@@ -72,7 +73,22 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    /* Min. Compras: sin icono de filtro; menú de columna (⋯) alineado a la derecha */
+    :host ::ng-deep .ag-header-cell[col-id="minCompra"] .ag-header-cell-comp-wrapper {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    :host ::ng-deep .ag-header-cell[col-id="minCompra"] .ag-cell-label-container {
+      flex: 1;
+      min-width: 0;
+    }
+    :host ::ng-deep .ag-header-cell[col-id="minCompra"] .ag-header-cell-menu-button {
+      margin-left: auto;
+    }
+  `]
 })
 export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp, OnDestroy {
 
@@ -233,6 +249,23 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     return provider.name || provider.description || provider.nameContact || provider.company || '';
   }
 
+  /** Min. Compras: solo enteros ≥ 0; sin letras ni decimales. */
+  private parseMinComprasInteger(raw: unknown): { valid: boolean; value: number } {
+    if (raw === null || raw === undefined || raw === '') {
+      return { valid: true, value: 0 };
+    }
+    if (typeof raw === 'number') {
+      if (!Number.isFinite(raw)) return { valid: false, value: 0 };
+      if (!Number.isInteger(raw)) return { valid: false, value: 0 };
+      if (raw < 0) return { valid: false, value: 0 };
+      return { valid: true, value: raw };
+    }
+    const s = String(raw).trim();
+    if (s === '') return { valid: true, value: 0 };
+    if (!/^\d+$/.test(s)) return { valid: false, value: 0 };
+    return { valid: true, value: parseInt(s, 10) };
+  }
+
   proveedorGridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
@@ -249,7 +282,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       }
       return undefined;
     },
-    onCellClicked: this.onCellClicked.bind(this)
+    onCellClicked: this.onCellClicked.bind(this),
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   components = {
@@ -474,17 +508,56 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       width: 140
     },
 
+    /** Compra mínima por proveedor-material; se persiste en proveedorxtablas.minima_compra (type MATERIAL). */
+    {
+      field: 'minCompra',
+      headerName: 'Min. Compras',
+      editable: true,
+      width: 130,
+      filter: false,
+      suppressHeaderFilterButton: true,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, precision: 0 },
+      valueFormatter: (params: any) => {
+        const v = params.value;
+        if (v === null || v === undefined || v === '') return '';
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : '';
+      },
+      valueParser: (params: any) => {
+        const parsed = this.parseMinComprasInteger(params.newValue);
+        if (!parsed.valid) {
+          return params.oldValue ?? params.data?.minCompra ?? 0;
+        }
+        return parsed.value;
+      },
+      valueSetter: (params: any) => {
+        const parsed = this.parseMinComprasInteger(params.newValue);
+        if (!parsed.valid) {
+          alerts.basicAlert(
+            'Min. Compras',
+            'Solo se permiten números enteros (sin letras ni decimales).',
+            'warning'
+          );
+          return false;
+        }
+        params.data.minCompra = parsed.value;
+        return true;
+      },
+    },
+
     {
       field: 'campo9',
       headerName: 'Precio Unitario',
       editable: true,
       width: 130,
-      valueFormatter: (params: any) => {
-        const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
-        return isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
-      },
-      valueParser: (params: any) => {
-        return Number(params.newValue) || 0;
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { precision: 2, min: 0 },
+      valueFormatter: (params: any) => (params.value > 0 ? `$${Number(params.value).toFixed(2)}` : '$0.00'),
+      valueSetter: (params: any) => {
+        const n = parseFloat(String(params.newValue));
+        params.data.campo9 = isNaN(n) || n < 0 ? 0 : n;
+        return true;
       }
     },
 
@@ -770,9 +843,16 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       this.params.context.MATERIAL.load(this.materialId, 'MATERIAL', (data: any) => {
         this.proveedorRowData = data;
         this.sortProveedorRowData();
-        this.loadSucursalCounts();
+        void this.loadSucursalCounts().then(() => {
+          setTimeout(() => this.autosizeProveedorColumns(), 0);
+        });
       });
     }
+  }
+
+  private autosizeProveedorColumns(): void {
+    if (!this.proveedorGridApi) return;
+    runAutosizeAllColumns(this.proveedorGridApi);
   }
 
   async loadSucursalCounts() {
@@ -817,7 +897,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   onProveedorGridReady(params: any) {
     this.proveedorGridApi = params.api;
     this.gridApi = params.api; // Set alias
-    params.api.sizeColumnsToFit();
 
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
@@ -853,6 +932,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       campo1: this.materialId,  // ID del material
       idTabla: 0,              // ID del proveedor (se seleccionará)
       providerName: '',        // Nombre del proveedor (para mostrar en combo)
+      minCompra: 1,            // Min. compras (proveedorxtablas.minima_compra)
       campo2: '',              // Descripción empaque
       campo3: '',              // Pieza x paquete
       campo11: '',             // Codigo externo
@@ -880,6 +960,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         rowIndex: 0,
         colKey: 'idTabla'
       });
+      this.autosizeProveedorColumns();
     }, 100);
   }
 

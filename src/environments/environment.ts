@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.5 (5 Mayo 2026 14:35) - almmolienda: fix filtrado Nivel 3 (OCs sin validar material)'
+  version: '2.52.23 (5 Mayo 2026 15:15) - Fix: T. Entrega sincroniza a sucursalByMaterialProveedor como campo9'
 };

@@ -56,6 +56,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   fullRowData: any[] = [];
   gridHeight         = '80vh';
   hasUnsavedChanges  = false;
+  private columnState: any = null;
 
   idRoot: number   = null;
   idBranch: number = null;
@@ -282,6 +283,9 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
       this.gridApi.refreshCells({ force: true });
+      if (this.columnState) {
+        this.gridApi.applyColumnState({ state: this.columnState });
+      }
     }
   }
 
@@ -304,6 +308,9 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.refreshCells({ force: true });
+        if (this.columnState) {
+          this.gridApi.applyColumnState({ state: this.columnState });
+        }
       }
     } catch {
       alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de compra', 'error');
@@ -350,7 +357,9 @@ export class PurchaseOrderDelisonComponent implements OnInit {
           if (node.id !== event.node.id) node.setSelected(false);
         });
       }
-    }
+    },
+    onColumnResized: () => this.saveColumnState(),
+    onColumnMoved: () => this.saveColumnState()
   };
 
   get colMaster(): ColDef[] {
@@ -369,8 +378,24 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         editable: false
       },
       {
+        field: 'ocCount',
+        headerName: 'Departamento',
+        width: 100,
+        editable: false,
+        type: 'numericColumn',
+        cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#f1f8e9' }
+      },
+      {
+        field: 'reqFolio',
+        headerName: '# Requisición',
+        width: 160,
+        filter: true,
+        editable: false,
+        cellStyle: { backgroundColor: '#fff8e1', fontWeight: '400' }
+      },
+      {
         field: 'folio',
-        headerName: '# OC',
+        headerName: '# Pedimentos',
         width: 160,
         filter: true,
         editable: false,
@@ -393,22 +418,6 @@ export class PurchaseOrderDelisonComponent implements OnInit {
           }
           event.node.setExpanded(isExpanding);
         }
-      },
-      {
-        field: 'reqFolio',
-        headerName: '# Requisición',
-        width: 160,
-        filter: true,
-        editable: false,
-        cellStyle: { backgroundColor: '#fff8e1', fontWeight: '400' }
-      },
-      {
-        field: 'ocCount',
-        headerName: 'Artículos',
-        width: 100,
-        editable: false,
-        type: 'numericColumn',
-        cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#f1f8e9' }
       }
     ];
   }
@@ -426,6 +435,16 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         p.successCallback([]);
       }
     });
+
+    if (this.columnState) {
+      this.gridApi.applyColumnState({ state: this.columnState });
+    }
+  }
+
+  private saveColumnState() {
+    if (this.gridApi) {
+      this.columnState = this.gridApi.getColumnState();
+    }
   }
 
   onSelectionChanged(_event: any) {}
