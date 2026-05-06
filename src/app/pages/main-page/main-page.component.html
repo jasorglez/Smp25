@@ -3,6 +3,9 @@
 
 <!-- Barra superior -->
 <div class="top-bar">
+  <div class="top-bar-start">
+    <img src="/logo_red_ciudadana.webp" alt="Logo" class="top-bar-logo" />
+  </div>
   <div class="top-bar-end">
     <button class="btn btn-sm btn-outline-danger logout-btn" (click)="auth.logout()">
       <mat-icon style="font-size:18px;vertical-align:middle;line-height:1">logout</mat-icon>
@@ -12,10 +15,33 @@
 </div>
 
 <!-- Contenido principal -->
-<div class="main-content d-flex flex-column min-vh-100">
+<div class="main-content">
 
-  <div class="flex-grow-1 pt-2 px-2">
+  <!-- Banner: licencia próxima a vencer -->
+  <div *ngIf="licenseDays() <= 5 && licenseStatus() !== 'expired'"
+       class="alert alert-warning mb-0 py-1 px-3 d-flex align-items-center gap-2"
+       style="border-radius:0; font-size:0.85rem; flex-shrink:0;">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>Tu licencia vence en <strong>{{ licenseDays() }} día(s)</strong>. Contáctanos.</span>
+  </div>
+
+  <!-- Bloqueo total: licencia expirada -->
+  <div *ngIf="licenseStatus() === 'expired'"
+       class="license-expired-overlay d-flex flex-column align-items-center justify-content-center">
+    <div class="card shadow-lg p-4 text-center" style="max-width:420px;">
+      <i class="bi bi-lock-fill text-danger" style="font-size:3rem;"></i>
+      <h4 class="mt-3 text-danger">Licencia expirada</h4>
+      <p class="text-muted">Tu período de prueba ha concluido.<br>
+        Contacta a soporte para activar tu licencia.</p>
+      <a href="mailto:soporte@bi2.mx" class="btn btn-danger mt-2">
+        <i class="bi bi-envelope-fill me-1"></i> Contactar soporte
+      </a>
+    </div>
+  </div>
+
+  <div class="content-area" [class.d-none]="licenseStatus() === 'expired'">
     <router-outlet></router-outlet>
   </div>
+
   <app-footer></app-footer>
 </div>

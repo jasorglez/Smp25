@@ -3,18 +3,33 @@
   top: 0;
   right: 0;
   left: 0;
-  height: 48px;
+  height: calc(48px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 16px;
-  background: transparent;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-right: 16px;
+  padding-left: 16px;
+  padding-bottom: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
   z-index: 1000;
   pointer-events: none;
 }
 
+.top-bar-start,
 .top-bar-end {
   pointer-events: all;
+  display: flex;
+  align-items: center;
+}
+
+.top-bar-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
 }
 
 .logout-btn {
@@ -23,10 +38,33 @@
   gap: 4px;
 }
 
+// ─── Dark mode ────────────────────────────────────────────────────────────────
+:host-context([data-bs-theme="dark"]) {
+  .top-bar {
+    background: rgba(17, 24, 39, 0.92);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
 .main-content {
   width: 100%;
-  padding-top: 48px;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: calc(48px + env(safe-area-inset-top));
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content-area {
+  flex: 1;
+  min-height: 0;       /* necesario en flex para que el hijo pueda shrink */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 8px 0;
 }
 
 .license-expired-overlay {

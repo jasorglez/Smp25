@@ -21,7 +21,7 @@
   <!-- Buscador -->
   <div class="px-3 pt-3 pb-2">
     <div class="input-group">
-      <span class="input-group-text bg-white border-end-0">
+      <span class="input-group-text bg-body border-end-0">
         <mat-icon style="font-size:20px;line-height:1">search</mat-icon>
       </span>
       <input type="search" class="form-control border-start-0 ps-0"
@@ -60,8 +60,8 @@
   </div>
 
   <!-- Tarjetas de miembros -->
-  <div class="px-3 pb-5">
-    <div class="member-card" *ngFor="let m of miembrosFiltrados">
+  <div class="px-3 pb-2">
+    <div class="member-card" *ngFor="let m of miembrosPagina">
       <div class="member-info">
         <div class="member-name">{{m.nombre}} {{m.apellidoPaterno}} {{m.apellidoMaterno}}</div>
         <div class="member-sub">
@@ -85,6 +85,17 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Paginación -->
+  <div class="pagination-bar" *ngIf="miembrosFiltrados.length > PAGE_SIZE">
+    <button class="pag-btn" (click)="prevPage()" [disabled]="currentPage === 0">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <span class="pag-info">{{ currentPage + 1 }} / {{ totalPages }}</span>
+    <button class="pag-btn" (click)="nextPage()" [disabled]="currentPage === totalPages - 1">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
   </div>
 
   <!-- FAB -->
@@ -123,7 +134,7 @@
 <div *ngIf="currentView === 'rapido'" class="form-container">
 
   <div class="form-header">
-    <button class="btn btn-sm btn-link text-dark p-0 me-2" (click)="backToList()">
+    <button class="btn btn-sm btn-link text-body p-0 me-2" (click)="backToList()">
       <mat-icon>arrow_back</mat-icon>
     </button>
     <div class="flex-grow-1">
@@ -160,6 +171,17 @@
       <input type="text" class="form-control form-control-lg" [(ngModel)]="form.municipio"
              placeholder="Ej: Campeche" style="text-transform:uppercase">
     </div>
+    <div class="mb-3">
+      <label class="form-label">Estado</label>
+      <ng-select
+        [items]="estadosMexico"
+        [(ngModel)]="form.estado"
+        placeholder="— Seleccionar estado —"
+        [clearable]="true"
+        [searchable]="true"
+        appendTo="body">
+      </ng-select>
+    </div>
     <div class="mb-4">
       <label class="form-label">Clave de Elector (# INE)</label>
       <input type="text" class="form-control form-control-lg" [(ngModel)]="form.claveElector"
@@ -167,36 +189,62 @@
     </div>
 
     <!-- Foto INE Frente -->
-    <label class="form-label">📷 INE — Frente</label>
-    <label class="foto-area" [class.foto-captured]="previewFrente">
-      <input type="file" accept="image/*" capture="environment" style="display:none"
-             (change)="onCaptureFrente($event)">
+    <div class="mb-4">
+      <label class="form-label">📷 INE — Frente</label>
       <ng-container *ngIf="!previewFrente">
-        <mat-icon class="foto-icon">photo_camera</mat-icon>
-        <span class="foto-hint">Toca para fotografiar el frente</span>
+        <div class="foto-opciones">
+          <label class="foto-opcion-btn">
+            <input type="file" accept="image/*" capture="environment" style="display:none"
+                   (change)="onCaptureFrente($event)">
+            <mat-icon>photo_camera</mat-icon>
+            <span>Tomar foto</span>
+          </label>
+          <label class="foto-opcion-btn">
+            <input type="file" accept="image/*" style="display:none"
+                   (change)="onCaptureFrente($event)">
+            <mat-icon>photo_library</mat-icon>
+            <span>Galería</span>
+          </label>
+        </div>
       </ng-container>
-      <img *ngIf="previewFrente" [src]="previewFrente" class="foto-preview" alt="INE Frente">
-    </label>
-    <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewFrente"
-            (click)="clearPhoto('frente')">
-      <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
-    </button>
+      <ng-container *ngIf="previewFrente">
+        <div class="foto-area foto-captured">
+          <img [src]="previewFrente" class="foto-preview" alt="INE Frente">
+        </div>
+        <button class="btn btn-sm btn-outline-secondary mt-2" (click)="clearPhoto('frente')">
+          <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+        </button>
+      </ng-container>
+    </div>
 
     <!-- Foto INE Reverso -->
-    <label class="form-label">📷 INE — Reverso</label>
-    <label class="foto-area" [class.foto-captured]="previewReverso">
-      <input type="file" accept="image/*" capture="environment" style="display:none"
-             (change)="onCaptureReverso($event)">
+    <div class="mb-4">
+      <label class="form-label">📷 INE — Reverso</label>
       <ng-container *ngIf="!previewReverso">
-        <mat-icon class="foto-icon">photo_camera</mat-icon>
-        <span class="foto-hint">Toca para fotografiar el reverso</span>
+        <div class="foto-opciones">
+          <label class="foto-opcion-btn">
+            <input type="file" accept="image/*" capture="environment" style="display:none"
+                   (change)="onCaptureReverso($event)">
+            <mat-icon>photo_camera</mat-icon>
+            <span>Tomar foto</span>
+          </label>
+          <label class="foto-opcion-btn">
+            <input type="file" accept="image/*" style="display:none"
+                   (change)="onCaptureReverso($event)">
+            <mat-icon>photo_library</mat-icon>
+            <span>Galería</span>
+          </label>
+        </div>
       </ng-container>
-      <img *ngIf="previewReverso" [src]="previewReverso" class="foto-preview" alt="INE Reverso">
-    </label>
-    <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewReverso"
-            (click)="clearPhoto('reverso')">
-      <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
-    </button>
+      <ng-container *ngIf="previewReverso">
+        <div class="foto-area foto-captured">
+          <img [src]="previewReverso" class="foto-preview" alt="INE Reverso">
+        </div>
+        <button class="btn btn-sm btn-outline-secondary mt-2" (click)="clearPhoto('reverso')">
+          <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+        </button>
+      </ng-container>
+    </div>
 
     <button class="btn btn-success btn-lg w-100 mb-4" (click)="guardar()" [disabled]="isLoading">
       <span class="spinner-border spinner-border-sm me-2" *ngIf="isLoading"></span>
@@ -212,7 +260,7 @@
 <div *ngIf="currentView === 'completo'" class="form-container">
 
   <div class="form-header">
-    <button class="btn btn-sm btn-link text-dark p-0 me-2" (click)="prevStepOrBack()">
+    <button class="btn btn-sm btn-link text-body p-0 me-2" (click)="prevStepOrBack()">
       <mat-icon>arrow_back</mat-icon>
     </button>
     <div class="flex-grow-1">
@@ -358,35 +406,61 @@
     <div *ngIf="currentStep === 4">
       <p class="step-title"><mat-icon>photo_camera</mat-icon> Fotografías INE</p>
 
-      <label class="form-label">INE — Frente</label>
-      <label class="foto-area" [class.foto-captured]="previewFrente">
-        <input type="file" accept="image/*" capture="environment" style="display:none"
-               (change)="onCaptureFrente($event)">
+      <div class="mb-4">
+        <label class="form-label">INE — Frente</label>
         <ng-container *ngIf="!previewFrente">
-          <mat-icon class="foto-icon">photo_camera</mat-icon>
-          <span class="foto-hint">Toca para fotografiar el frente</span>
+          <div class="foto-opciones">
+            <label class="foto-opcion-btn">
+              <input type="file" accept="image/*" capture="environment" style="display:none"
+                     (change)="onCaptureFrente($event)">
+              <mat-icon>photo_camera</mat-icon>
+              <span>Tomar foto</span>
+            </label>
+            <label class="foto-opcion-btn">
+              <input type="file" accept="image/*" style="display:none"
+                     (change)="onCaptureFrente($event)">
+              <mat-icon>photo_library</mat-icon>
+              <span>Galería</span>
+            </label>
+          </div>
         </ng-container>
-        <img *ngIf="previewFrente" [src]="previewFrente" class="foto-preview" alt="INE Frente">
-      </label>
-      <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewFrente"
-              (click)="clearPhoto('frente')">
-        <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
-      </button>
+        <ng-container *ngIf="previewFrente">
+          <div class="foto-area foto-captured">
+            <img [src]="previewFrente" class="foto-preview" alt="INE Frente">
+          </div>
+          <button class="btn btn-sm btn-outline-secondary mt-2" (click)="clearPhoto('frente')">
+            <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+          </button>
+        </ng-container>
+      </div>
 
-      <label class="form-label mt-2">INE — Reverso</label>
-      <label class="foto-area" [class.foto-captured]="previewReverso">
-        <input type="file" accept="image/*" capture="environment" style="display:none"
-               (change)="onCaptureReverso($event)">
+      <div class="mb-4">
+        <label class="form-label">INE — Reverso</label>
         <ng-container *ngIf="!previewReverso">
-          <mat-icon class="foto-icon">photo_camera</mat-icon>
-          <span class="foto-hint">Toca para fotografiar el reverso</span>
+          <div class="foto-opciones">
+            <label class="foto-opcion-btn">
+              <input type="file" accept="image/*" capture="environment" style="display:none"
+                     (change)="onCaptureReverso($event)">
+              <mat-icon>photo_camera</mat-icon>
+              <span>Tomar foto</span>
+            </label>
+            <label class="foto-opcion-btn">
+              <input type="file" accept="image/*" style="display:none"
+                     (change)="onCaptureReverso($event)">
+              <mat-icon>photo_library</mat-icon>
+              <span>Galería</span>
+            </label>
+          </div>
         </ng-container>
-        <img *ngIf="previewReverso" [src]="previewReverso" class="foto-preview" alt="INE Reverso">
-      </label>
-      <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewReverso"
-              (click)="clearPhoto('reverso')">
-        <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
-      </button>
+        <ng-container *ngIf="previewReverso">
+          <div class="foto-area foto-captured">
+            <img [src]="previewReverso" class="foto-preview" alt="INE Reverso">
+          </div>
+          <button class="btn btn-sm btn-outline-secondary mt-2" (click)="clearPhoto('reverso')">
+            <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+          </button>
+        </ng-container>
+      </div>
     </div>
 
     <!-- Navegación entre pasos -->

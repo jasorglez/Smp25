@@ -1,3 +1,38 @@
+// ─── Paginación ───────────────────────────────────────────────────────────────
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0 16px;
+}
+
+.pag-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #dee2e6;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:disabled { opacity: 0.35; cursor: default; }
+  &:not(:disabled):active { background: #e9ecef; }
+
+  mat-icon { font-size: 20px; line-height: 1; }
+}
+
+.pag-info {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+  min-width: 52px;
+  text-align: center;
+}
+
 // ─── Banners ──────────────────────────────────────────────────────────────────
 .banner-offline,
 .banner-sync {
@@ -52,7 +87,7 @@
 // ─── FAB ──────────────────────────────────────────────────────────────────────
 .fab-btn {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(28px + env(safe-area-inset-bottom) + 16px);
   right: 20px;
   width: 56px;
   height: 56px;
@@ -193,4 +228,109 @@
   width: 100%;
   border-radius: 10px;
   display: block;
+}
+
+// ─── Opciones de foto (cámara / galería) ─────────────────────────────────────
+.foto-opciones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.foto-opcion-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px 8px;
+  border: 2px dashed #adb5bd;
+  border-radius: 14px;
+  background: #f8f9fa;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  margin-bottom: 0;
+
+  mat-icon { font-size: 32px !important; color: #6c757d; }
+  span { font-size: 0.8rem; color: #6c757d; font-weight: 500; }
+
+  &:active {
+    background: #e9ecef;
+    border-color: #6c757d;
+  }
+}
+
+// ─── Dark mode ────────────────────────────────────────────────────────────────
+:host-context([data-bs-theme="dark"]) {
+
+  .lista-container { background: #111827; }
+
+  .stat-card {
+    background: #1f2937;
+    box-shadow: 0 1px 4px rgba(0,0,0,.30);
+  }
+  .stat-label { color: #9ca3af; }
+
+  .member-card {
+    background: #1f2937;
+    box-shadow: 0 1px 3px rgba(0,0,0,.30);
+  }
+  .member-name { color: #f9fafb; }
+  .member-sub  { color: #9ca3af; }
+
+  .empty-state { color: #6b7280; }
+
+  .pag-btn {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+    &:not(:disabled):active { background: #374151; }
+  }
+  .pag-info { color: #d1d5db; }
+
+  .banner-offline {
+    background: #3b2800;
+    border-bottom-color: #d97706;
+    color: #fcd34d;
+  }
+  .banner-sync {
+    background: #052e16;
+    border-bottom-color: #059669;
+    color: #6ee7b7;
+  }
+
+  .bottom-sheet {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+  .sheet-handle { background: #374151; }
+
+  .form-container { background: #111827; }
+
+  .form-header {
+    background: #1f2937;
+    border-bottom-color: #374151;
+  }
+
+  .steps-bar { background: #1f2937; }
+
+  .step-dot { background: #374151; }
+
+  .step-title { color: #60a5fa; }
+
+  .foto-area {
+    background: #1f2937;
+    border-color: #4b5563;
+    &:active { background: #374151; }
+  }
+  .foto-icon { color: #6b7280; }
+  .foto-hint { color: #9ca3af; }
+
+  .foto-opcion-btn {
+    background: #1f2937;
+    border-color: #4b5563;
+    mat-icon { color: #9ca3af; }
+    span { color: #9ca3af; }
+    &:active { background: #374151; border-color: #6b7280; }
+  }
 }

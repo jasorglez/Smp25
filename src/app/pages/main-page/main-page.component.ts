@@ -18,6 +18,8 @@ export class MainPageComponent implements OnInit {
   private signalsService = inject(SignalsService);
   auth = inject(AuthService);
 
+  licenseStatus = this.signalsService.getLicenseStatus();
+  licenseDays   = this.signalsService.getLicenseDaysRemaining();
 
   ngOnInit(): void { }
 }

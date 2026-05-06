@@ -2,6 +2,7 @@ import { Component, effect, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {AuthService} from "./services/auth.service";
 import { SignalsService } from './services/signals.service';
+import { ThemeService } from './services/theme.service';
 
 
 @Component({
@@ -16,6 +17,8 @@ export class AppComponent implements OnInit {
 
   private authService = inject(AuthService);
   private signalsService = inject(SignalsService);
+  // Inyectar ThemeService aquí garantiza que el tema se aplique antes del primer render
+  private themeService = inject(ThemeService);
 
   constructor() {
     effect(() => {

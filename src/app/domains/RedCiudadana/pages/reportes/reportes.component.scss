@@ -1,0 +1,85 @@
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+
+  .stat-num {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-top: 4px;
+  }
+}
+
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  mat-icon { font-size: 18px; }
+}
+
+.stat-row {
+  margin-bottom: 12px;
+
+  .stat-row-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+
+    .row-label { font-weight: 500; color: #212529; }
+    .row-counts { color: #6c757d; }
+  }
+
+  .progress {
+    height: 6px;
+    border-radius: 4px;
+    background: #e9ecef;
+
+    .progress-bar { border-radius: 4px; transition: width .4s ease; }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #adb5bd;
+  mat-icon { font-size: 48px; }
+  p { margin-top: 8px; font-size: 0.9rem; }
+}
+
+// ─── Dark mode ────────────────────────────────────────────────────────────────
+:host-context([data-bs-theme="dark"]) {
+  .stat-card {
+    background: #1f2937;
+    box-shadow: 0 2px 8px rgba(0,0,0,.30);
+    .stat-label { color: #9ca3af; }
+  }
+
+  .section-title { color: #d1d5db; }
+
+  .stat-row {
+    .row-label  { color: #f3f4f6; }
+    .row-counts { color: #9ca3af; }
+    .progress   { background: #374151; }
+  }
+
+  .empty-state { color: #6b7280; }
+}

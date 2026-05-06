@@ -45,8 +45,19 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
   showModeSheet  = false;
   searchText     = '';
 
-  miembros:        IRedMiembro[] = [];
+  miembros:          IRedMiembro[] = [];
   miembrosFiltrados: IRedMiembro[] = [];
+
+  readonly PAGE_SIZE = 5;
+  currentPage = 0;
+
+  get totalPages() { return Math.max(1, Math.ceil(this.miembrosFiltrados.length / this.PAGE_SIZE)); }
+  get miembrosPagina() {
+    const start = this.currentPage * this.PAGE_SIZE;
+    return this.miembrosFiltrados.slice(start, start + this.PAGE_SIZE);
+  }
+  nextPage() { if (this.currentPage < this.totalPages - 1) this.currentPage++; }
+  prevPage() { if (this.currentPage > 0) this.currentPage--; }
 
   form: Partial<IRedMiembro> = {};
   previewFrente: string | null = null;
@@ -90,6 +101,7 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
           `${m.nombre} ${m.apellidoPaterno} ${m.apellidoMaterno ?? ''} ${m.claveElector ?? ''}`
             .toLowerCase().includes(q))
       : [...this.miembros];
+    this.currentPage = 0;
   }
 
   get totalMiembros()  { return this.miembros.length; }

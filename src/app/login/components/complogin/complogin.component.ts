@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
 import { Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -8,16 +8,13 @@ import { Router, RouterModule } from '@angular/router';
 import { alerts } from '../../../helpers/alerts';
 import { functions } from '../../../helpers/functions';
 
-import { LoginService } from '../../../services/login.service';
 import { TrackingService } from '../../../services/tracking.service';
-import { CompanysService } from '../../../services/companys.service';
-import { LoginImageService } from '../../../services/login-image.service';
 
 import { AuthService } from '../../../services/auth.service';
 import { UsersService } from '../../../services/users.service';
 import { SignalsService } from 'app/services/signals.service';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { switchMap, tap } from 'rxjs/operators';
+import { switchMap } from 'rxjs/operators';
 import { environment } from '@env/environment';
 
 @Component({
@@ -33,51 +30,31 @@ import { environment } from '@env/environment';
     DomainsModule
   ]
 })
-export class ComploginComponent implements OnInit, OnDestroy {
+export class ComploginComponent implements OnInit {
 
   environment = environment;
 
   hide = true;
-  emailcapt   : string = '';
-  displayName : string = '' ;
-  picture     : string = '' ;
+  emailcapt: string = '';
 
-  /** Imágenes de fondo desde el backend (SMP Login). Si la API falla o no hay imágenes, no se pide asset (evita 404). */
-  images: string[] = [];
-  currentImageIndex: number = 0;
-  private carouselTimer: any = null;
-
-  private loginService    = inject(LoginService) ;
-  private loginSetupService = inject(LoginImageService);
-  private companysService = inject(CompanysService);
   private trackingService = inject(TrackingService);
   private userService     = inject(UsersService);
   private auth            = inject(AuthService);
   private formBuilder     = inject(FormBuilder);
   private router          = inject(Router);
-  private signalsService = inject(SignalsService);
+  private signalsService  = inject(SignalsService);
 
-  /** @deprecated reemplazado por currentImageIndex + carrusel */
-  randomImage : string = '' ;
-
-	public flogin = this.formBuilder.group({
-		emaillogin    : ['', [Validators.required, Validators.email]],
-		passwordlogin : ['', Validators.required]
-	})
+  public flogin = this.formBuilder.group({
+    emaillogin:    ['', [Validators.required, Validators.email]],
+    passwordlogin: ['', Validators.required]
+  });
 
   isAdvanced: boolean = false;
   formSubmitted = false;
   isLoading = false;
   idBranch: number;
-  carouselDirection: 'forward' | 'reverse' = 'reverse';
-
-  valorcapturado = '' ;
-  loginCardPositionClass = 'corner-top-left';
-
 
   ngOnInit(): void {
-    this.setRandomCardPosition();
-    this.loadLoginBackgroundImages();
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     const storedEmail = this.signalsService.getemailChoose();
@@ -105,56 +82,6 @@ export class ComploginComponent implements OnInit, OnDestroy {
     }
   }
 
-  private setRandomCardPosition(): void {
-    const positions = ['corner-top-left', 'corner-top-right', 'corner-bottom-left', 'corner-bottom-right'];
-    const randomIndex = Math.floor(Math.random() * positions.length);
-    this.loginCardPositionClass = positions[randomIndex];
-  }
-
-  /** Determina el índice de inicio y persiste en localStorage según la dirección del carrusel. */
-  private getStartingIndex(): number {
-    if (this.images.length === 0) return 0;
-    const defaultSeed = this.carouselDirection === 'reverse' ? String(this.images.length) : '-1';
-    const lastIndex = parseInt(localStorage.getItem('loginImgIndex') ?? defaultSeed, 10);
-    const step = this.carouselDirection === 'reverse' ? -1 : 1;
-    const nextIndex = (lastIndex + step + this.images.length) % this.images.length;
-    localStorage.setItem('loginImgIndex', String(nextIndex));
-    return nextIndex;
-  }
-
-  /** Inicia el carrusel cíclico cada 6 segundos según la dirección configurada. */
-  private startCarousel(): void {
-    if (this.carouselTimer) clearInterval(this.carouselTimer);
-    if (this.images.length <= 1) return;
-    const step = this.carouselDirection === 'reverse' ? -1 : 1;
-    this.carouselTimer = setInterval(() => {
-      this.currentImageIndex = (this.currentImageIndex + step + this.images.length) % this.images.length;
-    }, 6000);
-  }
-
-  ngOnDestroy(): void {
-    if (this.carouselTimer) clearInterval(this.carouselTimer);
-  }
-
-  /** Carga las URLs de imágenes desde el backend (SMP → Login); si hay alguna, se usan como fondo. */
-  private loadLoginBackgroundImages(): void {
-    this.loginSetupService.getLoginImagesPublic().subscribe({
-      next: (list) => {
-        const urls = (list || [])
-          .map((item) => this.loginSetupService.getImageDisplayUrl(item?.url))
-          .filter((u: string) => u);
-        if (urls.length > 0) {
-          this.images = urls;
-          this.currentImageIndex = this.getStartingIndex();
-          this.startCarousel();
-        }
-      },
-      error: () => {
-        // Si falla (ej. API no disponible), se mantiene el fondo oscuro por defecto
-      }
-    });
-  }
-
   toggleHide() {
     this.hide = !this.hide;
   }
@@ -164,21 +91,18 @@ export class ComploginComponent implements OnInit, OnDestroy {
     this.emailcapt = this.flogin.get('emaillogin')?.value ?? '';
     this.trackingService.setEmail(this.emailcapt);
 
-    if (this.flogin.invalid) {
-      return;
-    }
+    if (this.flogin.invalid) return;
 
     const data: Ilogin = {
       email: this.flogin.get('emaillogin')?.value ?? '',
       password: this.flogin.get('passwordlogin')?.value ?? ''
     };
 
-    this.trackingService.addLog('', "Inicio del Sistema", "Origen del Formulario Login", this.emailcapt);
+    this.trackingService.addLog('', 'Inicio del Sistema', 'Origen del Formulario Login', this.emailcapt);
     this.isLoading = true;
 
     this.auth.login(data).subscribe({
       next: (resp: any) => {
-        // ✅ Guardar token e iniciar timers de sesión
         localStorage.setItem('token', resp.data.token);
         this.auth.startSessionTimers();
 
@@ -214,10 +138,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     }
                     this.navigateToHomeAfterLogin();
                   },
-                  error: (permError) => {
-                    console.error('Error fetching advanced permissions:', permError);
-                    this.isLoading = false;
-                  }
+                  error: () => { this.isLoading = false; }
                 });
               } else {
                 this.auth.fetchUserPermissions(userId).subscribe({
@@ -227,29 +148,23 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     }
                     this.navigateToHomeAfterLogin();
                   },
-                  error: (permError) => {
-                    console.error('Error fetching permissions:', permError);
-                    this.isLoading = false;
-                  }
+                  error: () => { this.isLoading = false; }
                 });
               }
             }
           },
-          error: (error) => {
-            console.error('Error al obtener los datos del usuario:', error);
-            this.isLoading = false;
-          }
+          error: () => { this.isLoading = false; }
         });
       },
       error: (err) => {
         console.log(err);
         this.isLoading = false;
-        alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
+        alerts.basicAlert('Error', 'Los datos de logueo son inválidos', 'error');
       }
     });
   }
 
-  invalidField(field:string){
+  invalidField(field: string) {
     return functions.invalidField(field, this.flogin, this.formSubmitted);
   }
 
