@@ -1,0 +1,24 @@
+<div class="col-md-12">
+  <div class="card">
+    <div class="card-header px-2">
+      <ul class="nav nav-pills">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('red', 'procesos')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="procesos" routerLinkActive="active">
+            <mat-icon>settings</mat-icon> Procesos
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('red', 'reportes')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="reportes" routerLinkActive="active">
+            <mat-icon>bar_chart</mat-icon> Reportes
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('red', 'registros')">
+          <a class="nav-link green-tab d-flex align-items-center" routerLink="registros" routerLinkActive="active">
+            <mat-icon>list_alt</mat-icon> Registros
+          </a>
+        </li>
+      </ul>
+    </div>
+    <router-outlet></router-outlet>
+  </div>
+</div>

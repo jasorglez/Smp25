@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../Visual Studio 22/c#/MicroServicios/chatBotTwilio"
+		},
+		{
+			"path": "../../../Visual Studio 22/c#/MicroServicios/chatBotTelegram"
+		}
+	],
+	"settings": {
+		"CodeGPT.apiKey": "Ollama"
+	}
+}

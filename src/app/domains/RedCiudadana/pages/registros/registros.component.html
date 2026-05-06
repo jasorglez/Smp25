@@ -1,0 +1,394 @@
+<!-- ─── Banner sin conexión ─────────────────────────────────────────────────── -->
+<div class="banner-offline" *ngIf="!isOnline">
+  <mat-icon>wifi_off</mat-icon>
+  <span>Sin conexión — se guardará localmente</span>
+  <span class="badge bg-warning text-dark ms-auto" *ngIf="pendingCount > 0">
+    {{pendingCount}} pendiente(s)
+  </span>
+</div>
+
+<div class="banner-sync" *ngIf="isOnline && pendingCount > 0">
+  <mat-icon>sync</mat-icon>
+  <span>{{pendingCount}} registro(s) sin sincronizar</span>
+  <button class="btn btn-sm btn-success ms-auto py-0" (click)="syncPending()">Sincronizar</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  VISTA: LISTA                                                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="currentView === 'lista'" class="lista-container">
+
+  <!-- Buscador -->
+  <div class="px-3 pt-3 pb-2">
+    <div class="input-group">
+      <span class="input-group-text bg-white border-end-0">
+        <mat-icon style="font-size:20px;line-height:1">search</mat-icon>
+      </span>
+      <input type="search" class="form-control border-start-0 ps-0"
+             placeholder="Buscar nombre o # INE..."
+             [(ngModel)]="searchText"
+             (ngModelChange)="applyFilter()">
+    </div>
+  </div>
+
+  <!-- Estadísticas -->
+  <div class="row g-2 px-3 pb-3">
+    <div class="col-6">
+      <div class="stat-card">
+        <div class="stat-num text-primary">{{totalMiembros}}</div>
+        <div class="stat-label">Registrados</div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="stat-card">
+        <div class="stat-num text-success">{{totalAfiliados}}</div>
+        <div class="stat-label">Afiliados INE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="text-center py-5" *ngIf="isLoading">
+    <div class="spinner-border text-primary"></div>
+    <p class="text-muted mt-2 mb-0">Cargando...</p>
+  </div>
+
+  <!-- Estado vacío -->
+  <div class="empty-state" *ngIf="!isLoading && miembrosFiltrados.length === 0">
+    <mat-icon>people_outline</mat-icon>
+    <p>{{ searchText ? 'Sin resultados para "' + searchText + '"' : 'Aún no hay miembros registrados' }}</p>
+  </div>
+
+  <!-- Tarjetas de miembros -->
+  <div class="px-3 pb-5">
+    <div class="member-card" *ngFor="let m of miembrosFiltrados">
+      <div class="member-info">
+        <div class="member-name">{{m.nombre}} {{m.apellidoPaterno}} {{m.apellidoMaterno}}</div>
+        <div class="member-sub">
+          <mat-icon style="font-size:14px;vertical-align:middle">badge</mat-icon>
+          {{m.claveElector || 'Sin clave elector'}}
+        </div>
+        <div class="member-sub" *ngIf="m.municipio || m.estado">
+          <mat-icon style="font-size:14px;vertical-align:middle">location_on</mat-icon>
+          {{m.municipio}}{{m.estado ? ' · ' + m.estado : ''}}
+        </div>
+      </div>
+      <div class="member-actions">
+        <span class="badge rounded-pill" [ngClass]="m.afiliado ? 'bg-success' : 'bg-secondary'">
+          {{m.afiliado ? '✓ Afiliado' : 'Pendiente'}}
+        </span>
+        <div class="form-check form-switch mt-1 mb-0">
+          <input class="form-check-input" type="checkbox"
+                 [checked]="m.afiliado"
+                 (change)="toggleAfiliado(m)"
+                 [id]="'sw-' + m.id">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab-btn" (click)="openModeSheet()">
+    <mat-icon>add</mat-icon>
+  </button>
+</div>
+
+<!-- ─── Bottom sheet: selector de modo ─────────────────────────────────────── -->
+<div class="sheet-overlay" *ngIf="showModeSheet" (click)="closeModeSheet()">
+  <div class="bottom-sheet" (click)="$event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h6 class="text-center mb-4 fw-bold">Nuevo Registro</h6>
+    <div class="d-grid gap-3">
+      <button class="btn btn-outline-primary mode-btn" (click)="openForm('rapido')">
+        <mat-icon>bolt</mat-icon>
+        <div>
+          <div class="fw-semibold">Registro Rápido</div>
+          <small class="text-muted">Nombre · Dirección · # INE · Fotos</small>
+        </div>
+      </button>
+      <button class="btn btn-outline-success mode-btn" (click)="openForm('completo')">
+        <mat-icon>assignment</mat-icon>
+        <div>
+          <div class="fw-semibold">Registro Completo</div>
+          <small class="text-muted">Todos los datos + 4 pasos</small>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  VISTA: REGISTRO RÁPIDO                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="currentView === 'rapido'" class="form-container">
+
+  <div class="form-header">
+    <button class="btn btn-sm btn-link text-dark p-0 me-2" (click)="backToList()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="flex-grow-1">
+      <span class="fw-semibold"><mat-icon style="vertical-align:middle">bolt</mat-icon> Registro Rápido</span>
+    </div>
+    <span class="badge bg-warning text-dark" *ngIf="!isOnline">
+      <mat-icon style="font-size:14px">wifi_off</mat-icon> Offline
+    </span>
+  </div>
+
+  <div class="form-body">
+    <div class="mb-3">
+      <label class="form-label">Nombre(s) <span class="text-danger">*</span></label>
+      <input type="text" class="form-control form-control-lg" [(ngModel)]="form.nombre"
+             placeholder="Ej: Juan Carlos" autocomplete="given-name">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Apellido Paterno <span class="text-danger">*</span></label>
+      <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoPaterno"
+             placeholder="Ej: García" autocomplete="family-name">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Apellido Materno</label>
+      <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoMaterno"
+             placeholder="Ej: López">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Dirección</label>
+      <input type="text" class="form-control form-control-lg" [(ngModel)]="form.calle"
+             placeholder="Calle, número, colonia">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Municipio</label>
+      <input type="text" class="form-control form-control-lg" [(ngModel)]="form.municipio"
+             placeholder="Ej: Campeche">
+    </div>
+    <div class="mb-4">
+      <label class="form-label">Clave de Elector (# INE)</label>
+      <input type="text" class="form-control form-control-lg" [(ngModel)]="form.claveElector"
+             placeholder="18 caracteres" maxlength="20" style="text-transform:uppercase">
+    </div>
+
+    <!-- Foto INE Frente -->
+    <label class="form-label">📷 INE — Frente</label>
+    <label class="foto-area" [class.foto-captured]="previewFrente">
+      <input type="file" accept="image/*" capture="environment" style="display:none"
+             (change)="onCaptureFrente($event)">
+      <ng-container *ngIf="!previewFrente">
+        <mat-icon class="foto-icon">photo_camera</mat-icon>
+        <span class="foto-hint">Toca para fotografiar el frente</span>
+      </ng-container>
+      <img *ngIf="previewFrente" [src]="previewFrente" class="foto-preview" alt="INE Frente">
+    </label>
+    <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewFrente"
+            (click)="clearPhoto('frente')">
+      <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+    </button>
+
+    <!-- Foto INE Reverso -->
+    <label class="form-label">📷 INE — Reverso</label>
+    <label class="foto-area" [class.foto-captured]="previewReverso">
+      <input type="file" accept="image/*" capture="environment" style="display:none"
+             (change)="onCaptureReverso($event)">
+      <ng-container *ngIf="!previewReverso">
+        <mat-icon class="foto-icon">photo_camera</mat-icon>
+        <span class="foto-hint">Toca para fotografiar el reverso</span>
+      </ng-container>
+      <img *ngIf="previewReverso" [src]="previewReverso" class="foto-preview" alt="INE Reverso">
+    </label>
+    <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewReverso"
+            (click)="clearPhoto('reverso')">
+      <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+    </button>
+
+    <button class="btn btn-success btn-lg w-100 mb-4" (click)="guardar()" [disabled]="isLoading">
+      <span class="spinner-border spinner-border-sm me-2" *ngIf="isLoading"></span>
+      <mat-icon *ngIf="!isLoading">{{isOnline ? 'save' : 'save_alt'}}</mat-icon>
+      {{isLoading ? 'Guardando...' : (isOnline ? 'Guardar Registro' : 'Guardar Offline')}}
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  VISTA: REGISTRO COMPLETO                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="currentView === 'completo'" class="form-container">
+
+  <div class="form-header">
+    <button class="btn btn-sm btn-link text-dark p-0 me-2" (click)="prevStepOrBack()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="flex-grow-1">
+      <span class="fw-semibold">Registro Completo</span>
+      <br><small class="text-muted">Paso {{currentStep}} de {{TOTAL_STEPS}}</small>
+    </div>
+    <span class="badge bg-warning text-dark" *ngIf="!isOnline">Offline</span>
+  </div>
+
+  <!-- Indicador de pasos -->
+  <div class="steps-bar">
+    <div *ngFor="let s of [1,2,3,4]" class="step-dot"
+         [class.step-active]="s === currentStep"
+         [class.step-done]="s < currentStep">
+    </div>
+  </div>
+
+  <div class="form-body">
+
+    <!-- ─── Paso 1: Datos Personales ──────────────────────────────────────── -->
+    <div *ngIf="currentStep === 1">
+      <p class="step-title"><mat-icon>person</mat-icon> Datos Personales</p>
+      <div class="mb-3">
+        <label class="form-label">Nombre(s) <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.nombre"
+               placeholder="Nombre(s)" autocomplete="given-name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Apellido Paterno <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoPaterno"
+               autocomplete="family-name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Apellido Materno</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoMaterno">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Fecha de Nacimiento</label>
+        <input type="date" class="form-control form-control-lg" [(ngModel)]="form.fechaNacimiento">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Género</label>
+        <select class="form-select form-select-lg" [(ngModel)]="form.genero">
+          <option value="">— Seleccionar —</option>
+          <option value="M">Masculino</option>
+          <option value="F">Femenino</option>
+          <option value="O">Otro</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">CURP</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.curp"
+               maxlength="18" style="text-transform:uppercase" placeholder="18 caracteres">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Teléfono</label>
+        <input type="tel" class="form-control form-control-lg" [(ngModel)]="form.telefono"
+               placeholder="10 dígitos" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- ─── Paso 2: Domicilio ─────────────────────────────────────────────── -->
+    <div *ngIf="currentStep === 2">
+      <p class="step-title"><mat-icon>home</mat-icon> Domicilio</p>
+      <div class="mb-3">
+        <label class="form-label">Estado</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.estado"
+               placeholder="Ej: Campeche">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Municipio</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.municipio">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Colonia</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.colonia">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-8">
+          <label class="form-label">Calle</label>
+          <input type="text" class="form-control" [(ngModel)]="form.calle">
+        </div>
+        <div class="col-4">
+          <label class="form-label">No. Ext</label>
+          <input type="text" class="form-control" [(ngModel)]="form.numExterior">
+        </div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">No. Int</label>
+          <input type="text" class="form-control" [(ngModel)]="form.numInterior">
+        </div>
+        <div class="col-6">
+          <label class="form-label">C.P.</label>
+          <input type="text" class="form-control" [(ngModel)]="form.codigoPostal"
+                 maxlength="5" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Paso 3: Datos Electorales ────────────────────────────────────── -->
+    <div *ngIf="currentStep === 3">
+      <p class="step-title"><mat-icon>how_to_vote</mat-icon> Datos Electorales</p>
+      <div class="mb-3">
+        <label class="form-label">Clave de Elector</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.claveElector"
+               maxlength="20" style="text-transform:uppercase" placeholder="XXXXXXXXXXXXXXXX">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Sección Electoral</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.seccionElectoral"
+               inputmode="numeric">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Distrito Electoral</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.distritoElectoral">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Entidad Federativa</label>
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.entidadFederativa">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Observaciones</label>
+        <textarea class="form-control" rows="3" [(ngModel)]="form.observaciones"
+                  placeholder="Notas adicionales..."></textarea>
+      </div>
+    </div>
+
+    <!-- ─── Paso 4: Fotografías ───────────────────────────────────────────── -->
+    <div *ngIf="currentStep === 4">
+      <p class="step-title"><mat-icon>photo_camera</mat-icon> Fotografías INE</p>
+
+      <label class="form-label">INE — Frente</label>
+      <label class="foto-area" [class.foto-captured]="previewFrente">
+        <input type="file" accept="image/*" capture="environment" style="display:none"
+               (change)="onCaptureFrente($event)">
+        <ng-container *ngIf="!previewFrente">
+          <mat-icon class="foto-icon">photo_camera</mat-icon>
+          <span class="foto-hint">Toca para fotografiar el frente</span>
+        </ng-container>
+        <img *ngIf="previewFrente" [src]="previewFrente" class="foto-preview" alt="INE Frente">
+      </label>
+      <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewFrente"
+              (click)="clearPhoto('frente')">
+        <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+      </button>
+
+      <label class="form-label mt-2">INE — Reverso</label>
+      <label class="foto-area" [class.foto-captured]="previewReverso">
+        <input type="file" accept="image/*" capture="environment" style="display:none"
+               (change)="onCaptureReverso($event)">
+        <ng-container *ngIf="!previewReverso">
+          <mat-icon class="foto-icon">photo_camera</mat-icon>
+          <span class="foto-hint">Toca para fotografiar el reverso</span>
+        </ng-container>
+        <img *ngIf="previewReverso" [src]="previewReverso" class="foto-preview" alt="INE Reverso">
+      </label>
+      <button class="btn btn-sm btn-outline-secondary mb-4 mt-1" *ngIf="previewReverso"
+              (click)="clearPhoto('reverso')">
+        <mat-icon style="font-size:16px">refresh</mat-icon> Retomar
+      </button>
+    </div>
+
+    <!-- Navegación entre pasos -->
+    <div class="d-flex gap-2 mt-3 mb-4">
+      <button class="btn btn-outline-secondary flex-fill" *ngIf="currentStep > 1" (click)="prevStep()">
+        <mat-icon>chevron_left</mat-icon> Anterior
+      </button>
+      <button class="btn btn-primary flex-fill" *ngIf="currentStep < TOTAL_STEPS" (click)="nextStep()">
+        Siguiente <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button class="btn btn-success flex-fill" *ngIf="currentStep === TOTAL_STEPS"
+              (click)="guardar()" [disabled]="isLoading">
+        <span class="spinner-border spinner-border-sm me-1" *ngIf="isLoading"></span>
+        {{isLoading ? 'Guardando...' : (isOnline ? 'Guardar' : 'Guardar Offline')}}
+      </button>
+    </div>
+  </div>
+</div>

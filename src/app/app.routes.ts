@@ -2373,6 +2373,46 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'red-ciudadana',
+        loadComponent: () =>
+          import('./domains/RedCiudadana/pages/red-ciudadana/red-ciudadana.component').then(
+            (r) => r.RedCiudadanaComponent
+          ),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'red' } },
+        children: [
+          { path: '', redirectTo: 'procesos', pathMatch: 'full' },
+          {
+            path: 'procesos',
+            loadComponent: () =>
+              import('./domains/RedCiudadana/pages/procesos/procesos.component').then(
+                (p) => p.RedProcesosComponent
+              ),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'red', detailed: 'procesos' } },
+          },
+          {
+            path: 'reportes',
+            loadComponent: () =>
+              import('./domains/RedCiudadana/pages/reportes/reportes.component').then(
+                (r) => r.RedReportesComponent
+              ),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'red', detailed: 'reportes' } },
+          },
+          {
+            path: 'registros',
+            loadComponent: () =>
+              import('./domains/RedCiudadana/pages/registros/registros.component').then(
+                (r) => r.RedRegistrosComponent
+              ),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'red', detailed: 'registros' } },
+          },
+        ],
+      },
+
+      {
         path: 'unauthorized',
         loadComponent: () =>
           import('./shared/unauthorized/unauthorized.component').then(

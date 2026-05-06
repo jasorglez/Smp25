@@ -1,0 +1,260 @@
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { SharedModule } from 'app/shared/shared.module';
+import { RedMiembrosService } from 'app/services/red-miembros.service';
+import { OfflineQueueService } from 'app/services/offline-queue.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
+import { SignalsService } from 'app/services/signals.service';
+import { IRedMiembro } from 'app/interface/ired-miembro';
+import { alerts } from 'app/helpers/alerts';
+
+type Vista = 'lista' | 'rapido' | 'completo';
+
+@Component({
+  selector: 'app-red-registros',
+  standalone: true,
+  imports: [SharedModule, FormsModule],
+  templateUrl: './registros.component.html',
+  styleUrl: './registros.component.scss',
+})
+export class RedRegistrosComponent implements OnInit, OnDestroy {
+  private redService      = inject(RedMiembrosService);
+  private offlineQueue    = inject(OfflineQueueService);
+  private imageHandler    = inject(ImageHandlerService);
+  private signalsService  = inject(SignalsService);
+
+  currentView: Vista = 'lista';
+  currentStep        = 1;
+  readonly TOTAL_STEPS = 4;
+
+  isLoading      = false;
+  isOnline       = navigator.onLine;
+  pendingCount   = 0;
+  showModeSheet  = false;
+  searchText     = '';
+
+  miembros:        IRedMiembro[] = [];
+  miembrosFiltrados: IRedMiembro[] = [];
+
+  form: Partial<IRedMiembro> = {};
+  previewFrente: string | null = null;
+  previewReverso: string | null = null;
+  fileFrente:  File | null = null;
+  fileReverso: File | null = null;
+
+  private idRoot = 0;
+  private onlineHandler  = () => { this.isOnline = true;  this.syncPending(); };
+  private offlineHandler = () => { this.isOnline = false; };
+
+  ngOnInit() {
+    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    window.addEventListener('online',  this.onlineHandler);
+    window.addEventListener('offline', this.offlineHandler);
+    this.loadMiembros();
+    this.refreshPendingCount();
+  }
+
+  ngOnDestroy() {
+    window.removeEventListener('online',  this.onlineHandler);
+    window.removeEventListener('offline', this.offlineHandler);
+  }
+
+  async loadMiembros() {
+    this.isLoading = true;
+    this.redService.getByRoot(this.idRoot).subscribe({
+      next: (data) => {
+        this.miembros = data;
+        this.applyFilter();
+        this.isLoading = false;
+      },
+      error: () => { this.isLoading = false; }
+    });
+  }
+
+  applyFilter() {
+    const q = this.searchText.toLowerCase().trim();
+    this.miembrosFiltrados = q
+      ? this.miembros.filter(m =>
+          `${m.nombre} ${m.apellidoPaterno} ${m.apellidoMaterno ?? ''} ${m.claveElector ?? ''}`
+            .toLowerCase().includes(q))
+      : [...this.miembros];
+  }
+
+  get totalMiembros()  { return this.miembros.length; }
+  get totalAfiliados() { return this.miembros.filter(m => m.afiliado).length; }
+
+  openModeSheet()  { this.showModeSheet = true; }
+  closeModeSheet() { this.showModeSheet = false; }
+
+  openForm(modo: 'rapido' | 'completo') {
+    this.closeModeSheet();
+    this.resetForm();
+    this.currentView = modo;
+    this.currentStep = 1;
+  }
+
+  backToList() {
+    this.currentView = 'lista';
+    this.resetForm();
+  }
+
+  resetForm() {
+    this.form = { idRoot: this.idRoot, activo: true, afiliado: false };
+    this.previewFrente  = null;
+    this.previewReverso = null;
+    this.fileFrente     = null;
+    this.fileReverso    = null;
+  }
+
+  onCaptureFrente(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.fileFrente = file;
+    this.readPreview(file, (b64) => this.previewFrente = b64);
+  }
+
+  onCaptureReverso(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.fileReverso = file;
+    this.readPreview(file, (b64) => this.previewReverso = b64);
+  }
+
+  clearPhoto(side: 'frente' | 'reverso') {
+    if (side === 'frente')  { this.previewFrente  = null; this.fileFrente  = null; }
+    if (side === 'reverso') { this.previewReverso = null; this.fileReverso = null; }
+  }
+
+  private readPreview(file: File, cb: (b64: string) => void) {
+    const reader = new FileReader();
+    reader.onload = (e) => cb(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  // ─── Validación ─────────────────────────────────────────────────────────────
+
+  private validarPaso1(): boolean {
+    if (!this.form.nombre?.trim() || !this.form.apellidoPaterno?.trim()) {
+      alerts.basicAlert('Campos requeridos', 'Nombre y Apellido Paterno son obligatorios', 'warning');
+      return false;
+    }
+    return true;
+  }
+
+  nextStep() {
+    if (this.currentStep === 1 && !this.validarPaso1()) return;
+    if (this.currentStep < this.TOTAL_STEPS) this.currentStep++;
+  }
+
+  prevStep() {
+    if (this.currentStep > 1) this.currentStep--;
+  }
+
+  prevStepOrBack() {
+    if (this.currentStep > 1) this.prevStep();
+    else this.backToList();
+  }
+
+  // ─── Guardar ────────────────────────────────────────────────────────────────
+
+  async guardar() {
+    if (!this.validarPaso1()) return;
+    this.isLoading = true;
+    try {
+      if (this.isOnline) {
+        await this.guardarOnline();
+      } else {
+        await this.guardarOffline();
+      }
+      this.backToList();
+      await this.loadMiembros();
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo guardar el registro', 'error');
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private async guardarOnline() {
+    if (this.fileFrente) {
+      this.form.ineFrenteUrl = await this.imageHandler.uploadFileToFirebase(
+        this.fileFrente, 'red-ciudadana/ine'
+      );
+    }
+    if (this.fileReverso) {
+      this.form.ineReversoUrl = await this.imageHandler.uploadFileToFirebase(
+        this.fileReverso, 'red-ciudadana/ine'
+      );
+    }
+    await new Promise<void>((res, rej) =>
+      this.redService.create(this.form).subscribe({ next: () => res(), error: rej })
+    );
+    alerts.basicAlert('Éxito', 'Miembro registrado', 'success');
+  }
+
+  private async guardarOffline() {
+    await this.offlineQueue.enqueue({
+      miembro:           { ...this.form },
+      ineFrenteBase64:   this.previewFrente,
+      ineReversoBase64:  this.previewReverso,
+    });
+    await this.refreshPendingCount();
+    alerts.basicAlert('Guardado', 'Se sincronizará cuando tengas conexión', 'info');
+  }
+
+  // ─── Afiliación ─────────────────────────────────────────────────────────────
+
+  toggleAfiliado(miembro: IRedMiembro) {
+    miembro.afiliado = !miembro.afiliado;
+    this.redService.update(miembro.id!, miembro).subscribe({
+      error: () => { miembro.afiliado = !miembro.afiliado; } // revert on error
+    });
+  }
+
+  // ─── Sincronización offline ─────────────────────────────────────────────────
+
+  async syncPending() {
+    const queue = await this.offlineQueue.getQueue();
+    if (!queue.length) return;
+
+    let synced = 0;
+    for (const item of queue) {
+      try {
+        if (item.ineFrenteBase64) {
+          item.miembro.ineFrenteUrl = await this.imageHandler.uploadFileToFirebase(
+            this.base64ToFile(item.ineFrenteBase64, 'ine-frente.jpg'), 'red-ciudadana/ine'
+          );
+        }
+        if (item.ineReversoBase64) {
+          item.miembro.ineReversoUrl = await this.imageHandler.uploadFileToFirebase(
+            this.base64ToFile(item.ineReversoBase64, 'ine-reverso.jpg'), 'red-ciudadana/ine'
+          );
+        }
+        await new Promise<void>((res, rej) =>
+          this.redService.create(item.miembro).subscribe({ next: () => res(), error: rej })
+        );
+        await this.offlineQueue.remove(item.id);
+        synced++;
+      } catch { /* continuar con el siguiente */ }
+    }
+
+    await this.refreshPendingCount();
+    if (synced > 0) {
+      await this.loadMiembros();
+      alerts.basicAlert('Sincronizado', `${synced} registro(s) enviados`, 'success');
+    }
+  }
+
+  async refreshPendingCount() {
+    this.pendingCount = await this.offlineQueue.count();
+  }
+
+  private base64ToFile(base64: string, filename: string): File {
+    const [header, data] = base64.split(',');
+    const mime = header.match(/:(.*?);/)![1];
+    const bytes = atob(data);
+    const arr   = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new File([arr], filename, { type: mime });
+  }
+}
