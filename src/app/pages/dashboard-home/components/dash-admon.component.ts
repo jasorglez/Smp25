@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, NgZone, OnInit } from '@angular/core';
+import { Component, DestroyRef, effect, inject, NgZone, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +12,7 @@ import { SignalrService } from 'app/services/signalr.service';
   selector: 'app-dash-admon',
   standalone: true,
   imports: [CommonModule, NgApexchartsModule, DecimalPipe, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="p-3">
 
