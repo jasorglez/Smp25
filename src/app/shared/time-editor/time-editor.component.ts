@@ -3,6 +3,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
 
 @Component({
   selector: 'app-time-editor',
+  standalone: false,
   template: `
     <input #input
            type="time"

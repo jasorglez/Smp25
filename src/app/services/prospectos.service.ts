@@ -158,8 +158,8 @@ export class ProspectosService {
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }) as Interaccion)
       .sort((a, b) => {
-        const aTime = (a.fecha as any)?.seconds ?? (a.fecha as any)?.toDate?.().getTime() / 1000 ?? 0;
-        const bTime = (b.fecha as any)?.seconds ?? (b.fecha as any)?.toDate?.().getTime() / 1000 ?? 0;
+        const aTime = ((a.fecha as any)?.seconds || (a.fecha as any)?.toDate?.().getTime?.() / 1000) ?? 0;
+        const bTime = ((b.fecha as any)?.seconds || (b.fecha as any)?.toDate?.().getTime?.() / 1000) ?? 0;
         return bTime - aTime;
       });
   }
