@@ -23,7 +23,7 @@
       (blur)="collapseAfterInteraction()"
       (click)="expandTemporarily()"
       class="form-select mb-2"
-      [value]="selectedRoot || ''"
+      [value]="selectedRoot() || ''"
       [matTooltip]="isSidebarCollapsed && !isTemporarilyExpanded ? (('select' | translate) + ' ' + ('company' | translate)) : ''"
       matTooltipPosition="right"
     >

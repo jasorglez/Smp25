@@ -241,14 +241,14 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
       });
   }
 
-  // Conexión al AdmonHub del microservicio Tracking para actualizaciones en tiempo real
+  // Conexión al AdmonHub del microservicio Administration para actualizaciones en tiempo real
   public startAdmonConnection(token?: string): void {
     if (this.admonHubConnection?.state === signalR.HubConnectionState.Connected ||
         this.admonHubConnection?.state === signalR.HubConnectionState.Connecting) {
       return;
     }
 
-    const hubUrl = 'https://endpoints.biapp.com.mx/tracking/admonHub';
+    const hubUrl = 'https://endpoints.biapp.com.mx/administration/admonHub';
 
     this.admonHubConnection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
