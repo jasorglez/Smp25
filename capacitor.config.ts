@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.bi.red',
-  appName: 'bi-aug-24',
+  appName: 'Red Ciudadana',
   webDir: 'dist/bi-aug-24/browser'
 };
 

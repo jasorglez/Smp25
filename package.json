@@ -1,6 +1,6 @@
 {
-  "name": "bi-aug-24",
-  "version": "2.51.20",
+  "name": "red-ciudadana-movil",
+  "version": "0.0.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

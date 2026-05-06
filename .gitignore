@@ -146,10 +146,6 @@ dist
 # Reconstruir proyecto en Angular
 rebuildFront.sh
 
-# Capacitor
-android/
-ios/
-
 # Local backend junctions/workspaces
 _tracking-backend/
 _smp-backend/
