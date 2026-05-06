@@ -216,21 +216,25 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     }
   }
 
-  private mapOcRow(oc: any, branchName: string): any {
+  private mapOcRow(oc: any): any {
+    const branchName = this.branchesMap.get(oc.idReference) || `Sucursal ${oc.idReference}`;
+
     return {
-      id:           oc.id,
+      id:           oc.reqId,
       sucursal:     branchName,
-      folio:        oc.folio || '',
-      ocCount:      oc.countItems ?? 0,
+      folio:        '',
+      ocCount:      oc.countPedimentos ?? 0,
       catalogo:     '',
-      idReference:  oc.idReq || oc.id,
+      idReference:  oc.idReference,
       idCompany:    this.idRoot,
-      active:       oc.active !== false,
+      active:       true,
       detailType:   null,
-      idProvider:   oc.idProvider,
+      idProvider:   null,
+      idDepartament: oc.idDepartament ?? null,
+      department:   oc.departmentName || 'Sin Departamento',
       reqFolio:     oc.reqFolio || '',
       dateModified: oc.dateModified || null,
-      dateCreate:   oc.dateCreate   || null
+      dateCreate:   oc.dateModified || null
     };
   }
 
@@ -259,20 +263,18 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     }
 
     const branchPromises = this.branches.map(branch =>
-      new Promise<{ ocs: any[]; branch: any }>((resolve) => {
+      new Promise<any[]>((resolve) => {
         this.ocAndReqsService.getOcsByBranch(branch.id).subscribe({
-          next: (data: any) => resolve({ ocs: Array.isArray(data) ? data : [], branch }),
-          error: () => resolve({ ocs: [], branch })
+          next: (data: any) => resolve(Array.isArray(data) ? data : []),
+          error: () => resolve([])
         });
       })
     );
 
-    const branchResults: any[] = await Promise.all(branchPromises);
-    const allOcs = branchResults.flatMap(({ ocs, branch }) =>
-      ocs.map((oc: any) => ({ oc, branchName: branch.name }))
-    );
+    const branchResults = await Promise.all(branchPromises);
+    const allOcs = branchResults.flat();
 
-    const mapped = allOcs.map(({ oc, branchName }) => this.mapOcRow(oc, branchName));
+    const mapped = allOcs.map((oc: any) => this.mapOcRow(oc));
 
     this.fullRowData = mapped.sort((a, b) => {
       const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
@@ -283,21 +285,15 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
       this.gridApi.refreshCells({ force: true });
-      if (this.columnState) {
-        this.gridApi.applyColumnState({ state: this.columnState });
-      }
     }
   }
 
   private async loadFromSingleBranch(branchId: number) {
-    const branch = this.branches.find(b => b.id === branchId);
-    const branchName = branch?.name || '';
-
     try {
       const data: any = await lastValueFrom(this.ocAndReqsService.getOcsByBranch(branchId));
       const ocs = Array.isArray(data) ? data : [];
 
-      const allMapped = ocs.map((oc: any) => this.mapOcRow(oc, branchName));
+      const allMapped = ocs.map((oc: any) => this.mapOcRow(oc));
       this.fullRowData = allMapped.sort((a, b) => {
         const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
         const dateB = new Date(b.dateModified || b.dateCreate || 0).getTime();
@@ -308,9 +304,6 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.refreshCells({ force: true });
-        if (this.columnState) {
-          this.gridApi.applyColumnState({ state: this.columnState });
-        }
       }
     } catch {
       alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de compra', 'error');
@@ -362,65 +355,63 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     onColumnMoved: () => this.saveColumnState()
   };
 
-  get colMaster(): ColDef[] {
-    return [
-      {
-        headerName: '#',
-        width: 45,
-        valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
-      },
-      {
-        field: 'sucursal',
-        headerName: 'Sucursal',
-        width: 180,
-        filter: true,
-        editable: false
-      },
-      {
-        field: 'ocCount',
-        headerName: 'Departamento',
-        width: 100,
-        editable: false,
-        type: 'numericColumn',
-        cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#f1f8e9' }
-      },
-      {
-        field: 'reqFolio',
-        headerName: '# Requisición',
-        width: 160,
-        filter: true,
-        editable: false,
-        cellStyle: { backgroundColor: '#fff8e1', fontWeight: '400' }
-      },
-      {
-        field: 'folio',
-        headerName: '# Pedimentos',
-        width: 160,
-        filter: true,
-        editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', fontWeight: '500', cursor: 'pointer', textDecoration: 'underline' },
-        onCellClicked: (event: any) => {
-          const isExpanding = !event.node.expanded;
-          if (isExpanding) {
-            event.api.forEachNode((node: any) => {
-              if (node.id !== event.node.id) {
-                node.setExpanded(false);
-                node.setRowHeight(0);
-              }
-            });
-            event.api.onRowHeightChanged();
-          } else {
-            event.api.forEachNode((node: any) => {
-              node.setRowHeight(undefined);
-            });
-            event.api.onRowHeightChanged();
-          }
-          event.node.setExpanded(isExpanding);
+  colMaster: ColDef[] = [
+    {
+      headerName: '#',
+      width: 45,
+      valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+    },
+    {
+      field: 'sucursal',
+      headerName: 'Sucursal',
+      width: 180,
+      filter: true,
+      editable: false
+    },
+    {
+      field: 'department',
+      headerName: 'Departamento',
+      width: 150,
+      editable: false,
+      cellStyle: { fontWeight: '500', textAlign: 'left' }
+    },
+    {
+      field: 'reqFolio',
+      headerName: '# Requisición',
+      width: 160,
+      filter: true,
+      editable: false,
+      cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '400', cursor: 'pointer', textDecoration: 'underline' },
+      onCellClicked: (event: any) => {
+        const isExpanding = !event.node.expanded;
+        if (isExpanding) {
+          event.api.forEachNode((node: any) => {
+            if (node.id !== event.node.id) {
+              node.setExpanded(false);
+              node.setRowHeight(0);
+            }
+          });
+          event.api.onRowHeightChanged();
+        } else {
+          event.api.forEachNode((node: any) => {
+            node.setRowHeight(undefined);
+          });
+          event.api.onRowHeightChanged();
         }
+        event.node.setExpanded(isExpanding);
       }
-    ];
-  }
+    },
+    {
+      field: 'ocCount',
+      headerName: '# Pedimentos',
+      width: 160,
+      filter: true,
+      editable: false,
+      valueFormatter: (p) => p.value || 0,
+      cellStyle: { fontWeight: '500', textAlign: 'center' }
+    }
+  ];
 
   // ==================== GRID EVENTS ====================
 
@@ -436,14 +427,26 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       }
     });
 
-    if (this.columnState) {
-      this.gridApi.applyColumnState({ state: this.columnState });
-    }
+    // Cargar estado de columnas de localStorage una sola vez (con pequeño delay)
+    setTimeout(() => this.loadColumnStateFromStorage(), 50);
   }
 
   private saveColumnState() {
     if (this.gridApi) {
       this.columnState = this.gridApi.getColumnState();
+      localStorage.setItem('purchaseOrderColumnState', JSON.stringify(this.columnState));
+    }
+  }
+
+  private loadColumnStateFromStorage() {
+    try {
+      const stored = localStorage.getItem('purchaseOrderColumnState');
+      if (stored && this.gridApi) {
+        this.columnState = JSON.parse(stored);
+        this.gridApi.applyColumnState({ state: this.columnState });
+      }
+    } catch (e) {
+      console.warn('Error cargando estado de columnas:', e);
     }
   }
 

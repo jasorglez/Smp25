@@ -773,7 +773,10 @@ export class DetalleItemsProveedorComponent {
   hideCompanySuggestionsDelayed() { setTimeout(() => { this.showCompanySuggestions = false; }, 200); }
   selectCompanySuggestion(name: string) { this.newProvider.company = name; this.showCompanySuggestions = false; }
   async confirmNewProvider() {
-    if (!this.newProvider.company.trim()) return;
+    if (!this.newProvider.company.trim() && !this.newProvider.nameContact.trim()) {
+      alerts.reqErrorToast('Requerido', 'Ingresa la compañía y/o el contacto principal');
+      return;
+    }
 
     this.savingProvider = true;
     try {
@@ -907,6 +910,18 @@ export class DetalleItemsProveedorComponent {
       return wrap;
     };
 
+    const msg = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(msg, 'font-size', '13px');
+    this.renderer.setStyle(msg, 'color', '#856404');
+    this.renderer.setStyle(msg, 'margin-bottom', '12px');
+    this.renderer.setStyle(msg, 'padding', '10px');
+    this.renderer.setStyle(msg, 'background', '#fff3cd');
+    this.renderer.setStyle(msg, 'border', '1px solid #ffc107');
+    this.renderer.setStyle(msg, 'border-radius', '4px');
+    this.renderer.setStyle(msg, 'font-weight', '600');
+    this.renderer.appendChild(msg, this.renderer.createText('⚠ Ingresa la compañía y/o el contacto principal'));
+    body.appendChild(msg);
+
     body.appendChild(mkField('Compañía *', 'Nombre de la empresa', this.newProvider.company, (v) => {
       this.newProvider.company = v;
       this.companyDuplicateWarning = '';
@@ -943,7 +958,9 @@ export class DetalleItemsProveedorComponent {
     this.newProviderOverlayUnlisteners.push(this.renderer.listen(backdrop, 'click', () => this.closeNewProviderOverlay()));
     this.newProviderOverlayUnlisteners.push(this.renderer.listen(modal, 'click', (e: Event) => e.stopPropagation()));
     this.newProviderOverlayUnlisteners.push(this.renderer.listen(create, 'click', () => {
-      if (!String(this.newProvider.company || '').trim()) return;
+      const hasCompany = String(this.newProvider.company || '').trim();
+      const hasContact = String(this.newProvider.nameContact || '').trim();
+      if (!hasCompany && !hasContact) return;
       void this.confirmNewProvider();
     }));
 

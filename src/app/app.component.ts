@@ -31,6 +31,8 @@ import { ComparacionOverlayService, ComparacionOverlayData } from './services/co
           [requisitionFolio]="comparacionData.requisitionFolio"
           [selectedProviderIds]="comparacionData.selectedProviderIds"
           [idBranchFromReq]="comparacionData.idBranchFromReq"
+          [idDepartamentFromReq]="comparacionData.idDepartamentFromReq"
+          [departmentName]="comparacionData.departmentName"
           (closed)="closeComparacion()"
           style="display:flex; flex-direction:column; height:100%;">
         </app-comparacion-precios>

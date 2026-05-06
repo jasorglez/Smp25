@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.23 (5 Mayo 2026 15:15) - Fix: T. Entrega sincroniza a sucursalByMaterialProveedor como campo9'
+  version: '2.52.40 (6 Mayo 2026 21:00) - Fix: Validacion en form nuevo proveedor - requiere compania y/o contacto principal'
 };

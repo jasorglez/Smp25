@@ -460,6 +460,18 @@ export class ProviderQuoteDetailComponent implements OnInit {
         this.ocAndReqsService.getDetailedReq(this.cotizId)
       );
 
+      // Extraer el número de pedimento del folio de la COTIZ proveedor
+      // El folio tiene formato "COTIZ-{pedimentoId}-{sufijo}-{timestamp}"
+      let pedimentoNum = 0;
+      const pedimentoMatch = (cotizMaster.folio || '').match(/^COTIZ-(\d+)-/);
+      if (pedimentoMatch) {
+        const pedimentoParentId = parseInt(pedimentoMatch[1]);
+        const pedimentoData: any = await lastValueFrom(
+          this.ocAndReqsService.getDetailedReq(pedimentoParentId)
+        );
+        pedimentoNum = pedimentoData?.pedimento || 0;
+      }
+
       // Generar folio automáticamente desde PrefixSetup
       const type: 'project' | 'branch' = cotizMaster.typeReference === 'project' ? 'project' : 'branch';
       const folio = await this.prefixSetupService.getNextFolio(type, cotizMaster.idReference, 'oc');
@@ -482,6 +494,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
         idPayment: cotizMaster.idPayment || 0,
         idCurrency: cotizMaster.idCurrency || 0,
         idAuthorize: cotizMaster.idAuthorize || 0,
+        pedimento: pedimentoNum,
         active: true
       };
 

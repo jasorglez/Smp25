@@ -96,6 +96,10 @@ export class OcAndReqsService {
     return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/lock`, { locked }, { headers: this.trackingService.getHeaders() });
   }
 
+  shouldLockRequisicion(id: number): Observable<{ shouldLock: boolean }> {
+    return this.http.get<{ shouldLock: boolean }>(`${environment.urlWarehouse}/Ocandreq/${id}/should-lock`, { headers: this.trackingService.getHeaders() });
+  }
+
   setCountItem(id: number, countItem: number): Observable<any> {
     return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/countitem`, { countItem }, { headers: this.trackingService.getHeaders() });
   }
@@ -194,7 +198,7 @@ export class OcAndReqsService {
 
   getPedimentosByRequisicion(idRequisicion: number): Observable<any[]> {
     return this.http.get<any[]>(
-      `${environment.urlWarehouse}/Ocandreq?typeReference=requisition&idReference=${idRequisicion}&type=COTIZ`,
+      `${environment.urlWarehouse}/Ocandreq/pedimentos-by-requisicion?idRequisicion=${idRequisicion}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

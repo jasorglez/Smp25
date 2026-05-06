@@ -24,6 +24,10 @@ import { lastValueFrom, Subscription } from 'rxjs';
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
         <h5 class="mb-0" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
           Comparación de Precios por Proveedor
+          <span *ngIf="departmentName"
+                style="background:#6a1b9a; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:8px; letter-spacing:1px; text-transform: uppercase;">
+            {{ departmentName }}
+          </span>
           <span *ngIf="requisitionFolio"
                 style="background:#2e7d32; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:8px; letter-spacing:1px;">
             {{ requisitionFolio }}
@@ -184,6 +188,19 @@ import { lastValueFrom, Subscription } from 'rxjs';
       text-align: center;
     }
 
+    /* Evitar que al abrir el editor (TIPO OC) se "parta" el contenido en ARTICULO/CANTIDAD */
+    :host ::ng-deep .ag-cell.cell-col-articulo .ag-cell-value,
+    :host ::ng-deep .ag-cell.cell-col-cantidad-a-comprar .ag-cell-value {
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      word-break: normal !important;
+      overflow-wrap: normal !important;
+      min-width: 0 !important;
+      width: 100% !important;
+      display: block !important;
+    }
+
     :host ::ng-deep .ag-header-cell.header-cantidad-comprar .ag-header-cell-label {
       justify-content: center;
       width: 100%;
@@ -289,10 +306,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   @Input() requisitionFolio: string = '';
   @Input() selectedProviderIds: number[] = [];
   @Input() idBranchFromReq: number = 0;
+  @Input() idDepartamentFromReq: number = 0;
+  @Input() departmentName: string = '';
   @Output() closed = new EventEmitter<void>();
 
   ocGenerada = false;
   ocPairs: { pedimento: string; oc: string }[] = [];
+  proveedoresConOc: Set<number> = new Set();
 
   rowData: any[] = [];
   private originalRowData: any[] = [];
@@ -436,12 +456,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     try {
       const ocs: any = await lastValueFrom(this.ocAndReqsService.getOcsByRequisition(this.requisitionId));
       const list = Array.isArray(ocs) ? ocs : [];
+      this.proveedoresConOc.clear();
       this.ocPairs = list
         .map((oc: any) => {
           const folio = oc.folio || '';
           if (!folio) return null;
           const suffix = folio.includes('-A-') ? 'A' : folio.includes('-B-') ? 'B' : folio.includes('-C-') ? 'C' : '';
           const pedimento = suffix ? (this.slotFolioMap.get(suffix) || `Pedimento-${suffix}`) : '';
+          if (Number(oc.idProvider) > 0) this.proveedoresConOc.add(Number(oc.idProvider));
           return { pedimento, oc: folio };
         })
         .filter(Boolean) as { pedimento: string; oc: string }[];
@@ -471,7 +493,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       dateCreate:    new Date().toISOString().split('T')[0],
       idProvider:    provId,
       solicit:       provName.substring(0, 50),
-      idDepartament: 0,
+      idDepartament: this.idDepartamentFromReq || 0,
       delivery:      'NO APLICA',
       deliveryTime:  '1 DAY',
       typeOc:        'INSUMOS',
@@ -637,7 +659,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const cantidadCapturada = Number(rawValue);
     const cantidadNormalizada = Number.isFinite(cantidadCapturada) ? cantidadCapturada : 0;
 
-    return Math.min(Math.max(cantidadNormalizada, 0), cantidadComprar);
+    const articuloItemId = Number(row?.articuloItemId ?? 0);
+    const sumOtros = this.rowData
+      .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== row)
+      .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+
+    const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+    return Math.min(Math.max(cantidadNormalizada, 0), maxAllowed);
   }
 
   onCellValueChanged(event: any) {
@@ -675,15 +703,21 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     if (field === 'cantidadConceptualizada') {
       const cantidadValidada = this.getValidatedCantidadConceptualizada(event.newValue, event.data);
       event.data.cantidadConceptualizada = cantidadValidada;
-      if (Number(event.newValue) > Number(event.data?.cantidadComprar ?? 0)) {
+      if (cantidadValidada < Number(event.newValue)) {
+        const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
+        const articuloItemId = Number(event.data?.articuloItemId ?? 0);
+        const sumOtros = this.rowData
+          .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
+          .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+        const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
         alerts.basicAlert(
           'Cantidad inválida',
-          'La cantidad por proveedor no puede ser mayor a la cantidad a comprar.',
+          `La suma de cantidades por proveedor no puede superar la cantidad requerida (${cantidadComprar}). Máximo permitido para este proveedor: ${maxAllowed.toFixed(2)}.`,
           'warning'
         );
       }
       if (this.gridApi) {
-        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+        this.gridApi.refreshCells({ force: true });
       }
     }
     if (field === 'costoUnitario' || field === 'compraMinima') {
@@ -708,7 +742,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         row.cantidadConceptualizada = cantidadValidada;
         alerts.basicAlert(
           'Cantidad inválida',
-          'Existe una cantidad por proveedor mayor a la cantidad a comprar. Se ajustó antes de guardar.',
+          'La suma de cantidades asignadas a los proveedores supera la cantidad requerida del artículo. Se ajustó el valor antes de guardar.',
           'warning'
         );
         if (this.gridApi) this.gridApi.refreshCells({ force: true });
@@ -802,8 +836,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
-    this.ocGenerada = true;
+    this.ocGenerada = allTotalizado;
     this.ocPairs = generatedPairs;
+    for (const [provId] of rowsByProvider) this.proveedoresConOc.add(provId);
 
     // Bloquear la requisición solo si todos los ítems están totalizados
     if (allTotalizado && this.requisitionId) {
@@ -813,7 +848,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
 
     this.cdr.detectChanges();
-    if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+      this.gridApi.refreshCells({ force: true });
+    }
     alerts.closeLoading();
 
     const titulo = allTotalizado
@@ -1027,14 +1065,30 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         cellClass: 'cell-cantidad-comprar cell-col-articulo',
         headerClass: 'header-cantidad-comprar',
         rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: { padding: '4px', backgroundColor: '#e8f4fd' },
-        wrapText: true
+        cellStyle: {
+          padding: '4px',
+          backgroundColor: '#e8f4fd',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }
       },
       {
         field: 'proveedorNombre',
         headerName: 'PROVEEDOR',
         width: 190,
-        cellStyle: { backgroundColor: '#e3f2fd', fontWeight: '500', padding: '4px' }
+        cellStyle: (params: any) => {
+          const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
+          return locked
+            ? { backgroundColor: '#eeeeee', fontWeight: '500', padding: '4px', color: '#9e9e9e' }
+            : { backgroundColor: '#e3f2fd', fontWeight: '500', padding: '4px' };
+        },
+        cellRenderer: (params: any) => {
+          const name = params.value || '';
+          const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
+          if (!locked) return name;
+          return `<span style="display:flex;align-items:center;gap:5px;">${name}<i class="bi bi-lock-fill" style="color:#9e9e9e;font-size:0.75rem;flex-shrink:0;" title="OC generada"></i></span>`;
+        }
       },
       {
         field: 'tiempoEntrega',
@@ -1060,8 +1114,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         cellClass: 'cell-cantidad-comprar cell-col-cantidad-a-comprar',
         headerClass: 'header-cantidad-comprar',
         rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: { padding: '4px', backgroundColor: '#e8f4fd', textAlign: 'center' },
-        wrapText: true
+        cellStyle: {
+          padding: '4px',
+          backgroundColor: '#e8f4fd',
+          textAlign: 'center',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }
       },
       {
         field: 'nuevoRecurrente',
@@ -1143,7 +1203,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'TIPO OC',
         width: 150,
         minWidth: 120,
-        editable: true,
+        editable: (params: any) => !this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0)),
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
@@ -1152,13 +1212,18 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           allowTyping: false
         }),
         tooltipValueGetter: (p: any) => p.data?.tipoOc || '',
-        cellStyle: { textAlign: 'center', padding: '4px', fontSize: '10px', lineHeight: '1.2' }
+        cellStyle: (params: any) => {
+          const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
+          return { textAlign: 'center', padding: '4px', fontSize: '10px', lineHeight: '1.2',
+                   backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
+        }
       },
       {
         field: 'cantidadConceptualizada',
         headerName: 'CANTIDAD X PROV.',
         width: 135,
         editable: (params: any) => {
+          if (this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0))) return false;
           const tipoOc = params.data?.tipoOc;
           return tipoOc === 'COMPRA INMEDIATA' || tipoOc === 'COMPRA AUTORIZADA EN OTRA FECHA';
         },
@@ -1172,7 +1237,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         }),
         valueFormatter: (params: any) =>
           params.value != null ? Number(params.value).toFixed(2) : '0.00',
-        cellStyle: { textAlign: 'center', padding: '4px' }
+        cellStyle: (params: any) => {
+          const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
+          return { textAlign: 'center', padding: '4px',
+                   backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
+        }
       }
     ];
     return this._colDefs;

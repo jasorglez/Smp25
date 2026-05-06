@@ -5,6 +5,7 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
 import { ComparacionOverlayService } from 'app/services/comparacion-overlay.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { Subscription } from 'rxjs';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
@@ -65,8 +66,10 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   private context: any;
   private pedimentoModificationService = inject(PedimentoModificationService);
   private comparacionOverlayService = inject(ComparacionOverlayService);
+  private ocAndReqsService = inject(OcAndReqsService);
   private modificationSub?: Subscription;
   rowData: any[] = [];
+  pedimentosWithOcIds: Set<number> = new Set();
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   private expandedRowId: string | null = null;
 
@@ -81,6 +84,21 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     this.params = params;
     this.context = params.context;
     this.buildRowData();
+    this.loadPedimentosWithOc();
+  }
+
+  private loadPedimentosWithOc(): void {
+    const idReq = this.params.data?.id;
+    if (!idReq) return;
+    this.ocAndReqsService.getPedimentosByRequisicion(idReq).subscribe({
+      next: (pedimentos: any[]) => {
+        this.pedimentosWithOcIds = new Set((pedimentos || []).map((p: any) => p.id));
+        if (this.gridApi) {
+          this.gridApi.refreshCells({ columns: ['pedimento'], force: true });
+        }
+      },
+      error: () => {}
+    });
   }
 
   onGridReady(params: any) {
@@ -309,7 +327,16 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         headerName: 'PEDIMENTO #',
         width: 160,
         flex: 0,
-        suppressSizeToFit: true
+        suppressSizeToFit: true,
+        cellRenderer: (params: any) => {
+          const label = params.value || '';
+          const hasOc = this.pedimentosWithOcIds.has(params.data?.cotizacionId);
+          if (!hasOc) return label;
+          const wrap = document.createElement('span');
+          wrap.style.cssText = 'display:flex;align-items:center;gap:5px;';
+          wrap.innerHTML = `${label} <i class="bi bi-lock-fill" style="color:#b71c1c;font-size:0.8rem;flex-shrink:0;" title="OC generada"></i>`;
+          return wrap;
+        }
       },
 
     /*  {
@@ -695,7 +722,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       requisitionId: node.data.requisitionId,
       requisitionFolio: this.params.data.requisition || '',
       selectedProviderIds: [node.data.idProvider, node.data.idProvider2, node.data.idProvider3].filter((id: number) => id > 0),
-      idBranchFromReq: this.params.data.idReference || 0
+      idBranchFromReq: this.params.data.idReference || 0,
+      idDepartamentFromReq: this.params.data.idDepartament || 0,
+      departmentName: this.params.data.department || ''
     });
   }
 

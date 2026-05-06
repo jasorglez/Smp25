@@ -10,10 +10,9 @@ import { DetailCellRendererPedimentosComponent } from './detalle-pedimentosxprov
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
-import { DepartmentsService } from 'app/services/departments.service';
 import { RolesService } from 'app/services/roles.service';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
-import { Subscription } from 'rxjs';
+import { lastValueFrom, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-quote-delison',
@@ -28,7 +27,6 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
-  private departmentsService = inject(DepartmentsService);
   private rolesService = inject(RolesService);
   private pedimentoModificationService = inject(PedimentoModificationService);
 
@@ -215,9 +213,9 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   }
 
   loadDepartments() {
-    this.departmentsService.getDepartments(this.idRoot).subscribe({
-      next: (data: any[]) => {
-        this.departments = data;
+    this.rolesService.getRoles(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.departments = data?.data ?? data ?? [];
         this.departmentsLoaded = true;
         this.checkAndLoadQuotes();
       },
@@ -390,7 +388,11 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
         console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
       }
 
-      // ✅ PASO 2.2: Para cada cotización, cargar sus items y sus COTIZes de proveedor
+      // ✅ PASO 2.2: Cargar pedimentos e verificar lock correcto en paralelo
+      const shouldLockCheck = requisicion.locked === true
+        ? lastValueFrom(this.ocAndReqsService.shouldLockRequisicion(requisicion.id)).catch(() => ({ shouldLock: false }))
+        : Promise.resolve({ shouldLock: false });
+
       const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
         let items: any[] = [];
         try {
@@ -467,7 +469,14 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
         };
       }));
 
-      // ✅ PASO 2.3: Retornar requisición con sus cotizaciones
+      // ✅ PASO 2.3: Resolver lock correcto y retornar requisición con sus cotizaciones
+      const lockResult = await shouldLockCheck;
+      const correctLocked = requisicion.locked === true ? (lockResult?.shouldLock === true) : false;
+      // Si el lock en BD era incorrecto, corregirlo silenciosamente
+      if (requisicion.locked === true && !correctLocked) {
+        this.ocAndReqsService.lockRequisition(requisicion.id, false).subscribe();
+      }
+
       const dept = this.departments.find(d => d.id === requisicion.idDepartament);
       const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
 
@@ -480,7 +489,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
         id: requisicion.id,
         branch: branchName,
         requisition: requisicion.folio || '',
-        locked: requisicion.locked === true,
+        locked: correctLocked,
         pedimentos: pedimentosConItems,
         requiredDate: requisicion.dateCreate || new Date().toISOString(),
         requestedBy: requisicion.solicit || '',
@@ -547,7 +556,11 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
           }
 
-          // ✅ PASO 3: Para cada cotización, cargar sus items y sus COTIZes de proveedor
+          // ✅ PASO 3: Cargar pedimentos y verificar lock correcto en paralelo
+          const shouldLockCheck2 = requisicion.locked === true
+            ? lastValueFrom(this.ocAndReqsService.shouldLockRequisicion(requisicion.id)).catch(() => ({ shouldLock: false }))
+            : Promise.resolve({ shouldLock: false });
+
           const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
             let items: any[] = [];
             try {
@@ -623,7 +636,13 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             };
           }));
 
-          // PASO 4: Retornar requisición con sus cotizaciones
+          // PASO 4: Resolver lock correcto y retornar requisición con sus cotizaciones
+          const lockResult2 = await shouldLockCheck2;
+          const correctLocked2 = requisicion.locked === true ? (lockResult2?.shouldLock === true) : false;
+          if (requisicion.locked === true && !correctLocked2) {
+            this.ocAndReqsService.lockRequisition(requisicion.id, false).subscribe();
+          }
+
           const dept = this.departments.find(d => d.id === requisicion.idDepartament);
           const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
 
@@ -635,7 +654,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             id: requisicion.id,
             branch: branchName,
             requisition: requisicion.folio || '',
-            locked: requisicion.locked === true,
+            locked: correctLocked2,
             pedimentos: pedimentosConItems,
             requiredDate: requisicion.dateCreate || new Date().toISOString(),
             requestedBy: requisicion.solicit || '',

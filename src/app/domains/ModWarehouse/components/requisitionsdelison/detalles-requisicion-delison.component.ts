@@ -23,11 +23,12 @@ import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CustomersService } from 'app/services/customers.service';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/searchable-combobox.component';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent, SearchableComboboxComponent],
   template: `
     <!-- Items Grid View -->
     <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
@@ -125,17 +126,19 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           <label for="newArticleName" class="form-label">
             Nombre del Artículo <span class="text-danger">*</span>
           </label>
-          <input
-            type="text"
-            class="form-control"
-            id="newArticleName"
+          <app-searchable-combobox
             name="newArticleName"
+            inputId="newArticleName"
+            inputName="newArticleName"
+            [options]="newArticleNameOptions"
+            placeholder="Escriba o seleccione..."
+            [uppercase]="true"
             required
             #newArticleNameModel="ngModel"
             [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
             [(ngModel)]="newArticle.description"
-            (input)="newArticle.description = $any($event.target).value.toUpperCase()"
-            style="text-transform: uppercase;">
+            (optionSelected)="onArticleSelected($event)">
+          </app-searchable-combobox>
           <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleNameModel.invalid">
             El nombre del artículo es obligatorio.
           </div>
@@ -251,7 +254,8 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
           type="button"
           class="btn btn-primary"
           (click)="saveNewArticle()"
-          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim()">
+          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim() || newArticleIsDuplicate"
+          [title]="(newArticleIsDuplicate ? '❌ Artículo duplicado - no se puede guardar' : '') + (!newArticle.description?.trim() ? 'Falta Nombre' : '') + (!newArticle.descriptionNewArticle?.trim() ? ' | Falta Descripción' : '') + (!newArticle.justificationNewArticle?.trim() ? ' | Falta Justificación' : '')">
           Guardar
         </button>
       </div>
@@ -383,6 +387,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     idFamilia: null as number | null,
     idSubfamilia: null as number | null
   };
+
+  // Opciones para el combobox de "Nombre del Artículo" (se cargan desde materiales maestros)
+  newArticleNameOptions: string[] = [];
+
+  // Bandera para detectar duplicados
+  newArticleIsDuplicate: boolean = false;
 
   // Catálogos para los selects
   categories: any[] = [];
@@ -568,12 +578,18 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             idSubfamilia: material.idSubfamilia
           }));
 
+        // Cargar opciones para el combobox "Nombre del Artículo" en el modal
+        this.newArticleNameOptions = this.materials
+          .filter(m => m.description?.trim())
+          .map(m => m.description)
+          .sort();
 
       },
       error: (error) => {
         console.error('❌ Error al cargar materiales:', error);
         alerts.reqErrorToast('Error', 'No se pudieron cargar los materiales');
         this.materials = [];
+        this.newArticleNameOptions = [];
       }
     });
   }
@@ -2009,9 +2025,53 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.closeNewArticleModal();
   }
 
+  onArticleSelected(option: any): void {
+    // option es un string (nombre del artículo) desde newArticleNameOptions
+    const selectedArticle = typeof option === 'string' ? option : option?.description || option;
+
+    console.log('🔍 onArticleSelected llamado con:', selectedArticle);
+    if (!selectedArticle?.trim?.()) {
+      console.log('⚠️ selectedArticle vacío');
+      return;
+    }
+
+    const selectedUpper = String(selectedArticle).trim().toUpperCase();
+    console.log('📋 rowData actual:', this.rowData);
+    console.log('🔎 Buscando:', selectedUpper);
+    console.log('🔑 currentRowForNewArticle.data:', this.currentRowForNewArticle?.data);
+
+    // Verificar si el artículo ya está registrado en las filas actuales
+    // EXCLUIR la fila que se está editando actualmente (no debe compararse contra sí misma)
+    const existingArticle = this.rowData.find((row: any) => {
+      // Saltar la fila actual que se está editando
+      if (this.currentRowForNewArticle && row === this.currentRowForNewArticle.data) {
+        console.log('  ⏭️ Saltando fila actual (misma que se está editando)');
+        return false;
+      }
+
+      const description = (row.description || '').trim().toUpperCase();
+      const article = (row.article || '').trim().toUpperCase();
+      const nameArticle = (row.nameArticle || '').trim().toUpperCase();
+      const match = description === selectedUpper || article === selectedUpper || nameArticle === selectedUpper;
+      console.log(`  Comparando con row: desc="${description}" art="${article}" nameArt="${nameArticle}" → match=${match}`);
+      return match;
+    });
+
+    console.log('✅ Artículo encontrado:', existingArticle);
+    this.newArticleIsDuplicate = !!existingArticle;
+
+    if (existingArticle) {
+      alerts.reqWarningToast(
+        'Artículo Duplicado',
+        'Este artículo ya está registrado en materia prima - recurrente'
+      );
+    }
+  }
+
   private openNewArticleModal() {
     this.isNewArticleModalVisible = true;
     this.newArticleFormSubmitted = false;
+    this.newArticleIsDuplicate = false; // Resetear estado de duplicado
 
     // Resetear valores del formulario al abrir
     this.newArticle = {

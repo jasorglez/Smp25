@@ -73,33 +73,14 @@ export class PedimentosXRequisicionComponent {
       }
     },
     {
-      field: 'fechaPedimento',
-      headerName: 'Fecha',
-      width: 120,
-      valueFormatter: (p) => {
-        if (!p.value) return '';
-        const date = new Date(p.value);
-        const d = String(date.getDate()).padStart(2, '0');
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const y = date.getFullYear();
-        return `${d}/${m}/${y}`;
-      },
-    },
-    {
-      field: 'articulos',
-      headerName: 'Artículos',
+      field: 'ocNumber',
+      headerName: '# OC',
       width: 130,
       editable: false,
       valueGetter: (params) => {
-        const articulos = params.data?.articulos || [];
-        const articulosExternos = articulos.filter(
-          (item: any) => (item.intorext || item.tipo || '').toLowerCase() !== 'interno'
-        );
-        const solicitados = articulosExternos.filter((item: any) => item.pedimento === true).length;
-        const total = articulosExternos.length;
-        return `${solicitados}/${total}`;
+        return (params.node?.rowIndex ?? 0) + 1;
       },
-      cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#fff9c4' },
+      cellStyle: { fontWeight: 'bold', textAlign: 'center' },
     },
   ];
 
@@ -134,7 +115,7 @@ export class PedimentosXRequisicionComponent {
   }
 
   private loadData() {
-    const idRequisicion = this.internalParams?.data?.idReference || this.internalParams?.data?.id;
+    const idRequisicion = this.internalParams?.data?.id;
     const idCompany     = this.internalParams?.data?.idCompany;
 
     if (!idRequisicion) {
@@ -146,36 +127,17 @@ export class PedimentosXRequisicionComponent {
     }
 
     this.ocAndReqsService.getPedimentosByRequisicion(idRequisicion).subscribe({
-      next: async (pedimentos: any[]) => {
+      next: (pedimentos: any[]) => {
         const peds = Array.isArray(pedimentos) ? pedimentos : [];
-        
-        // Import lastValueFrom dynamically to avoid touching top-level imports
-        const { lastValueFrom } = await import('rxjs');
 
-        // Cargar los artículos de cada pedimento
-        const pedsConArticulos = await Promise.all(peds.map(async (p: any) => {
-          let articulos = p.articulos || [];
-          if (!articulos.length) {
-            try {
-              const items = await lastValueFrom(this.ocAndReqsService.getReqItems(p.id));
-              articulos = items || [];
-            } catch(e) {
-              console.error('Error loading items for pedimento', p.id, e);
-            }
-          }
-          return {
-            id:             p.id,
-            idPedimento:    p.id,
-            idCompany:      idCompany,
-            folio:          p.folio || '',
-            pedimento:      p.pedimento || 0,
-            fechaPedimento: p.dateCreate || p.dateModified || '',
-            ocCount:        p.countrow || 0,
-            articulos:      articulos,
-          };
+        // Mapear datos directamente del backend
+        this.rowData = peds.map((p: any) => ({
+          id:        p.id,
+          folio:     p.folio || '',
+          pedimento: p.pedimento || 0,
+          ocNumber:  p.pedimento || 0,
+          idCompany: idCompany,
         }));
-
-        this.rowData = pedsConArticulos;
 
         if (this.gridApi && !this.gridApi.isDestroyed()) {
           this.gridApi.setGridOption('rowData', this.rowData);
