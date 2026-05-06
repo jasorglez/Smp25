@@ -1,0 +1,196 @@
+// ─── Banners ──────────────────────────────────────────────────────────────────
+.banner-offline,
+.banner-sync {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  mat-icon { font-size: 18px; }
+}
+.banner-offline { background: #fff3cd; border-bottom: 1px solid #ffc107; }
+.banner-sync    { background: #d1e7dd; border-bottom: 1px solid #198754; }
+
+// ─── Lista ────────────────────────────────────────────────────────────────────
+.lista-container { position: relative; min-height: 100vh; background: #f8f9fa; }
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.stat-num   { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.stat-label { font-size: 0.75rem; color: #6c757d; margin-top: 2px; }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  color: #aaa;
+  mat-icon { font-size: 56px; }
+  p { margin-top: 8px; font-size: 0.9rem; }
+}
+
+.member-card {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.member-info   { flex: 1; min-width: 0; }
+.member-name   { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.member-sub    { font-size: 0.78rem; color: #6c757d; margin-top: 2px; }
+.member-actions { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+
+// ─── FAB ──────────────────────────────────────────────────────────────────────
+.fab-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #198754;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(25,135,84,.45);
+  z-index: 900;
+  mat-icon { font-size: 28px; }
+  &:active { transform: scale(0.94); }
+}
+
+// ─── Bottom Sheet ─────────────────────────────────────────────────────────────
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 1050;
+  display: flex;
+  align-items: flex-end;
+}
+.bottom-sheet {
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 16px 24px 36px;
+  width: 100%;
+  animation: slideUp .22s ease-out;
+}
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: #dee2e6;
+  border-radius: 4px;
+  margin: 0 auto 20px;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  text-align: left;
+  mat-icon { font-size: 28px; flex-shrink: 0; }
+}
+
+// ─── Formulario ───────────────────────────────────────────────────────────────
+.form-container { display: flex; flex-direction: column; min-height: 100vh; background: white; }
+
+.form-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #dee2e6;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.form-body {
+  padding: 20px 16px;
+  flex: 1;
+}
+
+// ─── Indicador de pasos ───────────────────────────────────────────────────────
+.steps-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 12px 0 4px;
+  background: white;
+}
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #dee2e6;
+  transition: background .2s;
+  &.step-active { background: #0d6efd; transform: scale(1.2); }
+  &.step-done   { background: #198754; }
+}
+
+.step-title {
+  font-weight: 600;
+  color: #0d6efd;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  mat-icon { font-size: 20px; }
+}
+
+// ─── Captura de fotos ─────────────────────────────────────────────────────────
+.foto-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 140px;
+  border: 2px dashed #adb5bd;
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  background: #f8f9fa;
+  transition: border-color .2s, background .2s;
+  margin-bottom: 0;
+
+  &:active { background: #e9ecef; }
+
+  &.foto-captured {
+    border: 2px solid #198754;
+    background: transparent;
+    padding: 6px;
+    min-height: unset;
+  }
+}
+
+.foto-icon {
+  font-size: 48px !important;
+  color: #adb5bd;
+}
+.foto-hint {
+  font-size: 0.82rem;
+  color: #6c757d;
+  margin-top: 6px;
+}
+.foto-preview {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+}

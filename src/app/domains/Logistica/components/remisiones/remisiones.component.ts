@@ -496,7 +496,7 @@ export class RemisionesComponent {
 
     const confirmDelete = await alerts.confirmAlert(
       '¿Estas seguro?',
-      'Se eliminará este detalle de la remisión y la cantidad regresará al pedido como SOLICITADO.',
+      'Se eliminará este detalle de la remisión y se recalculará el estado correspondiente en el pedido.',
       'warning',
       'Sí, eliminar'
     );

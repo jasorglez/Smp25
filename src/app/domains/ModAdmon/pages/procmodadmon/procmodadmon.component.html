@@ -87,14 +87,7 @@
           </a>
         </li>
 
-        <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'palacio_municipal')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="palacio-municipal"
-            routerLinkActive="active">
-            <mat-icon>account_balance</mat-icon> {{ 'palacio_municipal' | translate }}
-          </a>
-        </li>
-
-        <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'accounting_accounts')">
+<li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'accounting_accounts')">
           <a class="nav-link green-tab d-flex align-items-center" routerLink="cuentas-contables"
             routerLinkActive="active">
             <mat-icon>account_tree</mat-icon> {{ 'Cuentas Contables' | translate }}

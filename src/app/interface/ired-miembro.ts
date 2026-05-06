@@ -1,0 +1,31 @@
+export interface IRedMiembro {
+  id?: number;
+  idRoot: number;
+  nombre: string;
+  apellidoPaterno: string;
+  apellidoMaterno?: string;
+  fechaNacimiento?: string;
+  genero?: string;
+  curp?: string;
+  telefono?: string;
+  email?: string;
+  estado?: string;
+  municipio?: string;
+  colonia?: string;
+  calle?: string;
+  numExterior?: string;
+  numInterior?: string;
+  codigoPostal?: string;
+  claveElector?: string;
+  seccionElectoral?: string;
+  distritoElectoral?: string;
+  entidadFederativa?: string;
+  afiliado: boolean;
+  fechaAfiliacion?: string;
+  ineFrenteUrl?: string;
+  ineReversoUrl?: string;
+  activo: boolean;
+  fechaRegistro?: string;
+  idRegistrador?: number;
+  observaciones?: string;
+}

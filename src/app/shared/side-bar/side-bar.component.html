@@ -137,11 +137,37 @@
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procmodadmon']"
           routerLinkActive="active-link"
+          [routerLinkActiveOptions]="{exact: true}"
           (click)="Admonproc()"
           [matTooltip]="isSidebarCollapsed ? ('admins' | translate) : ''"
           matTooltipPosition="right"
         >
           <mat-icon>menu_book</mat-icon> <span>{{ "admins" | translate }}</span>
+        </a>
+      </li>
+
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('red')">
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/red-ciudadana']"
+          routerLinkActive="active-link"
+          [routerLinkActiveOptions]="{exact: false}"
+          [matTooltip]="isSidebarCollapsed ? 'Red Ciudadana' : ''"
+          matTooltipPosition="right"
+        >
+          <mat-icon>people</mat-icon> <span>Red Ciudadana</span>
+        </a>
+      </li>
+
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('municipio')">
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/procmodadmon/palacio-municipal']"
+          routerLinkActive="active-link"
+          [matTooltip]="isSidebarCollapsed ? 'Municipio' : ''"
+          matTooltipPosition="right"
+        >
+          <mat-icon>account_balance</mat-icon> <span>Municipio</span>
         </a>
       </li>
 

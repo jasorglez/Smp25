@@ -134,7 +134,17 @@
       "Skill(update-config)",
       "WebFetch(domain:www.endpoints.biapp.com.mx)",
       "mcp__b2-mssql-security__get_table_schema",
-      "mcp__b2-mssql-smp__get_table_schema"
+      "mcp__b2-mssql-smp__get_table_schema",
+      "PowerShell(head *)",
+      "mcp__mssql-administration__list_tables",
+      "mcp__mssql-administration__execute_query",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroserviciosBPI\\\\\" | Where-Object {$_.Name -match \"Concept\"} | Select-Object -First 20 FullName)",
+      "mcp__mssql-production__execute_query",
+      "WebFetch(domain:www.bi2.mx)",
+      "PowerShell(Rename-Item *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Move-Item *)",
+      "PowerShell(Remove-Item *)"
     ],
     "deny": [],
     "ask": [],
