@@ -686,7 +686,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogRoles
-                ? this.catalogRoles.map(item => item.id)
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
                 : []
             };
           },
@@ -696,7 +699,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return found ? found.description : params.value;
           },
           valueSetter: (params) => {
-            const newDeptId = params.newValue;
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find(r => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
 
             if (params.data.idDepto === newDeptId) return false;
 
@@ -762,7 +768,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogPosiciones
-                ? this.catalogPosiciones.map(item => item.description)
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
                 : []
             };
           },
@@ -1278,7 +1287,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           suppressMovable: true,
           width: 120,
           cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
-          cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+          cellStyle: { backgroundColor: '#d4edda', textAlign: 'center' },
         },
         {
           field: 'idDepto',
@@ -1299,7 +1308,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 190,
           cellEditor: 'agSelectCellEditor',
           onCellValueChanged: (params) => {
-            const newRolId = params.newValue;
+            // params.newValue es la descripción; buscar el ID correspondiente
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            const newRolId = found?.id;
             if (newRolId && newRolId !== params.oldValue) {
               this.getPoscionesbyRole(newRolId);
             }
@@ -1307,7 +1319,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogRoles
-                ? this.catalogRoles.map(item => item.id)
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
                 : []
             };
           },
@@ -1317,7 +1332,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return found ? found.description : params.value;
           },
           valueSetter: (params) => {
-            const newDeptId = params.newValue;
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
 
             if (params.data.idDepto === newDeptId) return false;
 
@@ -1373,7 +1391,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogPosiciones
-                ? this.catalogPosiciones.map(item => item.description)
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
                 : []
             };
           },
