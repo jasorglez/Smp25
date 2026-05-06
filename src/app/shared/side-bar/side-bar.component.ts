@@ -1,4 +1,4 @@
-import { Component, effect } from '@angular/core';
+import { Component, effect, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
@@ -23,12 +23,13 @@ import { alerts } from 'app/helpers/alerts';
   imports: [SharedModule, FormsModule],
   templateUrl: './side-bar.component.html',
   styleUrl: './side-bar.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SideBarComponent {
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
 
-  selectedRoot: string = '';
+  selectedRoot = signal<string>('');
 
   rootData: any;
   contractData: any;
@@ -68,7 +69,7 @@ export class SideBarComponent {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
       if (shouldUpdate) {
-          await this.getpermissionxBranchs(parseInt(this.selectedRoot)); // Refrescar la lista de branches
+          await this.getpermissionxBranchs(parseInt(this.selectedRoot())); // Refrescar la lista de branches
           setTimeout(() => this.signalsService.resetSignalIncAndExp());
         }
     });
@@ -130,23 +131,23 @@ error: (error) => {
 
   onRootsSelected(event: Event): void {
     const target = event.target as HTMLSelectElement;
-    this.selectedRoot = target.value;
-    if (this.selectedRoot) {
+    this.selectedRoot.set(target.value);
+    if (this.selectedRoot()) {
       // Limpiar selects de contracts y projects cuando cambia root
       this.clearContractsAndProjects();
 
       // Obtener el nameSmall de la empresa seleccionada
-      const selectedCompany = this.rootData.find(r => r.id === parseInt(this.selectedRoot));
+      const selectedCompany = this.rootData.find(r => r.id === parseInt(this.selectedRoot()));
       if (selectedCompany) {
         this.signalsService.setCompanyNameSmall(selectedCompany.nameSmall || selectedCompany.name);
       }
 
-      this.trackingService.setCompany(target.value);
-      this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
-      //    this.getpermissionxContracts(parseInt(this.selectedRoot));
-      this.getpermissionxBranchs(parseInt(this.selectedRoot));
-      this.getHeadersCompanys(this.selectedRoot);
-      this.loadLicenseInfo(parseInt(this.selectedRoot));
+      this.trackingService.setCompany(String(this.selectedRoot()));
+      this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot()));
+      //    this.getpermissionxContracts(parseInt(this.selectedRoot()));
+      this.getpermissionxBranchs(parseInt(this.selectedRoot()));
+      this.getHeadersCompanys(String(this.selectedRoot()));
+      this.loadLicenseInfo(parseInt(this.selectedRoot()));
     }
   }
 
@@ -157,34 +158,34 @@ error: (error) => {
         if (root && root.length > 0) {
           this.rootData = root;
           // Seleccionar automáticamente el primer elemento
-          this.selectedRoot = this.rootData[0].id;
+          this.selectedRoot.set(this.rootData[0].id);
           this.signalsService.setRootSelectedBySidebar(
-            Number(this.selectedRoot)
+            Number(this.rootData[0].id)
           );
           this.signalsService.setIsAdvanced(this.rootData[0].advanced);
           this.signalsService.setCompanyNameSmall(this.rootData[0].nameSmall || this.rootData[0].name);
-          this.trackingService.setCompany(this.selectedRoot);
-          this.getHeadersCompanys(this.selectedRoot);
-          this.loadLicenseInfo(parseInt(this.selectedRoot));
+          this.trackingService.setCompany(this.rootData[0].id);
+          this.getHeadersCompanys(this.rootData[0].id);
+          this.loadLicenseInfo(parseInt(this.rootData[0].id));
           // Llamar a getpermissionxContracts con el primer elemento
-          //   this.getpermissionxContracts(parseInt(this.selectedRoot));
-          this.getpermissionxBranchs(parseInt(this.selectedRoot));
+          //   this.getpermissionxContracts(parseInt(this.selectedRoot()));
+          this.getpermissionxBranchs(parseInt(this.selectedRoot()));
           // Forzar la actualización del select
           setTimeout(() => {
             const selectElement = document.getElementById(
               'root'
             ) as HTMLSelectElement;
             if (selectElement) {
-              selectElement.value = this.selectedRoot!;
+              selectElement.value = String(this.selectedRoot());
             }
           });
         } else {
-          this.selectedRoot = null;
+          this.selectedRoot.set('');
         }
       },
 error: (error) => {
         console.error('Error al obtener roots:', error);
-        this.selectedRoot = null;
+        this.selectedRoot.set('');
       },
     });
   }
@@ -360,7 +361,7 @@ error: (error) => {
       this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
       const found = this.projectData.find(p => String(p.idProject) === this.selectedProjectId);
       this.signalsService.setProjectNameBySidebar(found?.projectName ?? '');
-      this.loadVigentePresupuesto(Number(this.selectedRoot), Number(this.selectedProjectId));
+      this.loadVigentePresupuesto(Number(this.selectedRoot()), Number(this.selectedProjectId));
     }
   }
 
@@ -379,7 +380,7 @@ error: (error) => {
             // Signal exclusiva del sidebar (no la toca ordenes)
             this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
             this.signalsService.setProjectNameBySidebar(this.projectData[0].projectName ?? '');
-            this.loadVigentePresupuesto(Number(this.selectedRoot), Number(this.selectedProjectId));
+            this.loadVigentePresupuesto(Number(this.selectedRoot()), Number(this.selectedProjectId));
             setTimeout(() => {
               const sel = document.getElementById('project') as HTMLSelectElement;
               if (sel) sel.value = this.selectedProjectId;
