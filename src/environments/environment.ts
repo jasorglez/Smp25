@@ -39,8 +39,8 @@ export const environment = {
   urlWarehouse: 'https://endpoints.biapp.com.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  urlAdministration: 'https://endpoints.biapp.com.mx/administration/api', // 5006 -- Tambien conocido como Tracking
-  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://endpoints.biapp.com.mx/administration/api', // 5006
+  //urlAdministration : 'http://localhost:5047/api', // 5006
 
   urlNotifications: 'https://endpoints.biapp.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.38 (26 Abril 2026) logistica: confirmaci�n y guardado autom�tico tras recepci�n parcial (SOLICITADO -> RECIBIDO)',
+  version: '5.39 (5 Mayo 2026) urlAdministration migrado de tracking a administration',
 };
 
