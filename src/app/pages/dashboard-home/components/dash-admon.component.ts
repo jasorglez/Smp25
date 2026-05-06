@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, NgZone, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, effect, inject, NgZone, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -345,6 +345,7 @@ export class DashAdmonComponent implements OnInit {
   private signalrService  = inject(SignalrService);
   private destroyRef      = inject(DestroyRef);
   private zone            = inject(NgZone);
+  private cdr             = inject(ChangeDetectorRef);
 
   // ── Clientes ──
   clientList: { name: string; total: number }[] = [];
@@ -480,6 +481,7 @@ export class DashAdmonComponent implements OnInit {
       this.allIngresosData = data;
       this.buildIngresosChart(data);
       this.buildClientList(data);
+      this.cdr.markForCheck();
     });
   }
 
@@ -523,6 +525,7 @@ export class DashAdmonComponent implements OnInit {
       this.allEgresosData = data;
       this.buildEgresosChart(data);
       this.buildTopEntityList(data);
+      this.cdr.markForCheck();
     });
   }
 
