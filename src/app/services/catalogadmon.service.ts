@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { TrackingService } from './tracking.service';
 
 @Injectable({
@@ -26,7 +27,9 @@ export class CatalogadmonService {
   }
  
   getCatalogsxNivel(idRoot: number, type: string, nivel: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogsxNivel?idCompany=${idRoot}&type=${type}&nivel=${nivel}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() }).pipe(
+      map(data => (data || []).filter(c => (c.Nivel ?? c.nivel) === nivel))
+    );
   }
   
 getCatalogsxParent( idRoot: number, idParent: number): Observable<any[]> {
