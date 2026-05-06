@@ -1,4 +1,4 @@
-import { Component, effect, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, effect, signal, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { TraductorService } from '../../services/traductor.service';
 import { TrackingService } from '../../services/tracking.service';
@@ -64,7 +64,8 @@ export class SideBarComponent {
     private userService: UsersService,
     private signalsService: SignalsService,
     private conventionsService: ConventionsService,
-    private presupuestoService: PresupuestoService
+    private presupuestoService: PresupuestoService,
+    private cdr: ChangeDetectorRef
   ) {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
@@ -157,6 +158,7 @@ error: (error) => {
         const root = Object.values(data);
         if (root && root.length > 0) {
           this.rootData = root;
+          this.cdr.markForCheck();
           // Seleccionar automáticamente el primer elemento
           this.selectedRoot.set(this.rootData[0].id);
           this.signalsService.setRootSelectedBySidebar(
@@ -209,6 +211,7 @@ error: (error) => {
             id: -idRoot, // ID negativo del root
             name: 'Todas las sucursales',
           });
+          this.cdr.markForCheck();
 
           // branchData[0] = "Todas las sucursales" (ID negativo) → seleccionar la primera real (índice 1)
           const defaultBranch = this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
@@ -244,6 +247,7 @@ error: (error) => {
               id: branch.id,
               name: branch.name,
             }));
+            this.cdr.markForCheck();
 
             if (this.branchData.length > 0) {
               this.selectedBranchId = String(this.branchData[0].id);
@@ -326,6 +330,7 @@ error: (error) => {
         const contract = Object.values(data);
         if (contract && contract.length > 0) {
           this.contractData = contract;
+          this.cdr.markForCheck();
           // Auto-seleccionar siempre el primer contrato
           this.selectedContractId = String(this.contractData[0].contractId);
           this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
@@ -372,6 +377,7 @@ error: (error) => {
       .subscribe({
         next: (data) => {
           this.projectData = Object.values(data);
+          this.cdr.markForCheck();
           if (this.projectData.length > 0) {
             // Auto-seleccionar siempre el primer proyecto
             this.selectedProjectId = String(this.projectData[0].idProject);
