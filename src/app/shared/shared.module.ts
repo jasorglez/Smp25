@@ -8,22 +8,30 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 export const sharedRoutes: Routes = [
-  { 
+  /* { 
     path: 'conventions', 
     loadComponent: () => import('../domains/ModProjects/components/projects/conventions/conventions.component').then(a => a.ConventionsComponent)
+  } */
+  {
+    path: 'doc',
+    loadComponent: () => import('../domains/shared/components/public-doc-viewer/public-doc-viewer.component').then(m => m.PublicDocViewerComponent)
+  },
+  {
+    path: 'registrocursos',
+    loadComponent: () => import('../public/registro-cursos/registro-cursos.component').then(m => m.RegistroCursosComponent)
   }
 ];
 
 @NgModule({
-imports: [
+  imports: [
     CommonModule,
     TranslateModule,
     RouterModule,
     MatListModule,
     MatIconModule,
-    MatTooltipModule,      
+    MatTooltipModule,
   ],
-exports: [
+  exports: [
     CommonModule,
     TranslateModule,
     RouterModule,

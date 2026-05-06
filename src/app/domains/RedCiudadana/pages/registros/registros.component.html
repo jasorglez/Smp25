@@ -138,27 +138,27 @@
     <div class="mb-3">
       <label class="form-label">Nombre(s) <span class="text-danger">*</span></label>
       <input type="text" class="form-control form-control-lg" [(ngModel)]="form.nombre"
-             placeholder="Ej: Juan Carlos" autocomplete="given-name">
+             placeholder="Ej: Juan Carlos" autocomplete="given-name" style="text-transform:uppercase">
     </div>
     <div class="mb-3">
       <label class="form-label">Apellido Paterno <span class="text-danger">*</span></label>
       <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoPaterno"
-             placeholder="Ej: García" autocomplete="family-name">
+             placeholder="Ej: García" autocomplete="family-name" style="text-transform:uppercase">
     </div>
     <div class="mb-3">
       <label class="form-label">Apellido Materno</label>
       <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoMaterno"
-             placeholder="Ej: López">
+             placeholder="Ej: López" style="text-transform:uppercase">
     </div>
     <div class="mb-3">
       <label class="form-label">Dirección</label>
       <input type="text" class="form-control form-control-lg" [(ngModel)]="form.calle"
-             placeholder="Calle, número, colonia">
+             placeholder="Calle, número, colonia" style="text-transform:uppercase">
     </div>
     <div class="mb-3">
       <label class="form-label">Municipio</label>
       <input type="text" class="form-control form-control-lg" [(ngModel)]="form.municipio"
-             placeholder="Ej: Campeche">
+             placeholder="Ej: Campeche" style="text-transform:uppercase">
     </div>
     <div class="mb-4">
       <label class="form-label">Clave de Elector (# INE)</label>
@@ -238,16 +238,17 @@
       <div class="mb-3">
         <label class="form-label">Nombre(s) <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-lg" [(ngModel)]="form.nombre"
-               placeholder="Nombre(s)" autocomplete="given-name">
+               placeholder="Nombre(s)" autocomplete="given-name" style="text-transform:uppercase">
       </div>
       <div class="mb-3">
         <label class="form-label">Apellido Paterno <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoPaterno"
-               autocomplete="family-name">
+               autocomplete="family-name" style="text-transform:uppercase">
       </div>
       <div class="mb-3">
         <label class="form-label">Apellido Materno</label>
-        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoMaterno">
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.apellidoMaterno"
+               style="text-transform:uppercase">
       </div>
       <div class="mb-3">
         <label class="form-label">Fecha de Nacimiento</label>
@@ -279,36 +280,45 @@
       <p class="step-title"><mat-icon>home</mat-icon> Domicilio</p>
       <div class="mb-3">
         <label class="form-label">Estado</label>
-        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.estado"
-               placeholder="Ej: Campeche">
+        <ng-select
+          [items]="estadosMexico"
+          [(ngModel)]="form.estado"
+          placeholder="— Seleccionar estado —"
+          [clearable]="true"
+          [searchable]="true"
+          appendTo="body">
+        </ng-select>
       </div>
       <div class="mb-3">
         <label class="form-label">Municipio</label>
-        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.municipio">
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.municipio"
+               style="text-transform:uppercase">
       </div>
       <div class="mb-3">
         <label class="form-label">Colonia</label>
-        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.colonia">
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.colonia"
+               style="text-transform:uppercase">
       </div>
       <div class="row g-2 mb-3">
         <div class="col-8">
           <label class="form-label">Calle</label>
-          <input type="text" class="form-control" [(ngModel)]="form.calle">
+          <input type="text" class="form-control" [(ngModel)]="form.calle" style="text-transform:uppercase">
         </div>
         <div class="col-4">
           <label class="form-label">No. Ext</label>
-          <input type="text" class="form-control" [(ngModel)]="form.numExterior">
+          <input type="text" class="form-control" [(ngModel)]="form.numExterior" style="text-transform:uppercase">
         </div>
       </div>
       <div class="row g-2 mb-3">
         <div class="col-6">
           <label class="form-label">No. Int</label>
-          <input type="text" class="form-control" [(ngModel)]="form.numInterior">
+          <input type="text" class="form-control" [(ngModel)]="form.numInterior" style="text-transform:uppercase">
         </div>
         <div class="col-6">
           <label class="form-label">C.P.</label>
-          <input type="text" class="form-control" [(ngModel)]="form.codigoPostal"
-                 maxlength="5" inputmode="numeric">
+          <input type="text" class="form-control" [ngModel]="form.codigoPostal"
+                 (input)="onCpInput($event)"
+                 maxlength="5" inputmode="numeric" placeholder="00000">
         </div>
       </div>
     </div>
@@ -328,15 +338,18 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Distrito Electoral</label>
-        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.distritoElectoral">
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.distritoElectoral"
+               style="text-transform:uppercase">
       </div>
       <div class="mb-3">
         <label class="form-label">Entidad Federativa</label>
-        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.entidadFederativa">
+        <input type="text" class="form-control form-control-lg" [(ngModel)]="form.entidadFederativa"
+               style="text-transform:uppercase">
       </div>
       <div class="mb-3">
         <label class="form-label">Observaciones</label>
         <textarea class="form-control" rows="3" [(ngModel)]="form.observaciones"
+                  style="text-transform:uppercase"
                   placeholder="Notas adicionales..."></textarea>
       </div>
     </div>

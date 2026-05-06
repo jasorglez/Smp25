@@ -1,6 +1,7 @@
-import { Component, OnDestroy, OnInit, effect, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 import { SideBarComponent } from 'app/shared/side-bar/side-bar.component';
 import { FooterComponent } from 'app/shared/footer/footer.component';
 import { SignalsService } from '../../services/signals.service';
@@ -9,57 +10,14 @@ import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-main-page',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SideBarComponent, FooterComponent],
+  imports: [CommonModule, RouterOutlet, MatIconModule, SideBarComponent, FooterComponent],
   templateUrl: './main-page.component.html',
   styleUrls: ['./main-page.component.scss'],
 })
 export class MainPageComponent implements OnInit {
   private signalsService = inject(SignalsService);
-  private router = inject(Router);
-  private auth = inject(AuthService);
+  auth = inject(AuthService);
 
-  private initialBranchId: number;
-  isSidebarCollapsed: boolean = false;
 
-  licenseStatus   = this.signalsService.getLicenseStatus();
-  licenseDays     = this.signalsService.getLicenseDaysRemaining();
-
-  constructor() {
-    effect(() => {
-      const newBranchId = this.signalsService.getBranchSelectedBySidebar()();
-      const isAdvanced = this.signalsService.getIsAdvanced();
-      if (this.initialBranchId !== undefined && this.initialBranchId !== newBranchId && isAdvanced) {
-        const target = this.auth.hasMasterPermission('dashboard') ? '/dashboard' : '/publicidad';
-        this.router.navigateByUrl(target);
-      }
-    });
-  }
-
-  ngOnInit(): void {
-    this.initialBranchId = this.signalsService.getBranchSelectedBySidebar()();
-
-    // Cargar estado inicial del sidebar
-    const savedState = localStorage.getItem('sidebarCollapsed');
-    this.isSidebarCollapsed = savedState === 'true';
-
-    // Escuchar cambios en localStorage (cuando otro tab o el sidebar cambia el estado)
-    window.addEventListener('storage', this.handleStorageChange.bind(this));
-
-    // Escuchar cambios locales (mismo tab)
-    this.checkSidebarState();
-    setInterval(() => this.checkSidebarState(), 100);
-  }
-
-  private handleStorageChange(event: StorageEvent) {
-    if (event.key === 'sidebarCollapsed') {
-      this.isSidebarCollapsed = event.newValue === 'true';
-    }
-  }
-
-  private checkSidebarState() {
-    const currentState = localStorage.getItem('sidebarCollapsed') === 'true';
-    if (this.isSidebarCollapsed !== currentState) {
-      this.isSidebarCollapsed = currentState;
-    }
-  }
+  ngOnInit(): void { }
 }

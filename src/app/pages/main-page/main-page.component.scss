@@ -1,24 +1,32 @@
-.main-layout {
-  width: 100%;
-  overflow-x: hidden;
-  position: relative;
+.top-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 48px;
   display: flex;
-  gap: 0;
-  margin: 0;
-  padding: 0;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 16px;
+  background: transparent;
+  z-index: 1000;
+  pointer-events: none;
 }
 
-.main-content-container {
-  margin-left: 225px; /* Ajustado para coincidir con el nuevo ancho del sidebar */
-  transition: margin-left 0.3s ease;
-  width: calc(100vw - 225px);
+.top-bar-end {
+  pointer-events: all;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.main-content {
+  width: 100%;
+  padding-top: 48px;
   box-sizing: border-box;
-  padding: 0;
-}
-
-.main-layout.sidebar-collapsed .main-content-container {
-  margin-left: 70px;
-  width: calc(100vw - 70px);
 }
 
 .license-expired-overlay {
@@ -27,6 +35,3 @@
   background: rgba(0, 0, 0, 0.6);
   z-index: 9999;
 }
-
-
-

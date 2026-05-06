@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from 'app/shared/shared.module';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { RedMiembrosService } from 'app/services/red-miembros.service';
 import { OfflineQueueService } from 'app/services/offline-queue.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
@@ -10,10 +11,11 @@ import { alerts } from 'app/helpers/alerts';
 
 type Vista = 'lista' | 'rapido' | 'completo';
 
+
 @Component({
   selector: 'app-red-registros',
   standalone: true,
-  imports: [SharedModule, FormsModule],
+  imports: [SharedModule, FormsModule, NgSelectModule],
   templateUrl: './registros.component.html',
   styleUrl: './registros.component.scss',
 })
@@ -22,6 +24,16 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
   private offlineQueue    = inject(OfflineQueueService);
   private imageHandler    = inject(ImageHandlerService);
   private signalsService  = inject(SignalsService);
+
+  readonly estadosMexico = [
+    'AGUASCALIENTES','BAJA CALIFORNIA','BAJA CALIFORNIA SUR','CAMPECHE',
+    'CHIAPAS','CHIHUAHUA','CIUDAD DE MÉXICO','COAHUILA DE ZARAGOZA',
+    'COLIMA','DURANGO','ESTADO DE MÉXICO','GUANAJUATO','GUERRERO','HIDALGO',
+    'JALISCO','MICHOACÁN DE OCAMPO','MORELOS','NAYARIT','NUEVO LEÓN',
+    'OAXACA','PUEBLA','QUERÉTARO','QUINTANA ROO','SAN LUIS POTOSÍ',
+    'SINALOA','SONORA','TABASCO','TAMAULIPAS','TLAXCALA',
+    'VERACRUZ DE IGNACIO DE LA LLAVE','YUCATÁN','ZACATECAS'
+  ];
 
   currentView: Vista = 'lista';
   currentStep        = 1;
@@ -125,6 +137,12 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
     if (side === 'reverso') { this.previewReverso = null; this.fileReverso = null; }
   }
 
+  onCpInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, 5);
+    this.form.codigoPostal = input.value;
+  }
+
   private readPreview(file: File, cb: (b64: string) => void) {
     const reader = new FileReader();
     reader.onload = (e) => cb(e.target?.result as string);
@@ -157,7 +175,21 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
 
   // ─── Guardar ────────────────────────────────────────────────────────────────
 
+  private normalizeForm() {
+    const fields: (keyof IRedMiembro)[] = [
+      'nombre','apellidoPaterno','apellidoMaterno','curp','claveElector',
+      'calle','colonia','municipio','numExterior','numInterior',
+      'distritoElectoral','entidadFederativa','observaciones'
+    ];
+    for (const f of fields) {
+      if (typeof this.form[f] === 'string') {
+        (this.form as any)[f] = (this.form[f] as string).toUpperCase();
+      }
+    }
+  }
+
   async guardar() {
+    this.normalizeForm();
     if (!this.validarPaso1()) return;
     this.isLoading = true;
     try {

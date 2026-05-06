@@ -253,9 +253,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
     return functions.invalidField(field, this.flogin, this.formSubmitted);
   }
 
-  /** Con permiso dashboard → /dashboard; si no, /publicidad (misma lógica que el ítem del sidebar). */
   private navigateToHomeAfterLogin(): void {
-    const target = this.auth.hasMasterPermission('dashboard') ? '/dashboard' : '/publicidad';
-    this.router.navigate([target]);
+    this.router.navigate(['/red-ciudadana/reportes']);
   }
 }
