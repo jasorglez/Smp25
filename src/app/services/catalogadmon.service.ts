@@ -19,7 +19,7 @@ export class CatalogadmonService {
   }
 
   getCatalogs(idRoot: number, type: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/@c=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
   getCatalogsByType(idCompany: number, type: string): Observable<any[]> {
