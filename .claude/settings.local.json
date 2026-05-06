@@ -144,7 +144,9 @@
       "PowerShell(Rename-Item *)",
       "PowerShell(Get-Process *)",
       "PowerShell(Move-Item *)",
-      "PowerShell(Remove-Item *)"
+      "PowerShell(Remove-Item *)",
+      "mcp__mssql-administration__describe_table",
+      "PowerShell(Get-ChildItem *)"
     ],
     "deny": [],
     "ask": [],

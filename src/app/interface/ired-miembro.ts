@@ -22,6 +22,7 @@ export interface IRedMiembro {
   entidadFederativa?: string;
   afiliado: boolean;
   fechaAfiliacion?: string;
+  fotoUrl?: string;
   ineFrenteUrl?: string;
   ineReversoUrl?: string;
   activo: boolean;
