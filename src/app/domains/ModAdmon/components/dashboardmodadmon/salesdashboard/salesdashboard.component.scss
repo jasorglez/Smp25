@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 // Variables de colores
 $primary: #4361ee;
 $success: #2ec4b6;
@@ -142,7 +144,7 @@ $shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
     }
 
     &.active {
-      background: linear-gradient(135deg, $primary, darken($primary, 10%));
+      background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
       color: #fff;
       box-shadow: 0 4px 12px rgba($primary, 0.3);
     }
