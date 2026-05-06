@@ -248,20 +248,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
         if (currentColIndex >= 0 && currentColIndex < editableColumns.length - 1) {
           params.api.stopEditing();
-          
+
           const nextColId = editableColumns[currentColIndex + 1].getColId();
           params.api.setFocusedCell(params.node.rowIndex, nextColId);
-          
+
           // CRITICAL: AG-Grid ignores startEditingCell if called synchronously inside an event handler
           setTimeout(() => {
             const nextColDef = params.api.getColumn(nextColId)?.getColDef();
             const isSelect = nextColDef?.cellEditor === 'agSelectCellEditor';
-            
+
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: nextColId,
-              key: isSelect ? ' ' : undefined // Usa espacio para abrir agSelect, evita Enter
             });
+            if (isSelect) {
+              setTimeout(() => this.openAgSelectDropdown(), 120);
+            }
           }, 50);
         } else {
           params.api.stopEditing();
@@ -373,21 +375,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return {
               values: this.branchs
                 ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
                 : [],
             };
           },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
+            return true;
+          },
 
           valueFormatter: (params) => {
-            // Handle potential null values and properly format the displayed value
             if (!params.value) return '';
-
             const foundBranch = this.branchs
               ? this.branchs.find((item) => item.id === params.value)
               : null;
-
             return foundBranch ? foundBranch.name : params.value;
           },
           valueGetter: (params) => {
@@ -558,15 +564,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
         },
         {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
-        },
-        {
           field: 'loan',
           headerName: 'Préstamos',
           editable: false,
@@ -689,7 +686,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogRoles
-                ? this.catalogRoles.map(item => item.id)
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
                 : []
             };
           },
@@ -699,7 +699,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return found ? found.description : params.value;
           },
           valueSetter: (params) => {
-            const newDeptId = params.newValue;
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find(r => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
 
             if (params.data.idDepto === newDeptId) return false;
 
@@ -765,7 +768,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogPosiciones
-                ? this.catalogPosiciones.map(item => item.description)
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
                 : []
             };
           },
@@ -959,21 +965,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return {
               values: this.branchs
                 ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
                 : [],
             };
           },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
+            return true;
+          },
 
           valueFormatter: (params) => {
-            // Handle potential null values and properly format the displayed value
             if (!params.value) return '';
-
             const foundBranch = this.branchs
               ? this.branchs.find((item) => item.id === params.value)
               : null;
-
             return foundBranch ? foundBranch.name : params.value;
           },
           valueGetter: (params) => {
@@ -1187,15 +1197,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
         },
         {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
-        },
-        {
           field: 'loan',
           headerName: 'Préstamos',
           editable: false,
@@ -1286,7 +1287,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           suppressMovable: true,
           width: 120,
           cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
-          cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+          cellStyle: { backgroundColor: '#d4edda', textAlign: 'center' },
         },
         {
           field: 'idDepto',
@@ -1307,7 +1308,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 190,
           cellEditor: 'agSelectCellEditor',
           onCellValueChanged: (params) => {
-            const newRolId = params.newValue;
+            // params.newValue es la descripción; buscar el ID correspondiente
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            const newRolId = found?.id;
             if (newRolId && newRolId !== params.oldValue) {
               this.getPoscionesbyRole(newRolId);
             }
@@ -1315,7 +1319,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogRoles
-                ? this.catalogRoles.map(item => item.id)
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
                 : []
             };
           },
@@ -1325,7 +1332,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return found ? found.description : params.value;
           },
           valueSetter: (params) => {
-            const newDeptId = params.newValue;
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
 
             if (params.data.idDepto === newDeptId) return false;
 
@@ -1381,7 +1391,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogPosiciones
-                ? this.catalogPosiciones.map(item => item.description)
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
                 : []
             };
           },
@@ -1664,6 +1677,16 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       searchFields: ['employeeCode', 'name', 'email'],
       placeholder: 'Buscar código...',
       popupWidth: 310,
+      postEnterAction: (editorParams: any) => {
+        // Saltar a Precio por Hora al dar Enter en Username
+        const targetCol = this.idRoot !== 18 ? 'priceXHour' : 'idDepto';
+        const rowIndex = editorParams.node?.rowIndex ?? editorParams.rowIndex;
+        if (rowIndex == null) return;
+        this.gridApi.setFocusedCell(rowIndex, targetCol);
+        setTimeout(() => {
+          this.gridApi.startEditingCell({ rowIndex, colKey: targetCol });
+        }, 50);
+      },
     };
   }
 
@@ -1857,13 +1880,55 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         });
       }
 
-      this.gridApi.startEditingCell({
-        rowIndex: newRowIndex,
-        colKey: 'idBranch',
-        key: ' '
+      // Detectar la primera columna editable en orden visual (respeta columnas pineadas)
+      const displayedCols = this.gridApi.getAllDisplayedColumns();
+      const firstEditableCol = displayedCols.find((col: any) => {
+        const colDef = col.getColDef();
+        if (typeof colDef.editable === 'function') {
+          return colDef.editable({ data: newItem, node: rowNode, column: col, colDef });
+        }
+        return colDef.editable === true;
       });
+
+      if (firstEditableCol) {
+        const firstColKey = firstEditableCol.getColId();
+        this.gridApi.startEditingCell({ rowIndex: newRowIndex, colKey: firstColKey });
+        // Abrir dropdown si es un agSelectCellEditor
+        if (firstEditableCol.getColDef()?.cellEditor === 'agSelectCellEditor') {
+          setTimeout(() => this.openAgSelectDropdown(), 120);
+        }
+      }
     }, 100);
 
+  }
+
+  /** Abre el dropdown del agSelectCellEditor activo disparando mousedown+click en su trigger. */
+  private openAgSelectDropdown(): void {
+    // 1. Intentar via la instancia del editor (más fiable)
+    const editors = this.gridApi?.getCellEditorInstances?.();
+    if (editors && editors.length > 0) {
+      const editorInstance = editors[0] as any;
+      const editorEl: HTMLElement =
+        editorInstance.getGui?.() ?? editorInstance.eGui ?? null;
+      if (editorEl) {
+        const picker = editorEl.querySelector(
+          '.ag-picker-field-wrapper'
+        ) as HTMLElement;
+        if (picker) {
+          picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+          picker.click();
+          return;
+        }
+      }
+    }
+    // 2. Fallback: buscar en el documento completo
+    const picker = document.querySelector(
+      '.ag-popup-editor .ag-picker-field-wrapper, .ag-cell-editor .ag-picker-field-wrapper'
+    ) as HTMLElement;
+    if (picker) {
+      picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      picker.click();
+    }
   }
 
   async saveMasterChanges() {

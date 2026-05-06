@@ -89,6 +89,7 @@ export class DetailEmployeeDocumentsComponent {
   hasUnsavedChanges = false;
   quickFilter = '';
   private tempIdCounter = 0;
+  private expandedRowId: any = null;
 
   // Register the nested preview renderer
   components = { documentPreview: DocumentPreviewDetailComponent };
@@ -123,10 +124,16 @@ export class DetailEmployeeDocumentsComponent {
       onCellClicked: (params) => {
         if (!params.data?.urlDocument) return;
         const expanding = !params.node.expanded;
-        // Colapsar otros primero
+        // Colapsar todos los expandidos
         params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-        if (expanding) params.node.setExpanded(true);
-        // Refrescar celda para actualizar label/icono
+        if (expanding) {
+          this.expandedRowId = params.data?.id ?? params.node.id;
+          params.node.setExpanded(true);
+        } else {
+          this.expandedRowId = null;
+        }
+        // Aplicar / quitar filtro para que sólo quede visible la fila expandida
+        params.api.onFilterChanged();
         params.api.refreshCells({ rowNodes: [params.node], columns: ['urlDocument'], force: true });
       },
     },
@@ -173,7 +180,10 @@ export class DetailEmployeeDocumentsComponent {
     isRowMaster: (data: any) => !!data?.urlDocument,
     detailCellRendererSelector: () => ({ component: 'documentPreview' }),
     detailRowHeight: 516,
-    // Refresh "Ver/Cerrar" button label when a row collapses
+    // Filtro externo: sólo muestra la fila expandida mientras hay preview activo
+    isExternalFilterPresent: () => this.expandedRowId !== null,
+    doesExternalFilterPass: (node: any) => node.data?.id === this.expandedRowId,
+    // Refresca label "Ver/Cerrar" cuando se colapsa una fila
     onRowGroupOpened: (event: any) => {
       event.api.refreshCells({ rowNodes: [event.node], columns: ['urlDocument'], force: true });
     },
