@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.40 (6 Mayo 2026 21:00) - Fix: Validacion en form nuevo proveedor - requiere compania y/o contacto principal'
+  version: '2.52.59 (6 Mayo 2026 17:00) - Feature: Fecha Entrega calculada automáticamente (Fecha OC + T.Entrega semanas)'
 };

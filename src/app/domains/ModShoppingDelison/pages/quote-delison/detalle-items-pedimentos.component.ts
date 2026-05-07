@@ -238,7 +238,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       typePriority: item.typePriority || 'Normal',
       descriptionNewArticle: item.descriptionNewArticle || '',
       urlNewArticle: item.urlNewArticle || '',
-      justificationNewArticle: item.justificationNewArticle || ''
+      justificationNewArticle: item.justificationNewArticle || '',
+      caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || ''
     };
   }
 
@@ -354,7 +355,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
           pedimento: item.pedimento,
           descriptionNewArticle: rawItem.descriptionNewArticle || '',
           urlNewArticle: rawItem.urlNewArticle || '',
-          justificationNewArticle: rawItem.justificationNewArticle || ''
+          justificationNewArticle: rawItem.justificationNewArticle || '',
+          caducidadMinimaRequerida: rawItem.caducidadMinimaRequerida || item.caducidadMinimaRequerida || ''
         };
 
         await firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), cotizPayload));

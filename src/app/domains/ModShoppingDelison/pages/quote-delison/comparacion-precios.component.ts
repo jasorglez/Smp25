@@ -12,7 +12,7 @@ import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { alerts } from 'app/helpers/alerts';
-import { lastValueFrom, Subscription } from 'rxjs';
+import { lastValueFrom, Subscription, take } from 'rxjs';
 
 
 @Component({
@@ -480,9 +480,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   ): Promise<string> {
     const idRoot   = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
-    const reqFolio = this.requisitionFolio || `REQ-${this.requisitionId}`;
-    const ts       = Date.now().toString().slice(-6);
-    const folio    = `OC-${reqFolio}-${slot.suffix}-${ts}`;
+    const reqFolio        = this.requisitionFolio || `REQ-${this.requisitionId}`;
+    const reqFolioClean   = reqFolio.replace(/-/g, '');
+    const pedimentoMatch  = this.cotizacionFolio.match(/(\d+)/);
+    const pedimentoNumber = pedimentoMatch ? parseInt(pedimentoMatch[1], 10) : (slot.suffix === 'A' ? 1 : slot.suffix === 'B' ? 2 : 3);
+    const provPrefix      = (provName || '').substring(0, 3).toUpperCase() || 'OC';
+    const folio           = `OC-${reqFolioClean}-P${pedimentoNumber}-${provPrefix}${provId}`;
 
     const ocPayload = {
       idRoot,
@@ -696,9 +699,58 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
     if (field === 'tipoOc') {
-      if (this.gridApi) {
-        this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+      const isNegative = !AUTHORIZED.includes(event.newValue);
+
+      if (event.newValue === 'ARTICULO NO AUTORIZADO') {
+        const articuloItemId = Number(event.data?.articuloItemId ?? 0);
+        if (articuloItemId > 0) {
+          // Guardar valores anteriores antes de modificar para poder revertir
+          const savedValues = new Map<any, { tipoOc: string; cantidad: number }>();
+          for (const row of this.rowData) {
+            if (Number(row.articuloItemId) === articuloItemId) {
+              savedValues.set(row, { tipoOc: row.tipoOc, cantidad: row.cantidadConceptualizada ?? 0 });
+              row.tipoOc = 'ARTICULO NO AUTORIZADO';
+              row.cantidadConceptualizada = 0;
+            }
+          }
+          const affectedNodes: any[] = [];
+          this.gridApi?.forEachNode((node: any) => {
+            if (Number(node.data?.articuloItemId) === articuloItemId) affectedNodes.push(node);
+          });
+          this.gridApi?.refreshCells({ rowNodes: affectedNodes, force: true });
+
+          const numArticle = event.data?.numArticle || event.data?.numArticuloInterno || '';
+          if (numArticle && this.requisitionId) {
+            this.openNegativeTypeChat(numArticle, event.newValue, () => {
+              for (const [row, saved] of savedValues) {
+                row.tipoOc = saved.tipoOc;
+                row.cantidadConceptualizada = saved.cantidad;
+              }
+              this.gridApi?.refreshCells({ rowNodes: affectedNodes, force: true });
+            });
+          }
+          return;
+        }
       }
+
+      if (isNegative) {
+        const oldCantidad = event.data.cantidadConceptualizada ?? 0;
+        event.data.cantidadConceptualizada = 0;
+        this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+
+        const numArticle = event.data?.numArticle || event.data?.numArticuloInterno || '';
+        if (numArticle && this.requisitionId) {
+          this.openNegativeTypeChat(numArticle, event.newValue, () => {
+            event.data.tipoOc = event.oldValue;
+            event.data.cantidadConceptualizada = oldCantidad;
+            this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+          });
+        }
+        return;
+      }
+
+      this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
     }
     if (field === 'cantidadConceptualizada') {
       const cantidadValidada = this.getValidatedCantidadConceptualizada(event.newValue, event.data);
@@ -892,6 +944,34 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         ).catch(e => console.warn(`⚠️ No se pudo guardar cantidadConceptualizada:`, e));
       }
     }
+  }
+
+  private openNegativeTypeChat(numArticle: string, tag: string, onRevert: () => void): void {
+    this.itemCommentsService.openChatFor$.next({
+      documentType: 'REQ',
+      idDocument: this.requisitionId,
+      numArticle,
+      autoMessage: tag,
+      forceComment: true
+    });
+
+    let messageSent = false;
+    let subSaved: Subscription;
+    let subClosed: Subscription;
+
+    const cleanup = () => {
+      subSaved?.unsubscribe();
+      subClosed?.unsubscribe();
+    };
+
+    subSaved = this.itemCommentsService.commentSaved$.pipe(take(1)).subscribe(() => {
+      messageSent = true;
+    });
+
+    subClosed = this.itemCommentsService.chatClosed$.pipe(take(1)).subscribe(() => {
+      if (!messageSent) onRevert();
+      cleanup();
+    });
   }
 
   revert() {

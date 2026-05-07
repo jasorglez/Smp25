@@ -11,11 +11,14 @@ import { SignalsService } from 'app/services/signals.service';
   imports: [CommonModule, FormsModule],
   template: `
     <ng-container *ngIf="showChat">
-      <div class="chat-backdrop" (click)="close()"></div>
+      <div class="chat-backdrop" (click)="!forceComment && close()"></div>
       <div class="chat-panel" (mousedown)="$event.stopPropagation()" (click)="$event.stopPropagation()">
         <div class="chat-header">
           <span class="chat-title"><i class="bi bi-chat-dots me-1"></i>{{ numArticle }}</span>
-          <button class="btn-close btn-close-white btn-sm" (click)="close()"></button>
+          <span *ngIf="forceComment" style="font-size:10px; color:rgba(255,255,255,0.85); font-weight:600;">
+            <i class="bi bi-exclamation-circle me-1"></i>Mensaje obligatorio
+          </span>
+          <button *ngIf="!forceComment" class="btn-close btn-close-white btn-sm" (click)="close()"></button>
         </div>
         <div class="chat-messages">
           <div *ngIf="!comments.length" class="chat-empty">Sin comentarios aún</div>
@@ -125,7 +128,8 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   numArticle = '';
   documentType = '';
   idDocument = 0;
-  pendingTag = '';   // tag pendiente que se adhiere al próximo mensaje del usuario
+  pendingTag = '';
+  forceComment = false;
 
   ngOnInit() {
     this.sub = this.commentsService.openChatFor$.subscribe(req => {
@@ -135,6 +139,7 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.idDocument      = req.idDocument;
       this.numArticle      = req.numArticle;
       this.pendingTag      = req.autoMessage || '';
+      this.forceComment    = req.forceComment ?? false;
       this.newText = '';
       this.cancelEdit();
       this.showChat = true;
@@ -206,7 +211,8 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.comments = [...this.comments, saved];
       this.commentsService.commentSaved$.next(saved);
       this.newText = '';
-      this.pendingTag = '';  // consumido
+      this.pendingTag = '';
+      this.forceComment = false;  // mensaje enviado, ya se puede cerrar
     } finally { this.saving = false; }
   }
 

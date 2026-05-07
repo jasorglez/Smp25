@@ -226,10 +226,15 @@ export class DetalleItemsProveedorComponent {
   async loadProviders(): Promise<void> {
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
-      const allProviders: any = await this.customersService.getCustomersByCompany(idRoot, 'PROVIDERS').toPromise();
-      const active = (allProviders || []).map((p: any) => {
-        const company = (p.name ?? '').trim();
-        const contact = (p.Description ?? p.description ?? '').trim();
+      const allProviders: any = await this.customersService.getProvidersForGrid(idRoot).toPromise();
+      const filtered = (allProviders || []).filter((p: any) => {
+        const isExterno = p.typeIntOrExt === 'Externo';
+        const isActive = p.vigente === true || p.active === true || p.Vigente === true;
+        return isExterno && isActive;
+      });
+      const active = filtered.map((p: any) => {
+        const company = (p.company ?? p.name ?? '').trim();
+        const contact = (p.nameContact ?? p.namecontact ?? p.Description ?? p.description ?? '').trim();
         const isCompany = !!company;
         return {
           id: p.id,
@@ -264,7 +269,7 @@ export class DetalleItemsProveedorComponent {
       proveedorXTablaId: 0,
       costoUnitario: item.price || 0,
       compraMinima: 1,
-      tiempoEntrega: 0,
+      tiempoEntrega: 1,
       cantidadConfirmada: item.quantity || 0,
       costoTotal: (item.price || 0) * (item.quantity || 0),
       autorizado: false,
@@ -411,6 +416,18 @@ export class DetalleItemsProveedorComponent {
       alerts.reqErrorToast('Costo requerido', `Los siguientes artículos no tienen costo unitario:\n${nombres}`);
       return;
     }
+    const rowsInvalidTiempo = this.rowData.filter(r => !(r.tiempoEntrega > 0));
+    if (rowsInvalidTiempo.length > 0) {
+      const nombres = rowsInvalidTiempo.map((r: any) => `• ${r.articulo}`).join('\n');
+      alerts.reqErrorToast('T. Entrega requerido', `Los siguientes artículos no tienen tiempo de entrega:\n${nombres}`);
+      return;
+    }
+    const rowsInvalidCompra = this.rowData.filter(r => !(r.compraMinima > 0));
+    if (rowsInvalidCompra.length > 0) {
+      const nombres = rowsInvalidCompra.map((r: any) => `• ${r.articulo}`).join('\n');
+      alerts.reqErrorToast('Compra Mín. requerida', `Los siguientes artículos no tienen compra mínima:\n${nombres}`);
+      return;
+    }
     this.savingChanges = true;
     try {
       await this.saveCotizOrOC('COTIZ');
@@ -501,9 +518,10 @@ export class DetalleItemsProveedorComponent {
     const slotSuffix = this.providerField === 'idProvider' ? 'A' : this.providerField === 'idProvider2' ? 'B' : 'C';
     const folio = `${type}-${this.params.data.cotizacionId}-${slotSuffix}-${Date.now()}`;
     const providerName = this.getSelectedProviderName();
+    const dateCreate = new Date().toISOString().split('T')[0];
     const ocPayload = {
       idRoot, folio, typeReference: type === 'OC' ? 'branch' : 'delison', idReference: type === 'OC' ? (idBranch || 0) : (this.params.data.cotizacionId || 0),
-      idReq: this.params.data.requisitionId || 0, dateCreate: new Date().toISOString().split('T')[0], idProvider: this.selectedProviderId, solicit: providerName.substring(0, 50),
+      idReq: this.params.data.requisitionId || 0, dateCreate, idProvider: this.selectedProviderId, solicit: providerName.substring(0, 50),
       idDepartament: 0, delivery: 'NO APLICA', deliveryTime: '1 DAY', typeOc: 'INSUMOS', idPayment: 0, idCurrency: 0, type, datesupply: this.fechaProveedor, active: true
     };
     const created: any = await lastValueFrom(this.ocandreqsService.addOcAndReq(ocPayload));
@@ -513,10 +531,16 @@ export class DetalleItemsProveedorComponent {
     const gridRows: any[] = [];
     this.gridApi.forEachNode((node: any) => gridRows.push(node.data));
     const rowsForDetails = type === 'OC' ? gridRows.filter((row: any) => this.AUTHORIZED_TYPES.includes(row.typeOC)) : gridRows;
-    const details = rowsForDetails.map((row: any) => ({
-      idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
-      price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima))
-    }));
+    const details = rowsForDetails.map((row: any) => {
+      const weeks = parseInt(String(row.tiempoEntrega)) || 0;
+      const d = new Date(dateCreate);
+      if (weeks > 0) d.setDate(d.getDate() + weeks * 7);
+      const datePostpone = weeks > 0 ? d.toISOString().split('T')[0] : '';
+      return {
+        idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
+        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)), datePostpone
+      };
+    });
     console.log('📝 saveCotizOrOC: Guardando', details.length, 'items con estos datos:');
     console.log(JSON.stringify(details, null, 2));
     for (const d of details) {
@@ -670,12 +694,13 @@ export class DetalleItemsProveedorComponent {
       { field: 'numArticulo', headerName: '# Art', width: 169 },
       { field: 'articulo', headerName: 'Artículo', width: 260 },
       { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 150, editable: !this.ocGenerated,
+      { field: 'tiempoEntrega', headerName: 'T. Entrega x Semanas', width: 170, editable: !this.ocGenerated,
         cellEditor: 'agNumberCellEditor', cellEditorParams: { precision: 0, min: 0 },
         valueFormatter: (params: any) => (params.value > 0 ? String(params.value) : ''),
         valueSetter: (params: any) => {
           const n = parseInt(String(params.newValue));
-          params.data.tiempoEntrega = isNaN(n) || n < 0 ? 0 : n;
+          if (isNaN(n) || n <= 0) { alerts.reqErrorToast('T. Entrega inválido', 'El tiempo de entrega debe ser mayor que cero'); return false; }
+          params.data.tiempoEntrega = n;
           return true;
         }
       },
@@ -684,7 +709,8 @@ export class DetalleItemsProveedorComponent {
         valueFormatter: (params: any) => (params.value > 0 ? String(Math.floor(params.value)) : ''),
         valueSetter: (params: any) => {
           const n = parseInt(String(params.newValue));
-          params.data.compraMinima = isNaN(n) || n < 0 ? 0 : n;
+          if (isNaN(n) || n <= 0) { alerts.reqErrorToast('Compra Mín. inválida', 'La compra mínima debe ser mayor que cero'); return false; }
+          params.data.compraMinima = n;
           return true;
         }
       },

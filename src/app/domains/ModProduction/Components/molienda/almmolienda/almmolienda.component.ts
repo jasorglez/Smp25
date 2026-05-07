@@ -72,6 +72,7 @@ import { CatalogProductionService } from '../../../../../services/catalog-produc
             [columnDefs]="columnDefs"
             [gridOptions]="gridOptions"
             (gridReady)="onGridReady($event)"
+            (firstDataRendered)="onFirstDataRendered($event)"
             (cellValueChanged)="onCellValueChanged($event)"
             (rowClicked)="onRowClicked($event)"
             (cellEditingStopped)="onCellEditingStopped($event)"
@@ -493,6 +494,12 @@ export class AlmmoliendaComponent {
     if (this.userBranches.length > 0 || this.matPrimaOptions.length > 0) {
       this._columnDefs = [];
       this.gridApi.setGridOption('columnDefs', this.columnDefs);
+    }
+  }
+
+  onFirstDataRendered(params: any) {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.autoSizeAllColumns();
     }
   }
 

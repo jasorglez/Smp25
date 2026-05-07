@@ -42,6 +42,7 @@ interface ReqOption {
           [columnDefs]="colDefs"
           [gridOptions]="gridOptions"
           (gridReady)="onGridReady($event)"
+          (firstDataRendered)="onFirstDataRenderedReq($event)"
           (cellClicked)="onCellClicked($event)"
           style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
         </ag-grid-angular>
@@ -63,6 +64,7 @@ interface ReqOption {
             [columnDefs]="cascadeOcColDefs"
             [gridOptions]="cascadeOcGridOptions"
             (gridReady)="onCascadeOcGridReady($event)"
+            (firstDataRendered)="onFirstDataRenderedOc($event)"
             (cellClicked)="onCascadeOcCellClicked($event)"
             style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
           </ag-grid-angular>
@@ -103,6 +105,7 @@ interface ReqOption {
               [columnDefs]="nivel4ColDefs"
               [gridOptions]="nivel4GridOptions"
               (gridReady)="onNivel4GridReady($event)"
+              (firstDataRendered)="onFirstDataRenderedEntrada($event)"
               style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
             </ag-grid-angular>
           </div>
@@ -634,6 +637,24 @@ export class DetalleMoliendaComponent {
     }
     if (this.cascadeCaratData.length)
       this.nivel5GridApi.setGridOption('rowData', this.cascadeCaratData);
+  }
+
+  onFirstDataRenderedReq(params: any) {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.autoSizeAllColumns();
+    }
+  }
+
+  onFirstDataRenderedOc(params: any) {
+    if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
+      this.cascadeOcGridApi.autoSizeAllColumns();
+    }
+  }
+
+  onFirstDataRenderedEntrada(params: any) {
+    if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
+      this.nivel4GridApi.autoSizeAllColumns();
+    }
   }
 
   private buildNivel5ColumnDefs(savedCategoryIds: Set<number> = new Set()): void {
