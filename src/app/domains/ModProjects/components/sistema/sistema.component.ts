@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -8,8 +8,10 @@ import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { LogbookService } from 'app/services/logbook.service';
 import { SignalsService } from 'app/services/signals.service';
+import { SignalrService } from 'app/services/signalr.service';
 import { ConventionsService } from 'app/services/conventions.service';
 import { alerts } from 'app/helpers/alerts';
+import { Subscription } from 'rxjs';
 import { IDailyReport } from 'app/interface/idaily-report';
 import { ButtonCellRendererExpenditureComponent } from '../../../ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { PdfButtonCellRendererComponent }  from './pdf-button-cell-renderer.component';
@@ -36,14 +38,18 @@ import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
   templateUrl: './sistema.component.html',
   styleUrl: './sistema.component.scss'
 })
-export class SistemaComponent implements OnInit {
+export class SistemaComponent implements OnInit, OnDestroy {
 
   private dailyReportService = inject(DailyReportService);
-  private logbookService = inject(LogbookService);
-  private signalsService    = inject(SignalsService);
+  private logbookService     = inject(LogbookService);
+  private signalsService     = inject(SignalsService);
+  private signalRService     = inject(SignalrService);
   private conventionsService = inject(ConventionsService);
-  private projectsService   = inject(ProjectsService);
-  private oilfieldService   = inject(OilfieldService);
+  private projectsService    = inject(ProjectsService);
+  private oilfieldService    = inject(OilfieldService);
+
+  private signalRSub!: Subscription;
+  private reloadTimeout: any = null;
 
   public rowData: IDailyReport[]       = [];
   public conventionsList: any[] = [];
@@ -336,6 +342,30 @@ export class SistemaComponent implements OnInit {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     });
+
+    // Tiempo real: recargar cuando el bot guarda nota, foto o crea reporte nuevo
+    const handler = (data: any) => {
+      const projectId = data?.IdProject ?? data?.idProject;
+      if (projectId && +projectId === this.idProject) {
+        this.scheduleReload();
+      }
+    };
+
+    this.signalRSub = new Subscription();
+    this.signalRSub.add(this.signalRService.textUpdate$.subscribe(handler));
+    this.signalRSub.add(this.signalRService.photoUpdate$.subscribe(handler));
+    this.signalRSub.add(this.signalRService.newDailyReport$.subscribe(handler));
+  }
+
+  ngOnDestroy(): void {
+    this.signalRSub?.unsubscribe();
+    if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
+  }
+
+  // Debounce para evitar múltiples recargas seguidas
+  private scheduleReload(): void {
+    if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
+    this.reloadTimeout = setTimeout(() => this.loadReports(), 800);
   }
 
   ngOnInit(): void {
