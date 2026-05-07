@@ -369,6 +369,12 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Iniciar SignalR si aún no está conectado (puede que ordenes.component no haya arrancado)
+    if (!this.signalRService.isConnected()) {
+      const token = localStorage.getItem('token') || '';
+      this.signalRService.startConnection('storageHub', token);
+    }
+
     const projectId  = this.signalsService.getSidebarProjectId()();
     const contractId = this.signalsService.getContractSelectedBySidebar()();
     if (contractId) this.idContract = contractId;
