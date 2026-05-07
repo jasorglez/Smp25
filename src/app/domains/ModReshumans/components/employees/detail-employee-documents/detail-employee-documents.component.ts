@@ -11,16 +11,23 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 
 type DocKind = 'pdf' | 'image' | 'office' | null;
 
-function detectKind(url: string): DocKind {
+function detectKind(url: string, fileExt?: string): DocKind {
   if (!url) return null;
+  // Para archivos pendientes (blob URL) usamos la extensión guardada en el row
+  if (fileExt) {
+    if (fileExt === 'pdf') return 'pdf';
+    if (['jpg', 'jpeg', 'png'].includes(fileExt)) return 'image';
+    return 'office';
+  }
+  // Para URLs de Firebase: .includes porque terminan en ?alt=media&token=...
   const lower = url.toLowerCase();
-  if (lower.includes('/pdf/') || lower.includes('.pdf')) return 'pdf';
-  if (lower.includes('/images/') || /\.(jpe?g|png)/.test(lower)) return 'image';
+  if (lower.includes('.pdf')) return 'pdf';
+  if (/\.(jpe?g|png)/.test(lower)) return 'image';
   return 'office';
 }
 
-function officeIcon(url: string): string {
-  const lower = url.toLowerCase();
+function officeIcon(name: string): string {
+  const lower = name.toLowerCase();
   if (/\.xlsx?/.test(lower)) return 'bi-file-earmark-excel text-success';
   if (/\.docx?/.test(lower)) return 'bi-file-earmark-word text-primary';
   if (/\.pptx?/.test(lower)) return 'bi-file-earmark-ppt text-danger';
@@ -41,13 +48,16 @@ function officeIcon(url: string): string {
       <!-- Imagen -->
       <img *ngIf="kind === 'image'" [src]="safeUrl"
         style="max-width:100%;max-height:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);" alt="Documento">
-      <!-- Office / sin preview nativo -->
+      <!-- Office: sin vista previa nativa -->
       <div *ngIf="kind === 'office'" class="text-center">
         <i class="bi {{ iconClass }}" style="font-size:4rem;"></i>
         <p class="mt-2 text-muted" style="font-size:0.85rem;">Vista previa no disponible para este formato.</p>
-        <a [href]="rawUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-1">
+        <a *ngIf="!isPending" [href]="rawUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-1">
           <i class="bi bi-download me-1"></i> Descargar archivo
         </a>
+        <p *ngIf="isPending" class="text-warning mt-2" style="font-size:0.8rem;">
+          <i class="bi bi-clock-history me-1"></i>Pendiente de guardar
+        </p>
       </div>
       <!-- Sin archivo -->
       <div *ngIf="!kind">
@@ -60,14 +70,18 @@ export class DocumentPreviewDetailComponent {
   rawUrl = '';
   kind: DocKind = null;
   iconClass = '';
+  isPending = false;
   private sanitizer = inject(DomSanitizer);
 
   agInit(params: any) {
     const url: string = params.data?.urlDocument ?? null;
     if (!url) return;
     this.rawUrl = url;
-    this.kind = detectKind(url);
-    this.iconClass = this.kind === 'office' ? officeIcon(url) : '';
+    this.isPending = url.startsWith('blob:');
+    const fileExt: string | undefined = params.data?.__pendingFileExt;
+    this.kind = detectKind(url, fileExt);
+    const iconSrc = params.data?.__pendingFile?.name ?? url;
+    this.iconClass = this.kind === 'office' ? officeIcon(iconSrc) : '';
     this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 }
@@ -119,12 +133,11 @@ export class DetailEmployeeDocumentsComponent {
                     <i class="bi ${icon} me-1"></i>${label}
                   </button>`;
         }
-        return `<span style="font-size:0.72rem;color:#aaa;">Sin PDF</span>`;
+        return `<span style="font-size:0.72rem;color:#aaa;">Sin archivo</span>`;
       },
       onCellClicked: (params) => {
         if (!params.data?.urlDocument) return;
         const expanding = !params.node.expanded;
-        // Colapsar todos los expandidos
         params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
         if (expanding) {
           this.expandedRowId = params.data?.id ?? params.node.id;
@@ -132,7 +145,6 @@ export class DetailEmployeeDocumentsComponent {
         } else {
           this.expandedRowId = null;
         }
-        // Aplicar / quitar filtro para que sólo quede visible la fila expandida
         params.api.onFilterChanged();
         params.api.refreshCells({ rowNodes: [params.node], columns: ['urlDocument'], force: true });
       },
@@ -141,9 +153,21 @@ export class DetailEmployeeDocumentsComponent {
       headerName: 'Archivo',
       field: 'urlDocument',
       colId: 'urlDocumentUpload',
-      width: 150,
+      width: 180,
       editable: false,
       cellRenderer: (params) => {
+        const pendingFile: File | undefined = params.data?.__pendingFile;
+        if (pendingFile) {
+          const icon = officeIcon(pendingFile.name)
+            .replace('text-success', 'color:#198754')
+            .replace('text-primary', 'color:#0d6efd')
+            .replace('text-danger', 'color:#dc3545')
+            .replace('text-secondary', 'color:#6c757d');
+          const [cls] = icon.split(' ');
+          const col = icon.match(/color:[^;]+/)?.[0] ?? 'color:#555';
+          return `<i class="bi ${cls}" style="font-size:0.85rem;vertical-align:middle;margin-right:4px;${col}"></i>
+                  <span style="font-size:0.72rem;color:#856404;" title="${pendingFile.name}">${pendingFile.name} ⏳</span>`;
+        }
         if (params.value) {
           const icon = officeIcon(params.value)
             .replace('text-success', 'color:#198754')
@@ -159,12 +183,19 @@ export class DetailEmployeeDocumentsComponent {
       },
       onCellDoubleClicked: async (params) => {
         try {
-          const { url } = await this.attachHandlerService.uploadEmployeeDoc();
-          params.node.setDataValue('urlDocument', url);
+          const { file, localUrl } = await this.attachHandlerService.selectEmployeeDoc();
+          // Liberar blob URL anterior si existía
+          if (params.data.__pendingFile && params.data.urlDocument?.startsWith('blob:')) {
+            URL.revokeObjectURL(params.data.urlDocument);
+          }
+          params.data.__pendingFile = file;
+          params.data.__pendingFileExt = file.name.split('.').pop()?.toLowerCase() ?? '';
+          params.node.setDataValue('urlDocument', localUrl);
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
         } catch {
-          // user cancelled
+          // usuario canceló
         }
       },
     },
@@ -180,10 +211,8 @@ export class DetailEmployeeDocumentsComponent {
     isRowMaster: (data: any) => !!data?.urlDocument,
     detailCellRendererSelector: () => ({ component: 'documentPreview' }),
     detailRowHeight: 516,
-    // Filtro externo: sólo muestra la fila expandida mientras hay preview activo
     isExternalFilterPresent: () => this.expandedRowId !== null,
     doesExternalFilterPass: (node: any) => node.data?.id === this.expandedRowId,
-    // Refresca label "Ver/Cerrar" cuando se colapsa una fila
     onRowGroupOpened: (event: any) => {
       event.api.refreshCells({ rowNodes: [event.node], columns: ['urlDocument'], force: true });
     },
@@ -238,6 +267,22 @@ export class DetailEmployeeDocumentsComponent {
       alerts.userSaveErrorToast('Guardar documentos', 'Cada documento necesita nombre y archivo.');
       return;
     }
+
+    // Subir archivos pendientes a Firebase antes de guardar en BD
+    for (const row of this.rowData) {
+      if (row.__pendingFile) {
+        try {
+          const realUrl = await this.attachHandlerService.uploadFileToStorage(row.__pendingFile);
+          URL.revokeObjectURL(row.urlDocument);
+          row.urlDocument = realUrl;
+          delete row.__pendingFile;
+        } catch {
+          alerts.userSaveErrorToast('Error', `No se pudo subir el archivo "${row.documentName}".`);
+          return;
+        }
+      }
+    }
+
     const newRows = this.rowData.filter((r) => r.__isNew);
     const modifiedRows = this.rowData.filter((r) => r.__modified && !r.__isNew);
     const adds = newRows.map((r) => this.employeesService.addEmployeeDocument(this.cleanRow(r)));
@@ -253,6 +298,14 @@ export class DetailEmployeeDocumentsComponent {
   }
 
   revertChanges() {
+    // Liberar blob URLs pendientes
+    this.rowData.forEach((r) => {
+      if (r.__pendingFile && r.urlDocument?.startsWith('blob:')) {
+        URL.revokeObjectURL(r.urlDocument);
+      }
+      delete r.__pendingFile;
+      delete r.__pendingFileExt;
+    });
     this.loadData();
     this.hasUnsavedChanges = false;
   }
@@ -265,6 +318,9 @@ export class DetailEmployeeDocumentsComponent {
     }
     const data = selected[0].data;
     if (data.__isNew) {
+      if (data.__pendingFile && data.urlDocument?.startsWith('blob:')) {
+        URL.revokeObjectURL(data.urlDocument);
+      }
       this.rowData = this.rowData.filter((r) => r.id !== data.id);
       this.hasUnsavedChanges = this.rowData.some((r) => r.__isNew || r.__modified);
       return;
@@ -284,6 +340,8 @@ export class DetailEmployeeDocumentsComponent {
     const clean = { ...row };
     delete clean.__isNew;
     delete clean.__modified;
+    delete clean.__pendingFile;
+    delete clean.__pendingFileExt;
     if (typeof clean.id === 'string' && clean.id.startsWith('temp_')) delete clean.id;
     return clean;
   }
