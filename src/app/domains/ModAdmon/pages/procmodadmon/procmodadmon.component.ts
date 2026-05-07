@@ -1,10 +1,12 @@
-import { Component, ViewEncapsulation,   effect, inject } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Component, ViewEncapsulation, effect, inject } from '@angular/core';
+import { RouterModule, Router } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SharedModule } from 'app/shared/shared.module';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { AuthService } from 'app/services/auth.service';
+
+const ROUTES_WITH_OWN_MENU = ['palacio-municipal'];
 
 @Component({
   selector: 'app-procmodadmon',
@@ -12,14 +14,19 @@ import { AuthService } from 'app/services/auth.service';
   imports: [RouterModule, DomainsModule, SharedModule],
   templateUrl: './procmodadmon.component.html',
   styleUrl: './procmodadmon.component.scss',
-  encapsulation: ViewEncapsulation.None, // Desactiva la encapsulación
+  encapsulation: ViewEncapsulation.None,
 })
 export class ProcmodadmonComponent {
    private signalsService = inject(SignalsService);
    private trackingService = inject(TrackingService);
    authService = inject(AuthService);
+   router = inject(Router);
 
   idUser: number = null;
+
+  get hideParentMenu(): boolean {
+    return ROUTES_WITH_OWN_MENU.some(r => this.router.url.includes(r));
+  }
 
   constructor() {
     // --- ACCIÓN INICIAL ---
