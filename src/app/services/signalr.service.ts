@@ -17,6 +17,9 @@ export class SignalrService {
     // **NUEVO: Observable para nuevos reportes diarios**
   private newDailyReportSubject = new BehaviorSubject<any>(null);
 
+  // TelegramHub — conexión al bot de Telegram para recibir eventos en tiempo real
+  private telegramHubConnection: signalR.HubConnection | null = null;
+
   // AdmonHub — conexión independiente para actualizaciones de ingresos/egresos
   private admonHubConnection: signalR.HubConnection | null = null;
   private admonUpdateSubject = new BehaviorSubject<any>(null);
@@ -239,6 +242,65 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
         console.error('❌ Conexión alternativa falló:', err);
         this.connectionState.next('Error');
       });
+  }
+
+  // Conexión al hub del bot Telegram — emite ReceivePhotoUpdate, ReceiveTextUpdate, ReceiveNewDailyReport
+  public startTelegramConnection(): void {
+    if (this.telegramHubConnection?.state === signalR.HubConnectionState.Connected ||
+        this.telegramHubConnection?.state === signalR.HubConnectionState.Connecting) {
+      return;
+    }
+
+    const hubUrl = 'https://endpoints.biapp.com.mx/telegram/storageHub';
+    console.log('🤖 Iniciando conexión Telegram SignalR:', hubUrl);
+
+    this.telegramHubConnection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, {
+        skipNegotiation: false,
+        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: retryContext =>
+          Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000)
+      })
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    // Reutiliza los mismos subjects para que los componentes no necesiten cambiar
+    this.telegramHubConnection.on('ReceivePhotoUpdate', (data: any) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log('📸 [TelegramHub] ReceivePhotoUpdate:', parsed);
+      this.photoUpdateSubject.next(parsed);
+    });
+
+    this.telegramHubConnection.on('ReceiveTextUpdate', (data: any) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log('📝 [TelegramHub] ReceiveTextUpdate:', parsed);
+      this.textUpdateSubject.next(parsed);
+    });
+
+    this.telegramHubConnection.on('ReceiveNewDailyReport', (data: any) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log('📊 [TelegramHub] ReceiveNewDailyReport:', parsed);
+      this.newDailyReportSubject.next(parsed);
+    });
+
+    this.telegramHubConnection
+      .start()
+      .then(() => console.log('✅ TelegramHub conectado'))
+      .catch(err => console.error('❌ TelegramHub error:', err));
+  }
+
+  public stopTelegramConnection(): void {
+    if (this.telegramHubConnection) {
+      this.telegramHubConnection.stop();
+      this.telegramHubConnection = null;
+    }
+  }
+
+  public isTelegramConnected(): boolean {
+    return this.telegramHubConnection?.state === signalR.HubConnectionState.Connected;
   }
 
   // Conexión al AdmonHub del microservicio Administration para actualizaciones en tiempo real

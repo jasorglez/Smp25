@@ -369,10 +369,9 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Iniciar SignalR si aún no está conectado (puede que ordenes.component no haya arrancado)
-    if (!this.signalRService.isConnected()) {
-      const token = localStorage.getItem('token') || '';
-      this.signalRService.startConnection('storageHub', token);
+    // Conectar al hub del bot Telegram para recibir eventos en tiempo real
+    if (!this.signalRService.isTelegramConnected()) {
+      this.signalRService.startTelegramConnection();
     }
 
     const projectId  = this.signalsService.getSidebarProjectId()();
