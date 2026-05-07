@@ -36,6 +36,7 @@ interface OcRow {
           [gridOptions]="gridOptions"
           (gridReady)="onGridReady($event)"
           (rowClicked)="onRowClicked($event)"
+          (firstDataRendered)="onFirstDataRendered($event)"
           style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
         </ag-grid-angular>
       </div>
@@ -99,6 +100,7 @@ export class OrdenesydetallesOcComponent {
       field: 'providerName',
       headerName: 'Proveedor',
       width: 250,
+      tooltipValueGetter: (params) => `${params.data.providerName} (ID: ${params.data.idProvider})`
     },
     {
       field: 'datecreate',
@@ -125,6 +127,17 @@ export class OrdenesydetallesOcComponent {
       width: 140,
       cellStyle: { backgroundColor: '#e0f2f1' },
     },
+    {
+      headerName: 'PDF',
+      width: 60,
+      sortable: false,
+      cellRenderer: (params: any) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'text-align: center; cursor: pointer;';
+        div.innerHTML = '<i class="bi bi-file-pdf" style="color: #d32f2f; font-size: 1.2rem;" title="Descargar PDF"></i>';
+        return div;
+      },
+    },
   ];
 
   gridOptions: any = {
@@ -141,7 +154,7 @@ export class OrdenesydetallesOcComponent {
     { field: 'numarticle', headerName: '# Item OC', width: 140 },
     { field: 'namearticle', headerName: 'Artículo', flex: 2, minWidth: 140 },
     { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
-    { field: 'caducidad', headerName: 'Caducidad', width: 120 },
+    { field: 'caducidadMinimaRequerida', headerName: 'Caducidad Minima Requerida', width: 180 },
     { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
     { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
     { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
@@ -200,6 +213,12 @@ export class OrdenesydetallesOcComponent {
     this.itemsGridApi = params.api;
     if (this.itemsData.length) {
       this.itemsGridApi.setGridOption('rowData', this.itemsData);
+    }
+  }
+
+  onFirstDataRendered(params: any) {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.autoSizeAllColumns();
     }
   }
 

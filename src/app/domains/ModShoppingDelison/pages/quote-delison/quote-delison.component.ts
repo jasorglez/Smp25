@@ -462,7 +462,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             typePriority: item.typePriority || 'Normal',
             descriptionNewArticle: item.descriptionNewArticle || '',
             urlNewArticle: item.urlNewArticle || '',
-            justificationNewArticle: item.justificationNewArticle || ''
+            justificationNewArticle: item.justificationNewArticle || '',
+            caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || ''
           })),
           createdAt: cotizacion.dateCreate,
           dateModified: cotizacion.dateModified
@@ -629,7 +630,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
                 typePriority: item.typePriority || 'Normal',
                 descriptionNewArticle: item.descriptionNewArticle || '',
                 urlNewArticle: item.urlNewArticle || '',
-                justificationNewArticle: item.justificationNewArticle || ''
+                justificationNewArticle: item.justificationNewArticle || '',
+                caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || ''
               })),
               createdAt: cotizacion.dateCreate,
               dateModified: cotizacion.dateModified
