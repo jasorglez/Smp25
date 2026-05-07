@@ -56,6 +56,22 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
     { field: 'content', label: 'Contenido' },
   ];
 
+  private readonly ALL_NOTE_TYPES = ['NOTE', 'TRABAJO ANTECEDENTES', 'ACTIVIDADES RELEVANTES', 'PROXIMOS PASOS'];
+
+  private readonly typeLabels: Record<string, string> = {
+    'NOTE':                   'Nota',
+    'TRABAJO ANTECEDENTES':   'Antecedentes',
+    'ACTIVIDADES RELEVANTES': 'Actividades',
+    'PROXIMOS PASOS':         'Próx. Pasos',
+  };
+
+  private readonly typeColors: Record<string, string> = {
+    'NOTE':                   '#6c757d',
+    'TRABAJO ANTECEDENTES':   '#0d6efd',
+    'ACTIVIDADES RELEVANTES': '#198754',
+    'PROXIMOS PASOS':         '#fd7e14',
+  };
+
   private catalogService = inject(CatalogsService);
   typeNotesCatalog: any[] = [];
 
@@ -86,6 +102,25 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
     }
   }
 
+  // Carga todos los tipos de nota (NOTE + 3 del bot) en una sola llamada
+  protected override loadData(): void {
+    if (!this.reportData?.id) return;
+    this.logbookService.getInfoByReporte(this.reportData.id, '').subscribe({
+      next: (resp: any) => {
+        const all: any[] = resp.success ? (resp.data || []) : [];
+        this.rowData = all
+          .filter(item => this.ALL_NOTE_TYPES.includes(item.typeNote))
+          .map((item, i) => ({
+            ...this.remapFromDb(item),
+            id: item.id || `temp_${Date.now()}_${i}`,
+            __isNew: false, __modified: false,
+          }));
+        this.notifyParentCount(this.rowData.length);
+      },
+      error: () => (this.rowData = []),
+    });
+  }
+
   // DB supervisor → title, DB description → content
   protected override remapFromDb(item: any): any {
     return {
@@ -99,6 +134,14 @@ export class BitacoraNotasComponent extends BitacoraBaseComponent {
     if (this._colDefs.length > 0) return this._colDefs;
     this._colDefs = [
       { headerName: '#', width: 45, valueGetter: (p) => p.node!.rowIndex! + 1, pinned: 'left', editable: false },
+      {
+        field: 'typeNote', headerName: 'Tipo', width: 140, editable: false,
+        cellRenderer: (p: any) => {
+          const label = this.typeLabels[p.value] ?? p.value ?? 'Nota';
+          const color = this.typeColors[p.value] ?? '#6c757d';
+          return `<span class="badge" style="background:${color};font-size:0.72rem;">${label}</span>`;
+        },
+      },
       {
         field: 'title',
         headerName: 'Notas',

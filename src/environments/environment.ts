@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.42 (6 Mayo 2026) fecha pinned left en sistema',
+  version: '5.43 (7 Mayo 2026) notas sistema incluye tipos del bot Telegram',
 };
   
