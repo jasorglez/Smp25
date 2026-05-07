@@ -126,7 +126,7 @@ export class SistemaComponent implements OnInit {
   public colDefs: ColDef[] = [
     { field: 'id', headerName: 'ID', width: 80, editable: false, hide: true },
     {
-      field: 'date', headerName: 'Fecha', width: 110, editable: true,
+      field: 'date', headerName: 'Fecha', width: 110, editable: true, pinned: 'left',
       cellEditor: 'agDateCellEditor',
       valueGetter: (p) => p.data?.date ? String(p.data.date).substring(0, 10) : '',
       valueSetter: (p) => { p.data.date = p.newValue; return true; },
