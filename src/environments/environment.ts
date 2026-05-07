@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.46 (7 Mayo 2026) fix SignalR conectar hub Telegram para reactividad sistema',
+  version: '5.47 (7 Mayo 2026) expenditure reactivo via SignalR bot Telegram',
 };
   
