@@ -1,4 +1,6 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { SignalrService } from 'app/services/signalr.service';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -38,7 +40,7 @@ import { DetallesExpenditureComponent } from './detalles-expenditure.component';
   templateUrl: './expenditure.component.html',
   styleUrl: './expenditure.component.scss'
 })
-export class ExpenditureComponent {
+export class ExpenditureComponent implements OnDestroy {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   public modalServiceTable = inject(ModalService);
@@ -57,6 +59,10 @@ export class ExpenditureComponent {
   private projectsService = inject(ProjectsService);
   authService = inject(AuthService);
   public trackingService = inject(TrackingService);
+  private signalRService = inject(SignalrService);
+
+  private signalRSub!: Subscription;
+  private reloadTimeout: any = null;
 
   public isIncomeMode: boolean = false;
 
@@ -137,7 +143,25 @@ export class ExpenditureComponent {
       }
     });
 
+    // Tiempo real: recargar cuando el bot guarda un egreso
+    if (!this.signalRService.isTelegramConnected()) {
+      this.signalRService.startTelegramConnection();
+    }
+    this.signalRSub = this.signalRService.egresoUpdate$.subscribe((data: any) => {
+      if (!data) return;
+      const idCompany = data?.idCompany ?? data?.IdCompany;
+      if (idCompany && +idCompany === +this.idRoot) {
+        if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
+        this.reloadTimeout = setTimeout(() => this.getExpenditure(), 800);
+      }
+    });
+
     console.log('✅ ExpenditureComponent: Constructor completado');
+  }
+
+  ngOnDestroy(): void {
+    this.signalRSub?.unsubscribe();
+    if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
   }
 
   // Propiedades para datos pendientes y control

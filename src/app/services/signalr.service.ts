@@ -14,8 +14,11 @@ export class SignalrService {
   private photoUpdateSubject = new BehaviorSubject<any>(null);
   private textUpdateSubject = new BehaviorSubject<any>(null);
 
-    // **NUEVO: Observable para nuevos reportes diarios**
+  // **NUEVO: Observable para nuevos reportes diarios**
   private newDailyReportSubject = new BehaviorSubject<any>(null);
+
+  // **NUEVO: Observable para egresos guardados desde el bot**
+  private egresoUpdateSubject = new BehaviorSubject<any>(null);
 
   // TelegramHub — conexión al bot de Telegram para recibir eventos en tiempo real
   private telegramHubConnection: signalR.HubConnection | null = null;
@@ -30,8 +33,11 @@ export class SignalrService {
   public photoUpdate$ = this.photoUpdateSubject.asObservable();
   public textUpdate$ = this.textUpdateSubject.asObservable();
 
-    // **NUEVO: Observable público para nuevos reportes**
+  // **NUEVO: Observable público para nuevos reportes**
   public newDailyReport$ = this.newDailyReportSubject.asObservable();
+
+  // **NUEVO: Observable público para egresos del bot**
+  public egresoUpdate$ = this.egresoUpdateSubject.asObservable();
 
   constructor() { }
 
@@ -284,6 +290,12 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       console.log('📊 [TelegramHub] ReceiveNewDailyReport:', parsed);
       this.newDailyReportSubject.next(parsed);
+    });
+
+    this.telegramHubConnection.on('ReceiveEgresoUpdate', (data: any) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log('💸 [TelegramHub] ReceiveEgresoUpdate:', parsed);
+      this.egresoUpdateSubject.next(parsed);
     });
 
     this.telegramHubConnection
