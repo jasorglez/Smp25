@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.43 (7 Mayo 2026) bot: dailyreport con defaults Angular, fotos counter, notas tipos Telegram',
+  version: '5.44 (7 Mayo 2026) sistema reactivo SignalR bot Telegram tiempo real',
 };
   
