@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.41 (6 Mayo 2026) foto modal fallas grid',
+  version: '5.42 (6 Mayo 2026) fecha pinned left en sistema',
 };
   
