@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, ChangeDetectorRef, effect, OnDestroy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, ChangeDetectorRef, effect, OnDestroy, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,6 +8,7 @@ import { FallasService, FallaIncidencia, FallaHistorial, UpdateStatusDto } from 
 import { SignalsService } from '../../../../services/signals.service';
 import { SignalrService } from '../../../../services/signalr.service';
 import { Subscription } from 'rxjs';
+import * as L from 'leaflet';
 
 @Component({
   selector: 'app-fallas-incidencias',
@@ -17,14 +18,25 @@ import { Subscription } from 'rxjs';
   templateUrl: './fallas-incidencias.component.html',
   styleUrl: './fallas-incidencias.component.scss'
 })
-export class FallasIncidenciasComponent implements OnDestroy {
+export class FallasIncidenciasComponent implements OnDestroy, AfterViewInit {
   private fallasService = inject(FallasService);
   private signalsService = inject(SignalsService);
   private signalRService = inject(SignalrService);
   private cdr = inject(ChangeDetectorRef);
 
+  @ViewChild('mapContainer') mapContainer!: ElementRef;
+
   private gridApi!: GridApi;
   private signalRSub!: Subscription;
+  private leafletMap!: L.Map;
+  private fallaMarker?: L.Marker;
+
+  private readonly mapIcon = L.icon({
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    shadowSize: [41, 41]
+  });
 
   constructor() {
     effect(() => {
@@ -40,12 +52,22 @@ export class FallasIncidenciasComponent implements OnDestroy {
     });
   }
 
+  ngAfterViewInit(): void {
+    this.leafletMap = L.map(this.mapContainer.nativeElement, { zoomControl: true })
+      .setView([23.6345, -102.5528], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(this.leafletMap);
+  }
+
   ngOnDestroy(): void {
     this.signalRSub?.unsubscribe();
+    this.leafletMap?.remove();
   }
 
   rowData: FallaIncidencia[] = [];
   selectedFalla: FallaIncidencia | null = null;
+  mapFalla: FallaIncidencia | null = null;
   historial: FallaHistorial[] = [];
   showHistorial = false;
   showUpdateModal = false;
@@ -81,8 +103,12 @@ export class FallasIncidenciasComponent implements OnDestroy {
       valueFormatter: p => p.value ? new Date(p.value).toLocaleDateString('es-MX') : ''
     },
     {
-      headerName: 'Acciones', width: 140, pinned: 'right',
+      headerName: 'Acciones', width: 170, pinned: 'right',
       cellRenderer: (p: any) => {
+        const hasLocation = p.data.latitud && p.data.longitud;
+        const mapaBtn = hasLocation
+          ? `<button class="btn btn-sm btn-success py-0 px-1 btn-mapa" title="Ver en mapa"><i class="bi bi-geo-alt-fill"></i></button>`
+          : `<button class="btn btn-sm btn-outline-secondary py-0 px-1" disabled title="Sin ubicación"><i class="bi bi-geo-alt"></i></button>`;
         return `<div class="d-flex gap-1 align-items-center h-100">
           <button class="btn btn-sm btn-warning py-0 px-1 btn-actualizar">
             <i class="bi bi-pencil-fill"></i>
@@ -90,6 +116,7 @@ export class FallasIncidenciasComponent implements OnDestroy {
           <button class="btn btn-sm btn-info py-0 px-1 btn-historial">
             <i class="bi bi-clock-history"></i>
           </button>
+          ${mapaBtn}
           <button class="btn btn-sm btn-danger py-0 px-1 btn-eliminar">
             <i class="bi bi-trash-fill"></i>
           </button>
@@ -99,6 +126,7 @@ export class FallasIncidenciasComponent implements OnDestroy {
         const target = event.event.target as HTMLElement;
         if (target.closest('.btn-actualizar')) this.openUpdateModal(event.data);
         if (target.closest('.btn-historial')) this.openHistorial(event.data);
+        if (target.closest('.btn-mapa')) this.openMapa(event.data);
         if (target.closest('.btn-eliminar')) this.deleteFalla(event.data);
       }
     }
@@ -173,6 +201,26 @@ export class FallasIncidenciasComponent implements OnDestroy {
     this.showHistorial = false;
     this.showUpdateModal = false;
     this.selectedFalla = null;
+    this.cdr.markForCheck();
+  }
+
+  openMapa(falla: FallaIncidencia): void {
+    if (!falla.latitud || !falla.longitud) return;
+    this.mapFalla = falla;
+    this.cdr.markForCheck();
+    setTimeout(() => {
+      this.leafletMap.invalidateSize();
+      this.leafletMap.setView([falla.latitud!, falla.longitud!], 15);
+      if (this.fallaMarker) this.leafletMap.removeLayer(this.fallaMarker);
+      this.fallaMarker = L.marker([falla.latitud!, falla.longitud!], { icon: this.mapIcon })
+        .addTo(this.leafletMap)
+        .bindPopup(`<b>${falla.folio}</b><br>${falla.tipoFalla ?? ''}<br>${falla.descripcionCiudadano ?? ''}`)
+        .openPopup();
+    }, 50);
+  }
+
+  closeMapa(): void {
+    this.mapFalla = null;
     this.cdr.markForCheck();
   }
 

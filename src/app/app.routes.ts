@@ -1568,6 +1568,20 @@ export const routes: Routes = [
                   }
                 },
                 canDeactivate: [UnsavedChangesGuard]
+              },
+              {
+                path: 'fallas-incidencias',
+                loadComponent: () =>
+                  import(
+                    './domains/ModAdmon/pages/fallas-incidencias/fallas-incidencias.component'
+                  ).then((c) => c.FallasIncidenciasComponent),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Fallas e Incidencias - Palacio Municipal',
+                    category: 'Administration'
+                  }
+                }
               }
 
             ]

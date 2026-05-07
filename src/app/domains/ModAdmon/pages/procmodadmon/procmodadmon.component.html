@@ -1,6 +1,6 @@
 <div class="col-md-12">
   <div class="card">
-    <div class="card-header px-2">
+    <div class="card-header px-2" *ngIf="!hideParentMenu">
       <ul class="nav nav-pills">
 
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard')">
