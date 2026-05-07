@@ -40,6 +40,20 @@
 
 </div>
 
+<!-- Modal Foto -->
+<div class="modal fade show d-block" style="background:rgba(0,0,0,.85)" *ngIf="selectedFotoUrl" (click)="closeFoto()">
+  <div class="modal-dialog modal-dialog-centered modal-lg" (click)="$event.stopPropagation()">
+    <div class="modal-content bg-dark border-0">
+      <div class="modal-header border-0 pb-0">
+        <button type="button" class="btn-close btn-close-white ms-auto" (click)="closeFoto()"></button>
+      </div>
+      <div class="modal-body text-center pt-1 pb-3 px-3">
+        <img [src]="selectedFotoUrl" class="img-fluid rounded" style="max-height:75vh;object-fit:contain;" />
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Actualizar Status -->
 <div class="modal fade show d-block" style="background:rgba(0,0,0,.5)" *ngIf="showUpdateModal">
   <div class="modal-dialog modal-dialog-centered">

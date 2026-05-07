@@ -68,6 +68,7 @@ export class FallasIncidenciasComponent implements OnDestroy, AfterViewInit {
   rowData: FallaIncidencia[] = [];
   selectedFalla: FallaIncidencia | null = null;
   mapFalla: FallaIncidencia | null = null;
+  selectedFotoUrl: string | null = null;
   historial: FallaHistorial[] = [];
   showHistorial = false;
   showUpdateModal = false;
@@ -103,12 +104,16 @@ export class FallasIncidenciasComponent implements OnDestroy, AfterViewInit {
       valueFormatter: p => p.value ? new Date(p.value).toLocaleDateString('es-MX') : ''
     },
     {
-      headerName: 'Acciones', width: 170, pinned: 'right',
+      headerName: 'Acciones', width: 200, pinned: 'right',
       cellRenderer: (p: any) => {
         const hasLocation = p.data.latitud && p.data.longitud;
+        const hasFoto = !!p.data.fotoUrl;
         const mapaBtn = hasLocation
           ? `<button class="btn btn-sm btn-success py-0 px-1 btn-mapa" title="Ver en mapa"><i class="bi bi-geo-alt-fill"></i></button>`
           : `<button class="btn btn-sm btn-outline-secondary py-0 px-1" disabled title="Sin ubicación"><i class="bi bi-geo-alt"></i></button>`;
+        const fotoBtn = hasFoto
+          ? `<button class="btn btn-sm btn-primary py-0 px-1 btn-foto" title="Ver foto"><i class="bi bi-image-fill"></i></button>`
+          : `<button class="btn btn-sm btn-outline-secondary py-0 px-1" disabled title="Sin foto"><i class="bi bi-image"></i></button>`;
         return `<div class="d-flex gap-1 align-items-center h-100">
           <button class="btn btn-sm btn-warning py-0 px-1 btn-actualizar">
             <i class="bi bi-pencil-fill"></i>
@@ -117,6 +122,7 @@ export class FallasIncidenciasComponent implements OnDestroy, AfterViewInit {
             <i class="bi bi-clock-history"></i>
           </button>
           ${mapaBtn}
+          ${fotoBtn}
           <button class="btn btn-sm btn-danger py-0 px-1 btn-eliminar">
             <i class="bi bi-trash-fill"></i>
           </button>
@@ -127,6 +133,7 @@ export class FallasIncidenciasComponent implements OnDestroy, AfterViewInit {
         if (target.closest('.btn-actualizar')) this.openUpdateModal(event.data);
         if (target.closest('.btn-historial')) this.openHistorial(event.data);
         if (target.closest('.btn-mapa')) this.openMapa(event.data);
+        if (target.closest('.btn-foto')) this.openFoto(event.data);
         if (target.closest('.btn-eliminar')) this.deleteFalla(event.data);
       }
     }
@@ -221,6 +228,17 @@ export class FallasIncidenciasComponent implements OnDestroy, AfterViewInit {
 
   closeMapa(): void {
     this.mapFalla = null;
+    this.cdr.markForCheck();
+  }
+
+  openFoto(falla: FallaIncidencia): void {
+    if (!falla.fotoUrl) return;
+    this.selectedFotoUrl = falla.fotoUrl;
+    this.cdr.markForCheck();
+  }
+
+  closeFoto(): void {
+    this.selectedFotoUrl = null;
     this.cdr.markForCheck();
   }
 
