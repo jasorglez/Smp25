@@ -6,6 +6,7 @@ import { ColDef, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
@@ -67,16 +68,21 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
       <div *ngIf="!loading && !error && articulos.length > 0" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
         <div class="article-toolbar-row" style="flex-shrink: 0;">
           <div class="actions d-flex align-items-center gap-2" style="margin-left: auto;">
+            <span *ngIf="hasConflictingTipoOc"
+                  style="font-size:11px; color:#b71c1c; font-weight:600; display:flex; align-items:center; gap:4px; max-width:320px;">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              Un artículo tiene proveedores con tipo OC mixto (rechazo + autorización).
+            </span>
             <button
               type="button"
               class="btn btn-sm btn-success position-relative"
               (click)="saveOnly()"
-              [disabled]="rowData.length === 0 || !hasUnsavedChanges || ocGenerada"
-              [title]="ocGenerada ? 'Comparación cerrada' : ''">
+              [disabled]="rowData.length === 0 || !hasUnsavedChanges || ocGenerada || hasConflictingTipoOc"
+              [title]="ocGenerada ? 'Comparación cerrada' : hasConflictingTipoOc ? 'Resuelve el conflicto de Tipo OC antes de guardar' : ''">
               Guardar
               <span
                 class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-                *ngIf="hasUnsavedChanges && !ocGenerada">
+                *ngIf="hasUnsavedChanges && !ocGenerada && !hasConflictingTipoOc">
               </span>
             </button>
 
@@ -84,9 +90,18 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
               type="button"
               class="btn btn-sm btn-primary position-relative"
               (click)="generateOC()"
-              [disabled]="rowData.length === 0 || ocGenerada"
-              [title]="ocGenerada ? 'Comparación cerrada' : 'Generar Orden(es) de Compra'">
+              [disabled]="rowData.length === 0 || ocGenerada || !savedAtLeastOnce || hasUnsavedChanges"
+              [title]="ocGenerada ? 'Comparación cerrada' : (!savedAtLeastOnce || hasUnsavedChanges) ? 'Guarda los cambios antes de generar OC' : 'Generar Orden(es) de Compra'">
               <i class="bi bi-file-earmark-check me-1"></i>Generar OC
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-sm btn-danger"
+              (click)="finalizeReq()"
+              [disabled]="rowData.length === 0 || ocGenerada || !allTipoOcNegative || !requisitionId"
+              [title]="ocGenerada ? 'Comparación cerrada' : !allTipoOcNegative ? 'Solo se habilita cuando todos los Tipo OC son negativos (COMPRA NO AUTORIZADA, CAMBIO DE ESPECIFICACIONES o ARTICULO NO AUTORIZADO)' : 'Finalizar requisición sin generar órdenes de compra'">
+              <i class="bi bi-x-octagon me-1"></i>Finalizar Req
             </button>
 
             <button
@@ -153,6 +168,7 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
         </div>
       </div>
     </div>
+
   `,
   styles: [`
     .comparacion-container {
@@ -271,11 +287,13 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
       justify-content: flex-end;
       gap: 0.5rem;
     }
+
   `]
 })
 export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
+  private customersService = inject(CustomersService);
   private itemCommentsService = inject(ItemCommentsService);
   private signalsService = inject(SignalsService);
   private cdr = inject(ChangeDetectorRef);
@@ -322,8 +340,26 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private _colDefs: ColDef[] | null = null;
 
   hasUnsavedChanges = false;
+  savedAtLeastOnce = false;
   loading = false;
   error: string | null = null;
+
+  get hasConflictingTipoOc(): boolean {
+    const REJECTION = ['CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
+    const byArticulo = new Map<number, any[]>();
+    for (const row of this.rowData) {
+      const id = Number(row.articuloItemId ?? 0);
+      if (!byArticulo.has(id)) byArticulo.set(id, []);
+      byArticulo.get(id)!.push(row);
+    }
+    for (const rows of byArticulo.values()) {
+      if (rows.length <= 1) continue;
+      const hasRejection = rows.some(r => REJECTION.includes(r.tipoOc));
+      const hasOther     = rows.some(r => r.tipoOc && !REJECTION.includes(r.tipoOc) && r.tipoOc !== 'SELECCIONE UNA OPCION');
+      if (hasRejection && hasOther) return true;
+    }
+    return false;
+  }
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -487,13 +523,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const provPrefix      = (provName || '').substring(0, 3).toUpperCase() || 'OC';
     const folio           = `OC-${reqFolioClean}-P${pedimentoNumber}-${provPrefix}${provId}`;
 
+    const dateCreate = new Date().toISOString().split('T')[0];
     const ocPayload = {
       idRoot,
       folio,
       typeReference: 'branch',
       idReference:   idBranch || 0,
       idReq:         this.requisitionId || 0,
-      dateCreate:    new Date().toISOString().split('T')[0],
+      dateCreate,
       idProvider:    provId,
       solicit:       provName.substring(0, 50),
       idDepartament: this.idDepartamentFromReq || 0,
@@ -511,26 +548,32 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const newOcId = Number(created?.id ?? created?.data?.id ?? 0);
     if (!newOcId || newOcId <= 0) throw new Error('No se obtuvo id del OC');
 
-    const details = rows.map((row: any) => ({
-      idMovement:   newOcId,
-      idSupplie:    row.idSupplie || 0,
-      idProvider:   provId,
-      nameProvider: provName,
-      quantity:     Number(row.cantidadConceptualizada) > 0 ? Number(row.cantidadConceptualizada) : Number(row.cantidadComprar) || 0,
-      price:        Number(row.costoUnitario) || 0,
-      type:         'OC',
-      tiempoEntrega: row.tiempoEntrega || '',
-      compraMinima:  Number(row.compraMinima) || 1,
-      autorizado:    true,
-      active:        true,
-      recurrent:     row.nuevoRecurrente || 'Recurrente',
-      nameArticle:   row.articulo || '',
-      numArticle:    String(row.numArticuloInterno || ''),
-      observation:   row.numArticuloExterno || '',
-      typeOc:        row.tipoOc || '',
-      comment:       '',
-      datePostpone:  null
-    }));
+    const details = rows.map((row: any) => {
+      const weeks = parseInt(String(row.tiempoEntrega)) || 0;
+      const d = new Date(dateCreate);
+      if (weeks > 0) d.setDate(d.getDate() + weeks * 7);
+      const datePostpone = weeks > 0 ? d.toISOString().split('T')[0] : '';
+      return {
+        idMovement:   newOcId,
+        idSupplie:    row.idSupplie || 0,
+        idProvider:   provId,
+        nameProvider: provName,
+        quantity:     Number(row.cantidadConceptualizada) > 0 ? Number(row.cantidadConceptualizada) : Number(row.cantidadComprar) || 0,
+        price:        Number(row.costoUnitario) || 0,
+        type:         'OC',
+        tiempoEntrega: row.tiempoEntrega || '',
+        compraMinima:  Number(row.compraMinima) || 1,
+        autorizado:    true,
+        active:        true,
+        recurrent:     row.nuevoRecurrente || 'Recurrente',
+        nameArticle:   row.articulo || '',
+        numArticle:    String(row.numArticuloInterno || ''),
+        observation:   row.numArticuloExterno || '',
+        typeOc:        row.tipoOc || '',
+        comment:       '',
+        datePostpone
+      };
+    });
 
     for (const detail of details) {
       await lastValueFrom(this.ocAndReqsService.addReqItem(detail));
@@ -611,6 +654,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           idSupplie,
           proveedorId: provId,
           proveedorNombre: prov.nombre ?? prov.name ?? (provId ? `Proveedor ${provId}` : '—'),
+          proveedorEstado: prov.state ?? prov.estado ?? '',
+          proveedorCiudad: prov.city ?? prov.ciudad ?? '',
+          proveedorTelefono: prov.phone ?? prov.telefono ?? prov.telefonoPrincipal ?? '',
           cantidadComprar,
           nuevoRecurrente: articulo.recurrent ?? articulo.nuevoRecurrente ?? prov.recurrent ?? '—',
           articulo: articulo.nombre ?? articulo.article ?? '',
@@ -619,6 +665,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           numArticuloExterno:
             codigoExternoProveedor || (articulo.codigoExterno ?? articulo.numArticuloExterno ?? articulo.observation ?? ''),
           prioridad: articulo.typePriority ?? articulo.prioridad ?? 'NORMAL',
+          caducidadMinimaRequerida: articulo.caducidadMinimaRequerida ?? articulo.caducidad ?? articulo.expiration ?? '',
           tiempoEntrega: tiemposEntregaPorProv[provId] ?? tiemposEntregaPorProv[provId.toString()] ?? '',
           compraMinima,
           costoUnitario,
@@ -673,6 +720,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   onCellValueChanged(event: any) {
     this.hasUnsavedChanges = true;
+    this.savedAtLeastOnce = false;
     const field = event.colDef?.field;
 
     // Detectar cambio a "COMPRA AUTORIZADA EN OTRA FECHA"
@@ -702,7 +750,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
       const isNegative = !AUTHORIZED.includes(event.newValue);
 
-      if (event.newValue === 'ARTICULO NO AUTORIZADO') {
+      if (event.newValue === 'ARTICULO NO AUTORIZADO' || event.newValue === 'CAMBIO DE ESPECIFICACIONES') {
         const articuloItemId = Number(event.data?.articuloItemId ?? 0);
         if (articuloItemId > 0) {
           // Guardar valores anteriores antes de modificar para poder revertir
@@ -710,7 +758,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           for (const row of this.rowData) {
             if (Number(row.articuloItemId) === articuloItemId) {
               savedValues.set(row, { tipoOc: row.tipoOc, cantidad: row.cantidadConceptualizada ?? 0 });
-              row.tipoOc = 'ARTICULO NO AUTORIZADO';
+              row.tipoOc = event.newValue;
               row.cantidadConceptualizada = 0;
             }
           }
@@ -728,7 +776,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
                 row.cantidadConceptualizada = saved.cantidad;
               }
               this.gridApi?.refreshCells({ rowNodes: affectedNodes, force: true });
-            });
+            }, undefined, undefined, String(event.data?.articulo ?? ''));
           }
           return;
         }
@@ -741,11 +789,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
         const numArticle = event.data?.numArticle || event.data?.numArticuloInterno || '';
         if (numArticle && this.requisitionId) {
+          const needsProviderTab = event.newValue === 'COMPRA NO AUTORIZADA';
           this.openNegativeTypeChat(numArticle, event.newValue, () => {
             event.data.tipoOc = event.oldValue;
             event.data.cantidadConceptualizada = oldCantidad;
             this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
-          });
+          }, needsProviderTab ? Number(event.data?.proveedorId ?? 0) : undefined,
+             needsProviderTab ? String(event.data?.proveedorNombre ?? '') : undefined,
+             String(event.data?.articulo ?? ''));
         }
         return;
       }
@@ -806,6 +857,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
+    this.savedAtLeastOnce = true;
     alerts.basicAlert('Guardado', 'Registro guardado correctamente', 'success');
   }
 
@@ -944,15 +996,74 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         ).catch(e => console.warn(`⚠️ No se pudo guardar cantidadConceptualizada:`, e));
       }
     }
+
+    // Actualizar estado de proveedor en tabla providers según reglas de tipo OC
+    const allRowsByProvider = new Map<number, any[]>();
+    for (const row of this.rowData) {
+      if (row.proveedorId > 0) {
+        const list = allRowsByProvider.get(row.proveedorId) || [];
+        list.push(row);
+        allRowsByProvider.set(row.proveedorId, list);
+      }
+    }
+
+    for (const [provId, rows] of allRowsByProvider) {
+      const hasAnyNegative = rows.some(r => NOT_AUTHORIZED.includes(r.tipoOc));
+      const hasAnyPositive = rows.some(r => AUTHORIZED.includes(r.tipoOc));
+      if (!hasAnyNegative && !hasAnyPositive) continue;
+
+      try {
+        const customer: any = await lastValueFrom(this.customersService.getCustomerById(provId));
+        const porAutorizar =
+          customer?.autorizacion === true || customer?.autorizacion === 1 ||
+          customer?.porAutorizar === true || customer?.porAutorizar === 1 ||
+          customer?.por_autorizar === true || customer?.por_autorizar === 1;
+        if (!porAutorizar) continue;
+
+        const allNegative = rows.every(r => NOT_AUTHORIZED.includes(r.tipoOc));
+
+        if (allNegative) {
+          // Todos negativos → desactivar proveedor (active=false), porAutorizar se mantiene
+          await lastValueFrom(
+            this.customersService.updateCustomer(provId, { ...customer, active: false, vigente: false })
+          ).catch(e => console.warn(`⚠️ No se pudo desactivar proveedor ${provId}:`, e));
+
+          // También desactivar todas las asignaciones de materiales del proveedor en proveedorxtablas
+          try {
+            const matRecords: any = await lastValueFrom(this.providersService.getProvidersXTable(provId, 'MATERIAL'));
+            const records: any[] = Array.isArray(matRecords) ? matRecords : [];
+            await Promise.all(
+              records.map(rec =>
+                lastValueFrom(
+                  this.providersService.updateProviderXTable(rec.id, { ...rec, active: false })
+                ).catch(e => console.warn(`⚠️ No se pudo desactivar proveedorxtabla ${rec.id}:`, e))
+              )
+            );
+          } catch (e) {
+            console.warn(`⚠️ No se pudieron desactivar registros de materiales del proveedor ${provId}:`, e);
+          }
+        } else {
+          // Todo positivo o mixto → proveedor activo, quitar porAutorizar
+          await lastValueFrom(
+            this.customersService.updateCustomer(provId, { ...customer, autorizacion: false })
+          ).catch(e => console.warn(`⚠️ No se pudo quitar porAutorizar del proveedor ${provId}:`, e));
+        }
+      } catch (e) {
+        console.warn(`⚠️ Error al leer/actualizar estado del proveedor ${provId}:`, e);
+      }
+    }
   }
 
-  private openNegativeTypeChat(numArticle: string, tag: string, onRevert: () => void): void {
+  private openNegativeTypeChat(numArticle: string, tag: string, onRevert: () => void, provId?: number, provName?: string, articleName?: string): void {
     this.itemCommentsService.openChatFor$.next({
       documentType: 'REQ',
       idDocument: this.requisitionId,
       numArticle,
+      articleName: articleName || '',
       autoMessage: tag,
-      forceComment: true
+      forceComment: true,
+      defaultTab: provId ? 'proveedor' : 'articulo',
+      providerMessages: provId ? { idProvider: provId, providerName: provName || '' } : undefined
     });
 
     let messageSent = false;
@@ -1053,18 +1164,24 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   }
 
   onCellMouseOver(event: any): void {
-    if (event.colDef?.field !== 'articulo') return;
+    const field = event.colDef?.field;
     const data = event.data;
     if (!data) return;
     const cellEl = event.event?.target as HTMLElement;
     if (!cellEl) return;
     const rect = cellEl.getBoundingClientRect();
-    this.showArticuloTooltip(rect, data);
+    if (field === 'articulo') {
+      this.showArticuloTooltip(rect, data);
+    } else if (field === 'proveedorNombre') {
+      this.showProveedorTooltip(rect, data);
+    }
   }
 
   onCellMouseOut(event: any): void {
-    if (event.colDef?.field !== 'articulo') return;
-    this.hideArticuloTooltip();
+    const field = event.colDef?.field;
+    if (field === 'articulo' || field === 'proveedorNombre') {
+      this.hideArticuloTooltip();
+    }
   }
 
   private showArticuloTooltip(cellRect: DOMRect, data: any): void {
@@ -1087,8 +1204,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const rows = [
       { label: 'Nuevo/Recurrente:', value: data.nuevoRecurrente || '—' },
       { label: '# Artículo Interno:', value: data.numArticuloInterno || '—' },
-      { label: '# Artículo Externo:', value: data.numArticuloExterno || '—' },
-      { label: 'Prioridad:', value: data.prioridad || '—' }
+      { label: 'Prioridad:', value: data.prioridad || '—' },
+      { label: 'Caducidad Mínima Requerida:', value: data.caducidadMinimaRequerida || '—' }
     ];
 
     const title = this.renderer.createElement('div');
@@ -1129,6 +1246,56 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       this.renderer.removeChild(document.body, this.tooltipEl);
       this.tooltipEl = null;
     }
+  }
+
+  private showProveedorTooltip(cellRect: DOMRect, data: any): void {
+    this.hideArticuloTooltip();
+
+    this.tooltipEl = this.renderer.createElement('div');
+    this.renderer.setStyle(this.tooltipEl, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipEl, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipEl, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipEl, 'min-width', '220px');
+    this.renderer.setStyle(this.tooltipEl, 'max-width', '340px');
+    this.renderer.setStyle(this.tooltipEl, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+    this.renderer.setStyle(this.tooltipEl, 'border-radius', '8px');
+    this.renderer.setStyle(this.tooltipEl, 'box-shadow', '0 8px 24px rgba(0,0,0,0.4)');
+    this.renderer.setStyle(this.tooltipEl, 'padding', '12px 14px');
+    this.renderer.setStyle(this.tooltipEl, 'color', '#ffffff');
+    this.renderer.setStyle(this.tooltipEl, 'font-size', '12px');
+    this.renderer.setStyle(this.tooltipEl, 'line-height', '1.6');
+
+    const rows = [
+      { label: '# Artículo Externo:', value: data.numArticuloExterno || '—' },
+      { label: 'Estado:', value: data.proveedorEstado || '—' },
+      { label: 'Ciudad:', value: data.proveedorCiudad || '—' },
+      { label: 'Teléfono:', value: data.proveedorTelefono || '—' }
+    ];
+
+    rows.forEach(({ label, value }, idx) => {
+      const row = this.renderer.createElement('div');
+      this.renderer.setStyle(row, 'display', 'flex');
+      this.renderer.setStyle(row, 'gap', '8px');
+      if (idx < rows.length - 1) this.renderer.setStyle(row, 'margin-bottom', '6px');
+
+      const labelEl = this.renderer.createElement('span');
+      this.renderer.setStyle(labelEl, 'color', 'rgba(255,255,255,0.8)');
+      this.renderer.setStyle(labelEl, 'font-weight', '600');
+      this.renderer.setStyle(labelEl, 'min-width', '120px');
+      this.renderer.setStyle(labelEl, 'flex-shrink', '0');
+      this.renderer.appendChild(labelEl, this.renderer.createText(label));
+      this.renderer.appendChild(row, labelEl);
+
+      const valueEl = this.renderer.createElement('span');
+      this.renderer.appendChild(valueEl, this.renderer.createText(value));
+      this.renderer.appendChild(row, valueEl);
+
+      this.renderer.appendChild(this.tooltipEl!, row);
+    });
+
+    this.renderer.appendChild(document.body, this.tooltipEl);
+    this.renderer.setStyle(this.tooltipEl, 'top', `${cellRect.top}px`);
+    this.renderer.setStyle(this.tooltipEl, 'left', `${cellRect.right + 10}px`);
   }
 
   get colDefs(): ColDef[] {
@@ -1250,33 +1417,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         field: 'costoXCompraMinima',
         headerName: 'COSTO X COMPRA MIN.',
         width: 120,
+        hide: true,
+        suppressColumnsToolPanel: true,
         editable: false,
         cellStyle: { textAlign: 'center', padding: '4px' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
-      },
-      {
-        field: 'comentario',
-        headerName: 'CHAT',
-        width: 88,
-        editable: false,
-        cellRenderer: ItemCommentsCellRendererComponent,
-        cellRendererParams: (params: any) => ({
-          documentType: 'REQ',
-          idDocument: this.requisitionId,
-          numArticle: params.data?.numArticle || params.data?.numArticuloInterno || '',
-          locked: false
-        }),
-        onCellClicked: (params: any) => {
-          const numArticle = params.data?.numArticle || params.data?.numArticuloInterno || '';
-          if (!numArticle || !this.requisitionId) return;
-          this.itemCommentsService.openChatFor$.next({
-            documentType: 'REQ',
-            idDocument: this.requisitionId,
-            numArticle
-          });
-        },
-        cellStyle: { padding: '4px', cursor: 'pointer' }
       },
       {
         field: 'tipoOc',
@@ -1322,6 +1468,35 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           return { textAlign: 'center', padding: '4px',
                    backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
         }
+      },
+      {
+        field: 'comentario',
+        headerName: 'CHAT',
+        width: 88,
+        editable: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: (params: any) => ({
+          documentType: 'REQ',
+          idDocument: this.requisitionId,
+          numArticle: params.data?.numArticle || params.data?.numArticuloInterno || '',
+          idProvider: Number(params.data?.proveedorId ?? 0),
+          locked: false
+        }),
+        onCellClicked: (params: any) => {
+          const numArticle = params.data?.numArticle || params.data?.numArticuloInterno || '';
+          if (!numArticle || !this.requisitionId) return;
+          this.itemCommentsService.openChatFor$.next({
+            documentType: 'REQ',
+            idDocument: this.requisitionId,
+            numArticle,
+            articleName: String(params.data?.articulo ?? ''),
+            providerMessages: {
+              idProvider: Number(params.data?.proveedorId ?? 0),
+              providerName: String(params.data?.proveedorNombre ?? '')
+            }
+          });
+        },
+        cellStyle: { padding: '4px', cursor: 'pointer' }
       }
     ];
     return this._colDefs;
@@ -1348,4 +1523,71 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     },
     suppressCellFocus: false
   };
+
+  /**
+   * Tipos OC considerados "negativos" (no generan OC).
+   * Se mantiene alineado con la lista NOT_AUTHORIZED usada por patchRegistros() y generateOC().
+   */
+  private readonly NEGATIVE_TIPO_OC = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
+
+  /** True cuando hay filas y todas tienen un tipoOc dentro de NEGATIVE_TIPO_OC. */
+  get allTipoOcNegative(): boolean {
+    if (!this.rowData || this.rowData.length === 0) return false;
+    return this.rowData.every((row: any) => this.NEGATIVE_TIPO_OC.includes(row?.tipoOc));
+  }
+
+  /**
+   * Finaliza la requisición cuando todos los Tipo OC son negativos.
+   * Persiste los Tipo OC, bloquea la requisición y marca la comparación como cerrada.
+   * No genera órdenes de compra (todas son negativas) y no toca la lógica de generateOC().
+   */
+  async finalizeReq(): Promise<void> {
+    if (this.ocGenerada) return;
+    if (!this.allTipoOcNegative) return;
+    if (!this.requisitionId) {
+      alerts.basicAlert('Sin requisición', 'No se pudo identificar la requisición a finalizar.', 'error');
+      return;
+    }
+
+    const result = await alerts.confirmAlert(
+      'Finalizar Requisición',
+      'Todos los Tipo OC son negativos. Se cerrará la requisición sin generar órdenes de compra. ¿Continuar?',
+      'warning',
+      'Sí, finalizar'
+    );
+    if (!result.isConfirmed) return;
+
+    alerts.showLoading('Finalizando requisición', 'Guardando estados y bloqueando la requisición...');
+
+    try {
+      await this.patchRegistros();
+
+      await lastValueFrom(
+        this.ocAndReqsService.lockRequisition(this.requisitionId, true)
+      ).catch(e => console.warn('⚠️ No se pudo bloquear la requisición:', e));
+
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.hasUnsavedChanges = false;
+      this.savedAtLeastOnce  = true;
+      this.ocGenerada        = true;
+
+      this.cdr.detectChanges();
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      alerts.closeLoading();
+      alerts.basicAlert(
+        'Requisición finalizada',
+        'La requisición se cerró correctamente. No se generaron órdenes de compra.',
+        'success'
+      );
+    } catch (e) {
+      console.error('❌ Error finalizando requisición:', e);
+      alerts.closeLoading();
+      alerts.basicAlert('Error', 'No se pudo finalizar la requisición. Intenta nuevamente.', 'error');
+    }
+  }
+
 }

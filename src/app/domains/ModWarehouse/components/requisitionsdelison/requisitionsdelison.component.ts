@@ -512,8 +512,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Mantiene un layout “bonito” (sin columnas mini) llenando el ancho disponible.
     // En AG Grid nuevas versiones esto evita tener que autoSizeAllColumns.
     autoSizeStrategy: {
-      type: 'fitGridWidth',
-      defaultMinWidth: 110,
+      type: 'fitCellContents',
     },
     masterDetail: true,
     // Se recalcula en caliente en updateDetailRowHeight() para ocupar el alto disponible.
@@ -599,16 +598,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   private autoAdjustColumns(): void {
     if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    // Preferimos “fit” al ancho del grid para evitar columnas minúsculas.
-    if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-      return;
-    }
-    // Fallback (si existiera en esta versión)
-    if (typeof apiAny.autoSizeAllColumns === 'function') {
-      apiAny.autoSizeAllColumns(false);
-    }
+    this.gridApi.autoSizeAllColumns();
   }
 
   /**

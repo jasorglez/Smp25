@@ -23,7 +23,7 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
         <span class="small fw-semibold text-dark">Cotización de proveedor guardada — no puede modificarse la solicitud de artículos en este pedimento.</span>
       </div>
       <!-- Barra de botones CRUD -->
-      <div style="margin-bottom: 5px; display: flex; justify-content: flex-end; align-items: center; flex-shrink: 0;">
+      <div style="margin-bottom: 5px; display: flex; justify-content: flex-end; align-items: center; flex-shrink: 0; position: relative; z-index: 10; background-color: #f8f9fa; padding: 5px 0;">
         <div class="d-flex gap-1">
           <button class="btn btn-primary btn-xs position-relative" (click)="save()" [disabled]="articulosLocked || !hasUnsavedChanges">
             <i class="bi bi-floppy"></i> Guardar
@@ -49,6 +49,7 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
           [gridOptions]="gridOptions"
           [localeText]="AG_GRID_LOCALE_ES"
           (gridReady)="onGridReady($event)"
+          (firstDataRendered)="onFirstDataRendered($event)"
           style="width: 100%; flex: 1 1 auto; min-height: 0;">
         </ag-grid-angular>
       </div>
@@ -193,6 +194,10 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     this.autoAdjustColumns();
   }
 
+  onFirstDataRendered(params: any) {
+    this.gridApi?.autoSizeAllColumns();
+  }
+
   @HostListener('window:resize')
   onWindowResize() {
     this.autoAdjustColumns();
@@ -289,6 +294,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         tipo: item.intorext || item.tipo,
         proveedorInterno: item.proveedorInterno,
         tipoPrioridad: item.typePriority || item.priority,
+        caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || '',
         comment: item.comment || item.observation || item.observaciones || '',
         pedimento: item.pedimento || false,
         pedimentoNumber: item.pedimentoNum || '',
@@ -356,7 +362,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
           descriptionNewArticle: rawItem.descriptionNewArticle || '',
           urlNewArticle: rawItem.urlNewArticle || '',
           justificationNewArticle: rawItem.justificationNewArticle || '',
-          caducidadMinimaRequerida: rawItem.caducidadMinimaRequerida || item.caducidadMinimaRequerida || ''
+          caducidadMinimaRequerida: String(item.caducidadMinimaRequerida || rawItem.caducidadMinimaRequerida || '')
         };
 
         await firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), cotizPayload));
@@ -580,6 +586,15 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         cellStyle: { textAlign: 'right' }
       },
       {
+        field: 'caducidadMinimaRequerida',
+        headerName: 'Caducidad Minima Requerida',
+        width: 140,
+        flex: 0,
+        suppressSizeToFit: true,
+        editable: (params: any) => !this.articulosLocked,
+        cellStyle: { textAlign: 'center' }
+      },
+      {
         field: 'tipoPrioridad',
         headerName: 'Tipo Prioridad',
         width: 130,
@@ -678,6 +693,20 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     },
     onFirstDataRendered: () => {
       this.autoAdjustColumns();
+    },
+    onCellEditingStopped: (event: any) => {
+      if (event.colDef.field === 'caducidadMinimaRequerida') {
+        const n = parseInt(String(event.newValue), 10);
+        if (!isNaN(n) && n >= 0) {
+          const row = this.rowData.find((r: any) => r.id === event.data.id);
+          if (row) {
+            row.caducidadMinimaRequerida = n;
+            row.__modified = true;
+            this.hasUnsavedChanges = true;
+            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['caducidadMinimaRequerida'], force: true });
+          }
+        }
+      }
     },
     onRowClicked: (event: any) => {
       this.selectedRow = event.data;

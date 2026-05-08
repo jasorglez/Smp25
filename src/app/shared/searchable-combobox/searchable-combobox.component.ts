@@ -26,7 +26,7 @@ type ComboboxOption = string | Record<string, any>;
         [disabled]="disabled"
         [ngModel]="searchText"
         (ngModelChange)="onInputChange($event)"
-        (focus)="open = true; filterOptions()"
+        (focus)="onFocus()"
         autocomplete="off"
       />
 
@@ -96,6 +96,7 @@ export class SearchableComboboxComponent implements ControlValueAccessor {
   @Input() inputName?: string;
   @Input() uppercase: boolean = false;
   @Input() searchFields: string[] = [];
+  @Input() openOnFocus: boolean = true;
 
   @Output() optionSelected = new EventEmitter<ComboboxOption>();
 
@@ -172,15 +173,27 @@ export class SearchableComboboxComponent implements ControlValueAccessor {
     }
   }
 
+  onFocus() {
+    if (this.openOnFocus) {
+      this.open = true;
+      this.filterOptions();
+    }
+  }
+
   onInputChange(value: string) {
     const next = this.uppercase ? String(value ?? '').toUpperCase() : String(value ?? '');
     this.searchText = next;
-    this.open = true;
+    this.open = this.openOnFocus ? true : next.length > 0;
     this.filterOptions();
     this.onChange(this.searchText);
   }
 
   filterOptions(): void {
+    if (!this.openOnFocus && !this.searchText) {
+      this.filteredOptions = [];
+      this.selectedIndex = -1;
+      return;
+    }
     const normalizedSearch = this.normalizeText(this.searchText);
     const fields = this.searchFields.length > 0 ? this.searchFields : [this.displayField];
 

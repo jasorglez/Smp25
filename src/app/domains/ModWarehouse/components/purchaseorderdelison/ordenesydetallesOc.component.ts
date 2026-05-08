@@ -159,7 +159,16 @@ export class OrdenesydetallesOcComponent {
     { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
     { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
     { field: 'dateuse', headerName: 'Fecha Entrada Almacén', width: 150 },
-    { field: 'datepostpone', headerName: 'Fecha Entrega', width: 130 },
+    { field: 'datepostpone', headerName: 'Fecha Entrega', width: 130,
+      valueFormatter: (p) => {
+        if (!p.value) return '';
+        const date = new Date(p.value);
+        const d = String(date.getDate()).padStart(2, '0');
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const y = date.getFullYear();
+        return `${d}/${m}/${y}`;
+      }
+    },
   ];
 
   itemsGridOptions: any = {

@@ -272,6 +272,12 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     rowSelection: 'single',
     masterDetail: true,
     detailRowHeight: 300,
+    getRowStyle: (params: any) => {
+      if (params.data?.active === false || params.data?.active === 0) {
+        return { background: '#f5f5f5', color: '#aaaaaa', fontStyle: 'italic' };
+      }
+      return null;
+    },
     isRowMaster: (dataItem: any) => {
       // Cada fila de proveedor puede tener un detalle de sucursal
       return true;
@@ -743,30 +749,33 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   async loadProviders() {
     try {
-      // 1. Cargar todos los proveedores vigentes + tipos del Warehouse en paralelo
+      // 1. Cargar TODOS los proveedores (activos e inactivos) + tipos del Warehouse en paralelo
+      // getProvidersForGrid devuelve todos sin filtrar por vigente, necesario para resolver nombres
       const [allProviders, warehouseProviders]: any = await Promise.all([
-        this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').toPromise(),
+        firstValueFrom(this.customersService.getProvidersForGrid(this.idRoot)).catch(() => []),
         firstValueFrom(this.materialsService.getProvidersxmaterials(this.idRoot)).catch(() => [])
       ]);
-
-      this.providers = allProviders.filter((p: any) => p.vigente === true || p.vigente === 1);
 
       // Enriquecer proveedores con typeIntOrExt del Warehouse
       const typeMap = new Map<number, string>();
       (warehouseProviders || []).forEach((wp: any) => {
         if (wp.id && wp.typeIntOrExt) typeMap.set(wp.id, wp.typeIntOrExt);
       });
-      this.providers = this.providers.map((p: any) => ({
+      // this.providers contiene TODOS (activos e inactivos) para resolución de nombres en el grid
+      this.providers = (Array.isArray(allProviders) ? allProviders : []).map((p: any) => ({
         ...p,
         typeIntOrExt: typeMap.get(p.id) || null
       }));
+
+      // Solo los vigentes se usan como opciones en el dropdown de asignación
+      const activeProviders = this.providers.filter((p: any) => p.vigente === true || p.vigente === 1);
 
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
 
         try {
           // Obtener todos los proveedores y sus subfamilias VIGENTES asociadas
-          const providerSubfamilyPromises = this.providers.map(async (provider: any) => {
+          const providerSubfamilyPromises = activeProviders.map(async (provider: any) => {
             try {
               // Usar el endpoint de subfamilias vigentes
               const subfamilies: any = await this.providersService.getSubfamilyxVigentes(provider.id).toPromise();
@@ -795,18 +804,17 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
 
           // Crear el arreglo filtrado con la información del proveedor y la subfamilia
-          this.filteredProviders = this.providers.filter(p =>
+          this.filteredProviders = activeProviders.filter(p =>
             providersWithMatchingSubfamily.some(pm => pm.providerId === p.id)
           );
 
         } catch (error) {
           console.error('❌ Error filtrando proveedores por subfamilia:', error);
-          // Si hay error, mostrar todos los proveedores
-          this.filteredProviders = this.providers;
+          this.filteredProviders = activeProviders;
         }
       } else {
-        // Si no hay subfamilia, mostrar todos los proveedores
-        this.filteredProviders = this.providers;
+        // Si no hay subfamilia, mostrar solo los vigentes en el dropdown
+        this.filteredProviders = activeProviders;
       }
 
       // Ordenar filas por nombre de proveedor A-Z (ahora que filteredProviders ya está listo)
@@ -840,13 +848,36 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   loadProveedorData() {
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.load) {
-      this.params.context.MATERIAL.load(this.materialId, 'MATERIAL', (data: any) => {
+      this.params.context.MATERIAL.load(this.materialId, 'MATERIAL', async (data: any) => {
         this.proveedorRowData = data;
+        await this.fetchMissingProviders();
         this.sortProveedorRowData();
         void this.loadSucursalCounts().then(() => {
           setTimeout(() => this.autosizeProveedorColumns(), 0);
         });
       });
+    }
+  }
+
+  private async fetchMissingProviders() {
+    const missingIds = (this.proveedorRowData || [])
+      .map((row: any) => row.idTabla)
+      .filter((id: any) => id && id > 0 && !this.providers?.some((p: any) => p.id === id));
+
+    if (missingIds.length === 0) return;
+
+    const fetched = await Promise.all(
+      missingIds.map((id: number) =>
+        firstValueFrom(this.customersService.getCustomerById(id)).catch(() => null)
+      )
+    );
+
+    const valid = fetched.filter((p: any) => p != null);
+    if (valid.length > 0) {
+      this.providers = [...(this.providers || []), ...valid];
+      if (this.proveedorGridApi) {
+        this.proveedorGridApi.refreshCells({ force: true });
+      }
     }
   }
 
@@ -978,6 +1009,12 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         (row: any) => row.__isNew && row.idTabla > 0 && row.campo1 > 0
       ).map((row: any) => ({ idSupplie: row.campo1, idProveedor: row.idTabla }));
 
+      // Capturar filas modificadas cuyo active cambió, con ID real
+      const rowsToSyncSucursales = this.proveedorRowData.filter(
+        (row: any) => row.__modified &&
+                      row.id && !String(row.id).startsWith('temp_')
+      ).map((row: any) => ({ id: row.id as number, active: row.active === true || row.active === 1 }));
+
       try {
         // Guardar los cambios
         await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
@@ -997,6 +1034,26 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
           firstValueFrom(
             this.ocAndReqsService.patchProveedorXTablaCampo7(prov.idSupplie, prov.idProveedor, true)
           ).catch(e => console.warn(`⚠️ No se pudo marcar "Por autorizar" para material ${prov.idSupplie} proveedor ${prov.idProveedor}:`, e));
+        }
+
+        // Sincronizar vigente de sucursales al mismo estado que el proveedor-material
+        for (const { id: rowId, active: newActive } of rowsToSyncSucursales) {
+          try {
+            const sucursales: any[] = await firstValueFrom(
+              this.sucursalByMaterialProveedorService.getSucursalByMaterial(rowId)
+            );
+            if (sucursales?.length > 0) {
+              await Promise.all(
+                sucursales.map((suc: any) =>
+                  firstValueFrom(
+                    this.sucursalByMaterialProveedorService.updateSucursalByMaterial(suc.id, { ...suc, vigente: newActive })
+                  ).catch(e => console.warn(`⚠️ No se pudo sincronizar sucursal ${suc.id}:`, e))
+                )
+              );
+            }
+          } catch (e) {
+            console.warn(`⚠️ No se pudieron sincronizar sucursales del proveedor-material ${rowId}:`, e);
+          }
         }
 
         this.hasProveedorChanges = false;
@@ -1060,16 +1117,25 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     }
 
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.delete) {
+      const providerName = this.getProviderDisplayName(
+        this.filteredProviders?.find((p: any) => p.id === this.selectedProveedor.idTabla)
+        || this.providers?.find((p: any) => p.id === this.selectedProveedor.idTabla)
+      ) || `ID ${this.selectedProveedor.idTabla}`;
+
+      const confirm = await alerts.confirmAlert(
+        'Eliminar proveedor',
+        `Se eliminará permanentemente la asignación de "${providerName}" a este material. ¿Continuar?`,
+        'warning',
+        'Sí, eliminar'
+      );
+      if (!confirm.isConfirmed) return;
+
       this.params.context.MATERIAL.delete(
         { data: this.selectedProveedor, api: this.proveedorGridApi },
         () => {
           this.loadProveedorData();
           this.selectedProveedor = null;
-
-          // Limpiar la bandera de cambios pendientes
           this.hasProveedorChanges = false;
-
-          // Actualizar el contador de proveedores en el grid padre
           setTimeout(() => {
             this.updateProviderCountInParent();
           }, 500);

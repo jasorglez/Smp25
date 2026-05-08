@@ -131,16 +131,23 @@ import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/sear
             inputId="newArticleName"
             inputName="newArticleName"
             [options]="newArticleNameOptions"
-            placeholder="Escriba o seleccione..."
+            placeholder="Escriba el nombre del artículo..."
             [uppercase]="true"
+            [openOnFocus]="false"
             required
             #newArticleNameModel="ngModel"
             [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
             [(ngModel)]="newArticle.description"
+            (ngModelChange)="onArticleNameTyped($event)"
             (optionSelected)="onArticleSelected($event)">
           </app-searchable-combobox>
           <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleNameModel.invalid">
             El nombre del artículo es obligatorio.
+          </div>
+          <div *ngIf="newArticleIsDuplicate"
+               style="color:#b71c1c; font-size:12px; font-weight:600; margin-top:4px; display:flex; align-items:center; gap:4px;">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            No puedes registrar este producto porque ya está registrado.
           </div>
         </div>
         <div class="mb-3">
@@ -579,9 +586,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           }));
 
         // Cargar opciones para el combobox "Nombre del Artículo" en el modal
-        this.newArticleNameOptions = this.materials
-          .filter(m => m.description?.trim())
-          .map(m => m.description)
+        // Incluye activos e inactivos para detectar duplicados en cualquier caso
+        this.newArticleNameOptions = data
+          .map((material: any) => material.articulo)
+          .filter((name: string) => name?.trim())
           .sort();
 
       },
@@ -739,10 +747,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   private autoAdjustColumns(): void {
     if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-    }
+    this.gridApi.autoSizeAllColumns();
   }
 
   private _colDefs: ColDef[] = [];
@@ -1200,18 +1205,20 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
         cellRenderer: (params: any) => {
           const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
-          if (isInterno && params.data.compraRapida) {
+          const hasPedimentoNumber = !!params.data.pedimentoNumber;
+          const isDisabled = isInterno || hasPedimentoNumber;
+          if (isDisabled && params.data.compraRapida) {
             params.data.compraRapida = false;
           }
           const input = document.createElement('input');
           input.type = 'checkbox';
-          input.checked = isInterno ? false : params.value === true;
-          input.disabled = isInterno;
+          input.checked = isDisabled ? false : params.value === true;
+          input.disabled = isDisabled;
           input.style.width = '16px';
           input.style.height = '16px';
-          input.style.cursor = isInterno ? 'not-allowed' : 'pointer';
-          input.style.opacity = isInterno ? '0.4' : '1';
-          input.title = isInterno ? 'No disponible para Proveedor Interno' : '';
+          input.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+          input.style.opacity = isDisabled ? '0.4' : '1';
+          input.title = isInterno ? 'No disponible para Proveedor Interno' : hasPedimentoNumber ? 'No disponible cuando hay número de pedimento asignado' : '';
           input.addEventListener('change', () => {
             params.data.compraRapida = input.checked;
             if (input.checked) {
@@ -1313,8 +1320,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     animateRows: true,
     // Evita columnas “mini” cuando hay pocas filas: repartir al ancho del grid
     autoSizeStrategy: {
-      type: 'fitGridWidth',
-      defaultMinWidth: 90,
+      type: 'fitCellContents',
     },
     rowSelection: 'multiple',
     getRowId: (params: any) => String(params.data.id),
@@ -1497,6 +1503,58 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         `Seleccione un proveedor en: ${filas}`
       );
       return;
+    }
+
+    // Crear materiales para artículos nuevos sin materialId en BD
+    for (const item of newItems) {
+      if (item.recurrent === 'Nuevo' && (!item.materialId || item.materialId === 0)) {
+        const idRoot = this.signalsService.getRootSelectedBySidebar()();
+        try {
+          const matResponse = await lastValueFrom(this.materialsService.addMaterial({
+            idCompany: idRoot,
+            articulo: '',
+            description: item.description || item.article || '',
+            idCategory: item.idCategory || null,
+            idFamilia: item.idFamilia || null,
+            idSubfamilia: item.idSubfamilia || null,
+            insumo: (item.description || item.article || '').substring(0, 35),
+            typeMaterial: 'CONSUMABLE',
+            active: true,
+            vigente: true,
+            porAutorizar: true
+          }));
+          item.materialId = matResponse.id || matResponse.ID || 0;
+          item.idSupplie = item.materialId;
+        } catch (err) {
+          // Silenciar error - idSupplie permanece 0
+        }
+      }
+    }
+
+    // Crear materiales para artículos modificados que fueron cambiados a "Nuevo" sin materialId
+    for (const item of modifiedItems) {
+      if (item.recurrent === 'Nuevo' && (!item.materialId || item.materialId === 0)) {
+        const idRoot = this.signalsService.getRootSelectedBySidebar()();
+        try {
+          const matResponse = await lastValueFrom(this.materialsService.addMaterial({
+            idCompany: idRoot,
+            articulo: '',
+            description: item.description || item.article || '',
+            idCategory: item.idCategory || null,
+            idFamilia: item.idFamilia || null,
+            idSubfamilia: item.idSubfamilia || null,
+            insumo: (item.description || item.article || '').substring(0, 35),
+            typeMaterial: 'CONSUMABLE',
+            active: true,
+            vigente: true,
+            porAutorizar: true
+          }));
+          item.materialId = matResponse.id || matResponse.ID || 0;
+          item.idSupplie = item.materialId;
+        } catch (err) {
+          // Silenciar error - idSupplie permanece 0
+        }
+      }
     }
 
     // Guardar items nuevos (POST)
@@ -1970,30 +2028,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Crear el material automáticamente en dbo.materiales PRIMERO
-    let materialId = 0;
-    try {
-      const idRoot = this.signalsService.getRootSelectedBySidebar()();
-
-      const materialData = {
-        idCompany: idRoot,
-        articulo: '',
-        description: name,
-        idCategory: this.newArticle.idCategory,
-        idFamilia: this.newArticle.idFamilia,
-        idSubfamilia: this.newArticle.idSubfamilia,
-        insumo: name.substring(0, 35),
-        typeMaterial: 'CONSUMABLE',
-        active: true,
-        vigente: true,
-        porAutorizar: false
-      };
-
-      const response = await lastValueFrom(this.materialsService.addMaterial(materialData));
-      materialId = response.id || response.ID || 0;
-    } catch (err) {
-      // No bloqueamos el proceso si falla la creación del material
-    }
+    const materialId = 0;
 
     // Guardar los datos del formulario en la fila actual CON EL ID DEL MATERIAL
     this.currentRowForNewArticle.data.idSupplie = materialId;
@@ -2025,47 +2060,21 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.closeNewArticleModal();
   }
 
-  onArticleSelected(option: any): void {
-    // option es un string (nombre del artículo) desde newArticleNameOptions
-    const selectedArticle = typeof option === 'string' ? option : option?.description || option;
-
-    console.log('🔍 onArticleSelected llamado con:', selectedArticle);
-    if (!selectedArticle?.trim?.()) {
-      console.log('⚠️ selectedArticle vacío');
+  onArticleNameTyped(value: string): void {
+    const typed = (value || '').trim().toUpperCase();
+    if (!typed) {
+      this.newArticleIsDuplicate = false;
       return;
     }
+    this.newArticleIsDuplicate = this.newArticleNameOptions.some(
+      opt => (typeof opt === 'string' ? opt : '').trim().toUpperCase() === typed
+    );
+  }
 
-    const selectedUpper = String(selectedArticle).trim().toUpperCase();
-    console.log('📋 rowData actual:', this.rowData);
-    console.log('🔎 Buscando:', selectedUpper);
-    console.log('🔑 currentRowForNewArticle.data:', this.currentRowForNewArticle?.data);
-
-    // Verificar si el artículo ya está registrado en las filas actuales
-    // EXCLUIR la fila que se está editando actualmente (no debe compararse contra sí misma)
-    const existingArticle = this.rowData.find((row: any) => {
-      // Saltar la fila actual que se está editando
-      if (this.currentRowForNewArticle && row === this.currentRowForNewArticle.data) {
-        console.log('  ⏭️ Saltando fila actual (misma que se está editando)');
-        return false;
-      }
-
-      const description = (row.description || '').trim().toUpperCase();
-      const article = (row.article || '').trim().toUpperCase();
-      const nameArticle = (row.nameArticle || '').trim().toUpperCase();
-      const match = description === selectedUpper || article === selectedUpper || nameArticle === selectedUpper;
-      console.log(`  Comparando con row: desc="${description}" art="${article}" nameArt="${nameArticle}" → match=${match}`);
-      return match;
-    });
-
-    console.log('✅ Artículo encontrado:', existingArticle);
-    this.newArticleIsDuplicate = !!existingArticle;
-
-    if (existingArticle) {
-      alerts.reqWarningToast(
-        'Artículo Duplicado',
-        'Este artículo ya está registrado en materia prima - recurrente'
-      );
-    }
+  onArticleSelected(option: any): void {
+    const selectedArticle = typeof option === 'string' ? option : option?.description || option;
+    if (!selectedArticle?.trim?.()) return;
+    this.onArticleNameTyped(String(selectedArticle));
   }
 
   private openNewArticleModal() {

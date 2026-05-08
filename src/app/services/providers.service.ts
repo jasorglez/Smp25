@@ -46,6 +46,10 @@ export class ProvidersService {
     return this.http.delete(`${environment.urlSmp}/Providers/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  patchProviderStatus(id: number, data: { active?: boolean; autorizacion?: boolean }) {
+    return this.http.patch(`${environment.urlSmp}/Providers/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
   getProviderByType(type: string) {
     return this.http.get(`${environment.urlSmp}/Providers/3fields?type=${type}`, { headers: this.trackingService.getHeaders() });
   }

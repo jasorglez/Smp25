@@ -55,6 +55,12 @@ pdfMake.vfs = pdfFonts.vfs;
               {{ item.group }}
             </span>
           </ng-template>
+          <ng-template ng-option-tmp let-item="item">
+            <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span>{{ item.description }}
+          </ng-template>
+          <ng-template ng-label-tmp let-item="item">
+            <span *ngIf="item.isPrincipal">⭐ </span>{{ item.description }}
+          </ng-template>
         </ng-select>
         <input type="file" #fileInput accept=".pdf" style="display: none;" (change)="onFileSelected($event)">
         <button class="btn btn-sm btn-outline-secondary" type="button" (click)="fileInput.click()" [disabled]="ocGenerated" title="Cargar PDF">
@@ -181,6 +187,7 @@ export class DetalleItemsProveedorComponent {
   private readonly AUTHORIZED_TYPES = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
   private readonly NEW_PROVIDER_SENTINEL = -1;
   private rowsMissingProvider: any[] = [];
+  private principalProviderIds = new Set<number>();
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -214,6 +221,7 @@ export class DetalleItemsProveedorComponent {
       }
       this.refreshFilteredProviders();
       this.loadExistingCotiz();
+      this.loadPrincipalProviders();
     });
   }
 
@@ -308,6 +316,7 @@ export class DetalleItemsProveedorComponent {
         if (match) {
           row.codigoExterno = match.campo11 || '';
           row.compraMinima = match.minCompra || 0;
+          row.costoUnitario = match.campo9 || 0;
           row.proveedorXTablaId = match.id || 0;
           row.proveedorXTablaObj = match;
         } else {
@@ -336,15 +345,19 @@ export class DetalleItemsProveedorComponent {
         }
       }
 
-      // --- PASO 2: VALIDAR AUTORIZACIÓN DE SUCURSAL ---
+      // --- PASO 2: VALIDAR AUTORIZACIÓN DE SUCURSAL Y CARGAR TIEMPO DE ENTREGA ---
       const unauthorizedForBranch: any[] = [];
       for (const row of this.rowData) {
         if (row.proveedorXTablaId > 0 && this.idBranch) {
           try {
             const sucursales: any = await lastValueFrom(this.sucursalByMaterialProveedorService.getSucursalByMaterial(row.proveedorXTablaId));
             const listSuc = Array.isArray(sucursales) ? sucursales : [];
-            const tienePermiso = listSuc.some((s: any) => Number(s.idSucursal) === Number(this.idBranch));
-            if (!tienePermiso) unauthorizedForBranch.push(row);
+            const sucursal = listSuc.find((s: any) => Number(s.idSucursal) === Number(this.idBranch));
+            if (!sucursal) {
+              unauthorizedForBranch.push(row);
+            } else {
+              row.tiempoEntrega = sucursal.tiempoDeEntrega || row.tiempoEntrega || 1;
+            }
           } catch (err) { console.warn(`Error validando sucursal para ${row.articulo}`, err); }
         }
       }
@@ -538,7 +551,7 @@ export class DetalleItemsProveedorComponent {
       const datePostpone = weeks > 0 ? d.toISOString().split('T')[0] : '';
       return {
         idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
-        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)), datePostpone
+        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)), caducidadMinimaRequerida: row.caducidadMinimaRequerida || '', datePostpone
       };
     });
     console.log('📝 saveCotizOrOC: Guardando', details.length, 'items con estos datos:');
@@ -725,7 +738,31 @@ export class DetalleItemsProveedorComponent {
         } },
       { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 120, editable: !this.ocGenerated, hide: true },
       { field: 'costoTotal', headerName: 'Costo Total', width: 170, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''), locked: this.ocGenerated }) },
+      { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: (params: any) => ({
+          documentType: 'REQ',
+          idDocument: this.requisitionId,
+          numArticle: params.data?.numArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''),
+          idProvider: Number(this.selectedProviderId ?? 0),
+          locked: this.ocGenerated
+        }),
+        onCellClicked: (params: any) => {
+          if (this.ocGenerated) return;
+          const numArticle = params.data?.numArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : '');
+          if (!numArticle || !this.requisitionId) return;
+          const providerId = Number(this.selectedProviderId ?? 0);
+          this.itemCommentsService.openChatFor$.next({
+            documentType: 'REQ',
+            idDocument: this.requisitionId,
+            numArticle,
+            articleName: String(params.data?.articulo ?? ''),
+            providerMessages: providerId
+              ? { idProvider: providerId, providerName: this.getSelectedProviderName() }
+              : undefined
+          });
+        }
+      },
       { field: 'typeOC', headerName: 'Tipo OC', width: 130, editable: !this.ocGenerated, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
       { field: 'oc', headerName: 'OC', width: 100, editable: !this.ocGenerated, hide: true }
     ];
@@ -754,6 +791,34 @@ export class DetalleItemsProveedorComponent {
   updateTotal() { this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0); }
   updateHasRowsWithTypeOC() { this.hasRowsWithTypeOC = this.rowData.some(row => !!(row.typeOC && row.typeOC.trim() !== '')); }
   get allCostosValid(): boolean { return !!this.selectedProviderId; }
+
+  private async loadPrincipalProviders(): Promise<void> {
+    this.principalProviderIds.clear();
+    const uniqueIds = [...new Set(
+      this.rowData.filter(r => r.idSupplie > 0).map(r => r.idSupplie as number)
+    )];
+    await Promise.all(uniqueIds.map(async (idSupplie) => {
+      try {
+        const relations: any = await lastValueFrom(this.providersService.getMaterXTable(idSupplie, 'MATERIAL'));
+        const principal = (Array.isArray(relations) ? relations : [])
+          .find((rel: any) => rel.principal === true && rel.active === true);
+        if (principal?.idTabla) {
+          this.principalProviderIds.add(principal.idTabla);
+        }
+      } catch { /* silencioso */ }
+    }));
+    this.filteredProviders = this.filteredProviders
+      .map(p => ({
+        ...p,
+        isPrincipal: this.principalProviderIds.has(p.id)
+      }))
+      .sort((a, b) => {
+        if (a.isPrincipal && !b.isPrincipal) return -1;
+        if (!a.isPrincipal && b.isPrincipal) return 1;
+        if (a.group !== b.group) return a.group === 'Compañía' ? -1 : 1;
+        return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
+      });
+  }
 
   private refreshFilteredProviders(): void {
     const siblingFields = ['idProvider', 'idProvider2', 'idProvider3'].filter(f => f !== this.providerField);
