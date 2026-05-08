@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.51 (7 Mayo 2026) Feature: Reportes por Cliente/Proveedor y Mes en tab Todas',
+  version: '5.52 (7 Mayo 2026) Feature: PDF Ingresos y Egresos con logo, agrupado por Fecha/Cliente/Mes',
 };
   

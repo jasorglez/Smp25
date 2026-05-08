@@ -302,6 +302,194 @@ export class PdfReportsService {
     }
   }
 
+  async generateFinancialReport(opts: {
+    rows: any[];
+    reportType: 'detalle' | 'cliente' | 'proveedor' | 'mes';
+    title: string;
+    startDate: string;
+    endDate: string;
+    idRoot: number;
+  }): Promise<void> {
+    const { rows, reportType, title, startDate, endDate, idRoot } = opts;
+
+    const rootResponse = await lastValueFrom(this.rootService.getRootbyId(idRoot));
+    const co: any = rootResponse;
+
+    let logo = '';
+    if (co.picture) {
+      try { logo = await this.convertImageToBase64(co.picture); } catch {}
+    }
+
+    const fmt = (v: any) => v != null
+      ? Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+      : '$0.00';
+
+    const fmtDate = (s: string) => {
+      if (!s) return '';
+      const [y, m, d] = String(s).substring(0, 10).split('-');
+      return d && m && y ? `${d}/${m}/${y}` : s;
+    };
+
+    const fmtMes = (s: string) => {
+      if (!s) return '';
+      const [y, m] = String(s).split('-');
+      const meses = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      return `${meses[parseInt(m)] || ''} ${y}`;
+    };
+
+    const isEgreso = title.toLowerCase().includes('egreso');
+    const thColor  = isEgreso ? '#1a5276' : '#1a5c2e';
+    const grpColor = isEgreso ? '#d6eaf8' : '#d5f5e3';
+    const totColor = isEgreso ? '#1a5276' : '#1a5c2e';
+
+    const groupKey = (row: any): string => {
+      if (reportType === 'detalle')   return String(row.dateExpend || '').substring(0, 10);
+      if (reportType === 'mes')       return String(row.dateExpend || '').substring(0, 7);
+      return row.entityName || '(Sin nombre)';
+    };
+
+    const groupLabel = (key: string): string => {
+      if (reportType === 'detalle') return fmtDate(key);
+      if (reportType === 'mes')     return fmtMes(key);
+      return key;
+    };
+
+    const sorted = [...rows].sort((a, b) => {
+      const ka = groupKey(a), kb = groupKey(b);
+      return reportType === 'detalle' || reportType === 'mes'
+        ? kb.localeCompare(ka)
+        : ka.localeCompare(kb);
+    });
+
+    const groups = new Map<string, any[]>();
+    for (const r of sorted) {
+      const k = groupKey(r);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(r);
+    }
+
+    const headerCols = reportType === 'detalle'
+      ? ['#', 'Documento', isEgreso ? 'Proveedor/Empl.' : 'Cliente', 'Descripción', 'Subtotal', 'IVA', 'Total']
+      : reportType === 'mes'
+        ? ['#', 'Fecha', isEgreso ? 'Proveedor/Empl.' : 'Cliente', 'Descripción', 'Subtotal', 'IVA', 'Total']
+        : ['#', 'Fecha', 'Documento', 'Descripción', 'Subtotal', 'IVA', 'Total'];
+
+    const colWidths = ['auto', 70, 100, '*', 65, 55, 65];
+
+    const th = (t: string) => ({ text: t, bold: true, fontSize: 7, color: '#fff', fillColor: thColor, margin: [2, 3, 2, 3] });
+
+    const tableBody: any[] = [headerCols.map(th)];
+
+    let grandTotal = 0, grandIva = 0, grandFinal = 0;
+    let rowNum = 1;
+
+    for (const [key, rws] of groups) {
+      const grpTotal   = rws.reduce((s, r) => s + (r.total || 0), 0);
+      const grpIva     = rws.reduce((s, r) => s + (r.iva2 || 0), 0);
+      const grpFinal   = rws.reduce((s, r) => s + (r.totalFinal || 0), 0);
+      grandTotal += grpTotal; grandIva += grpIva; grandFinal += grpFinal;
+
+      tableBody.push([{
+        text: groupLabel(key),
+        colSpan: 7, bold: true, fontSize: 7,
+        fillColor: grpColor, margin: [4, 3, 4, 3]
+      }, ...Array(6).fill({})]);
+
+      for (const r of rws) {
+        const cols = reportType === 'detalle'
+          ? [rowNum, r.numberDocument || '', r.entityName || '', r.description || '', fmt(r.total), fmt(r.iva2), fmt(r.totalFinal)]
+          : reportType === 'mes'
+            ? [rowNum, fmtDate(String(r.dateExpend || '').substring(0, 10)), r.entityName || '', r.description || '', fmt(r.total), fmt(r.iva2), fmt(r.totalFinal)]
+            : [rowNum, fmtDate(String(r.dateExpend || '').substring(0, 10)), r.numberDocument || '', r.description || '', fmt(r.total), fmt(r.iva2), fmt(r.totalFinal)];
+
+        tableBody.push(cols.map((c, i) => ({
+          text: String(c),
+          fontSize: 6.5,
+          alignment: i >= 4 ? 'right' : 'left',
+          margin: [2, 2, 2, 2],
+          fillColor: rowNum % 2 === 0 ? '#f8f9fa' : null,
+        })));
+        rowNum++;
+      }
+
+      tableBody.push([
+        { text: 'Subtotal', colSpan: 4, bold: true, fontSize: 7, alignment: 'right', fillColor: '#e8e8e8', margin: [2, 2, 2, 2] },
+        {}, {}, {},
+        { text: fmt(grpTotal),  bold: true, fontSize: 7, alignment: 'right', fillColor: '#e8e8e8', margin: [2, 2, 2, 2] },
+        { text: fmt(grpIva),    bold: true, fontSize: 7, alignment: 'right', fillColor: '#e8e8e8', margin: [2, 2, 2, 2] },
+        { text: fmt(grpFinal),  bold: true, fontSize: 7, alignment: 'right', fillColor: '#e8e8e8', margin: [2, 2, 2, 2] },
+      ]);
+    }
+
+    tableBody.push([
+      { text: 'TOTAL GENERAL', colSpan: 4, bold: true, fontSize: 8, alignment: 'right', fillColor: totColor, color: '#fff', margin: [2, 3, 2, 3] },
+      {}, {}, {},
+      { text: fmt(grandTotal), bold: true, fontSize: 8, alignment: 'right', fillColor: totColor, color: '#fff', margin: [2, 3, 2, 3] },
+      { text: fmt(grandIva),   bold: true, fontSize: 8, alignment: 'right', fillColor: totColor, color: '#fff', margin: [2, 3, 2, 3] },
+      { text: fmt(grandFinal), bold: true, fontSize: 8, alignment: 'right', fillColor: totColor, color: '#fff', margin: [2, 3, 2, 3] },
+    ]);
+
+    const reportTypeLbl: Record<string, string> = {
+      detalle: 'Por Fecha', cliente: 'Por Cliente', proveedor: 'Por Proveedor', mes: 'Por Mes'
+    };
+
+    const docDef: any = {
+      pageSize: 'LETTER',
+      pageOrientation: 'landscape',
+      pageMargins: [30, 90, 30, 40],
+      defaultStyle: { font: 'Montserrat', fontSize: 8 },
+      styles: {
+        companyName: { fontSize: 13, bold: true },
+        companyInfo: { fontSize: 8 },
+        reportTitle:  { fontSize: 14, bold: true },
+      },
+      header: () => ({
+        margin: [30, 15, 30, 5],
+        columns: [
+          {
+            width: 80,
+            stack: logo ? [{ image: logo, width: 70, height: 50 }] : [{ text: '' }]
+          },
+          {
+            width: '*',
+            stack: [
+              { text: co.name || '', style: 'companyName', alignment: 'center' },
+              { text: [co.address, co.city, co.state, co.country].filter(Boolean).join(', '), style: 'companyInfo', alignment: 'center' },
+              { text: `RFC: ${co.rfc || 'N/A'} | Email: ${co.email || 'N/A'} | Tel: ${co.phone || 'N/A'}`, style: 'companyInfo', alignment: 'center' },
+            ],
+            margin: [10, 5, 10, 0]
+          },
+          {
+            width: 140,
+            stack: [
+              { text: title, style: 'reportTitle', alignment: 'right', color: thColor },
+              { text: reportTypeLbl[reportType] || '', fontSize: 9, bold: true, alignment: 'right', color: '#555' },
+              { text: `Del ${fmtDate(startDate)} al ${fmtDate(endDate)}`, fontSize: 8, alignment: 'right', margin: [0, 2, 0, 0] },
+              { text: `${rows.length} registros`, fontSize: 7, alignment: 'right', color: '#777', margin: [0, 1, 0, 0] },
+            ]
+          }
+        ]
+      }),
+      footer: (currentPage: number, pageCount: number) => ({
+        text: `Página ${currentPage} de ${pageCount}`,
+        alignment: 'center', fontSize: 7, color: '#888', margin: [0, 10, 0, 0]
+      }),
+      content: [{
+        table: { headerRows: 1, widths: colWidths, body: tableBody },
+        layout: {
+          hLineWidth: () => 0.3,
+          vLineWidth: () => 0.3,
+          hLineColor: () => '#cccccc',
+          vLineColor: () => '#cccccc',
+        }
+      }]
+    };
+
+    const safeTitle = title.replace(/\s+/g, '_');
+    const fileName = `${safeTitle}_${reportType}_${startDate}_${endDate}.pdf`;
+    pdfMake.createPdf(docDef).download(fileName);
+  }
+
   async generateReportWithHeader(
     title: string,
     content: any[],
