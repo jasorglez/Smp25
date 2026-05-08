@@ -27,14 +27,23 @@ import { IngresosxfechasComponent } from './ingresosxfechas.component';
             <i class="bi bi-calendar-range me-1"></i>Ingresos x Fechas
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link py-1 px-3"
+             [class.active]="activeTab === 'todas'"
+             (click)="activeTab = 'todas'"
+             style="cursor:pointer; font-size:0.85rem;">
+            <i class="bi bi-collection me-1"></i>Todas
+          </a>
+        </li>
       </ul>
 
       <!-- Contenido -->
       <app-income            *ngIf="activeTab === 'ingresos'" />
       <app-ingresosxfechas   *ngIf="activeTab === 'xfechas'" />
+      <app-ingresosxfechas   *ngIf="activeTab === 'todas'" [allAccounts]="true" />
     </div>
   `
 })
 export class IngresoShellComponent {
-  activeTab: 'ingresos' | 'xfechas' = 'ingresos';
+  activeTab: 'ingresos' | 'xfechas' | 'todas' = 'ingresos';
 }

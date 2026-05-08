@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -19,7 +19,7 @@ import { TrackingService } from 'app/services/tracking.service';
 
       <!-- Cuentas + fechas + buscar en un solo renglón -->
       <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-3">
-        <ul class="nav nav-tabs flex-nowrap overflow-auto mb-0 border-0">
+        <ul class="nav nav-tabs flex-nowrap overflow-auto mb-0 border-0" *ngIf="!allAccounts">
           <li class="nav-item" *ngFor="let account of bankAccounts">
             <a class="nav-link py-1 px-3 border"
                [class.active]="idAccount === account.id"
@@ -83,13 +83,13 @@ import { TrackingService } from 'app/services/tracking.service';
       />
 
       <!-- Sin datos -->
-      <div *ngIf="!loading && rowData.length === 0 && idAccount"
+      <div *ngIf="!loading && rowData.length === 0 && (allAccounts || idAccount)"
            class="text-center text-muted mt-4">
         <i class="bi bi-inbox" style="font-size:2rem;"></i>
-        <p class="mt-2">No hay conceptos en el rango de fechas seleccionado para esta cuenta.</p>
+        <p class="mt-2">No hay conceptos en el rango de fechas seleccionado.</p>
       </div>
 
-      <div *ngIf="!idAccount" class="text-center text-muted mt-4">
+      <div *ngIf="!allAccounts && !idAccount" class="text-center text-muted mt-4">
         <i class="bi bi-bank" style="font-size:2rem;"></i>
         <p class="mt-2">Seleccione una pestaña de cuenta bancaria para ver los egresos por fechas.</p>
       </div>
@@ -98,6 +98,8 @@ import { TrackingService } from 'app/services/tracking.service';
   `
 })
 export class EgresosxfechasComponent {
+
+  @Input() allAccounts = false;
 
   private signalsServicePriv = inject(SignalsService);
   public signalsService = inject(SignalsService);
@@ -175,12 +177,16 @@ export class EgresosxfechasComponent {
       this.administrationService.getAccountBanks(this.idRoot).subscribe({
         next: async (data: any) => {
           this.bankAccounts = data || [];
-          this.idAccount = null;
-          this.rowData = [];
-          this.allData = [];
-          if (this.bankAccounts.length === 1) {
-            this.idAccount = this.bankAccounts[0].id;
+          if (this.allAccounts) {
             await this.onFilterChange();
+          } else {
+            this.idAccount = null;
+            this.rowData = [];
+            this.allData = [];
+            if (this.bankAccounts.length === 1) {
+              this.idAccount = this.bankAccounts[0].id;
+              await this.onFilterChange();
+            }
           }
           resolve();
         },
@@ -198,7 +204,7 @@ export class EgresosxfechasComponent {
   }
 
   async onFilterChange() {
-    if (!this.idAccount) {
+    if (!this.allAccounts && !this.idAccount) {
       this.rowData = [];
       this.pinnedBottomRow = [];
       return;
@@ -217,9 +223,9 @@ export class EgresosxfechasComponent {
 
   private applyFilters() {
     const filtered = this.allData.filter(c => {
-      const matchAccount = c.idAccount === this.idAccount;
-      if (!matchAccount) return false;
-
+      if (!this.allAccounts) {
+        if (c.idAccount !== this.idAccount) return false;
+      }
       if (!c.dateExpend) return false;
       const ds = String(c.dateExpend).substring(0, 10);
       return ds >= this.startDate && ds <= this.endDate;
