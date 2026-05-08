@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.55 (7 Mayo 2026) Fix: DashAdmon Top Clientes usa totalconcepto para totales correctos por cliente',
+  version: '5.56 (7 Mayo 2026) Fix: columna agrupadora Por Cliente/Proveedor ampliada a 300px en Ingresos y Egresos',
 };
   
