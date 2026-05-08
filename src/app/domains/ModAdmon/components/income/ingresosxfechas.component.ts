@@ -444,18 +444,20 @@ export class IngresosxfechasComponent {
     this.gridApi.setGridOption('columnDefs', colsMap[type]);
     this.gridApi.setGridOption('autoGroupColumnDef', {
       headerName: headerMap[type],
-      minWidth: isGroupByName ? 250 : 95,
-      flex: isGroupByName ? 2 : undefined,
-      width: isGroupByName ? undefined : 150,
+      minWidth: isGroupByName ? 200 : 95,
       maxWidth: isGroupByName ? undefined : 160,
       pinned: 'left',
       cellStyle: { fontSize: '12px' },
       valueFormatter: type === 'mes' ? (p: any) => this.formatMes(p.value) : undefined,
       cellRendererParams: { suppressCount: false, footerValueGetter: footerMap[type] },
     });
-    if (!isGroupByName) {
-      setTimeout(() => this.gridApi.setColumnWidths([{ key: 'ag-Grid-AutoColumn', newWidth: 150 }]), 50);
-    }
+    setTimeout(() => {
+      if (isGroupByName) {
+        this.gridApi.autoSizeColumns(['ag-Grid-AutoColumn'], false);
+      } else {
+        this.gridApi.setColumnWidths([{ key: 'ag-Grid-AutoColumn', newWidth: 150 }]);
+      }
+    }, 150);
   }
 
   private formatMes(val: string): string {
