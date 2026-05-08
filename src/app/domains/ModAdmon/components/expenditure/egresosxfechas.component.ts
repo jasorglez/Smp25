@@ -46,6 +46,31 @@ import { TrackingService } from 'app/services/tracking.service';
         </div>
       </div>
 
+      <!-- Tipo de Reporte — solo en tab Todas -->
+      <div *ngIf="allAccounts" class="d-flex align-items-center gap-2 mb-2">
+        <span class="small fw-semibold text-muted">Reporte:</span>
+        <div class="btn-group btn-group-sm">
+          <button class="btn"
+                  [class.btn-primary]="reportType==='detalle'"
+                  [class.btn-outline-secondary]="reportType!=='detalle'"
+                  (click)="setReportType('detalle')">
+            <i class="bi bi-list-ul me-1"></i>Detalle
+          </button>
+          <button class="btn"
+                  [class.btn-warning]="reportType==='proveedor'"
+                  [class.btn-outline-secondary]="reportType!=='proveedor'"
+                  (click)="setReportType('proveedor')">
+            <i class="bi bi-people me-1"></i>Por Proveedor
+          </button>
+          <button class="btn"
+                  [class.btn-info]="reportType==='mes'"
+                  [class.btn-outline-secondary]="reportType!=='mes'"
+                  (click)="setReportType('mes')">
+            <i class="bi bi-calendar3 me-1"></i>Por Mes
+          </button>
+        </div>
+      </div>
+
       <!-- Totales -->
       <div class="row mb-2" *ngIf="rowData.length > 0">
         <div class="col-12">
@@ -100,6 +125,8 @@ import { TrackingService } from 'app/services/tracking.service';
 export class EgresosxfechasComponent {
 
   @Input() allAccounts = false;
+
+  reportType: 'detalle' | 'proveedor' | 'mes' = 'detalle';
 
   private signalsServicePriv = inject(SignalsService);
   public signalsService = inject(SignalsService);
@@ -398,6 +425,86 @@ export class EgresosxfechasComponent {
           ? { fontWeight: 'bold', color: '#0b5394', fontSize: '0.95rem' }
           : { fontWeight: 'bold', color: '#155724' },
     },
+  ];
+
+  setReportType(type: 'detalle' | 'proveedor' | 'mes') {
+    this.reportType = type;
+    if (!this.gridApi) return;
+
+    const colsMap = { detalle: this.colDefs, proveedor: this.colDefsProveedor, mes: this.colDefsMes };
+    const headerMap = { detalle: 'Fecha', proveedor: 'Proveedor / Empleado', mes: 'Mes' };
+    const footerMap: Record<string, (p: any) => string> = {
+      detalle:    (p: any) => `Subtotal ${this.formatDate(p.value)}`,
+      proveedor:  (p: any) => `Total ${p.value || ''}`,
+      mes:        (p: any) => `Total ${this.formatMes(p.value)}`,
+    };
+
+    this.gridApi.setGridOption('columnDefs', colsMap[type]);
+    this.gridApi.setGridOption('autoGroupColumnDef', {
+      ...this.gridOptions.autoGroupColumnDef,
+      headerName: headerMap[type],
+      valueFormatter: type === 'mes' ? (p: any) => this.formatMes(p.value) : undefined,
+      cellRendererParams: { suppressCount: false, footerValueGetter: footerMap[type] },
+    });
+  }
+
+  private formatMes(val: string): string {
+    if (!val) return '';
+    const [y, m] = String(val).split('-');
+    const meses = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${meses[parseInt(m)] || ''} ${y}`;
+  }
+
+  private readonly colDefsProveedor: ColDef[] = [
+    { field: 'entityName', rowGroup: true, hide: true, sort: 'asc',
+      comparator: (a: string, b: string) => String(a || '').localeCompare(String(b || '')) },
+    { field: 'numberDocument', headerName: '# Documento', width: 140,
+      valueFormatter: (p: any) => p.node?.group || p.node?.footer ? '' : (p.value || '') },
+    { field: 'dateExpend', headerName: 'Fecha', width: 110,
+      valueGetter: (p: any) => String(p.data?.dateExpend || '').substring(0, 10),
+      valueFormatter: (p: any) => {
+        if (!p.value || p.node?.group || p.node?.footer) return '';
+        const [y, m, d] = String(p.value).split('-');
+        return d && m && y ? `${d}/${m}/${y}` : p.value;
+      }},
+    { field: 'description', headerName: 'Descripcion', width: 230,
+      valueFormatter: (p: any) => p.node?.group || p.node?.footer ? '' : (p.value || '') },
+    { field: 'total', headerName: 'Subtotal', width: 130, type: 'numericColumn', aggFunc: 'sum',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      cellStyle: (p: any) => p.node.rowPinned ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
+        : p.node?.footer ? { fontWeight: 'bold', color: '#0b5394' } : { fontWeight: '500' } },
+    { field: 'iva2', headerName: 'IVA', width: 120, type: 'numericColumn', aggFunc: 'sum',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      cellStyle: (p: any) => p.node.rowPinned ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
+        : p.node?.footer ? { fontWeight: 'bold', color: '#0b5394' } : {} },
+    { field: 'totalFinal', headerName: 'Total Final', width: 140, type: 'numericColumn', aggFunc: 'sum',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      cellStyle: (p: any) => p.node.rowPinned ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff', fontSize: '0.95rem' }
+        : p.node?.footer ? { fontWeight: 'bold', color: '#0b5394', fontSize: '0.95rem' } : { fontWeight: 'bold', color: '#155724' } },
+  ];
+
+  private readonly colDefsMes: ColDef[] = [
+    { colId: 'mesAnio', rowGroup: true, hide: true, sort: 'asc',
+      valueGetter: (p: any) => String(p.data?.dateExpend || '').substring(0, 7),
+      comparator: (a: string, b: string) => String(a || '').localeCompare(String(b || '')) },
+    { field: 'entityName', headerName: 'Proveedor / Empleado', width: 220,
+      valueFormatter: (p: any) => p.node?.group || p.node?.footer ? '' : (p.value || '') },
+    { field: 'numberDocument', headerName: '# Documento', width: 140,
+      valueFormatter: (p: any) => p.node?.group || p.node?.footer ? '' : (p.value || '') },
+    { field: 'description', headerName: 'Descripcion', width: 230,
+      valueFormatter: (p: any) => p.node?.group || p.node?.footer ? '' : (p.value || '') },
+    { field: 'total', headerName: 'Subtotal', width: 130, type: 'numericColumn', aggFunc: 'sum',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      cellStyle: (p: any) => p.node.rowPinned ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
+        : p.node?.footer ? { fontWeight: 'bold', color: '#0b5394' } : { fontWeight: '500' } },
+    { field: 'iva2', headerName: 'IVA', width: 120, type: 'numericColumn', aggFunc: 'sum',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      cellStyle: (p: any) => p.node.rowPinned ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff' }
+        : p.node?.footer ? { fontWeight: 'bold', color: '#0b5394' } : {} },
+    { field: 'totalFinal', headerName: 'Total Final', width: 140, type: 'numericColumn', aggFunc: 'sum',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) : '',
+      cellStyle: (p: any) => p.node.rowPinned ? { fontWeight: 'bold', backgroundColor: '#1a5276', color: '#fff', fontSize: '0.95rem' }
+        : p.node?.footer ? { fontWeight: 'bold', color: '#0b5394', fontSize: '0.95rem' } : { fontWeight: 'bold', color: '#155724' } },
   ];
 
   private formatDate(value: string) {
