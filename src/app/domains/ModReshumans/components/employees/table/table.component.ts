@@ -820,18 +820,21 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 200,
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
-            values: this.banks.map((user) => user.id),
+            values: this.banks
+              ? this.banks.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => b.name)
+              : [],
           }),
           valueGetter: (params) => {
-            if (!params.data || !params.data.idBank) return 'EFECTIVO';
-            const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-            return foundBank ? foundBank.name : 'EFECTIVO';
+            if (!params.data || !params.data.idBank) return '';
+            const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
+            return foundBank ? foundBank.name : '';
           },
-          valueFormatter: (params) => {
-            const foundBank = this.banks
-              ? this.banks.find((user) => user.id === params.value)
-              : null;
-            return foundBank ? `${foundBank.name}` : params.value;
+          valueSetter: (params) => {
+            const selectedName = params.newValue;
+            const found = this.banks?.find(b => b.name === selectedName);
+            if (!found) return false;
+            params.data.idBank = found.id;
+            return true;
           },
 
         },
@@ -1443,18 +1446,21 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 200,
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
-            values: this.banks.map((user) => user.id),
+            values: this.banks
+              ? this.banks.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => b.name)
+              : [],
           }),
           valueGetter: (params) => {
-            if (!params.data || !params.data.idBank) return 'EFECTIVO';
-            const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-            return foundBank ? foundBank.name : 'EFECTIVO';
+            if (!params.data || !params.data.idBank) return '';
+            const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
+            return foundBank ? foundBank.name : '';
           },
-          valueFormatter: (params) => {
-            const foundBank = this.banks
-              ? this.banks.find((user) => user.id === params.value)
-              : null;
-            return foundBank ? `${foundBank.name}` : params.value;
+          valueSetter: (params) => {
+            const selectedName = params.newValue;
+            const found = this.banks?.find(b => b.name === selectedName);
+            if (!found) return false;
+            params.data.idBank = found.id;
+            return true;
           },
 
         },
@@ -1666,6 +1672,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       placeholder: 'Buscar empleado...',
       popupWidth: 310,
       onOptionSelected: (option: any) => this.applySelectedEmployeeToRow(option, params),
+      postEnterAction: (editorParams: any) => {
+        const rowIndex = editorParams.node?.rowIndex ?? editorParams.rowIndex;
+        if (rowIndex == null) return;
+        this.gridApi.setFocusedCell(rowIndex, 'employeeCode');
+        setTimeout(() => {
+          this.gridApi.startEditingCell({ rowIndex, colKey: 'employeeCode' });
+        }, 50);
+      },
     };
   }
 
@@ -1880,15 +1894,19 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         });
       }
 
-      // Detectar la primera columna editable en orden visual (respeta columnas pineadas)
+      // Para filas nuevas, enfocar directamente la columna Sucursal (idBranch).
+      // Si no está visible, caer al primer editable que no sea checkbox (vigente).
       const displayedCols = this.gridApi.getAllDisplayedColumns();
-      const firstEditableCol = displayedCols.find((col: any) => {
-        const colDef = col.getColDef();
-        if (typeof colDef.editable === 'function') {
-          return colDef.editable({ data: newItem, node: rowNode, column: col, colDef });
-        }
-        return colDef.editable === true;
-      });
+      const firstEditableCol =
+        displayedCols.find((col: any) => col.getColId() === 'idBranch') ??
+        displayedCols.find((col: any) => {
+          const colDef = col.getColDef();
+          if (colDef.field === 'vigente') return false;
+          if (typeof colDef.editable === 'function') {
+            return colDef.editable({ data: newItem, node: rowNode, column: col, colDef });
+          }
+          return colDef.editable === true;
+        });
 
       if (firstEditableCol) {
         const firstColKey = firstEditableCol.getColId();

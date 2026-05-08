@@ -82,44 +82,53 @@ export class AttachHandlerService {
     });
   }
 
-  uploadEmployeeDoc(): Promise<{ url: string }> {
-    const ACCEPTED_MIME = [
-      'application/pdf',
-      'image/jpeg', 'image/png',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    ];
+  private readonly EMPLOYEE_DOC_MIME = [
+    'application/pdf',
+    'image/jpeg', 'image/png',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ];
 
+  /** Abre el picker y devuelve el File + un blob URL local sin subir a Firebase. */
+  selectEmployeeDoc(): Promise<{ file: File; localUrl: string }> {
     return new Promise((resolve, reject) => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx,.ppt,.pptx';
-      input.onchange = async (event: any) => {
+      input.onchange = (event: any) => {
         const file: File = event.target.files[0];
         if (!file) { reject('Sin archivo'); return; }
-        if (!ACCEPTED_MIME.includes(file.type)) {
+        if (!this.EMPLOYEE_DOC_MIME.includes(file.type)) {
           alerts.userSaveErrorToast('Subir archivo', 'Formato no permitido. Use PDF, JPG, PNG, XLS(X), DOC(X) o PPT(X).');
           reject('Tipo no válido');
           return;
         }
-        const isPdf  = file.type === 'application/pdf';
-        const isImage = file.type.startsWith('image/');
-        const path = isPdf   ? `pdf/${Date.now()}_${file.name}`
-                   : isImage ? `images/${this.storagesService.generateRandom()}${file.name}`
-                             : `docs/${Date.now()}_${file.name}`;
-        try {
-          const url = await this.storagesService.uploadFile(file, path);
-          resolve({ url });
-        } catch (error) {
-          alerts.userSaveErrorToast('Subir archivo', 'Error al subir el archivo.');
-          reject(error);
-        }
+        resolve({ file, localUrl: URL.createObjectURL(file) });
       };
       input.click();
+    });
+  }
+
+  /** Sube un File ya seleccionado a Firebase y devuelve la URL definitiva. */
+  async uploadFileToStorage(file: File): Promise<string> {
+    const isPdf  = file.type === 'application/pdf';
+    const isImage = file.type.startsWith('image/');
+    // workaround: xlsx/docx/pptx también van a pdf/ hasta que exista la carpeta docs en producción
+    const path = (isPdf || !isImage)
+      ? `pdf/${Date.now()}_${file.name}`
+      : `images/${this.storagesService.generateRandom()}${file.name}`;
+    return this.storagesService.uploadFile(file, path);
+  }
+
+  /** @deprecated Usa selectEmployeeDoc() + uploadFileToStorage() en su lugar. */
+  uploadEmployeeDoc(): Promise<{ url: string }> {
+    return this.selectEmployeeDoc().then(async ({ file }) => {
+      const url = await this.uploadFileToStorage(file);
+      return { url };
     });
   }
 

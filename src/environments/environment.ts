@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.85 (7 Mayo 2026) - Sync sucursales a vigente=false al desactivar proveedor desde providers'
+  version: '2.52.60 (7 Mayo 2026 15:00) - Feature: Correcciones menores a RH'
 };
