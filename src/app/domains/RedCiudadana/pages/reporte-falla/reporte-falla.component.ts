@@ -1,11 +1,13 @@
 import { Component, OnDestroy, AfterViewInit, ViewChild, ElementRef, inject } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from 'app/shared/shared.module';
-import { FallasService, FallaIncidencia } from 'app/services/fallas.service';
+import { FallasService, FallaIncidencia, FallaAnalysis } from 'app/services/fallas.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Geolocation } from '@capacitor/geolocation';
 import * as L from 'leaflet';
 
 type LocationStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -13,7 +15,7 @@ type LocationStatus = 'idle' | 'loading' | 'success' | 'error';
 @Component({
   selector: 'app-reporte-falla',
   standalone: true,
-  imports: [CommonModule, FormsModule, SharedModule, DatePipe],
+  imports: [CommonModule, FormsModule, SharedModule],
   templateUrl: './reporte-falla.component.html',
   styleUrl: './reporte-falla.component.scss',
 })
@@ -24,11 +26,7 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
 
   @ViewChild('mapContainer') mapContainer?: ElementRef;
 
-  readonly today = new Date();
-  readonly TOTAL_STEPS = 3;
-
   currentView: 'form' | 'success' = 'form';
-  currentStep = 1;
   isLoading = false;
   successFolio = '';
 
@@ -36,6 +34,9 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
   descripcion = '';
   fotoFile: File | null = null;
   fotoPreview: string | null = null;
+  fotoUrl: string | null = null;
+  analisisIa: FallaAnalysis | null = null;
+  analizando = false;
   latitud: number | null = null;
   longitud: number | null = null;
   locationStatus: LocationStatus = 'idle';
@@ -50,7 +51,12 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     shadowSize: [41, 41],
   });
 
-  ngAfterViewInit(): void {}
+  ngAfterViewInit(): void {
+    setTimeout(() => {
+      this.initMap();
+      this.requestLocation();
+    }, 120);
+  }
 
   ngOnDestroy(): void {
     this.leafletMap?.remove();
@@ -60,60 +66,65 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     return +(this.signalsService.getRootSelectedBySidebar()() ?? 0);
   }
 
-  onFotoCapture(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    this.fotoFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => (this.fotoPreview = e.target?.result as string);
-    reader.readAsDataURL(file);
+  async capturarFoto(source: 'camera' | 'photos'): Promise<void> {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
+      });
+      if (!image.dataUrl) return;
+      this.fotoPreview = image.dataUrl;
+      this.fotoFile    = this.dataUrlToFile(image.dataUrl, 'falla.jpg');
+      this.analisisIa  = null;
+      await this.subirYAnalizarFoto();
+    } catch { /* cancelado por el usuario */ }
+  }
+
+  private async subirYAnalizarFoto(): Promise<void> {
+    if (!this.fotoFile) return;
+    this.analizando = true;
+    try {
+      this.fotoUrl = await this.imageHandler.uploadFileToFirebase(this.fotoFile, 'fallas');
+      this.analisisIa = await new Promise<FallaAnalysis>((res, rej) =>
+        this.fallasService.analizarFoto(this.fotoUrl!).subscribe({ next: res, error: rej })
+      );
+    } catch {
+      alerts.basicAlert('Aviso', 'No se pudo analizar la foto con IA. Puedes continuar de todas formas.', 'warning');
+    } finally {
+      this.analizando = false;
+    }
   }
 
   clearFoto(): void {
-    this.fotoFile = null;
+    this.fotoFile   = null;
     this.fotoPreview = null;
+    this.fotoUrl    = null;
+    this.analisisIa = null;
   }
 
-  nextStep(): void {
-    if (this.currentStep === 1 && !this.descripcion.trim()) {
-      alerts.basicAlert('Campo requerido', 'La descripción es obligatoria', 'warning');
-      return;
-    }
-    if (this.currentStep === 2 && !this.fotoFile) {
-      alerts.basicAlert('Foto requerida', 'Adjunta una foto del problema', 'warning');
-      return;
-    }
-    if (this.currentStep < this.TOTAL_STEPS) {
-      this.currentStep++;
-      if (this.currentStep === 3) {
-        setTimeout(() => {
-          this.initMap();
-          this.requestLocation();
-        }, 120);
-      }
-    }
+  private dataUrlToFile(dataUrl: string, filename: string): File {
+    const [header, data] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)![1];
+    const bytes = atob(data);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new File([arr], filename, { type: mime });
   }
 
-  prevStep(): void {
-    if (this.currentStep > 1) this.currentStep--;
-  }
-
-  requestLocation(): void {
-    if (!navigator.geolocation) {
-      this.locationStatus = 'error';
-      return;
-    }
+  async requestLocation(): Promise<void> {
     this.locationStatus = 'loading';
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        this.latitud = pos.coords.latitude;
-        this.longitud = pos.coords.longitude;
-        this.locationStatus = 'success';
-        this.updateMapMarker();
-      },
-      () => { this.locationStatus = 'error'; },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
+    try {
+      await Geolocation.requestPermissions();
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
+      this.latitud = pos.coords.latitude;
+      this.longitud = pos.coords.longitude;
+      this.locationStatus = 'success';
+      this.updateMapMarker();
+    } catch {
+      this.locationStatus = 'error';
+    }
   }
 
   private initMap(): void {
@@ -145,21 +156,20 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     }
     this.isLoading = true;
     try {
-      let fotoUrl: string | undefined;
-      if (this.fotoFile) {
-        fotoUrl = await this.imageHandler.uploadFileToFirebase(this.fotoFile, 'red-ciudadana/fallas');
-      }
-
       const falla: FallaIncidencia = {
-        idCompany: this.idCompany,
-        ciudadanoNombre: this.nombre.trim() || 'Anónimo',
+        idCompany:            this.idCompany,
+        ciudadanoNombre:      this.nombre.trim() || 'Anónimo',
         descripcionCiudadano: this.descripcion.trim(),
-        fotoUrl,
-        fechaReporte: new Date().toISOString(),
-        latitud: this.latitud ?? undefined,
-        longitud: this.longitud ?? undefined,
-        canal: 'APP',
-        status: 'NUEVO',
+        fotoUrl:              this.fotoUrl ?? undefined,
+        fechaReporte:         new Date().toISOString(),
+        latitud:              this.latitud ?? undefined,
+        longitud:             this.longitud ?? undefined,
+        canal:                'APP',
+        status:               'NUEVO',
+        tipoFalla:            this.analisisIa?.tipoFalla,
+        severidadIa:          this.analisisIa?.severidad,
+        departamento:         this.analisisIa?.departamento,
+        descripcionIa:        this.analisisIa?.descripcion,
       };
 
       const result = await new Promise<FallaIncidencia>((res, rej) =>
@@ -180,14 +190,19 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     this.leafletMap = undefined;
     this.marker = undefined;
     this.currentView = 'form';
-    this.currentStep = 1;
     this.nombre = '';
     this.descripcion = '';
-    this.fotoFile = null;
+    this.fotoFile    = null;
     this.fotoPreview = null;
-    this.latitud = null;
+    this.fotoUrl     = null;
+    this.analisisIa  = null;
+    this.latitud     = null;
     this.longitud = null;
     this.locationStatus = 'idle';
     this.successFolio = '';
+    setTimeout(() => {
+      this.initMap();
+      this.requestLocation();
+    }, 120);
   }
 }

@@ -193,18 +193,14 @@
       <label class="form-label">📷 INE — Frente</label>
       <ng-container *ngIf="!previewFrente">
         <div class="foto-opciones">
-          <label class="foto-opcion-btn">
-            <input type="file" accept="image/*" capture="environment" style="display:none"
-                   (change)="onCaptureFrente($event)">
+          <button type="button" class="foto-opcion-btn" (click)="captureFrente('camera')">
             <mat-icon>photo_camera</mat-icon>
             <span>Tomar foto</span>
-          </label>
-          <label class="foto-opcion-btn">
-            <input type="file" accept="image/*" style="display:none"
-                   (change)="onCaptureFrente($event)">
+          </button>
+          <button type="button" class="foto-opcion-btn" (click)="captureFrente('photos')">
             <mat-icon>photo_library</mat-icon>
             <span>Galería</span>
-          </label>
+          </button>
         </div>
       </ng-container>
       <ng-container *ngIf="previewFrente">
@@ -222,18 +218,14 @@
       <label class="form-label">📷 INE — Reverso</label>
       <ng-container *ngIf="!previewReverso">
         <div class="foto-opciones">
-          <label class="foto-opcion-btn">
-            <input type="file" accept="image/*" capture="environment" style="display:none"
-                   (change)="onCaptureReverso($event)">
+          <button type="button" class="foto-opcion-btn" (click)="captureReverso('camera')">
             <mat-icon>photo_camera</mat-icon>
             <span>Tomar foto</span>
-          </label>
-          <label class="foto-opcion-btn">
-            <input type="file" accept="image/*" style="display:none"
-                   (change)="onCaptureReverso($event)">
+          </button>
+          <button type="button" class="foto-opcion-btn" (click)="captureReverso('photos')">
             <mat-icon>photo_library</mat-icon>
             <span>Galería</span>
-          </label>
+          </button>
         </div>
       </ng-container>
       <ng-container *ngIf="previewReverso">
@@ -410,18 +402,14 @@
         <label class="form-label">INE — Frente</label>
         <ng-container *ngIf="!previewFrente">
           <div class="foto-opciones">
-            <label class="foto-opcion-btn">
-              <input type="file" accept="image/*" capture="environment" style="display:none"
-                     (change)="onCaptureFrente($event)">
+            <button type="button" class="foto-opcion-btn" (click)="captureFrente('camera')">
               <mat-icon>photo_camera</mat-icon>
               <span>Tomar foto</span>
-            </label>
-            <label class="foto-opcion-btn">
-              <input type="file" accept="image/*" style="display:none"
-                     (change)="onCaptureFrente($event)">
+            </button>
+            <button type="button" class="foto-opcion-btn" (click)="captureFrente('photos')">
               <mat-icon>photo_library</mat-icon>
               <span>Galería</span>
-            </label>
+            </button>
           </div>
         </ng-container>
         <ng-container *ngIf="previewFrente">
@@ -438,18 +426,14 @@
         <label class="form-label">INE — Reverso</label>
         <ng-container *ngIf="!previewReverso">
           <div class="foto-opciones">
-            <label class="foto-opcion-btn">
-              <input type="file" accept="image/*" capture="environment" style="display:none"
-                     (change)="onCaptureReverso($event)">
+            <button type="button" class="foto-opcion-btn" (click)="captureReverso('camera')">
               <mat-icon>photo_camera</mat-icon>
               <span>Tomar foto</span>
-            </label>
-            <label class="foto-opcion-btn">
-              <input type="file" accept="image/*" style="display:none"
-                     (change)="onCaptureReverso($event)">
+            </button>
+            <button type="button" class="foto-opcion-btn" (click)="captureReverso('photos')">
               <mat-icon>photo_library</mat-icon>
               <span>Galería</span>
-            </label>
+            </button>
           </div>
         </ng-container>
         <ng-container *ngIf="previewReverso">

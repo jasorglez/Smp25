@@ -48,6 +48,13 @@ export interface UpdateStatusDto {
   idUsuario?: number;
 }
 
+export interface FallaAnalysis {
+  tipoFalla:    string;
+  severidad:    string;
+  departamento: string;
+  descripcion:  string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -88,5 +95,13 @@ export class FallasService {
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  analizarFoto(fotoUrl: string): Observable<FallaAnalysis> {
+    return this.http.post<FallaAnalysis>(
+      `${this.base}/analizar-foto`,
+      { fotoUrl },
+      { headers: this.trackingService.getHeaders() }
+    );
   }
 }

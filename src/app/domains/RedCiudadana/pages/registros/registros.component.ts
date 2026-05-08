@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from 'app/shared/shared.module';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -130,18 +131,32 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
     this.fileReverso    = null;
   }
 
-  onCaptureFrente(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    this.fileFrente = file;
-    this.readPreview(file, (b64) => this.previewFrente = b64);
+  async captureFrente(source: 'camera' | 'photos'): Promise<void> {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
+      });
+      if (!image.dataUrl) return;
+      this.previewFrente = image.dataUrl;
+      this.fileFrente = this.dataUrlToFile(image.dataUrl, 'ine-frente.jpg');
+    } catch { /* cancelado por el usuario */ }
   }
 
-  onCaptureReverso(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    this.fileReverso = file;
-    this.readPreview(file, (b64) => this.previewReverso = b64);
+  async captureReverso(source: 'camera' | 'photos'): Promise<void> {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
+      });
+      if (!image.dataUrl) return;
+      this.previewReverso = image.dataUrl;
+      this.fileReverso = this.dataUrlToFile(image.dataUrl, 'ine-reverso.jpg');
+    } catch { /* cancelado por el usuario */ }
   }
 
   clearPhoto(side: 'frente' | 'reverso') {
@@ -155,10 +170,13 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
     this.form.codigoPostal = input.value;
   }
 
-  private readPreview(file: File, cb: (b64: string) => void) {
-    const reader = new FileReader();
-    reader.onload = (e) => cb(e.target?.result as string);
-    reader.readAsDataURL(file);
+  private dataUrlToFile(dataUrl: string, filename: string): File {
+    const [header, data] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)![1];
+    const bytes = atob(data);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new File([arr], filename, { type: mime });
   }
 
   // ─── Validación ─────────────────────────────────────────────────────────────

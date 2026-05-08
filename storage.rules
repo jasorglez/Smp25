@@ -1,0 +1,27 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Carpetas de uso público (uploads desde la app sin Firebase Auth)
+    match /fallas/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    match /red-ciudadana/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    match /pdf/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    match /videos/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    // Resto: denegado por defecto
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
