@@ -449,6 +449,8 @@ export class EgresosxfechasComponent {
 
     const colsMap = { detalle: this.colDefs, proveedor: this.colDefsProveedor, mes: this.colDefsMes };
     const headerMap = { detalle: 'Fecha', proveedor: 'Proveedor / Empleado', mes: 'Mes' };
+    const widthMap    = { detalle: 150, proveedor: 300, mes: 150 };
+    const maxWidthMap = { detalle: 160, proveedor: 400, mes: 160 };
     const footerMap: Record<string, (p: any) => string> = {
       detalle:    (p: any) => `Subtotal ${this.formatDate(p.value)}`,
       proveedor:  (p: any) => `Total ${p.value || ''}`,
@@ -459,6 +461,8 @@ export class EgresosxfechasComponent {
     this.gridApi.setGridOption('autoGroupColumnDef', {
       ...this.gridOptions.autoGroupColumnDef,
       headerName: headerMap[type],
+      width: widthMap[type],
+      maxWidth: maxWidthMap[type],
       valueFormatter: type === 'mes' ? (p: any) => this.formatMes(p.value) : undefined,
       cellRendererParams: { suppressCount: false, footerValueGetter: footerMap[type] },
     });
