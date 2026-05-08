@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.54 (7 Mayo 2026) Fix: dashboard Top Clientes usa totalconcepto para evitar inflación por conceptos múltiples',
+  version: '5.55 (7 Mayo 2026) Fix: DashAdmon Top Clientes usa totalconcepto para totales correctos por cliente',
 };
   

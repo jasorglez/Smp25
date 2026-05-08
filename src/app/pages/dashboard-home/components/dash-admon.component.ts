@@ -498,7 +498,7 @@ export class DashAdmonComponent implements OnInit {
     const byClient: { [key: string]: number } = {};
     filtered.forEach(s => {
       const name = (s.company || 'Sin cliente').trim().replace(/\s+/g, ' ').toUpperCase();
-      byClient[name] = (byClient[name] || 0) + (Number(s.totalincome) || 0);
+      byClient[name] = (byClient[name] || 0) + (Number(s.totalconcepto) || 0);
     });
     this.clientList = Object.entries(byClient)
       .map(([name, total]) => ({ name, total }))
@@ -574,7 +574,7 @@ export class DashAdmonComponent implements OnInit {
       const d = new Date(s.fechaingreso);
       const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
       if (!byYearMonth[key]) byYearMonth[key] = { year: d.getFullYear(), month: d.getMonth(), total: 0 };
-      byYearMonth[key].total += s.totalincome;
+      byYearMonth[key].total += s.totalconcepto;
     });
 
     const sortedKeys   = Object.keys(byYearMonth).sort();
