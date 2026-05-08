@@ -1094,8 +1094,8 @@ export const routes: Routes = [
             path: 'income',
             loadComponent: () =>
               import(
-                './domains/ModAdmon/components/income/income.component'
-              ).then((i) => i.IncomeComponent),
+                './domains/ModAdmon/components/income/ingreso-shell.component'
+              ).then((i) => i.IngresoShellComponent),
             canActivate: [TrackingGuard],
             data: {
               tracking: {
