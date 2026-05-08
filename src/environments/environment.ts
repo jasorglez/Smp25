@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.60 (7 Mayo 2026 15:00) - Feature: Correcciones menores a RH'
+  version: '2.52.61 (8 Mayo 2026 12:00) - Feature: Sync active+porAutorizar en materiales al generar OC'
 };

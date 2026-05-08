@@ -936,6 +936,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     if (generatedFolios.length > 0) {
       await this.updatePorAutorizarAfterOC();
+      await this.updateMaterialsAfterOC();
     }
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
@@ -1159,6 +1160,37 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         ).catch(() => {
           // Error silencioso
         });
+      }
+    }
+  }
+
+  private async updateMaterialsAfterOC(): Promise<void> {
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
+
+    const rowsByMaterial = new Map<number, any[]>();
+    for (const row of this.rowData) {
+      if (row.idSupplie && row.idSupplie > 0 && row.tipoOc) {
+        const list = rowsByMaterial.get(row.idSupplie) || [];
+        list.push(row);
+        rowsByMaterial.set(row.idSupplie, list);
+      }
+    }
+
+    for (const [materialId, rows] of rowsByMaterial) {
+      const hasAnyPositive = rows.some(r => AUTHORIZED.includes(r.tipoOc));
+      const allNegative = rows.every(r => NOT_AUTHORIZED.includes(r.tipoOc));
+
+      if (hasAnyPositive) {
+        // Al menos un proveedor POSITIVO → autorizar el material
+        await lastValueFrom(
+          this.materialsService.updateMaterial(materialId.toString(), { active: true, porAutorizar: false })
+        ).catch(e => console.warn(`⚠️ No se pudo autorizar material ${materialId}:`, e));
+      } else if (allNegative) {
+        // Todos NEGATIVOS → desactivar el material
+        await lastValueFrom(
+          this.materialsService.updateMaterial(materialId.toString(), { active: false, vigente: false, porAutorizar: true })
+        ).catch(e => console.warn(`⚠️ No se pudo desactivar material ${materialId}:`, e));
       }
     }
   }
