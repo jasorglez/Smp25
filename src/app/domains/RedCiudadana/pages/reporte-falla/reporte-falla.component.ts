@@ -6,7 +6,7 @@ import { FallasService, FallaIncidencia, FallaAnalysis } from 'app/services/fall
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Camera } from '@capacitor/camera';
 import { Geolocation } from '@capacitor/geolocation';
 import { environment } from '@env/environment';
 import * as L from 'leaflet';
@@ -41,6 +41,7 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
   latitud: number | null = null;
   longitud: number | null = null;
   locationStatus: LocationStatus = 'idle';
+  showFotoSheet = false;
 
   private leafletMap?: L.Map;
   private marker?: L.Marker;
@@ -67,20 +68,41 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     return +(this.signalsService.getRootSelectedBySidebar()() ?? 0);
   }
 
-  async capturarFoto(): Promise<void> {
+  abrirFotoSheet(): void {
+    this.showFotoSheet = true;
+  }
+
+  async tomarFoto(): Promise<void> {
+    this.showFotoSheet = false;
     try {
-      const image = await Camera.getPhoto({
-        quality: 85,
-        allowEditing: false,
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt,
-      });
-      if (!image.dataUrl) return;
-      this.fotoPreview = image.dataUrl;
-      this.fotoFile    = this.dataUrlToFile(image.dataUrl, 'falla.jpg');
-      this.analisisIa  = null;
-      await this.subirYAnalizarFoto();
+      const result = await Camera.takePhoto({ quality: 85 });
+      if (!result.webPath) return;
+      await this.procesarWebPath(result.webPath);
     } catch { /* cancelado por el usuario */ }
+  }
+
+  async elegirDeGaleria(): Promise<void> {
+    this.showFotoSheet = false;
+    try {
+      const result = await Camera.chooseFromGallery({ quality: 85 });
+      const first = result.results?.[0];
+      if (!first?.webPath) return;
+      await this.procesarWebPath(first.webPath);
+    } catch { /* cancelado por el usuario */ }
+  }
+
+  private async procesarWebPath(webPath: string): Promise<void> {
+    const response = await fetch(webPath);
+    const blob = await response.blob();
+    const dataUrl = await new Promise<string>(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    this.fotoPreview = dataUrl;
+    this.fotoFile = new File([blob], 'falla.jpg', { type: blob.type || 'image/jpeg' });
+    this.analisisIa = null;
+    await this.subirYAnalizarFoto();
   }
 
   private async subirYAnalizarFoto(): Promise<void> {
@@ -99,20 +121,12 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
   }
 
   clearFoto(): void {
-    this.fotoFile   = null;
+    this.fotoFile = null;
     this.fotoPreview = null;
-    this.fotoUrl    = null;
+    this.fotoUrl = null;
     this.analisisIa = null;
   }
 
-  private dataUrlToFile(dataUrl: string, filename: string): File {
-    const [header, data] = dataUrl.split(',');
-    const mime = header.match(/:(.*?);/)![1];
-    const bytes = atob(data);
-    const arr = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-    return new File([arr], filename, { type: mime });
-  }
 
   async requestLocation(): Promise<void> {
     this.locationStatus = 'loading';
@@ -158,19 +172,19 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     this.isLoading = true;
     try {
       const falla: FallaIncidencia = {
-        idCompany:            this.idCompany,
-        ciudadanoNombre:      this.nombre.trim() || 'Anónimo',
+        idCompany: this.idCompany,
+        ciudadanoNombre: this.nombre.trim() || 'Anónimo',
         descripcionCiudadano: this.descripcion.trim(),
-        fotoUrl:              this.fotoUrl ?? undefined,
-        fechaReporte:         new Date().toISOString(),
-        latitud:              this.latitud ?? undefined,
-        longitud:             this.longitud ?? undefined,
-        canal:                'APP',
-        status:               'NUEVO',
-        tipoFalla:            this.analisisIa?.tipoFalla,
-        severidadIa:          this.analisisIa?.severidad,
-        departamento:         this.analisisIa?.departamento,
-        descripcionIa:        this.analisisIa?.descripcion,
+        fotoUrl: this.fotoUrl ?? undefined,
+        fechaReporte: new Date().toISOString(),
+        latitud: this.latitud ?? undefined,
+        longitud: this.longitud ?? undefined,
+        canal: 'APP',
+        status: 'NUEVO',
+        tipoFalla: this.analisisIa?.tipoFalla,
+        severidadIa: this.analisisIa?.severidad,
+        departamento: this.analisisIa?.departamento,
+        descripcionIa: this.analisisIa?.descripcion,
       };
 
       const result = await new Promise<FallaIncidencia>((res, rej) =>
@@ -193,11 +207,11 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     this.currentView = 'form';
     this.nombre = '';
     this.descripcion = '';
-    this.fotoFile    = null;
+    this.fotoFile = null;
     this.fotoPreview = null;
-    this.fotoUrl     = null;
-    this.analisisIa  = null;
-    this.latitud     = null;
+    this.fotoUrl = null;
+    this.analisisIa = null;
+    this.latitud = null;
     this.longitud = null;
     this.locationStatus = 'idle';
     this.successFolio = '';

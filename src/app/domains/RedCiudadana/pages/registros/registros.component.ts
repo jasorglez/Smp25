@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Camera } from '@capacitor/camera';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from 'app/shared/shared.module';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -133,30 +133,35 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
 
   async captureFrente(): Promise<void> {
     try {
-      const image = await Camera.getPhoto({
-        quality: 85,
-        allowEditing: false,
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt,
-      });
-      if (!image.dataUrl) return;
-      this.previewFrente = image.dataUrl;
-      this.fileFrente = this.dataUrlToFile(image.dataUrl, 'ine-frente.jpg');
+      const result = await Camera.chooseFromGallery({ quality: 85 });
+      const first = result.results?.[0];
+      if (!first?.webPath) return;
+      const { dataUrl, file } = await this.webPathToDataUrlAndFile(first.webPath, 'ine-frente.jpg');
+      this.previewFrente = dataUrl;
+      this.fileFrente = file;
     } catch { /* cancelado por el usuario */ }
   }
 
   async captureReverso(): Promise<void> {
     try {
-      const image = await Camera.getPhoto({
-        quality: 85,
-        allowEditing: false,
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt,
-      });
-      if (!image.dataUrl) return;
-      this.previewReverso = image.dataUrl;
-      this.fileReverso = this.dataUrlToFile(image.dataUrl, 'ine-reverso.jpg');
+      const result = await Camera.chooseFromGallery({ quality: 85 });
+      const first = result.results?.[0];
+      if (!first?.webPath) return;
+      const { dataUrl, file } = await this.webPathToDataUrlAndFile(first.webPath, 'ine-reverso.jpg');
+      this.previewReverso = dataUrl;
+      this.fileReverso = file;
     } catch { /* cancelado por el usuario */ }
+  }
+
+  private async webPathToDataUrlAndFile(webPath: string, filename: string): Promise<{ dataUrl: string; file: File }> {
+    const response = await fetch(webPath);
+    const blob = await response.blob();
+    const dataUrl = await new Promise<string>(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    return { dataUrl, file: new File([blob], filename, { type: blob.type || 'image/jpeg' }) };
   }
 
   clearPhoto(side: 'frente' | 'reverso') {
@@ -170,14 +175,6 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
     this.form.codigoPostal = input.value;
   }
 
-  private dataUrlToFile(dataUrl: string, filename: string): File {
-    const [header, data] = dataUrl.split(',');
-    const mime = header.match(/:(.*?);/)![1];
-    const bytes = atob(data);
-    const arr = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-    return new File([arr], filename, { type: mime });
-  }
 
   // ─── Validación ─────────────────────────────────────────────────────────────
 

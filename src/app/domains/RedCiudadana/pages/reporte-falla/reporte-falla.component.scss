@@ -217,6 +217,43 @@
 
 .success-note { font-size: 0.85rem; color: #6c757d; margin-bottom: 28px; }
 
+// ─── Bottom sheet ─────────────────────────────────────────────────────────────
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bottom-sheet {
+  width: 100%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: #dee2e6;
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  text-align: left;
+
+  mat-icon { font-size: 26px; flex-shrink: 0; }
+}
+
 // ─── Dark mode ────────────────────────────────────────────────────────────────
 :host-context([data-bs-theme="dark"]) {
   .form-container { background: #111827; }

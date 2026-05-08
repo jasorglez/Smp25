@@ -38,7 +38,7 @@
       </label>
 
       <ng-container *ngIf="!fotoPreview">
-        <button type="button" class="foto-opcion-btn w-100" (click)="capturarFoto()">
+        <button type="button" class="foto-opcion-btn w-100" (click)="abrirFotoSheet()">
           <mat-icon>camera_alt</mat-icon>
           <span>Tomar o elegir foto</span>
         </button>
@@ -127,6 +127,24 @@
       </ng-container>
     </button>
 
+  </div>
+</div>
+
+<!-- ─── Bottom sheet: selector de foto ─────────────────────────────────────── -->
+<div class="sheet-overlay" *ngIf="showFotoSheet" (click)="showFotoSheet = false">
+  <div class="bottom-sheet" (click)="$event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <h6 class="text-center mb-3 fw-bold">Agregar foto</h6>
+    <div class="d-grid gap-3">
+      <button class="btn btn-outline-primary mode-btn" (click)="tomarFoto()">
+        <mat-icon>photo_camera</mat-icon>
+        <div><div class="fw-semibold">Tomar foto</div></div>
+      </button>
+      <button class="btn btn-outline-secondary mode-btn" (click)="elegirDeGaleria()">
+        <mat-icon>photo_library</mat-icon>
+        <div><div class="fw-semibold">Elegir de galería</div></div>
+      </button>
+    </div>
   </div>
 </div>
 
