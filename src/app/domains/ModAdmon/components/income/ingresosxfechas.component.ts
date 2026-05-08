@@ -7,6 +7,7 @@ import { lastValueFrom } from 'rxjs';
 
 import { AdministrationService } from 'app/services/administration.service';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
+import { PdfReportsService } from 'app/services/pdf-reports.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 
@@ -69,6 +70,9 @@ import { TrackingService } from 'app/services/tracking.service';
             <i class="bi bi-calendar3 me-1"></i>Por Mes
           </button>
         </div>
+        <button class="btn btn-sm btn-danger ms-2" (click)="downloadPdf()" [disabled]="rowData.length === 0 || generatingPdf">
+          <i class="bi bi-file-earmark-pdf me-1"></i>{{ generatingPdf ? 'Generando...' : 'PDF' }}
+        </button>
       </div>
 
       <!-- Totales -->
@@ -127,10 +131,12 @@ export class IngresosxfechasComponent {
   @Input() allAccounts = false;
 
   reportType: 'detalle' | 'cliente' | 'mes' = 'detalle';
+  generatingPdf = false;
 
   private signalsServicePriv = inject(SignalsService);
   private administrationService = inject(AdministrationService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private pdfReportsService = inject(PdfReportsService);
   public trackingService = inject(TrackingService);
 
   idRoot: number;
@@ -491,6 +497,22 @@ export class IngresosxfechasComponent {
       cellStyle: (p: any) => p.node.rowPinned ? { fontWeight: 'bold', backgroundColor: '#155724', color: '#fff', fontSize: '0.95rem' }
         : p.node?.footer ? { fontWeight: 'bold', color: '#155724', fontSize: '0.95rem' } : { fontWeight: 'bold', color: '#155724' } },
   ];
+
+  async downloadPdf() {
+    this.generatingPdf = true;
+    try {
+      await this.pdfReportsService.generateFinancialReport({
+        rows: this.rowData,
+        reportType: this.reportType === 'cliente' ? 'cliente' : this.reportType,
+        title: 'REPORTE DE INGRESOS',
+        startDate: this.startDate,
+        endDate: this.endDate,
+        idRoot: this.idRoot,
+      });
+    } finally {
+      this.generatingPdf = false;
+    }
+  }
 
   private formatDate(value: string) {
     if (!value) return '';
