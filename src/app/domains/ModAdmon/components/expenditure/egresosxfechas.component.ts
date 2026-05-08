@@ -34,16 +34,19 @@ import { TrackingService } from 'app/services/tracking.service';
           </li>
         </ul>
 
-        <div class="d-flex align-items-center gap-1 ms-auto">
+        <div class="d-flex align-items-center gap-1 ms-auto flex-wrap">
           <label class="small fw-semibold mb-0 text-nowrap">Inicio</label>
           <input type="date" class="form-control form-control-sm" style="width:140px;"
-                 [(ngModel)]="startDate" />
+                 [(ngModel)]="startDate" [class.is-invalid]="dateError" />
           <label class="small fw-semibold mb-0 text-nowrap">Fin</label>
           <input type="date" class="form-control form-control-sm" style="width:140px;"
-                 [(ngModel)]="endDate" />
+                 [(ngModel)]="endDate" [class.is-invalid]="dateError" />
           <button class="btn btn-sm btn-primary" (click)="onFilterChange()">
             <i class="bi bi-search"></i>
           </button>
+          <span *ngIf="dateError" class="text-danger small fw-semibold ms-1">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>La fecha de inicio no puede ser mayor que la fecha de fin.
+          </span>
         </div>
       </div>
 
@@ -132,6 +135,7 @@ export class EgresosxfechasComponent {
 
   reportType: 'detalle' | 'proveedor' | 'mes' = 'detalle';
   generatingPdf = false;
+  dateError = false;
 
   private signalsServicePriv = inject(SignalsService);
   public signalsService = inject(SignalsService);
@@ -237,6 +241,12 @@ export class EgresosxfechasComponent {
   }
 
   async onFilterChange() {
+    if (this.startDate > this.endDate) {
+      this.dateError = true;
+      return;
+    }
+    this.dateError = false;
+
     if (!this.allAccounts && !this.idAccount) {
       this.rowData = [];
       this.pinnedBottomRow = [];
