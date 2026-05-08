@@ -32,8 +32,8 @@ import { ProjectsService } from 'app/services/projects.service';
   selector: 'app-income',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-             FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
-             PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
+    FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
+    PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -70,11 +70,11 @@ export class IncomeComponent {
 
   constructor() {
 
-     this.onSelectedRow = this.onSelectedRow.bind(this);
-     this.onSelectionChanged = this.onSelectionChanged.bind(this);
+    this.onSelectedRow = this.onSelectedRow.bind(this);
+    this.onSelectionChanged = this.onSelectionChanged.bind(this);
 
-     this.onCellValueChanged = this.onCellValueChanged.bind(this);
-     this.onGridReady = this.onGridReady.bind(this);
+    this.onCellValueChanged = this.onCellValueChanged.bind(this);
+    this.onGridReady = this.onGridReady.bind(this);
 
     effect(async () => {
       this.root = this.signalsService.getRootSelectedBySidebar()();
@@ -107,7 +107,7 @@ export class IncomeComponent {
 
   hasConsecutiveError: boolean = false;
 
-  showform : string = '';
+  showform: string = '';
   branches: any[] = [];
   incomes: any[] = [];
   customers: any[] = [];
@@ -149,22 +149,22 @@ export class IncomeComponent {
     if (this._idAccount !== value) {
       this._idAccount = value;
 
-     // Agregar log cuando se selecciona una cuenta
-    if (value) {
-      const selectedAccount = this.bankAccounts.find(account => account.id === value);
-      if (selectedAccount) {
-        const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`, 'Menu Administracion Ingresos - Selección Cuenta',
-          this.trackingService.getEmail()
-        );
+      // Agregar log cuando se selecciona una cuenta
+      if (value) {
+        const selectedAccount = this.bankAccounts.find(account => account.id === value);
+        if (selectedAccount) {
+          const accountDetails = `${selectedAccount.nameAccount} - ${selectedAccount.bankName}`;
+          this.trackingService.addLog(
+            this.trackingService.getnameComp(), `Selección de cuenta bancaria: ${accountDetails}`, 'Menu Administracion Ingresos - Selección Cuenta',
+            this.trackingService.getEmail()
+          );
+        }
       }
-    }
 
       this.signalsService.setIdIncomeAndExpense(null);
       this.getIncomes(); // Ejecutar getIncomes cuando cambia el valor
+    }
   }
-}
 
 
   get idAccount(): number {
@@ -205,14 +205,14 @@ export class IncomeComponent {
     getRowStyle: (params) => {
       if (params.data) {
         switch (params.data.status) {
-          case 'Pendiente':
-            return { backgroundColor: '#cce5ff', color: '#004085' }; // Azul
-          case 'Pagada':
+          case 'N/A':
+            return { backgroundColor: '#ffffff', color: '#000000' }; // Blanco
+          case 'PAGADA':
             return { backgroundColor: '#d4edda', color: '#155724' }; // Verde
-          case 'Cancelada':
-            return { backgroundColor: '#f8d7da', color: '#721c24' }; // Rojo
-          case 'Entregada':
+          case 'POR PAGAR':
             return { backgroundColor: '#fff3cd', color: '#856404' }; // Amarillo
+          case 'POR INGRESAR':
+            return { backgroundColor: '#f8d7da', color: '#721c24' }; // Rojo
           default:
             return null;
         }
@@ -247,14 +247,14 @@ export class IncomeComponent {
   async getIncomes() {
 
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Ingresos`, 'Menu Administracion Ingresos',
-          this.trackingService.getEmail() );
+      this.trackingService.getEmail());
 
     this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
         // Filtrado y manejo de caso sin datos
 
         const filtered = incomes?.filter(income => {
-          return income.type === "DEPOSITO" && income.idAccount === this.idAccount
+          return income.type === "DEPOSITO" && (this.idAccount === 0 || income.idAccount === this.idAccount)
         }) || [];
 
         // Agregar propiedades para master-detail
@@ -298,8 +298,8 @@ export class IncomeComponent {
         console.error(error);
       }
     )
-      this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
-           this.trackingService.getEmail() );
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Clientes`, 'Menu Administracion Ingresos',
+      this.trackingService.getEmail());
   }
 
   // Nuevo método para cargar usuarios autorizadores
@@ -557,7 +557,7 @@ export class IncomeComponent {
         width: 180,
         filter: true,
         cellEditor: 'agTextCellEditor',
-        cellEditorParams: { maxLength: 36 },
+        cellEditorParams: { maxLength: 255 },
         valueFormatter: (params) => {
           if (!params.value || params.value === 'NA') return 'Sin Timbrar';
           return params.value.substring(0, 15) + '...';
@@ -633,7 +633,7 @@ export class IncomeComponent {
         width: 110,
         filter: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: { values: ['ENTREGADA', 'PENDIENTE', 'N/A'] }
+        cellEditorParams: { values: ['INGRESADA', 'PENDIENTE', 'N/A'] }
       },
       // 16. ESTATUS DE PAGO
       {
@@ -642,7 +642,7 @@ export class IncomeComponent {
         editable: true,
         width: 130,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: { values: ['Pendiente', 'Entregada', 'Cancelada', 'Pagada'] }
+        cellEditorParams: { values: ['N/A', 'PAGADA', 'POR INGRESAR', 'POR PAGAR'] }
       },
       // 17. DIAS
       {
@@ -808,14 +808,14 @@ export class IncomeComponent {
     this.signalsService.setIdIncomeAndExpense(this.id);
   }
 
-onSelectionChanged(event: any) {
+  onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedIncomes = selectedNodes[0].data;
       this.signalsService.setIdIncomeAndExpense(this.selectedIncomes.id);
     } else {
-       this.selectedIncomes = null;
-       this.signalsService.setIdIncomeAndExpense(null);
+      this.selectedIncomes = null;
+      this.signalsService.setIdIncomeAndExpense(null);
     }
   }
 
@@ -897,18 +897,18 @@ onSelectionChanged(event: any) {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idAccount      : this._idAccount,
-      numberDocument : "",
-      idBusinnes     : this.root,
-      idBranch       : this.idBranch, // Asignar la primera sucursal por defecto
-      idProject      : null,          // Proyecto
-      paymentMonth   : '',            // Mes de pago
-      oc             : '',            // Orden de Compra
-      date           : null,
-      diasPlazo      : null,
-      idCustomer     : 0,
-      idExpend       : 0,
-      uuid           : "NA",
+      idAccount: this._idAccount,
+      numberDocument: "",
+      idBusinnes: this.root,
+      idBranch: this.idBranch, // Asignar la primera sucursal por defecto
+      idProject: null,          // Proyecto
+      paymentMonth: '',            // Mes de pago
+      oc: '',            // Orden de Compra
+      date: null,
+      diasPlazo: null,
+      idCustomer: 0,
+      idExpend: 0,
+      uuid: "NA",
       dateStamped: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       description: "",
       type: "DEPOSITO",
@@ -922,7 +922,7 @@ onSelectionChanged(event: any) {
       createdAt: new Date().toISOString(),
       modifiedBy: null,
       modifiedAt: new Date().toISOString(),
-      status: "Pendiente",
+      status: "POR INGRESAR",
       active: true,
       __isNew: true,
     };
@@ -930,7 +930,7 @@ onSelectionChanged(event: any) {
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
 
-    this.trackingService.addLog(this.trackingService.getnameComp(),'Ingreso en Administracion', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Ingreso en Administracion', 'Menu Administracion Ingresos', this.trackingService.getEmail());
 
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.incomes.findIndex((row) => row.id === tempId);
@@ -950,116 +950,116 @@ onSelectionChanged(event: any) {
     }, 50); // Un pequeño retraso de 50ms
   }
 
-async saveChanges() {
-  // Campos requeridos (idProject NO es requerido - puede ir vacío)
-  const requiredFields = [
-    { field: 'idCustomer',   label: 'Cliente',       check: (v: any) => !!v && v !== 0 },
-  ];
+  async saveChanges() {
+    // Campos requeridos (idProject NO es requerido - puede ir vacío)
+    const requiredFields = [
+      { field: 'idCustomer', label: 'Cliente', check: (v: any) => !!v && v !== 0 },
+    ];
 
-  for (const item of this.incomes) {
-    for (const rf of requiredFields) {
-      if (!rf.check(item[rf.field])) {
+    for (const item of this.incomes) {
+      for (const rf of requiredFields) {
+        if (!rf.check(item[rf.field])) {
+          alerts.basicAlert(
+            'Campo requerido',
+            `Falta llenar el campo: "${rf.label}"`,
+            'error'
+          );
+          return;
+        }
+      }
+    }
+
+    // Validar que la cuenta bancaria tenga Máscaras y Consecutivos configurados
+    const selectedAccount = this.bankAccounts.find(a => a.id === this._idAccount);
+    if (selectedAccount) {
+      const missingBankFields: string[] = [];
+      if (!selectedAccount.maskin) missingBankFields.push('Máscara IN (maskin)');
+      if (!selectedAccount.consecin) missingBankFields.push('Consecutivo IN (consecin)');
+      if (!selectedAccount.maskex) missingBankFields.push('Máscara EX (maskex)');
+      if (!selectedAccount.consecex) missingBankFields.push('Consecutivo EX (consecex)');
+
+      if (missingBankFields.length > 0) {
         alerts.basicAlert(
-          'Campo requerido',
-          `Falta llenar el campo: "${rf.label}"`,
-          'error'
+          'Cuenta bancaria incompleta',
+          `La cuenta "${selectedAccount.nameAccount}" no tiene configurados los siguientes campos requeridos:\n\n• ${missingBankFields.join('\n• ')}\n\nConfigúralos en Cuentas Bancarias antes de guardar.`,
+          'warning'
         );
         return;
       }
     }
-  }
 
-  // Validar que la cuenta bancaria tenga Máscaras y Consecutivos configurados
-  const selectedAccount = this.bankAccounts.find(a => a.id === this._idAccount);
-  if (selectedAccount) {
-    const missingBankFields: string[] = [];
-    if (!selectedAccount.maskin)   missingBankFields.push('Máscara IN (maskin)');
-    if (!selectedAccount.consecin) missingBankFields.push('Consecutivo IN (consecin)');
-    if (!selectedAccount.maskex)   missingBankFields.push('Máscara EX (maskex)');
-    if (!selectedAccount.consecex) missingBankFields.push('Consecutivo EX (consecex)');
+    const newRows = this.incomes.filter((row) => row.__isNew);
+    const modifiedRows = this.incomes.filter(
+      (row) => row.__modified && !row.__isNew
+    );
 
-    if (missingBankFields.length > 0) {
-      alerts.basicAlert(
-        'Cuenta bancaria incompleta',
-        `La cuenta "${selectedAccount.nameAccount}" no tiene configurados los siguientes campos requeridos:\n\n• ${missingBankFields.join('\n• ')}\n\nConfigúralos en Cuentas Bancarias antes de guardar.`,
-        'warning'
-      );
-      return;
+    // Solo validar configuración si hay nuevas filas que necesitan número de documento
+    let currentConsecutive = 0;
+    if (newRows.length > 0) {
+      if (!this.prefixAndConsecutive?.[0]) {
+        alerts.basicAlert(
+          'Error de configuración',
+          'La configuración de prefijo/consecutivo no está cargada correctamente',
+          'error'
+        );
+        return;
+      }
+
+      // Generar números de documento para nuevas filas
+      currentConsecutive = this.prefixAndConsecutive[0].consecutive;
+      newRows.forEach(row => {
+        currentConsecutive++;
+        row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
+      });
     }
-  }
 
-  const newRows = this.incomes.filter((row) => row.__isNew);
-  const modifiedRows = this.incomes.filter(
-    (row) => row.__modified && !row.__isNew
-  );
+    try {
+      // PRIMERO: Guardar los registros de income (SIEMPRE)
+      await this.saveIncomeRecords(newRows, modifiedRows);
 
-  // Solo validar configuración si hay nuevas filas que necesitan número de documento
-  let currentConsecutive = 0;
-  if (newRows.length > 0) {
-    if (!this.prefixAndConsecutive?.[0]) {
+      // LUEGO: Actualizar el consecutivo si hay nuevas filas (manejar error específico)
+      if (newRows.length > 0) {
+        try {
+          await this.updateBillingManagement(currentConsecutive);
+          this.hasConsecutiveError = false;
+        } catch (consecutiveError) {
+          // Error específico del consecutivo - mostrar alerta pero no revertir todo
+          console.error('Error actualizando consecutivo:', consecutiveError);
+          this.hasConsecutiveError = true;
+          alerts.basicAlert(
+            'Advertencia - Consecutivo',
+            'Los registros se guardaron correctamente, pero hubo un problema al actualizar el consecutivo. Contacte al administrador.',
+            'warning'
+          );
+        }
+      }
+
+      // Éxito completo o parcial
+      if (newRows.length === 0 || !this.hasConsecutiveError) {
+        alerts.basicAlert(
+          'Datos actualizados',
+          'Se han actualizado los datos correctamente.',
+          'success'
+        );
+      }
+
+      this.notSavedChanges = false;
+      this.newlyAddedRows = [];
+      await this.getIncomes(); // Refrescar los datos
+
+    } catch (error: any) {
+      console.error('Error crítico en saveChanges:', error);
+      const detail = error?.error?.message
+        || error?.error?.title
+        || error?.message
+        || JSON.stringify(error?.error || error || '');
       alerts.basicAlert(
-        'Error de configuración',
-        'La configuración de prefijo/consecutivo no está cargada correctamente',
+        'Error al guardar',
+        detail,
         'error'
       );
-      return;
     }
-
-    // Generar números de documento para nuevas filas
-    currentConsecutive = this.prefixAndConsecutive[0].consecutive;
-    newRows.forEach(row => {
-      currentConsecutive++;
-      row.numberDocument = `${this.prefixAndConsecutive[0].prefix}${currentConsecutive.toString().padStart(4, '0')}`;
-    });
   }
-
-  try {
-    // PRIMERO: Guardar los registros de income (SIEMPRE)
-    await this.saveIncomeRecords(newRows, modifiedRows);
-
-    // LUEGO: Actualizar el consecutivo si hay nuevas filas (manejar error específico)
- if (newRows.length > 0) {
-  try {
-    await this.updateBillingManagement(currentConsecutive);
-    this.hasConsecutiveError = false;
-  } catch (consecutiveError) {
-    // Error específico del consecutivo - mostrar alerta pero no revertir todo
-    console.error('Error actualizando consecutivo:', consecutiveError);
-    this.hasConsecutiveError = true;
-    alerts.basicAlert(
-      'Advertencia - Consecutivo',
-      'Los registros se guardaron correctamente, pero hubo un problema al actualizar el consecutivo. Contacte al administrador.',
-      'warning'
-    );
-  }
-}
-
-    // Éxito completo o parcial
-    if (newRows.length === 0 || !this.hasConsecutiveError) {
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
-    }
-
-    this.notSavedChanges = false;
-    this.newlyAddedRows = [];
-    await this.getIncomes(); // Refrescar los datos
-
-  } catch (error: any) {
-    console.error('Error crítico en saveChanges:', error);
-    const detail = error?.error?.message
-      || error?.error?.title
-      || error?.message
-      || JSON.stringify(error?.error || error || '');
-    alerts.basicAlert(
-      'Error al guardar',
-      detail,
-      'error'
-    );
-  }
-}
 
 
   // Método separado para guardar los registros de income
@@ -1096,40 +1096,40 @@ async saveChanges() {
     }
   }
 
-// Método separado para actualizar el billing management (SOLO consecutivo)
-private async updateBillingManagement(currentConsecutive: number): Promise<void> {
-  // CORRECCIÓN: Envolver el consecutive en un objeto "request"
-  const payload = {
-    request: {
-      consecutive: currentConsecutive
-    }
-  };
+  // Método separado para actualizar el billing management (SOLO consecutivo)
+  private async updateBillingManagement(currentConsecutive: number): Promise<void> {
+    // CORRECCIÓN: Envolver el consecutive en un objeto "request"
+    const payload = {
+      request: {
+        consecutive: currentConsecutive
+      }
+    };
 
-  await lastValueFrom(
-    this.administrationService.updateBillingManagementConsecutive(
-      this.root,
-      payload
-    ).pipe(
-      tap((updatedBilling: any) => {
-        // Actualizar el array local con la respuesta completa del servidor
-        this.prefixAndConsecutive = [updatedBilling];
-      }),
-      catchError((error) => {
-        console.error('Error actualizando consecutivo:', error);
+    await lastValueFrom(
+      this.administrationService.updateBillingManagementConsecutive(
+        this.root,
+        payload
+      ).pipe(
+        tap((updatedBilling: any) => {
+          // Actualizar el array local con la respuesta completa del servidor
+          this.prefixAndConsecutive = [updatedBilling];
+        }),
+        catchError((error) => {
+          console.error('Error actualizando consecutivo:', error);
 
-        // Log específico para tracking
-        this.trackingService.addLog(
-          this.trackingService.getnameComp(),
-          `Error actualizando consecutivo: ${error.message}`,
-          'Menu Administracion Ingresos - Error Consecutivo',
-          this.trackingService.getEmail()
-        );
+          // Log específico para tracking
+          this.trackingService.addLog(
+            this.trackingService.getnameComp(),
+            `Error actualizando consecutivo: ${error.message}`,
+            'Menu Administracion Ingresos - Error Consecutivo',
+            this.trackingService.getEmail()
+          );
 
-        throw error; // Re-lanzar el error para manejarlo en saveChanges
-      })
-    )
-  );
-}
+          throw error; // Re-lanzar el error para manejarlo en saveChanges
+        })
+      )
+    );
+  }
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1170,7 +1170,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
             'Entrada eliminada satisfactoriamente.',
             'success'
           );
-          this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
+          this.trackingService.addLog(this.trackingService.getnameComp(), 'Delete Registro Ingresos', 'Menu Administracion Ingresos', this.trackingService.getEmail());
           this.notSavedChanges = false;
           this.selectedIncomes = null;
         }
@@ -1180,7 +1180,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   revert() {
     this.getIncomes();
     this.notSavedChanges = false;
-    this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Cancelar Salvar Registro Ingresos', 'Menu Administracion Ingresos', this.trackingService.getEmail());
   }
 
   private cleanDataForServer(data: any): any {
@@ -1196,11 +1196,11 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
   async getBankAccounts() {
     this.administrationService.getAccountBanks(this.root).subscribe(
       (data: any) => {
-        this.bankAccounts = data;
+        this.bankAccounts = [{ id: 0, nameAccount: 'VER TODOS', bankName: '' }, ...data];
       },
       error => {
         console.error(error);
-        this.bankAccounts = []; // Vaciamos el array en caso de error
+        this.bankAccounts = [];
       }
     )
   }
@@ -1421,7 +1421,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
     const [sy, sm, sd] = this.reportStartDate.split('-');
     const [ey, em, ed] = this.reportEndDate.split('-');
     const startDate = new Date(+sy, +sm - 1, +sd);
-    const endDate   = new Date(+ey, +em - 1, +ed);
+    const endDate = new Date(+ey, +em - 1, +ed);
 
     if (startDate > endDate) {
       alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
@@ -1433,7 +1433,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       const raw = income.dateStamped || income.date;
       if (!raw) return false;
       const d = new Date(raw);
-      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       return ds >= this.reportStartDate && ds <= this.reportEndDate;
     });
 
@@ -1460,23 +1460,23 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       const tableBody: any[] = [
         // Encabezado
         [
-          { text: 'MES',              style: 'th', alignment: 'center' },
-          { text: 'EMPRESA',          style: 'th', alignment: 'center' },
-          { text: 'PROYECTO',         style: 'th', alignment: 'center' },
-          { text: 'FECHA FACTURA',    style: 'th', alignment: 'center' },
-          { text: 'FECHA DE PAGO',    style: 'th', alignment: 'center' },
-          { text: 'FACTURA',          style: 'th', alignment: 'center' },
-          { text: 'OC',               style: 'th', alignment: 'center' },
-          { text: 'IMP. FACTURADO',   style: 'th', alignment: 'right'  },
-          { text: 'IMP. N/DESCUENTO', style: 'th', alignment: 'right'  },
-          { text: 'SUBTOTAL',         style: 'th', alignment: 'right'  },
-          { text: 'IVA',              style: 'th', alignment: 'right'  },
-          { text: 'TOTAL',            style: 'th', alignment: 'right'  },
-          { text: 'ESTATUS',          style: 'th', alignment: 'center' },
-          { text: 'ESTATUS PAGO',     style: 'th', alignment: 'center' },
-          { text: 'DÍAS',             style: 'th', alignment: 'center' },
-          { text: 'F. VENCIMIENTO',   style: 'th', alignment: 'center' },
-          { text: 'DÍAS VENC.',       style: 'th', alignment: 'center' },
+          { text: 'MES', style: 'th', alignment: 'center' },
+          { text: 'EMPRESA', style: 'th', alignment: 'center' },
+          { text: 'PROYECTO', style: 'th', alignment: 'center' },
+          { text: 'FECHA FACTURA', style: 'th', alignment: 'center' },
+          { text: 'FECHA DE PAGO', style: 'th', alignment: 'center' },
+          { text: 'FACTURA', style: 'th', alignment: 'center' },
+          { text: 'OC', style: 'th', alignment: 'center' },
+          { text: 'IMP. FACTURADO', style: 'th', alignment: 'right' },
+          { text: 'IMP. N/DESCUENTO', style: 'th', alignment: 'right' },
+          { text: 'SUBTOTAL', style: 'th', alignment: 'right' },
+          { text: 'IVA', style: 'th', alignment: 'right' },
+          { text: 'TOTAL', style: 'th', alignment: 'right' },
+          { text: 'ESTATUS', style: 'th', alignment: 'center' },
+          { text: 'ESTATUS PAGO', style: 'th', alignment: 'center' },
+          { text: 'DÍAS', style: 'th', alignment: 'center' },
+          { text: 'F. VENCIMIENTO', style: 'th', alignment: 'center' },
+          { text: 'DÍAS VENC.', style: 'th', alignment: 'center' },
         ]
       ];
 
@@ -1509,31 +1509,31 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
 
         const actura = income.uuid && income.uuid !== 'NA' ? income.uuid.substring(0, 10) + '...' : income.numberDocument || '';
 
-        totalSubtotal  += income.subtotal || 0;
-        totalIva       += income.tax || 0;
-        totalGeneral   += income.total || 0;
+        totalSubtotal += income.subtotal || 0;
+        totalIva += income.tax || 0;
+        totalGeneral += income.total || 0;
 
         // Color para días de vencimiento: rojo si vencido, verde si al corriente, o si ya está pagada
-        const diasVencColor = income.status === 'Pagada' ? '#155724'
+        const diasVencColor = income.status === 'PAGADA' ? '#155724'
           : (typeof diasVenc === 'number' && diasVenc < 0) ? '#721c24' : '#000';
 
         tableBody.push([
-          { text: income.paymentMonth || '',             style: 'td', alignment: 'center' },
-          { text: companyName,                           style: 'td', alignment: 'left'   },
-          { text: project?.name || '',                   style: 'td', alignment: 'left'   },
-          { text: this.formatDate(income.dateStamped),   style: 'td', alignment: 'center' },
-          { text: this.formatDate(income.date),          style: 'td', alignment: 'center' },
-          { text: actura,                                style: 'td', alignment: 'center' },
-          { text: income.oc || '',                       style: 'td', alignment: 'center' },
-          { text: `$${this.formatCurrencyNumber(income.total)}`,     style: 'td', alignment: 'right' },
-          { text: '',                                    style: 'td', alignment: 'right'  },
-          { text: `$${this.formatCurrencyNumber(income.subtotal)}`,  style: 'td', alignment: 'right' },
-          { text: `$${this.formatCurrencyNumber(income.tax)}`,       style: 'td', alignment: 'right' },
-          { text: `$${this.formatCurrencyNumber(income.total)}`,     style: 'td', alignment: 'right' },
-          { text: income.status || '',                   style: 'td', alignment: 'center' },
-          { text: income.formaPago || '',                style: 'td', alignment: 'center' },
-          { text: dias.toString(),                       style: 'td', alignment: 'center' },
-          { text: fechaVenc,                             style: 'td', alignment: 'center' },
+          { text: income.paymentMonth || '', style: 'td', alignment: 'center' },
+          { text: companyName, style: 'td', alignment: 'left' },
+          { text: project?.name || '', style: 'td', alignment: 'left' },
+          { text: this.formatDate(income.dateStamped), style: 'td', alignment: 'center' },
+          { text: this.formatDate(income.date), style: 'td', alignment: 'center' },
+          { text: actura, style: 'td', alignment: 'center' },
+          { text: income.oc || '', style: 'td', alignment: 'center' },
+          { text: `$${this.formatCurrencyNumber(income.total)}`, style: 'td', alignment: 'right' },
+          { text: '', style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyNumber(income.subtotal)}`, style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyNumber(income.tax)}`, style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyNumber(income.total)}`, style: 'td', alignment: 'right' },
+          { text: income.status || '', style: 'td', alignment: 'center' },
+          { text: income.formaPago || '', style: 'td', alignment: 'center' },
+          { text: dias.toString(), style: 'td', alignment: 'center' },
+          { text: fechaVenc, style: 'td', alignment: 'center' },
           { text: diasVenc.toString(), style: 'td', alignment: 'center', color: diasVencColor, bold: typeof diasVenc === 'number' && diasVenc < 0 },
         ]);
       });
@@ -1543,8 +1543,8 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
         { text: 'TOTAL', colSpan: 9, style: 'totalLabel', alignment: 'right', bold: true, border: [false, true, false, false] },
         {}, {}, {}, {}, {}, {}, {}, {},
         { text: `$${this.formatCurrencyNumber(totalSubtotal)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
-        { text: `$${this.formatCurrencyNumber(totalIva)}`,      style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
-        { text: `$${this.formatCurrencyNumber(totalGeneral)}`,  style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000' },
+        { text: `$${this.formatCurrencyNumber(totalIva)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
+        { text: `$${this.formatCurrencyNumber(totalGeneral)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000' },
         { text: '', border: [false, true, false, false] },
         { text: '', border: [false, true, false, false] },
         { text: '', border: [false, true, false, false] },
@@ -1554,8 +1554,8 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
 
       // Período en texto
       const startDateObj = new Date(+sy, +sm - 1, 1);
-      const endDateObj   = new Date(+ey, +em - 1, 1);
-      const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+      const endDateObj = new Date(+ey, +em - 1, 1);
+      const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
       let periodText = '';
       if (+sy === +ey && +sm === +em) {
         periodText = `MES DE ${meses[startDateObj.getMonth()]} ${sy}`;
@@ -1589,15 +1589,15 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
               {
                 stack: [
                   { text: 'Control de Facturación e Ingresos', style: 'reportTitle', alignment: 'center' },
-                  { text: 'Sistema de Gestión de Calidad',     fontSize: 8,  alignment: 'center', color: '#555' },
-                  { text: periodText,                           fontSize: 7,  alignment: 'center', color: '#333', margin: [0, 2, 0, 0] },
+                  { text: 'Sistema de Gestión de Calidad', fontSize: 8, alignment: 'center', color: '#555' },
+                  { text: periodText, fontSize: 7, alignment: 'center', color: '#333', margin: [0, 2, 0, 0] },
                 ]
               },
               {
                 stack: [
                   { text: 'Referencia: HCO-ADM-SGC-004', fontSize: 7, alignment: 'right' },
-                  { text: 'Código:     HCO-ADM-FO-013',  fontSize: 7, alignment: 'right' },
-                  { text: 'Rev.:       00',               fontSize: 7, alignment: 'right' },
+                  { text: 'Código:     HCO-ADM-FO-013', fontSize: 7, alignment: 'right' },
+                  { text: 'Rev.:       00', fontSize: 7, alignment: 'right' },
                 ]
               }
             ]]
@@ -1612,20 +1612,20 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
               body: tableBody
             },
             layout: {
-              hLineWidth:  (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
-              vLineWidth:  () => 0.3,
-              hLineColor:  () => '#aaa',
-              vLineColor:  () => '#ccc',
-              fillColor:   (rowIndex: number) => rowIndex === 0 ? '#1a5276' : (rowIndex % 2 === 0 ? '#eaf4fb' : null),
+              hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
+              vLineWidth: () => 0.3,
+              hLineColor: () => '#aaa',
+              vLineColor: () => '#ccc',
+              fillColor: (rowIndex: number) => rowIndex === 0 ? '#1a5276' : (rowIndex % 2 === 0 ? '#eaf4fb' : null),
             }
           }
         ],
         styles: {
           reportTitle: { fontSize: 12, bold: true, color: '#1a5276' },
-          th:          { fontSize: 6,  bold: true, color: '#ffffff', margin: [1, 2, 1, 2] },
-          td:          { fontSize: 6,  color: '#222',   margin: [1, 1, 1, 1] },
-          totalLabel:  { fontSize: 7,  bold: true },
-          totalValue:  { fontSize: 7,  bold: true },
+          th: { fontSize: 6, bold: true, color: '#ffffff', margin: [1, 2, 1, 2] },
+          td: { fontSize: 6, color: '#222', margin: [1, 1, 1, 1] },
+          totalLabel: { fontSize: 7, bold: true },
+          totalValue: { fontSize: 7, bold: true },
         }
       };
 
@@ -1676,7 +1676,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
         if (!item.fecha) return false;
         const d = new Date(item.fecha);
         if (isNaN(d.getTime())) return false;
-        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         return ds >= this.reportStartDate && ds <= this.reportEndDate;
       });
 
@@ -1691,7 +1691,7 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
         if (rootData?.picture) {
           logoData = await this.base64EncodeService.convertImageToBase64(rootData.picture);
         }
-      } catch {}
+      } catch { }
 
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
@@ -1701,12 +1701,12 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
 
       const tableRows: any[] = [[
         { text: 'NUMERO DOCUMENTO', style: 'th' },
-        { text: 'FECHA',            style: 'th' },
-        { text: 'DESCRIPCION',      style: 'th' },
-        { text: 'TIPO',             style: 'th' },
-        { text: 'DEPOSITO',         style: 'th' },
-        { text: 'GASTO',            style: 'th' },
-        { text: 'SALDO',            style: 'th' },
+        { text: 'FECHA', style: 'th' },
+        { text: 'DESCRIPCION', style: 'th' },
+        { text: 'TIPO', style: 'th' },
+        { text: 'DEPOSITO', style: 'th' },
+        { text: 'GASTO', style: 'th' },
+        { text: 'SALDO', style: 'th' },
       ]];
 
       let totalDeposito = 0;
@@ -1715,16 +1715,16 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
       filtered.forEach((item: any, idx: number) => {
         const bg = idx % 2 === 0 ? '#eaf4fb' : '#ffffff';
         const deposito = parseFloat(item.deposito) || 0;
-        const gasto    = parseFloat(item.gasto)    || 0;
-        const saldo    = parseFloat(item.saldo)    || 0;
+        const gasto = parseFloat(item.gasto) || 0;
+        const saldo = parseFloat(item.saldo) || 0;
         totalDeposito += deposito;
-        totalGasto    += gasto;
+        totalGasto += gasto;
 
         const fechaDisplay = (() => {
           try {
             const d = new Date(item.fecha);
             return isNaN(d.getTime()) ? (item.fecha || '') :
-              `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+              `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
           } catch { return item.fecha || ''; }
         })();
 
@@ -1789,8 +1789,8 @@ private async updateBillingManagement(currentConsecutive: number): Promise<void>
           }
         }],
         styles: {
-          th:         { fontSize: 7, bold: true, color: '#FFFFFF', fillColor: '#1a5276', alignment: 'center', margin: [2, 3, 2, 3] },
-          td:         { fontSize: 7, margin: [2, 2, 2, 2] },
+          th: { fontSize: 7, bold: true, color: '#FFFFFF', fillColor: '#1a5276', alignment: 'center', margin: [2, 3, 2, 3] },
+          td: { fontSize: 7, margin: [2, 2, 2, 2] },
           totalLabel: { fontSize: 7, margin: [2, 3, 2, 3] },
           totalValue: { fontSize: 7, margin: [2, 3, 2, 3] },
         }

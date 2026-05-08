@@ -27,26 +27,28 @@ export const environment = {
   // urlBpi        : 'https://bi2.centralus.cloudapp.azure.com/bpi/api',
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
-  // Quitar el sufijo -api para producción
-  // MUY IMPORTANTE
-  urlSecurity: 'https://hco-siaf-api.bi2.mx/api', // 5003
+
+  urlSecurity: 'https://endpoints.biapp.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
-  urlSmp: 'https://hco-siaf-api.bi2.mx/smp/api', // 5004
+  urlSmp: 'https://endpoints.biapp.com.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
 
-  urlBpi: 'https://hco-siaf-api.bi2.mx/bpi/api', // 5005
+  urlBpi: 'https://endpoints.biapp.com.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://hco-siaf-api.bi2.mx/warehouse/api', // 5007
+  urlWarehouse: 'https://endpoints.biapp.com.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
-  urlAdministration: 'https://hco-siaf-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
-  //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
+  urlAdministration: 'https://endpoints.biapp.com.mx/administration/api', // 5006
+  //urlAdministration : 'http://localhost:5047/api', // 5006
 
   urlNotifications: 'https://endpoints.biapp.com.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlMantenimiento: 'https://hco-siaf-api.bi2.mx/maintenance/api',
+  urlChatBot: 'https://endpoints.biapp.com.mx/telegram/api',
+  //urlChatBot: 'http://localhost:5232/api',
+
+  urlMantenimiento: 'https://endpoints.biapp.com.mx/maintenance/api',
 
   root: 'root@bi2.mx',
 
@@ -65,6 +67,13 @@ export const environment = {
 
   urlFiles: 'gs://beapp-501d1.appspot.com',
 
+  storageFolders: {
+    fallas: 'fallas',
+    redCiudadana: 'red-ciudadana/ine',
+    pdf: 'pdf',
+    videos: 'videos',
+  },
+
   urlProfile: './assets/img/profile.png',
 
   adminFiles:
@@ -76,5 +85,13 @@ export const environment = {
   urlRefreshToken:
     'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '6.0.26 (25 Abril 2026 12:08) - Diamond',
+  mercadoPago: {
+    // Produccion (ACTIVO)
+    publicKey: 'APP_USR-ffba3d82-7423-4dbc-9012-4ca0571dae19', //Produccion
+    // Pruebas (descomenta esta linea y comenta la de Produccion para cambiar manualmente)
+    // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
+  },
+
+  version: '5.40 (8 Mayo 2026) urlAdministration migrado de tracking a administration',
 };
+

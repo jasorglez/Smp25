@@ -117,6 +117,8 @@ export class DashboardHcoComponent {
   public availableYears: number[] = [];
   public isExportingPdf = false;
   public isExportingXlsx = false;
+  public isLoading = false;
+  public noDataForPeriod = false;
 
   // Flags de carga — todos deben ser true para habilitar exportación
   private _loadedEmployees = false;
@@ -131,6 +133,9 @@ export class DashboardHcoComponent {
       this._loadedProjects &&
       this._loadedCuentas &&
       this._loadedEgresos;
+    if (this.isDataReady) {
+      this.isLoading = false;
+    }
   }
 
   private resetLoadFlags(): void {
@@ -185,20 +190,18 @@ export class DashboardHcoComponent {
   public nominaByCategory: { label: string; amount: number }[] = [];
 
   constructor() {
-    // Inicializar fechas por defecto (últimos 24 meses para tener histórico)
+    // Inicializar fechas por defecto (año en curso)
     const today = new Date();
-    const twentyFourMonthsAgo = new Date(
-      new Date().setMonth(today.getMonth() - 24),
-    );
     const pad = (n: number) => String(n).padStart(2, '0');
-    this.endDate = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-    this.startDate = `${twentyFourMonthsAgo.getFullYear()}-${pad(twentyFourMonthsAgo.getMonth() + 1)}-${pad(twentyFourMonthsAgo.getDate())}`;
+    const currentYear = today.getFullYear();
+    this.endDate = `${currentYear}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    this.startDate = `${currentYear}-01-01`;
 
     // Generar años disponibles para el filtro
-    const currentYear = new Date().getFullYear();
     for (let i = currentYear - 5; i <= currentYear; i++) {
       this.availableYears.push(i);
     }
+    this.selectedYear = currentYear;
 
     effect(
       () => {
@@ -213,6 +216,22 @@ export class DashboardHcoComponent {
 
   public onFilterChange(): void {
     this.processAllData();
+  }
+
+  public onYearChange(): void {
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    if (this.selectedYear != null) {
+      const isCurrentYear = this.selectedYear === today.getFullYear();
+      this.startDate = `${this.selectedYear}-01-01`;
+      this.endDate = isCurrentYear
+        ? `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+        : `${this.selectedYear}-12-31`;
+    }
+    // Recargar datos completos para que el pre-filtro de conceptos use el nuevo rango
+    if (this.rootId) {
+      this.loadData(this.rootId);
+    }
   }
 
   public async exportToPdf(): Promise<void> {
@@ -1331,6 +1350,8 @@ export class DashboardHcoComponent {
 
   private loadData(rootId: number): void {
     this.resetLoadFlags();
+    this.isLoading = true;
+    this.noDataForPeriod = false;
 
     // Cargar total de personal de la empresa y agrupar por proyecto
     this.employeesService.getEmployees(-rootId).subscribe((data: any) => {
@@ -1378,10 +1399,24 @@ export class DashboardHcoComponent {
           .filter((c) => c.cash)
           .map((c) => c.id);
 
-        // Cargar ingresos y egresos desde la misma fuente que income/expenditure
+        // Cargar ingresos y egresos filtrando por fecha desde el backend
         this.incomesAndExpensesService
-          .getIncomesAndExpenses(rootId)
+          .getIncomesAndExpenses(rootId, this.startDate, this.endDate)
+          .pipe(
+            catchError((err) => {
+              if (err?.status === 404) {
+                this.noDataForPeriod = true;
+                this.egresosData = [];
+                this.ingresosData = [];
+                this._loadedEgresos = true;
+                this.checkDataReady();
+                this.processAllData();
+              }
+              return of([]);
+            })
+          )
           .subscribe((data) => {
+            if (this.noDataForPeriod) return;
             const rowsUnfiltered = Array.isArray(data) ? data : [];
             const rows = rowsUnfiltered.filter(
               (item) => !cashAccountIds.includes(item.idAccount),
@@ -1395,7 +1430,6 @@ export class DashboardHcoComponent {
             );
 
             // Expandir gastos usando dateExpend de los conceptos (detalles-expenditure)
-            // para que la fecha de clasificación mensual refleje la fecha real del concepto
             if (gastos.length === 0) {
               this.egresosData = [];
               this._loadedEgresos = true;
@@ -1404,46 +1438,38 @@ export class DashboardHcoComponent {
               return;
             }
 
-            const conceptRequests = gastos.map((gasto) =>
-              this.incomesAndExpensesService
-                .getConceptsFromIncomesAndExpenses(gasto.id)
-                .pipe(
-                  map((concepts) => ({
-                    gasto,
-                    concepts: Array.isArray(concepts) ? concepts : [],
-                  })),
-                  catchError(() => of({ gasto, concepts: [] })),
-                ),
-            );
+            const gastoIds = gastos.map((g) => g.id);
 
-            forkJoin(conceptRequests).subscribe((results) => {
-              const expandedEgresos: any[] = [];
+            this.incomesAndExpensesService
+              .getBatchConceptsFromIncomesAndExpenses(gastoIds)
+              .pipe(catchError(() => of({})))
+              .subscribe((conceptsMap: { [id: number]: any[] }) => {
+                const expandedEgresos: any[] = [];
 
-              results.forEach(({ gasto, concepts }) => {
-                const activeConcepts = concepts.filter(
-                  (c: any) => c?.active !== false && (c?.total ?? 0) !== 0,
-                );
-                if (activeConcepts.length === 0) {
-                  // Sin conceptos: usar el gasto padre con su fecha original
-                  expandedEgresos.push(gasto);
-                } else {
-                  // Expandir a nivel de concepto usando dateExpend como fecha
-                  activeConcepts.forEach((concept: any) => {
-                    expandedEgresos.push({
-                      ...gasto,
-                      date: concept.dateExpend ?? gasto.date,
-                      total: concept.total ?? 0,
-                      conceptoDescripcion: concept.description ?? '',
+                gastos.forEach((gasto) => {
+                  const concepts = Array.isArray(conceptsMap[gasto.id]) ? conceptsMap[gasto.id] : [];
+                  const activeConcepts = concepts.filter(
+                    (c: any) => c?.active !== false && (c?.total ?? 0) !== 0,
+                  );
+                  if (activeConcepts.length === 0) {
+                    expandedEgresos.push(gasto);
+                  } else {
+                    activeConcepts.forEach((concept: any) => {
+                      expandedEgresos.push({
+                        ...gasto,
+                        date: concept.dateExpend ?? gasto.date,
+                        total: concept.total ?? 0,
+                        conceptoDescripcion: concept.description ?? '',
+                      });
                     });
-                  });
-                }
-              });
+                  }
+                });
 
-              this.egresosData = expandedEgresos;
-              this._loadedEgresos = true;
-              this.checkDataReady();
-              this.processAllData();
-            });
+                this.egresosData = expandedEgresos;
+                this._loadedEgresos = true;
+                this.checkDataReady();
+                this.processAllData();
+              });
           });
       });
   }

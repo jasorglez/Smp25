@@ -147,10 +147,10 @@
         }}"
       >
         <ng-template ng-label-tmp let-item="item">
-          {{ item?.nameAccount }} - {{ item?.bankName }}
+          {{ item?.nameAccount }}{{ item?.bankName ? ' - ' + item.bankName : '' }}
         </ng-template>
         <ng-template ng-option-tmp let-item="item">
-          {{ item.nameAccount }} - {{ item.bankName }}
+          {{ item.nameAccount }}{{ item.bankName ? ' - ' + item.bankName : '' }}
         </ng-template>
       </ng-select>
     </div>
@@ -253,7 +253,7 @@
         (rowSelected)="onSelectedRow($event)"
         (gridReady)="onGridReady($event)"
         rowSelection="single"
-        [class.disabled-grid]="!idAccount"
+        [class.disabled-grid]="idAccount == null"
         [stopEditingWhenCellsLoseFocus]="true"
       >
       </ag-grid-angular>

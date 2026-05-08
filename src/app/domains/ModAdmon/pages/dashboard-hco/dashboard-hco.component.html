@@ -16,7 +16,7 @@
       </div>
       <div class="filter-group">
         <label for="yearFilter">Año:</label>
-        <select id="yearFilter" class="form-select" [(ngModel)]="selectedYear" (change)="onFilterChange()">
+        <select id="yearFilter" class="form-select" [(ngModel)]="selectedYear" (change)="onYearChange()">
           <option [ngValue]="null">Todos</option>
           <option *ngFor="let year of availableYears" [ngValue]="year">{{ year }}</option>
         </select>
@@ -34,6 +34,22 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- Spinner de carga -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-box">
+      <div class="spinner-border text-primary" role="status" style="width:3rem;height:3rem;">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+      <span class="loading-text">Cargando datos del período...</span>
+    </div>
+  </div>
+
+  <!-- Aviso sin datos -->
+  <div class="alert alert-warning d-flex align-items-center gap-2 mt-3" *ngIf="!isLoading && noDataForPeriod">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <span>No se encontraron registros para el período seleccionado.</span>
   </div>
 
   <!-- KPIs principales -->

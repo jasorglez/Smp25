@@ -89,6 +89,7 @@ export class ConcentradoEgresosComponent {
   public isExportingPdf = false;
   public isExportingXlsx = false;
   public isLoading = true;
+  public noDataForPeriod = false;
 
   // Filtros de fecha
   public fechaInicio: string = '';
@@ -118,13 +119,9 @@ export class ConcentradoEgresosComponent {
     const today = new Date();
     this.fechaActual = this.formatDateDisplay(today);
 
-    const twentyFourMonthsAgo = new Date(
-      today.getFullYear(),
-      today.getMonth() - 24,
-      1,
-    );
+    const inicioAnioActual = new Date(today.getFullYear(), 0, 1);
 
-    this.fechaInicio = this.formatDateForInput(twentyFourMonthsAgo);
+    this.fechaInicio = this.formatDateForInput(inicioAnioActual);
     this.fechaFin = this.formatDateForInput(today);
 
     effect(
@@ -146,7 +143,7 @@ export class ConcentradoEgresosComponent {
         this.fechaInicio = this.fechaFin;
         this.fechaFin = temp;
       }
-      this.processData();
+      this.loadAllData();
     }
   }
 
@@ -188,6 +185,7 @@ export class ConcentradoEgresosComponent {
 
   private async loadAllData(): Promise<void> {
     this.isLoading = true;
+    this.noDataForPeriod = false;
     try {
       const [
         rootData,
@@ -200,7 +198,7 @@ export class ConcentradoEgresosComponent {
       ] = await Promise.all([
         lastValueFrom(this.rootService.getRootbyId(this.rootId)),
         lastValueFrom(
-          this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId),
+          this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId, this.fechaInicio, this.fechaFin),
         ),
         lastValueFrom(
           this.projectsService.getProjectListByCompany(this.rootId),
@@ -266,13 +264,15 @@ export class ConcentradoEgresosComponent {
 
 
       this.processData();
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      alerts.basicAlert(
-        'Error',
-        'Error al cargar los datos del reporte',
-        'error',
-      );
+    } catch (error: any) {
+      if (error?.status === 404) {
+        this.noDataForPeriod = true;
+        this.egresos = [];
+        this.processData();
+      } else {
+        console.error('Error cargando datos:', error);
+        alerts.basicAlert('Error', 'Error al cargar los datos del reporte', 'error');
+      }
     } finally {
       this.isLoading = false;
     }

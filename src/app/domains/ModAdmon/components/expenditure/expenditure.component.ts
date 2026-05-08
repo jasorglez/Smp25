@@ -309,7 +309,7 @@ export class ExpenditureComponent {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
           const filtered = incomes?.filter(income => {
-            return income.type === "GASTO" && income.idAccount === this.idAccount
+            return income.type === "GASTO" && (this.idAccount === 0 || income.idAccount === this.idAccount)
           }) || [];
 
           // Agregar propiedades para master-detail
@@ -815,7 +815,7 @@ export class ExpenditureComponent {
         width: 180,
         filter: true,
         cellEditor: 'agTextCellEditor',
-        cellEditorParams: { maxLength: 36 },
+        cellEditorParams: { maxLength: 255 },
         valueFormatter: (params) => {
           if (!params.value || params.value === 'NA') return 'Sin Timbrar';
           return params.value.length > 15 ? params.value.substring(0, 15) + '...' : params.value;
@@ -1164,7 +1164,7 @@ export class ExpenditureComponent {
   async saveChanges() {
     // Campos requeridos (idProject NO es requerido - puede ir vacío)
     const requiredFields = [
-      { field: 'idClasificacion',    label: 'Clasificación',    check: (v: any) => !!v },
+      { field: 'idClasificacion', label: 'Clasificación', check: (v: any) => !!v },
       { field: 'idSubclasificacion', label: 'Subclasificación', check: (v: any) => !!v },
     ];
 
@@ -1305,7 +1305,7 @@ export class ExpenditureComponent {
     return new Promise<void>((resolve) => {
       this.administrationService.getAccountBanks(this.idRoot).subscribe(
         (data: any) => {
-          this.bankAccounts = data;
+          this.bankAccounts = [{ id: 0, nameAccount: 'VER TODOS', bankName: '' }, ...data];
           resolve();
         },
         error => {
@@ -1689,9 +1689,9 @@ export class ExpenditureComponent {
     const now = new Date();
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const firstDay = new Date(prev.getFullYear(), prev.getMonth(), 1);
-    const lastDay  = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+    const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
     this.reportEgresoStartDate = this.formatDateForInputE(firstDay);
-    this.reportEgresoEndDate   = this.formatDateForInputE(lastDay);
+    this.reportEgresoEndDate = this.formatDateForInputE(lastDay);
     this.showEgresoReportModal = true;
     document.body.classList.add('modal-open');
   }
@@ -1726,7 +1726,7 @@ export class ExpenditureComponent {
     const [sy, sm, sd] = this.reportEgresoStartDate.split('-');
     const [ey, em, ed] = this.reportEgresoEndDate.split('-');
     const startDate = new Date(+sy, +sm - 1, +sd);
-    const endDate   = new Date(+ey, +em - 1, +ed);
+    const endDate = new Date(+ey, +em - 1, +ed);
 
     if (startDate > endDate) {
       alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
@@ -1737,7 +1737,7 @@ export class ExpenditureComponent {
     const filtered = this.incomes.filter(income => {
       if (!income.date) return false;
       const d = new Date(income.date);
-      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       return ds >= this.reportEgresoStartDate && ds <= this.reportEgresoEndDate;
     });
 
@@ -1765,9 +1765,9 @@ export class ExpenditureComponent {
       const cuentaName = selectedAccount ? `${selectedAccount.nameAccount} - ${selectedAccount.bankName}` : '';
 
       // Período texto
-      const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+      const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
       const startDateObj = new Date(+sy, +sm - 1, 1);
-      const endDateObj   = new Date(+ey, +em - 1, 1);
+      const endDateObj = new Date(+ey, +em - 1, 1);
       let periodText = '';
       if (+sy === +ey && +sm === +em) {
         periodText = `MES DE ${meses[startDateObj.getMonth()]} ${sy}`;
@@ -1779,24 +1779,24 @@ export class ExpenditureComponent {
 
       // Encabezado de tabla (20 columnas)
       const tableBody: any[] = [[
-        { text: 'EMPRESA',          style: 'th', alignment: 'center' },
-        { text: 'PROYECTO',         style: 'th', alignment: 'center' },
-        { text: 'FECHA',            style: 'th', alignment: 'center' },
-        { text: 'MES',              style: 'th', alignment: 'center' },
-        { text: 'AÑO',              style: 'th', alignment: 'center' },
-        { text: '# DOCUMENTO',      style: 'th', alignment: 'center' },
-        { text: 'CLASIFICACIÓN',    style: 'th', alignment: 'left'   },
-        { text: 'SUBCLASIFICACIÓN', style: 'th', alignment: 'left'   },
-        { text: 'CONCEPTO',         style: 'th', alignment: 'left'   },
-        { text: 'IMP. S/IVA',       style: 'th', alignment: 'right'  },
-        { text: 'IVA',              style: 'th', alignment: 'right'  },
-        { text: 'OTROS IMP.',       style: 'th', alignment: 'right'  },
-        { text: 'IMPORTE TOTAL',    style: 'th', alignment: 'right'  },
-        { text: '# FACTURA',        style: 'th', alignment: 'center' },
-        { text: 'PROVEEDOR',        style: 'th', alignment: 'left'   },
-        { text: 'TIPO DE PAGO',     style: 'th', alignment: 'center' },
-        { text: 'CUENTA',           style: 'th', alignment: 'left'   },
-        { text: 'OBSERVACIONES',    style: 'th', alignment: 'left'   },
+        { text: 'EMPRESA', style: 'th', alignment: 'center' },
+        { text: 'PROYECTO', style: 'th', alignment: 'center' },
+        { text: 'FECHA', style: 'th', alignment: 'center' },
+        { text: 'MES', style: 'th', alignment: 'center' },
+        { text: 'AÑO', style: 'th', alignment: 'center' },
+        { text: '# DOCUMENTO', style: 'th', alignment: 'center' },
+        { text: 'CLASIFICACIÓN', style: 'th', alignment: 'left' },
+        { text: 'SUBCLASIFICACIÓN', style: 'th', alignment: 'left' },
+        { text: 'CONCEPTO', style: 'th', alignment: 'left' },
+        { text: 'IMP. S/IVA', style: 'th', alignment: 'right' },
+        { text: 'IVA', style: 'th', alignment: 'right' },
+        { text: 'OTROS IMP.', style: 'th', alignment: 'right' },
+        { text: 'IMPORTE TOTAL', style: 'th', alignment: 'right' },
+        { text: '# FACTURA', style: 'th', alignment: 'center' },
+        { text: 'PROVEEDOR', style: 'th', alignment: 'left' },
+        { text: 'TIPO DE PAGO', style: 'th', alignment: 'center' },
+        { text: 'CUENTA', style: 'th', alignment: 'left' },
+        { text: 'OBSERVACIONES', style: 'th', alignment: 'left' },
       ]];
 
       let totalSubtotal = 0;
@@ -1811,29 +1811,29 @@ export class ExpenditureComponent {
         const anio = dateObj ? dateObj.getFullYear().toString() : '';
         const uuid = income.uuid && income.uuid !== 'NA' ? income.uuid.substring(0, 12) + '...' : (income.numberDocument || '');
 
-        totalSubtotal  += income.subtotal || 0;
-        totalIva       += income.tax || 0;
-        totalGeneral   += income.total || 0;
+        totalSubtotal += income.subtotal || 0;
+        totalIva += income.tax || 0;
+        totalGeneral += income.total || 0;
 
         tableBody.push([
-          { text: companyName,                                  style: 'td', alignment: 'left'   },
-          { text: project?.name || '',                          style: 'td', alignment: 'left'   },
-          { text: this.formatDate(income.date),                 style: 'td', alignment: 'center' },
-          { text: income.paymentMonth || '',                    style: 'td', alignment: 'center' },
-          { text: anio,                                         style: 'td', alignment: 'center' },
-          { text: income.numberDocument || '',                  style: 'td', alignment: 'center' },
-          { text: claseText,                                    style: 'td', alignment: 'left'   },
-          { text: '',                                           style: 'td', alignment: 'left'   },
-          { text: income.description || '',                     style: 'td', alignment: 'left'   },
-          { text: `$${this.formatCurrencyE(income.subtotal)}`,  style: 'td', alignment: 'right' },
-          { text: `$${this.formatCurrencyE(income.tax)}`,       style: 'td', alignment: 'right' },
-          { text: '$0.00',                                      style: 'td', alignment: 'right'  },
-          { text: `$${this.formatCurrencyE(income.total)}`,     style: 'td', alignment: 'right' },
-          { text: uuid,                                         style: 'td', alignment: 'center' },
+          { text: companyName, style: 'td', alignment: 'left' },
+          { text: project?.name || '', style: 'td', alignment: 'left' },
+          { text: this.formatDate(income.date), style: 'td', alignment: 'center' },
+          { text: income.paymentMonth || '', style: 'td', alignment: 'center' },
+          { text: anio, style: 'td', alignment: 'center' },
+          { text: income.numberDocument || '', style: 'td', alignment: 'center' },
+          { text: claseText, style: 'td', alignment: 'left' },
+          { text: '', style: 'td', alignment: 'left' },
+          { text: income.description || '', style: 'td', alignment: 'left' },
+          { text: `$${this.formatCurrencyE(income.subtotal)}`, style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyE(income.tax)}`, style: 'td', alignment: 'right' },
+          { text: '$0.00', style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyE(income.total)}`, style: 'td', alignment: 'right' },
+          { text: uuid, style: 'td', alignment: 'center' },
           { text: this.providers.find(p => p.id === income.idCustomer)?.name || '', style: 'td', alignment: 'left' },
-          { text: income.status || '',                          style: 'td', alignment: 'center' },
-          { text: cuentaName,                                   style: 'td', alignment: 'left'   },
-          { text: income.observations || income.comments || '', style: 'td', alignment: 'left'   },
+          { text: income.status || '', style: 'td', alignment: 'center' },
+          { text: cuentaName, style: 'td', alignment: 'left' },
+          { text: income.observations || income.comments || '', style: 'td', alignment: 'left' },
         ]);
       });
 
@@ -1842,9 +1842,9 @@ export class ExpenditureComponent {
         { text: 'TOTAL', colSpan: 9, style: 'totalLabel', alignment: 'right', bold: true, border: [false, true, false, false] },
         {}, {}, {}, {}, {}, {}, {}, {},
         { text: `$${this.formatCurrencyE(totalSubtotal)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
-        { text: `$${this.formatCurrencyE(totalIva)}`,      style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
-        { text: '$0.00',                                   style: 'totalValue', alignment: 'right', border: [false, true, false, false] },
-        { text: `$${this.formatCurrencyE(totalGeneral)}`,  style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000' },
+        { text: `$${this.formatCurrencyE(totalIva)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true },
+        { text: '$0.00', style: 'totalValue', alignment: 'right', border: [false, true, false, false] },
+        { text: `$${this.formatCurrencyE(totalGeneral)}`, style: 'totalValue', alignment: 'right', border: [false, true, false, false], bold: true, color: '#cc0000' },
         { text: '', border: [false, true, false, false] },
         { text: '', border: [false, true, false, false] },
         { text: '', border: [false, true, false, false] },
@@ -1883,8 +1883,8 @@ export class ExpenditureComponent {
               {
                 stack: [
                   { text: 'Referencia: ICO-ADM-SGC-005', fontSize: 7, alignment: 'right' },
-                  { text: 'Código:     HCO-ADM-FO-016',  fontSize: 7, alignment: 'right' },
-                  { text: 'Rev.:       01',               fontSize: 7, alignment: 'right' },
+                  { text: 'Código:     HCO-ADM-FO-016', fontSize: 7, alignment: 'right' },
+                  { text: 'Rev.:       01', fontSize: 7, alignment: 'right' },
                 ]
               }
             ]]
@@ -1899,20 +1899,20 @@ export class ExpenditureComponent {
               body: tableBody
             },
             layout: {
-              hLineWidth:  (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
-              vLineWidth:  () => 0.3,
-              hLineColor:  () => '#aaa',
-              vLineColor:  () => '#ccc',
-              fillColor:   (rowIndex: number) => rowIndex === 0 ? '#1a5276' : (rowIndex % 2 === 0 ? '#eaf4fb' : null),
+              hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.3,
+              vLineWidth: () => 0.3,
+              hLineColor: () => '#aaa',
+              vLineColor: () => '#ccc',
+              fillColor: (rowIndex: number) => rowIndex === 0 ? '#1a5276' : (rowIndex % 2 === 0 ? '#eaf4fb' : null),
             }
           }
         ],
         styles: {
           reportTitle: { fontSize: 12, bold: true, color: '#1a5276' },
-          th:          { fontSize: 6, bold: true, color: '#ffffff', margin: [1, 2, 1, 2] },
-          td:          { fontSize: 6, color: '#222', margin: [1, 1, 1, 1] },
-          totalLabel:  { fontSize: 7, bold: true },
-          totalValue:  { fontSize: 7, bold: true },
+          th: { fontSize: 6, bold: true, color: '#ffffff', margin: [1, 2, 1, 2] },
+          td: { fontSize: 6, color: '#222', margin: [1, 1, 1, 1] },
+          totalLabel: { fontSize: 7, bold: true },
+          totalValue: { fontSize: 7, bold: true },
         }
       };
 
@@ -1963,7 +1963,7 @@ export class ExpenditureComponent {
         if (!item.fecha) return false;
         const d = new Date(item.fecha);
         if (isNaN(d.getTime())) return false;
-        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         return ds >= this.reportEgresoStartDate && ds <= this.reportEgresoEndDate;
       });
 
@@ -1978,7 +1978,7 @@ export class ExpenditureComponent {
         if (rootData?.picture) {
           logoData = await this.base64EncodeService.convertImageToBase64(rootData.picture);
         }
-      } catch {}
+      } catch { }
 
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
@@ -1988,12 +1988,12 @@ export class ExpenditureComponent {
 
       const tableRows: any[] = [[
         { text: 'NUMERO DOCUMENTO', style: 'th' },
-        { text: 'FECHA',            style: 'th' },
-        { text: 'DESCRIPCION',      style: 'th' },
-        { text: 'TIPO',             style: 'th' },
-        { text: 'DEPOSITO',         style: 'th' },
-        { text: 'GASTO',            style: 'th' },
-        { text: 'SALDO',            style: 'th' },
+        { text: 'FECHA', style: 'th' },
+        { text: 'DESCRIPCION', style: 'th' },
+        { text: 'TIPO', style: 'th' },
+        { text: 'DEPOSITO', style: 'th' },
+        { text: 'GASTO', style: 'th' },
+        { text: 'SALDO', style: 'th' },
       ]];
 
       let totalDeposito = 0;
@@ -2002,16 +2002,16 @@ export class ExpenditureComponent {
       filtered.forEach((item: any, idx: number) => {
         const bg = idx % 2 === 0 ? '#eaf4fb' : '#ffffff';
         const deposito = parseFloat(item.deposito) || 0;
-        const gasto    = parseFloat(item.gasto)    || 0;
-        const saldo    = parseFloat(item.saldo)    || 0;
+        const gasto = parseFloat(item.gasto) || 0;
+        const saldo = parseFloat(item.saldo) || 0;
         totalDeposito += deposito;
-        totalGasto    += gasto;
+        totalGasto += gasto;
 
         const fechaDisplay = (() => {
           try {
             const d = new Date(item.fecha);
             return isNaN(d.getTime()) ? (item.fecha || '') :
-              `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+              `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
           } catch { return item.fecha || ''; }
         })();
 
@@ -2076,8 +2076,8 @@ export class ExpenditureComponent {
           }
         }],
         styles: {
-          th:         { fontSize: 7, bold: true, color: '#FFFFFF', fillColor: '#1a5276', alignment: 'center', margin: [2, 3, 2, 3] },
-          td:         { fontSize: 7, margin: [2, 2, 2, 2] },
+          th: { fontSize: 7, bold: true, color: '#FFFFFF', fillColor: '#1a5276', alignment: 'center', margin: [2, 3, 2, 3] },
+          td: { fontSize: 7, margin: [2, 2, 2, 2] },
           totalLabel: { fontSize: 7, margin: [2, 3, 2, 3] },
           totalValue: { fontSize: 7, margin: [2, 3, 2, 3] },
         }

@@ -54,6 +54,12 @@
     <p>Cargando datos del reporte...</p>
   </div>
 
+  <!-- Sin datos para el período -->
+  <div class="alert alert-warning d-flex align-items-center gap-2 mt-3" *ngIf="!isLoading && noDataForPeriod">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <span>No se encontraron registros para el período <strong>{{ anioInicio }} – {{ anioFin }}</strong>.</span>
+  </div>
+
   <!-- Contenido principal -->
   <div *ngIf="!isLoading" class="main-content">
     <!-- Tabla de Facturación Anual -->

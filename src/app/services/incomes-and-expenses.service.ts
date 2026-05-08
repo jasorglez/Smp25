@@ -27,8 +27,13 @@ export class IncomesAndExpensesService {
   }
 
 
-  getIncomesAndExpenses(idRoot: number): Observable<any> {
-    return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/Bussines/' + idRoot, { headers: this.tracking.getHeaders() });
+  getIncomesAndExpenses(idRoot: number, startDate?: string, endDate?: string): Observable<any> {
+    let url = environment.urlAdministration + '/Incomeandexpense/Bussines/' + idRoot;
+    const params: string[] = [];
+    if (startDate) params.push(`startDate=${startDate}`);
+    if (endDate) params.push(`endDate=${endDate}`);
+    if (params.length) url += '?' + params.join('&');
+    return this.http.get<any>(url, { headers: this.tracking.getHeaders() });
   }
 
   getIncomeAndExpenseById(id: number): Observable<any> {
@@ -56,6 +61,10 @@ export class IncomesAndExpensesService {
 
   getConceptsFromIncomesAndExpenses(idIncorexp: number): Observable<any> {
     return this.http.get<any>(environment.urlAdministration + '/ConceptsxIncorExp/incorexp/' + idIncorexp, { headers: this.tracking.getHeaders() });
+  }
+
+  getBatchConceptsFromIncomesAndExpenses(ids: number[]): Observable<{ [id: number]: any[] }> {
+    return this.http.post<{ [id: number]: any[] }>(environment.urlAdministration + '/ConceptsxIncorExp/batch', ids, { headers: this.tracking.getHeaders() });
   }
 
   // Obtener TODOS los conceptos (incluyendo active=0) para reportes

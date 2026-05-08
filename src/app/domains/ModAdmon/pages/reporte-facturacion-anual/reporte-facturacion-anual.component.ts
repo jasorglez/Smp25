@@ -48,6 +48,7 @@ export class ReporteFacturacionAnualComponent {
   public isExportingPdf = false;
   public isExportingXlsx = false;
   public isLoading = true;
+  public noDataForPeriod = false;
 
   // Filtros de año
   public anioInicio: number;
@@ -80,7 +81,7 @@ export class ReporteFacturacionAnualComponent {
     const today = new Date();
     this.fechaActual = this.formatDateDisplay(today);
     this.anioFin = today.getFullYear();
-    this.anioInicio = this.anioFin - 2; // Últimos 3 años por defecto
+    this.anioInicio = this.anioFin; // Año actual por defecto
 
     // Generar años disponibles (últimos 10 años)
     for (let i = this.anioFin; i >= this.anioFin - 10; i--) {
@@ -104,7 +105,7 @@ export class ReporteFacturacionAnualComponent {
         this.anioInicio = this.anioFin;
         this.anioFin = temp;
       }
-      this.processData();
+      this.loadAllData();
     }
   }
 
@@ -118,10 +119,13 @@ export class ReporteFacturacionAnualComponent {
 
   private async loadAllData(): Promise<void> {
     this.isLoading = true;
+    this.noDataForPeriod = false;
     try {
+      const startDate = `${this.anioInicio}-01-01`;
+      const endDate   = `${this.anioFin}-12-31`;
       const [rootData, incomesData] = await Promise.all([
         lastValueFrom(this.rootService.getRootbyId(this.rootId)),
-        lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId))
+        lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.rootId, startDate, endDate))
       ]);
 
       this.companyName = (rootData as any)?.name || (rootData as any)?.nameCompany || 'Empresa';
@@ -138,9 +142,16 @@ export class ReporteFacturacionAnualComponent {
 
 
       this.processData();
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      alerts.basicAlert('Error', 'Error al cargar los datos del reporte', 'error');
+    } catch (error: any) {
+      if (error?.status === 404) {
+        this.noDataForPeriod = true;
+        this.ingresos = [];
+        this.egresos = [];
+        this.processData();
+      } else {
+        console.error('Error cargando datos:', error);
+        alerts.basicAlert('Error', 'Error al cargar los datos del reporte', 'error');
+      }
     } finally {
       this.isLoading = false;
     }
