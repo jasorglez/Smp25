@@ -1,0 +1,182 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  VISTA: FORMULARIO                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="currentView === 'form'" class="form-container">
+
+  <!-- Header -->
+  <div class="form-header">
+    <button *ngIf="currentStep > 1" class="btn-back" (click)="prevStep()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="header-title">
+      <mat-icon class="header-icon">report_problem</mat-icon>
+      <span>Reportar Problema</span>
+    </div>
+    <span class="step-counter">{{ currentStep }}/{{ TOTAL_STEPS }}</span>
+  </div>
+
+  <!-- Barra de pasos -->
+  <div class="steps-bar">
+    <div *ngFor="let i of [1, 2, 3]" class="step-dot"
+         [class.step-active]="i === currentStep"
+         [class.step-done]="i < currentStep">
+    </div>
+  </div>
+
+  <!-- ─── Paso 1: Datos básicos ───────────────────────────────────────────────── -->
+  <div *ngIf="currentStep === 1" class="form-body">
+    <div class="step-title">
+      <mat-icon>edit_note</mat-icon> Datos del reporte
+    </div>
+
+    <div class="mb-4">
+      <label class="form-label fw-semibold">
+        Nombre <span class="text-muted fw-normal">(opcional)</span>
+      </label>
+      <input type="text" class="form-control form-control-lg"
+             [(ngModel)]="nombre"
+             placeholder="Se registrará como Anónimo si se deja vacío"
+             autocomplete="given-name">
+    </div>
+
+    <div class="mb-4">
+      <label class="form-label fw-semibold">
+        Descripción <span class="text-danger">*</span>
+      </label>
+      <textarea class="form-control" rows="5"
+                [(ngModel)]="descripcion"
+                placeholder="Describe el problema con el mayor detalle posible..."
+                maxlength="1000"></textarea>
+      <div class="char-count">{{ descripcion.length }}/1000</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Fecha del reporte</label>
+      <div class="fecha-display">
+        <mat-icon>calendar_today</mat-icon>
+        <span>{{ today | date:'dd/MM/yyyy HH:mm' }}</span>
+        <span class="badge bg-secondary ms-2">Automática</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Paso 2: Foto ────────────────────────────────────────────────────────── -->
+  <div *ngIf="currentStep === 2" class="form-body">
+    <div class="step-title">
+      <mat-icon>camera_alt</mat-icon> Foto del problema
+    </div>
+    <p class="ia-hint">
+      <mat-icon style="font-size:16px;vertical-align:middle">auto_awesome</mat-icon>
+      La foto será analizada por IA para clasificar severidad, departamento y canal.
+    </p>
+
+    <ng-container *ngIf="!fotoPreview">
+      <div class="foto-opciones">
+        <label class="foto-opcion-btn">
+          <mat-icon>camera_alt</mat-icon>
+          <span>Cámara</span>
+          <input type="file" accept="image/*" capture="environment"
+                 class="d-none" (change)="onFotoCapture($event)">
+        </label>
+        <label class="foto-opcion-btn">
+          <mat-icon>photo_library</mat-icon>
+          <span>Galería</span>
+          <input type="file" accept="image/*" class="d-none" (change)="onFotoCapture($event)">
+        </label>
+      </div>
+      <p class="text-center text-muted mt-3" style="font-size:0.8rem">
+        Toca una opción para seleccionar la foto
+      </p>
+    </ng-container>
+
+    <ng-container *ngIf="fotoPreview">
+      <div class="foto-area foto-captured">
+        <img [src]="fotoPreview" class="foto-preview" alt="Vista previa">
+      </div>
+      <button class="btn btn-outline-danger btn-sm w-100 mt-2" (click)="clearFoto()">
+        <mat-icon style="font-size:18px;vertical-align:middle">delete</mat-icon> Cambiar foto
+      </button>
+    </ng-container>
+  </div>
+
+  <!-- ─── Paso 3: Ubicación ───────────────────────────────────────────────────── -->
+  <div *ngIf="currentStep === 3" class="form-body">
+    <div class="step-title">
+      <mat-icon>location_on</mat-icon> Ubicación del problema
+    </div>
+
+    <!-- Estado de geolocalización -->
+    <div *ngIf="locationStatus === 'loading'" class="location-status loading">
+      <div class="spinner-border spinner-border-sm text-primary"></div>
+      <span>Obteniendo ubicación…</span>
+    </div>
+
+    <div *ngIf="locationStatus === 'success'" class="location-status success">
+      <mat-icon>check_circle</mat-icon>
+      <span>Ubicación obtenida correctamente</span>
+    </div>
+
+    <div *ngIf="locationStatus === 'error'" class="location-status error">
+      <mat-icon>warning</mat-icon>
+      <span>No se pudo obtener la ubicación</span>
+      <button class="btn btn-sm btn-outline-primary ms-auto" (click)="requestLocation()">
+        Reintentar
+      </button>
+    </div>
+
+    <div *ngIf="locationStatus === 'idle'" class="location-status idle">
+      <mat-icon>my_location</mat-icon>
+      <span>Se solicitará tu ubicación</span>
+    </div>
+
+    <!-- Mapa Leaflet -->
+    <div #mapContainer class="map-container"
+         [class.map-hidden]="locationStatus !== 'success'">
+    </div>
+
+    <div *ngIf="locationStatus === 'error'" class="location-skip-note">
+      Puedes enviar el reporte sin ubicación.
+    </div>
+
+    <!-- Botón enviar -->
+    <button class="btn btn-success w-100 btn-lg mt-4" (click)="enviar()" [disabled]="isLoading">
+      <ng-container *ngIf="!isLoading">
+        <mat-icon style="vertical-align:middle">send</mat-icon> Enviar reporte
+      </ng-container>
+      <ng-container *ngIf="isLoading">
+        <span class="spinner-border spinner-border-sm me-2"></span> Enviando…
+      </ng-container>
+    </button>
+  </div>
+
+  <!-- Footer con botón Siguiente (pasos 1 y 2) -->
+  <div *ngIf="currentStep < TOTAL_STEPS" class="form-footer">
+    <button class="btn btn-primary w-100 btn-lg" (click)="nextStep()">
+      Siguiente <mat-icon style="vertical-align:middle">arrow_forward</mat-icon>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  VISTA: ÉXITO                                                              -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="currentView === 'success'" class="success-container">
+  <div class="success-icon">
+    <mat-icon>check_circle</mat-icon>
+  </div>
+  <h4 class="success-title">¡Reporte enviado!</h4>
+  <p class="success-msg">Tu reporte ha sido registrado exitosamente.</p>
+
+  <div *ngIf="successFolio" class="folio-badge">
+    <span class="text-muted me-1">Folio:</span>
+    <strong>{{ successFolio }}</strong>
+  </div>
+
+  <p class="success-note">
+    Nuestro equipo revisará tu reporte a la brevedad.
+  </p>
+
+  <button class="btn btn-success w-100" (click)="nuevoReporte()">
+    <mat-icon style="vertical-align:middle">add_circle</mat-icon> Nuevo reporte
+  </button>
+</div>

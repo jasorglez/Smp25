@@ -1,0 +1,139 @@
+<div class="p-3">
+
+  <!-- Toolbar -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h5 class="mb-0 d-flex align-items-center gap-2">
+      <mat-icon>report_problem</mat-icon> Fallas e Incidencias
+    </h5>
+    <button class="btn btn-sm btn-outline-secondary" (click)="loadData()">
+      <mat-icon style="font-size:1rem;width:1rem;height:1rem;">refresh</mat-icon> Actualizar
+    </button>
+  </div>
+
+  <!-- Grid -->
+  <ag-grid-angular
+    class="ag-theme-quartz small-text-ag-grid"
+    style="height: 300px; width: 100%;"
+    [rowData]="rowData"
+    [columnDefs]="columnDefs"
+    [defaultColDef]="defaultColDef"
+    (gridReady)="onGridReady($event)"
+    [rowHeight]="28"
+    [pagination]="true"
+    [paginationPageSize]="25"
+  />
+
+  <!-- Mapa inline -->
+  <div [hidden]="!mapFalla" class="mt-1 border rounded overflow-hidden" style="height: 520px;">
+    <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom">
+      <span class="fw-semibold d-flex align-items-center gap-2">
+        <mat-icon style="color:#2196f3">location_on</mat-icon>
+        {{ mapFalla?.folio }} — {{ mapFalla?.tipoFalla }}
+        <span class="badge bg-secondary ms-1">{{ mapFalla?.ciudadanoNombre }}</span>
+      </span>
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeMapa()">
+        <mat-icon style="font-size:1rem;width:1rem;height:1rem;">close</mat-icon>
+      </button>
+    </div>
+    <div #mapContainer style="height: 482px;"></div>
+  </div>
+
+</div>
+
+<!-- Modal Foto -->
+<div class="modal fade show d-block" style="background:rgba(0,0,0,.85)" *ngIf="selectedFotoUrl" (click)="closeFoto()">
+  <div class="modal-dialog modal-dialog-centered modal-lg" (click)="$event.stopPropagation()">
+    <div class="modal-content bg-dark border-0">
+      <div class="modal-header border-0 pb-0">
+        <button type="button" class="btn-close btn-close-white ms-auto" (click)="closeFoto()"></button>
+      </div>
+      <div class="modal-body text-center pt-1 pb-3 px-3">
+        <img [src]="selectedFotoUrl" class="img-fluid rounded" style="max-height:75vh;object-fit:contain;" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Actualizar Status -->
+<div class="modal fade show d-block" style="background:rgba(0,0,0,.5)" *ngIf="showUpdateModal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h6 class="modal-title d-flex align-items-center gap-2">
+          <mat-icon>edit</mat-icon> Actualizar Status — {{ selectedFalla?.folio }}
+        </h6>
+        <button type="button" class="btn-close" (click)="closeModals()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Nuevo Status</label>
+          <select class="form-select" [(ngModel)]="updateDto.status">
+            <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Notas (opcional)</label>
+          <textarea class="form-control" rows="3" [(ngModel)]="updateDto.notas"
+                    placeholder="Notas sobre el cambio de status..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" (click)="closeModals()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" (click)="saveStatus()">
+          <mat-icon style="font-size:1rem;width:1rem;height:1rem;">save</mat-icon> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Historial -->
+<div class="modal fade show d-block" style="background:rgba(0,0,0,.5)" *ngIf="showHistorial">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h6 class="modal-title d-flex align-items-center gap-2">
+          <mat-icon>history</mat-icon> Historial — {{ selectedFalla?.folio }}
+        </h6>
+        <button type="button" class="btn-close btn-close-white" (click)="closeModals()"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div *ngIf="historial.length === 0" class="text-center text-muted py-4">
+          Sin historial registrado
+        </div>
+        <table class="table table-sm table-striped mb-0" *ngIf="historial.length > 0">
+          <thead class="table-dark">
+            <tr>
+              <th>Fecha</th>
+              <th>Status Anterior</th>
+              <th>Status Nuevo</th>
+              <th>Notas</th>
+              <th>Telegram</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of historial">
+              <td>{{ h.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ h.statusAnterior ?? '—' }}</span>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="statusColors[h.statusNuevo] ?? 'bg-secondary'">
+                  {{ h.statusNuevo }}
+                </span>
+              </td>
+              <td>{{ h.notas ?? '—' }}</td>
+              <td>
+                <mat-icon style="font-size:1rem;color:green" *ngIf="h.notificadoTelegram">check_circle</mat-icon>
+                <mat-icon style="font-size:1rem;color:#ccc" *ngIf="!h.notificadoTelegram">cancel</mat-icon>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" (click)="closeModals()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -169,6 +169,6 @@ export class ComploginComponent implements OnInit {
   }
 
   private navigateToHomeAfterLogin(): void {
-    this.router.navigate(['/red-ciudadana/reportes']);
+    this.router.navigate(['/home']);
   }
 }

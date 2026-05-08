@@ -16,6 +16,15 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: '/login', pathMatch: 'full' },
       {
+        path: 'home',
+        loadComponent: () =>
+          import('./domains/RedCiudadana/pages/menu-principal/menu-principal.component').then(
+            (m) => m.MenuPrincipalComponent
+          ),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'red' } },
+      },
+      {
         path: 'red-ciudadana',
         loadComponent: () =>
           import('./domains/RedCiudadana/pages/red-ciudadana/red-ciudadana.component').then(
@@ -51,6 +60,13 @@ export const routes: Routes = [
               ),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'red', detailed: 'registros' } },
+          },
+          {
+            path: 'reporte-falla',
+            loadComponent: () =>
+              import('./domains/RedCiudadana/pages/reporte-falla/reporte-falla.component').then(
+                (r) => r.ReporteFallaComponent
+              ),
           },
         ],
       },

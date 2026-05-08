@@ -1,0 +1,39 @@
+<div class="menu-wrapper">
+
+  <!-- Logo / cabecera -->
+  <div class="menu-header">
+    <img src="/logo_red_ciudadana.webp" alt="Red Ciudadana" class="menu-logo">
+    <h2 class="menu-title">Red Ciudadana</h2>
+    <p class="menu-subtitle">¿Qué deseas hacer hoy?</p>
+  </div>
+
+  <!-- Opciones -->
+  <div class="opciones">
+
+    <button class="opcion-card opcion-red" (click)="irA('/red-ciudadana/reportes')"
+            *ngIf="auth.hasMasterPermission('red')">
+      <div class="opcion-icon">
+        <mat-icon>groups</mat-icon>
+      </div>
+      <div class="opcion-text">
+        <span class="opcion-titulo">Red Ciudadana</span>
+        <span class="opcion-desc">Gestión de registros y reportes ciudadanos</span>
+      </div>
+      <mat-icon class="opcion-arrow">chevron_right</mat-icon>
+    </button>
+
+    <button class="opcion-card opcion-falla" (click)="irA('/red-ciudadana/reporte-falla')"
+            >
+      <div class="opcion-icon">
+        <mat-icon>report_problem</mat-icon>
+      </div>
+      <div class="opcion-text">
+        <span class="opcion-titulo">Reportar Falla</span>
+        <span class="opcion-desc">Envía un reporte de falla o incidencia</span>
+      </div>
+      <mat-icon class="opcion-arrow">chevron_right</mat-icon>
+    </button>
+
+  </div>
+
+</div>
