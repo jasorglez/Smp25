@@ -30,6 +30,10 @@ export class IncomesAndExpensesService {
     return this.http.get<any[]>(environment.urlAdministration + '/ConceptsxIncorExp/byroot?idroot=' + idRoot, { headers: this.tracking.getHeaders() });
   }
 
+  getConceptsIncomeDailyByRoot(idRoot: number): Observable<any[]> {
+    return this.http.get<any[]>(environment.urlAdministration + '/ConceptsxIncorExp/byrootincome?idroot=' + idRoot, { headers: this.tracking.getHeaders() });
+  }
+
 
   getIncomesAndExpenses(idRoot: number): Observable<any> {
     return this.http.get<any>(environment.urlAdministration + '/Incomeandexpense/Bussines/' + idRoot, { headers: this.tracking.getHeaders() });
