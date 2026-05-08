@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.49 (7 Mayo 2026) Fix: nombre cliente en Ingresos x Fechas, fix: duplicado en dashboard',
+  version: '5.50 (7 Mayo 2026) Fix: Company en ingresos, tab Todas en Ingresos y Egresos',
 };
   
