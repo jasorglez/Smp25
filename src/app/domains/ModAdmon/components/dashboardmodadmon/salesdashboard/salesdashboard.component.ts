@@ -73,7 +73,12 @@ export class SalesdashboardComponent {
   
     private getIncomes(rootId: number): void {
        this.incomesAndExpensesService.getIncomesxroot(rootId).subscribe(data => {
-         this.allSalesData = data;
+         const seen = new Set<number>();
+         this.allSalesData = (data || []).filter((row: any) => {
+           if (seen.has(row.idIncome)) return false;
+           seen.add(row.idIncome);
+           return true;
+         });
          this.processAllData();
        });
     }

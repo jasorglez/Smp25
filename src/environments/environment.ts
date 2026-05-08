@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.48 (7 Mayo 2026) Ingresos con tabs: Ingresos + Ingresos x Fechas',
+  version: '5.49 (7 Mayo 2026) Fix: nombre cliente en Ingresos x Fechas, fix: duplicado en dashboard',
 };
   
