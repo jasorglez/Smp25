@@ -434,8 +434,7 @@ export class IngresosxfechasComponent {
 
     const colsMap = { detalle: this.colDefs, cliente: this.colDefsCliente, mes: this.colDefsMes };
     const headerMap = { detalle: 'Fecha', cliente: 'Cliente', mes: 'Mes' };
-    const widthMap  = { detalle: 150, cliente: 600, mes: 150 };
-    const maxWidthMap = { detalle: 160, cliente: 700, mes: 160 };
+    const isGroupByName = type !== 'detalle';
     const footerMap: Record<string, (p: any) => string> = {
       detalle: (p: any) => `Subtotal ${this.formatDate(p.value)}`,
       cliente: (p: any) => `Total ${p.value || ''}`,
@@ -444,14 +443,19 @@ export class IngresosxfechasComponent {
 
     this.gridApi.setGridOption('columnDefs', colsMap[type]);
     this.gridApi.setGridOption('autoGroupColumnDef', {
-      ...this.gridOptions.autoGroupColumnDef,
       headerName: headerMap[type],
-      width: widthMap[type],
-      maxWidth: maxWidthMap[type],
+      minWidth: isGroupByName ? 250 : 95,
+      flex: isGroupByName ? 2 : undefined,
+      width: isGroupByName ? undefined : 150,
+      maxWidth: isGroupByName ? undefined : 160,
+      pinned: 'left',
+      cellStyle: { fontSize: '12px' },
       valueFormatter: type === 'mes' ? (p: any) => this.formatMes(p.value) : undefined,
       cellRendererParams: { suppressCount: false, footerValueGetter: footerMap[type] },
     });
-    setTimeout(() => this.gridApi.setColumnWidths([{ key: 'ag-Grid-AutoColumn', newWidth: widthMap[type] }]), 50);
+    if (!isGroupByName) {
+      setTimeout(() => this.gridApi.setColumnWidths([{ key: 'ag-Grid-AutoColumn', newWidth: 150 }]), 50);
+    }
   }
 
   private formatMes(val: string): string {

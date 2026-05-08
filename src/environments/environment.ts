@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.58 (7 Mayo 2026) Fix: forzar ancho columna agrupadora con setColumnWidths al cambiar modo',
+  version: '5.59 (7 Mayo 2026) Fix: columna Cliente/Proveedor con flex:2 para ocupar espacio disponible',
 };
   
