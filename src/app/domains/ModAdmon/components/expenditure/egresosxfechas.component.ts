@@ -466,6 +466,7 @@ export class EgresosxfechasComponent {
       valueFormatter: type === 'mes' ? (p: any) => this.formatMes(p.value) : undefined,
       cellRendererParams: { suppressCount: false, footerValueGetter: footerMap[type] },
     });
+    setTimeout(() => this.gridApi.setColumnWidths([{ key: 'ag-Grid-AutoColumn', newWidth: widthMap[type] }]), 50);
   }
 
   private formatMes(val: string): string {
