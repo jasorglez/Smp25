@@ -8,6 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Geolocation } from '@capacitor/geolocation';
+import { environment } from '@env/environment';
 import * as L from 'leaflet';
 
 type LocationStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -66,13 +67,13 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     return +(this.signalsService.getRootSelectedBySidebar()() ?? 0);
   }
 
-  async capturarFoto(source: 'camera' | 'photos'): Promise<void> {
+  async capturarFoto(): Promise<void> {
     try {
       const image = await Camera.getPhoto({
         quality: 85,
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
-        source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
+        source: CameraSource.Prompt,
       });
       if (!image.dataUrl) return;
       this.fotoPreview = image.dataUrl;
@@ -86,7 +87,7 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     if (!this.fotoFile) return;
     this.analizando = true;
     try {
-      this.fotoUrl = await this.imageHandler.uploadFileToFirebase(this.fotoFile, 'fallas');
+      this.fotoUrl = await this.imageHandler.uploadFileToFirebase(this.fotoFile, environment.storageFolders.fallas);
       this.analisisIa = await new Promise<FallaAnalysis>((res, rej) =>
         this.fallasService.analizarFoto(this.fotoUrl!).subscribe({ next: res, error: rej })
       );

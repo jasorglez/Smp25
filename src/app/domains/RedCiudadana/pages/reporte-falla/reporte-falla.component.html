@@ -38,16 +38,10 @@
       </label>
 
       <ng-container *ngIf="!fotoPreview">
-        <div class="foto-opciones">
-          <button type="button" class="foto-opcion-btn" (click)="capturarFoto('camera')">
-            <mat-icon>camera_alt</mat-icon>
-            <span>Cámara</span>
-          </button>
-          <button type="button" class="foto-opcion-btn" (click)="capturarFoto('photos')">
-            <mat-icon>photo_library</mat-icon>
-            <span>Galería</span>
-          </button>
-        </div>
+        <button type="button" class="foto-opcion-btn w-100" (click)="capturarFoto()">
+          <mat-icon>camera_alt</mat-icon>
+          <span>Tomar o elegir foto</span>
+        </button>
       </ng-container>
 
       <ng-container *ngIf="fotoPreview">

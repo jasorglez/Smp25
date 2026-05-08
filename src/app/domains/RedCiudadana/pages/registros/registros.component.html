@@ -192,16 +192,10 @@
     <div class="mb-4">
       <label class="form-label">📷 INE — Frente</label>
       <ng-container *ngIf="!previewFrente">
-        <div class="foto-opciones">
-          <button type="button" class="foto-opcion-btn" (click)="captureFrente('camera')">
-            <mat-icon>photo_camera</mat-icon>
-            <span>Tomar foto</span>
-          </button>
-          <button type="button" class="foto-opcion-btn" (click)="captureFrente('photos')">
-            <mat-icon>photo_library</mat-icon>
-            <span>Galería</span>
-          </button>
-        </div>
+        <button type="button" class="foto-opcion-btn w-100" (click)="captureFrente()">
+          <mat-icon>camera_alt</mat-icon>
+          <span>Tomar o elegir foto</span>
+        </button>
       </ng-container>
       <ng-container *ngIf="previewFrente">
         <div class="foto-area foto-captured">
@@ -217,16 +211,10 @@
     <div class="mb-4">
       <label class="form-label">📷 INE — Reverso</label>
       <ng-container *ngIf="!previewReverso">
-        <div class="foto-opciones">
-          <button type="button" class="foto-opcion-btn" (click)="captureReverso('camera')">
-            <mat-icon>photo_camera</mat-icon>
-            <span>Tomar foto</span>
-          </button>
-          <button type="button" class="foto-opcion-btn" (click)="captureReverso('photos')">
-            <mat-icon>photo_library</mat-icon>
-            <span>Galería</span>
-          </button>
-        </div>
+        <button type="button" class="foto-opcion-btn w-100" (click)="captureReverso()">
+          <mat-icon>camera_alt</mat-icon>
+          <span>Tomar o elegir foto</span>
+        </button>
       </ng-container>
       <ng-container *ngIf="previewReverso">
         <div class="foto-area foto-captured">
@@ -401,16 +389,10 @@
       <div class="mb-4">
         <label class="form-label">INE — Frente</label>
         <ng-container *ngIf="!previewFrente">
-          <div class="foto-opciones">
-            <button type="button" class="foto-opcion-btn" (click)="captureFrente('camera')">
-              <mat-icon>photo_camera</mat-icon>
-              <span>Tomar foto</span>
-            </button>
-            <button type="button" class="foto-opcion-btn" (click)="captureFrente('photos')">
-              <mat-icon>photo_library</mat-icon>
-              <span>Galería</span>
-            </button>
-          </div>
+          <button type="button" class="foto-opcion-btn w-100" (click)="captureFrente()">
+            <mat-icon>camera_alt</mat-icon>
+            <span>Tomar o elegir foto</span>
+          </button>
         </ng-container>
         <ng-container *ngIf="previewFrente">
           <div class="foto-area foto-captured">
@@ -425,16 +407,10 @@
       <div class="mb-4">
         <label class="form-label">INE — Reverso</label>
         <ng-container *ngIf="!previewReverso">
-          <div class="foto-opciones">
-            <button type="button" class="foto-opcion-btn" (click)="captureReverso('camera')">
-              <mat-icon>photo_camera</mat-icon>
-              <span>Tomar foto</span>
-            </button>
-            <button type="button" class="foto-opcion-btn" (click)="captureReverso('photos')">
-              <mat-icon>photo_library</mat-icon>
-              <span>Galería</span>
-            </button>
-          </div>
+          <button type="button" class="foto-opcion-btn w-100" (click)="captureReverso()">
+            <mat-icon>camera_alt</mat-icon>
+            <span>Tomar o elegir foto</span>
+          </button>
         </ng-container>
         <ng-container *ngIf="previewReverso">
           <div class="foto-area foto-captured">

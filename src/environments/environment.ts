@@ -67,6 +67,13 @@ export const environment = {
 
   urlFiles: 'gs://beapp-501d1.appspot.com',
 
+  storageFolders: {
+    fallas:      'fallas',
+    redCiudadana: 'red-ciudadana/ine',
+    pdf:         'pdf',
+    videos:      'videos',
+  },
+
   urlProfile: './assets/img/profile.png',
 
   adminFiles:

@@ -131,13 +131,13 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
     this.fileReverso    = null;
   }
 
-  async captureFrente(source: 'camera' | 'photos'): Promise<void> {
+  async captureFrente(): Promise<void> {
     try {
       const image = await Camera.getPhoto({
         quality: 85,
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
-        source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
+        source: CameraSource.Prompt,
       });
       if (!image.dataUrl) return;
       this.previewFrente = image.dataUrl;
@@ -145,13 +145,13 @@ export class RedRegistrosComponent implements OnInit, OnDestroy {
     } catch { /* cancelado por el usuario */ }
   }
 
-  async captureReverso(source: 'camera' | 'photos'): Promise<void> {
+  async captureReverso(): Promise<void> {
     try {
       const image = await Camera.getPhoto({
         quality: 85,
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
-        source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
+        source: CameraSource.Prompt,
       });
       if (!image.dataUrl) return;
       this.previewReverso = image.dataUrl;

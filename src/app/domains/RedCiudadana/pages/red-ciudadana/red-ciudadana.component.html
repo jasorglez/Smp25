@@ -1,6 +1,6 @@
 <div class="rc-card card">
-  <div class="card-header px-2">
-    <ul class="nav nav-pills">
+  <div class="card-header px-2 d-flex align-items-center">
+    <ul class="nav nav-pills flex-grow-1">
       <li class="nav-item" *ngIf="authService.hasDetailedPermission('red', 'procesos')">
         <a class="nav-link green-tab d-flex align-items-center" routerLink="procesos" routerLinkActive="active">
           <mat-icon>settings</mat-icon> Procesos
@@ -16,12 +16,10 @@
           <mat-icon>list_alt</mat-icon> Registros
         </a>
       </li>
-      <li class="nav-item">
-        <a class="nav-link green-tab d-flex align-items-center" routerLink="reporte-falla" routerLinkActive="active">
-          <mat-icon>report_problem</mat-icon> Reporte Falla
-        </a>
-      </li>
     </ul>
+    <a class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" routerLink="/home">
+      <mat-icon style="font-size:18px">home</mat-icon>
+    </a>
   </div>
 
   <div class="rc-content">

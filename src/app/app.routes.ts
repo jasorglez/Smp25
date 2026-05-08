@@ -61,14 +61,14 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'red', detailed: 'registros' } },
           },
-          {
-            path: 'reporte-falla',
-            loadComponent: () =>
-              import('./domains/RedCiudadana/pages/reporte-falla/reporte-falla.component').then(
-                (r) => r.ReporteFallaComponent
-              ),
-          },
         ],
+      },
+      {
+        path: 'reporte-falla',
+        loadComponent: () =>
+          import('./domains/RedCiudadana/pages/reporte-falla/reporte-falla.component').then(
+            (r) => r.ReporteFallaComponent
+          ),
       },
       {
         path: 'unauthorized',
