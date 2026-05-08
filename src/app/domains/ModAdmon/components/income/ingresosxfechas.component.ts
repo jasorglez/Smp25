@@ -434,8 +434,8 @@ export class IngresosxfechasComponent {
 
     const colsMap = { detalle: this.colDefs, cliente: this.colDefsCliente, mes: this.colDefsMes };
     const headerMap = { detalle: 'Fecha', cliente: 'Cliente', mes: 'Mes' };
-    const widthMap  = { detalle: 150, cliente: 300, mes: 150 };
-    const maxWidthMap = { detalle: 160, cliente: 400, mes: 160 };
+    const widthMap  = { detalle: 150, cliente: 600, mes: 150 };
+    const maxWidthMap = { detalle: 160, cliente: 700, mes: 160 };
     const footerMap: Record<string, (p: any) => string> = {
       detalle: (p: any) => `Subtotal ${this.formatDate(p.value)}`,
       cliente: (p: any) => `Total ${p.value || ''}`,

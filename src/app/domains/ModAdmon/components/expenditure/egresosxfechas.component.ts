@@ -449,8 +449,8 @@ export class EgresosxfechasComponent {
 
     const colsMap = { detalle: this.colDefs, proveedor: this.colDefsProveedor, mes: this.colDefsMes };
     const headerMap = { detalle: 'Fecha', proveedor: 'Proveedor / Empleado', mes: 'Mes' };
-    const widthMap    = { detalle: 150, proveedor: 300, mes: 150 };
-    const maxWidthMap = { detalle: 160, proveedor: 400, mes: 160 };
+    const widthMap    = { detalle: 150, proveedor: 600, mes: 150 };
+    const maxWidthMap = { detalle: 160, proveedor: 700, mes: 160 };
     const footerMap: Record<string, (p: any) => string> = {
       detalle:    (p: any) => `Subtotal ${this.formatDate(p.value)}`,
       proveedor:  (p: any) => `Total ${p.value || ''}`,
