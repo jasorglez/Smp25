@@ -73,12 +73,7 @@ export class SalesdashboardComponent {
   
     private getIncomes(rootId: number): void {
        this.incomesAndExpensesService.getIncomesxroot(rootId).subscribe(data => {
-         const seen = new Set<number>();
-         this.allSalesData = (data || []).filter((row: any) => {
-           if (seen.has(row.idIncome)) return false;
-           seen.add(row.idIncome);
-           return true;
-         });
+         this.allSalesData = data || [];
          this.processAllData();
        });
     }
@@ -94,7 +89,7 @@ export class SalesdashboardComponent {
       const filteredData = this.filterDataByTimeRange(this.allSalesData, this.timeRangeInMonths);
   
       // 2. Calcular y actualizar cada parte del dashboard
-      this.totalSalesKpi = filteredData.reduce((sum, sale) => sum + sale.totalincome, 0);
+      this.totalSalesKpi = filteredData.reduce((sum, sale) => sum + sale.totalconcepto, 0);
       // El listado de clientes usa TODOS los datos para incluir 2026
       this.clientList = this.calculateTopClients(this.allSalesData);
       
@@ -126,7 +121,7 @@ export class SalesdashboardComponent {
       const year = date.getFullYear();
       const month = date.getMonth();
       if (!acc[year]) acc[year] = Array(12).fill(0);
-      acc[year][month] += sale.totalincome;
+      acc[year][month] += sale.totalconcepto;
       return acc;
     }, {});
 
@@ -203,7 +198,7 @@ export class SalesdashboardComponent {
       const month = date.getMonth();
       const key = `${year}-${month.toString().padStart(2, '0')}`;
       if (!salesByYearMonth[key]) salesByYearMonth[key] = { year, month, total: 0 };
-      salesByYearMonth[key].total += sale.totalincome;
+      salesByYearMonth[key].total += sale.totalconcepto;
     });
 
     // Ordenar las claves cronológicamente
@@ -335,7 +330,7 @@ export class SalesdashboardComponent {
           // Normalizar nombre: trim y quitar espacios múltiples
           const client = (sale.company || 'Sin cliente').trim().replace(/\s+/g, ' ').toUpperCase();
           if (!acc[client]) acc[client] = 0;
-          acc[client] += Number(sale.totalincome) || 0;
+          acc[client] += Number(sale.totalconcepto) || 0;
           return acc;
       }, {} as { [key: string]: number });
 
@@ -349,7 +344,7 @@ export class SalesdashboardComponent {
         // Normalizar nombre: trim y quitar espacios múltiples (igual que en calculateTopClients)
         const customer = (sale.company || 'Sin cliente').trim().replace(/\s+/g, ' ').toUpperCase();
         if (!acc[customer]) acc[customer] = 0;
-        acc[customer] += Number(sale.totalincome) || 0;
+        acc[customer] += Number(sale.totalconcepto) || 0;
         return acc;
       }, {} as { [key: string]: number });
   
@@ -376,7 +371,7 @@ export class SalesdashboardComponent {
       const salesByBranch = data.reduce((acc, sale) => {
         const branchId = sale.idBranch || 0;
         if (!acc[branchId]) acc[branchId] = 0;
-        acc[branchId] += Number(sale.totalincome) || 0;
+        acc[branchId] += Number(sale.totalconcepto) || 0;
         return acc;
       }, {} as { [key: number]: number });
 

@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.53 (7 Mayo 2026) Fix: validación fecha inicio > fecha fin en Ingresos y Egresos',
+  version: '5.54 (7 Mayo 2026) Fix: dashboard Top Clientes usa totalconcepto para evitar inflación por conceptos múltiples',
 };
   
