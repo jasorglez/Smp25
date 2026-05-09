@@ -767,8 +767,15 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         typeIntOrExt: typeMap.get(p.id) || null
       }));
 
-      // Solo los vigentes se usan como opciones en el dropdown de asignación
-      const activeProviders = this.providers.filter((p: any) => p.vigente === true || p.vigente === 1);
+      // Mismo criterio visual que la tabla de Proveedores:
+      // el checkbox "Activo" en esa pantalla pinta `vigente`, y `getProvidersForGrid`
+      // lo mapea desde Customer.Active del backend.
+      const activeProviders = this.providers.filter((p: any) =>
+        p.vigente === true || p.vigente === 1 ||
+        p.Vigente === true || p.Vigente === 1 ||
+        p.active === true || p.active === 1 ||
+        p.Active === true || p.Active === 1
+      );
 
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
