@@ -8,6 +8,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin } from 'rxjs';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-equipos',
@@ -17,6 +18,7 @@ import { forkJoin } from 'rxjs';
   styleUrl: './equipos.component.scss'
 })
 export class EquiposComponent implements OnInit {
+  readonly createSpecialtyOption = '__create_new_specialty__';
 
   private teamService = inject(TeamService);
   private employeesService = inject(EmployeesService);
@@ -49,6 +51,9 @@ export class EquiposComponent implements OnInit {
 
   // Specialties loaded from catalog (SPECIALTY type)
   specialties: any[] = [];
+  showSpecialtyModal: boolean = false;
+  savingSpecialty: boolean = false;
+  newSpecialtyDescription: string = '';
 
   constructor() {
     effect(() => {
@@ -228,6 +233,7 @@ export class EquiposComponent implements OnInit {
   closeForm(): void {
     this.showForm = false;
     this.editingTeamId = null;
+    this.closeSpecialtyModal();
   }
 
   handleSubmit(): void {
@@ -370,5 +376,74 @@ export class EquiposComponent implements OnInit {
 
   canCreateByBranch(): boolean {
     return this.idBranch > 0;
+  }
+
+  onSpecialtyChange(): void {
+    if (this.formData.specialty !== this.createSpecialtyOption) {
+      return;
+    }
+
+    this.formData.specialty = '';
+    this.newSpecialtyDescription = '';
+    this.showSpecialtyModal = true;
+  }
+
+  closeSpecialtyModal(): void {
+    this.showSpecialtyModal = false;
+    this.savingSpecialty = false;
+    this.newSpecialtyDescription = '';
+  }
+
+  saveNewSpecialty(): void {
+    const description = this.newSpecialtyDescription.trim().toUpperCase();
+
+    if (!description) {
+      alerts.basicAlert('Dato requerido', 'Debes capturar la descripcion de la especialidad.', 'warning');
+      return;
+    }
+
+    const duplicate = this.specialties.some(spec => (spec.description || '').trim().toUpperCase() === description);
+    if (duplicate) {
+      this.formData.specialty = description;
+      this.closeSpecialtyModal();
+      alerts.basicAlert('Catalogo existente', 'Esa especialidad ya existe y fue seleccionada.', 'info');
+      return;
+    }
+
+    this.savingSpecialty = true;
+    const nextSortOrder = this.specialties.length > 0
+      ? Math.max(...this.specialties.map(spec => Number(spec.sortOrder) || 0)) + 1
+      : 1;
+
+    const payload = {
+      idCompany: this.idcompany,
+      type: 'SPECIALTY',
+      description,
+      valueAddition: '',
+      sortOrder: nextSortOrder,
+      active: true
+    };
+
+    this.catalogService.add(payload).subscribe({
+      next: (created) => {
+        const newSpecialty = created ?? payload;
+        this.specialties = [...this.specialties, newSpecialty].sort((a, b) =>
+          (a.description || '').localeCompare(b.description || '')
+        );
+        this.formData.specialty = newSpecialty.description ?? description;
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Especialidad creada desde Equipos: ${this.formData.specialty}`,
+          'ModMaintenance/Equipos',
+          ''
+        );
+        this.closeSpecialtyModal();
+      },
+      error: (err) => {
+        console.error('Error creating specialty catalog:', err);
+        this.savingSpecialty = false;
+        alerts.basicAlert('Error', 'No se pudo crear la especialidad.', 'error');
+      }
+    });
   }
 }

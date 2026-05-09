@@ -6,6 +6,7 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-assets',
@@ -15,6 +16,8 @@ import { TrackingService } from 'app/services/tracking.service';
   styleUrls: ['./assets.component.scss']
 })
 export class AssetsComponent implements OnInit {
+  readonly createAssetTypeOption = '__create_new_asset_type__';
+  readonly createMeasureOption = '__create_new_measure__';
 
   private equipmentService = inject(EquipmentService);
   private signalsService = inject(SignalsService);
@@ -43,6 +46,13 @@ export class AssetsComponent implements OnInit {
 
   // Asset types loaded from catalog (ASSET_TYPE type)
   assetTypes: any[] = [];
+
+  showAssetTypeModal: boolean = false;
+  savingAssetType: boolean = false;
+  newAssetTypeDescription: string = '';
+  showMeasureModal: boolean = false;
+  savingMeasure: boolean = false;
+  newMeasureDescription: string = '';
 
   // Pagination
   pageSize: number = 9;
@@ -226,6 +236,8 @@ export class AssetsComponent implements OnInit {
   closeForm(): void {
     this.showForm = false;
     this.formData = {};
+    this.closeAssetTypeModal();
+    this.closeMeasureModal();
   }
 
   saveAsset(): void {
@@ -333,5 +345,143 @@ export class AssetsComponent implements OnInit {
 
   canCreateByBranch(): boolean {
     return this.idBranch > 0;
+  }
+
+  onAssetTypeChange(): void {
+    if (this.formData.assetType !== this.createAssetTypeOption) {
+      return;
+    }
+
+    this.formData.assetType = '';
+    this.newAssetTypeDescription = '';
+    this.showAssetTypeModal = true;
+  }
+
+  closeAssetTypeModal(): void {
+    this.showAssetTypeModal = false;
+    this.savingAssetType = false;
+    this.newAssetTypeDescription = '';
+  }
+
+  saveNewAssetType(): void {
+    const description = this.newAssetTypeDescription.trim().toUpperCase();
+
+    if (!description) {
+      alerts.basicAlert('Dato requerido', 'Debes capturar la descripcion del tipo de activo.', 'warning');
+      return;
+    }
+
+    const duplicate = this.assetTypes.some(type => (type.description || '').trim().toUpperCase() === description);
+    if (duplicate) {
+      this.formData.assetType = description;
+      this.closeAssetTypeModal();
+      alerts.basicAlert('Catalogo existente', 'Ese tipo de activo ya existe y fue seleccionado.', 'info');
+      return;
+    }
+
+    this.savingAssetType = true;
+    const nextSortOrder = this.assetTypes.length > 0
+      ? Math.max(...this.assetTypes.map(type => Number(type.sortOrder) || 0)) + 1
+      : 1;
+
+    const payload = {
+      idCompany: this.idcompany,
+      type: 'ASSET_TYPE',
+      description,
+      valueAddition: '',
+      sortOrder: nextSortOrder,
+      active: true
+    };
+
+    this.catalogService.add(payload).subscribe({
+      next: (created) => {
+        const newType = created ?? payload;
+        this.assetTypes = [...this.assetTypes, newType].sort((a, b) =>
+          (a.description || '').localeCompare(b.description || '')
+        );
+        this.formData.assetType = newType.description ?? description;
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Tipo de activo creado desde Activos: ${this.formData.assetType}`,
+          'ModMaintenance/Assets',
+          ''
+        );
+        this.closeAssetTypeModal();
+      },
+      error: (err) => {
+        console.error('Error creating asset type catalog:', err);
+        this.savingAssetType = false;
+        alerts.basicAlert('Error', 'No se pudo crear el tipo de activo.', 'error');
+      }
+    });
+  }
+
+  onMeasureChange(): void {
+    if (this.formData.measure !== this.createMeasureOption) {
+      return;
+    }
+
+    this.formData.measure = '';
+    this.newMeasureDescription = '';
+    this.showMeasureModal = true;
+  }
+
+  closeMeasureModal(): void {
+    this.showMeasureModal = false;
+    this.savingMeasure = false;
+    this.newMeasureDescription = '';
+  }
+
+  saveNewMeasure(): void {
+    const description = this.newMeasureDescription.trim().toUpperCase();
+
+    if (!description) {
+      alerts.basicAlert('Dato requerido', 'Debes capturar la descripcion de la medida.', 'warning');
+      return;
+    }
+
+    const duplicate = this.measures.some(measure => (measure.description || '').trim().toUpperCase() === description);
+    if (duplicate) {
+      this.formData.measure = description;
+      this.closeMeasureModal();
+      alerts.basicAlert('Catalogo existente', 'Esa medida ya existe y fue seleccionada.', 'info');
+      return;
+    }
+
+    this.savingMeasure = true;
+    const nextSortOrder = this.measures.length > 0
+      ? Math.max(...this.measures.map(measure => Number(measure.sortOrder) || 0)) + 1
+      : 1;
+
+    const payload = {
+      idCompany: this.idcompany,
+      type: 'MEASURE',
+      description,
+      valueAddition: '',
+      sortOrder: nextSortOrder,
+      active: true
+    };
+
+    this.catalogService.add(payload).subscribe({
+      next: (created) => {
+        const newMeasure = created ?? payload;
+        this.measures = [...this.measures, newMeasure].sort((a, b) =>
+          (a.description || '').localeCompare(b.description || '')
+        );
+        this.formData.measure = newMeasure.description ?? description;
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `Medida creada desde Activos: ${this.formData.measure}`,
+          'ModMaintenance/Assets',
+          ''
+        );
+        this.closeMeasureModal();
+      },
+      error: (err) => {
+        console.error('Error creating measure catalog:', err);
+        this.savingMeasure = false;
+        alerts.basicAlert('Error', 'No se pudo crear la medida.', 'error');
+      }
+    });
   }
 }

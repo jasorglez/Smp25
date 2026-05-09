@@ -106,9 +106,10 @@
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Especialidad *</label>
-              <select class="form-select" [(ngModel)]="formData.specialty" name="specialty" required>
+              <select class="form-select" [(ngModel)]="formData.specialty" name="specialty" required (ngModelChange)="onSpecialtyChange()">
                 <option value="">Seleccionar especialidad...</option>
                 <option *ngFor="let spec of specialties" [value]="spec.description">{{ spec.description }}</option>
+                <option [value]="createSpecialtyOption">+ Crear nueva especialidad...</option>
               </select>
             </div>
             <div class="col-md-6 mb-3">
@@ -163,6 +164,38 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showSpecialtyModal"></div>
+  <div class="team-form-modal" *ngIf="showSpecialtyModal">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Nueva Especialidad</h2>
+        <button class="btn btn-sm btn-outline-secondary close-btn" type="button" (click)="closeSpecialtyModal()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Descripcion de la especialidad *</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="newSpecialtyDescription"
+            name="newSpecialtyDescription"
+            placeholder="Ejemplo: ELECTRICIDAD"
+            (keyup.enter)="saveNewSpecialty()">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeSpecialtyModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveNewSpecialty()" [disabled]="savingSpecialty">
+          <i class="bi bi-plus-lg"></i> {{ savingSpecialty ? 'Creando...' : 'Crear Especialidad' }}
+        </button>
       </div>
     </div>
   </div>
