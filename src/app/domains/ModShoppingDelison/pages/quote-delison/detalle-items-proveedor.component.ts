@@ -771,6 +771,9 @@ export class DetalleItemsProveedorComponent {
 
   public gridOptions: any = {
     headerHeight: 30, rowHeight: 28, animateRows: true, suppressCellFocus: false, stopEditingWhenCellsLoseFocus: true, tooltipShowDelay: 400,
+    autoSizeStrategy: {
+      type: 'fitCellContents',
+    },
     defaultColDef: { resizable: true, sortable: true, filter: true },
     onCellEditingStarted: () => { if (this.ocGenerated) this.gridApi?.stopEditing(true); }
   };

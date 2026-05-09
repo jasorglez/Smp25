@@ -1184,12 +1184,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       if (hasAnyPositive) {
         // Al menos un proveedor POSITIVO → autorizar el material
         await lastValueFrom(
-          this.materialsService.updateMaterial(materialId.toString(), { active: true, porAutorizar: false })
+          this.materialsService.updateMaterial(materialId.toString(), { vigente: true, active: true, porAutorizar: false })
         ).catch(e => console.warn(`⚠️ No se pudo autorizar material ${materialId}:`, e));
       } else if (allNegative) {
         // Todos NEGATIVOS → desactivar el material
         await lastValueFrom(
-          this.materialsService.updateMaterial(materialId.toString(), { active: false, vigente: false, porAutorizar: true })
+          this.materialsService.updateMaterial(materialId.toString(), { vigente: false, active: false, porAutorizar: true })
         ).catch(e => console.warn(`⚠️ No se pudo desactivar material ${materialId}:`, e));
       }
     }

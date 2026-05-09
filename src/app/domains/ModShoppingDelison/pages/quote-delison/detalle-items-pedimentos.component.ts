@@ -195,7 +195,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   }
 
   onFirstDataRendered(params: any) {
-    this.gridApi?.autoSizeAllColumns();
+    this.autoAdjustColumns();
   }
 
   @HostListener('window:resize')
@@ -206,6 +206,11 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   private autoAdjustColumns() {
     if (!this.gridApi) return;
     const apiAny = this.gridApi as any;
+    // Priorizar el ajuste por contenido para que las columnas no se estiren innecesariamente
+    if (typeof apiAny.autoSizeAllColumns === 'function') {
+      apiAny.autoSizeAllColumns(true);
+      return;
+    }
     if (typeof apiAny.sizeColumnsToFit === 'function') {
       apiAny.sizeColumnsToFit();
     }
@@ -681,8 +686,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     rowSelection: 'single',
     getRowId: (params: any) => String(params.data.id),
     autoSizeStrategy: {
-      type: 'fitGridWidth',
-      defaultMinWidth: 90,
+      type: 'fitCellContents',
     },
     defaultColDef: {
       resizable: true,

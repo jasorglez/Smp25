@@ -98,6 +98,9 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     singleClickEdit: true,
     masterDetail: true,
     detailRowHeight: 520,
+    autoSizeStrategy: {
+      type: 'fitCellContents',
+    },
     defaultColDef: {
       resizable: true,
       sortable: true,

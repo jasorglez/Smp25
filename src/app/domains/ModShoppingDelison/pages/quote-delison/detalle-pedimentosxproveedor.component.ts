@@ -488,6 +488,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 460,
+    autoSizeStrategy: {
+      type: 'fitCellContents',
+    },
     getRowId: (params: any) => String(params.data.cotizacionId),
     defaultColDef: {
       resizable: true,
