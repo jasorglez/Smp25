@@ -238,16 +238,18 @@
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Tipo de Activo</label>
-              <select class="form-select" [(ngModel)]="formData.assetType" name="assetType">
+              <select class="form-select" [(ngModel)]="formData.assetType" name="assetType" (ngModelChange)="onAssetTypeChange()">
                 <option value="">Seleccionar tipo...</option>
                 <option *ngFor="let t of assetTypes" [value]="t.description">{{ t.description }}</option>
+                <option [value]="createAssetTypeOption">+ Crear nuevo tipo de activo...</option>
               </select>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Medida</label>
-              <select class="form-select" [(ngModel)]="formData.measure" name="measure">
+              <select class="form-select" [(ngModel)]="formData.measure" name="measure" (ngModelChange)="onMeasureChange()">
                 <option value="">Seleccionar medida...</option>
                 <option *ngFor="let m of measures" [value]="m.description">{{ m.description }}</option>
+                <option [value]="createMeasureOption">+ Crear nueva medida...</option>
               </select>
             </div>
             <div class="col-md-4 mb-3">
@@ -290,6 +292,70 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showAssetTypeModal"></div>
+  <div class="asset-detail-modal" *ngIf="showAssetTypeModal">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Nuevo Tipo de Activo</h2>
+        <button class="btn btn-sm btn-outline-secondary close-btn" type="button" (click)="closeAssetTypeModal()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Descripcion del nuevo tipo *</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="newAssetTypeDescription"
+            name="newAssetTypeDescription"
+            placeholder="Ejemplo: MONTACARGAS"
+            (keyup.enter)="saveNewAssetType()">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeAssetTypeModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveNewAssetType()" [disabled]="savingAssetType">
+          <i class="bi bi-plus-lg"></i> {{ savingAssetType ? 'Creando...' : 'Crear Tipo' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showMeasureModal"></div>
+  <div class="asset-detail-modal" *ngIf="showMeasureModal">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Nueva Medida</h2>
+        <button class="btn btn-sm btn-outline-secondary close-btn" type="button" (click)="closeMeasureModal()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Descripcion de la medida *</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="newMeasureDescription"
+            name="newMeasureDescription"
+            placeholder="Ejemplo: HRS"
+            (keyup.enter)="saveNewMeasure()">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeMeasureModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveNewMeasure()" [disabled]="savingMeasure">
+          <i class="bi bi-plus-lg"></i> {{ savingMeasure ? 'Creando...' : 'Crear Medida' }}
+        </button>
       </div>
     </div>
   </div>
