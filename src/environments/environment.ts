@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.60 (7 Mayo 2026) Fix: autoSizeColumns en columna Cliente/Proveedor — flex ignorado en pinned',
+  version: '5.61 (9 Mayo 2026 10:10) Mantenimiento: alta inline Activos y Equipos',
 };
   
