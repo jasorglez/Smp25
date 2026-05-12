@@ -202,20 +202,27 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
-      next: (data) => {
-        this.rowData = data.map(material => ({
-          ...material,
-        }));
-        if (this.pendingScrollTarget) {
-          setTimeout(() => this.scrollToTarget(), 150);
-        }
-      },
-      error: (error) => {
-        console.error('Error loading materials:', error);
-        alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
-      }
-    });
+        this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+          next: (data) => {
+            this.rowData = data
+              .slice()
+              .sort((a, b) => {
+                const activeA = a.active ? 1 : 0;
+                const activeB = b.active ? 1 : 0;
+                return activeB - activeA;
+              })
+              .map(material => ({
+                ...material,
+              }));
+            if (this.pendingScrollTarget) {
+              setTimeout(() => this.scrollToTarget(), 150);
+            }
+          },
+          error: (error) => {
+            console.error('Error loading materials:', error);
+            alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
+          }
+        });
   }
 
   // ✅ Método para cargar un material específico (modo modal)
@@ -316,6 +323,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         if (params.data.__modified) {
           return 'modified-row';
         }
+        if (params.data.active === false || params.data.active === 0) {
+          return 'inactive-row-highlight';
+        }
         return '';
       },
       onRowSelected: (event: any) => {
@@ -329,9 +339,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       onCellValueChanged: (event: any) => {
 
-        // Convertir vigente a true/false (nunca NULL)
-        if (event.colDef.field === 'vigente') {
-          event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
+        // Convertir active a true/false (nunca NULL)
+        if (event.colDef.field === 'active') {
+          event.data.active = event.newValue === true || event.newValue === 1 ? true : false;
         }
 
         event.data.__modified = true;
@@ -374,7 +384,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     this._colMaster = [
       {
-        field: 'vigente',
+        field: 'active',
         headerName: 'Activo',
         width: 100,
         editable: true,

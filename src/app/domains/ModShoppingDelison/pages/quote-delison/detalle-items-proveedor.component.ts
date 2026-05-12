@@ -43,20 +43,19 @@ pdfMake.vfs = pdfFonts.vfs;
           [items]="filteredProviders"
           bindValue="id"
           bindLabel="description"
-          [groupBy]="'group'"
           [(ngModel)]="selectedProviderId"
           [clearable]="true"
           [disabled]="ocGenerated"
           placeholder="Seleccione proveedor"
           (ngModelChange)="onProviderChange()"
           style="width: 50%; min-width: 150px;">
-          <ng-template ng-optgroup-tmp let-item="item">
-            <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; display: inline-block;">
-              {{ item.group }}
-            </span>
-          </ng-template>
           <ng-template ng-option-tmp let-item="item">
-            <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span>{{ item.description }}
+            <span *ngIf="item.__isHeader" style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; display: inline-block; color: #6c757d; background-color: #f5f5f5;">
+              {{ item.description }}
+            </span>
+            <ng-container *ngIf="!item.__isHeader">
+              <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span>{{ item.description }}
+            </ng-container>
           </ng-template>
           <ng-template ng-label-tmp let-item="item">
             <span *ngIf="item.isPrincipal">⭐ </span>{{ item.description }}
@@ -255,7 +254,18 @@ export class DetalleItemsProveedorComponent {
         return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
       });
 
-      this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }, ...active];
+      const companies = active.filter((p: any) => p.group === 'Compañía');
+      const contacts = active.filter((p: any) => p.group === 'Contacto');
+      const result: any[] = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
+      if (companies.length > 0) {
+        result.push({ id: '__header_company__', description: 'Compañía', disabled: true, __isHeader: true });
+        result.push(...companies);
+      }
+      if (contacts.length > 0) {
+        result.push({ id: '__header_contact__', description: 'Contacto', disabled: true, __isHeader: true });
+        result.push(...contacts);
+      }
+      this.providers = result;
       this.refreshFilteredProviders();
     } catch (error) {
       this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
@@ -861,7 +871,7 @@ export class DetalleItemsProveedorComponent {
   onCompanyInput(value: string) {
     if (!value) { this.companySuggestions = []; this.showCompanySuggestions = false; return; }
     const term = value.toLowerCase();
-    this.companySuggestions = this.providers.filter(p => p.id !== this.NEW_PROVIDER_SENTINEL && p.description.toLowerCase().includes(term)).map(p => p.description);
+    this.companySuggestions = this.providers.filter(p => p.id !== this.NEW_PROVIDER_SENTINEL && !p.__isHeader && p.description.toLowerCase().includes(term)).map(p => p.description);
     this.showCompanySuggestions = this.companySuggestions.length > 0;
   }
   hideCompanySuggestionsDelayed() { setTimeout(() => { this.showCompanySuggestions = false; }, 200); }

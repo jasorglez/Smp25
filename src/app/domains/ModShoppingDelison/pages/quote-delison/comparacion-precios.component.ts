@@ -1184,12 +1184,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       if (hasAnyPositive) {
         // Al menos un proveedor POSITIVO → autorizar el material
         await lastValueFrom(
-          this.materialsService.updateMaterial(materialId.toString(), { vigente: true, active: true, porAutorizar: false })
+          this.materialsService.updateMaterial(materialId.toString(), { active: true, porAutorizar: false })
         ).catch(e => console.warn(`⚠️ No se pudo autorizar material ${materialId}:`, e));
       } else if (allNegative) {
         // Todos NEGATIVOS → desactivar el material
         await lastValueFrom(
-          this.materialsService.updateMaterial(materialId.toString(), { vigente: false, active: false, porAutorizar: true })
+          this.materialsService.updateMaterial(materialId.toString(), { active: false, porAutorizar: true })
         ).catch(e => console.warn(`⚠️ No se pudo desactivar material ${materialId}:`, e));
       }
     }
@@ -1593,6 +1593,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     try {
       await this.patchRegistros();
+      await this.updateMaterialsAfterOC();
 
       await lastValueFrom(
         this.ocAndReqsService.lockRequisition(this.requisitionId, true)

@@ -572,13 +572,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       next: (data) => {
         // Mapear los datos del endpoint al formato esperado por el SearchableSelect
         this.materials = data
-          .filter(material => material.vigente) // Solo materiales activos
+          .filter(material => material.active) // Solo materiales activos
           .map(material => ({
             id: material.id,
             description: material.articulo,  // Nombre del artículo
             code: material.insumo,            // Código/número de material
             measure: material.measure || '',
-            active: material.vigente,
+            active: material.active,
             // Campos adicionales que podrían ser útiles
             idCategory: material.idCategory,
             idFamilia: material.idFamilia,
