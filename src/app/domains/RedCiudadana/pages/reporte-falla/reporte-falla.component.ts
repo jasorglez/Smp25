@@ -38,6 +38,9 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
   fotoUrl: string | null = null;
   analisisIa: FallaAnalysis | null = null;
   analizando = false;
+  tipoFalla = '';
+  severidad = '';
+  departamento = '';
   latitud: number | null = null;
   longitud: number | null = null;
   locationStatus: LocationStatus = 'idle';
@@ -113,6 +116,11 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
       this.analisisIa = await new Promise<FallaAnalysis>((res, rej) =>
         this.fallasService.analizarFoto(this.fotoUrl!).subscribe({ next: res, error: rej })
       );
+      if (this.analisisIa) {
+        this.tipoFalla = this.analisisIa.tipoFalla ?? '';
+        this.severidad = this.analisisIa.severidad ?? '';
+        this.departamento = this.analisisIa.departamento ?? '';
+      }
     } catch {
       alerts.basicAlert('Aviso', 'No se pudo analizar la foto con IA. Puedes continuar de todas formas.', 'warning');
     } finally {
@@ -125,6 +133,9 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     this.fotoPreview = null;
     this.fotoUrl = null;
     this.analisisIa = null;
+    this.tipoFalla = '';
+    this.severidad = '';
+    this.departamento = '';
   }
 
 
@@ -157,10 +168,15 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
       this.leafletMap!.invalidateSize();
       this.leafletMap!.setView([this.latitud!, this.longitud!], 16);
       if (this.marker) this.leafletMap!.removeLayer(this.marker);
-      this.marker = L.marker([this.latitud!, this.longitud!], { icon: this.mapIcon })
+      this.marker = L.marker([this.latitud!, this.longitud!], { icon: this.mapIcon, draggable: true })
         .addTo(this.leafletMap!)
-        .bindPopup('Ubicación del problema')
+        .bindPopup('Arrastra para ajustar la ubicación')
         .openPopup();
+      this.marker.on('dragend', () => {
+        const pos = this.marker!.getLatLng();
+        this.latitud = pos.lat;
+        this.longitud = pos.lng;
+      });
     }, 60);
   }
 
@@ -181,9 +197,9 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
         longitud: this.longitud ?? undefined,
         canal: 'APP',
         status: 'NUEVO',
-        tipoFalla: this.analisisIa?.tipoFalla,
-        severidadIa: this.analisisIa?.severidad,
-        departamento: this.analisisIa?.departamento,
+        tipoFalla: this.tipoFalla || undefined,
+        severidadIa: this.severidad || undefined,
+        departamento: this.departamento || undefined,
         descripcionIa: this.analisisIa?.descripcion,
       };
 
@@ -211,6 +227,9 @@ export class ReporteFallaComponent implements OnDestroy, AfterViewInit {
     this.fotoPreview = null;
     this.fotoUrl = null;
     this.analisisIa = null;
+    this.tipoFalla = '';
+    this.severidad = '';
+    this.departamento = '';
     this.latitud = null;
     this.longitud = null;
     this.locationStatus = 'idle';

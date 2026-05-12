@@ -11,7 +11,7 @@
   <div class="opciones">
 
     <button class="opcion-card opcion-red" (click)="irA('/red-ciudadana/reportes')"
-            *ngIf="auth.hasMasterPermission('red')">
+      *ngIf="auth.hasMasterPermission('red')">
       <div class="opcion-icon">
         <mat-icon>groups</mat-icon>
       </div>
@@ -22,8 +22,7 @@
       <mat-icon class="opcion-arrow">chevron_right</mat-icon>
     </button>
 
-    <button class="opcion-card opcion-falla" (click)="irA('/reporte-falla')"
-            >
+    <button class="opcion-card opcion-falla" (click)="irA('/reporte-falla')">
       <div class="opcion-icon">
         <mat-icon>report_problem</mat-icon>
       </div>

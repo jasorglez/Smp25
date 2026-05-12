@@ -55,28 +55,12 @@
           <span>Analizando con IA…</span>
         </div>
 
-        <!-- Resultado del análisis -->
+        <!-- Descripción IA (solo lectura) -->
         <div *ngIf="analisisIa && !analizando" class="ia-resultado">
           <div class="ia-resultado-header">
             <mat-icon>auto_awesome</mat-icon> Análisis IA
           </div>
           <div class="ia-resultado-grid">
-            <div class="ia-chip">
-              <span class="ia-chip-label">Tipo</span>
-              <span class="ia-chip-value">{{ analisisIa.tipoFalla }}</span>
-            </div>
-            <div class="ia-chip">
-              <span class="ia-chip-label">Severidad</span>
-              <span class="ia-chip-value" [ngClass]="{
-                'text-danger':  analisisIa.severidad === 'ALTA',
-                'text-warning': analisisIa.severidad === 'MEDIA',
-                'text-success': analisisIa.severidad === 'BAJA'
-              }">{{ analisisIa.severidad }}</span>
-            </div>
-            <div class="ia-chip ia-chip-full">
-              <span class="ia-chip-label">Departamento</span>
-              <span class="ia-chip-value">{{ analisisIa.departamento }}</span>
-            </div>
             <div class="ia-chip ia-chip-full">
               <span class="ia-chip-label">Descripción IA</span>
               <span class="ia-chip-value">{{ analisisIa.descripcion }}</span>
@@ -90,6 +74,50 @@
       </ng-container>
     </div>
 
+    <!-- Tipo de falla -->
+    <div class="field-group">
+      <label class="field-label">
+        Tipo de falla
+        <span class="ia-badge" *ngIf="tipoFalla">
+          <mat-icon>auto_awesome</mat-icon> IA
+        </span>
+      </label>
+      <input type="text" class="form-control"
+             [(ngModel)]="tipoFalla"
+             placeholder="Ej. Bache, Alumbrado, Fuga de agua…">
+    </div>
+
+    <!-- Severidad -->
+    <div class="field-group">
+      <label class="field-label">
+        Severidad
+        <span class="ia-badge" *ngIf="severidad">
+          <mat-icon>auto_awesome</mat-icon> IA
+        </span>
+      </label>
+      <input type="text" class="form-control"
+             [(ngModel)]="severidad"
+             [ngClass]="{
+               'text-danger':  severidad === 'ALTA',
+               'text-warning': severidad === 'MEDIA',
+               'text-success': severidad === 'BAJA'
+             }"
+             placeholder="Ej. ALTA, MEDIA, BAJA">
+    </div>
+
+    <!-- Departamento -->
+    <div class="field-group">
+      <label class="field-label">
+        Departamento
+        <span class="ia-badge" *ngIf="departamento">
+          <mat-icon>auto_awesome</mat-icon> IA
+        </span>
+      </label>
+      <input type="text" class="form-control"
+             [(ngModel)]="departamento"
+             placeholder="Departamento responsable">
+    </div>
+
     <!-- Ubicación -->
     <div class="field-group">
       <label class="field-label">Ubicación del problema</label>
@@ -100,7 +128,7 @@
       </div>
       <div *ngIf="locationStatus === 'success'" class="location-status success">
         <mat-icon>check_circle</mat-icon>
-        <span>Ubicación obtenida</span>
+        <span>Ubicación obtenida &mdash; arrastra el marcador para ajustar</span>
       </div>
       <div *ngIf="locationStatus === 'error'" class="location-status error">
         <mat-icon>warning</mat-icon>
