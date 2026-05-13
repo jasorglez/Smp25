@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { forkJoin, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { TrackingService } from './tracking.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
 
@@ -72,6 +73,24 @@ export class MaterialsService {
       {
         headers: this.trackingService.getHeaders(),
       }
+    );
+  }
+
+  // Devuelve todos los campos necesarios para el caché offline del POS
+  // (descripción, barcode, ventaMN como precio de venta)
+  getMaterialsForPosCache(idCompany: number): Observable<MaterialsResponse[]> {
+    return forkJoin([
+      this.getMaterials(idCompany, 'PRODSALES'),
+      this.getMaterials(idCompany, 'MATERIAL'),
+    ]).pipe(
+      map(([prodsales, material]) => {
+        const combined = [...(prodsales as any[]), ...(material as any[])];
+        // Normaliza el campo precio: ventaMN es el precio de venta
+        return combined.map(p => ({
+          ...p,
+          price: p.ventaMN ?? p.sellingprice ?? p.listprice ?? 0,
+        }));
+      })
     );
   }
 
