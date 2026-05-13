@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.74 (13 Mayo 2026 11:30) POS: modal de referencia para Tarjeta/Cheque/Vale con monto y número',
+  version: '5.75 (13 Mayo 2026 11:45) fix: TS2367 comparación redundante en printReceipt',
 };
   
