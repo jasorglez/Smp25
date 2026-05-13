@@ -19,9 +19,9 @@
                <a class="nav-link green-tab" routerLink="before-pos" routerLinkActive="active">
                   <i class="bi bi-cart"></i> {{'point_of_sale' | translate}}</a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-closing')">
-               <a class="nav-link green-tab" routerLink="cash-closing" routerLinkActive="active"><i
-                     class="bi bi-pc-display-horizontal"></i> {{'cash_closing' | translate}}</a>
+            <li class="nav-item">
+               <a class="nav-link green-tab" routerLink="cash-closing" routerLinkActive="active">
+                  <i class="bi bi-calculator"></i> Corte de Caja</a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'returns')">
                <a class="nav-link green-tab" routerLink="returns" routerLinkActive="active"><i
