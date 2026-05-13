@@ -259,8 +259,9 @@ export class CashClosingComponent implements OnInit {
         firstValueFrom(this.cashRegistersService.getCashRegisterByCompany(idCompany)),
       ]);
 
-      const stores: any[]        = (allStores         || []).filter((s: any) => s.active);
-      const cashRegisters: any[] = (allCashRegisters  || []).filter((c: any) => c.active);
+      const stores: any[]        = (allStores        || []).filter((s: any) => s.active);
+      // La vista CashRegisterXBranchs no tiene campo active — no filtrar por él
+      const cashRegisters: any[] = (allCashRegisters || []);
 
       if (cashRegisters.length === 0) {
         this.resumenEmpresa   = [];
@@ -269,8 +270,9 @@ export class CashClosingComponent implements OnInit {
       }
 
       // 2. Resumen por caja en paralelo (un call por caja, todos a la vez)
+      // El campo ID de la caja es idCaja (no id) — viene de la vista CashRegisterXBranchs
       const resumenCalls = cashRegisters.map((cr: any) =>
-        this.cashClosingService.getResumen(cr.id, this.dateFromGeneral, this.dateToGeneral)
+        this.cashClosingService.getResumen(cr.idCaja, this.dateFromGeneral, this.dateToGeneral)
       );
 
       const resultados = await firstValueFrom(forkJoin(resumenCalls));
@@ -278,14 +280,13 @@ export class CashClosingComponent implements OnInit {
       // 3. Aplanar en ResumenPorCaja[]
       const rows: ResumenPorCaja[] = [];
       cashRegisters.forEach((cr: any, i: number) => {
-        const store = stores.find((s: any) => s.id === cr.idStore);
         const resumenCaja: CorteResumen[] = (resultados[i] as CorteResumen[]) || [];
         for (const r of resumenCaja) {
           rows.push({
-            idStore:          store?.id          ?? 0,
-            storeName:        store?.description ?? `Tienda ${cr.idStore}`,
-            idCashRegister:   cr.id,
-            cashRegisterDesc: cr.description     ?? `Caja ${cr.id}`,
+            idStore:          cr.idStore               ?? 0,
+            storeName:        cr.description           ?? `Tienda ${cr.idStore}`,
+            idCashRegister:   cr.idCaja                ?? 0,
+            cashRegisterDesc: cr.descCashRegister      ?? `Caja ${cr.idCaja}`,
             paymentType:      r.paymentType,
             numVentas:        r.numVentas,
             total:            r.total,

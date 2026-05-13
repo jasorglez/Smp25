@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.78 (13 Mayo 2026 16:45) fix: resumen general usa endpoints existentes, sin backend nuevo',
+  version: '5.79 (13 Mayo 2026 17:10) fix: campo idCaja en resumen general por empresa',
 };
   
