@@ -277,7 +277,7 @@ export class DetalleMoliendaComponent {
     },
     { field: 'proveedor', headerName: 'Proveedor', flex: 2, minWidth: 140 },
     { field: 'cantidad', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
-    { field: 'precioXKilo', headerName: 'Precio x Kilo', width: 120, type: 'numericColumn' },
+    { field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn' },
     { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130 },
     {
       field: 'resta', headerName: 'Resta', width: 90, type: 'numericColumn',
@@ -620,6 +620,8 @@ export class DetalleMoliendaComponent {
 
   onCascadeOcGridReady(params: GridReadyEvent) {
     this.cascadeOcGridApi = params.api;
+    console.log(this.cascadeOcGridApi);
+    console.log( params.api);
     if (this.cascadeOcData.length)
       this.cascadeOcGridApi.setGridOption('rowData', this.cascadeOcData);
   }
@@ -936,6 +938,7 @@ export class DetalleMoliendaComponent {
         : [];
 
       this.cascadeOcData = Array.isArray(matchedOcs) ? matchedOcs : [];
+      console.log('OCs cargadas para la requisición seleccionada:', this.cascadeOcData);
     } catch (err) {
       console.error('Error cargando OCs:', err);
       this.cascadeOcData = [];
