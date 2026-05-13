@@ -228,13 +228,9 @@ export class PosComponent implements OnInit {
       this.showChangeModal = true;
       return;
     }
-    if (this.paymentType !== 'EFECTIVO') {
-      this.paymentReference = '';
-      this.paymentAmount    = this._total;
-      this.showPaymentModal = true;
-      return;
-    }
-    this.executeReceipt();
+    this.paymentReference = '';
+    this.paymentAmount    = this._total;
+    this.showPaymentModal = true;
   }
 
   async confirmChange() {
