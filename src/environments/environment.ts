@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.75 (13 Mayo 2026 11:45) fix: TS2367 comparación redundante en printReceipt',
+  version: '5.76 (13 Mayo 2026 15:20) feat: Egresos en POS + campo afectaCorte',
 };
   
