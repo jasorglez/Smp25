@@ -1,18 +1,206 @@
-<section class="sales-mod-shell">
-  <header class="sales-mod-head sales-mod-reveal">
-    <h2 class="sales-mod-title">Corte de caja</h2>
-    <p class="sales-mod-subtitle">
-      Cierre de turno, cuadre de efectivo y reporte resumido para el punto de venta.
-    </p>
-  </header>
+<div class="col-12 py-3" style="max-width: 680px; margin: 0 auto;">
 
-  <div class="sales-mod-placeholder sales-mod-reveal-delay">
-    <div class="sales-mod-placeholder-icon">
-      <i class="bi bi-calculator"></i>
-    </div>
-    <h3>Interfaz en construcción</h3>
-    <p>
-      Pronto podrás ejecutar cortes y generar comprobantes desde aquí, alineados con tus políticas de sucursal.
-    </p>
+  <!-- Sin turno activo -->
+  <div *ngIf="!session" class="card shadow-sm p-4 text-center">
+    <i class="bi bi-shop fs-2 text-muted mb-2"></i>
+    <h5 class="fw-bold">Sin turno activo</h5>
+    <p class="text-muted small mb-3">Para realizar un corte primero debes iniciar un turno.</p>
+    <a class="btn btn-success" routerLink="/procsales/before-pos">Ir a Punto de Venta</a>
   </div>
-</section>
+
+  <!-- Corte de Caja -->
+  <div *ngIf="session">
+
+    <!-- Header de la caja -->
+    <div class="card shadow-sm p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <h5 class="fw-bold mb-0"><i class="bi bi-pc-display-horizontal me-1 text-primary"></i>Corte de Caja</h5>
+          <p class="text-muted small mb-0">{{ session.storeName }} — {{ session.cashRegisterDesc }}</p>
+          <p class="text-muted small mb-0">
+            <i class="bi bi-clock"></i> Turno iniciado: {{ formatDate(session.startedAt) }}
+          </p>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" (click)="volverAlPOS()">
+          <i class="bi bi-arrow-left"></i> Volver al POS
+        </button>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="alert alert-danger small py-2" *ngIf="errorMsg">
+      <i class="bi bi-exclamation-triangle"></i> {{ errorMsg }}
+    </div>
+
+    <!-- Cargando -->
+    <div class="text-center py-4" *ngIf="loading">
+      <div class="spinner-border text-primary"></div>
+      <p class="text-muted mt-2 small">Cargando datos del turno...</p>
+    </div>
+
+    <div *ngIf="!loading">
+
+      <!-- Apertura de Caja -->
+      <div class="card shadow-sm p-3 mb-3">
+        <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-unlock me-1"></i>Apertura de Caja</h6>
+        <div class="row g-2 align-items-center">
+          <div class="col-6">
+            <label class="form-label small fw-semibold mb-1">Fondo inicial</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control" [(ngModel)]="apertura" min="0" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold mb-1">Cajero</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="cajero" placeholder="Nombre del cajero">
+          </div>
+        </div>
+      </div>
+
+      <!-- Ventas del turno -->
+      <div class="card shadow-sm p-3 mb-3">
+        <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-receipt me-1"></i>Ventas del Turno</h6>
+
+        <div *ngIf="resumen.length === 0" class="text-muted small text-center py-2">
+          Sin ventas registradas en este turno.
+        </div>
+
+        <table class="table table-sm mb-0" *ngIf="resumen.length > 0">
+          <thead class="table-light">
+            <tr>
+              <th>Forma de Pago</th>
+              <th class="text-center">Tickets</th>
+              <th class="text-end">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of resumen">
+              <td>
+                <i class="bi me-1" [class]="getPaymentIcon(r.paymentType)"></i>
+                {{ getPaymentLabel(r.paymentType) }}
+              </td>
+              <td class="text-center">{{ r.numVentas }}</td>
+              <td class="text-end fw-semibold">{{ formatCurrency(r.total) }}</td>
+            </tr>
+          </tbody>
+          <tfoot class="table-secondary fw-bold">
+            <tr>
+              <td>Total</td>
+              <td class="text-center">{{ numVentas }}</td>
+              <td class="text-end">{{ formatCurrency(totalVentas) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Retiros del turno -->
+      <div class="card shadow-sm p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-arrow-up-circle me-1"></i>Retiros del Turno</h6>
+          <button class="btn btn-outline-warning btn-sm" (click)="showRetiroForm = !showRetiroForm">
+            <i class="bi bi-plus-lg"></i> Agregar retiro
+          </button>
+        </div>
+
+        <!-- Formulario nuevo retiro -->
+        <div class="border rounded p-2 mb-2 bg-light" *ngIf="showRetiroForm">
+          <div class="row g-2">
+            <div class="col-5">
+              <label class="form-label small mb-1">Monto</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" [(ngModel)]="nuevoRetiro.monto" min="0.01" step="0.01" placeholder="0.00">
+              </div>
+            </div>
+            <div class="col-7">
+              <label class="form-label small mb-1">Descripción</label>
+              <input type="text" class="form-control form-control-sm" [(ngModel)]="nuevoRetiro.descripcion" placeholder="Motivo del retiro">
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-warning btn-sm" (click)="agregarRetiro()" [disabled]="saving || !nuevoRetiro.monto">
+              <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
+              Registrar retiro
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" (click)="showRetiroForm = false">Cancelar</button>
+          </div>
+        </div>
+
+        <div *ngIf="movimientos.filter(m => m.tipo === 'RETIRO').length === 0" class="text-muted small text-center py-1">
+          Sin retiros registrados.
+        </div>
+
+        <table class="table table-sm mb-0" *ngIf="movimientos.filter(m => m.tipo === 'RETIRO').length > 0">
+          <tbody>
+            <tr *ngFor="let m of movimientos">
+              <ng-container *ngIf="m.tipo === 'RETIRO'">
+                <td class="text-muted small">{{ m.descripcion || '—' }}</td>
+                <td class="text-end text-danger fw-semibold">- {{ formatCurrency(m.monto) }}</td>
+              </ng-container>
+            </tr>
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>Total Retiros</td>
+              <td class="text-end text-danger">- {{ formatCurrency(totalRetiros) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Resumen Final -->
+      <div class="card shadow-sm p-3 mb-3 border-primary">
+        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-calculator me-1"></i>Resumen Final</h6>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span class="text-muted small">Fondo Inicial (Apertura)</span>
+          <span class="fw-semibold">{{ formatCurrency(apertura) }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span class="text-muted small">+ Ventas Efectivo</span>
+          <span class="fw-semibold text-success">{{ formatCurrency(totalEfectivo) }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" *ngIf="totalCheque > 0">
+          <span class="text-muted small">+ Ventas Cheque</span>
+          <span class="fw-semibold text-success">{{ formatCurrency(totalCheque) }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" *ngIf="totalVales > 0">
+          <span class="text-muted small">+ Ventas Vales</span>
+          <span class="fw-semibold text-success">{{ formatCurrency(totalVales) }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" *ngIf="totalTarjeta > 0">
+          <span class="text-muted small">+ Ventas Tarjeta</span>
+          <span class="fw-semibold text-success">{{ formatCurrency(totalTarjeta) }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom" *ngIf="totalRetiros > 0">
+          <span class="text-muted small">– Retiros</span>
+          <span class="fw-semibold text-danger">- {{ formatCurrency(totalRetiros) }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-2 mt-1">
+          <span class="fw-bold fs-6">Efectivo en Caja</span>
+          <span class="fw-bold fs-5 text-primary">{{ formatCurrency(saldoFinal) }}</span>
+        </div>
+      </div>
+
+      <!-- Observaciones + Acción -->
+      <div class="card shadow-sm p-3 mb-3">
+        <label class="form-label small fw-semibold">Observaciones (opcional)</label>
+        <textarea class="form-control form-control-sm" [(ngModel)]="observaciones" rows="2"
+          placeholder="Novedades del turno, diferencias, etc."></textarea>
+      </div>
+
+      <div class="d-grid">
+        <button class="btn btn-danger btn-lg fw-bold" (click)="realizarCorte()" [disabled]="saving">
+          <span *ngIf="saving" class="spinner-border spinner-border-sm me-2"></span>
+          <i *ngIf="!saving" class="bi bi-stop-circle me-2"></i>
+          {{ saving ? 'Guardando corte...' : 'Realizar Corte de Caja' }}
+        </button>
+        <p class="text-muted small text-center mt-2 mb-0">
+          <i class="bi bi-info-circle"></i>
+          El corte cerrará el turno activo.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.61 (9 Mayo 2026 10:10) Mantenimiento: alta inline Activos y Equipos',
+  version: '5.66 (11 Mayo 2026 21:00) POS: Corte de Caja — forma de pago por venta, movimientos y cierre de turno',
 };
   
