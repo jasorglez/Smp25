@@ -21,6 +21,7 @@ import { firstValueFrom } from 'rxjs';
 import { StoresService } from 'app/services/stores.service';
 import { CashRegistersService } from 'app/services/cash-registers.service';
 import { CashClosingService, CorteResumen, MovimientoCaja, CorteDeCaja, ResumenPorCaja } from 'app/services/cash-closing.service';
+import { forkJoin } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
 import { PosDbService, PosSession } from 'app/services/pos-db.service';
 import { alerts } from 'app/helpers/alerts';
@@ -32,7 +33,7 @@ import { alerts } from 'app/helpers/alerts';
   templateUrl: './cash-closing.component.html',
 })
 export class CashClosingComponent implements OnInit {
-  private storesService    = inject(StoresService);
+  private storesService        = inject(StoresService);
   private cashRegistersService = inject(CashRegistersService);
   private cashClosingService   = inject(CashClosingService);
   private signalsService   = inject(SignalsService);
@@ -248,12 +249,51 @@ export class CashClosingComponent implements OnInit {
   async consultarGeneral() {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
     if (!idCompany) return;
-    this.loadingGeneral = true;
+    this.loadingGeneral  = true;
     this.consultedGeneral = false;
+    this.errorMsg = '';
     try {
-      this.resumenEmpresa = await firstValueFrom(
-        this.cashClosingService.getResumenPorEmpresa(idCompany, this.dateFromGeneral, this.dateToGeneral)
+      // 1. Tiendas y cajas de la empresa (endpoints existentes)
+      const [allStores, allCashRegisters] = await Promise.all([
+        firstValueFrom(this.storesService.getStoreCompany(idCompany)),
+        firstValueFrom(this.cashRegistersService.getCashRegisterByCompany(idCompany)),
+      ]);
+
+      const stores: any[]        = (allStores         || []).filter((s: any) => s.active);
+      const cashRegisters: any[] = (allCashRegisters  || []).filter((c: any) => c.active);
+
+      if (cashRegisters.length === 0) {
+        this.resumenEmpresa   = [];
+        this.consultedGeneral = true;
+        return;
+      }
+
+      // 2. Resumen por caja en paralelo (un call por caja, todos a la vez)
+      const resumenCalls = cashRegisters.map((cr: any) =>
+        this.cashClosingService.getResumen(cr.id, this.dateFromGeneral, this.dateToGeneral)
       );
+
+      const resultados = await firstValueFrom(forkJoin(resumenCalls));
+
+      // 3. Aplanar en ResumenPorCaja[]
+      const rows: ResumenPorCaja[] = [];
+      cashRegisters.forEach((cr: any, i: number) => {
+        const store = stores.find((s: any) => s.id === cr.idStore);
+        const resumenCaja: CorteResumen[] = (resultados[i] as CorteResumen[]) || [];
+        for (const r of resumenCaja) {
+          rows.push({
+            idStore:          store?.id          ?? 0,
+            storeName:        store?.description ?? `Tienda ${cr.idStore}`,
+            idCashRegister:   cr.id,
+            cashRegisterDesc: cr.description     ?? `Caja ${cr.id}`,
+            paymentType:      r.paymentType,
+            numVentas:        r.numVentas,
+            total:            r.total,
+          });
+        }
+      });
+
+      this.resumenEmpresa   = rows;
       this.consultedGeneral = true;
     } catch {
       this.errorMsg = 'No se pudo cargar el resumen. Verifica tu conexión.';
