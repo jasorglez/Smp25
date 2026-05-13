@@ -1,0 +1,38 @@
+.summary-card {
+  border-left: 4px solid transparent;
+  &.efectivo  { border-left-color: #198754; }
+  &.tarjeta   { border-left-color: #0d6efd; }
+  &.cheque    { border-left-color: #ffc107; }
+  &.vales     { border-left-color: #0dcaf0; }
+}
+
+.sales-table {
+  font-size: 0.82rem;
+
+  thead th {
+    white-space: nowrap;
+    font-size: 0.78rem;
+    padding: 6px 8px;
+  }
+
+  .concepts-cell {
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sale-header-row td {
+    background-color: #f1f5f9;
+  }
+
+  .concept-row td {
+    background-color: #fafbfc;
+    font-size: 0.78rem;
+  }
+
+  tfoot td {
+    font-size: 0.85rem;
+    padding: 6px 8px;
+  }
+}

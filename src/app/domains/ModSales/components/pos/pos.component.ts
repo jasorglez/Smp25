@@ -233,18 +233,22 @@ export class PosComponent implements OnInit {
       active: true,
     };
 
-    const concepts = this.rowData.map((row, i) => ({
-      localId: `${localId}-c${i}`,
-      localSaleId: localId,
-      id_product: row.idProduct,
-      quantity: row.quantity,
-      pu: row.pu,
-      total: Number(row.quantity) * Number(row.pu),
-      unit: row.unit,
-      boxnumber: row.boxNumber ?? 0,
-      unitnumber: row.unitNumber ?? 0,
-      active: true,
-    }));
+    const concepts = this.rowData.map((row, i) => {
+      const prod = this.allProducts.find(p => p.id === row.idProduct);
+      return {
+        localId: `${localId}-c${i}`,
+        localSaleId: localId,
+        id_product: row.idProduct,
+        description: prod?.description || prod?.insumo || '',
+        quantity: row.quantity,
+        pu: row.pu,
+        total: Number(row.quantity) * Number(row.pu),
+        unit: row.unit,
+        boxnumber: row.boxNumber ?? 0,
+        unitnumber: row.unitNumber ?? 0,
+        active: true,
+      };
+    });
 
     await this.posDb.savePendingSale(sale, concepts);
 
