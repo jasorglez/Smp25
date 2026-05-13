@@ -1753,10 +1753,6 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/cash-closing/cash-closing.component'
               ).then((s) => s.CashClosingComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: {
-              permissions: { master: 'sales', detailed: 'cash-closing' },
-            },
           },
           {
             path: 'returns',

@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.68 (11 Mayo 2026 22:15) POS: pestaña Corte de Caja siempre visible',
+  version: '5.69 (11 Mayo 2026 22:30) POS: quitar guard de permisos en ruta Corte de Caja',
 };
   
