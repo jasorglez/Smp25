@@ -42,6 +42,19 @@ export class PosComponent implements OnInit {
   credit = false;
   paymentType: 'EFECTIVO' | 'CHEQUE' | 'VALES' | 'TARJETA' = 'EFECTIVO';
 
+  // Modal cambio
+  showChangeModal = false;
+  pagoConAmount: number | null = null;
+
+  get cambio(): number {
+    if (this.pagoConAmount == null) return 0;
+    return Math.max(0, this.pagoConAmount - this._total);
+  }
+
+  get pagoInsuficiente(): boolean {
+    return this.pagoConAmount != null && this.pagoConAmount < this._total;
+  }
+
   // Grid
   rowData: any[] = [];
   selectedRowData: any = null;
@@ -175,7 +188,7 @@ export class PosComponent implements OnInit {
     this.calculateTotal();
   }
 
-  async printReceipt() {
+  printReceipt() {
     if (!this.session) return;
     if (this.rowData.length === 0) {
       alerts.basicAlert('Error', 'No hay productos en la venta.', 'error');
@@ -185,6 +198,22 @@ export class PosComponent implements OnInit {
       alerts.basicAlert('Error', 'Seleccione un cliente.', 'error');
       return;
     }
+    if (this.paymentType === 'EFECTIVO') {
+      this.pagoConAmount = null;
+      this.showChangeModal = true;
+      return;
+    }
+    this.executeReceipt();
+  }
+
+  async confirmChange() {
+    if (this.pagoInsuficiente) return;
+    this.showChangeModal = false;
+    await this.executeReceipt();
+  }
+
+  private async executeReceipt() {
+    if (!this.session) return;
 
     const consecutive = await this.posDb.incrementConsecutive();
     const numbernote = `${this.session.prefix}-${String(consecutive).padStart(4, '0')}`;
