@@ -48,9 +48,9 @@ export class CashClosingService {
 
   private get headers() { return this.trackingService.getHeaders(); }
 
-  getResumen(idCashRegister: number, since: string): Observable<CorteResumen[]> {
+  getResumen(idCashRegister: number, dateFrom: string, dateTo: string): Observable<CorteResumen[]> {
     return this.http.get<CorteResumen[]>(
-      `${environment.urlAdministration}/CorteDeCaja/resumen/${idCashRegister}?since=${encodeURIComponent(since)}`,
+      `${environment.urlAdministration}/CorteDeCaja/resumen/${idCashRegister}?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}`,
       { headers: this.headers }
     );
   }

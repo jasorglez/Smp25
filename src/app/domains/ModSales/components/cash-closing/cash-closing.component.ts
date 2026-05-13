@@ -2,75 +2,127 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { PosDbService, PosSession } from 'app/services/pos-db.service';
-import { CashClosingService, CorteResumen, MovimientoCaja, CorteDeCaja } from 'app/services/cash-closing.service';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { firstValueFrom } from 'rxjs';
+import { StoresService } from 'app/services/stores.service';
+import { CashRegistersService } from 'app/services/cash-registers.service';
+import { CashClosingService, CorteResumen, MovimientoCaja, CorteDeCaja } from 'app/services/cash-closing.service';
+import { SignalsService } from 'app/services/signals.service';
+import { PosDbService, PosSession } from 'app/services/pos-db.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-cash-closing',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, NgSelectModule],
   templateUrl: './cash-closing.component.html',
 })
 export class CashClosingComponent implements OnInit {
-  private posDb = inject(PosDbService);
-  private cashClosingService = inject(CashClosingService);
-  private router = inject(Router);
+  private storesService    = inject(StoresService);
+  private cashRegistersService = inject(CashRegistersService);
+  private cashClosingService   = inject(CashClosingService);
+  private signalsService   = inject(SignalsService);
+  private posDb            = inject(PosDbService);
+  private router           = inject(Router);
 
-  session: PosSession | null = null;
-  loading = false;
-  saving = false;
+  // Selectores supervisor
+  stores: any[]        = [];
+  cashRegisters: any[] = [];
+  selectedStoreId: number | null        = null;
+  selectedCashRegisterId: number | null = null;
+
+  // Fecha — por defecto hoy
+  dateFrom = this.todayStr();
+  dateTo   = this.todayStr();
+
+  // Sesión activa en este dispositivo (badge informativo)
+  activeSession: PosSession | null = null;
+
+  // Estado
+  loading  = false;
+  saving   = false;
+  consulted = false;
   errorMsg = '';
 
-  // Resumen de ventas por forma de pago
-  resumen: CorteResumen[] = [];
+  // Datos
+  resumen: CorteResumen[]    = [];
   movimientos: MovimientoCaja[] = [];
 
-  // Totales calculados
+  // Totales
   totalEfectivo = 0;
-  totalCheque = 0;
-  totalVales = 0;
-  totalTarjeta = 0;
-  totalVentas = 0;
-  numVentas = 0;
-  totalRetiros = 0;
-  apertura = 0;
+  totalCheque   = 0;
+  totalVales    = 0;
+  totalTarjeta  = 0;
+  totalVentas   = 0;
+  numVentas     = 0;
+  totalRetiros  = 0;
+  apertura      = 0;
 
-  // Nuevo retiro
+  // Retiro inline
   showRetiroForm = false;
-  nuevoRetiro = { monto: 0, descripcion: '' };
+  nuevoRetiro    = { monto: 0, descripcion: '' };
 
   // Corte
+  cajero       = '';
   observaciones = '';
-  cajero = '';
 
   get saldoFinal(): number {
     return this.apertura + this.totalEfectivo - this.totalRetiros;
   }
 
   async ngOnInit() {
-    this.session = await this.posDb.getSession();
-    if (!this.session) return;
-    await this.loadData();
+    this.activeSession = await this.posDb.getSession();
+    this.loadStores();
   }
 
-  private async loadData() {
-    if (!this.session) return;
-    this.loading = true;
+  private loadStores() {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    this.storesService.getStoreCompany(idCompany).subscribe({
+      next: (data: any[]) => {
+        this.stores = data.filter(s => s.active);
+        // Si hay sesión activa, preseleccionar su tienda y caja
+        if (this.activeSession) {
+          this.selectedStoreId = this.activeSession.idStore;
+          this.onStoreChange(this.stores.find(s => s.id === this.activeSession!.idStore));
+        }
+      },
+      error: () => this.errorMsg = 'No se pudieron cargar las tiendas.',
+    });
+  }
+
+  onStoreChange(store: any) {
+    this.selectedCashRegisterId = null;
+    this.cashRegisters = [];
+    this.consulted = false;
+    if (!store) return;
+    this.cashRegistersService.getCashRegisterList(store.id).subscribe({
+      next: (data: any[]) => {
+        this.cashRegisters = data.filter(c => c.active);
+        if (this.activeSession) {
+          this.selectedCashRegisterId = this.activeSession.idCashRegister;
+        }
+      },
+    });
+  }
+
+  async consultar() {
+    if (!this.selectedCashRegisterId) return;
+    this.loading  = true;
+    this.consulted = false;
     this.errorMsg = '';
     try {
       const [resumen, movimientos] = await Promise.all([
         firstValueFrom(this.cashClosingService.getResumen(
-          this.session.idCashRegister,
-          this.session.startedAt
+          this.selectedCashRegisterId,
+          this.dateFrom,
+          this.dateTo,
         )),
-        firstValueFrom(this.cashClosingService.getMovimientos(this.session.idCashRegister)),
+        firstValueFrom(this.cashClosingService.getMovimientos(this.selectedCashRegisterId)),
       ]);
-
-      this.resumen = resumen;
+      this.resumen     = resumen;
       this.movimientos = movimientos;
       this.calcularTotales();
+      this.consulted = true;
     } catch {
       this.errorMsg = 'No se pudieron cargar los datos. Verifica tu conexión.';
     } finally {
@@ -79,16 +131,12 @@ export class CashClosingComponent implements OnInit {
   }
 
   private calcularTotales() {
-    this.totalEfectivo = 0;
-    this.totalCheque = 0;
-    this.totalVales = 0;
-    this.totalTarjeta = 0;
-    this.totalVentas = 0;
-    this.numVentas = 0;
+    this.totalEfectivo = this.totalCheque = this.totalVales = this.totalTarjeta = 0;
+    this.totalVentas   = this.numVentas   = 0;
 
     for (const r of this.resumen) {
       this.totalVentas += r.total;
-      this.numVentas += r.numVentas;
+      this.numVentas   += r.numVentas;
       switch (r.paymentType) {
         case 'EFECTIVO': this.totalEfectivo += r.total; break;
         case 'CHEQUE':   this.totalCheque   += r.total; break;
@@ -107,19 +155,19 @@ export class CashClosingComponent implements OnInit {
   }
 
   async agregarRetiro() {
-    if (!this.session || !this.nuevoRetiro.monto || this.nuevoRetiro.monto <= 0) return;
+    if (!this.selectedCashRegisterId || !this.nuevoRetiro.monto || this.nuevoRetiro.monto <= 0) return;
     this.saving = true;
     try {
       await firstValueFrom(this.cashClosingService.saveMovimiento({
-        idCashRegister: this.session.idCashRegister,
+        idCashRegister: this.selectedCashRegisterId,
         tipo: 'RETIRO',
         monto: this.nuevoRetiro.monto,
         descripcion: this.nuevoRetiro.descripcion,
         cajero: this.cajero,
       }));
-      this.nuevoRetiro = { monto: 0, descripcion: '' };
+      this.nuevoRetiro   = { monto: 0, descripcion: '' };
       this.showRetiroForm = false;
-      await this.loadData();
+      await this.consultar();
     } catch {
       this.errorMsg = 'Error al registrar el retiro.';
     } finally {
@@ -128,11 +176,11 @@ export class CashClosingComponent implements OnInit {
   }
 
   async realizarCorte() {
-    if (!this.session) return;
+    if (!this.selectedCashRegisterId || !this.selectedStoreId) return;
 
     const result = await alerts.confirmAlert(
       '¿Realizar corte de caja?',
-      'Esta acción cerrará el turno activo. Asegúrate de haber sincronizado todas las ventas.',
+      'Se guardará el resumen del turno. Si hay sesión activa en este dispositivo también se cerrará.',
       'warning',
       'Sí, realizar corte',
     );
@@ -141,9 +189,9 @@ export class CashClosingComponent implements OnInit {
     this.saving = true;
     try {
       const corte: CorteDeCaja = {
-        idCashRegister: this.session.idCashRegister,
-        idStore: this.session.idStore,
-        fechaApertura: this.session.startedAt,
+        idCashRegister: this.selectedCashRegisterId,
+        idStore: this.selectedStoreId,
+        fechaApertura: this.dateFrom,
         apertura: this.apertura,
         totalEfectivo: this.totalEfectivo,
         totalCheque: this.totalCheque,
@@ -158,8 +206,16 @@ export class CashClosingComponent implements OnInit {
       };
 
       await firstValueFrom(this.cashClosingService.saveCorte(corte));
-      await this.posDb.clearSession();
-      this.router.navigate(['/procsales/before-pos']);
+
+      // Si la sesión activa es de esta misma caja, la cerramos
+      if (this.activeSession?.idCashRegister === this.selectedCashRegisterId) {
+        await this.posDb.clearSession();
+        this.activeSession = null;
+      }
+
+      alerts.basicAlert('Corte registrado', 'El corte de caja se guardó correctamente.', 'success');
+      this.consulted = false;
+      this.resumen   = [];
     } catch {
       this.errorMsg = 'Error al guardar el corte. Intenta de nuevo.';
     } finally {
@@ -171,31 +227,17 @@ export class CashClosingComponent implements OnInit {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
   }
 
-  formatDate(d: string) {
-    return new Date(d).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
-  }
-
   getPaymentLabel(type: string): string {
-    const labels: Record<string, string> = {
-      EFECTIVO: 'Efectivo',
-      CHEQUE: 'Cheque',
-      VALES: 'Vales/Cupones',
-      TARJETA: 'Tarjeta',
-    };
-    return labels[type] ?? type;
+    return ({ EFECTIVO: 'Efectivo', CHEQUE: 'Cheque', VALES: 'Vales/Cupones', TARJETA: 'Tarjeta' })[type] ?? type;
   }
 
   getPaymentIcon(type: string): string {
-    const icons: Record<string, string> = {
-      EFECTIVO: 'bi-cash-coin',
-      CHEQUE: 'bi-file-earmark-text',
-      VALES: 'bi-ticket-perforated',
-      TARJETA: 'bi-credit-card',
-    };
-    return icons[type] ?? 'bi-question';
+    return ({ EFECTIVO: 'bi-cash-coin', CHEQUE: 'bi-file-earmark-text', VALES: 'bi-ticket-perforated', TARJETA: 'bi-credit-card' })[type] ?? 'bi-question';
   }
 
-  volverAlPOS() {
-    this.router.navigate(['/procsales/pos']);
+  private todayStr(): string {
+    return new Date().toISOString().substring(0, 10);
   }
+
+  get retiros() { return this.movimientos.filter(m => m.tipo === 'RETIRO'); }
 }

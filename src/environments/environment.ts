@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.69 (11 Mayo 2026 22:30) POS: quitar guard de permisos en ruta Corte de Caja',
+  version: '5.70 (11 Mayo 2026 23:00) Corte de Caja: vista supervisor independiente de sesión, filtro por fecha',
 };
   
