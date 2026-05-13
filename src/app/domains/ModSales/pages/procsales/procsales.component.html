@@ -40,8 +40,8 @@
                <a class="nav-link green-tab" routerLink="products" routerLinkActive="active"><i
                      class="bi bi-pc-display-horizontal"></i> {{'products' | translate}} </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'reports')">
-               <a class="nav-link green-tab" routerLink="sales-reports" routerLinkActive="active"><i
+            <li class="nav-item">
+               <a class="nav-link green-tab" routerLink="reports" routerLinkActive="active"><i
                      class="bi bi-graph-up"></i> {{'sales_reports' | translate}} </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-withdrawal')">
