@@ -1796,8 +1796,6 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/sales-reports/sales-reports.component'
               ).then((s) => s.SalesReportsComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'reports' } },
           },
           {
             path: 'cash-withdrawal',

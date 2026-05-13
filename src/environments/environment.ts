@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.70 (11 Mayo 2026 23:00) Corte de Caja: vista supervisor independiente de sesión, filtro por fecha',
+  version: '5.71 (13 Mayo 2026 10:00) Sales Reports: reporte ventas por fechas con PDF y filtros por forma de pago',
 };
   

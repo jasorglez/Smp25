@@ -1,1 +1,233 @@
-<p>sales-reports works!</p>
+<div class="container-fluid py-3">
+
+  <!-- Filtros -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-end">
+
+        <!-- Fechas -->
+        <div class="col-auto">
+          <label class="form-label form-label-sm mb-1">Fecha inicio</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="dateFrom">
+        </div>
+        <div class="col-auto">
+          <label class="form-label form-label-sm mb-1">Fecha fin</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="dateTo">
+        </div>
+
+        <!-- Tipos de pago -->
+        <div class="col-auto">
+          <label class="form-label form-label-sm mb-1 d-block">Tipo de pago</label>
+          <div class="d-flex gap-3">
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="checkbox" id="chkEfectivo"
+                     [(ngModel)]="filterTypes.EFECTIVO">
+              <label class="form-check-label small" for="chkEfectivo">
+                <i class="bi bi-cash-coin text-success me-1"></i>Efectivo
+              </label>
+            </div>
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="checkbox" id="chkTarjeta"
+                     [(ngModel)]="filterTypes.TARJETA">
+              <label class="form-check-label small" for="chkTarjeta">
+                <i class="bi bi-credit-card text-primary me-1"></i>Tarjeta
+              </label>
+            </div>
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="checkbox" id="chkCheque"
+                     [(ngModel)]="filterTypes.CHEQUE">
+              <label class="form-check-label small" for="chkCheque">
+                <i class="bi bi-file-earmark-text text-warning me-1"></i>Cheque
+              </label>
+            </div>
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="checkbox" id="chkVales"
+                     [(ngModel)]="filterTypes.VALES">
+              <label class="form-check-label small" for="chkVales">
+                <i class="bi bi-ticket-perforated text-info me-1"></i>Vales
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detallado -->
+        <div class="col-auto">
+          <div class="form-check form-switch mb-0" style="margin-top:1.6rem">
+            <input class="form-check-input" type="checkbox" id="chkDetallado"
+                   [(ngModel)]="detallado">
+            <label class="form-check-label small" for="chkDetallado">Detallado</label>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="col-auto ms-auto d-flex gap-2" style="margin-top:1.4rem">
+          <button class="btn btn-sm btn-primary" (click)="consultar()" [disabled]="loading">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!loading" class="bi bi-search me-1"></i>
+            Consultar
+          </button>
+          <button class="btn btn-sm btn-danger" (click)="imprimirPDF()"
+                  [disabled]="!consulted || salesFiltered.length === 0">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Imprimir Reporte
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMsg" class="alert alert-danger py-2 small">
+    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ errorMsg }}
+  </div>
+
+  <!-- Resultados -->
+  <ng-container *ngIf="consulted">
+
+    <!-- Resumen por forma de pago -->
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-2 h-100 summary-card efectivo">
+          <div class="card-body py-1 px-2">
+            <i class="bi bi-cash-coin fs-4 text-success"></i>
+            <div class="small text-muted mt-1">Efectivo</div>
+            <div class="fw-bold">{{ formatCurrency(totalEfectivo) }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-2 h-100 summary-card tarjeta">
+          <div class="card-body py-1 px-2">
+            <i class="bi bi-credit-card fs-4 text-primary"></i>
+            <div class="small text-muted mt-1">Tarjeta</div>
+            <div class="fw-bold">{{ formatCurrency(totalTarjeta) }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-2 h-100 summary-card cheque">
+          <div class="card-body py-1 px-2">
+            <i class="bi bi-file-earmark-text fs-4 text-warning"></i>
+            <div class="small text-muted mt-1">Cheque</div>
+            <div class="fw-bold">{{ formatCurrency(totalCheque) }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-2 h-100 summary-card vales">
+          <div class="card-body py-1 px-2">
+            <i class="bi bi-ticket-perforated fs-4 text-info"></i>
+            <div class="small text-muted mt-1">Vales</div>
+            <div class="fw-bold">{{ formatCurrency(totalVales) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de ventas -->
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <span class="fw-semibold small">
+          <i class="bi bi-receipt me-1"></i>
+          Ventas del período
+        </span>
+        <span class="badge bg-secondary">{{ salesFiltered.length }} tickets</span>
+      </div>
+      <div class="card-body p-0">
+
+        <!-- Sin resultados -->
+        <div *ngIf="salesFiltered.length === 0" class="text-center text-muted py-5">
+          <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+          No hay ventas para los filtros seleccionados
+        </div>
+
+        <!-- Tabla -->
+        <div *ngIf="salesFiltered.length > 0" class="table-responsive">
+          <table class="table table-sm table-hover mb-0 sales-table">
+            <thead class="table-dark">
+              <tr>
+                <th>Fecha</th>
+                <th>No. Ticket</th>
+                <th>Artículo</th>
+                <th>Forma Pago</th>
+                <th class="text-end">Cant.</th>
+                <th class="text-end">Precio</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let sale of salesFiltered">
+
+                <!-- Modo normal: una fila por venta -->
+                <ng-container *ngIf="!detallado">
+                  <tr>
+                    <td class="text-nowrap">{{ sale.date | date:'dd/MM/yyyy' }}</td>
+                    <td class="text-nowrap fw-semibold">{{ sale.numberNote }}</td>
+                    <td class="concepts-cell">{{ conceptsDesc(sale) }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="payBadgeClass(sale.paymentType)">
+                        <i class="bi me-1" [ngClass]="payIcon(sale.paymentType)"></i>
+                        {{ payLabel(sale.paymentType) }}
+                      </span>
+                    </td>
+                    <td class="text-end">{{ conceptsQty(sale) }}</td>
+                    <td class="text-end small text-muted">
+                      {{ sale.concepts.length > 1 ? '—' : formatCurrency(sale.concepts[0]?.pu ?? 0) }}
+                    </td>
+                    <td class="text-end fw-bold">{{ formatCurrency(sale.amount) }}</td>
+                  </tr>
+                </ng-container>
+
+                <!-- Modo detallado: cabecera + subfilas de conceptos -->
+                <ng-container *ngIf="detallado">
+                  <tr class="sale-header-row">
+                    <td class="text-nowrap fw-semibold">{{ sale.date | date:'dd/MM/yyyy' }}</td>
+                    <td class="text-nowrap fw-semibold">{{ sale.numberNote }}</td>
+                    <td></td>
+                    <td>
+                      <span class="badge" [ngClass]="payBadgeClass(sale.paymentType)">
+                        <i class="bi me-1" [ngClass]="payIcon(sale.paymentType)"></i>
+                        {{ payLabel(sale.paymentType) }}
+                      </span>
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-end fw-bold">{{ formatCurrency(sale.amount) }}</td>
+                  </tr>
+                  <tr *ngFor="let c of sale.concepts" class="concept-row">
+                    <td></td>
+                    <td></td>
+                    <td class="ps-4 small text-muted">
+                      <i class="bi bi-arrow-return-right me-1"></i>
+                      {{ c.description || '#' + c.idProduct }}
+                    </td>
+                    <td></td>
+                    <td class="text-end small">{{ c.quantity }}</td>
+                    <td class="text-end small">{{ formatCurrency(c.pu) }}</td>
+                    <td class="text-end small">{{ formatCurrency(c.total) }}</td>
+                  </tr>
+                </ng-container>
+
+              </ng-container>
+            </tbody>
+            <tfoot>
+              <tr class="table-primary fw-bold">
+                <td colspan="6" class="text-end">TOTAL</td>
+                <td class="text-end">{{ formatCurrency(totalVentas) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- Estado inicial -->
+  <div *ngIf="!consulted && !loading" class="text-center text-muted py-5">
+    <i class="bi bi-bar-chart-line fs-1 d-block mb-2"></i>
+    <p class="mb-0">Selecciona un rango de fechas y presiona <strong>Consultar</strong></p>
+  </div>
+
+</div>
