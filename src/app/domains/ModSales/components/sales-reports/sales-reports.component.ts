@@ -115,7 +115,7 @@ export class SalesReportsComponent implements OnInit {
           bodyRows.push([
             '',
             '',
-            { text: c.description || `#${c.idProduct}`, style: 'conceptRow' },
+            { text: c.description || (c.idProduct ? `#${c.idProduct}` : `${fmt(c.pu)} ×${c.quantity}`), style: 'conceptRow' },
             '',
             { text: String(c.quantity),  style: 'conceptRow', alignment: 'right' },
             { text: fmt(c.pu),           style: 'conceptRow', alignment: 'right' },
@@ -125,7 +125,9 @@ export class SalesReportsComponent implements OnInit {
       }
     } else {
       for (const sale of rows) {
-        const desc = sale.concepts.map(c => c.description || `#${c.idProduct}`).join(', ');
+        const conceptLabel = (c: ConceptReport) =>
+          c.description || (c.idProduct ? `#${c.idProduct}` : `${fmt(c.pu)} ×${c.quantity}`);
+        const desc = sale.concepts.map(conceptLabel).join(', ');
         bodyRows.push([
           fmtDate(sale.date),
           sale.numberNote,
@@ -239,7 +241,12 @@ export class SalesReportsComponent implements OnInit {
   }
 
   conceptsDesc(sale: SaleReport): string {
-    return sale.concepts.map(c => c.description || `#${c.idProduct}`).join(', ');
+    if (!sale.concepts?.length) return '—';
+    return sale.concepts.map(c => {
+      if (c.description) return c.description;
+      if (c.idProduct) return `#${c.idProduct}`;
+      return `${this.formatCurrency(c.pu)} ×${c.quantity}`;
+    }).join(' | ');
   }
 
   conceptsQty(sale: SaleReport): number {
