@@ -790,7 +790,15 @@ export class ExpenditureComponent implements OnDestroy {
             'Pagada'
           ]
         }
-      }
+      },
+      {
+        field: 'afectaCorte',
+        headerName: '¿Afecta Corte?',
+        editable: true,
+        width: 120,
+        cellDataType: 'boolean',
+        cellStyle: (params) => params.value ? { backgroundColor: '#fff3cd' } : null,
+      },
     ];
 
     return this._colMaster;
@@ -995,6 +1003,7 @@ export class ExpenditureComponent implements OnDestroy {
       modifiedBy: null,
       modifiedAt: new Date().toISOString(),
       status: "Pagada",
+      afectaCorte: false,
       active: true,
       __isNew: true,
       visible: true,

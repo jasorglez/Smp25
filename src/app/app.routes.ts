@@ -1870,6 +1870,13 @@ export const routes: Routes = [
                 './domains/ModSales/components/loyalty/loyalty.component'
               ).then((l) => l.LoyaltyComponent),
           },
+          {
+            path: 'egresos',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/expenditure/egreso-shell.component'
+              ).then((e) => e.EgresoShellComponent),
+          },
         ],
       },
       {

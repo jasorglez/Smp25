@@ -10,6 +10,16 @@ export interface CorteResumen {
   total: number;
 }
 
+export interface ResumenPorCaja {
+  idStore: number;
+  storeName: string;
+  idCashRegister: number;
+  cashRegisterDesc: string;
+  paymentType: string;
+  numVentas: number;
+  total: number;
+}
+
 export interface MovimientoCaja {
   id?: number;
   idCashRegister: number;
@@ -81,6 +91,13 @@ export class CashClosingService {
   getHistorial(idCashRegister: number): Observable<CorteDeCaja[]> {
     return this.http.get<CorteDeCaja[]>(
       `${environment.urlAdministration}/CorteDeCaja/historial/${idCashRegister}`,
+      { headers: this.headers }
+    );
+  }
+
+  getResumenPorEmpresa(idCompany: number, dateFrom: string, dateTo: string): Observable<ResumenPorCaja[]> {
+    return this.http.get<ResumenPorCaja[]>(
+      `${environment.urlAdministration}/CorteDeCaja/resumen-empresa/${idCompany}?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}`,
       { headers: this.headers }
     );
   }

@@ -1,4 +1,18 @@
 import { Component, OnInit, inject } from '@angular/core';
+
+interface CajaGroup {
+  idCashRegister: number;
+  desc: string;
+  rows: ResumenPorCaja[];
+  subtotal: number;
+}
+
+interface StoreGroup {
+  idStore: number;
+  storeName: string;
+  cajas: CajaGroup[];
+  storeTotal: number;
+}
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -6,7 +20,8 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { firstValueFrom } from 'rxjs';
 import { StoresService } from 'app/services/stores.service';
 import { CashRegistersService } from 'app/services/cash-registers.service';
-import { CashClosingService, CorteResumen, MovimientoCaja, CorteDeCaja } from 'app/services/cash-closing.service';
+import { CashClosingService, CorteResumen, MovimientoCaja, CorteDeCaja, ResumenPorCaja } from 'app/services/cash-closing.service';
+import { forkJoin } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
 import { PosDbService, PosSession } from 'app/services/pos-db.service';
 import { alerts } from 'app/helpers/alerts';
@@ -18,7 +33,7 @@ import { alerts } from 'app/helpers/alerts';
   templateUrl: './cash-closing.component.html',
 })
 export class CashClosingComponent implements OnInit {
-  private storesService    = inject(StoresService);
+  private storesService        = inject(StoresService);
   private cashRegistersService = inject(CashRegistersService);
   private cashClosingService   = inject(CashClosingService);
   private signalsService   = inject(SignalsService);
@@ -65,6 +80,14 @@ export class CashClosingComponent implements OnInit {
   // Corte
   cajero       = '';
   observaciones = '';
+
+  // Vista consolidada por empresa
+  activeTab: 'corte' | 'general' = 'general';
+  resumenEmpresa: ResumenPorCaja[] = [];
+  loadingGeneral = false;
+  consultedGeneral = false;
+  dateFromGeneral = this.todayStr();
+  dateToGeneral   = this.todayStr();
 
   get saldoFinal(): number {
     return this.apertura + this.totalEfectivo - this.totalRetiros;
@@ -222,6 +245,88 @@ export class CashClosingComponent implements OnInit {
       this.saving = false;
     }
   }
+
+  async consultarGeneral() {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    this.loadingGeneral  = true;
+    this.consultedGeneral = false;
+    this.errorMsg = '';
+    try {
+      // 1. Tiendas y cajas de la empresa (endpoints existentes)
+      const [allStores, allCashRegisters] = await Promise.all([
+        firstValueFrom(this.storesService.getStoreCompany(idCompany)),
+        firstValueFrom(this.cashRegistersService.getCashRegisterByCompany(idCompany)),
+      ]);
+
+      const stores: any[]        = (allStores        || []).filter((s: any) => s.active);
+      // La vista CashRegisterXBranchs no tiene campo active — no filtrar por él
+      const cashRegisters: any[] = (allCashRegisters || []);
+
+      if (cashRegisters.length === 0) {
+        this.resumenEmpresa   = [];
+        this.consultedGeneral = true;
+        return;
+      }
+
+      // 2. Resumen por caja en paralelo (un call por caja, todos a la vez)
+      // El campo ID de la caja es idCaja (no id) — viene de la vista CashRegisterXBranchs
+      const resumenCalls = cashRegisters.map((cr: any) =>
+        this.cashClosingService.getResumen(cr.idCaja, this.dateFromGeneral, this.dateToGeneral)
+      );
+
+      const resultados = await firstValueFrom(forkJoin(resumenCalls));
+
+      // 3. Aplanar en ResumenPorCaja[]
+      const rows: ResumenPorCaja[] = [];
+      cashRegisters.forEach((cr: any, i: number) => {
+        const resumenCaja: CorteResumen[] = (resultados[i] as CorteResumen[]) || [];
+        for (const r of resumenCaja) {
+          rows.push({
+            idStore:          cr.idStore               ?? 0,
+            storeName:        cr.description           ?? `Tienda ${cr.idStore}`,
+            idCashRegister:   cr.idCaja                ?? 0,
+            cashRegisterDesc: cr.descCashRegister      ?? `Caja ${cr.idCaja}`,
+            paymentType:      r.paymentType,
+            numVentas:        r.numVentas,
+            total:            r.total,
+          });
+        }
+      });
+
+      this.resumenEmpresa   = rows;
+      this.consultedGeneral = true;
+    } catch {
+      this.errorMsg = 'No se pudo cargar el resumen. Verifica tu conexión.';
+    } finally {
+      this.loadingGeneral = false;
+    }
+  }
+
+  // Agrupa resumenEmpresa por tienda para el template
+  get storeGroups(): StoreGroup[] {
+    const map = new Map<number, { idStore: number; storeName: string; cajas: Map<number, CajaGroup> }>();
+    for (const r of this.resumenEmpresa) {
+      if (!map.has(r.idStore)) {
+        map.set(r.idStore, { idStore: r.idStore, storeName: r.storeName, cajas: new Map() });
+      }
+      const store = map.get(r.idStore)!;
+      if (!store.cajas.has(r.idCashRegister)) {
+        store.cajas.set(r.idCashRegister, { idCashRegister: r.idCashRegister, desc: r.cashRegisterDesc, rows: [], subtotal: 0 });
+      }
+      const caja = store.cajas.get(r.idCashRegister)!;
+      caja.rows.push(r);
+      caja.subtotal += r.total;
+    }
+    return Array.from(map.values()).map(s => {
+      const cajas = Array.from(s.cajas.values());
+      const storeTotal = cajas.reduce((sum, c) => sum + c.subtotal, 0);
+      return { ...s, cajas, storeTotal };
+    });
+  }
+
+  get grandTotal(): number { return this.resumenEmpresa.reduce((s, r) => s + r.total, 0); }
+  get grandTickets(): number { return this.resumenEmpresa.reduce((s, r) => s + r.numVentas, 0); }
 
   formatCurrency(v: number) {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
