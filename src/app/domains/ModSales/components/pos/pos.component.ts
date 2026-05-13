@@ -42,7 +42,7 @@ export class PosComponent implements OnInit {
   credit = false;
   paymentType: 'EFECTIVO' | 'CHEQUE' | 'VALES' | 'TARJETA' = 'EFECTIVO';
 
-  // Modal cambio
+  // Modal cambio (Efectivo)
   showChangeModal = false;
   pagoConAmount: number | null = null;
 
@@ -53,6 +53,31 @@ export class PosComponent implements OnInit {
 
   get pagoInsuficiente(): boolean {
     return this.pagoConAmount != null && this.pagoConAmount < this._total;
+  }
+
+  // Modal pago no-efectivo (Tarjeta / Cheque / Vales)
+  showPaymentModal  = false;
+  paymentReference  = '';
+  paymentAmount: number | null = null;
+
+  get paymentInsuficiente(): boolean {
+    return this.paymentAmount != null && this.paymentAmount < this._total;
+  }
+
+  get paymentModalTitle(): string {
+    return { TARJETA: 'Cobro con Tarjeta', CHEQUE: 'Cobro con Cheque', VALES: 'Cobro con Vale' }[this.paymentType] ?? 'Cobro';
+  }
+
+  get paymentModalIcon(): string {
+    return { TARJETA: 'bi-credit-card text-primary', CHEQUE: 'bi-file-earmark-text text-warning', VALES: 'bi-ticket-perforated text-info' }[this.paymentType] ?? 'bi-cash';
+  }
+
+  get paymentReferenceLabel(): string {
+    return { TARJETA: 'Últimos 4 dígitos / Referencia', CHEQUE: 'Número de cheque', VALES: 'Número / Folio de vale' }[this.paymentType] ?? 'Referencia';
+  }
+
+  get paymentReferencePlaceholder(): string {
+    return { TARJETA: '**** **** **** 1234', CHEQUE: 'Ej. 001234', VALES: 'Ej. VALE-0001' }[this.paymentType] ?? '';
   }
 
   // Grid
@@ -203,12 +228,24 @@ export class PosComponent implements OnInit {
       this.showChangeModal = true;
       return;
     }
+    if (this.paymentType !== 'EFECTIVO') {
+      this.paymentReference = '';
+      this.paymentAmount    = this._total;
+      this.showPaymentModal = true;
+      return;
+    }
     this.executeReceipt();
   }
 
   async confirmChange() {
     if (this.pagoInsuficiente) return;
     this.showChangeModal = false;
+    await this.executeReceipt();
+  }
+
+  async confirmPayment() {
+    if (this.paymentInsuficiente) return;
+    this.showPaymentModal = false;
     await this.executeReceipt();
   }
 
@@ -257,11 +294,14 @@ export class PosComponent implements OnInit {
 
     this.posTicket.print(
       sale,
-      concepts.map(c => ({ idProduct: c.id_product, quantity: c.quantity, pu: c.pu })),
+      concepts.map(c => ({ idProduct: c.id_product, description: c.description, quantity: c.quantity, pu: c.pu })),
       this.allProducts,
       clientName,
       this.session.storeName,
       this.session.cashRegisterDesc,
+      this.paymentType,
+      this.paymentReference || undefined,
+      this.paymentType === 'EFECTIVO' ? (this.pagoConAmount ?? undefined) : undefined,
     );
 
     this.pendingCount = await this.posDb.countPendingSales();

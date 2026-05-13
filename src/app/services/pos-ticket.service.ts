@@ -17,12 +17,16 @@ export class PosTicketService {
       amount: number;
       credit: boolean;
       lector: boolean;
+      payment_type?: string;
     },
-    concepts: { idProduct: number; quantity: number; pu: number }[],
+    concepts: { idProduct: number; description?: string; quantity: number; pu: number }[],
     products: any[],
     clientName: string,
     storeName: string,
     cashRegisterDesc: string,
+    paymentType?: string,
+    paymentReference?: string,
+    pagoConAmount?: number,
   ): void {
     const fmtMXN = (n: number) =>
       new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
@@ -38,9 +42,16 @@ export class PosTicketService {
       margin: [0, 3, 0, 3],
     });
 
+    const payLabel: Record<string, string> = {
+      EFECTIVO: 'Efectivo',
+      TARJETA:  'Tarjeta',
+      CHEQUE:   'Cheque',
+      VALES:    'Vale',
+    };
+
     const rows = concepts.map(c => {
       const prod = products.find(p => p.id === c.idProduct);
-      const name = prod?.description || prod?.insumo || `Prod. ${c.idProduct}`;
+      const name = c.description || prod?.description || prod?.insumo || (c.idProduct ? `Prod. ${c.idProduct}` : 'Producto');
       return [
         { text: name, fontSize: 7 },
         { text: String(c.quantity), alignment: 'center', fontSize: 7 },
@@ -48,6 +59,29 @@ export class PosTicketService {
         { text: fmtMXN(c.quantity * c.pu), alignment: 'right', fontSize: 7 },
       ];
     });
+
+    const pt = paymentType ?? sale.payment_type ?? 'EFECTIVO';
+    const paymentLines: any[] = [];
+
+    if (paymentReference) {
+      const refLabel: Record<string, string> = {
+        TARJETA: 'Ref. tarjeta',
+        CHEQUE:  'No. cheque',
+        VALES:   'No. vale',
+      };
+      paymentLines.push({
+        text: `${refLabel[pt] ?? 'Referencia'}: ${paymentReference}`,
+        fontSize: 7,
+        alignment: 'right',
+        margin: [0, 1, 0, 0],
+      });
+    }
+
+    if (pt === 'EFECTIVO' && pagoConAmount != null) {
+      const cambio = Math.max(0, pagoConAmount - sale.amount);
+      paymentLines.push({ text: `Pago:   ${fmtMXN(pagoConAmount)}`, fontSize: 7, alignment: 'right', margin: [0, 1, 0, 0] });
+      paymentLines.push({ text: `Cambio: ${fmtMXN(cambio)}`, fontSize: 7, alignment: 'right', bold: true, margin: [0, 1, 0, 0] });
+    }
 
     const docDef: any = {
       pageSize: { width: TICKET_WIDTH, height: 'auto' },
@@ -77,18 +111,15 @@ export class PosTicketService {
           margin: [0, 0, 0, 2],
         },
         line(),
+        { text: `TOTAL: ${fmtMXN(sale.amount)}`, bold: true, fontSize: 11, alignment: 'right' },
         {
-          text: `TOTAL: ${fmtMXN(sale.amount)}`,
-          bold: true,
-          fontSize: 11,
-          alignment: 'right',
-        },
-        {
-          text: sale.credit ? 'Forma de pago: Crédito' : 'Forma de pago: Contado',
+          text: `Forma de pago: ${payLabel[pt] ?? pt}`,
           fontSize: 7,
           alignment: 'right',
-          margin: [0, 2, 0, 6],
+          margin: [0, 2, 0, 0],
         },
+        ...paymentLines,
+        { text: '', margin: [0, 4, 0, 0] },
         { text: '¡Gracias por su compra!', alignment: 'center', italics: true, fontSize: 7 },
       ],
     };
