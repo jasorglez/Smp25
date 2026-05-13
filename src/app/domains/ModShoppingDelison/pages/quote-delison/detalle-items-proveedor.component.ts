@@ -424,6 +424,9 @@ export class DetalleItemsProveedorComponent {
         const created: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
         row.proveedorXTablaId = created?.id || 0;
         row.proveedorXTablaObj = created || null;
+        await lastValueFrom(
+          this.ocandreqsService.patchProveedorXTablaCampo7(row.idSupplie, this.selectedProviderId, true)
+        ).catch(() => {});
       } catch (error) { console.error(`Error creando asignación para ${row.articulo}`, error); }
     }
     this.rowsMissingProvider = [];
@@ -457,9 +460,6 @@ export class DetalleItemsProveedorComponent {
       this.setArticulosPedimentoLocked(true);
       if (this.rowsMissingProvider.length > 0) await this.createMissingProviderAssignments();
 
-      // ✅ Actualizar porAutorizar a true para artículos "Nuevo" con proveedor asignado
-      await this.updatePorAutorizarForNewArticles();
-
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
       const providerName = this.getSelectedProviderName();
@@ -479,56 +479,6 @@ export class DetalleItemsProveedorComponent {
       const hasAuthorized = this.rowData.some(row => this.AUTHORIZED_TYPES.includes(row.typeOC));
       if (hasAuthorized) { this.savingChanges = false; await this.generateOC(); }
     } catch (error) { alert('Error al guardar.'); } finally { this.savingChanges = false; }
-  }
-
-  private async updatePorAutorizarForNewArticles(): Promise<void> {
-    try {
-      const newArticleItems = this.rowData.filter(item => (item.recurrent || '').toLowerCase() === 'nuevo');
-      if (newArticleItems.length === 0) return;
-
-      const idRoot = this.signalsService.getRootSelectedBySidebar()();
-
-      for (const item of newArticleItems) {
-        const materialId = item.idSupplie;
-        if (!materialId || materialId === 0) continue;
-
-        const materialData = {
-          idCompany: idRoot,
-          idBranch: null,
-          idCustomer: null,
-          insumo: item.articulo || '',
-          articulo: item.articulo || '',
-          idCategory: null,
-          idFamilia: null,
-          idSubfamilia: null,
-          idMedida: null,
-          idUbication: null,
-          description: item.articulo || '',
-          merma: 0,
-          fecha: new Date().toISOString(),
-          aplicaResg: false,
-          costoMN: 0,
-          costoDLL: 0,
-          ventaMN: 0,
-          ventaDLL: 0,
-          stockMin: 0,
-          stockMax: 0,
-          picture: '',
-          typeMaterial: 'CONSUMABLE',
-          vigente: true,
-          active: true,
-          porAutorizar: true
-        };
-
-        await lastValueFrom(
-          this.materialsService.updateMaterial(materialId.toString(), materialData)
-        ).catch(() => {
-          // Error silencioso
-        });
-      }
-    } catch (err) {
-      // No bloqueamos el flujo si falla
-    }
   }
 
   private async saveCotizOrOC(type: 'COTIZ' | 'OC'): Promise<string> {
@@ -574,6 +524,11 @@ export class DetalleItemsProveedorComponent {
       } catch (err) {
         console.error('❌ saveCotizOrOC: Error guardando item:', err);
       }
+    }
+
+    // Refrescar proveedorXTablaObj desde BD antes del PUT para preservar active/campo7 ya modificados
+    if (this.selectedProviderId && type === 'COTIZ') {
+      await this.syncProveedorXTablaFields(this.selectedProviderId);
     }
 
     // Sincronizar codigoExterno (campo11), compraMinima (minima_compra) y costoUnitario (campo9) → proveedorxtablas en un solo PUT

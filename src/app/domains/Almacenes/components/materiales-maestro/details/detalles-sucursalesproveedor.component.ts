@@ -89,7 +89,21 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     this.params = params;
     this.signalsService.setIdProveedor(params.data.id);
     this.loadCatalogData();
-    this.providerName = params.data.providerName || 'N/A';
+
+    // Obtener nombre del proveedor: primero desde providerName, sino buscar en contexto
+    let displayName = params.data.providerName || 'N/A';
+    if ((!params.data.providerName || params.data.providerName === '') && params.data.idTabla) {
+      const providers = params.context?.providers || [];
+      const filteredProviders = params.context?.filteredProviders || [];
+      const provider = filteredProviders.find((p: any) => p.id === params.data.idTabla)
+        || providers.find((p: any) => p.id === params.data.idTabla);
+
+      if (provider) {
+        displayName = provider.name || provider.description || provider.nameContact || provider.company || 'N/A';
+      }
+    }
+    this.providerName = displayName;
+
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     this.loadAllBranches().then(() => {

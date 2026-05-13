@@ -204,6 +204,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
         this.materialsService.getMaterialsxview(this.idRoot).subscribe({
           next: (data) => {
+            this.allMaterialsData = data; // snapshot del estado original en BD
             this.rowData = data
               .slice()
               .sort((a, b) => {
@@ -1191,8 +1192,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
       // Actualizar registros modificados
       for (const modifiedRow of modifiedRows) {
+        const snapshot = this.allMaterialsData.find((m: any) => m.id === modifiedRow.id);
+        const previousActive = snapshot?.active;
+        const activeChanged = previousActive !== undefined && !!previousActive !== !!modifiedRow.active;
+        console.log(`🔍 cascade check id=${modifiedRow.id} previousActive=${previousActive} newActive=${modifiedRow.active} activeChanged=${activeChanged}`);
         const materialData = this.prepareMaterialData(modifiedRow);
         await lastValueFrom(this.materialsService.updateMaterial(modifiedRow.id.toString(), materialData));
+        if (activeChanged) {
+          console.log(`🚀 Llamando cascadeMaterialActive id=${modifiedRow.id} activate=${!!modifiedRow.active}`);
+          await lastValueFrom(this.providersService.cascadeMaterialActive(modifiedRow.id, !!modifiedRow.active))
+            .catch(e => console.warn(`⚠️ No se pudo propagar active al nivel 2/3 para material ${modifiedRow.id}:`, e));
+        }
       }
 
       alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
@@ -1255,7 +1265,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       folioOcorReq: '',
       vigente: row.vigente === true || row.vigente === 1 ? true : false,
       active: row.active ?? true,
-      porAutorizar: false
+      porAutorizar: !!(row.porAutorizar ?? row.autorizacion ?? row.pendingAuthorization ?? false)
     };
   }
 

@@ -244,7 +244,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   }
 
   // Helper para formatear nombre de proveedor sin "undefined"
-  private getProviderDisplayName(provider: any): string {
+  getProviderDisplayName(provider: any): string {
     if (!provider) return '';
     return provider.name || provider.description || provider.nameContact || provider.company || '';
   }
@@ -678,7 +678,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     // Pasar el contexto del componente padre (MaterialesMaestroComponent) al siguiente nivel de detalle
     this.proveedorGridOptions.context = {
       ...params.context,
-      componentParent: this // Ahora este componente es el padre del detalle de sucursal
+      componentParent: this, // Ahora este componente es el padre del detalle de sucursal
+      providers: this.providers, // Pasar lista de proveedores para resolver nombres en detalles-sucursalesproveedor
+      filteredProviders: this.filteredProviders // Pasar proveedores filtrados también
     };
   }
 
@@ -858,6 +860,19 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       this.params.context.MATERIAL.load(this.materialId, 'MATERIAL', async (data: any) => {
         this.proveedorRowData = data;
         await this.fetchMissingProviders();
+
+        // Enriquecer con nombres de proveedores (para mostrar en detalles-sucursalesproveedor)
+        this.proveedorRowData = this.proveedorRowData.map((row: any) => {
+          if (!row.providerName && row.idTabla) {
+            const provider = this.filteredProviders?.find((p: any) => p.id === row.idTabla)
+              || this.providers?.find((p: any) => p.id === row.idTabla);
+            if (provider) {
+              row.providerName = this.getProviderDisplayName(provider);
+            }
+          }
+          return row;
+        });
+
         this.sortProveedorRowData();
         void this.loadSucursalCounts().then(() => {
           setTimeout(() => this.autosizeProveedorColumns(), 0);
@@ -1036,12 +1051,13 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
           ).catch(e => console.warn(`⚠️ No se pudo sincronizar observation para ${row.campo1}:`, e));
         }
 
-        // Actualizar campo7 (por autorizar) a true para proveedores nuevos
-        for (const prov of newProvidersToAuthorize) {
-          firstValueFrom(
-            this.ocAndReqsService.patchProveedorXTablaCampo7(prov.idSupplie, prov.idProveedor, true)
-          ).catch(e => console.warn(`⚠️ No se pudo marcar "Por autorizar" para material ${prov.idSupplie} proveedor ${prov.idProveedor}:`, e));
-        }
+        // DESHABILITADO (2026-05-12): En esta tabla, proveedores nuevos NO deben marcarse como "por autorizar"
+        // Solo deben quedar con campo7 = false al guardar. Esta funcionalidad se usa en otros contextos.
+        // for (const prov of newProvidersToAuthorize) {
+        //   firstValueFrom(
+        //     this.ocAndReqsService.patchProveedorXTablaCampo7(prov.idSupplie, prov.idProveedor, true)
+        //   ).catch(e => console.warn(`⚠️ No se pudo marcar "Por autorizar" para material ${prov.idSupplie} proveedor ${prov.idProveedor}:`, e));
+        // }
 
         // Sincronizar vigente de sucursales al mismo estado que el proveedor-material
         for (const { id: rowId, active: newActive } of rowsToSyncSucursales) {

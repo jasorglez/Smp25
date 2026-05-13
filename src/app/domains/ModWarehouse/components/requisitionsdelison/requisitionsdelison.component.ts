@@ -367,22 +367,38 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       // Refrescar el grid
       if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', []);
-        setTimeout(() => {
-          this.gridApi.setGridOption('rowData', this.rowData);
-          this.gridApi.refreshCells({ force: true });
-          this.gridApi.ensureIndexVisible(0);
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.refreshCells({ force: true });
 
-          // ✅ Reabrir la fila que estaba expandida
-          if (expandedRequisitionId) {
-            setTimeout(() => {
-              const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
-              if (nodeToExpand) {
-                nodeToExpand.setExpanded(true);
-              }
-            }, 100);
-          }
-        }, 0);
+        // ✅ Reabrir la fila que estaba expandida y aplicar restricciones de altura
+        if (expandedRequisitionId) {
+          setTimeout(() => {
+            const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
+            if (nodeToExpand) {
+              // Replicar el mismo flujo que onRowClicked()
+              // 1. Ocultar todas las demás filas (altura 0)
+              this.gridApi.forEachNode((otherNode: any) => {
+                if (otherNode.id !== String(expandedRequisitionId)) {
+                  otherNode.setRowHeight(0);
+                }
+              });
+
+              // 2. Aplicar cambios de altura
+              this.gridApi.onRowHeightChanged();
+
+              // 3. Expandir la fila
+              nodeToExpand.setExpanded(true);
+              nodeToExpand.data.detailType = 'items';
+              nodeToExpand.data.isExpanded = true;
+              this.expandedRowId = nodeToExpand.id;
+
+              // 4. Redraw
+              this.gridApi.redrawRows();
+            }
+          }, 50);
+        } else {
+          this.gridApi.ensureIndexVisible(0);
+        }
       }
 
       // Cargar flags de typeOC desde COTIZs vinculadas
@@ -462,22 +478,38 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // Refrescar el grid si ya existe
         if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', []);
-          setTimeout(() => {
-            this.gridApi.setGridOption('rowData', this.rowData);
-            this.gridApi.refreshCells({ force: true });
-            this.gridApi.ensureIndexVisible(0);
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.refreshCells({ force: true });
 
-            // ✅ Reabrir la fila que estaba expandida
-            if (expandedRequisitionId) {
-              setTimeout(() => {
-                const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
-                if (nodeToExpand) {
-                  nodeToExpand.setExpanded(true);
-                }
-              }, 100);
-            }
-          }, 0);
+          // ✅ Reabrir la fila que estaba expandida y aplicar restricciones de altura
+          if (expandedRequisitionId) {
+            setTimeout(() => {
+              const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
+              if (nodeToExpand) {
+                // Replicar el mismo flujo que onRowClicked()
+                // 1. Ocultar todas las demás filas (altura 0)
+                this.gridApi.forEachNode((otherNode: any) => {
+                  if (otherNode.id !== String(expandedRequisitionId)) {
+                    otherNode.setRowHeight(0);
+                  }
+                });
+
+                // 2. Aplicar cambios de altura
+                this.gridApi.onRowHeightChanged();
+
+                // 3. Expandir la fila
+                nodeToExpand.setExpanded(true);
+                nodeToExpand.data.detailType = 'items';
+                nodeToExpand.data.isExpanded = true;
+                this.expandedRowId = nodeToExpand.id;
+
+                // 4. Redraw
+                this.gridApi.redrawRows();
+              }
+            }, 50);
+          } else {
+            this.gridApi.ensureIndexVisible(0);
+          }
         }
 
         // Cargar flags de typeOC desde COTIZs vinculadas

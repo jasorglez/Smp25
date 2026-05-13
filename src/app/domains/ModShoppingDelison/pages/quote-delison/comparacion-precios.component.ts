@@ -990,6 +990,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           await lastValueFrom(
             this.ocAndReqsService.deactivateProveedorForMaterial(row.idSupplie, row.proveedorId)
           ).catch(e => console.warn(`⚠️ No se pudo desactivar proveedor:`, e));
+          await lastValueFrom(
+            this.ocAndReqsService.patchProveedorXTablaCampo7(row.idSupplie, row.proveedorId, true)
+          ).catch(e => console.warn(`⚠️ No se pudo mantener "Por autorizar" en proveedor negativo:`, e));
         }
 
         await lastValueFrom(

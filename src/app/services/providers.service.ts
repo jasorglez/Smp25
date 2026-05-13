@@ -77,6 +77,10 @@ export class ProvidersService {
     return this.http.put(`${environment.urlWarehouse}/ProveedorXTabla/abonoTabla/${id}/${table}`, {}, { headers: this.trackingService.getHeaders() });
   }
 
+  cascadeMaterialActive(materialId: number, activate: boolean) {
+    return this.http.patch(`${environment.urlWarehouse}/ProveedorXTabla/cascade-material-active/${materialId}?activate=${activate}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
   getProviderType(idProvider: number) {
     return this.http.get(`${environment.urlWarehouse}/ProviderType/provider/${idProvider}`, { headers: this.trackingService.getHeaders() });
   }
