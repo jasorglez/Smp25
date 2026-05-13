@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.76 (13 Mayo 2026 15:20) feat: Egresos en POS + campo afectaCorte',
+  version: '5.77 (13 Mayo 2026 16:10) feat: Corte de Caja con vista consolidada por tienda/caja',
 };
   
