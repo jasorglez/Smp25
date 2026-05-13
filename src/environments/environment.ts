@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.66 (11 Mayo 2026 21:00) POS: Corte de Caja — forma de pago por venta, movimientos y cierre de turno',
+  version: '5.67 (11 Mayo 2026 22:00) POS: modal de cambio en cobros de efectivo',
 };
   
