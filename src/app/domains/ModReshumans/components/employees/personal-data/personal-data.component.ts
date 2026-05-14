@@ -128,8 +128,16 @@ export class EmployeePersonalDataComponent implements OnInit {
       editable: true,
       width: 130,
       valueSetter: (params) => {
-        params.data[params.colDef.field] = params.newValue?.toUpperCase() ?? '';
+        const val = (params.newValue ?? '').toString().toUpperCase().trim();
+        if (val.length !== 13) return false;
+        params.data[params.colDef.field] = val;
         return true;
+      },
+      cellStyle: (params) => {
+        const val = (params.value ?? '').toString();
+        return val.length > 0 && val.length !== 13
+          ? { borderColor: '#dc3545', borderWidth: '2px', borderStyle: 'solid' }
+          : null;
       },
     },
     {
@@ -173,6 +181,7 @@ export class EmployeePersonalDataComponent implements OnInit {
 
   onGridReady(event: GridReadyEvent) {
     this.gridApi = event.api;
+    setTimeout(() => this.gridApi.autoSizeAllColumns(false), 0);
   }
 
   onCellValueChanged() {

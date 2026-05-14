@@ -145,8 +145,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     detailEmployeePersonalData: DetailEmployeePersonalDataComponent,
   };
 
-  detailMode: 'clock' | 'loans' | 'savings' | 'documents' | 'personalData' = 'clock';
-  private expandingViaColumn = false;
 
   constructor() {
     effect(async () => {
@@ -191,23 +189,17 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     rowBuffer: 20,
     masterDetail: true,
     isRowMaster: () => true,
-    detailCellRendererSelector: () => {
-      if (this.detailMode === 'loans') return { component: 'detailEmployeeLoans' };
-      if (this.detailMode === 'savings') return { component: 'detailEmployeeSavings' };
-      if (this.detailMode === 'documents') return { component: 'detailEmployeeDocuments' };
-      if (this.detailMode === 'personalData') return { component: 'detailEmployeePersonalData' };
+    detailCellRendererSelector: (params) => {
+      const t = params.data?.detailType;
+      if (t === 'loans') return { component: 'detailEmployeeLoans' };
+      if (t === 'savings') return { component: 'detailEmployeeSavings' };
+      if (t === 'documents') return { component: 'detailEmployeeDocuments' };
+      if (t === 'personalData') return { component: 'detailEmployeePersonalData' };
       return { component: 'detailEmployeeClock' };
     },
     detailRowHeight: 980,
-    onRowGroupOpened: (event: any) => {
-      if (!event.expanded) {
-        event.api.setFilterModel(null);
-        this.detailMode = 'clock';
-      } else if (!this.expandingViaColumn) {
-        this.detailMode = 'clock';
-      }
-      this.expandingViaColumn = false;
-    },
+    keepDetailRows: false,
+    onRowGroupOpened: (_event: any) => {},
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -554,14 +546,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
           },
-          onCellClicked: (params: any) => {
-            const expand = !params.node.expanded;
-            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-            if (expand) {
-              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
-              params.node.setExpanded(true);
-            }
-          },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'clock'),
         },
         {
           field: 'loan',
@@ -585,7 +570,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'loans'),
         },
         {
           field: 'saving',
@@ -600,7 +586,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           suppressMovable: true,
           width: 100,
-
           valueFormatter: (params) => {
             if (params.value) {
               return new Intl.NumberFormat('es-MX', {
@@ -610,7 +595,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'savings'),
         },
         {
           field: 'priceXHour',
@@ -655,6 +641,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 120,
           cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
           cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'personalData'),
         },
         {
           field: 'idDepto',
@@ -1190,14 +1177,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
           },
-          onCellClicked: (params: any) => {
-            const expand = !params.node.expanded;
-            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-            if (expand) {
-              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
-              params.node.setExpanded(true);
-            }
-          },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'clock'),
         },
         {
           field: 'loan',
@@ -1221,7 +1201,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'loans'),
         },
         {
           field: 'saving',
@@ -1236,7 +1217,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           suppressMovable: true,
           width: 100,
-
           valueFormatter: (params) => {
             if (params.value) {
               return new Intl.NumberFormat('es-MX', {
@@ -1246,7 +1226,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'savings'),
         },
         {
           field: 'priceXHour',
@@ -1291,6 +1272,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 120,
           cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
           cellStyle: { backgroundColor: '#d4edda', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'personalData'),
         },
         {
           field: 'idDepto',
@@ -2590,20 +2572,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.catalogPosiciones = [];
       }
     }
-    if (colId === 'loan' || colId === 'saving' || colId === 'documents' || colId === 'personalData') {
-      const rowNode = event.node;
-      const newMode = colId === 'loan' ? 'loans' : colId === 'saving' ? 'savings' : colId === 'personalData' ? 'personalData' : 'documents';
-      if (rowNode.expanded && this.detailMode === newMode) {
-        rowNode.setExpanded(false);
-        this.gridApi.setFilterModel(null);
-        this.gridApi.onFilterChanged();
-      } else {
-        this.detailMode = newMode;
-        this.expandingViaColumn = true;
-        this.gridApi.setFilterModel({ id: { type: 'equals', filter: event.data.id } });
-        this.gridApi.onFilterChanged();
-        rowNode.setExpanded(true);
-      }
+  }
+
+  private toggleDetailColumn(params: any, detailType: string): void {
+    const node = params.node;
+    const api = params.api;
+    const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
+
+    api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+
+    if (isCurrentlyExpanded) {
+      api.setFilterModel(null);
+    } else {
+      api.setFilterModel(null);
+      params.data.detailType = detailType;
+      api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+      node.setExpanded(true);
     }
   }
 

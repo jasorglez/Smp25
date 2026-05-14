@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.74 (12 Mayo 2026 19:30) - Fix: removido cascade duplicado en MaterialService.UpdateMaterial que rompía memoria disabled_by_material en L2/L3'
+  version: '2.52.75 (13 Mayo 2026 20:38) - Fix: se quito detalle de puesto y nomina en lista de personal'
 };
