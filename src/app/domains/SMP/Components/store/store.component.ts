@@ -432,6 +432,26 @@ export class StoreComponent implements CanComponentDeactivate {
       return;
     }
 
+    const rowsToSave = this.rowData.filter((r) => r.__isNew || r.__modified);
+    const lengthError = rowsToSave.find(
+      (r) =>
+        (r.description?.length ?? 0) > 30 ||
+        (r.city?.length ?? 0) > 60 ||
+        (r.state?.length ?? 0) > 40 ||
+        (r.cp?.length ?? 0) > 5 ||
+        (r.phone?.length ?? 0) > 20
+    );
+    if (lengthError) {
+      const msgs: string[] = [];
+      if ((lengthError.description?.length ?? 0) > 30) msgs.push(`Tienda: máx 30 caracteres (tiene ${lengthError.description.length})`);
+      if ((lengthError.city?.length ?? 0) > 60)        msgs.push(`Municipio: máx 60 caracteres (tiene ${lengthError.city.length})`);
+      if ((lengthError.state?.length ?? 0) > 40)       msgs.push(`Estado: máx 40 caracteres (tiene ${lengthError.state.length})`);
+      if ((lengthError.cp?.length ?? 0) > 5)           msgs.push(`CP: máx 5 caracteres (tiene ${lengthError.cp.length})`);
+      if ((lengthError.phone?.length ?? 0) > 20)       msgs.push(`Teléfono: máx 20 caracteres (tiene ${lengthError.phone.length})`);
+      alerts.basicAlert('Datos demasiado largos', msgs.join('\n'), 'error');
+      return;
+    }
+
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
@@ -494,11 +514,6 @@ export class StoreComponent implements CanComponentDeactivate {
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
@@ -515,11 +530,14 @@ export class StoreComponent implements CanComponentDeactivate {
         }
         this.lastEditedRowId = null; // Resetear el ID
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      const main = error?.error?.message || error?.error?.title || error?.message || 'Error desconocido';
+      const detail = error?.error?.detail ? ` — ${error.error.detail}` : '';
+      const status = error?.status ? ` (HTTP ${error.status})` : '';
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        `Ocurrió un error al actualizar los datos${status}: ${main}${detail}`,
         'error'
       );
     }
