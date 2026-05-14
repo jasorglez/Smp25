@@ -89,7 +89,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
   private cleanDataForServer(data: any): any {
     // 1. Estructura base garantizada
     const cleanedData: any = {
-      idStore: this.idStore, // Prioriza el idStore del dato, sino usa el del componente
+      idStore: data.idStore ?? this.idStore, // Prioriza el idStore del dato, sino usa el del componente
       description: data.descCashRegister,
       comment: data.comment || undefined, // Mantiene undefined si no existe
       active: data.active !== undefined ? data.active : true,
@@ -485,11 +485,6 @@ export class CashRegistersComponent implements CanComponentDeactivate {
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
@@ -506,11 +501,14 @@ export class CashRegistersComponent implements CanComponentDeactivate {
         }
         this.lastEditedRowId = null; // Resetear el ID
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      const main = error?.error?.message || error?.error?.title || error?.message || 'Error desconocido';
+      const detail = error?.error?.detail ? ` — ${error.error.detail}` : '';
+      const status = error?.status ? ` (HTTP ${error.status})` : '';
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        `Ocurrió un error al actualizar los datos${status}: ${main}${detail}`,
         'error'
       );
     }
