@@ -4,7 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 import { TrackingService } from 'app/services/tracking.service';
-import { firstValueFrom } from 'rxjs';
+import { SignalsService } from 'app/services/signals.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = pdfFonts.vfs;
@@ -39,6 +42,9 @@ export interface ConceptReport {
 export class SalesReportsComponent implements OnInit {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+  private signalsService = inject(SignalsService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
 
   dateFrom = this.todayStr();
   dateTo   = this.todayStr();
@@ -89,7 +95,16 @@ export class SalesReportsComponent implements OnInit {
     }
   }
 
-  imprimirPDF() {
+  async imprimirPDF() {
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    let logoBase64: string | null = null;
+    try {
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(idRoot));
+      if (rootResponse?.picture) {
+        logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+      }
+    } catch { /* logo is optional */ }
+
     const rows = this.salesFiltered;
     const fmt  = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
     const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-MX');
@@ -151,7 +166,15 @@ export class SalesReportsComponent implements OnInit {
       pageSize: 'LETTER',
       pageMargins: [40, 60, 40, 40],
       content: [
-        { text: 'Reporte de Ventas por Fechas', style: 'header' },
+        ...(logoBase64 ? [{
+          columns: [
+            { image: logoBase64, width: 80 },
+            { text: 'Reporte de Ventas por Fechas', style: 'header', alignment: 'right', margin: [0, 10, 0, 0] },
+          ],
+          margin: [0, 0, 0, 4],
+        }] : [
+          { text: 'Reporte de Ventas por Fechas', style: 'header' },
+        ]),
         {
           columns: [
             { text: `Período: ${this.dateFrom}  al  ${this.dateTo}`, style: 'subheader' },

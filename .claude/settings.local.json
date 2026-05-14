@@ -146,7 +146,12 @@
       "PowerShell(Move-Item *)",
       "PowerShell(Remove-Item *)",
       "mcp__mssql-administration__describe_table",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "mcp__mssql-smp__describe_table",
+      "mcp__mssql-smp__execute_query",
+      "mcp__mssql-warehouses__execute_query",
+      "mcp__mssql-warehouses__describe_table",
+      "mcp__mssql-warehouses__list_tables"
     ],
     "deny": [],
     "ask": [],

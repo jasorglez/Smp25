@@ -1,4 +1,7 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 
@@ -9,8 +12,10 @@ const TICKET_WIDTH = 226.77; // 80 mm en puntos
 
 @Injectable({ providedIn: 'root' })
 export class PosTicketService {
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
 
-  print(
+  async print(
     sale: {
       numbernote: string;
       date: string;
@@ -27,7 +32,17 @@ export class PosTicketService {
     paymentType?: string,
     paymentReference?: string,
     pagoConAmount?: number,
-  ): void {
+    idCompany?: number,
+  ): Promise<void> {
+    let logoBase64: string | null = null;
+    if (idCompany) {
+      try {
+        const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(idCompany));
+        if (rootResponse?.picture) {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+        }
+      } catch { /* logo is optional */ }
+    }
     const fmtMXN = (n: number) =>
       new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
 
@@ -87,6 +102,7 @@ export class PosTicketService {
       pageSize: { width: TICKET_WIDTH, height: 'auto' },
       pageMargins: [10, 10, 10, 15],
       content: [
+        ...(logoBase64 ? [{ image: logoBase64, width: 60, alignment: 'center', margin: [0, 0, 0, 3] }] : []),
         { text: storeName, bold: true, fontSize: 10, alignment: 'center' },
         { text: cashRegisterDesc, fontSize: 7, alignment: 'center', margin: [0, 1, 0, 0] },
         line(),
