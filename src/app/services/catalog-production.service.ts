@@ -7,6 +7,7 @@ import { TrackingService } from './tracking.service';
 export interface CatalogProductionItem {
   id?: number;
   idCompany?: number | null;
+  idMasterCatalog?: number | null;
   description: string;
   type?: string | null;                     // 'CATEGORY' | 'FAM-CAT' | 'SUB-FAM'
   parentId?: number | null;                 // Para jerarquía
@@ -26,9 +27,10 @@ export class CatalogProductionService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getAll(idCompany: number): Observable<CatalogProductionItem[]> {
+  getAll(idCompany: number, idCatalog?: number | null): Observable<CatalogProductionItem[]> {
+    const idCatalogQuery = idCatalog == null ? '' : `&idCatalog=${idCatalog}`;
     return this.http.get<CatalogProductionItem[]>(
-      `${environment.urlProduction}/CatalogJerarquico?idCompany=${idCompany}`,
+      `${environment.urlProduction}/CatalogJerarquico?idCompany=${idCompany}${idCatalogQuery}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

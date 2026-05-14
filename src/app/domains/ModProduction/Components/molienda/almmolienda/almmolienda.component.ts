@@ -152,7 +152,8 @@ export class AlmmoliendaComponent {
       headerName: 'Sucursal',
       field: 'sucursal',
       width: 200,
-      editable: () => !this.activeBranchFilter || this.activeBranchFilter < 0,
+      editable: (params: any) =>
+        (!this.activeBranchFilter || this.activeBranchFilter < 0) && !this.hasEntradas(params.data),
       cellEditor: 'agRichSelectCellEditor',
       cellEditorPopup: true,
       cellEditorParams: () => ({
@@ -174,7 +175,10 @@ export class AlmmoliendaComponent {
         const branch = this.userBranches.find(b => b.id === params.value);
         return branch?.name ?? '';
       },
-      cellStyle: () => {
+      cellStyle: (params: any) => {
+        if (this.hasEntradas(params.data)) {
+          return { backgroundColor: '#f0f0f0', color: '#6c757d' };
+        }
         if (this.activeBranchFilter && this.activeBranchFilter > 0) {
           return { backgroundColor: '#f0f0f0' };
         }
@@ -221,7 +225,7 @@ export class AlmmoliendaComponent {
       field: 'id_articulo',
       flex: 1,
       minWidth: 180,
-      editable: true,
+      editable: (params: any) => !this.hasEntradas(params.data),
       cellDataType: 'text',
       cellEditor: 'selectV2',
       cellEditorParams: (params: any) => {
@@ -242,7 +246,10 @@ export class AlmmoliendaComponent {
         params.data.__modified = true;
         this.hasUnsavedChanges = true;
         return true;
-      }
+      },
+      cellStyle: (params: any) => this.hasEntradas(params.data)
+        ? { backgroundColor: '#f0f0f0', color: '#6c757d' }
+        : {}
     },
 
     {
@@ -556,6 +563,10 @@ export class AlmmoliendaComponent {
     setTimeout(() => this.toastMsg.set(''), 1500);
   }
 
+  private hasEntradas(row: any): boolean {
+    return Number(row?.entradas ?? 0) > 0;
+  }
+
   private async loadBultosCantidad(idCompany: number, idBranch: number) {
     try {
       const result = await lastValueFrom(this.bultosService.getByBranch(idCompany, idBranch));
@@ -619,6 +630,7 @@ export class AlmmoliendaComponent {
   async loadData(idCompany: number) {
     try {
       const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
+      console.log('Raw data from API:', items);
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
 
       const deptsCsv = this.departmentOptions
@@ -654,14 +666,47 @@ export class AlmmoliendaComponent {
         }
       });
 
-      this.originalRowData = JSON.parse(JSON.stringify(mapped));
-      this.rowData.set(mapped);
-      if (this.gridApi) this.gridApi.setGridOption('rowData', mapped);
+      const sorted = this.sortRowsByBranchAndArticle(mapped);
+
+      this.originalRowData = JSON.parse(JSON.stringify(sorted));
+      
+      this.rowData.set(sorted);
+      //console.log('Loaded molienda:', this.rowData());  
+      if (this.gridApi) this.gridApi.setGridOption('rowData', sorted);
     } catch (error) {
       console.error('Error loading molienda:', error);
       this.rowData.set([]);
       if (this.gridApi) this.gridApi.setGridOption('rowData', []);
     }
+  }
+
+  private sortRowsByBranchAndArticle(rows: any[]): any[] {
+    return rows
+      .map((row, index) => ({ row, index }))
+      .sort((a, b) => {
+        const activeA = a.row.active !== false;
+        const activeB = b.row.active !== false;
+        if (activeA !== activeB) {
+          return activeA ? -1 : 1;
+        }
+
+        const branchNameA = this.getBranchName(a.row.sucursal);
+        const branchNameB = this.getBranchName(b.row.sucursal);
+        const branchCompare = branchNameA.localeCompare(branchNameB, 'es', { sensitivity: 'base' });
+        if (branchCompare !== 0) return branchCompare;
+
+        const articleNameA = (a.row.id_articulo ?? '').toString();
+        const articleNameB = (b.row.id_articulo ?? '').toString();
+        const articleCompare = articleNameA.localeCompare(articleNameB, 'es', { sensitivity: 'base' });
+        if (articleCompare !== 0) return articleCompare;
+
+        return a.index - b.index;
+      })
+      .map(item => item.row);
+  }
+
+  private getBranchName(idBranch: number | null | undefined): string {
+    return this.userBranches.find(b => b.id === idBranch)?.name ?? '';
   }
 
   private async updateCounterForOcCreation(idRequisition: number, idMaterial: number, idBranch: number) {
@@ -887,9 +932,14 @@ export class AlmmoliendaComponent {
       }
 
       const saved = newRows.length + modifiedRows.length;
+      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
       this.hasUnsavedChanges = false;
-      this.originalRowData   = JSON.parse(JSON.stringify(this.rowData()));
-      if (this.gridApi) this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
+      this.rowData.set(sorted);
+      this.originalRowData   = JSON.parse(JSON.stringify(sorted));
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', sorted);
+        this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
+      }
       this.showToast(`${saved} registro(s) guardado(s)`);
     } catch (error) {
       console.error('Error saving molienda:', error);
@@ -898,7 +948,7 @@ export class AlmmoliendaComponent {
   }
 
   revertChanges() {
-    const reverted = JSON.parse(JSON.stringify(this.originalRowData));
+    const reverted = this.sortRowsByBranchAndArticle(JSON.parse(JSON.stringify(this.originalRowData)));
     this.rowData.set(reverted);
     this.hasUnsavedChanges = false;
     this.selectedRow = null;
