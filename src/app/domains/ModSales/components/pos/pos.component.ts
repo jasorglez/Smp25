@@ -288,7 +288,7 @@ export class PosComponent implements OnInit {
     const client = this.selectedClient;
     const clientName = client?.company ?? `Cliente ${this.idCustomer}`;
 
-    this.posTicket.print(
+    await this.posTicket.print(
       sale,
       concepts.map(c => ({ idProduct: c.id_product, description: c.description, quantity: c.quantity, pu: c.pu })),
       this.allProducts,
@@ -298,6 +298,7 @@ export class PosComponent implements OnInit {
       this.paymentType,
       this.paymentReference || undefined,
       this.paymentType === 'EFECTIVO' ? (this.pagoConAmount ?? undefined) : undefined,
+      this.session.idCompany,
     );
 
     this.pendingCount = await this.posDb.countPendingSales();
