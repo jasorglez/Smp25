@@ -264,15 +264,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onFirstDataRendered: (params) => {
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-      // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, false);
-    },
     onColumnPinned: () => this.saveColumnState(),
     onColumnVisible: () => this.saveColumnState(),
     onColumnMoved: (event) => { if (event.finished) this.saveColumnState(); },
@@ -808,7 +799,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
             values: this.banks
-              ? this.banks.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => b.name)
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
               : [],
           }),
           valueGetter: (params) => {
@@ -1429,7 +1423,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
             values: this.banks
-              ? this.banks.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => b.name)
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
               : [],
           }),
           valueGetter: (params) => {
@@ -1636,7 +1633,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ id: null, name: 'EFECTIVO' }, ...data];
+        this.banks = data;
       },
       (error) => {
         if (error.status == 404) this.banks = [];
@@ -1821,6 +1818,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.restoreColumnState();
+    setTimeout(() => this.gridApi.autoSizeAllColumns(false), 0);
   }
 
   onMasterRowSelected(event: any) {

@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.85 (14 Mayo 2026 10:30) - Feature: regenerar Num Mat (insumo) al cambiar categoria/familia/subfamilia del material con consecutivo 4 dígitos'
+  version: '2.52.86 (14 Mayo 2026 17:09) - Feature:  vista adminRH'
 };
