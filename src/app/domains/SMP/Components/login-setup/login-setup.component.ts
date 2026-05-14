@@ -61,12 +61,23 @@ export class LoginSetupComponent {
       headerName: 'Imagen (WEBP)',
       cellRenderer: (params: any) => {
         const url = params.value || '';
+        const container = document.createElement('div');
+        container.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;';
         if (url) {
-          return `<img src="${url}" alt="Preview" style="width:80px;height:50px;object-fit:contain;cursor:pointer;" title="Clic para cambiar imagen"/>`;
+          const img = document.createElement('img');
+          img.src = url;
+          img.style.cssText = 'width:80px;height:50px;object-fit:contain;cursor:pointer;';
+          img.title = 'Clic para cambiar imagen';
+          container.appendChild(img);
+        } else {
+          container.style.cssText += 'width:80px;height:50px;border:1px dashed #ccc;cursor:pointer;font-size:11px;';
+          container.title = 'Clic para cargar imagen WEBP';
+          container.textContent = 'WEBP';
         }
-        return `<div style="width:80px;height:50px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;" title="Clic para cargar imagen WEBP">WEBP</div>`;
+        // Native listener: corre ANTES de que AG Grid procese el evento — preserva el gesto para file input
+        container.addEventListener('click', () => this.onImageCellClicked(params));
+        return container;
       },
-      onCellClicked: (params: any) => this.onImageCellClicked(params),
       editable: false,
       flex: 1,
       minWidth: 140
@@ -192,7 +203,7 @@ export class LoginSetupComponent {
       for (const row of this.rowData as any[]) {
         const file: File | undefined = row.__localFile;
         if (file) {
-          const url = await this.imageHandlerService.uploadFileToFirebase(file, 'login/images');
+          const url = await this.imageHandlerService.uploadFileToFirebase(file, 'images/login');
           row.url = url;
           delete row.__localFile;
         }
@@ -220,11 +231,27 @@ export class LoginSetupComponent {
         this.gridApi.setGridOption('rowData', this.rowData);
       }
       alerts.closeLoading();
-      alerts.basicAlert('Guardado', 'Cambios guardados correctamente en el servidor.', 'success');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving login images:', err);
       alerts.closeLoading();
-      alerts.basicAlert('Error', 'No se pudieron guardar los cambios en el servidor.', 'error');
+      // Firebase Storage error
+      if (err?.code?.startsWith?.('storage/')) {
+        const firebaseMsgs: Record<string, string> = {
+          'storage/unauthorized': 'Sin permisos en Firebase Storage. Verifica las reglas de seguridad.',
+          'storage/quota-exceeded': 'Se superó la cuota de almacenamiento de Firebase.',
+          'storage/retry-limit-exceeded': 'Límite de reintentos superado. Verifica tu conexión.',
+          'storage/invalid-format': 'Formato de archivo inválido para Firebase Storage.',
+          'storage/canceled': 'Carga cancelada.',
+        };
+        const detail = firebaseMsgs[err.code] ?? err.message ?? err.code;
+        alerts.basicAlert('Error de almacenamiento', `Firebase Storage: ${detail}`, 'error');
+        return;
+      }
+      // Backend API error
+      const main = err?.error?.message || err?.error?.title || err?.message || 'Error desconocido';
+      const detail = err?.error?.detail ? ` — ${err.error.detail}` : '';
+      const status = err?.status ? ` (HTTP ${err.status})` : '';
+      alerts.basicAlert('Error', `No se pudieron guardar los cambios${status}: ${main}${detail}`, 'error');
     }
   }
 
