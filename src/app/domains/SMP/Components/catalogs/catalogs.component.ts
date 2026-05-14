@@ -220,12 +220,25 @@ export class CatalogsComponent implements CanComponentDeactivate {
         }
       );
   }
+  private readonly sectionOrder: Record<string, string[]> = {
+    hr: ['EMPLEADOS', 'CHECADOR', 'NOMINA'],
+  };
+
   obtenerTablesSecitons() {
     this.tableService
       .getTablesxmodulesSection(this.signalsService.getCatalogSelected())
       .subscribe(
         (data: any) => {
-          this.listsections = data;
+          const order = this.sectionOrder[this.typeCatalog];
+          if (order) {
+            this.listsections = [...data].sort((a, b) => {
+              const ai = order.indexOf((a.sections ?? '').toUpperCase());
+              const bi = order.indexOf((b.sections ?? '').toUpperCase());
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            });
+          } else {
+            this.listsections = data;
+          }
         },
         (error) => {
           if (error.status == 404) this.table = [];

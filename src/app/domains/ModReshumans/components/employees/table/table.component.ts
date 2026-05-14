@@ -264,15 +264,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onFirstDataRendered: (params) => {
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-      // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, false);
-    },
     onColumnPinned: () => this.saveColumnState(),
     onColumnVisible: () => this.saveColumnState(),
     onColumnMoved: (event) => { if (event.finished) this.saveColumnState(); },
@@ -1827,6 +1818,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.restoreColumnState();
+    setTimeout(() => this.gridApi.autoSizeAllColumns(false), 0);
   }
 
   onMasterRowSelected(event: any) {
