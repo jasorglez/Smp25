@@ -808,7 +808,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
             values: this.banks
-              ? this.banks.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => b.name)
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
               : [],
           }),
           valueGetter: (params) => {
@@ -1429,7 +1432,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
             values: this.banks
-              ? this.banks.slice().sort((a, b) => a.name.localeCompare(b.name)).map(b => b.name)
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
               : [],
           }),
           valueGetter: (params) => {
@@ -1636,7 +1642,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ id: null, name: 'EFECTIVO' }, ...data];
+        this.banks = data;
       },
       (error) => {
         if (error.status == 404) this.banks = [];
