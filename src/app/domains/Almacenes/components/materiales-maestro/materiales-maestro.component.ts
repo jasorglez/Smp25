@@ -1190,12 +1190,58 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         await lastValueFrom(this.materialsService.addMaterial(materialData));
       }
 
+      // Detectar materiales que dejaron de ser PRODUCTO NUEVO (para auto-llenado de cascada)
+      const PRODUCTO_NUEVO_FAM_ID = 1316;
+      const PRODUCTO_NUEVO_SUB_ID = 1317;
+      const materialsThatLeftProductoNuevo: any[] = [];
+
+      // Tracker de consecutivos asignados en este saveChanges (para no duplicar entre materiales del mismo lote)
+      const lastConsecutivoByPrefix = new Map<string, number>();
+
       // Actualizar registros modificados
       for (const modifiedRow of modifiedRows) {
         const snapshot = this.allMaterialsData.find((m: any) => m.id === modifiedRow.id);
         const previousActive = snapshot?.active;
         const activeChanged = previousActive !== undefined && !!previousActive !== !!modifiedRow.active;
         console.log(`🔍 cascade check id=${modifiedRow.id} previousActive=${previousActive} newActive=${modifiedRow.active} activeChanged=${activeChanged}`);
+
+        // Capturar si este material dejó de ser PRODUCTO NUEVO
+        if (snapshot) {
+          const wasProductoNuevo =
+            Number(snapshot.idFamilia) === PRODUCTO_NUEVO_FAM_ID ||
+            Number(snapshot.idSubfamilia) === PRODUCTO_NUEVO_SUB_ID;
+          const isStillProductoNuevo =
+            Number(modifiedRow.idFamilia) === PRODUCTO_NUEVO_FAM_ID ||
+            Number(modifiedRow.idSubfamilia) === PRODUCTO_NUEVO_SUB_ID;
+          if (wasProductoNuevo && !isStillProductoNuevo) {
+            materialsThatLeftProductoNuevo.push({ ...modifiedRow });
+          }
+        }
+
+        // Regenerar Num Mat (insumo) si cambió categoría, familia o subfamilia
+        if (snapshot) {
+          const categoryChanged = Number(snapshot.idCategory) !== Number(modifiedRow.idCategory);
+          const familiaChanged = Number(snapshot.idFamilia) !== Number(modifiedRow.idFamilia);
+          const subfamiliaChanged = Number(snapshot.idSubfamilia) !== Number(modifiedRow.idSubfamilia);
+
+          if (categoryChanged || familiaChanged || subfamiliaChanged) {
+            const newInsumo = this.generateInsumoCode(
+              Number(modifiedRow.idCategory),
+              Number(modifiedRow.idFamilia),
+              Number(modifiedRow.idSubfamilia),
+              lastConsecutivoByPrefix
+            );
+            if (newInsumo) {
+              modifiedRow.insumo = newInsumo;
+              // Reflejar el cambio inmediatamente en el grid
+              const gridRow = this.rowData.find((r: any) => r.id === modifiedRow.id);
+              if (gridRow) {
+                gridRow.insumo = newInsumo;
+              }
+            }
+          }
+        }
+
         const materialData = this.prepareMaterialData(modifiedRow);
         await lastValueFrom(this.materialsService.updateMaterial(modifiedRow.id.toString(), materialData));
         if (activeChanged) {
@@ -1203,6 +1249,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           await lastValueFrom(this.providersService.cascadeMaterialActive(modifiedRow.id, !!modifiedRow.active))
             .catch(e => console.warn(`⚠️ No se pudo propagar active al nivel 2/3 para material ${modifiedRow.id}:`, e));
         }
+      }
+
+      // Auto-llenado de cascada para materiales que dejaron de ser PRODUCTO NUEVO (no bloqueante)
+      if (materialsThatLeftProductoNuevo.length > 0) {
+        await this.autoFillCascadeOnMaterialFamilyChange(materialsThatLeftProductoNuevo)
+          .catch(e => console.warn('⚠️ Error en auto-llenado de cascada (PRODUCTO NUEVO → real):', e));
       }
 
       alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
@@ -1542,5 +1594,174 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         node.setSelected(true);
       }
     });
+  }
+
+  /**
+   * Cuando un material cambia su familia/subfamilia desde "PRODUCTO NUEVO" a valores reales,
+   * busca los proveedores asignados a ese material con por_autorizar=0 (autorizacion=false)
+   * e inserta el material en la tabla "Configurar Tipo Proveedor (cascada)" de cada uno.
+   *
+   * - vigente = true
+   * - idSubfamily = nueva subfamilia del material
+   * - principal = true si es el primer registro del proveedor, false si ya tenía registros
+   * - No duplica si ya existe esa subfamilia para ese proveedor
+   * - Si fue insert como principal=true, actualiza customer.typework con la cadena
+   *   CATEGORIA/FAMILIA/SUBFAMILIA del registro recién creado.
+   */
+  private async autoFillCascadeOnMaterialFamilyChange(materialsThatLeftProductoNuevo: any[]): Promise<void> {
+    if (!materialsThatLeftProductoNuevo || materialsThatLeftProductoNuevo.length === 0) return;
+
+    for (const material of materialsThatLeftProductoNuevo) {
+      const idMaterial = Number(material?.id);
+      const idSubfamilia = Number(material?.idSubfamilia);
+      if (!idMaterial || !idSubfamilia || idSubfamilia <= 0) continue;
+
+      // 1. Obtener proveedores asignados a este material
+      let materialProviders: any[] = [];
+      try {
+        const res: any = await lastValueFrom(this.providersService.getMaterXTable(idMaterial, 'MATERIAL'));
+        materialProviders = Array.isArray(res) ? res : [];
+      } catch (e) {
+        console.warn(`⚠️ No se pudo obtener proveedores del material ${idMaterial}:`, e);
+        continue;
+      }
+
+      // 2. Para cada proveedor, verificar por_autorizar=0 y procesar
+      for (const matProv of materialProviders) {
+        const idProvider = Number(matProv?.idTabla ?? matProv?.idProvider ?? 0);
+        if (!idProvider) continue;
+
+        // Cargar customer para verificar por_autorizar
+        let customer: any = null;
+        try {
+          customer = await lastValueFrom(this.customersService.getCustomerById(idProvider));
+        } catch (e) {
+          console.warn(`⚠️ No se pudo cargar customer ${idProvider}:`, e);
+          continue;
+        }
+        if (!customer) continue;
+
+        // por_autorizar=0 → autorizacion === false / 0
+        const isPorAutorizar =
+          customer?.autorizacion === true || customer?.autorizacion === 1 ||
+          customer?.porAutorizar === true || customer?.porAutorizar === 1 ||
+          customer?.por_autorizar === true || customer?.por_autorizar === 1;
+        if (isPorAutorizar) continue; // Solo procesar los que YA están autorizados (por_autorizar=0)
+
+        // 3. Obtener subfamilias ya asignadas a este proveedor
+        let existing: any[] = [];
+        try {
+          const res: any = await lastValueFrom(this.providersService.getSubfamilyxProviderByProvider(idProvider));
+          existing = Array.isArray(res) ? res : [];
+        } catch (e) {
+          console.warn(`⚠️ No se pudo cargar subfamilyxprovider para ${idProvider}:`, e);
+          continue;
+        }
+
+        const existingSubIds = new Set<number>(
+          existing
+            .map((r: any) => Number(r?.idSubfamily ?? r?.idSubFamily ?? 0))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
+        );
+
+        // 4. No duplicar si ya existe esa subfamilia para ese proveedor
+        if (existingSubIds.has(idSubfamilia)) continue;
+
+        // 5. principal=true sólo si es el primer registro del proveedor
+        const shouldBePrincipal = existing.length === 0;
+
+        // 6. INSERT en subfamilyxprovider
+        try {
+          await lastValueFrom(
+            this.providersService.addSubfamilyxProvider({
+              idSubfamily: idSubfamilia,
+              idProvider: idProvider,
+              vigente: true,
+              principal: shouldBePrincipal
+            })
+          );
+        } catch (e) {
+          console.warn(`⚠️ No se pudo crear subfamilyxprovider (prov=${idProvider}, subfam=${idSubfamilia}):`, e);
+          continue;
+        }
+
+        // 7. Si fue insert como principal=true, actualizar customer.typework
+        if (shouldBePrincipal) {
+          try {
+            const providerTypes: any = await lastValueFrom(this.providersService.getProviderType(idProvider));
+            if (Array.isArray(providerTypes) && providerTypes.length > 0) {
+              const principalRow = providerTypes.find((pt: any) =>
+                Number(pt?.idSubfamily ?? pt?.idSubFamily ?? 0) === idSubfamilia
+              ) || providerTypes.find((pt: any) => pt?.principal === true);
+
+              if (principalRow) {
+                const tipoProveedorConcatenado = `${principalRow.nameParent || ''}/${principalRow.nameSubparent || ''}/${principalRow.nameProduct || ''}`;
+                customer.typework = tipoProveedorConcatenado;
+                await lastValueFrom(this.customersService.updateCustomer(idProvider, customer));
+              }
+            }
+          } catch (eTw) {
+            console.warn(`⚠️ No se pudo actualizar typework para proveedor ${idProvider}:`, eTw);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Genera el código "Num Mat" (campo insumo) para un material a partir de sus IDs de
+   * categoría, familia y subfamilia. Formato: {abrCateg}{abrFam}{abrSubfam}-{consecutivo 4 dígitos}
+   *
+   * El consecutivo se calcula buscando el mayor número usado en allMaterialsData para ese
+   * prefijo y sumando 1. También considera consecutivos asignados en la misma sesión de save
+   * (via el Map lastConsecutivoByPrefix) para evitar duplicados entre múltiples materiales del
+   * mismo lote.
+   *
+   * Retorna cadena vacía si no se pueden resolver las 3 abreviaciones.
+   */
+  private generateInsumoCode(
+    idCategory: number,
+    idFamilia: number,
+    idSubfamilia: number,
+    lastConsecutivoByPrefix: Map<string, number>
+  ): string {
+    if (!idCategory || !idFamilia || !idSubfamilia) return '';
+
+    const cat = this.categories.find((c: any) => Number(c.id) === Number(idCategory));
+    const fam = this.families.find((f: any) => Number(f.id) === Number(idFamilia));
+    const sub = this.subfamilies.find((s: any) => Number(s.id) === Number(idSubfamilia));
+
+    if (!cat || !fam || !sub) return '';
+
+    const abrCat = String(cat.valueAddition2 || '').trim().toUpperCase();
+    const abrFam = String(fam.valueAddition2 || '').trim().toUpperCase();
+    const abrSub = String(sub.valueAddition2 || '').trim().toUpperCase();
+
+    if (!abrCat || !abrFam || !abrSub) return '';
+
+    const prefix = `${abrCat}${abrFam}${abrSub}`;
+
+    // Si ya asignamos consecutivos para este prefijo en esta sesión, usar ese +1
+    let maxConsec = lastConsecutivoByPrefix.get(prefix);
+    if (maxConsec === undefined) {
+      // Primera vez para este prefijo: buscar en allMaterialsData
+      maxConsec = 0;
+      const regex = new RegExp(`^${prefix}-(\\d+)$`, 'i');
+      for (const m of this.allMaterialsData) {
+        const ins = String((m as any).insumo || '');
+        const match = ins.match(regex);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (Number.isFinite(num) && num > maxConsec) {
+            maxConsec = num;
+          }
+        }
+      }
+    }
+
+    const nextConsec = maxConsec + 1;
+    lastConsecutivoByPrefix.set(prefix, nextConsec);
+
+    return `${prefix}-${nextConsec.toString().padStart(4, '0')}`;
   }
 }

@@ -853,7 +853,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
 
-    await this.patchRegistros();
+    await this.patchTypeOcAndQuantityOnly();
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
@@ -915,6 +915,28 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       count === 1 ? 'Creando la orden de compra, por favor espere...' : `Creando ${count} órdenes de compra, por favor espere...`
     );
 
+    // Snapshot de proveedores "nuevos" (por_autorizar=true) ANTES de patchRegistros,
+    // ya que patchRegistros pone autorizacion=false para proveedores con tipoOc positivo.
+    // Solo nos interesan los proveedores que están en rowsByProvider (ya filtrados por AUTORIZADO + cantidad > 0).
+    const newProviderIdsForAutofill = new Set<number>();
+    try {
+      const snapshotChecks = Array.from(rowsByProvider.keys()).map(async (provId) => {
+        try {
+          const customer: any = await lastValueFrom(this.customersService.getCustomerById(provId));
+          const isNew =
+            customer?.autorizacion === true || customer?.autorizacion === 1 ||
+            customer?.porAutorizar === true || customer?.porAutorizar === 1 ||
+            customer?.por_autorizar === true || customer?.por_autorizar === 1;
+          if (isNew) newProviderIdsForAutofill.add(provId);
+        } catch {
+          // Si falla el GET, simplemente no se auto-llena para ese proveedor
+        }
+      });
+      await Promise.all(snapshotChecks);
+    } catch (e) {
+      console.warn('⚠️ Error al detectar proveedores "nuevos" para auto-llenado:', e);
+    }
+
     // Guardar registro antes de generar
     await this.patchRegistros();
 
@@ -935,6 +957,16 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
 
     if (generatedFolios.length > 0) {
+      // Auto-llenado del "Tipo de Proveedor" (Categoría/Familia/Subfamilia) en subfamilyxprovider
+      // para proveedores que eran "nuevos" (por_autorizar=true) ANTES de generar OC.
+      // Se basa en id_familia/id_subfamilia del material vinculado a cada ítem (artículo "viejo").
+      // Wrap en try/catch: si falla, NO bloquea el flujo de OC ya creadas.
+      try {
+        await this.autoFillTipoProveedorFromOC(rowsByProvider, newProviderIdsForAutofill);
+      } catch (e) {
+        console.warn('⚠️ Auto-llenado de Tipo de Proveedor falló (no bloqueante):', e);
+      }
+
       await this.updatePorAutorizarAfterOC();
       await this.updateMaterialsAfterOC();
     }
@@ -968,6 +1000,20 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       : `Órdenes de compra generadas:\n${generatedFolios.join('\n')}\n\n⚠️ Hay ${sinTipo.length} artículo(s) sin tipo OC. La requisición sigue abierta.`;
 
     alerts.basicAlert(titulo, mensaje, allTotalizado ? 'success' : 'warning');
+  }
+
+  private async patchTypeOcAndQuantityOnly(): Promise<void> {
+    for (const row of this.rowData) {
+      if (row.slotItemId > 0) {
+        await lastValueFrom(
+          this.ocAndReqsService.patchTypeOc(row.slotItemId, row.tipoOc || '')
+        ).catch(e => console.warn(`⚠️ No se pudo guardar typeOc para slotItem ${row.slotItemId}:`, e));
+
+        await lastValueFrom(
+          this.ocAndReqsService.patchCantidadConceptualizada(row.slotItemId, row.cantidadConceptualizada ?? 0)
+        ).catch(e => console.warn(`⚠️ No se pudo guardar cantidadConceptualizada:`, e));
+      }
+    }
   }
 
   private async patchRegistros(): Promise<void> {
@@ -1054,6 +1100,147 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         }
       } catch (e) {
         console.warn(`⚠️ Error al leer/actualizar estado del proveedor ${provId}:`, e);
+      }
+    }
+  }
+
+  /**
+   * Auto-llena el "Tipo de Proveedor" (Categoría/Familia/Subfamilia) en `subfamilyxprovider`
+   * cuando se genera una OC de un proveedor "nuevo" (por_autorizar=1) con un artículo "viejo"
+   * (con familia/subfamilia reales, distintas de PRODUCTO NUEVO).
+   *
+   * - NO modifica `principal` (queda en false) → no dispara update de `customer.typework`.
+   * - NO modifica `por_autorizar` → `updatePorAutorizarAfterOC` lo maneja en su propio flujo.
+   * - Evita duplicados consultando `getSubfamilyxProviderByProvider` antes de insertar.
+   * - Todas las fallas son no-bloqueantes (log + skip).
+   */
+  private async autoFillTipoProveedorFromOC(
+    rowsByProvider: Map<number, any[]>,
+    newProviderIds: Set<number>
+  ): Promise<void> {
+    if (newProviderIds.size === 0) return;
+
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot) return;
+
+    // 1. Cargar materiales con familia/subfamilia una sola vez
+    const materialsMap = new Map<number, { idFamilia: number; idSubfamilia: number }>();
+    try {
+      const materials: any = await lastValueFrom(this.materialsService.getMaterialsxview(idRoot));
+      if (Array.isArray(materials)) {
+        for (const m of materials) {
+          const mid = Number(m?.id);
+          if (Number.isFinite(mid) && mid > 0) {
+            materialsMap.set(mid, {
+              idFamilia: Number(m?.idFamilia ?? 0) || 0,
+              idSubfamilia: Number(m?.idSubfamilia ?? 0) || 0
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ No se pudo cargar materiales para auto-llenado:', e);
+      return;
+    }
+
+    // IDs de catálogo para "PRODUCTO NUEVO" (FAM-CAT y SUB-FAM en warehouses.dbo.catalog)
+    const PRODUCTO_NUEVO_FAM_ID = 1316;
+    const PRODUCTO_NUEVO_SUB_ID = 1317;
+
+    // 2. Procesar cada proveedor "nuevo"
+    for (const provId of newProviderIds) {
+      const rows = rowsByProvider.get(provId);
+      if (!rows || rows.length === 0) continue;
+
+      // Obtener subfamilias ya asignadas a este proveedor (para evitar duplicados)
+      let existing: any[] = [];
+      try {
+        const res: any = await lastValueFrom(this.providersService.getSubfamilyxProviderByProvider(provId));
+        existing = Array.isArray(res) ? res : [];
+      } catch (e) {
+        console.warn(`⚠️ No se pudo cargar subfamilyxprovider para proveedor ${provId}:`, e);
+        continue;
+      }
+      const existingSubIds = new Set<number>(
+        existing
+          .map((r: any) => Number(r?.idSubfamily ?? r?.idSubFamily ?? 0))
+          .filter((n: number) => Number.isFinite(n) && n > 0)
+      );
+
+      // Si NO hay registros previos para este proveedor, el primer auto-insert debe ser principal=true
+      // Si YA hay registros previos, no tocar el principal existente (todos los nuevos = false)
+      const hasNoPreviousRecords = existing.length === 0;
+      let firstPrincipalInserted = false;
+
+      // Procesar cada fila del proveedor
+      for (const row of rows) {
+        // Saltar artículos "nuevos" (PRODUCTO NUEVO en columna recurrent del comparativo)
+        const nuevoRec = String(row?.nuevoRecurrente ?? '').toLowerCase();
+        if (nuevoRec === 'nuevo') continue;
+
+        const idSupplie = Number(row?.idSupplie ?? 0) || 0;
+        if (idSupplie <= 0) continue;
+
+        const matInfo = materialsMap.get(idSupplie);
+        if (!matInfo) continue;
+
+        // Defensa adicional contra PRODUCTO NUEVO a nivel de catálogo
+        if (matInfo.idFamilia === PRODUCTO_NUEVO_FAM_ID) continue;
+        if (matInfo.idSubfamilia === PRODUCTO_NUEVO_SUB_ID) continue;
+
+        // Subfamilia inválida → saltar
+        if (matInfo.idSubfamilia <= 0) continue;
+
+        // Ya existe esta combinación para este proveedor → saltar
+        if (existingSubIds.has(matInfo.idSubfamilia)) continue;
+
+        // Determinar valor de principal: true sólo para el primer registro cuando el proveedor no tenía nada previo
+        const shouldBePrincipal = hasNoPreviousRecords && !firstPrincipalInserted;
+
+        // INSERT en subfamilyxprovider
+        try {
+          await lastValueFrom(
+            this.providersService.addSubfamilyxProvider({
+              idSubfamily: matInfo.idSubfamilia,
+              idProvider: provId,
+              vigente: true,
+              principal: shouldBePrincipal
+            })
+          );
+          // Marcar como existente para evitar duplicar en el mismo loop
+          existingSubIds.add(matInfo.idSubfamilia);
+          if (shouldBePrincipal) {
+            firstPrincipalInserted = true;
+
+            // Si el insert fue como principal=true, actualizar customer.typework con la concatenación
+            // SOLO se ejecuta cuando el proveedor no tenía registros previos (primer registro)
+            try {
+              const providerTypes: any = await lastValueFrom(this.providersService.getProviderType(provId));
+              if (Array.isArray(providerTypes) && providerTypes.length > 0) {
+                // Buscar el registro principal (el que acabamos de insertar)
+                const principalRow = providerTypes.find((pt: any) =>
+                  Number(pt?.idSubfamily ?? pt?.idSubFamily ?? 0) === matInfo.idSubfamilia
+                ) || providerTypes.find((pt: any) => pt?.principal === true);
+
+                if (principalRow) {
+                  const tipoProveedorConcatenado = `${principalRow.nameParent || ''}/${principalRow.nameSubparent || ''}/${principalRow.nameProduct || ''}`;
+
+                  const customerData: any = await lastValueFrom(this.customersService.getCustomerById(provId));
+                  if (customerData) {
+                    customerData.typework = tipoProveedorConcatenado;
+                    await lastValueFrom(
+                      this.customersService.updateCustomer(provId, customerData)
+                    );
+                  }
+                }
+              }
+            } catch (eTypework) {
+              console.warn(`⚠️ No se pudo actualizar typework para proveedor ${provId}:`, eTypework);
+            }
+          }
+        } catch (e) {
+          console.warn(`⚠️ No se pudo crear subfamilyxprovider (prov=${provId}, subfam=${matInfo.idSubfamilia}):`, e);
+        }
       }
     }
   }

@@ -36,8 +36,14 @@ type ComboboxOption = string | Record<string, any>;
           class="form-control dropdown-item"
           [class.active]="i === selectedIndex"
           (click)="selectOption(option)"
+          style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"
         >
-          {{ getOptionDisplay(option) }}
+          <span>{{ getOptionDisplay(option) }}</span>
+          <span *ngIf="statusField"
+                [style.color]="getStatusColor(option)"
+                style="font-size: 0.72rem; font-weight: 600; white-space: nowrap; flex-shrink: 0;">
+            {{ getOptionField(option, statusField) }}
+          </span>
         </div>
         <div *ngIf="filteredOptions.length === 0" class="dropdown-item disabled text-center">
           No se encontraron resultados
@@ -97,6 +103,7 @@ export class SearchableComboboxComponent implements ControlValueAccessor {
   @Input() uppercase: boolean = false;
   @Input() searchFields: string[] = [];
   @Input() openOnFocus: boolean = true;
+  @Input() statusField?: string;
 
   @Output() optionSelected = new EventEmitter<ComboboxOption>();
 
@@ -218,9 +225,17 @@ export class SearchableComboboxComponent implements ControlValueAccessor {
     return String(option?.[this.displayField] ?? '').trim();
   }
 
-  private getOptionField(option: ComboboxOption, field: string): any {
+  getOptionField(option: ComboboxOption, field: string): any {
     if (typeof option === 'string') return option;
     return option?.[field];
+  }
+
+  getStatusColor(option: ComboboxOption): string {
+    if (!this.statusField) return '';
+    const status = this.getOptionField(option, this.statusField);
+    if (status === 'Activo') return '#2e7d32';
+    if (status === 'Inactivo') return '#f48fb1';
+    return '';
   }
 
   private normalizeText(value: any): string {

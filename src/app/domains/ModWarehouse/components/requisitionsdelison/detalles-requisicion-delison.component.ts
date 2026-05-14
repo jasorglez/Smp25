@@ -134,6 +134,7 @@ import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/sear
             placeholder="Escriba el nombre del artículo..."
             [uppercase]="true"
             [openOnFocus]="false"
+            [statusField]="'status'"
             required
             #newArticleNameModel="ngModel"
             [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
@@ -396,7 +397,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   };
 
   // Opciones para el combobox de "Nombre del Artículo" (se cargan desde materiales maestros)
-  newArticleNameOptions: string[] = [];
+  newArticleNameOptions: any[] = [];
 
   // Bandera para detectar duplicados
   newArticleIsDuplicate: boolean = false;
@@ -588,9 +589,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Cargar opciones para el combobox "Nombre del Artículo" en el modal
         // Incluye activos e inactivos para detectar duplicados en cualquier caso
         this.newArticleNameOptions = data
-          .map((material: any) => material.articulo)
-          .filter((name: string) => name?.trim())
-          .sort();
+          .filter((material: any) => material.articulo?.trim())
+          .sort((a: any, b: any) => (a.articulo || '').localeCompare(b.articulo || ''))
+          .map((material: any) => ({
+            description: material.articulo,
+            status: material.active ? 'Activo' : 'Inactivo'
+          }));
 
       },
       error: (error) => {
@@ -2066,14 +2070,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       this.newArticleIsDuplicate = false;
       return;
     }
-    this.newArticleIsDuplicate = this.newArticleNameOptions.some(
-      opt => (typeof opt === 'string' ? opt : '').trim().toUpperCase() === typed
-    );
+    this.newArticleIsDuplicate = this.newArticleNameOptions.some(opt => {
+      const name = typeof opt === 'string' ? opt : (opt?.description || '');
+      return name.trim().toUpperCase() === typed;
+    });
   }
 
   onArticleSelected(option: any): void {
     const selectedArticle = typeof option === 'string' ? option : option?.description || option;
     if (!selectedArticle?.trim?.()) return;
+    this.newArticle.description = String(selectedArticle).trim();
     this.onArticleNameTyped(String(selectedArticle));
   }
 

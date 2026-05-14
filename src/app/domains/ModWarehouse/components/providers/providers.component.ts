@@ -1409,43 +1409,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
         this.providersService.addProviderXTable(data).subscribe();
       }
 
-      // Sincronizar active en proveedorxtablas según el vigente actual de cada proveedor modificado
-      for (const row of modifiedRows) {
-        const newActive = row.vigente === true || row.vigente === 1;
-        try {
-          const matRecords: any = await lastValueFrom(this.providersService.getProvidersXTable(row.id, 'MATERIAL'));
-          const records: any[] = Array.isArray(matRecords) ? matRecords : [];
-          await Promise.all(
-            records.map(rec =>
-              lastValueFrom(
-                this.providersService.updateProviderXTable(rec.id, { ...rec, active: newActive })
-              ).catch(e => console.warn(`⚠️ No se pudo sincronizar proveedorxtabla ${rec.id}:`, e))
-            )
-          );
-          // Sincronizar vigente de sucursales al mismo estado que el proveedor
-          for (const rec of records) {
-            try {
-              const sucursales: any[] = await lastValueFrom(
-                this.sucursalByMpService.getSucursalByMaterial(rec.id)
-              );
-              if (sucursales?.length > 0) {
-                await Promise.all(
-                  sucursales.map((suc: any) =>
-                    lastValueFrom(
-                      this.sucursalByMpService.updateSucursalByMaterial(suc.id, { ...suc, vigente: newActive })
-                    ).catch(e => console.warn(`⚠️ No se pudo sincronizar sucursal ${suc.id}:`, e))
-                  )
-                );
-              }
-            } catch (e) {
-              console.warn(`⚠️ No se pudieron sincronizar sucursales del registro ${rec.id}:`, e);
-            }
-          }
-        } catch (e) {
-          console.warn(`⚠️ No se pudieron sincronizar registros de materiales del proveedor ${row.id}:`, e);
-        }
-      }
-
       // Guardar también los cambios de ProviderXTable
       await this.saveProviderXTableChanges();
 

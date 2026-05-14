@@ -249,6 +249,19 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     return provider.name || provider.description || provider.nameContact || provider.company || '';
   }
 
+  /** True cuando el proveedor fue desactivado globalmente desde providers.component (customers.vigente=false). */
+  private isBlockedByProviderDeactivation(idTabla: number): boolean {
+    if (!idTabla) return false;
+    const provider = this.providers?.find((p: any) => p.id === idTabla);
+    if (!provider) return false;
+    return !(
+      provider.vigente === true || provider.vigente === 1 ||
+      provider.Vigente === true || provider.Vigente === 1 ||
+      provider.active === true  || provider.active === 1  ||
+      provider.Active === true  || provider.Active === 1
+    );
+  }
+
   /** Min. Compras: solo enteros ≥ 0; sin letras ni decimales. */
   private parseMinComprasInteger(raw: unknown): { valid: boolean; value: number } {
     if (raw === null || raw === undefined || raw === '') {
@@ -273,8 +286,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     masterDetail: true,
     detailRowHeight: 300,
     getRowStyle: (params: any) => {
-      if (params.data?.active === false || params.data?.active === 0) {
-        return { background: '#f5f5f5', color: '#aaaaaa', fontStyle: 'italic' };
+      if (this.isBlockedByProviderDeactivation(params.data?.idTabla)) {
+        return { background: '#fce4ec', color: '#c62828', fontStyle: 'italic' };
       }
       return null;
     },
@@ -312,7 +325,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'active',
       headerName: 'Activo',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 80,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor',
@@ -324,7 +337,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'principal',
       headerName: 'Principal',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 111,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor',
@@ -375,7 +388,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'idTabla',
       headerName: 'Proveedor',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 200,
       flex: 1,
       cellStyle: (params: any) => {
@@ -510,7 +523,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo11',
       headerName: 'Codigo Externo',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 140
     },
 
@@ -518,7 +531,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'minCompra',
       headerName: 'Min. Compras',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 130,
       filter: false,
       suppressHeaderFilterButton: true,
@@ -555,7 +568,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo9',
       headerName: 'Precio Unitario',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 130,
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { precision: 2, min: 0 },
@@ -570,7 +583,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo2',
       headerName: 'Descripción Empaque',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 180,
       flex: 1,
       valueSetter: (params: any) => {
@@ -581,7 +594,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo3',
       headerName: 'Pieza x Paquete',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 120,
       valueSetter: (params: any) => {
         params.data.campo3 = params.newValue ? params.newValue.toUpperCase() : '';
@@ -591,7 +604,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo4',
       headerName: 'Medidas',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 120,
       flex: 1,
       valueSetter: (params: any) => {
@@ -602,7 +615,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo5',
       headerName: 'Peso/Volumen',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 140,
       valueSetter: (params: any) => {
         params.data.campo5 = params.newValue ? params.newValue.toUpperCase() : '';
@@ -612,7 +625,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo6',
       headerName: 'Caducidad o Garantía(Meses)',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 160,
       flex: 1,
       valueSetter: (params: any) => {
@@ -694,6 +707,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
           'Debes guardar el proveedor antes de asignar sucursales.',
           'warning'
         );
+        return;
+      }
+      if (this.isBlockedByProviderDeactivation(event.data?.idTabla)) {
         return;
       }
       const node = event.node;
