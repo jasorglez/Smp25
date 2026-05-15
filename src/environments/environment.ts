@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.91 (14 Mayo 2026 11:30) fix: POS carga todos los clientes cuando sidebar = Todas las sucursales',
+  version: '5.92 (14 Mayo 2026 12:00) fix: POS carga todos los clientes de la empresa sin filtrar por rama',
 };
   
