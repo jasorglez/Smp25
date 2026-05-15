@@ -55,7 +55,7 @@ export class EmployeePersonalDataComponent implements OnInit {
       valueSetter: (params) => {
         const val = params.newValue;
         if (val && !/^\d{10}$/.test(val)) {
-          alerts.basicAlert('Teléfono inválido', 'El teléfono debe contener exactamente 10 dígitos numéricos.', 'error');
+          alerts.userSaveErrorToast('Teléfono inválido', 'Debe contener exactamente 10 dígitos numéricos.');
           return false;
         }
         params.data[params.colDef.field] = val;
@@ -129,7 +129,10 @@ export class EmployeePersonalDataComponent implements OnInit {
       width: 130,
       valueSetter: (params) => {
         const val = (params.newValue ?? '').toString().toUpperCase().trim();
-        if (val.length !== 13) return false;
+        if (val.length !== 13) {
+          alerts.userSaveErrorToast('RFC inválido', `Debe tener exactamente 13 caracteres (ingresaste ${val.length}).`);
+          return false;
+        }
         params.data[params.colDef.field] = val;
         return true;
       },
@@ -188,6 +191,26 @@ export class EmployeePersonalDataComponent implements OnInit {
     this.hasUnsavedChanges = true;
   }
 
+  private async refreshFromServer(): Promise<void> {
+    const data = this.employeeData();
+    if (!data?.id) return;
+    const fresh = await lastValueFrom(this.employeeService.getEmployeeById(data.id));
+    this.rowData = [{
+      phone: fresh.phone ?? '',
+      cp: fresh.cp ?? '',
+      address: fresh.address ?? '',
+      state: fresh.state ?? '',
+      city: fresh.city ?? '',
+      neighborhood: fresh.neighborhood ?? '',
+      rfc: fresh.rfc ?? '',
+      id: fresh.id,
+      _id: fresh.id,
+    }];
+    this.infoCp = [];
+    this.hasUnsavedChanges = false;
+    this.gridApi?.setGridOption('rowData', this.rowData);
+  }
+
   async save() {
     const data = this.employeeData();
     if (!data?.id) return;
@@ -199,7 +222,7 @@ export class EmployeePersonalDataComponent implements OnInit {
       delete payload.__modified;
       delete payload._id;
       await lastValueFrom(this.employeeService.updateEmployee(data.id, payload));
-      this.hasUnsavedChanges = false;
+      await this.refreshFromServer();
       alerts.userSaveSuccessToast('Datos Personales', 'Guardado correctamente.');
     } catch {
       alerts.userSaveErrorToast('Error', 'No se pudieron guardar los datos personales.');
@@ -208,21 +231,7 @@ export class EmployeePersonalDataComponent implements OnInit {
     }
   }
 
-  revert() {
-    const data = this.employeeData();
-    if (!data) return;
-    this.rowData = [{
-      phone: data.phone ?? '',
-      cp: data.cp ?? '',
-      address: data.address ?? '',
-      state: data.state ?? '',
-      city: data.city ?? '',
-      neighborhood: data.neighborhood ?? '',
-      rfc: data.rfc ?? '',
-      _id: data.id,
-    }];
-    this.infoCp = [];
-    this.hasUnsavedChanges = false;
-    this.gridApi?.setGridOption('rowData', this.rowData);
+  async revert() {
+    await this.refreshFromServer();
   }
 }

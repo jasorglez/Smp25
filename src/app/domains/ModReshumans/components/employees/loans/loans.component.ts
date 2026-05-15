@@ -252,6 +252,7 @@ export class EmployeesxLoansComponent {
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
+    setTimeout(() => this.maestroGridApi.autoSizeAllColumns(false), 0);
   }
 
   async saveMasterChanges() {

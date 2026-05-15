@@ -237,11 +237,12 @@ export class DetalleMoliendaComponent {
       tooltipValueGetter: (p) => `Órdenes de compra: ${p.value ?? 0}`,
     },
     {
+      field: 'resta',
       headerName: 'Resta',
       width: 110,
       editable: false,
       type: 'numericColumn',
-      valueGetter: (p) => (p.data?.cantidadReq ?? 0) - (p.data?.cantidad ?? 0),
+      valueGetter: (p) => p.data?.resta ?? 0,
     },
   ];
 
@@ -451,6 +452,11 @@ export class DetalleMoliendaComponent {
       headerName: 'Pago',
       width: 110,
       type: 'numericColumn',
+      valueGetter: (params) => {
+        const qty = params.data?.cantidadEntrada ?? 0;
+        const price = this.selectedOcRow?.price ?? 0;
+        return qty * price;
+      },
       valueFormatter: (p) => this.fmtMoneda(p.value),
     },
     {
@@ -578,6 +584,7 @@ export class DetalleMoliendaComponent {
           idCatalog: d.idCatalog ?? null,
         };
       });
+      this.rowData = await this.enrichReqRowsWithResta(this.rowData);
       this.initCompleted = true;
       if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.setGridOption('rowData', this.rowData);
@@ -620,8 +627,8 @@ export class DetalleMoliendaComponent {
 
   onCascadeOcGridReady(params: GridReadyEvent) {
     this.cascadeOcGridApi = params.api;
-    console.log(this.cascadeOcGridApi);
-    console.log( params.api);
+    //console.log(this.cascadeOcGridApi);
+    //console.log( params.api);
     if (this.cascadeOcData.length)
       this.cascadeOcGridApi.setGridOption('rowData', this.cascadeOcData);
   }
@@ -786,6 +793,7 @@ export class DetalleMoliendaComponent {
       }));
 
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
+      this.syncSelectedOcRestaFromEntradas();
       if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
         this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
     } catch (err) {
@@ -850,7 +858,12 @@ export class DetalleMoliendaComponent {
 
   private fmtMoneda(v: any): string {
     if (v == null || v === '') return '';
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(Number(v));
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(v));
   }
 
   async loadData() {
@@ -877,6 +890,7 @@ export class DetalleMoliendaComponent {
           idCatalog: d.idCatalog ?? null,
         };
       });
+      this.rowData = await this.enrichReqRowsWithResta(this.rowData);
       if (this.gridApi && !this.gridApi.isDestroyed())
         this.gridApi.setGridOption('rowData', this.rowData);
       this.updateParentCount();
@@ -937,8 +951,8 @@ export class DetalleMoliendaComponent {
           ).catch(() => [])
         : [];
 
-      this.cascadeOcData = Array.isArray(matchedOcs) ? matchedOcs : [];
-      console.log('OCs cargadas para la requisición seleccionada:', this.cascadeOcData);
+      this.cascadeOcData = await this.enrichOcsWithResta(Array.isArray(matchedOcs) ? matchedOcs : [], idMaterial);
+      //console.log('OCs cargadas para la requisición seleccionada:', this.cascadeOcData);
     } catch (err) {
       console.error('Error cargando OCs:', err);
       this.cascadeOcData = [];
@@ -947,6 +961,68 @@ export class DetalleMoliendaComponent {
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed())
       this.cascadeOcGridApi.setGridOption('rowData', this.cascadeOcData);
     if (this.gridApi) this.gridApi.refreshCells({ force: true });
+  }
+
+  private async enrichOcsWithResta(ocs: any[], idMaterial: number | null | undefined): Promise<any[]> {
+    if (!Array.isArray(ocs) || ocs.length === 0) return [];
+
+    return Promise.all(
+      ocs.map(async (oc: any) => {
+        try {
+          const entradas = idMaterial
+            ? await lastValueFrom(this.entradaService.getByOcAndMaterial(oc.id, idMaterial))
+            : await lastValueFrom(this.entradaService.getByOc(oc.id));
+
+          const sumaEntradas = (Array.isArray(entradas) ? entradas : [])
+            .reduce((acc: number, entrada: any) => acc + Number(entrada?.cantidadEntrada ?? 0), 0);
+
+          return {
+            ...oc,
+            resta: Number(oc?.cantidad ?? 0) - sumaEntradas,
+          };
+        } catch (error) {
+          console.error(`Error cargando entradas para la OC ${oc?.id}:`, error);
+          return {
+            ...oc,
+            resta: Number(oc?.cantidad ?? 0),
+          };
+        }
+      })
+    );
+  }
+
+  private async enrichReqRowsWithResta(rows: any[]): Promise<any[]> {
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+
+    const idMaterial = this.internalParams?.data?.idMaterial;
+    if (!idMaterial) {
+      return rows.map((row: any) => ({ ...row, resta: 0 }));
+    }
+
+    return Promise.all(
+      rows.map(async (row: any) => {
+        if (!row?.idRequisition) {
+          return { ...row, resta: 0 };
+        }
+
+        try {
+          const matchedOcs: any = await lastValueFrom(
+            this.ocAndReqsService.getOcsByReqMaterial(row.idRequisition, idMaterial, this.deptsCsv)
+          ).catch(() => []);
+
+          const ocsWithResta = await this.enrichOcsWithResta(
+            Array.isArray(matchedOcs) ? matchedOcs : [],
+            idMaterial
+          );
+
+          const resta = ocsWithResta.reduce((acc: number, oc: any) => acc + Number(oc?.resta ?? 0), 0);
+          return { ...row, resta };
+        } catch (error) {
+          console.error(`Error calculando resta para la requisición ${row?.idRequisition}:`, error);
+          return { ...row, resta: 0 };
+        }
+      })
+    );
   }
 
   private updateParentCount() {
@@ -986,6 +1062,7 @@ export class DetalleMoliendaComponent {
     };
 
     this.cascadeEntradaData = [newRow, ...this.cascadeEntradaData];
+    this.syncSelectedOcRestaFromEntradas();
     this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
     this.hasUnsavedChangesEntradas = true;
 
@@ -1040,6 +1117,7 @@ export class DetalleMoliendaComponent {
 
   revertEntradas() {
     this.cascadeEntradaData = JSON.parse(JSON.stringify(this.originalCascadeEntradaData));
+    this.syncSelectedOcRestaFromEntradas();
     this.hasUnsavedChangesEntradas = false;
     this.selectedEntradaRow = null;
     if (this.nivel4GridApi) {
@@ -1071,6 +1149,7 @@ export class DetalleMoliendaComponent {
       }
 
       this.selectedEntradaRow = null;
+      this.syncSelectedOcRestaFromEntradas();
       if (this.nivel4GridApi) this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
       await alerts.basicAlert('Éxito', 'Entrada eliminada.', 'success');
     } catch (err) {
@@ -1081,10 +1160,82 @@ export class DetalleMoliendaComponent {
 
   private onEntradaCellValueChanged(event: any) {
     const row = event.data;
+
+    // Auto-calcular pago si cambia cantidadEntrada
+    if (event.colDef.field === 'cantidadEntrada') {
+      const cantidadCapturada = Number(row.cantidadEntrada ?? 0);
+      const cantidadActual = Number.isFinite(cantidadCapturada) ? cantidadCapturada : 0;
+      const maxPermitido = this.getCantidadRestanteParaEntrada(row);
+
+      if (cantidadActual > maxPermitido) {
+        row.cantidadEntrada = cantidadActual;
+        void alerts.basicAlert('Aviso', 'La suma de las entrada es mayor a la requerida en la oc está seguro de guardar.', 'warning');
+      } else if (cantidadActual < 0) {
+        row.cantidadEntrada = 0;
+      } else {
+        row.cantidadEntrada = cantidadActual;
+      }
+
+      const price = this.selectedOcRow?.price ?? 0;
+      row.pago = (row.cantidadEntrada ?? 0) * price;
+
+      if (this.nivel4GridApi) {
+        this.nivel4GridApi.refreshCells({
+          rowNodes: [event.node],
+          columns: ['cantidadEntrada', 'pago'],
+          force: true
+        });
+      }
+    }
+
+    this.syncSelectedOcRestaFromEntradas();
+
     if (!row.__isNew) {
       row.__modified = true;
     }
     this.hasUnsavedChangesEntradas = true;
+  }
+
+  private getCantidadRestanteParaEntrada(currentRow: any): number {
+    const cantidadOc = Number(this.selectedOcRow?.cantidad ?? 0);
+    const sumaOtrasEntradas = this.cascadeEntradaData
+      .filter(row => row !== currentRow)
+      .reduce((acc, row) => acc + Number(row?.cantidadEntrada ?? 0), 0);
+
+    return cantidadOc - sumaOtrasEntradas;
+  }
+
+  private getSumaEntradasActual(): number {
+    return this.cascadeEntradaData.reduce((acc, row) => acc + Number(row?.cantidadEntrada ?? 0), 0);
+  }
+
+  private syncSelectedOcRestaFromEntradas(): void {
+    if (!this.selectedOcRow) return;
+
+    const cantidadOc = Number(this.selectedOcRow.cantidad ?? 0);
+    this.selectedOcRow.resta = cantidadOc - this.getSumaEntradasActual();
+    this.syncSelectedReqRestaFromOcs();
+
+    if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
+      this.cascadeOcGridApi.refreshCells({
+        force: true,
+        columns: ['resta'],
+      });
+    }
+  }
+
+  private syncSelectedReqRestaFromOcs(): void {
+    if (!this.selectedReqRow) return;
+
+    this.selectedReqRow.resta = this.cascadeOcData
+      .reduce((acc: number, oc: any) => acc + Number(oc?.resta ?? 0), 0);
+
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.refreshCells({
+        columns: ['resta'],
+        force: true,
+      });
+    }
   }
 
   private onEntradaCellEditingStopped(event: any) {

@@ -1606,9 +1606,14 @@ export class CatalogosProduccionComponent {
       await alerts.basicAlert('Validación', 'El nombre es obligatorio.', 'warning');
       return;
     }
+    if (!this.selectedCatalogSidebarId) {
+      await alerts.basicAlert('Validación', 'Seleccione un catálogo.', 'warning');
+      return;
+    }
 
     const payload: CatalogProductionItem = {
       idCompany: this.idRoot,
+      idMasterCatalog: this.selectedCatalogSidebarId,
       description: this.modalForm.description.trim().toUpperCase(),
       type: 'CATEGORY',
       parentId: null,
@@ -1622,34 +1627,24 @@ export class CatalogosProduccionComponent {
       active: this.modalForm.active ? 1 : 0,
     };
 
-    const tempId = this.hierarchicalNextTempId++;
-    const newNode = {
-      ...payload,
-      id: tempId,
-      nodeLevel: 'category',
-      originalId: tempId,
-      isExpanded: false,
-      isVisible: true,
-    };
-
-    this.hierarchicalData.push(newNode);
-    this.refreshHierarchicalVisibleRows();
-    this.closeHierarchicalModals();
-    alerts.basicAlert('Éxito', 'Categoría creada.', 'success');
-
-    this.hierService.create(payload).subscribe({
-      error: (err) => {
-        console.error('Error creating category:', err);
-        this.hierarchicalData = this.hierarchicalData.filter(n => n.originalId !== tempId);
-        this.refreshHierarchicalVisibleRows();
-        alerts.basicAlert('Error', 'No se pudo crear la categoría.', 'error');
-      }
-    });
+    try {
+      await lastValueFrom(this.hierService.create(payload));
+      this.closeHierarchicalModals();
+      this.loadHierarchicalData();
+      await alerts.basicAlert('Éxito', 'Categoría creada.', 'success');
+    } catch (err) {
+      console.error('Error creating category:', err);
+      await alerts.basicAlert('Error', 'No se pudo crear la categoría.', 'error');
+    }
   }
 
   async saveNewHierarchicalFamily() {
     if (!this.modalForm.description.trim()) {
       await alerts.basicAlert('Validación', 'El nombre es obligatorio.', 'warning');
+      return;
+    }
+    if (!this.selectedCatalogSidebarId) {
+      await alerts.basicAlert('Validación', 'Seleccione un catálogo.', 'warning');
       return;
     }
 
@@ -1665,6 +1660,7 @@ export class CatalogosProduccionComponent {
 
     const payload: CatalogProductionItem = {
       idCompany: this.idRoot,
+      idMasterCatalog: this.selectedCatalogSidebarId,
       description: this.modalForm.description.trim().toUpperCase(),
       type: 'FAM-CAT',
       parentId: parentId,
@@ -1678,35 +1674,24 @@ export class CatalogosProduccionComponent {
       active: this.modalForm.active ? 1 : 0,
     };
 
-    const tempId = this.hierarchicalNextTempId++;
-    const newNode = {
-      ...payload,
-      id: tempId,
-      nodeLevel: 'family',
-      originalId: tempId,
-      parentCategoryId: parentId,
-      isExpanded: false,
-      isVisible: false,
-    };
-
-    this.hierarchicalData.push(newNode);
-    this.refreshHierarchicalVisibleRows();
-    this.closeHierarchicalModals();
-    alerts.basicAlert('Éxito', 'Familia creada.', 'success');
-
-    this.hierService.create(payload).subscribe({
-      error: (err) => {
-        console.error('Error creating family:', err);
-        this.hierarchicalData = this.hierarchicalData.filter(n => n.originalId !== tempId);
-        this.refreshHierarchicalVisibleRows();
-        alerts.basicAlert('Error', 'No se pudo crear la familia.', 'error');
-      }
-    });
+    try {
+      await lastValueFrom(this.hierService.create(payload));
+      this.closeHierarchicalModals();
+      this.loadHierarchicalData();
+      await alerts.basicAlert('Éxito', 'Familia creada.', 'success');
+    } catch (err) {
+      console.error('Error creating family:', err);
+      await alerts.basicAlert('Error', 'No se pudo crear la familia.', 'error');
+    }
   }
 
   async saveNewHierarchicalSubfamily() {
     if (!this.modalForm.description.trim()) {
       await alerts.basicAlert('Validación', 'El nombre es obligatorio.', 'warning');
+      return;
+    }
+    if (!this.selectedCatalogSidebarId) {
+      await alerts.basicAlert('Validación', 'Seleccione un catálogo.', 'warning');
       return;
     }
 
@@ -1726,6 +1711,7 @@ export class CatalogosProduccionComponent {
 
     const payload: CatalogProductionItem = {
       idCompany: this.idRoot,
+      idMasterCatalog: this.selectedCatalogSidebarId,
       description: this.modalForm.description.trim().toUpperCase(),
       type: 'SUB-FAM',
       parentId: parentId,
@@ -1739,30 +1725,15 @@ export class CatalogosProduccionComponent {
       active: this.modalForm.active ? 1 : 0,
     };
 
-    const tempId = this.hierarchicalNextTempId++;
-    const newNode = {
-      ...payload,
-      id: tempId,
-      nodeLevel: 'subfamily',
-      originalId: tempId,
-      parentCategoryId: parentId,
-      parentFamilyId: subParentId,
-      isVisible: false,
-    };
-
-    this.hierarchicalData.push(newNode);
-    this.refreshHierarchicalVisibleRows();
-    this.closeHierarchicalModals();
-    alerts.basicAlert('Éxito', 'Subfamilia creada.', 'success');
-
-    this.hierService.create(payload).subscribe({
-      error: (err) => {
-        console.error('Error creating subfamily:', err);
-        this.hierarchicalData = this.hierarchicalData.filter(n => n.originalId !== tempId);
-        this.refreshHierarchicalVisibleRows();
-        alerts.basicAlert('Error', 'No se pudo crear la subfamilia.', 'error');
-      }
-    });
+    try {
+      await lastValueFrom(this.hierService.create(payload));
+      this.closeHierarchicalModals();
+      this.loadHierarchicalData();
+      await alerts.basicAlert('Éxito', 'Subfamilia creada.', 'success');
+    } catch (err) {
+      console.error('Error creating subfamily:', err);
+      await alerts.basicAlert('Error', 'No se pudo crear la subfamilia.', 'error');
+    }
   }
 
   async saveHierarchicalEditChanges() {
@@ -1851,7 +1822,7 @@ export class CatalogosProduccionComponent {
   private isCaracteristicasManzana(item: ExtractionFermentationCatalogItem): boolean {
     const raw = (item.description || '').trim().toLowerCase();
     const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    return d === 'caracteristicas de manzana';
+    return d.startsWith('caracteristicas de');
   }
 
   onDoubleclickCatalogItem(item: ExtractionFermentationCatalogItem, event: Event) {
@@ -1897,12 +1868,13 @@ export class CatalogosProduccionComponent {
 
   private loadHierarchicalData() {
     if (!this.idRoot) return;
-
-    this.hierService.getAll(this.idRoot).subscribe({
+    console.log(this.selectedCatalogSidebarId);
+    this.hierService.getAll(this.idRoot, this.selectedCatalogSidebarId).subscribe({
       next: (items: CatalogProductionItem[]) => {
         const categories = items.filter(i => i.type === 'CATEGORY');
         const families = items.filter(i => i.type === 'FAM-CAT');
         const subfamilies = items.filter(i => i.type === 'SUB-FAM');
+        console.log(items);
 
         this.buildHierarchicalStructure(categories, families, subfamilies);
 
