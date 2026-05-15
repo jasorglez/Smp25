@@ -218,13 +218,21 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
     if (this.showProviderTabs && this.activeTab === 'proveedor') {
       if (!this.idProvider) return;
       this.commentsService.getProviderComments(this.documentType, this.idDocument, this.idProvider, this.articleNumArticle).subscribe({
-        next: d => this.comments = d,
+        next: d => {
+          // Defensivo: garantizar que solo se muestren comentarios del proveedor seleccionado
+          // (por si el backend no filtra correctamente por idProvider)
+          this.comments = (d || []).filter(c => Number(c.idProvider) === this.idProvider);
+        },
         error: () => this.comments = []
       });
     } else {
       if (!this.articleNumArticle) return;
       this.commentsService.getComments(this.documentType, this.idDocument, this.articleNumArticle).subscribe({
-        next: d => this.comments = d,
+        next: d => {
+          // Defensivo: garantizar que solo se muestren comentarios SIN proveedor (idProvider null)
+          // (por si el backend retorna comentarios de proveedores mezclados)
+          this.comments = (d || []).filter(c => !c.idProvider);
+        },
         error: () => this.comments = []
       });
     }

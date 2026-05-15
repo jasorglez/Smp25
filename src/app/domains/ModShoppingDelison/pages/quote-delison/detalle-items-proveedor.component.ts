@@ -1,4 +1,4 @@
-import { Component, inject, Renderer2, RendererFactory2, OnDestroy } from '@angular/core';
+import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -12,6 +12,7 @@ import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { UnsavedChangesTrackerService } from 'app/services/unsaved-changes-tracker.service';
 import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { lastValueFrom } from 'rxjs';
@@ -137,6 +138,7 @@ export class DetalleItemsProveedorComponent {
   private catalogadmonService = inject(CatalogadmonService);
   private itemCommentsService = inject(ItemCommentsService);
   private materialsService = inject(MaterialsService);
+  private unsavedTracker = inject(UnsavedChangesTrackerService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -153,8 +155,20 @@ export class DetalleItemsProveedorComponent {
   filteredProviders: any[] = [];
   selectedProviderId: number | null = null;
   selectedProviderObj: any = null;
+  /** Snapshot del último proveedor "persistido" (params.data o BD o tras save) — usado por revertChanges. */
+  private originalProviderId: number | null = null;
   fechaProveedor: string = new Date().toISOString().split('T')[0];
-  hasUnsavedChanges: boolean = false;
+  private _hasUnsavedChanges: boolean = false;
+  private _trackerKey: string = '';
+  get hasUnsavedChanges(): boolean {
+    return this._hasUnsavedChanges;
+  }
+  set hasUnsavedChanges(value: boolean) {
+    this._hasUnsavedChanges = value;
+    if (this._trackerKey) {
+      this.unsavedTracker.setDirty(this._trackerKey, value);
+    }
+  }
   totalCostoTotal: number = 0;
   providerLabel: string = '';
   providerField: string = '';
@@ -197,10 +211,14 @@ export class DetalleItemsProveedorComponent {
     this.requisitionId = params.data?.requisitionId || null;
     this.idBranch = params.data?.idBranch || null;
     this.branchName = params.data?.branchName || '';
+    this._trackerKey = `detalle-items-proveedor:${params.data?.cotizacionId ?? 'x'}:${this.providerField}`;
 
     const currentProviderId = this.params.data[this.providerField];
     if (currentProviderId && currentProviderId > 0) {
       this.selectedProviderId = currentProviderId;
+      this.originalProviderId = currentProviderId;
+    } else {
+      this.originalProviderId = null;
     }
 
     this.catalogadmonService.getCatalogs(9, 'TYPEOC').subscribe({
@@ -327,6 +345,7 @@ export class DetalleItemsProveedorComponent {
           row.codigoExterno = match.campo11 || '';
           row.compraMinima = match.minCompra || 0;
           row.costoUnitario = match.campo9 || 0;
+          row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
           row.proveedorXTablaId = match.id || 0;
           row.proveedorXTablaObj = match;
         } else {
@@ -337,6 +356,7 @@ export class DetalleItemsProveedorComponent {
           if (row.idSupplie) missingCodes.push(row);
         }
       });
+      this.updateTotal();
 
       // ALERTA 1: Vínculo Artículo-Proveedor
       if (missingCodes.length > 0) {
@@ -462,6 +482,7 @@ export class DetalleItemsProveedorComponent {
 
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
+      this.originalProviderId = this.selectedProviderId;
       const providerName = this.getSelectedProviderName();
       this.params.node.data[this.providerField] = this.selectedProviderId;
       this.params.node.data['name_' + this.providerField] = providerName;
@@ -615,7 +636,7 @@ export class DetalleItemsProveedorComponent {
       console.log('🔎 loadExistingCotiz: Cotización existente encontrada:', existing);
       if (existing) {
         this.savedOcId = existing.id; this.cotizacionSaved = true; this.savedCotizFolio = existing.folio;
-        if (existing.idProvider) { this.selectedProviderId = existing.idProvider; this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null; }
+        if (existing.idProvider) { this.selectedProviderId = existing.idProvider; this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null; this.originalProviderId = existing.idProvider; }
         if (existing.datesupply) this.fechaProveedor = String(existing.datesupply).substring(0, 10);
         console.log('📥 loadExistingCotiz: Llamando loadSavedItems con ocId:', existing.id);
         await this.loadSavedItems(existing.id);
@@ -661,7 +682,18 @@ export class DetalleItemsProveedorComponent {
     } catch (err) { console.error('❌ Error loadSavedItems:', err); }
   }
 
-  revertChanges() { this.buildRowData(); this.updateTotal(); this.hasUnsavedChanges = false; this.gridApi?.setGridOption('rowData', this.rowData); }
+  revertChanges() {
+    this.buildRowData();
+    this.updateTotal();
+    // Restaurar selección de proveedor al último estado "persistido"
+    this.selectedProviderId = this.originalProviderId;
+    this.selectedProviderObj = this.originalProviderId
+      ? (this.providers.find(p => p.id === this.originalProviderId) || null)
+      : null;
+    this.refreshFilteredProviders();
+    this.hasUnsavedChanges = false;
+    this.gridApi?.setGridOption('rowData', this.rowData);
+  }
   deleteItem() { alert('Eliminación no implementada.'); }
 
   get colDefs(): ColDef[] {
@@ -671,10 +703,18 @@ export class DetalleItemsProveedorComponent {
       { field: 'active', headerName: 'Activo', width: 120, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
       { field: 'numArticulo', headerName: '# Art', width: 169 },
       { field: 'articulo', headerName: 'Artículo', width: 260 },
-      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated },
+      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated,
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value ?? '';
+        }
+      },
       { field: 'tiempoEntrega', headerName: 'T. Entrega x Semanas', width: 170, editable: !this.ocGenerated,
         cellEditor: 'agNumberCellEditor', cellEditorParams: { precision: 0, min: 0 },
-        valueFormatter: (params: any) => (params.value > 0 ? String(params.value) : ''),
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value > 0 ? String(params.value) : '';
+        },
         valueSetter: (params: any) => {
           const n = parseInt(String(params.newValue));
           if (isNaN(n) || n <= 0) { alerts.reqErrorToast('T. Entrega inválido', 'El tiempo de entrega debe ser mayor que cero'); return false; }
@@ -684,7 +724,10 @@ export class DetalleItemsProveedorComponent {
       },
       { field: 'compraMinima', headerName: 'Compra Mín.', width: 145, editable: !this.ocGenerated,
         cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0, precision: 0 },
-        valueFormatter: (params: any) => (params.value > 0 ? String(Math.floor(params.value)) : ''),
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value > 0 ? String(Math.floor(params.value)) : '';
+        },
         valueSetter: (params: any) => {
           const n = parseInt(String(params.newValue));
           if (isNaN(n) || n <= 0) { alerts.reqErrorToast('Compra Mín. inválida', 'La compra mínima debe ser mayor que cero'); return false; }
@@ -693,7 +736,10 @@ export class DetalleItemsProveedorComponent {
         }
       },
       { field: 'costoUnitario', headerName: 'Costo Unit.', width: 140, editable: !this.ocGenerated,
-        valueFormatter: (params: any) => params.value ? `$${Number(params.value).toFixed(2)}` : '$0.00',
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value ? `$${Number(params.value).toFixed(2)}` : '$0.00';
+        },
         valueSetter: (params: any) => {
           const val = parseFloat(params.newValue);
           if (isNaN(val) || val <= 0) { alerts.reqErrorToast('Costo inválido', 'El costo unitario debe ser mayor que cero'); return false; }
@@ -702,7 +748,12 @@ export class DetalleItemsProveedorComponent {
           return true;
         } },
       { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 120, editable: !this.ocGenerated, hide: true },
-      { field: 'costoTotal', headerName: 'Costo Total', width: 170, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
+      { field: 'costoTotal', headerName: 'Costo Total', width: 170,
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+        }
+      },
       { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
         cellRendererParams: (params: any) => ({
@@ -775,17 +826,7 @@ export class DetalleItemsProveedorComponent {
         }
       } catch { /* silencioso */ }
     }));
-    this.filteredProviders = this.filteredProviders
-      .map(p => ({
-        ...p,
-        isPrincipal: this.principalProviderIds.has(p.id)
-      }))
-      .sort((a, b) => {
-        if (a.isPrincipal && !b.isPrincipal) return -1;
-        if (!a.isPrincipal && b.isPrincipal) return 1;
-        if (a.group !== b.group) return a.group === 'Compañía' ? -1 : 1;
-        return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
-      });
+    this.refreshFilteredProviders();
   }
 
   private refreshFilteredProviders(): void {
@@ -793,11 +834,38 @@ export class DetalleItemsProveedorComponent {
     const usedIds = new Set(
       siblingFields.map(f => this.params?.data?.[f]).filter((id: any) => id && id > 0)
     );
-    if (usedIds.size === 0) {
-      this.filteredProviders = this.providers;
-    } else {
-      this.filteredProviders = this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
+    const base = usedIds.size === 0
+      ? this.providers
+      : this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
+
+    // Construir orden manual: + Nuevo → ⭐ Principales → Header Compañía → Compañías → Header Contacto → Contactos
+    const withFlag = base.map(p => ({ ...p, isPrincipal: this.principalProviderIds.has(p.id) }));
+    const newProvider = withFlag.find(p => p.id === this.NEW_PROVIDER_SENTINEL);
+    const headerCompany = withFlag.find(p => p.__isHeader && p.id === '__header_company__');
+    const headerContact = withFlag.find(p => p.__isHeader && p.id === '__header_contact__');
+    const realProviders = withFlag.filter(p => !p.__isHeader && p.id !== this.NEW_PROVIDER_SENTINEL);
+    const principals = realProviders
+      .filter(p => p.isPrincipal)
+      .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
+    const companies = realProviders
+      .filter(p => !p.isPrincipal && p.group === 'Compañía')
+      .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
+    const contacts = realProviders
+      .filter(p => !p.isPrincipal && p.group === 'Contacto')
+      .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
+
+    const result: any[] = [];
+    if (newProvider) result.push(newProvider);
+    if (principals.length > 0) result.push(...principals);
+    if (companies.length > 0 && headerCompany) {
+      result.push(headerCompany);
+      result.push(...companies);
     }
+    if (contacts.length > 0 && headerContact) {
+      result.push(headerContact);
+      result.push(...contacts);
+    }
+    this.filteredProviders = result;
   }
   onCellValueChanged(event: any) {
     this.hasUnsavedChanges = true;
@@ -816,8 +884,26 @@ export class DetalleItemsProveedorComponent {
   }
   generatePlaceholderPdf() { alerts.basicAlert('PDF', 'Abriendo vista previa...', 'info'); }
   async generateOC() { this.generatingOC = true; setTimeout(() => { this.generatingOC = false; alerts.ocGenerated('OC-TEMP-123'); }, 1000); }
+
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this._hasUnsavedChanges) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
+  /** Llamado por el componente padre antes de colapsar/cambiar la cascada. */
+  async canCloseDetail(): Promise<boolean> {
+    if (!this._hasUnsavedChanges) return true;
+    return this.unsavedTracker.confirmExitIfAny();
+  }
+
   ngOnDestroy(): void {
     this.closeNewProviderOverlay();
+    if (this._trackerKey) {
+      this.unsavedTracker.unregister(this._trackerKey);
+    }
   }
 
   cancelNewProvider() {

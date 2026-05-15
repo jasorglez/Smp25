@@ -1,9 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { CustomersService } from 'app/services/customers.service';
+import { lastValueFrom } from 'rxjs';
 
 interface OcRow {
   id: number;
@@ -14,6 +15,18 @@ interface OcRow {
   typeoc: string;
   conditions: string;
   countitem: number;
+  idReq?: number;
+}
+
+interface TooltipItem {
+  articulo: string;
+  cantidadRequerida: number;
+  cantidadXProv: number;
+}
+
+interface OcTooltipData {
+  typeoc: string;
+  items: TooltipItem[];
 }
 
 @Component({
@@ -62,7 +75,7 @@ interface OcRow {
   `,
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
 })
-export class OrdenesydetallesOcComponent {
+export class OrdenesydetallesOcComponent implements OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
 
@@ -76,6 +89,11 @@ export class OrdenesydetallesOcComponent {
   itemsData: any[] = [];
   selectedOcRow: OcRow | null = null;
   providers: any[] = [];
+
+  // Cache de datos para tooltip por OC id
+  private ocTooltipDataMap: Map<number, OcTooltipData> = new Map();
+  // Tooltip flotante DOM element
+  private tooltipEl: HTMLDivElement | null = null;
 
   colDefs: ColDef[] = [
     {
@@ -93,6 +111,12 @@ export class OrdenesydetallesOcComponent {
         const div = document.createElement('div');
         div.style.cssText = 'cursor:pointer;color:#d97706;text-decoration:underline;';
         div.textContent = params.value || '—';
+        const ocId = Number(params.data?.id);
+        if (ocId) {
+          div.addEventListener('mouseenter', (ev: MouseEvent) => this.showOcTooltip(ev, ocId));
+          div.addEventListener('mousemove', (ev: MouseEvent) => this.moveOcTooltip(ev));
+          div.addEventListener('mouseleave', () => this.hideOcTooltip());
+        }
         return div;
       },
     },
@@ -254,18 +278,208 @@ export class OrdenesydetallesOcComponent {
             typeoc: oc.typeoc || oc.typeOc || '',
             conditions: oc.conditions || '',
             countitem: oc.countitem || oc.countrow || 0,
+            idReq: oc.idReq || oc.id_req || 0,
           };
         });
 
         if (this.gridApi && !this.gridApi.isDestroyed()) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
+
+        // Pre-cargar datos para tooltip de cada OC (no bloquea el render)
+        this.preloadTooltipData();
       },
       error: (error) => {
         console.error('Error loading OCs:', error);
         this.rowData = [];
       },
     });
+  }
+
+  /**
+   * Pre-carga items de cada OC y de su requisición padre para construir el cache de tooltips.
+   * Las cantidades requeridas se obtienen del item con mismo numarticle en la requisición padre.
+   */
+  private async preloadTooltipData(): Promise<void> {
+    this.ocTooltipDataMap.clear();
+    const reqItemsCache = new Map<number, any[]>();
+
+    await Promise.all(this.rowData.map(async (oc) => {
+      try {
+        const ocItems: any[] = await lastValueFrom(this.ocAndReqsService.getReqItems(oc.id));
+        const items = Array.isArray(ocItems) ? ocItems : [];
+
+        // Cargar items de la requisición padre (cacheado por idReq)
+        let reqItems: any[] = [];
+        const idReq = Number(oc.idReq || 0);
+        if (idReq > 0) {
+          if (reqItemsCache.has(idReq)) {
+            reqItems = reqItemsCache.get(idReq) || [];
+          } else {
+            try {
+              const r: any[] = await lastValueFrom(this.ocAndReqsService.getReqItems(idReq));
+              reqItems = Array.isArray(r) ? r : [];
+              reqItemsCache.set(idReq, reqItems);
+            } catch {
+              reqItems = [];
+              reqItemsCache.set(idReq, []);
+            }
+          }
+        }
+
+        const tooltipItems: TooltipItem[] = items.map((it: any) => {
+          const numArt = String(it.numarticle ?? it.numArticle ?? '').trim();
+          // Buscar el item de la requisición padre con mismo numarticle para obtener cantidad requerida
+          const parentItem = numArt
+            ? reqItems.find((r: any) => String(r.numarticle ?? r.numArticle ?? '').trim() === numArt)
+            : null;
+          const cantidadReq = parentItem ? Number(parentItem.quantity ?? 0) : 0;
+          return {
+            articulo: String(it.namearticle ?? it.nameArticle ?? '—'),
+            cantidadRequerida: cantidadReq,
+            cantidadXProv: Number(it.quantity ?? 0),
+          };
+        });
+
+        // El TIPO OC real ("COMPRA AUTORIZADA SIN LIMITE", etc.) viene en cada item (detailsreqoc.typeoc),
+        // no en la cabecera (que suele ser "INSUMOS"). Usamos el typeoc del primer item.
+        const itemTypeOc = items.length > 0
+          ? String(items[0].typeoc ?? items[0].typeOc ?? '').trim()
+          : '';
+        const headerTypeOc = itemTypeOc || (oc.typeoc || '');
+
+        this.ocTooltipDataMap.set(oc.id, {
+          typeoc: headerTypeOc,
+          items: tooltipItems,
+        });
+      } catch {
+        // Si falla un OC, no bloquear los demás
+        this.ocTooltipDataMap.set(oc.id, { typeoc: oc.typeoc || '', items: [] });
+      }
+    }));
+  }
+
+  // ============= TOOLTIP FLOTANTE PARA COLUMNA OC =============
+
+  private showOcTooltip(ev: MouseEvent, ocId: number): void {
+    const data = this.ocTooltipDataMap.get(ocId);
+    if (!data) {
+      // Datos aún no cargados: mostrar mensaje temporal
+      this.renderTooltip(ev, { typeoc: 'Cargando...', items: [] });
+      return;
+    }
+    this.renderTooltip(ev, data);
+  }
+
+  private renderTooltip(ev: MouseEvent, data: OcTooltipData): void {
+    this.hideOcTooltip();
+
+    const div = document.createElement('div');
+    div.className = 'oc-floating-tooltip';
+    div.style.cssText = `
+      position: fixed; z-index: 10100; background: #ffffff;
+      border: 1px solid #d97706; border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      padding: 8px 10px; min-width: 320px; max-width: 480px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 11px; color: #333; pointer-events: none;
+    `;
+
+    // Header con TIPO OC
+    const header = document.createElement('div');
+    header.style.cssText = `
+      font-weight: 700; color: #d97706; font-size: 12px;
+      text-align: center; margin-bottom: 6px;
+      padding-bottom: 4px; border-bottom: 1px solid #fde7c4;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    `;
+    header.textContent = data.typeoc || 'TIPO OC: —';
+    div.appendChild(header);
+
+    // Tabla de items
+    const table = document.createElement('table');
+    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 10.5px;';
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+      <tr style="background: #fff8e1;">
+        <th style="text-align: left; padding: 4px 6px; border-bottom: 1px solid #fde7c4; color: #6b4f00;">Articulo</th>
+        <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid #fde7c4; color: #6b4f00; white-space: nowrap;">Cant. Req</th>
+        <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid #fde7c4; color: #6b4f00; white-space: nowrap;">Cant X Prov</th>
+      </tr>`;
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    if (!data.items.length) {
+      const emptyRow = document.createElement('tr');
+      emptyRow.innerHTML = `<td colspan="3" style="padding: 6px; text-align: center; color: #999;">Sin artículos</td>`;
+      tbody.appendChild(emptyRow);
+    } else {
+      data.items.forEach((it, idx) => {
+        const tr = document.createElement('tr');
+        if (idx % 2 === 1) tr.style.background = '#fafafa';
+        const formatNum = (n: number) =>
+          Number.isFinite(n) ? n.toLocaleString('es-MX', { maximumFractionDigits: 2 }) : '0';
+        tr.innerHTML = `
+          <td style="padding: 4px 6px; border-bottom: 1px solid #f0f0f0;">${this.escapeHtml(it.articulo)}</td>
+          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid #f0f0f0;">${formatNum(it.cantidadRequerida)}</td>
+          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid #f0f0f0; color: #d97706; font-weight: 600;">${formatNum(it.cantidadXProv)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    table.appendChild(tbody);
+    div.appendChild(table);
+
+    document.body.appendChild(div);
+    this.tooltipEl = div;
+    this.positionTooltip(ev);
+  }
+
+  private moveOcTooltip(ev: MouseEvent): void {
+    if (this.tooltipEl) this.positionTooltip(ev);
+  }
+
+  private positionTooltip(ev: MouseEvent): void {
+    if (!this.tooltipEl) return;
+    const margin = 14;
+    const rect = this.tooltipEl.getBoundingClientRect();
+
+    // Posición horizontal: a la derecha del cursor, fallback a la izquierda
+    let left = ev.clientX + margin;
+    if (left + rect.width > window.innerWidth) {
+      left = ev.clientX - rect.width - margin;
+    }
+    if (left < 4) left = 4;
+
+    // Posición vertical: ARRIBA del cursor por defecto (para no tapar la tabla de items inferior)
+    // Si no cabe arriba, mostrar abajo
+    let top = ev.clientY - rect.height - margin;
+    if (top < 4) {
+      top = ev.clientY + margin;
+    }
+    if (top + rect.height > window.innerHeight) {
+      top = Math.max(4, window.innerHeight - rect.height - 4);
+    }
+
+    this.tooltipEl.style.left = `${left}px`;
+    this.tooltipEl.style.top = `${top}px`;
+  }
+
+  private hideOcTooltip(): void {
+    if (this.tooltipEl && this.tooltipEl.parentNode) {
+      this.tooltipEl.parentNode.removeChild(this.tooltipEl);
+    }
+    this.tooltipEl = null;
+  }
+
+  private escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  ngOnDestroy(): void {
+    this.hideOcTooltip();
   }
 
   onRowClicked(event: any) {

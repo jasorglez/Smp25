@@ -998,6 +998,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
                 /* grid aún no listo */
               }
             }, 0);
+            // Cargar conteos reales (materiales + contactos) en paralelo (no bloquea la resolución)
+            this.loadDetailCounts(merged);
             resolve(true);
           },
           error: (error) => {
@@ -1007,6 +1009,49 @@ export class ProvidersComponent implements CanComponentDeactivate {
         });
     });
 
+  }
+
+  /**
+   * Cuenta materiales y contactos por cada proveedor y actualiza fieldMaterial / fieldContact.
+   * Usa los MISMOS endpoints que las tablas de detalle (DetallesMaterialexprovComponent y
+   * DetailCellRendererComponentContact) para garantizar que los contadores coincidan con lo
+   * que el usuario ve al expandir.
+   */
+  private async loadDetailCounts(rows: any[]): Promise<void> {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+
+    const validRows = rows.filter(r => {
+      const id = Number(r?.id);
+      return Number.isFinite(id) && id > 0;
+    });
+
+    if (validRows.length === 0) return;
+
+    try {
+      await Promise.all(
+        validRows.map(async (row) => {
+          const id = Number(row.id);
+          // Cargar materiales y contactos en paralelo para cada proveedor
+          const [materials, contacts] = await Promise.all([
+            lastValueFrom(this.materialsService.getMaterialsByProvider(id)).catch(() => [] as any),
+            lastValueFrom(this.providersService.getProvidersXTable(id, 'CONTACT')).catch(() => [] as any)
+          ]);
+          row.fieldMaterial = Array.isArray(materials) ? materials.length : 0;
+          row.fieldContact = Array.isArray(contacts) ? contacts.length : 0;
+        })
+      );
+
+      // Refrescar solo las columnas afectadas
+      setTimeout(() => {
+        try {
+          this.gridApi?.refreshCells({ force: true, columns: ['fieldMaterial', 'fieldContact'] });
+        } catch {
+          /* grid aún no listo */
+        }
+      }, 0);
+    } catch (err) {
+      console.warn('Error cargando conteos de detalles:', err);
+    }
   }
 
   obtenerBranchs() {

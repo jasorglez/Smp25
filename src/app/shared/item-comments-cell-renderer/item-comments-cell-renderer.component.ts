@@ -13,6 +13,8 @@ type CellParams = ICellRendererParams & {
   numArticle?: string;
   idProvider?: number;
   locked?: boolean;
+  articleName?: string;
+  providerName?: string;
 };
 
 @Component({
@@ -55,6 +57,8 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
   idDocument = 0;
   idProvider = 0;
   locked = false;
+  articleName = '';
+  providerName = '';
   private lastLoadKey = '';
   private lastProviderLoadKey = '';
 
@@ -66,6 +70,8 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.idDocument   = params.idDocument   || 0;
     this.idProvider   = Number(params.idProvider ?? 0);
     this.locked       = params.locked       || false;
+    this.articleName  = params.articleName  || '';
+    this.providerName = params.providerName || '';
     this.loadCount();
     if (this.idProvider) this.loadProviderCount();
 
@@ -93,6 +99,12 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     const newIdDocument   = params.idDocument   || 0;
     const newIdProvider   = Number(params.idProvider ?? 0);
     const newLocked       = params.locked       || false;
+    const newArticleName  = params.articleName  || '';
+    const newProviderName = params.providerName || '';
+
+    // Actualizar siempre articleName y providerName (no requieren recarga de datos)
+    this.articleName  = newArticleName;
+    this.providerName = newProviderName;
 
     if (newNumArticle !== this.numArticle || newDocumentType !== this.documentType ||
         newIdDocument !== this.idDocument || newLocked !== this.locked || newIdProvider !== this.idProvider) {
@@ -122,7 +134,10 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.commentsService.getComments(this.documentType, this.idDocument, this.numArticle)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (data: ItemComment[]) => { this.articleCount = data.length; },
+        next: (data: ItemComment[]) => {
+          // Defensivo: contar solo comentarios SIN proveedor (idProvider null)
+          this.articleCount = (data || []).filter(c => !c.idProvider).length;
+        },
         error: () => { this.articleCount = 0; }
       });
   }
@@ -137,7 +152,10 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.commentsService.getProviderComments(this.documentType, this.idDocument, this.idProvider, this.numArticle)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (data: ItemComment[]) => { this.providerCount = data.length; },
+        next: (data: ItemComment[]) => {
+          // Defensivo: contar solo comentarios del proveedor seleccionado
+          this.providerCount = (data || []).filter(c => Number(c.idProvider) === this.idProvider).length;
+        },
         error: () => { this.providerCount = 0; }
       });
   }
@@ -147,7 +165,11 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
     this.commentsService.openChatFor$.next({
       documentType: this.documentType,
       idDocument:   this.idDocument,
-      numArticle:   this.numArticle
+      numArticle:   this.numArticle,
+      articleName:  this.articleName,
+      providerMessages: this.idProvider > 0
+        ? { idProvider: this.idProvider, providerName: this.providerName }
+        : undefined
     });
   }
 }

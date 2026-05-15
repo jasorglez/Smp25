@@ -6,6 +6,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
 import { ComparacionOverlayService } from 'app/services/comparacion-overlay.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { UnsavedChangesTrackerService } from 'app/services/unsaved-changes-tracker.service';
 import { Subscription } from 'rxjs';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-renderer-pedimentos.component';
@@ -67,6 +68,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   private pedimentoModificationService = inject(PedimentoModificationService);
   private comparacionOverlayService = inject(ComparacionOverlayService);
   private ocAndReqsService = inject(OcAndReqsService);
+  private unsavedTracker = inject(UnsavedChangesTrackerService);
   private modificationSub?: Subscription;
   rowData: any[] = [];
   pedimentosWithOcIds: Set<number> = new Set();
@@ -539,7 +541,17 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     }
   };
 
-  toggleArticulosCascade(node: any) {
+  /** Verifica si hay cambios sin guardar en cualquier detalle de proveedor abierto.
+   *  Si los hay, pide confirmación al usuario; si confirma, limpia el flag global. */
+  private async ensureNoUnsavedChangesBeforeNav(): Promise<boolean> {
+    if (!this.unsavedTracker.hasAnyDirty()) return true;
+    const allowed = await this.unsavedTracker.confirmExitIfAny();
+    if (allowed) this.unsavedTracker.clearAll();
+    return allowed;
+  }
+
+  async toggleArticulosCascade(node: any) {
+    if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
     // Establecer el tipo de detalle como artículos
     node.data.detailType = 'articulos';
     node.setSelected(true);
@@ -592,7 +604,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     }
   }
 
-  toggleProviderCascade(node: any, providerField: string, providerLabel: string) {
+  async toggleProviderCascade(node: any, providerField: string, providerLabel: string) {
+    if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
     node.setSelected(true);
 
     // Verificar si ya está expandido con el mismo proveedor
@@ -658,7 +671,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     }
   }
 
-  toggleReportCascade(node: any) {
+  async toggleReportCascade(node: any) {
+    if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
     node.setSelected(true);
 
     // Verificar si ya está expandido con reporte
@@ -718,7 +732,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     }
   }
 
-  toggleComparacionCascade(node: any) {
+  async toggleComparacionCascade(node: any) {
+    if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
     this.comparacionOverlayService.open({
       cotizacionId: node.data.cotizacionId,
       cotizacionFolio: node.data.pedimento || '',

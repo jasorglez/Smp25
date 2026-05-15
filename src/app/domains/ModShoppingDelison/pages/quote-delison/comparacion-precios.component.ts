@@ -367,6 +367,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     'SELECCIONE UNA OPCION',
     'COMPRA INMEDIATA',
     'COMPRA AUTORIZADA EN OTRA FECHA',
+    'COMPRA AUTORIZADA SIN LIMITE',
     'COMPRA NO AUTORIZADA',
     'CAMBIO DE ESPECIFICACIONES',
     'ARTICULO NO AUTORIZADO'
@@ -553,12 +554,17 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const d = new Date(dateCreate);
       if (weeks > 0) d.setDate(d.getDate() + weeks * 7);
       const datePostpone = weeks > 0 ? d.toISOString().split('T')[0] : '';
+      // "COMPRA AUTORIZADA SIN LIMITE" → quantity = 0 (sin límite, sin fallback a cantidadComprar)
+      const isSinLimite = row.tipoOc === 'COMPRA AUTORIZADA SIN LIMITE';
+      const quantity = isSinLimite
+        ? 0
+        : (Number(row.cantidadConceptualizada) > 0 ? Number(row.cantidadConceptualizada) : Number(row.cantidadComprar) || 0);
       return {
         idMovement:   newOcId,
         idSupplie:    row.idSupplie || 0,
         idProvider:   provId,
         nameProvider: provName,
-        quantity:     Number(row.cantidadConceptualizada) > 0 ? Number(row.cantidadConceptualizada) : Number(row.cantidadComprar) || 0,
+        quantity,
         price:        Number(row.costoUnitario) || 0,
         type:         'OC',
         tiempoEntrega: row.tiempoEntrega || '',
@@ -731,6 +737,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Detectar cambio a "COMPRA AUTORIZADA SIN LIMITE": forzar cantidad = 0 (sin límite, no aplica cantidad)
+    if (field === 'tipoOc' && event.newValue === 'COMPRA AUTORIZADA SIN LIMITE') {
+      event.data.cantidadConceptualizada = 0;
+      this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+    }
+
     if (field === 'cantidadComprar') {
       const v = Number(event.newValue);
       const qty = Number.isFinite(v) ? v : 0;
@@ -747,7 +759,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
     if (field === 'tipoOc') {
-      const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+      const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
       const isNegative = !AUTHORIZED.includes(event.newValue);
 
       if (event.newValue === 'ARTICULO NO AUTORIZADO' || event.newValue === 'CAMBIO DE ESPECIFICACIONES') {
@@ -864,7 +876,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   async generateOC() {
     if (this.rowData.length === 0 || this.ocGenerada) return;
 
-    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
 
     // Items sin tipoOc — pendientes de decisión
     const sinTipo = this.rowData.filter(
@@ -872,10 +884,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     );
     const allTotalizado = sinTipo.length === 0;
 
-    // Agrupar filas autorizadas con cantidadConceptualizada > 0 por proveedor
+    // Agrupar filas autorizadas con cantidadConceptualizada > 0 por proveedor.
+    // Excepción: "COMPRA AUTORIZADA SIN LIMITE" se incluye aunque la cantidad sea 0
+    // (representa una OC sin límite de cantidad).
     const rowsByProvider = new Map<number, any[]>();
     for (const row of this.rowData) {
-      if (AUTHORIZED.includes(row.tipoOc) && Number(row.cantidadConceptualizada) > 0) {
+      const isSinLimite = row.tipoOc === 'COMPRA AUTORIZADA SIN LIMITE';
+      if (AUTHORIZED.includes(row.tipoOc) && (isSinLimite || Number(row.cantidadConceptualizada) > 0)) {
         const list = rowsByProvider.get(row.proveedorId) || [];
         list.push(row);
         rowsByProvider.set(row.proveedorId, list);
@@ -1017,7 +1032,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   }
 
   private async patchRegistros(): Promise<void> {
-    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
     const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
 
     for (const row of this.rowData) {
@@ -1308,7 +1323,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   }
 
   private async updatePorAutorizarAfterOC(): Promise<void> {
-    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     for (const row of this.rowData) {
@@ -1355,7 +1370,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   }
 
   private async updateMaterialsAfterOC(): Promise<void> {
-    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+    const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
     const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
 
     const rowsByMaterial = new Map<number, any[]>();
@@ -1687,6 +1702,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           params.value != null ? Number(params.value).toFixed(2) : '0.00',
         cellStyle: (params: any) => {
           const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
+          const sinLimite = params.data?.tipoOc === 'COMPRA AUTORIZADA SIN LIMITE';
+          if (sinLimite) {
+            return { textAlign: 'center', padding: '4px',
+                     backgroundColor: '#eeeeee', color: '#9e9e9e' };
+          }
           return { textAlign: 'center', padding: '4px',
                    backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
         }
@@ -1702,20 +1722,22 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           idDocument: this.requisitionId,
           numArticle: params.data?.numArticle || params.data?.numArticuloInterno || '',
           idProvider: Number(params.data?.proveedorId ?? 0),
+          articleName: String(params.data?.articulo ?? ''),
+          providerName: String(params.data?.proveedorNombre ?? ''),
           locked: false
         }),
         onCellClicked: (params: any) => {
           const numArticle = params.data?.numArticle || params.data?.numArticuloInterno || '';
           if (!numArticle || !this.requisitionId) return;
+          const provId = Number(params.data?.proveedorId ?? 0);
           this.itemCommentsService.openChatFor$.next({
             documentType: 'REQ',
             idDocument: this.requisitionId,
             numArticle,
             articleName: String(params.data?.articulo ?? ''),
-            providerMessages: {
-              idProvider: Number(params.data?.proveedorId ?? 0),
-              providerName: String(params.data?.proveedorNombre ?? '')
-            }
+            providerMessages: provId > 0
+              ? { idProvider: provId, providerName: String(params.data?.proveedorNombre ?? '') }
+              : undefined
           });
         },
         cellStyle: { padding: '4px', cursor: 'pointer' }

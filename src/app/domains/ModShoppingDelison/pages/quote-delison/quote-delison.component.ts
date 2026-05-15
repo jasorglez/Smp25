@@ -12,6 +12,8 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { RolesService } from 'app/services/roles.service';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
+import { UnsavedChangesTrackerService } from 'app/services/unsaved-changes-tracker.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { lastValueFrom, Subscription } from 'rxjs';
 
 @Component({
@@ -21,7 +23,7 @@ import { lastValueFrom, Subscription } from 'rxjs';
   templateUrl: './quote-delison.component.html',
   styleUrl: './quote-delison.component.scss'
 })
-export class QuoteDelisonComponent implements OnInit, OnDestroy {
+export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDeactivate {
 
   // Inject services
   private signalsService = inject(SignalsService);
@@ -29,6 +31,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   private branchsService = inject(BranchsService);
   private rolesService = inject(RolesService);
   private pedimentoModificationService = inject(PedimentoModificationService);
+  private unsavedTracker = inject(UnsavedChangesTrackerService);
 
   rowData: any[] = [];
   fullRowData: any[] = []; // Store original unfiltered data
@@ -152,6 +155,14 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.modificationSub?.unsubscribe();
+    this.unsavedTracker.clearAll();
+  }
+
+  async canDeactivate(): Promise<boolean> {
+    if (!this.unsavedTracker.hasAnyDirty()) return true;
+    const allowed = await this.unsavedTracker.confirmExitIfAny();
+    if (allowed) this.unsavedTracker.clearAll();
+    return allowed;
   }
 
   private reorderRequisitions(cotizacionId: number) {
@@ -707,7 +718,13 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     });
   }
 
-  togglePedimentosCascade(node: any) {
+  async togglePedimentosCascade(node: any) {
+    if (this.unsavedTracker.hasAnyDirty()) {
+      const allowed = await this.unsavedTracker.confirmExitIfAny();
+      if (!allowed) return;
+      this.unsavedTracker.clearAll();
+    }
+
     node.setSelected(true);
 
     const isCurrentlyExpanded = node.expanded;

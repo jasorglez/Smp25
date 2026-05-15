@@ -2152,6 +2152,7 @@ export const routes: Routes = [
                   import(
                     './domains/ModShoppingDelison/pages/quote-delison/quote-delison.component'
                   ).then((c) => c.QuoteDelisonComponent),
+                canDeactivate: [UnsavedChangesGuard],
               },
             ],
           },
