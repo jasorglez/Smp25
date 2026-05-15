@@ -42,6 +42,13 @@ export class PosComponent implements OnInit {
   credit = false;
   paymentType: 'EFECTIVO' | 'CHEQUE' | 'VALES' | 'TARJETA' = 'EFECTIVO';
 
+  // Celular para ventas al público
+  phoneNumber = '';
+  get isPublicSale(): boolean {
+    const name = (this.selectedClient?.company ?? '').toUpperCase();
+    return name.includes('PUBLICO') || name.includes('PÚBLICO');
+  }
+
   // Modal cambio (Efectivo)
   showChangeModal = false;
   pagoConAmount: number | null = null;
@@ -200,6 +207,7 @@ export class PosComponent implements OnInit {
 
   onClientChange(client: any) {
     this.idCustomer = client?.id ?? null;
+    this.phoneNumber = '';
   }
 
   deleteRow() {
@@ -263,6 +271,7 @@ export class PosComponent implements OnInit {
       amount: this._total,
       id_cashregister: this.session.idCashRegister,
       payment_type: this.paymentType,
+      phone_number: this.isPublicSale && this.phoneNumber.trim() ? this.phoneNumber.trim() : null,
       active: true,
     };
 
@@ -313,6 +322,7 @@ export class PosComponent implements OnInit {
     this.gridApi?.setGridOption('rowData', []);
     this._total = 0;
     this.idCustomer = null;
+    this.phoneNumber = '';
     this.paymentType = 'EFECTIVO';
   }
 
