@@ -43,17 +43,24 @@
 
         <div class="pos-field" *ngIf="isPublicSale">
           <label class="pos-label">
-            <i class="bi bi-phone me-1 text-primary"></i>Número de celular (opcional)
+            <i class="bi bi-phone me-1 text-primary"></i>Número de celular
+            <span class="text-muted small ms-1">(opcional)</span>
           </label>
           <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="bi bi-phone"></i></span>
             <input
               type="tel"
               class="form-control"
-              [(ngModel)]="phoneNumber"
-              placeholder="Ej. 6641234567"
-              maxlength="15"
-              pattern="[0-9]*">
+              [class.is-invalid]="!phoneValid"
+              [class.is-valid]="phoneNumber.trim().length === 10"
+              [ngModel]="phoneNumber"
+              (input)="onPhoneInput($event)"
+              placeholder="10 dígitos"
+              maxlength="10"
+              inputmode="numeric">
+          </div>
+          <div class="invalid-feedback d-block" *ngIf="!phoneValid">
+            Debe tener exactamente 10 dígitos.
           </div>
         </div>
 

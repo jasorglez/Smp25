@@ -49,6 +49,18 @@ export class PosComponent implements OnInit {
     return name.includes('PUBLICO') || name.includes('PÚBLICO');
   }
 
+  get phoneValid(): boolean {
+    if (!this.isPublicSale) return true;
+    const p = this.phoneNumber.trim();
+    return p.length === 0 || p.length === 10;
+  }
+
+  onPhoneInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, 10);
+    this.phoneNumber = input.value;
+  }
+
   // Modal cambio (Efectivo)
   showChangeModal = false;
   pagoConAmount: number | null = null;
@@ -229,6 +241,10 @@ export class PosComponent implements OnInit {
     }
     if (this.idCustomer == null) {
       alerts.basicAlert('Error', 'Seleccione un cliente.', 'error');
+      return;
+    }
+    if (!this.phoneValid) {
+      alerts.basicAlert('Celular inválido', 'El número de celular debe tener exactamente 10 dígitos.', 'warning');
       return;
     }
     if (this.paymentType === 'EFECTIVO') {
