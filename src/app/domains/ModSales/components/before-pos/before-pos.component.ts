@@ -76,7 +76,7 @@ export class BeforePosComponent implements OnInit {
     try {
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(idCompany)),
-        firstValueFrom(this.customersService.getCustomers(-idCompany, 'CUSTOMERS')),
+        firstValueFrom(this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS')),
       ]);
 
       await this.posDb.saveProducts(products as any[]);
@@ -114,7 +114,7 @@ export class BeforePosComponent implements OnInit {
     try {
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(idCompany)),
-        firstValueFrom(this.customersService.getCustomers(-idCompany, 'CUSTOMERS')),
+        firstValueFrom(this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS')),
       ]);
       await this.posDb.saveProducts(products as any[]);
       await this.posDb.saveClients(clients as any[]);

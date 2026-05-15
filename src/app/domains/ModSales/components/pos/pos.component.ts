@@ -114,7 +114,7 @@ export class PosComponent implements OnInit {
       return;
     }
 
-    this.clients = await this.posDb.getClients();
+    this.clients = (await this.posDb.getClients()).sort((a, b) => (a.company ?? '').localeCompare(b.company ?? ''));
     this.allProducts = await this.posDb.getProducts();
     this.filteredProducts = this.allProducts.slice(0, 50);
     this.pendingCount = await this.posDb.countPendingSales();
@@ -143,13 +143,13 @@ export class PosComponent implements OnInit {
     try {
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(this.session.idCompany)),
-        firstValueFrom(this.customersService.getCustomers(-this.session.idCompany, 'CUSTOMERS')),
+        firstValueFrom(this.customersService.getCustomersByCompany(this.session.idCompany, 'CUSTOMERS')),
       ]);
       await this.posDb.saveProducts(products as any[]);
       await this.posDb.saveClients(clients as any[]);
       // Actualiza en memoria sin interrumpir la venta en curso
       this.allProducts = await this.posDb.getProducts();
-      this.clients = await this.posDb.getClients();
+      this.clients = (await this.posDb.getClients()).sort((a, b) => (a.company ?? '').localeCompare(b.company ?? ''));
       if (!this.productSearch) this.filteredProducts = this.allProducts.slice(0, 50);
     } catch {
       // Silencioso — si falla no hay que molestar al cajero
