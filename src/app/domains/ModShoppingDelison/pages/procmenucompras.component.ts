@@ -25,7 +25,13 @@ export class ProcmenucomprasComponent implements OnInit {
 
   loadTabMenus() {
     this.menuService.getTabMenus('shoppingDelison').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => {
+        const materiaPrimaTab = tabs.find(t => t.identifier === 'materia-prima');
+        if (materiaPrimaTab) {
+          materiaPrimaTab.permissionName = 'Materiales Maestros';
+        }
+        this.tabMenus = tabs;
+      },
       error: (err) => console.error('Error loading tab menus:', err)
     });
   }

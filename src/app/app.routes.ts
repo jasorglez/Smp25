@@ -2121,6 +2121,15 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
+                path: 'vienes-servicios-no-productivos',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                data: { hideNonProductive: true },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
                 path: 'cat-fam-sub',
                 loadComponent: () =>
                   import(

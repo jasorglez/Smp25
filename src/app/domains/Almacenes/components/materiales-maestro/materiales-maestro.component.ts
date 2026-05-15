@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -68,7 +69,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
   private subfamiliaModalService = inject(SubfamiliaModalService);
+  private route = inject(ActivatedRoute);
   public activeModal = inject(NgbActiveModal, { optional: true });
+
+  // ✅ Cuando la ruta lo indica (sección "Vienes y servicios no productivos"),
+  // se ocultan columnas: Merma, Fecha Cambio, Materiales, Parametros, Donde Usa.
+  private hideNonProductiveColumns: boolean = false;
 
   rowData: any[] = [];
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
@@ -147,6 +153,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    // ✅ Detectar si la ruta pide ocultar columnas (sección "Vienes y servicios no productivos").
+    // En modo modal no aplica: siempre se muestran todas las columnas.
+    this.hideNonProductiveColumns =
+      !this.isModalMode && !!this.route.snapshot.data?.['hideNonProductive'];
+
     // ✅ Si estamos en modo modal, usar idRootInput en lugar de signal
     if (this.isModalMode && this.idRootInput) {
       this.idRoot = this.idRootInput;
@@ -594,11 +605,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return null;
         }
       },
-      { headerName: 'Merma', field: 'merma', editable: true },
+      { headerName: 'Merma', field: 'merma', editable: true, hide: this.hideNonProductiveColumns },
       {
         headerName: 'Fecha Cambio',
         field: 'fecha',
         editable: true,
+        hide: this.hideNonProductiveColumns,
         filter: 'agDateColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
@@ -646,6 +658,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'costo',
         headerName: 'Materiales',
         width: 150,
+        hide: this.hideNonProductiveColumns,
         valueFormatter: (params: any) => {
           return `$${params.value}`;
         },
@@ -669,6 +682,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'parametros',
         headerName: 'Parametros',
         width: 150,
+        hide: this.hideNonProductiveColumns,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
           return count;
@@ -730,6 +744,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'subfamilyCount',
         headerName: 'Donde Usa',
         width: 150,
+        hide: this.hideNonProductiveColumns,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
           return count;
@@ -875,10 +890,27 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     // Cargar estado de columnas desde localStorage
     this.loadColumnState();
 
+    // ✅ En la sección "Vienes y servicios no productivos" forzar que estas columnas
+    // queden ocultas, aunque un estado guardado intente mostrarlas.
+    if (this.hideNonProductiveColumns) {
+      this.gridApi.setColumnsVisible(
+        ['merma', 'fecha', 'costo', 'parametros', 'subfamilyCount'],
+        false
+      );
+    }
+
     // Configurar master-detail SOLO la primera vez
     if (!this._detailParams) {
       this.updateGridContext();
     }
+  }
+
+  // ✅ Clave de localStorage del estado de columnas. Distinta por sección para que
+  // "Materiales Maestro" y "Vienes y servicios no productivos" no se contaminen entre sí
+  // (de lo contrario, el estado de una sección reaparecería las columnas ocultas de la otra).
+  private getColumnStateKey(): string {
+    const suffix = this.hideNonProductiveColumns ? '_noprod' : '';
+    return `materiales_column_state${suffix}_${this.idRoot}`;
   }
 
   // Guardar estado de columnas (pin, orden, visibilidades) en localStorage
@@ -887,7 +919,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     try {
       const columnState = this.gridApi.getColumnState();
-      const localStorageKey = `materiales_column_state_${this.idRoot}`;
+      const localStorageKey = this.getColumnStateKey();
       localStorage.setItem(localStorageKey, JSON.stringify(columnState));
     } catch (error) {
       console.error('Error guardando estado de columnas:', error);
@@ -899,7 +931,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (!this.gridApi) return;
 
     try {
-      const localStorageKey = `materiales_column_state_${this.idRoot}`;
+      const localStorageKey = this.getColumnStateKey();
       const savedState = localStorage.getItem(localStorageKey);
 
       if (savedState) {
@@ -925,7 +957,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       console.error('Error cargando estado de columnas:', error);
       // Si hay error, borrar el estado corrupto
       try {
-        const localStorageKey = `materiales_column_state_${this.idRoot}`;
+        const localStorageKey = this.getColumnStateKey();
         localStorage.removeItem(localStorageKey);
       } catch (e) {}
     }
