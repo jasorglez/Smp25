@@ -141,13 +141,9 @@ export class PosComponent implements OnInit {
   private async refreshCatalogSilently(): Promise<void> {
     if (!this.session) return;
     try {
-      const clientsObs = this.session.idBranch < 0
-        ? this.customersService.getCustomersByCompany(this.session.idCompany, 'CUSTOMERS')
-        : this.customersService.getCustomers(this.session.idBranch, 'CUSTOMERS');
-
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(this.session.idCompany)),
-        firstValueFrom(clientsObs),
+        firstValueFrom(this.customersService.getCustomers(-this.session.idCompany, 'CUSTOMERS')),
       ]);
       await this.posDb.saveProducts(products as any[]);
       await this.posDb.saveClients(clients as any[]);
