@@ -16,6 +16,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { RolesService } from 'app/services/roles.service';
+import { PermitionsService } from 'app/services/permitions.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
@@ -49,6 +50,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private prefixSetupService = inject(PrefixSetupService);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private rolesService = inject(RolesService);
+  private permitionsService = inject(PermitionsService);
   public   authService = inject(AuthService);
 
   private gridApi!: GridApi;
@@ -130,6 +132,9 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   // ✅ Cache de roles por sucursal: Map<idBranch, roles[]>
   private rolesByBranchCache: Map<number, any[]> = new Map();
+
+  // ✅ Cache de departamento principal por sucursal: Map<idBranch, {id, description}>
+  private primaryDepartmentByBranch: Map<number, any> = new Map();
 
   // Datos del prefijo actual
   currentPrefixData: any = null;
@@ -726,7 +731,17 @@ export class RequisitionsDelisonComponent implements OnInit {
             // Precargar departamentos del backend para la sucursal recién seleccionada
             this.preloadRolesForBranch(branchId);
 
-
+            // ✅ Cargar el departamento principal de la nueva sucursal y actualizar automáticamente
+            this.loadPrimaryDepartmentForBranch(branchId).then((principal) => {
+              if (principal) {
+                params.data.departmentId = principal.id;
+                params.data.departmentName = principal.description;
+                // Refrescar solo la celda del departamento para mostrar el cambio
+                if (this.gridApi) {
+                  this.gridApi.refreshCells({ rowNodes: [params.node], force: true, columns: ['departmentId'] });
+                }
+              }
+            });
 
             // 🔄 Obtener el próximo número de requisición para la nueva sucursal
             this.prefixSetupService.getNextFolio('branch', branchId, 'req').then((folio: string | null) => {
@@ -822,7 +837,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'departmentId',
         headerName: 'Departamento que solicita',
-        width: 200,
+        width: 280,
         valueFormatter: (params: any) => {
           if (!params.value) return '';
 
@@ -839,7 +854,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         editable: (params: any) => {
           return params.data && params.data.idReference > 0;
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
           const branchId = params.data?.idReference;
 
@@ -880,7 +895,16 @@ export class RequisitionsDelisonComponent implements OnInit {
           return {
             values: roles.map(r => r.description),
             valueListGap: 0,
-            valueListMaxHeight: 220
+            valueListMaxHeight: 220,
+            cellWidth: 290,
+            // ✅ Formatear cómo se muestra cada opción en el dropdown
+            formatValue: (value: any) => {
+              if (!value) return '';
+              const role = roles.find(r => r.description === value);
+              return role?.description || value?.toString() || '';
+            },
+            allowTyping: false,
+            filterList: false
           };
         },
         valueGetter: (params: any) => {
@@ -1435,9 +1459,19 @@ export class RequisitionsDelisonComponent implements OnInit {
     const branch = this.branches.find(b => b.id === selectedBranchId);
     const branchName = branch?.name || branch?.description || '';
 
-    // Pre-poblar el primer departamento disponible del catálogo
-    const defaultDeptId = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].id : null;
-    const defaultDeptName = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].description : '';
+    // ✅ Pre-poblar con el departamento principal del usuario para esta sucursal
+    // Si no existe principal, usar el primer departamento disponible del catálogo
+    let defaultDeptId: number | null = null;
+    let defaultDeptName: string = '';
+
+    const principal = this.primaryDepartmentByBranch.get(selectedBranchId);
+    if (principal) {
+      defaultDeptId = principal.id;
+      defaultDeptName = principal.description;
+    } else if (this.departamentos && this.departamentos.length > 0) {
+      defaultDeptId = this.departamentos[0].id;
+      defaultDeptName = this.departamentos[0].description;
+    }
 
     const newId = `temp_${Date.now()}`;
     const newItem = {
@@ -1581,11 +1615,56 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   /**
+   * ✅ Carga el departamento principal para una sucursal y retorna una Promise.
+   * Útil para casos donde necesitas esperar a que se cargue antes de actualizar datos.
+   */
+  private loadPrimaryDepartmentForBranch(branchId: number): Promise<any | null> {
+    return new Promise((resolve) => {
+      // Si ya está en cache, resolver inmediatamente
+      if (this.primaryDepartmentByBranch.has(branchId)) {
+        resolve(this.primaryDepartmentByBranch.get(branchId));
+        return;
+      }
+
+      // Si no está en cache, cargar y resolver cuando complete
+      this.permitionsService.getRolYPosicion(this.idUser, branchId).subscribe({
+        next: (permisos: any) => {
+          const permisosArr = Array.isArray(permisos)
+            ? permisos
+            : Array.isArray(permisos?.data)
+              ? permisos.data
+              : Array.isArray(permisos?.project)
+                ? permisos.project
+                : Array.isArray(permisos?.permissions)
+                  ? permisos.permissions
+                  : [];
+
+          const principal = permisosArr.find((p: any) => p?.principal === true || p?.principal === 1);
+          if (principal && principal.idRole) {
+            const deptData = {
+              id: principal.idRole,
+              description: principal.roleName || `ID: ${principal.idRole}`
+            };
+            this.primaryDepartmentByBranch.set(branchId, deptData);
+            resolve(deptData);
+          } else {
+            resolve(null);
+          }
+        },
+        error: () => resolve(null) // Resolver incluso en error
+      });
+    });
+  }
+
+  /**
    * Pre-carga los roles para todas las sucursales únicas presentes en las requisiciones
    * Esto permite que el valueFormatter muestre los nombres correctamente al cargar
+   * ✅ También carga el departamento principal del usuario para esa sucursal
    */
   private preloadRolesForBranch(branchId: number): void {
     if (!this.idUser || !branchId || branchId <= 0) return;
+
+    // Cargar roles disponibles
     this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
       next: (roles: any[]) => {
         this.rolesByBranchCache.set(branchId, roles.map(r => ({
@@ -1598,6 +1677,32 @@ export class RequisitionsDelisonComponent implements OnInit {
         }
       },
       error: () => {}
+    });
+
+    // ✅ Cargar departamento principal del usuario para esta sucursal
+    this.permitionsService.getRolYPosicion(this.idUser, branchId).subscribe({
+      next: (permisos: any) => {
+        const permisosArr = Array.isArray(permisos)
+          ? permisos
+          : Array.isArray(permisos?.data)
+            ? permisos.data
+            : Array.isArray(permisos?.project)
+              ? permisos.project
+              : Array.isArray(permisos?.permissions)
+                ? permisos.permissions
+                : [];
+
+        // Buscar el que tiene principal: true
+        const principal = permisosArr.find((p: any) => p?.principal === true || p?.principal === 1);
+
+        if (principal && principal.idRole) {
+          this.primaryDepartmentByBranch.set(branchId, {
+            id: principal.idRole,
+            description: principal.roleName || `ID: ${principal.idRole}`
+          });
+        }
+      },
+      error: () => {} // Silencioso si falla
     });
   }
 

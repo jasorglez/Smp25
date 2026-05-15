@@ -381,7 +381,7 @@ export class CatFamSubComponent {
       },
  
       {
-        headerName: 'Material Maestro',
+        headerName: 'MATERIA PRIMA',
         field: 'valueAdditionBit',
         width: 210,
         editable: true,
@@ -390,6 +390,13 @@ export class CatFamSubComponent {
             this.openMaterialsModal(params.data);
           }
         }
+      },
+      {
+        headerName: 'BIENES Y SERVICIOS',
+        field: 'bienesServicios',
+        width: 210,
+        editable: true,
+        cellDataType: 'boolean'
       },
       {
         headerName: 'Requisiciones',

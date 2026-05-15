@@ -151,9 +151,9 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       ]);
       const cotizList = Array.isArray(cotizData) ? cotizData : [];
       const ocList = (Array.isArray(ocData) ? ocData : []).filter((c: any) => Number(c.idReq) === Number(reqId));
-      const slotSuffixes = ['-A-', '-B-', '-C-'];
-      const hasAnyCotiz = cotizList.some((c: any) => slotSuffixes.some(s => c.folio?.includes(s)));
-      const hasAnyOc = ocList.some((c: any) => slotSuffixes.some(s => c.folio?.includes(s)));
+      // ✅ Nueva nomenclatura: cualquier registro con idProvider>0 es un slot válido
+      const hasAnyCotiz = cotizList.some((c: any) => Number(c.idProvider) > 0);
+      const hasAnyOc = ocList.some((c: any) => Number(c.idProvider) > 0);
       if (hasAnyCotiz || hasAnyOc) {
         const d = this.params?.node?.data as { articulosPedimentoLocked?: boolean } | undefined;
         if (d) {

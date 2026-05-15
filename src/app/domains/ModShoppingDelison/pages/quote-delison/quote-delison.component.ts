@@ -294,6 +294,18 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
     }
   }
 
+  /**
+   * Extrae el prefijo de sucursal del folio de la requisición.
+   * Folio típico: "BOD15-001" → "BOD15". Si lleva tipo (REQ-/COTIZ-/OC-), también lo limpia.
+   * Usado para construir folios de slots: `${type}-{branchPrefix}-P{ped}-PRO{idProvider}`.
+   */
+  private extractBranchPrefix(folio: string | null | undefined): string {
+    if (!folio) return 'NOPREF';
+    let prefix = String(folio).replace(/^(REQ-|COTIZ-|OC-|CO-)/i, '');
+    prefix = prefix.replace(/-\d+$/, '');
+    return prefix || 'NOPREF';
+  }
+
   private updateGridHeight() {
     // Ajusta este offset si tu header/toolbar cambia de tamaño
     const offsetPx = 320;
@@ -387,6 +399,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
       const branch = this.branches.find(b => b.id === requisicion.idReference);
       const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
+      // ✅ Extraer prefijo de sucursal del folio de la requisición (ej: "BOD15-001" → "BOD15")
+      const branchPrefix = this.extractBranchPrefix(requisicion.folio);
 
       // ✅ PASO 2.1: Cargar COTIZACIONES de esta requisición
       let cotizaciones: any[] = [];
@@ -432,10 +446,17 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
           providerCotizs = Array.isArray(pcData) ? pcData : [];
         } catch (_) {}
 
-        // Mapear slot A/B/C por folio → extraer idProvider + nombre (solicit)
-        const slotA = providerCotizs.filter(c => c.folio?.includes('-A-')).sort((a,b) => b.id - a.id)[0];
-        const slotB = providerCotizs.filter(c => c.folio?.includes('-B-')).sort((a,b) => b.id - a.id)[0];
-        const slotC = providerCotizs.filter(c => c.folio?.includes('-C-')).sort((a,b) => b.id - a.id)[0];
+        // ✅ Generar providerSlots dinámicos (orden de creación ASC, sin slots vacíos)
+        const providerSlots = providerCotizs
+          .filter(c => Number(c.idProvider) > 0)
+          .sort((a, b) => a.id - b.id)
+          .map((cotiz, index) => ({
+            slotIndex: index + 1,
+            cotizId: cotiz.id,
+            folio: cotiz.folio || '',
+            idProvider: cotiz.idProvider,
+            name: cotiz.solicit || ''
+          }));
 
         return {
           id: cotizacion.id,
@@ -443,12 +464,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
           pedimento: cotizacion.pedimento,
           folio: cotizacion.folio || '',
           idDepartament: requisicion.idDepartament || 0,
-          idProvider:  slotA?.idProvider || 0,
-          idProvider2: slotB?.idProvider || 0,
-          idProvider3: slotC?.idProvider || 0,
-          name_idProvider:  slotA?.solicit || '',
-          name_idProvider2: slotB?.solicit || '',
-          name_idProvider3: slotC?.solicit || '',
+          providerSlots,
+          branchPrefix,
           createdBy: cotizacion.createdBy || cotizacion.solicit || '',
           items: items.map((item: any) => ({
             id: item.id,
@@ -556,6 +573,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
           const branch = this.branches.find(b => b.id === requisicion.idReference);
           const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
+          // ✅ Extraer prefijo de sucursal del folio de la requisición (ej: "BOD15-001" → "BOD15")
+          const branchPrefix = this.extractBranchPrefix(requisicion.folio);
 
           // ✅ PASO 2: Cargar COTIZACIONES de esta requisición
           let cotizaciones: any[] = [];
@@ -601,9 +620,17 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
               providerCotizs = Array.isArray(pcData) ? pcData : [];
             } catch (_) {}
 
-            const slotA = providerCotizs.filter(c => c.folio?.includes('-A-')).sort((a,b) => b.id - a.id)[0];
-            const slotB = providerCotizs.filter(c => c.folio?.includes('-B-')).sort((a,b) => b.id - a.id)[0];
-            const slotC = providerCotizs.filter(c => c.folio?.includes('-C-')).sort((a,b) => b.id - a.id)[0];
+            // ✅ Generar providerSlots dinámicos (orden de creación ASC, sin slots vacíos)
+            const providerSlots = providerCotizs
+              .filter(c => Number(c.idProvider) > 0)
+              .sort((a, b) => a.id - b.id)
+              .map((cotiz, index) => ({
+                slotIndex: index + 1,
+                cotizId: cotiz.id,
+                folio: cotiz.folio || '',
+                idProvider: cotiz.idProvider,
+                name: cotiz.solicit || ''
+              }));
 
             return {
               id: cotizacion.id,
@@ -611,12 +638,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
               pedimento: cotizacion.pedimento,
               folio: cotizacion.folio || '',
               idDepartament: requisicion.idDepartament || 0,
-              idProvider:  slotA?.idProvider || 0,
-              idProvider2: slotB?.idProvider || 0,
-              idProvider3: slotC?.idProvider || 0,
-              name_idProvider:  slotA?.solicit || '',
-              name_idProvider2: slotB?.solicit || '',
-              name_idProvider3: slotC?.solicit || '',
+              providerSlots,
+              branchPrefix,
               createdBy: cotizacion.createdBy || cotizacion.solicit || '',
               items: items.map((item: any) => ({
                 id: item.id,
