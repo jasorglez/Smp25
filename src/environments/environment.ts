@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.90 (14 Mayo 2026 11:00) fix: quita alertas de éxito en Clientes y Proveedores',
+  version: '5.91 (14 Mayo 2026 11:30) fix: POS carga todos los clientes cuando sidebar = Todas las sucursales',
 };
   

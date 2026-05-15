@@ -74,9 +74,13 @@ export class BeforePosComponent implements OnInit {
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
     try {
+      const clientsObs = idBranch < 0
+        ? this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS')
+        : this.customersService.getCustomers(idBranch, 'CUSTOMERS');
+
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(idCompany)),
-        firstValueFrom(this.customersService.getCustomers(idBranch, 'CUSTOMERS')),
+        firstValueFrom(clientsObs),
       ]);
 
       await this.posDb.saveProducts(products as any[]);
@@ -112,9 +116,13 @@ export class BeforePosComponent implements OnInit {
     this.errorMsg = '';
     const { idCompany, idBranch } = this.existingSession;
     try {
+      const clientsObs = idBranch < 0
+        ? this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS')
+        : this.customersService.getCustomers(idBranch, 'CUSTOMERS');
+
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(idCompany)),
-        firstValueFrom(this.customersService.getCustomers(idBranch, 'CUSTOMERS')),
+        firstValueFrom(clientsObs),
       ]);
       await this.posDb.saveProducts(products as any[]);
       await this.posDb.saveClients(clients as any[]);
