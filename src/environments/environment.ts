@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.93 (14 Mayo 2026 13:00) fix: POS clientes todos visibles + orden A-Z',
+  version: '5.94 (14 Mayo 2026 13:30) feat: POS celular validación 10 dígitos',
 };
   
