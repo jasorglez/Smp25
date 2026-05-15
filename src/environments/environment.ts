@@ -85,6 +85,6 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.88 (14 Mayo 2026 08:01) fix: login-setup file picker + errores detallados + sin alerta de éxito',
+  version: '5.89 (14 Mayo 2026 10:30) feat: POS — captura celular en ventas al público',
 };
   
