@@ -314,11 +314,6 @@ invited: boolean = false;
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos de facturación correctamente.',
-        'success'
-      );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos();
@@ -359,11 +354,6 @@ invited: boolean = false;
     )
       .subscribe(
         () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.obtenerDatos();
           this.notSavedChanges = false;
           this.selectedRowData = null;
