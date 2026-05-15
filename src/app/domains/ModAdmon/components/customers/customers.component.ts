@@ -1303,11 +1303,6 @@ export class CustomersComponent implements CanComponentDeactivate {
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
@@ -1435,11 +1430,6 @@ export class CustomersComponent implements CanComponentDeactivate {
         })
       )
       .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.obtenerDatos();
         this.notSavedChanges = false;
         this.selectedRowData = null;
@@ -1654,7 +1644,6 @@ export class CustomersComponent implements CanComponentDeactivate {
 
       this.customerService.addCustomerBilling(billingData).subscribe({
         next: () => {
-          alerts.basicAlert('Éxito', 'Cliente habilitado para facturación electrónica', 'success');
           this.loadCustomersBilling();
         },
         error: (err) => {
@@ -1669,7 +1658,6 @@ export class CustomersComponent implements CanComponentDeactivate {
       if (billingRecord) {
         this.customerService.deleteCustomerBilling(billingRecord.id).subscribe({
           next: () => {
-            alerts.basicAlert('Éxito', 'Cliente deshabilitado para facturación electrónica', 'success');
             this.loadCustomersBilling();
           },
           error: (err) => {

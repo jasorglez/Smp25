@@ -202,11 +202,6 @@ public gridOptions: any = {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos
@@ -247,18 +242,7 @@ public gridOptions: any = {
     )
       .subscribe(
         () => {
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.obtenerDatos();
-
-          alerts.basicAlert(
-            'Eliminar entrada',
-            'Entrada eliminada satisfactoriamente.',
-            'success'
-          );
           this.notSavedChanges = false;
           this.selectedRowData = null;
         }

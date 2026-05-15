@@ -450,11 +450,6 @@ export class CustomersPaymentsComponent {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
@@ -508,11 +503,6 @@ export class CustomersPaymentsComponent {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
 
@@ -592,18 +582,7 @@ export class CustomersPaymentsComponent {
         })
       )
       .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.loadData();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.masterNotSavedChanges = false;
         this.signalsService.triggerRefreshEmployees();
       });
@@ -636,18 +615,7 @@ export class CustomersPaymentsComponent {
         })
       )
       .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.loadData();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.detailNotSavedChanges = false;
         this.signalsService.triggerRefreshEmployees();
       });
