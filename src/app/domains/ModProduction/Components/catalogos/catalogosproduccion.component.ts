@@ -850,6 +850,13 @@ export class CatalogosProduccionComponent {
       valueFormatter: (p: any) => this.materialesIdToDesc.get(p.value) ?? '',
     },
     {
+      headerName: 'edit col Bultos',
+      field: 'editBultos',
+      width: 90,
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+    },
+    {
       headerName: 'Activo',
       field: 'valor',
       width: 90,
@@ -995,6 +1002,7 @@ export class CatalogosProduccionComponent {
     this.mxmService.getAll(this.idRoot).subscribe((modulos: any[]) => {
       const rows = (modulos ?? []).map(m => ({ id: m.id, type: m.type, idArticulo: m.idArticulo, valor: m.active }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
+      //console.log('Loaded grid data:', rows);
       this.rowData.set(rows);
     });
   }
@@ -1008,6 +1016,7 @@ export class CatalogosProduccionComponent {
       id: null,
       type: 'MOLIENDA',
       idArticulo: null,
+      editBultos: false,
       valor: false,
       idCatalog: this.selectedCatalogSidebarId,
       __isNew: true
@@ -1028,7 +1037,8 @@ export class CatalogosProduccionComponent {
         cantidad: 1,
         type: r.type,
         idCatalog: r.idCatalog || this.selectedCatalogSidebarId,
-        active: r.valor
+        active: r.valor,
+        editBultos: r.editBultos || false,
       };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
     });
@@ -1852,14 +1862,17 @@ export class CatalogosProduccionComponent {
   private loadCatalogData(idCatalog: number) {
     if (!this.idRoot) return;
     this.mxmService.getByCatalog(this.idRoot, idCatalog).subscribe((data: any[]) => {
+      console.log('Data loaded for catalog', idCatalog, data);
       const rows = (data ?? []).map(m => ({
         id: m.id,
         type: m.type,
         idArticulo: m.idArticulo,
         valor: m.active,
-        idCatalog: m.idCatalog
+        idCatalog: m.idCatalog,
+        editBultos: m.editBultos,
       }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
+      console.log(rows);
       this.rowData.set(rows);
       this.hasUnsavedChanges = false;
       this.selectedRow = null;
@@ -1868,13 +1881,13 @@ export class CatalogosProduccionComponent {
 
   private loadHierarchicalData() {
     if (!this.idRoot) return;
-    console.log(this.selectedCatalogSidebarId);
+    // console.log(this.selectedCatalogSidebarId);
     this.hierService.getAll(this.idRoot, this.selectedCatalogSidebarId).subscribe({
       next: (items: CatalogProductionItem[]) => {
         const categories = items.filter(i => i.type === 'CATEGORY');
         const families = items.filter(i => i.type === 'FAM-CAT');
         const subfamilies = items.filter(i => i.type === 'SUB-FAM');
-        console.log(items);
+        //console.log(items);
 
         this.buildHierarchicalStructure(categories, families, subfamilies);
 

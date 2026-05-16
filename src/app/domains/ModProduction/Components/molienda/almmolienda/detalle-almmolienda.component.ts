@@ -12,6 +12,7 @@ import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services
 import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
 import { alerts } from 'app/helpers/alerts';
 import { FechaEditorComponent } from '../../../../../shared/fecha-editor.component';
+import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
 
 interface ReqOption {
   id: number;
@@ -23,7 +24,7 @@ interface ReqOption {
 @Component({
   selector: 'app-detalle-almmolienda',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, DetailEntradaDocumentsComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;"
          [style.backgroundColor]="detailType === 'entradas' ? '#e8f5e9' : '#fce4ec'">
@@ -188,6 +189,7 @@ export class DetalleMoliendaComponent {
   bultosCantidad: number | null = null;
   bultosCantidadARevisar: number | null = null;
   proporcionRevision: number | null = null;
+  editBultos = false;
   caracteristicasCategories: any[] = [];
   caracteristicasFamilies: any[] = [];
 
@@ -299,7 +301,7 @@ export class DetalleMoliendaComponent {
 
   // ── Nivel 4: Entradas por OC (demo local; sustituir por API cuando exista) ──
   nivel4ColDefs: ColDef[] = [
-    { field: 'idEntrada', headerName: 'ID Entrada', width: 95, type: 'numericColumn' },
+    { field: 'idEntrada', headerName: 'ID Entrada', width: 95, type: 'numericColumn', filter: 'agNumberColumnFilter' },
     {
       field: 'fechaRecepcion',
       headerName: 'Fecha recepción',
@@ -333,7 +335,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Bultos',
       width: 85,
       type: 'numericColumn',
-      editable: true,
+      editable: () => this.editBultos,
       valueSetter: (params) => {
         const newVal = params.newValue;
         if (newVal === null || newVal === undefined || newVal === '') {
@@ -350,6 +352,9 @@ export class DetalleMoliendaComponent {
         return true;
       },
       onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
+      cellStyle: () => this.editBultos
+        ? {}
+        : { backgroundColor: '#f0f0f0', color: '#6c757d' },
     },
     {
       field: 'revisionConfigu',
@@ -462,9 +467,13 @@ export class DetalleMoliendaComponent {
     {
       field: 'pdfCount',
       headerName: '📤 PDF',
-      width: 85,
-      type: 'numericColumn',
-      valueFormatter: (p) => `(${p.value ?? 0})`,
+      editable: false,
+      suppressMovable: true,
+      width: 70,
+      flex: 0,
+      cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos de la entrada"></i>`,
+      cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
+      onCellClicked: (params) => this.toggleDetailColumn(params, 'documents'),
     },
     { field: 'usuario', headerName: 'Usuario', width: 100 },
     {
@@ -482,6 +491,10 @@ export class DetalleMoliendaComponent {
     },
     headerHeight: 25,
     rowHeight: 25,
+    masterDetail: true,
+    detailRowHeight: 500,
+    isRowMaster: (data: any) => !!data?.idEntrada,
+    detailCellRenderer: DetailEntradaDocumentsComponent,
     rowSelection: 'single',
     onSelectionChanged: (event: any) => {
       const selectedRows = event.api.getSelectedRows();
@@ -556,10 +569,11 @@ export class DetalleMoliendaComponent {
     this.bultosCantidad = params?.bultosCantidad ?? null;
     this.bultosCantidadARevisar = params?.bultosCantidadARevisar ?? null;
     this.proporcionRevision = params?.proporcionRevision ?? null;
+    this.editBultos = !!params?.editBultos;
     this.caracteristicasCategories = params?.caracteristicasCategories ?? [];
     this.caracteristicasFamilies = params?.caracteristicasFamilies ?? [];
     this.buildNivel5ColumnDefs();
-
+    console.log('DetalleMoliendaComponent initialized with params:', params);
     const departmentOptions = params?.departmentOptions ?? [];
     this.deptsCsv = departmentOptions
       .map((d: any) => d.id)
@@ -1341,6 +1355,23 @@ export class DetalleMoliendaComponent {
     } catch (err) {
       console.error('Error guardando características:', err);
       await alerts.basicAlert('Error', 'No se pudieron guardar las características.', 'error');
+    }
+  }
+
+  private toggleDetailColumn(params: any, detailType: string): void {
+    const node = params.node;
+    const api = params.api;
+    const isCurrentlyExpanded = node.expanded && params.data.rowDetailType === detailType;
+
+    api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+
+    if (isCurrentlyExpanded) {
+      api.setFilterModel(null);
+    } else {
+      api.setFilterModel(null);
+      params.data.rowDetailType = detailType;
+      api.setFilterModel({ idEntrada: { filterType: 'number', type: 'equals', filter: params.data.idEntrada } });
+      node.setExpanded(true);
     }
   }
 }
