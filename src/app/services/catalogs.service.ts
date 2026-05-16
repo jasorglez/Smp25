@@ -28,8 +28,8 @@ export class CatalogsService {
   }
 
   //Almacenes
-  getCatalogs(idRoot: number, type: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  getCatalogs(idRoot: number, type: string, includeInactive: boolean = false): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}&includeInactive=${includeInactive}`, { headers: this.trackingService.getHeaders() });
   }
 
   getCatalogsxSubfamily(idRoot, idFamily: number): Observable<any[]> {
@@ -127,8 +127,8 @@ export class CatalogsService {
   updateValueBit(id: number, value: boolean, type: string): Observable<any> {
     return this.http.put<any>(`${environment.urlWarehouse}/Catalog/updateValueBit/${id}/${value}/${type}`, {}, { headers: this.trackingService.getHeaders() });  
   }
-  getCatalogsMaterialBit(idRoot: number, type: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsMaterialBit?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  getCatalogsMaterialBit(idRoot: number, type: string, bitFilter: string = 'MATERIAL'): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsMaterialBit?idCompany=${idRoot}&type=${type}&bitFilter=${bitFilter}`, { headers: this.trackingService.getHeaders() });
   }
 
 

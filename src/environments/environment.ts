@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.129 (15 Mayo 2026 19:45) - Cambio: renombrar "Material Maestro" a "MATERIA PRIMA" y agregar columna "BIENES Y SERVICIOS" con checkbox en cat-fam-sub (sin tocar columnas existentes)'
+  version: '2.52.142 (15 Mayo 2026 23:10) - Hide: Categoría/Familia/Subfamilia ocultos en modal Nuevo Artículo (se setean automáticamente por default)'
 };

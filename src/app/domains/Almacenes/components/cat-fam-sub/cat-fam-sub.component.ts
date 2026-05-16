@@ -101,9 +101,9 @@ export class CatFamSubComponent {
 
       // Cargar los 3 tipos de datos en paralelo
       const [categories, families, subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM'))
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'CATEGORY', true)),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'FAM-CAT', true)),
+        lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, 'SUB-FAM', true))
       ]);
 
       // Construir estructura jerárquica
@@ -199,6 +199,9 @@ export class CatFamSubComponent {
       tooltipShowDelay: 500, // Mostrar después de 500ms
       context: {
         componentParent: this
+      },
+      rowClassRules: {
+        'catalog-inactive-row': (params: any) => params.data?.active === 0
       },
       onRowSelected: (event: any) => {
         if (event.node.isSelected()) {
@@ -393,10 +396,16 @@ export class CatFamSubComponent {
       },
       {
         headerName: 'BIENES Y SERVICIOS',
-        field: 'bienesServicios',
+        field: 'valueAdditionBit3',
         width: 210,
         editable: true,
-        cellDataType: 'boolean'
+      },
+      {
+        headerName: 'ARTICULOS Y SERVICIOS NUEVOS',
+        field: 'esArticuloServicioNuevo',
+        width: 250,
+        editable: true,
+        cellDataType: 'boolean',
       },
       {
         headerName: 'Requisiciones',
@@ -459,6 +468,100 @@ export class CatFamSubComponent {
         error: (err) => {
           console.error("Error al actualizar el valor:", err);
         }
+      });
+    }
+
+    if (event.colDef.field === 'valueAdditionBit3') {
+      const newValue = event.data.valueAdditionBit3;
+      const nodeLevel = event.data.nodeLevel;
+      const nodesToUpdate: any[] = [event.data];
+
+      // Cascada hacia abajo: categoria -> familias + subfamilias; familia -> subfamilias
+      if (nodeLevel === 'category') {
+        const categoryId = event.data.originalId;
+        this.treeData.forEach(node => {
+          if ((node.nodeLevel === 'family' || node.nodeLevel === 'subfamily')
+              && node.parentCategoryId === categoryId) {
+            node.valueAdditionBit3 = newValue;
+            nodesToUpdate.push(node);
+          }
+        });
+      } else if (nodeLevel === 'family') {
+        const familyId = event.data.originalId;
+        this.treeData.forEach(node => {
+          if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
+            node.valueAdditionBit3 = newValue;
+            nodesToUpdate.push(node);
+          }
+        });
+      }
+
+      this.gridApi.refreshCells({ force: true });
+
+      Promise.all(
+        nodesToUpdate.map(node =>
+          lastValueFrom(this.catalogsService.updateValueBit(node.originalId, newValue, "BIENESYSERVICIOS"))
+        )
+      ).then(() => {
+        alerts.basicAlert(
+          'Guardado exitoso',
+          `Se han realizado los cambios correctamente.`,
+          'success'
+        );
+      }).catch((err) => {
+        console.error("Error al actualizar Bienes y Servicios:", err);
+        alerts.basicAlert(
+          'Error',
+          'Error al guardar los cambios. Por favor, intente nuevamente.',
+          'error'
+        );
+      });
+    }
+
+    if (event.colDef.field === 'esArticuloServicioNuevo') {
+      const newValue = event.data.esArticuloServicioNuevo;
+      const nodeLevel = event.data.nodeLevel;
+      const nodesToUpdate: any[] = [event.data];
+
+      // Cascada hacia abajo: categoria -> familias + subfamilias; familia -> subfamilias
+      if (nodeLevel === 'category') {
+        const categoryId = event.data.originalId;
+        this.treeData.forEach(node => {
+          if ((node.nodeLevel === 'family' || node.nodeLevel === 'subfamily')
+              && node.parentCategoryId === categoryId) {
+            node.esArticuloServicioNuevo = newValue;
+            nodesToUpdate.push(node);
+          }
+        });
+      } else if (nodeLevel === 'family') {
+        const familyId = event.data.originalId;
+        this.treeData.forEach(node => {
+          if (node.nodeLevel === 'subfamily' && node.parentFamilyId === familyId) {
+            node.esArticuloServicioNuevo = newValue;
+            nodesToUpdate.push(node);
+          }
+        });
+      }
+
+      this.gridApi.refreshCells({ force: true });
+
+      Promise.all(
+        nodesToUpdate.map(node =>
+          lastValueFrom(this.catalogsService.updateValueBit(node.originalId, newValue, "ARTICULOSNUEVOS"))
+        )
+      ).then(() => {
+        alerts.basicAlert(
+          'Guardado exitoso',
+          `Se han realizado los cambios correctamente.`,
+          'success'
+        );
+      }).catch((err) => {
+        console.error("Error al actualizar Articulos y Servicios Nuevos:", err);
+        alerts.basicAlert(
+          'Error',
+          'Error al guardar los cambios. Por favor, intente nuevamente.',
+          'error'
+        );
       });
     }
 
@@ -909,9 +1012,16 @@ export class CatFamSubComponent {
       return;
     }
 
+    let cascadeWarning = '';
+    if (this.selectedRowData.nodeLevel === 'category') {
+      cascadeWarning = ' Se eliminarán también TODAS sus familias y subfamilias.';
+    } else if (this.selectedRowData.nodeLevel === 'family') {
+      cascadeWarning = ' Se eliminarán también TODAS sus subfamilias.';
+    }
+
     const result = await alerts.confirmAlert(
       'Confirmar eliminación',
-      `¿Está seguro de que desea eliminar "${this.selectedRowData.description}"? Esta acción no se puede deshacer.`,
+      `¿Está seguro de que desea eliminar "${this.selectedRowData.description}"?${cascadeWarning} Esta acción borrará el registro de la base de datos y NO se puede deshacer.`,
       'warning',
       'Sí, eliminar'
     );

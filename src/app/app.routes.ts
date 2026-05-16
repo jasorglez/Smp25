@@ -2126,7 +2126,16 @@ export const routes: Routes = [
                   import(
                     './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
                   ).then((m) => m.MaterialesMaestroComponent),
-                data: { hideNonProductive: true },
+                data: { hideNonProductive: true, bitFilter: 'BIENESYSERVICIOS' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'articulos-servicios-nuevos',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                data: { hideNonProductive: true, bitFilter: 'ARTICULOSNUEVOS' },
                 canDeactivate: [UnsavedChangesGuard],
               },
               {

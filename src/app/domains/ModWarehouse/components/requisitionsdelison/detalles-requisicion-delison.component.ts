@@ -199,7 +199,7 @@ import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/sear
           </select>
         </div>
 
-        <!-- Familia (Oculto) -->
+        <!-- Familia -->
         <div class="mb-3" [hidden]="true">
           <label for="newArticleFamily" class="form-label">
             Familia <span class="text-danger">*</span>
@@ -218,7 +218,7 @@ import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/sear
           </select>
         </div>
 
-        <!-- Subfamilia (Oculto) -->
+        <!-- Subfamilia -->
         <div class="mb-3" [hidden]="true">
           <label for="newArticleSubFamily" class="form-label">
             Subfamilia <span class="text-danger">*</span>
@@ -2149,11 +2149,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Cargar catálogos usando los mismos métodos que materiales-maestro
+      // Cargar TODAS las categorías/familias/subfamilias (sin filtro de bit MATERIAL)
       [this.categories, this.familias, this.subfamilias] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(idRoot, 'SUB-FAM'))
+        lastValueFrom(this.catalogsService.getCatalogs(idRoot, 'CATEGORY')),
+        lastValueFrom(this.catalogsService.getCatalogs(idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogs(idRoot, 'SUB-FAM'))
       ]);
     } catch (err) {
       // Error cargando catálogos
@@ -2172,12 +2172,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   private setDefaultCatalogValues(): void {
-    // Buscar "MATERIA PRIMA" en categorías
-    const materiaPrima = this.categories.find(c =>
-      c.description?.toUpperCase().includes('MATERIA PRIMA')
+    // Buscar "NUEVO" en categorías (para que el artículo caiga en "Artículos y Servicios Nuevos")
+    const categoriaNuevo = this.categories.find(c =>
+      c.description?.trim().toUpperCase() === 'NUEVO'
     );
-    if (materiaPrima) {
-      this.newArticle.idCategory = materiaPrima.id;
+    if (categoriaNuevo) {
+      this.newArticle.idCategory = categoriaNuevo.id;
     }
 
     // Buscar "PRODUCTO NUEVO" en familias

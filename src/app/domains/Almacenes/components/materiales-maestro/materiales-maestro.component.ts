@@ -72,9 +72,14 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   public activeModal = inject(NgbActiveModal, { optional: true });
 
-  // ✅ Cuando la ruta lo indica (sección "Vienes y servicios no productivos"),
-  // se ocultan columnas: Merma, Fecha Cambio, Materiales, Parametros, Donde Usa.
+  // ✅ Cuando la ruta lo indica (secciones "Bienes y servicios no productivos" y
+  // "Articulos y servicios nuevos"), se ocultan columnas: Merma, Fecha Cambio,
+  // Materiales, Parametros, Donde Usa.
   private hideNonProductiveColumns: boolean = false;
+
+  // ✅ Bit de catalogo por el que filtra la sección actual:
+  // 'MATERIAL' (Materia Prima), 'BIENESYSERVICIOS', 'ARTICULOSNUEVOS'.
+  private sectionBitFilter: string = 'MATERIAL';
 
   rowData: any[] = [];
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
@@ -146,7 +151,6 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const newIdRoot = this.signalsService.getRootSelectedBySidebar()();
       if (newIdRoot && newIdRoot !== this.idRoot) {
         this.idRoot = newIdRoot;
-        this.loadCatalogs();
         this.loadMaterials();
       }
     });
@@ -158,13 +162,15 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.hideNonProductiveColumns =
       !this.isModalMode && !!this.route.snapshot.data?.['hideNonProductive'];
 
+    this.sectionBitFilter =
+      (!this.isModalMode && this.route.snapshot.data?.['bitFilter']) || 'MATERIAL';
+
     // ✅ Si estamos en modo modal, usar idRootInput en lugar de signal
     if (this.isModalMode && this.idRootInput) {
       this.idRoot = this.idRootInput;
       this.loadCatalogs();
       this.loadMaterialByIdFilter();
     } else if (this.idRoot) {
-      this.loadCatalogs();
       this.loadMaterials();
     }
 
@@ -186,9 +192,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     try {
       // Cargar categorías, familias y subfamilias en paralelo
       [this.categories, this.families, this.subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY', this.sectionBitFilter)),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT', this.sectionBitFilter)),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM', this.sectionBitFilter))
       ]);
 
     } catch (error) {
@@ -207,16 +213,21 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     return this.subfamilies.filter(sf => sf.subParentId === familyId);
   }
 
-  loadMaterials() {
+  async loadMaterials() {
     if (!this.idRoot) {
       console.warn('No idRoot available');
       return;
     }
 
+    // Cargar los catálogos (filtrados por el bit de la sección) antes de
+    // filtrar la tabla: un material solo se muestra si su categoría, familia
+    // y subfamilia están las 3 marcadas con el bit de la sección actual.
+    await this.loadCatalogs();
+
         this.materialsService.getMaterialsxview(this.idRoot).subscribe({
           next: (data) => {
             this.allMaterialsData = data; // snapshot del estado original en BD
-            this.rowData = data
+            this.rowData = this.filterMaterialsByCatalogBit(data)
               .slice()
               .sort((a, b) => {
                 const activeA = a.active ? 1 : 0;
@@ -235,6 +246,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
           }
         });
+  }
+
+  // Filtra materiales: solo los que tienen su categoría, familia y subfamilia
+  // presentes en los catálogos de la sección (los 3 niveles con el bit en true).
+  private filterMaterialsByCatalogBit(materials: any[]): any[] {
+    const catIds = new Set(this.categories.map(c => c.id));
+    const famIds = new Set(this.families.map(f => f.id));
+    const subIds = new Set(this.subfamilies.map(s => s.id));
+    return materials.filter(m =>
+      catIds.has(m.idCategory) && famIds.has(m.idFamilia) && subIds.has(m.idSubfamilia)
+    );
   }
 
   // ✅ Método para cargar un material específico (modo modal)
@@ -909,7 +931,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   // "Materiales Maestro" y "Vienes y servicios no productivos" no se contaminen entre sí
   // (de lo contrario, el estado de una sección reaparecería las columnas ocultas de la otra).
   private getColumnStateKey(): string {
-    const suffix = this.hideNonProductiveColumns ? '_noprod' : '';
+    const suffix = this.sectionBitFilter === 'MATERIAL' ? '' : `_${this.sectionBitFilter.toLowerCase()}`;
     return `materiales_column_state${suffix}_${this.idRoot}`;
   }
 
