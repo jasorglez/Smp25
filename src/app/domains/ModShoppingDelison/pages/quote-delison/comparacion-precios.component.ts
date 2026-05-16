@@ -302,8 +302,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private renderer: Renderer2;
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
-  private providerSlotMap = new Map<number, { suffix: string; cotizId: number }>();
-  private slotFolioMap   = new Map<string, string>(); // suffix → folio COTIZ (Pedimento-1, -2, -3)
+  // ✅ Slots dinámicos N proveedores (no más A/B/C). Map<idProvider, {slotIndex, cotizId, folio}>
+  private providerSlotMap = new Map<number, { slotIndex: number; cotizId: number; folio: string }>();
+  // Map<slotIndex, folio_COTIZ> — slotIndex secuencial 1..N por orden de creación ASC
+  private slotFolioMap   = new Map<number, string>();
   private commentSub?: Subscription;
   private tooltipEl: HTMLElement | null = null;
 
@@ -462,6 +464,18 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Extrae el prefijo de sucursal del folio de la requisición.
+   * Folio típico: "BOD15-001" → "BOD15". Si lleva tipo (REQ-/COTIZ-/OC-), también lo limpia.
+   * Usado para construir folios de OC: OC-{branchPrefix}-P{ped}-PRO{idProvider}.
+   */
+  private extractBranchPrefix(folio: string | null | undefined): string {
+    if (!folio) return 'NOPREF';
+    let prefix = String(folio).replace(/^(REQ-|COTIZ-|OC-|CO-)/i, '');
+    prefix = prefix.replace(/-\d+$/, '');
+    return prefix || 'NOPREF';
+  }
+
   private async loadCotizSlots(): Promise<void> {
     try {
       const cotizData: any = await lastValueFrom(
@@ -470,20 +484,21 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const cotizList: any[] = Array.isArray(cotizData) ? cotizData : [];
       this.providerSlotMap.clear();
       this.slotFolioMap.clear();
-      for (const cotiz of cotizList) {
-        if (!cotiz.idProvider || cotiz.idProvider <= 0) continue;
-        const suffix = cotiz.folio?.includes('-A-') ? 'A'
-                     : cotiz.folio?.includes('-B-') ? 'B'
-                     : cotiz.folio?.includes('-C-') ? 'C' : null;
-        if (suffix) {
-          if (!this.providerSlotMap.has(cotiz.idProvider)) {
-            this.providerSlotMap.set(cotiz.idProvider, { suffix, cotizId: cotiz.id });
-          }
-          if (!this.slotFolioMap.has(suffix)) {
-            this.slotFolioMap.set(suffix, cotiz.folio || `Pedimento-${suffix}`);
-          }
+      // ✅ Asignar slotIndex secuencial por orden de creación ASC (sin slots vacíos)
+      const sortedCotizs = cotizList
+        .filter((c: any) => Number(c.idProvider) > 0)
+        .sort((a: any, b: any) => Number(a.id) - Number(b.id));
+      sortedCotizs.forEach((cotiz: any, idx: number) => {
+        const slotIndex = idx + 1;
+        const folio = cotiz.folio || `Pedimento-${slotIndex}`;
+        const idProvider = Number(cotiz.idProvider);
+        if (!this.providerSlotMap.has(idProvider)) {
+          this.providerSlotMap.set(idProvider, { slotIndex, cotizId: cotiz.id, folio });
         }
-      }
+        if (!this.slotFolioMap.has(slotIndex)) {
+          this.slotFolioMap.set(slotIndex, folio);
+        }
+      });
     } catch (e) {
       console.warn('[Comparacion] Error cargando slots COTIZ:', e);
     }
@@ -498,9 +513,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         .map((oc: any) => {
           const folio = oc.folio || '';
           if (!folio) return null;
-          const suffix = folio.includes('-A-') ? 'A' : folio.includes('-B-') ? 'B' : folio.includes('-C-') ? 'C' : '';
-          const pedimento = suffix ? (this.slotFolioMap.get(suffix) || `Pedimento-${suffix}`) : '';
-          if (Number(oc.idProvider) > 0) this.proveedoresConOc.add(Number(oc.idProvider));
+          // ✅ Mapear OC → pedimento usando idProvider (vía providerSlotMap, ya cargado)
+          const idProv = Number(oc.idProvider);
+          const slot = idProv > 0 ? this.providerSlotMap.get(idProv) : undefined;
+          const pedimento = slot?.folio || '';
+          if (idProv > 0) this.proveedoresConOc.add(idProv);
           return { pedimento, oc: folio };
         })
         .filter(Boolean) as { pedimento: string; oc: string }[];
@@ -512,17 +529,17 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private async generateOCForSlot(
     provId: number,
     provName: string,
-    slot: { suffix: string; cotizId: number },
+    slot: { slotIndex: number; cotizId: number; folio: string },
     rows: any[]
   ): Promise<string> {
     const idRoot   = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
+    // ✅ Nueva nomenclatura: OC-{branchPrefix}-P{ped}-PRO{idProvider}
     const reqFolio        = this.requisitionFolio || `REQ-${this.requisitionId}`;
-    const reqFolioClean   = reqFolio.replace(/-/g, '');
+    const branchPrefix    = this.extractBranchPrefix(reqFolio);
     const pedimentoMatch  = this.cotizacionFolio.match(/(\d+)/);
-    const pedimentoNumber = pedimentoMatch ? parseInt(pedimentoMatch[1], 10) : (slot.suffix === 'A' ? 1 : slot.suffix === 'B' ? 2 : 3);
-    const provPrefix      = (provName || '').substring(0, 3).toUpperCase() || 'OC';
-    const folio           = `OC-${reqFolioClean}-P${pedimentoNumber}-${provPrefix}${provId}`;
+    const pedimentoNumber = pedimentoMatch ? parseInt(pedimentoMatch[1], 10) : slot.slotIndex;
+    const folio           = `OC-${branchPrefix}-P${pedimentoNumber}-PRO${provId}`;
 
     const dateCreate = new Date().toISOString().split('T')[0];
     const ocPayload = {
@@ -964,7 +981,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       try {
         const folio = await this.generateOCForSlot(provId, provName, slot, rows);
         generatedFolios.push(folio);
-        const pedimento = this.slotFolioMap.get(slot.suffix) || `Pedimento-${slot.suffix}`;
+        const pedimento = this.slotFolioMap.get(slot.slotIndex) || slot.folio || `Pedimento-${slot.slotIndex}`;
         generatedPairs.push({ pedimento, oc: folio });
       } catch (e) {
         console.error(`❌ Error generando OC para proveedor ${provId}:`, e);

@@ -1,4 +1,4 @@
-import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener } from '@angular/core';
+import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -20,6 +20,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
+import { ProveedorItemsOverlayData } from 'app/services/proveedor-items-overlay.service';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -158,6 +159,17 @@ export class DetalleItemsProveedorComponent {
   /** Snapshot del último proveedor "persistido" (params.data o BD o tras save) — usado por revertChanges. */
   private originalProviderId: number | null = null;
   fechaProveedor: string = new Date().toISOString().split('T')[0];
+
+  /** Slot dinámico: contiene cotizId, slotIndex, idProvider, folio, name. */
+  private slotInfo: any = null;
+  /** Prefijo de sucursal (ej: "BOD15") extraído del folio de la requisición. */
+  private branchPrefix: string = 'NOPREF';
+  /** Número de pedimento (1, 2, 3...) usado en el folio: ${type}-{branchPrefix}-P{pedimentoNum}-PRO{idProvider}. */
+  private pedimentoNum: number = 0;
+  /** Slots hermanos (proveedores ya asignados al mismo pedimento, excepto este slot) — para evitar duplicados. */
+  private siblingSlots: any[] = [];
+  /** Callback al padre cuando se guarda un slot (para refrescar UI sin recargar). */
+  private onSlotSavedCallback: ((savedSlot: any) => void) | null = null;
   private _hasUnsavedChanges: boolean = false;
   private _trackerKey: string = '';
   get hasUnsavedChanges(): boolean {
@@ -204,19 +216,50 @@ export class DetalleItemsProveedorComponent {
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
+  /**
+   * ✅ Vía de entrada cuando el componente se usa como MODAL (no como cell renderer de AG Grid).
+   * Construye un objeto params-like y reutiliza la MISMA lógica de agInit(), por lo que el
+   * comportamiento es idéntico a cuando AG Grid lo monta. No afecta el uso como cell renderer.
+   */
+  @Input() set modalInit(data: ProveedorItemsOverlayData | null) {
+    if (!data) return;
+    const fakeParams: any = {
+      data: data.pedimentoData,
+      node: { data: data.pedimentoData },
+      context: {},
+      providerLabel: data.providerLabel,
+      providerField: data.providerField,
+      slotInfo: data.slotInfo,
+      branchPrefix: data.branchPrefix,
+      pedimentoNum: data.pedimentoNum,
+      siblingSlots: data.siblingSlots,
+      onSlotSaved: data.onSlotSaved
+    };
+    this.agInit(fakeParams);
+  }
+
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.providerLabel = (params as any).providerLabel || params.data?.providerLabel || params.context?.providerLabel || 'Proveedor';
     this.providerField = (params as any).providerField || params.data?.providerField || params.context?.providerField || 'idProvider';
+    this.slotInfo = (params as any).slotInfo || params.data?.slotInfo || params.context?.slotInfo || null;
+    this.branchPrefix = (params as any).branchPrefix || params.data?.branchPrefix || 'NOPREF';
+    this.pedimentoNum = (params as any).pedimentoNum || params.data?.numeroPedimentoRaw || 0;
+    this.siblingSlots = (params as any).siblingSlots || [];
+    this.onSlotSavedCallback = (params as any).onSlotSaved || null;
     this.requisitionId = params.data?.requisitionId || null;
     this.idBranch = params.data?.idBranch || null;
     this.branchName = params.data?.branchName || '';
-    this._trackerKey = `detalle-items-proveedor:${params.data?.cotizacionId ?? 'x'}:${this.providerField}`;
+    const slotKeyForTracker = this.slotInfo?.idProvider != null
+      ? `pro_${this.slotInfo.idProvider}`
+      : `new_${this.slotInfo?.slotIndex ?? 'x'}`;
+    this._trackerKey = `detalle-items-proveedor:${params.data?.cotizacionId ?? 'x'}:${slotKeyForTracker}`;
 
-    const currentProviderId = this.params.data[this.providerField];
-    if (currentProviderId && currentProviderId > 0) {
-      this.selectedProviderId = currentProviderId;
-      this.originalProviderId = currentProviderId;
+    // ✅ Inicializar provider desde slotInfo (no desde providerField legacy)
+    const currentProviderId = this.slotInfo?.idProvider ?? null;
+    if (currentProviderId && Number(currentProviderId) > 0) {
+      this.selectedProviderId = Number(currentProviderId);
+      this.originalProviderId = Number(currentProviderId);
     } else {
       this.originalProviderId = null;
     }
@@ -484,9 +527,20 @@ export class DetalleItemsProveedorComponent {
       this.hasUnsavedChanges = false;
       this.originalProviderId = this.selectedProviderId;
       const providerName = this.getSelectedProviderName();
-      this.params.node.data[this.providerField] = this.selectedProviderId;
-      this.params.node.data['name_' + this.providerField] = providerName;
-      this.params.api?.refreshCells({ rowNodes: [this.params.node], columns: [this.providerField], force: true });
+
+      // ✅ Notificar al padre que el slot quedó guardado (actualiza providerSlots y UI)
+      const savedSlot = {
+        slotIndex: this.slotInfo?.slotIndex,
+        cotizId: this.savedOcId,
+        folio: this.savedCotizFolio,
+        idProvider: this.selectedProviderId,
+        name: providerName
+      };
+      // Actualizar slotInfo local (para futuras operaciones en este mismo detalle)
+      this.slotInfo = { ...this.slotInfo, ...savedSlot };
+      if (this.onSlotSavedCallback) {
+        try { this.onSlotSavedCallback(savedSlot); } catch (e) { console.warn('onSlotSaved error', e); }
+      }
       this.refreshFilteredProviders();
       const cotizId = this.params.data.cotizacionId;
       const maestro: any = await lastValueFrom(this.ocandreqsService.getDetailedReq(cotizId));
@@ -509,8 +563,9 @@ export class DetalleItemsProveedorComponent {
     }
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    const slotSuffix = this.providerField === 'idProvider' ? 'A' : this.providerField === 'idProvider2' ? 'B' : 'C';
-    const folio = `${type}-${this.params.data.cotizacionId}-${slotSuffix}-${Date.now()}`;
+    // ✅ Nueva nomenclatura de folio: ${type}-{branchPrefix}-P{pedimentoNum}-PRO{idProvider}
+    // Ejemplo: COTIZ-BOD15-P1-PRO1414  /  OC-BOD15-P1-PRO1414
+    const folio = `${type}-${this.branchPrefix || 'NOPREF'}-P${this.pedimentoNum || 0}-PRO${this.selectedProviderId}`;
     const providerName = this.getSelectedProviderName();
     const dateCreate = new Date().toISOString().split('T')[0];
     const ocPayload = {
@@ -616,33 +671,47 @@ export class DetalleItemsProveedorComponent {
 
   async loadExistingCotiz(): Promise<void> {
     const cotizacionId = this.params.data.cotizacionId;
-    console.log('🔍 loadExistingCotiz: Iniciando con cotizacionId:', cotizacionId);
+    console.log('🔍 loadExistingCotiz: Iniciando con cotizacionId:', cotizacionId, 'slotInfo:', this.slotInfo);
     if (!cotizacionId) { console.log('⚠️ loadExistingCotiz: No hay cotizacionId'); return; }
-    const slotSuffix = this.providerField === 'idProvider' ? '-A-' : this.providerField === 'idProvider2' ? '-B-' : '-C-';
+
+    // Slot nuevo (sin cotizId): no hay nada que cargar todavía
+    if (!this.slotInfo?.cotizId || this.slotInfo.cotizId === 0) {
+      console.log('🆕 loadExistingCotiz: Slot nuevo (sin guardar), nada que cargar');
+      return;
+    }
+
     try {
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
       const reqId = this.params.data.requisitionId || 0;
+      const slotProviderId = Number(this.slotInfo.idProvider);
       const [cotizData, ocData] = await Promise.all([
         lastValueFrom(this.ocandreqsService.getOcAndReqs('delison', cotizacionId, 'COTIZ')),
         lastValueFrom(this.ocandreqsService.getOcAndReqs('branch', idBranch, 'OC'))
       ]);
-      console.log('📦 loadExistingCotiz: Datos recibidos - cotizData:', cotizData, 'ocData:', ocData);
+      // Detectar OC ya generada para ESTE slot (mismo idProvider, mismo cotizacion padre)
       const ocList = (Array.isArray(ocData) ? ocData : []).filter((c: any) => Number(c.idReq) === Number(reqId));
-      if (ocList.some((c: any) => c.folio?.includes(slotSuffix))) {
-        console.log('⚠️ loadExistingCotiz: OC ya generada, bloqueando grid');
+      const ocForThisProvider = ocList.find((c: any) =>
+        Number(c.idProvider) === slotProviderId && (c.folio || '').includes(`PRO${slotProviderId}`)
+      );
+      if (ocForThisProvider) {
+        console.log('⚠️ loadExistingCotiz: OC ya generada para este slot, bloqueando grid');
         this.ocGenerated = true; this.cotizacionSaved = true; this.lockGrid(); this.setArticulosPedimentoLocked(true);
       }
-      const existing = (Array.isArray(cotizData) ? cotizData : []).filter((c: any) => c.folio?.includes(slotSuffix)).sort((a: any, b: any) => b.id - a.id)[0];
-      console.log('🔎 loadExistingCotiz: Cotización existente encontrada:', existing);
+      // Cargar el COTIZ específico del slot (por cotizId directo, sin filtrar por folio)
+      const existing = (Array.isArray(cotizData) ? cotizData : []).find(
+        (c: any) => Number(c.id) === Number(this.slotInfo.cotizId)
+      );
+      console.log('🔎 loadExistingCotiz: Cotización del slot encontrada:', existing);
       if (existing) {
         this.savedOcId = existing.id; this.cotizacionSaved = true; this.savedCotizFolio = existing.folio;
-        if (existing.idProvider) { this.selectedProviderId = existing.idProvider; this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null; this.originalProviderId = existing.idProvider; }
+        if (existing.idProvider) {
+          this.selectedProviderId = existing.idProvider;
+          this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null;
+          this.originalProviderId = existing.idProvider;
+        }
         if (existing.datesupply) this.fechaProveedor = String(existing.datesupply).substring(0, 10);
-        console.log('📥 loadExistingCotiz: Llamando loadSavedItems con ocId:', existing.id);
         await this.loadSavedItems(existing.id);
-        // Sincronizar campos de proveedorxtablas (minCompra, codigoExterno) para cotización existente
         if (existing.idProvider) await this.syncProveedorXTablaFields(existing.idProvider);
-        console.log('✅ loadExistingCotiz: loadSavedItems completado');
         this.setArticulosPedimentoLocked(true);
       }
     } catch (err) { console.error('❌ Error loadExistingCotiz:', err); }
@@ -830,9 +899,11 @@ export class DetalleItemsProveedorComponent {
   }
 
   private refreshFilteredProviders(): void {
-    const siblingFields = ['idProvider', 'idProvider2', 'idProvider3'].filter(f => f !== this.providerField);
+    // ✅ Slots hermanos vienen del padre (todos menos este), N proveedores soportados
     const usedIds = new Set(
-      siblingFields.map(f => this.params?.data?.[f]).filter((id: any) => id && id > 0)
+      (this.siblingSlots || [])
+        .map((s: any) => Number(s?.idProvider))
+        .filter((id: number) => Number.isFinite(id) && id > 0)
     );
     const base = usedIds.size === 0
       ? this.providers

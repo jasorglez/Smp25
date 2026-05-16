@@ -5,6 +5,7 @@ import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
 import { ComparacionOverlayService } from 'app/services/comparacion-overlay.service';
+import { ProveedorItemsOverlayService } from 'app/services/proveedor-items-overlay.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { UnsavedChangesTrackerService } from 'app/services/unsaved-changes-tracker.service';
 import { Subscription } from 'rxjs';
@@ -13,21 +14,35 @@ import { PdfButtonCellRendererPedimentosComponent } from './pdf-button-cell-rend
 import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.component';
 import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
+import { DetalleProvidersListComponent } from './detalle-providers-list.component';
 
 /** Snapshot del detalle expandido (nivel 3); debe ir solo como `type` y antes del decorador @Component. */
 type ExpandedPedimentoDetailState = {
   cotizacionId: number;
-  detailType: 'articulos' | 'proveedor' | 'report';
+  detailType: 'articulos' | 'proveedor' | 'report' | 'providers-list';
   providerField?: string;
   providerLabel?: string;
+  slotInfo?: ProviderSlotInfo;
   reportProviderField?: string;
   reportProviderLabel?: string;
 };
 
+/** Información de un slot de proveedor (un registro ocandreq tipo COTIZ por proveedor). */
+export type ProviderSlotInfo = {
+  slotIndex: number;       // 1..N (orden visual)
+  cotizId: number;         // id del registro ocandreq (0 si aún no se guarda)
+  folio: string;           // folio actual ("" si nuevo)
+  idProvider: number | null; // null si es slot nuevo sin proveedor seleccionado
+  name: string;            // nombre del proveedor ("" si nuevo)
+};
+
+const PROV_PASTEL_COLORS = ['#e3f2fd', '#fff3e0', '#f3e5f5', '#e8f5e9', '#fce4ec', '#fffde7', '#e0f7fa', '#fff9c4', '#f1f8e9', '#fbe9e7'];
+const MAX_PROVIDER_SLOTS = 26;
+
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, DetalleProvidersListComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -67,6 +82,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   private context: any;
   private pedimentoModificationService = inject(PedimentoModificationService);
   private comparacionOverlayService = inject(ComparacionOverlayService);
+  private proveedorItemsOverlayService = inject(ProveedorItemsOverlayService);
   private ocAndReqsService = inject(OcAndReqsService);
   private unsavedTracker = inject(UnsavedChangesTrackerService);
   private modificationSub?: Subscription;
@@ -74,6 +90,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   pedimentosWithOcIds: Set<number> = new Set();
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   private expandedRowId: string | null = null;
+  /** Cascada providers-list actualmente abierta (la registra el propio detail) — null si ninguna. */
+  public activeProvidersListDetail: any = null;
 
   ngOnInit() {
   }
@@ -143,6 +161,14 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       const numeroPedimento = pedimento.pedimento || 0;
       const pedimentoFormateado = `Pedimento-${numeroPedimento}`;
 
+      // ✅ Inicializar providerSlots: si BD no tiene proveedores, crear slot 1 vacío default
+      // (siempre debe haber al menos 1 columna PROVEEDOR 1 visible para que el usuario pueda
+      // seleccionar el primer proveedor sin necesitar el botón "+")
+      const slotsFromBd = Array.isArray(pedimento.providerSlots) ? [...pedimento.providerSlots] : [];
+      const providerSlots = slotsFromBd.length > 0
+        ? slotsFromBd
+        : [{ slotIndex: 1, cotizId: 0, folio: '', idProvider: null, name: '' }];
+
       this.rowData.push({
         pedimento: pedimentoFormateado,
         folio: pedimento.folio || '',
@@ -152,12 +178,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         idBranch: this.params.data.idReference, // ✅ ID de la sucursal (Nivel 1)
         branchName: this.params.data.branch,   // ✅ Nombre de la sucursal (Nivel 1)
         numeroPedimentoRaw: numeroPedimento,
-        idProvider: pedimento.idProvider || 0,
-        idProvider2: pedimento.idProvider2 || 0,
-        idProvider3: pedimento.idProvider3 || 0,
-        name_idProvider: pedimento.name_idProvider || '',
-        name_idProvider2: pedimento.name_idProvider2 || '',
-        name_idProvider3: pedimento.name_idProvider3 || '',
+        // ✅ Slots dinámicos de proveedores (mín 1 default, máx 26 por pedimento)
+        providerSlots,
+        branchPrefix: pedimento.branchPrefix || '',
         pdf: 'PDF',
         creo: pedimento.createdBy || 'N/A',
         createdBy: pedimento.createdBy || 'N/A',
@@ -186,6 +209,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
           detailType: d.detailType || 'articulos',
           providerField: d.providerField,
           providerLabel: d.providerLabel,
+          slotInfo: d.slotInfo,
           reportProviderField: d.reportProviderField,
           reportProviderLabel: d.reportProviderLabel
         };
@@ -230,9 +254,11 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       if (target.data) {
         target.data.providerField = s.providerField;
         target.data.providerLabel = s.providerLabel;
+        target.data.slotInfo = s.slotInfo;
       }
       this.gridOptions.context.providerField = s.providerField;
       this.gridOptions.context.providerLabel = s.providerLabel;
+      this.gridOptions.context.slotInfo = s.slotInfo;
       this.activeProviderField = s.providerField || '';
       this.activeProviderLabel = s.providerLabel || '';
     } else if (s.detailType === 'report' && target.data) {
@@ -323,6 +349,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   }
 
   get colDefs(): ColDef[] {
+    // ✅ Master grid simplificado: la columna COTIZACIÓN PROVEEDOR contiene la sub-cascada
+    // con los proveedores reales del pedimento (sin columnas vacías cuando otros pedimentos
+    // tienen más proveedores).
     return [
       {
         field: 'pedimento',
@@ -340,13 +369,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
           return wrap;
         }
       },
-
-    /*  {
-        field: 'folio',
-        headerName: 'FOLIO COT',
-        width: 120
-      },*/
-
       {
         field: 'articulos',
         headerName: 'ARTICULOS',
@@ -359,7 +381,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         },
         valueGetter: params => {
           const articulos = params.data.articulos || [];
-          // Filtrar solo artículos externos (excluir internos)
           const articulosExternos = articulos.filter(
             (item: any) => (item.intorext || item.tipo || '').toLowerCase() !== 'interno'
           );
@@ -370,7 +391,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
-
       {
         field: 'pdf',
         headerName: 'PDF',
@@ -387,7 +407,27 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
-
+      {
+        // ✅ Nueva columna: cascada con los proveedores del pedimento (+ "+" + Comparar)
+        field: 'cotizacionProveedor',
+        headerName: 'COTIZACIÓN PROVEEDOR',
+        width: 220,
+        flex: 0,
+        suppressSizeToFit: true,
+        cellRenderer: ButtonCellRendererComponent,
+        cellRendererParams: {
+          onClick: (node: any) => this.toggleProvidersListCascade(node),
+          icon: 'bi-people-fill',
+          title: 'Ver proveedores cotizados (cascada)'
+        },
+        valueGetter: (params: any) => {
+          const slots = params.data?.providerSlots || [];
+          const realCount = slots.filter((s: any) => Number(s?.idProvider) > 0).length;
+          return `${realCount} prov`;
+        },
+        editable: false,
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+      },
       {
         field: 'creo',
         headerName: 'QUIEN LO CREÓ',
@@ -395,7 +435,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         flex: 0,
         suppressSizeToFit: true
       },
-
       {
         field: 'fechaPedimento',
         headerName: 'FECHA PEDIMENTO',
@@ -403,71 +442,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         flex: 0,
         suppressSizeToFit: true
       },
-
-      {
-        field: 'idProvider',
-        headerName: 'PROVEEDOR 1',
-        width: 220,
-        flex: 0,
-        suppressSizeToFit: true,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider', 'Proveedor 1'),
-          icon: 'bi-person-badge',
-          title: 'Ver/Editar Proveedor 1'
-        },
-        valueGetter: (params: any) => this.providerCellLabel(params.data?.name_idProvider, params.data?.idProvider, 'Proveedor 1'),
-        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
-      },
-
-      {
-        field: 'idProvider2',
-        headerName: 'PROVEEDOR 2',
-        width: 220,
-        flex: 0,
-        suppressSizeToFit: true,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider2', 'Proveedor 2'),
-          icon: 'bi-person-badge',
-          title: 'Ver/Editar Proveedor 2'
-        },
-        valueGetter: (params: any) => this.providerCellLabel(params.data?.name_idProvider2, params.data?.idProvider2, 'Proveedor 2'),
-        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer' }
-      },
-
-      {
-        field: 'idProvider3',
-        headerName: 'PROVEEDOR 3',
-        width: 220,
-        flex: 0,
-        suppressSizeToFit: true,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProviderCascade(node, 'idProvider3', 'Proveedor 3'),
-          icon: 'bi-person-badge',
-          title: 'Ver/Editar Proveedor 3'
-        },
-        valueGetter: (params: any) => this.providerCellLabel(params.data?.name_idProvider3, params.data?.idProvider3, 'Proveedor 3'),
-        cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
-      },
-
-      {
-        field: 'comparacion',
-        headerName: 'COMPARACIÓN',
-        width: 200,
-        flex: 0,
-        suppressSizeToFit: true,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleComparacionCascade(node),
-          icon: 'bi-scale-balanced',
-          title: 'Comparar Precios de Proveedores'
-        },
-        valueGetter: () => 'Comparar',
-        cellStyle: { backgroundColor: '#e8eef5', cursor: 'pointer' }
-      },
-
       {
         field: 'createdBy',
         headerName: 'CREÓ',
@@ -475,7 +449,6 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         flex: 0,
         suppressSizeToFit: true
       }
-
     ];
   }
 
@@ -502,12 +475,23 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       minWidth: 120,
     },
     detailCellRendererSelector: (params: any) => {
+      if (params.data.detailType === 'providers-list') {
+        return { component: DetalleProvidersListComponent };
+      }
       if (params.data.detailType === 'proveedor') {
         return {
           component: DetalleItemsProveedorComponent,
           params: {
             providerField: params.data.providerField,
-            providerLabel: params.data.providerLabel
+            providerLabel: params.data.providerLabel,
+            slotInfo: params.data.slotInfo,
+            branchPrefix: params.data.branchPrefix,
+            pedimentoNum: params.data.numeroPedimentoRaw,
+            // ✅ Para validación de duplicados: slots hermanos (excepto el activo)
+            siblingSlots: (params.data.providerSlots || []).filter(
+              (s: ProviderSlotInfo) => s.slotIndex !== params.data.slotInfo?.slotIndex
+            ),
+            onSlotSaved: (savedSlot: ProviderSlotInfo) => this.onSlotSaved(params.node, savedSlot)
           }
         };
       }
@@ -540,6 +524,32 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       restoreAllRequisitions: () => this.context?.restoreAllRequisitions?.()
     }
   };
+
+  /**
+   * Callback invocado por DetalleItemsProveedorComponent cuando se guarda un slot
+   * (nuevo o existente). Actualiza el providerSlots del padre, la etiqueta del slot
+   * y refresca la celda visualmente sin necesidad de recargar todo el grid.
+   */
+  onSlotSaved(node: any, savedSlot: ProviderSlotInfo) {
+    if (!node?.data) return;
+    const slots: ProviderSlotInfo[] = node.data.providerSlots || [];
+    const idx = slots.findIndex((s: ProviderSlotInfo) => s.slotIndex === savedSlot.slotIndex);
+    if (idx >= 0) {
+      slots[idx] = { ...slots[idx], ...savedSlot };
+    } else {
+      slots.push(savedSlot);
+    }
+    node.data.providerSlots = [...slots];
+    node.data.slotInfo = { ...savedSlot };
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+      this.gridApi.refreshCells({ rowNodes: [node], force: true });
+    }
+    // ✅ Refrescar la cascada providers-list abierta para que muestre el proveedor recién guardado
+    if (this.activeProvidersListDetail) {
+      this.activeProvidersListDetail.rebuildIfMatches(node.id);
+    }
+  }
 
   /** Verifica si hay cambios sin guardar en cualquier detalle de proveedor abierto.
    *  Si los hay, pide confirmación al usuario; si confirma, limpia el flag global. */
@@ -604,71 +614,151 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     }
   }
 
-  async toggleProviderCascade(node: any, providerField: string, providerLabel: string) {
+  /**
+   * ✅ Abre la tabla de items por proveedor como MODAL a nivel raíz.
+   * Antes intentaba transicionar detail-row → detail-row (providers-list → proveedor), lo que
+   * AG Grid no maneja bien (la fila desaparecía / no re-montaba el componente). El modal evita
+   * por completo el ciclo de vida del master-detail de AG Grid.
+   */
+  async toggleProviderCascade(nodeOrId: any, slot: ProviderSlotInfo) {
+    if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
+
+    // ✅ Si recibimos un ID, lookup el nodo actual del grid; si es ref, usarla directa
+    let node: any = null;
+    if (typeof nodeOrId === 'string' || typeof nodeOrId === 'number') {
+      this.gridApi.forEachNode((n: any) => {
+        if (n.id === nodeOrId) {
+          node = n;
+        }
+      });
+      if (!node) {
+        console.warn('⚠️ toggleProviderCascade: nodo no encontrado con ID:', nodeOrId);
+        return;
+      }
+    } else {
+      node = nodeOrId;
+    }
+
+    const providerLabel = `Proveedor ${slot.slotIndex}`;
+    const slotKey = slot.idProvider != null ? `pro_${slot.idProvider}` : `new_${slot.slotIndex}`;
+
+    this.proveedorItemsOverlayService.open({
+      pedimentoData: node.data,
+      providerLabel,
+      providerField: slotKey,
+      slotInfo: { ...slot },
+      branchPrefix: node.data.branchPrefix || 'NOPREF',
+      pedimentoNum: node.data.numeroPedimentoRaw || 0,
+      siblingSlots: (node.data.providerSlots || []).filter(
+        (s: ProviderSlotInfo) => s.slotIndex !== slot.slotIndex
+      ),
+      onSlotSaved: (savedSlot: ProviderSlotInfo) => this.onSlotSaved(node, savedSlot)
+    });
+  }
+
+  /**
+   * ✅ Cascada nivel 3 — sub-grid con los proveedores dinámicos del pedimento + "+" + Comparar.
+   * Reemplaza las columnas dinámicas hardcoded en el master grid (que generaban huecos cuando
+   * pedimentos distintos tienen distinto número de proveedores).
+   */
+  async toggleProvidersListCascade(node: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
     node.setSelected(true);
 
-    // Verificar si ya está expandido con el mismo proveedor
     const isCurrentlyExpanded = node.expanded &&
-      node.data.detailType === 'proveedor' &&
-      node.data.providerField === providerField &&
+      node.data.detailType === 'providers-list' &&
       this.expandedRowId === node.id;
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido, colapsarlo y restaurar todas las filas
+      // Colapsar
       node.setExpanded(false);
       this.expandedRowId = null;
       node.data.isExpanded = false;
-
-      // Restaurar alturas de todas las filas
       this.gridApi.forEachNode((otherNode: any) => {
         otherNode.setRowHeight(undefined);
       });
       this.gridApi.onRowHeightChanged();
       this.gridApi.redrawRows();
     } else {
-      // Colapsar cualquier otra fila expandida
-      if (this.expandedRowId) {
-        this.gridApi.forEachNode((otherNode: any) => {
-          if (otherNode.id === this.expandedRowId) {
-            otherNode.setExpanded(false);
-            otherNode.data.isExpanded = false;
-          }
-        });
-      }
+      // ✅ Mismo patrón que toggleProviderCascade
+      const wasSameRowExpanded = node.expanded && this.expandedRowId === node.id;
 
-      // Ocultar todas las demás filas (altura 0)
+      node.data.detailType = 'providers-list';
+      this.expandedRowId = node.id;
+      node.data.isExpanded = true;
+      this.activeDetailType = 'providers-list';
+
       this.gridApi.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
+        if (otherNode.expanded) {
+          otherNode.setExpanded(false);
+          if (otherNode.data) otherNode.data.isExpanded = false;
         }
       });
 
-      // Establecer el tipo de detalle y los parámetros del proveedor
-      node.data.detailType = 'proveedor';
-      node.data.providerField = providerField;
-      node.data.providerLabel = providerLabel;
-
-      // Guardar el ID de la fila expandida
-      this.expandedRowId = node.id;
-      node.data.isExpanded = true;
-      this.activeDetailType = 'proveedor';
-      this.activeProviderField = providerField;
-      this.activeProviderLabel = providerLabel;
-
-      // Mutar el contexto existente (no reemplazar) para que AG Grid mantenga la referencia
-      this.gridOptions.context.providerField = providerField;
-      this.gridOptions.context.providerLabel = providerLabel;
-
-      // Aplicar los cambios de altura
+      this.gridApi.forEachNode((otherNode: any) => {
+        if (otherNode.id !== node.id) {
+          otherNode.setRowHeight(0);
+        } else {
+          otherNode.setRowHeight(undefined);
+        }
+      });
       this.gridApi.onRowHeightChanged();
-      this.gridApi.redrawRows();
 
-      // Expandir con el detalle correspondiente
       setTimeout(() => {
         node.setExpanded(true);
-      }, 0);
+      }, wasSameRowExpanded ? 50 : 0);
     }
+  }
+
+  /**
+   * Crea un nuevo slot temporal (sin proveedor seleccionado todavía) y abre la cascada
+   * para que el usuario seleccione el proveedor. Cuando se guarda, el slot persiste
+   * con su nuevo idProvider en la BD (formato folio: COTIZ-{branchPrefix}-P{ped}-PRO{idProv}).
+   */
+  async addProviderSlot(nodeOrId: any) {
+    if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
+
+    // ✅ Lookup del nodo actual por ID si es necesario
+    let node: any = null;
+    if (typeof nodeOrId === 'string' || typeof nodeOrId === 'number') {
+      this.gridApi.forEachNode((n: any) => {
+        if (n.id === nodeOrId) {
+          node = n;
+        }
+      });
+      if (!node) {
+        console.warn('⚠️ addProviderSlot: nodo no encontrado con ID:', nodeOrId);
+        return;
+      }
+    } else {
+      node = nodeOrId;
+    }
+
+    const slots: ProviderSlotInfo[] = node.data.providerSlots || [];
+    if (slots.length >= MAX_PROVIDER_SLOTS) return;
+    const newSlot: ProviderSlotInfo = {
+      slotIndex: slots.length + 1,
+      cotizId: 0,
+      folio: '',
+      idProvider: null,
+      name: ''
+    };
+    node.data.providerSlots = [...slots, newSlot];
+
+    // Refrescar columnDefs: si el max aumenta, se renderiza una nueva columna PROVEEDOR N
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colDefs);
+      this.gridApi.refreshCells({ force: true });
+    }
+
+    // ✅ Refrescar la cascada providers-list para que el nuevo PROVEEDOR N aparezca
+    // de inmediato (antes solo se veía al cerrar y reabrir la cascada).
+    if (this.activeProvidersListDetail) {
+      this.activeProvidersListDetail.rebuildIfMatches(node.id);
+    }
+
+    // Abrir cascada para el nuevo slot (pasar node, ya que es el actual)
+    await this.toggleProviderCascade(node, newSlot);
   }
 
   async toggleReportCascade(node: any) {
@@ -732,14 +822,35 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     }
   }
 
-  async toggleComparacionCascade(node: any) {
+  async toggleComparacionCascade(nodeOrId: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
+
+    // ✅ Lookup del nodo actual por ID si es necesario
+    let node: any = null;
+    if (typeof nodeOrId === 'string' || typeof nodeOrId === 'number') {
+      this.gridApi.forEachNode((n: any) => {
+        if (n.id === nodeOrId) {
+          node = n;
+        }
+      });
+      if (!node) {
+        console.warn('⚠️ toggleComparacionCascade: nodo no encontrado con ID:', nodeOrId);
+        return;
+      }
+    } else {
+      node = nodeOrId;
+    }
+
+    const slots: ProviderSlotInfo[] = node.data.providerSlots || [];
+    const selectedProviderIds = slots
+      .map((s: ProviderSlotInfo) => Number(s.idProvider))
+      .filter((id: number) => id > 0);
     this.comparacionOverlayService.open({
       cotizacionId: node.data.cotizacionId,
       cotizacionFolio: node.data.pedimento || '',
       requisitionId: node.data.requisitionId,
       requisitionFolio: this.params.data.requisition || '',
-      selectedProviderIds: [node.data.idProvider, node.data.idProvider2, node.data.idProvider3].filter((id: number) => id > 0),
+      selectedProviderIds,
       idBranchFromReq: this.params.data.idReference || 0,
       idDepartamentFromReq: this.params.data.idDepartament || 0,
       departmentName: this.params.data.department || ''
