@@ -15,6 +15,7 @@ import { RolesService } from '../../../../../services/roles.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
 import { ExtractionFermentationBultosService } from '../../../../../services/extraction-fermentation-bultos.service';
+import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
 import { CatalogProductionService } from '../../../../../services/catalog-production.service';
 
 @Component({
@@ -98,6 +99,7 @@ export class AlmmoliendaComponent {
   private rolesService = inject(RolesService);
   private bultosService = inject(ExtractionFermentationBultosService);
   private catalogService = inject(CatalogProductionService);
+  private catalogoCategorias = inject(ExtractionFermentationCatalogService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -111,8 +113,9 @@ export class AlmmoliendaComponent {
 
   userBranches: any[] = [];
   branchNames: string[] = [];
-  matPrimaOptions: { id: number; name: string }[] = [];
+  matPrimaOptions: { id: number; name: string; editBultos: boolean }[] = [];
   departmentOptions: any[] = [];
+  idBranch: number | null = null;
   activeBranchFilter: number | null = null;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
@@ -120,6 +123,7 @@ export class AlmmoliendaComponent {
   bultosCantidad: number | null = null;
   bultosCantidadARevisar: number | null = null;
   proporcionRevision: number | null = null;
+  catalogoCategoriasSucursal: ExtractionFermentationCatalogItem[] = [];
   caracteristicasCategories: any[] = [];
   caracteristicasFamilies: any[] = [];
 
@@ -336,6 +340,7 @@ export class AlmmoliendaComponent {
     detailCellRenderer: DetalleMoliendaComponent,
     detailCellRendererParams: (params: any) => {
       const isEntradas = params.data?.detailType === 'entradas';
+      const materialConfig = this.getMaterialConfigByArticulo(params.data?.id_articulo);
       return {
         departmentOptions: this.departmentOptions,
         preloadedReqs:     isEntradas ? this.lastSyncedReqs    : [],
@@ -343,6 +348,7 @@ export class AlmmoliendaComponent {
         bultosCantidad:    this.bultosCantidad,
         bultosCantidadARevisar: this.bultosCantidadARevisar,
         proporcionRevision: this.proporcionRevision,
+        editBultos: materialConfig?.editBultos ?? false,
         caracteristicasCategories: this.caracteristicasCategories,
         caracteristicasFamilies: this.caracteristicasFamilies,
       };
@@ -367,8 +373,10 @@ export class AlmmoliendaComponent {
     effect(() => {
       const idUser = this.signalsService.idUser();
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
+      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (idUser && idCompany) {
         this.idRoot = idCompany;
+        this.idBranch = idBranch;
         this.loadUserBranches();
         this.loadRawMaterials(idCompany);
       }
@@ -542,9 +550,14 @@ export class AlmmoliendaComponent {
       const deptsData = (deptsResponse as any)?.data || deptsResponse || [];
       const matsMap = new Map<number, string>();
       (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
+      console.log('Materiales crudos:', mxmData);
       this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
         .filter((m: any) => m.active !== false)
-        .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
+        .map((m: any) => ({
+          id: m.idArticulo,
+          name: matsMap.get(m.idArticulo) ?? String(m.idArticulo),
+          editBultos: !!m.editBultos,
+        }))
         .filter(m => m.name);
       this.departmentOptions = Array.isArray(deptsData) ? deptsData : [];
       this._columnDefs = [];
@@ -581,10 +594,14 @@ export class AlmmoliendaComponent {
     }
   }
 
-  private async loadCaracteristicasCategories(idCompany: number) {
+  private async loadCaracteristicasCategories(idCompany: number, idCatalog?: number | null) {
     try {
-      const allItems = await lastValueFrom(this.catalogService.getAll(idCompany));
+      const categorias = await lastValueFrom(this.catalogoCategorias.getAllByBranch(idCompany, this.idBranch));
+      console.log('Categorías crudas:', categorias);
+
+      const allItems = await lastValueFrom(this.catalogService.getAll(idCompany, idCatalog));
       const itemsArray = Array.isArray(allItems) ? allItems : [];
+      this.catalogoCategoriasSucursal = Array.isArray(categorias) ? categorias : [];
 
       this.caracteristicasCategories = itemsArray
         .filter((item: any) => item.type === 'CATEGORY')
@@ -603,9 +620,55 @@ export class AlmmoliendaComponent {
         });
     } catch (error) {
       console.error('Error loading características:', error);
+      this.catalogoCategoriasSucursal = [];
       this.caracteristicasCategories = [];
       this.caracteristicasFamilies = [];
     }
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    return (value ?? '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private getArticuloComparableText(idArticulo: string | null | undefined): string {
+    return this.normalizeText(idArticulo)
+      .replace(/^fruta\s+/, '')
+      .replace(/^fruto\s+/, '')
+      .trim();
+  }
+
+  private getCategoriaComparableText(description: string | null | undefined): string {
+    return this.normalizeText(description)
+      .replace(/^caracteristicas\s+de\s+/, '')
+      .trim();
+  }
+
+  private getCategoriaCatalogoIdByArticulo(idArticulo: string | null | undefined): number | null {
+    const articulo = this.getArticuloComparableText(idArticulo);
+    if (!articulo || !Array.isArray(this.catalogoCategoriasSucursal)) return null;
+
+    const exactMatch = this.catalogoCategoriasSucursal.find((categoria) =>
+      this.getCategoriaComparableText(categoria.description) === articulo
+    );
+    if (exactMatch?.id) return exactMatch.id;
+
+    const partialMatch = this.catalogoCategoriasSucursal.find((categoria) => {
+      const categoriaTexto = this.getCategoriaComparableText(categoria.description);
+      return categoriaTexto.includes(articulo) || articulo.includes(categoriaTexto);
+    });
+
+    return partialMatch?.id ?? null;
+  }
+
+  private getMaterialConfigByArticulo(idArticulo: string | null | undefined) {
+    return this.matPrimaOptions.find(m => m.name === idArticulo) ?? null;
   }
 
   onRowClicked(event: any)       { this.selectedRow = event.data; }
@@ -818,6 +881,8 @@ export class AlmmoliendaComponent {
     if (!idMolienda || !sucursal || !idMaterial) return;
 
     await this.loadBultosCantidad(this.idRoot, sucursal);
+    const idCatalog = this.getCategoriaCatalogoIdByArticulo(rowData?.id_articulo);
+    await this.loadCaracteristicasCategories(this.idRoot, idCatalog);
 
     const today = new Date().toISOString().substring(0, 10);
     const deptsCsv = this.departmentOptions
@@ -850,11 +915,13 @@ export class AlmmoliendaComponent {
             numCantidadOc: req.numCantidadOc,
             cantidad:      0,
             fecha:         today,
+            idCatalog,
           }))
         );
       } else if (
         existingDetail.cantidadReq   !== req.cantidadReq ||
-        existingDetail.numCantidadOc !== req.numCantidadOc
+        existingDetail.numCantidadOc !== req.numCantidadOc ||
+        (existingDetail.idCatalog ?? null) !== idCatalog
       ) {
         createUpdatePromises.push(
           lastValueFrom(this.moliendaService.updateDetail(existingDetail.id, {
@@ -865,6 +932,7 @@ export class AlmmoliendaComponent {
             numCantidadOc: req.numCantidadOc,
             cantidad:      existingDetail.cantidad ?? 0,
             fecha:         existingDetail.fecha ?? today,
+            idCatalog,
           }))
         );
       }
@@ -882,7 +950,7 @@ export class AlmmoliendaComponent {
         cantidadReq:   req.cantidadReq,
         numCantidadOc: req.numCantidadOc,
         cantidad:      ex?.cantidad ?? 0,
-        idCatalog:     ex?.idCatalog ?? null,
+        idCatalog:     ex?.idCatalog ?? idCatalog ?? null,
       };
     });
   }

@@ -173,8 +173,8 @@ export default class DetailClock2Component implements OnInit {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1,
+    enableRowGroup: true,
+    minWidth: 80,
   };
 
   currentIndex = 0;
@@ -192,8 +192,14 @@ export default class DetailClock2Component implements OnInit {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    groupDefaultExpanded: -1, // -1 significa expandir todos los grupos
+    groupDefaultExpanded: -1,
     suppressAggFuncInHeader: true,
+    onRowDataUpdated: (params) => {
+      requestAnimationFrame(() => {
+        const allColumnIds = params.api.getColumns()?.map(col => col.getColId()) ?? [];
+        params.api.autoSizeColumns(allColumnIds);
+      });
+    },
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -212,19 +218,6 @@ export default class DetailClock2Component implements OnInit {
         });
       }
     },
-    onFirstDataRendered: (params) => {
-
-      // Obtener todas las columnas
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-
-      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, true);
-
-    }
   };
 
   get colDetail(): ColDef[] {
@@ -549,11 +542,11 @@ export default class DetailClock2Component implements OnInit {
         field: 'valid',
         headerName: 'Válido',
         editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
+          if (params.data.valid === true) return false;
+          if (params.data.__isNew) return true;
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
+        cellStyle: (params) => params.data?.valid === true ? { cursor: 'not-allowed' } : null,
         width: 100
       },
       {
@@ -583,11 +576,11 @@ export default class DetailClock2Component implements OnInit {
         field: 'idReason',
         headerName: 'Razón de motivo de falta',
         editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
+          if (params.data.valid === true) return false;
+          if (params.data.__isNew) return true;
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
+        cellStyle: (params) => params.data?.valid === true ? { cursor: 'not-allowed' } : null,
         width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -678,16 +671,9 @@ export default class DetailClock2Component implements OnInit {
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
         }));
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador',  this.trackingService.getEmail());
-        // Esperar a que el grid se actualice y luego ajustar las columnas
-        setTimeout(() => {
-          if (this.gridApi) {
-            // Obtener todas las columnas y ajustarlas automáticamente
-            const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
-            this.gridApi.autoSizeColumns(allColumnIds);
-            // Forzar un redraw del grid para asegurar que los cambios se apliquen
-            this.gridApi.redrawRows();
-          }
-        }, 100);
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+        }
       });
   }
 

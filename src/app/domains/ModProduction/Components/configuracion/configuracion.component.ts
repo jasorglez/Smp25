@@ -540,6 +540,7 @@ export class ConfiguracionProdComponent {
       next: (items) => {
         this.catalogoCategorias = items ?? [];
         this.isLoading = false;
+        console.log('Catalogo loaded:', this.catalogoCategorias);
       },
       error: () => {
         this.catalogoCategorias = [];

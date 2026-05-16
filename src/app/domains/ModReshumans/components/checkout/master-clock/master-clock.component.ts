@@ -129,9 +129,8 @@ export default class MasterClockComponent implements OnInit {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1,
-    minWidth: 100,
+    enableRowGroup: true,
+    minWidth: 80,
   };
 
   currentIndex = 0;
@@ -210,19 +209,12 @@ export default class MasterClockComponent implements OnInit {
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onFirstDataRendered: (params) => {
-
-      // Obtener todas las columnas
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
+    onRowDataUpdated: (params) => {
+      requestAnimationFrame(() => {
+        const allColumnIds = params.api.getColumns()?.map(col => col.getColId()) ?? [];
+        params.api.autoSizeColumns(allColumnIds);
       });
-
-
-      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, true);
-
-    }
+    },
   };
 
 
@@ -426,18 +418,7 @@ export default class MasterClockComponent implements OnInit {
           this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
           // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
-
-          // Esperar a que el grid se actualice y luego ajustar las columnas
-          setTimeout(() => {
-            if (this.gridApi) {
-              // Obtener todas las columnas y ajustarlas automáticamente
-              const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
-              this.gridApi.autoSizeColumns(allColumnIds);
-              // Forzar un redraw del grid para asegurar que los cambios se apliquen
-              this.gridApi.redrawRows();
-              resolve(true);
-            }
-          }, 100);
+          resolve(true);
         },
         (error) => {
           console.error('Error fetching data:', error);
