@@ -41,6 +41,21 @@ export class PosSyncService implements OnDestroy {
             idSale: saleId,
           }));
           await Promise.all(payloads.map(c => this.posService.addSaleXConceptItem(c).toPromise()));
+
+          // Acumular puntos de fidelidad si la venta tiene celular
+          if (sale.phone_number && sale.id_company && saleId) {
+            try {
+              await this.posService.earnLoyaltyPoints({
+                phoneNumber: sale.phone_number,
+                idCompany: sale.id_company,
+                idSale: saleId,
+                amount: sale.amount
+              }).toPromise();
+            } catch {
+              // No crítico — no bloquear el sync por esto
+            }
+          }
+
           await this.posDb.deletePendingSale(localId);
           console.log(`[POS Sync] Venta ${sale.numbernote} sincronizada.`);
         } catch (err) {

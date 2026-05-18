@@ -8,6 +8,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { PosDbService, PosSession } from 'app/services/pos-db.service';
 import { PosSyncService } from 'app/services/pos-sync.service';
 import { PosTicketService } from 'app/services/pos-ticket.service';
+import { PosService } from 'app/services/pos.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
@@ -24,6 +25,7 @@ export class PosComponent implements OnInit {
   private posDb = inject(PosDbService);
   private posSync = inject(PosSyncService);
   private posTicket = inject(PosTicketService);
+  private posService = inject(PosService);
   private materialsService = inject(MaterialsService);
   private customersService = inject(CustomersService);
   private router = inject(Router);
@@ -44,6 +46,11 @@ export class PosComponent implements OnInit {
 
   // Celular para ventas al público
   phoneNumber = '';
+  loyaltyAccount: { totalPoints: number } | null = null;
+  loyaltyFactor = 0.10;
+  loyaltyToast: { points: number; newTotal: number } | null = null;
+  private loyaltyToastTimer: any = null;
+
   get isPublicSale(): boolean {
     const name = (this.selectedClient?.company ?? '').toUpperCase();
     return name.includes('PUBLICO') || name.includes('PÚBLICO');
@@ -55,10 +62,29 @@ export class PosComponent implements OnInit {
     return p.length === 0 || p.length === 10;
   }
 
+  get pointsWillEarn(): number {
+    return Math.round(this._total * this.loyaltyFactor * 100) / 100;
+  }
+
   onPhoneInput(event: Event) {
     const input = event.target as HTMLInputElement;
     input.value = input.value.replace(/\D/g, '').slice(0, 10);
     this.phoneNumber = input.value;
+    if (this.phoneNumber.length === 10 && this.session) {
+      this.loadLoyaltyAccount();
+    } else {
+      this.loyaltyAccount = null;
+    }
+  }
+
+  private async loadLoyaltyAccount() {
+    if (!this.session) return;
+    try {
+      const result = await firstValueFrom(this.posService.getLoyaltyAccount(this.phoneNumber, this.session.idCompany));
+      this.loyaltyAccount = result;
+    } catch {
+      this.loyaltyAccount = null;
+    }
   }
 
   // Modal cambio (Efectivo)
@@ -133,6 +159,12 @@ export class PosComponent implements OnInit {
 
     window.addEventListener('online', this.onOnline);
     window.addEventListener('offline', this.onOffline);
+
+    // Cargar factor de puntos de fidelidad
+    this.posService.getLoyaltyConfig(this.session.idCompany).subscribe({
+      next: (cfg) => { this.loyaltyFactor = cfg.factorPuntos ?? 0.10; },
+      error: () => {}
+    });
 
     // Refresca catálogo en background si hay internet — sin bloquear al cajero
     if (navigator.onLine) this.refreshCatalogSilently();
@@ -272,6 +304,11 @@ export class PosComponent implements OnInit {
   private async executeReceipt() {
     if (!this.session) return;
 
+    // Capturar datos de loyalty antes de limpiar
+    const hadPhone = this.isPublicSale && this.phoneNumber.trim().length === 10;
+    const capturedAmount = this._total;
+    const capturedPrevPoints = this.loyaltyAccount?.totalPoints ?? 0;
+
     const consecutive = await this.posDb.incrementConsecutive();
     const numbernote = `${this.session.prefix}-${String(consecutive).padStart(4, '0')}`;
     const localId = `${this.session.prefix}-${Date.now()}`;
@@ -288,6 +325,7 @@ export class PosComponent implements OnInit {
       id_cashregister: this.session.idCashRegister,
       payment_type: this.paymentType,
       phone_number: this.isPublicSale && this.phoneNumber.trim() ? this.phoneNumber.trim() : null,
+      id_company: this.session.idCompany,
       active: true,
     };
 
@@ -339,7 +377,16 @@ export class PosComponent implements OnInit {
     this._total = 0;
     this.idCustomer = null;
     this.phoneNumber = '';
+    this.loyaltyAccount = null;
     this.paymentType = 'EFECTIVO';
+
+    // Mostrar toast de puntos ganados
+    if (hadPhone) {
+      const pointsEarned = Math.round(capturedAmount * this.loyaltyFactor * 100) / 100;
+      this.loyaltyToast = { points: pointsEarned, newTotal: capturedPrevPoints + pointsEarned };
+      clearTimeout(this.loyaltyToastTimer);
+      this.loyaltyToastTimer = setTimeout(() => { this.loyaltyToast = null; }, 6000);
+    }
   }
 
   onGridReady(params: GridReadyEvent) {

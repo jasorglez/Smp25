@@ -373,3 +373,34 @@
 
   .cambio-amount { color: #dc2626; font-size: 1rem; }
 }
+
+// Loyalty
+.loyalty-balance {
+  font-size: 0.78rem;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+@keyframes loyalty-slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.loyalty-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1100;
+  background: #1e293b;
+  color: #fff;
+  border-radius: 12px;
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  animation: loyalty-slide-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  min-width: 230px;
+}

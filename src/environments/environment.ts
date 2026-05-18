@@ -85,6 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.95 (15 Mayo 2026 10:00) feat: chatbot Red Ciudadana sección electoral en Registro Rápido',
+  version: '5.96 (18 Mayo 2026 13:30) feat: loyalty frontend — puntos fidelidad en POS ventas al público',
 };
-  

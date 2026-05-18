@@ -48,4 +48,17 @@ export class PosService {
     return this.http.put(`${environment.urlAdministration}/PosSetup/${idBranch}/${idCustomer}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  // --- Loyalty / Fidelidad ---
+  getLoyaltyAccount(phone: string, idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/Loyalty/account/${phone}/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getLoyaltyConfig(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/Loyalty/config/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  earnLoyaltyPoints(data: { phoneNumber: string; idCompany: number; idSale: number; amount: number }): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/Loyalty/earn`, data, { headers: this.trackingService.getHeaders() });
+  }
+
 }
