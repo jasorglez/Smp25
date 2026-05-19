@@ -39,7 +39,7 @@
         <button type="button" class="btn btn-primary" (click)="addRow()" [disabled]="loading" title="Agregar nuevo">
           <i class="bi bi-plus-lg"></i>
         </button>
-        <button type="button" class="btn btn-success" (click)="saveChanges()" [disabled]="loading" title="Guardar cambios">
+        <button type="button" class="btn btn-success" (click)="saveChanges()" [disabled]="loading || saving" title="Guardar cambios">
           <i class="bi bi-floppy"></i>
         </button>
         <button type="button" class="btn btn-info" (click)="openEditModal(selectedItem)"
