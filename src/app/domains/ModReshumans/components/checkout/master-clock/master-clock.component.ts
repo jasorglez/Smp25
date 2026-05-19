@@ -37,6 +37,7 @@ export default class MasterClockComponent implements OnInit {
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.buildColMaster();
     this.obtenerConfig();
     this.Consultar();
     this.obtenerDatos();
@@ -69,6 +70,7 @@ export default class MasterClockComponent implements OnInit {
 
     effect(async () => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.buildColMaster();
       await this.obtenerConfig();
       await this.Consultar();
     });
@@ -119,6 +121,7 @@ export default class MasterClockComponent implements OnInit {
   id: string;
   idBranch: number;
   selectedTab: string = 'customers-payments';
+  colMaster: ColDef[] = [];
   idEmployee: number;
   fechaInicio: any;
   fechaFin: any;
@@ -130,7 +133,6 @@ export default class MasterClockComponent implements OnInit {
     resizable: true,
     lockPosition: false,
     enableRowGroup: true,
-    minWidth: 80,
   };
 
   currentIndex = 0;
@@ -139,8 +141,6 @@ export default class MasterClockComponent implements OnInit {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
   public autoGroupColumnDef: ColDef = {
-    minWidth: 300,
-    width: 400,
     cellRenderer: 'agGroupCellRenderer',
     cellRendererParams: {
       suppressCount: true, // Esto quita el conteo automático de AG-Grid
@@ -176,12 +176,15 @@ export default class MasterClockComponent implements OnInit {
       return '';
     },
     onRowClicked: (event) => {
-      event.node.setSelected(true);
+      if (!event.node.group) {
+        event.node.setSelected(true);
+      }
     },
     onRowSelected: (event) => {
+      if (event.node.group) return;
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
+          if (!node.group && node.id !== event.node.id) {
             node.setSelected(false);
           }
         });
@@ -209,18 +212,15 @@ export default class MasterClockComponent implements OnInit {
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onRowDataUpdated: (params) => {
-      requestAnimationFrame(() => {
-        const allColumnIds = params.api.getColumns()?.map(col => col.getColId()) ?? [];
-        params.api.autoSizeColumns(allColumnIds);
-      });
+    onRowGroupOpened: (params) => {
+      setTimeout(() => params.api.autoSizeAllColumns(), 50);
     },
   };
 
 
 
-  get colMaster(): ColDef[] {
-    return [
+  private buildColMaster(): void {
+    this.colMaster = [
       // Nivel 1: Sucursal
       {
         field: 'nameBranch',
@@ -261,7 +261,6 @@ export default class MasterClockComponent implements OnInit {
         field: 'idEmployee',
         headerName: 'Id',
         editable: false,
-        width: 110,
         hide: true,
         filter: 'agNumberColumnFilter',
         filterParams: {
@@ -404,8 +403,7 @@ export default class MasterClockComponent implements OnInit {
           return null;
         }
       },
-    ]
-
+    ];
   }
 
   async obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
@@ -413,11 +411,9 @@ export default class MasterClockComponent implements OnInit {
       //console.log(this.idBranch, fechaInicio, fechaFin)
       this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe(
         (data: any) => {
-          this.rowData = [];
           this.rowData = data;
           this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
-          // Actualizar el grid y esperar a que termine
-          this.gridApi.setGridOption('rowData', this.rowData);
+          setTimeout(() => this.gridApi?.autoSizeAllColumns(), 50);
           resolve(true);
         },
         (error) => {

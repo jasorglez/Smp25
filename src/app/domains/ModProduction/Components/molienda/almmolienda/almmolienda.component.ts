@@ -984,8 +984,23 @@ export class AlmmoliendaComponent {
   }
 
   async saveChanges() {
-    const newRows      = this.rowData().filter(r => r.__isNew);
-    const modifiedRows = this.rowData().filter(r => r.__modified && !r.__isNew);
+    const allData = this.rowData();
+    console.log('Attempting to save data:', allData);
+    const isValid = allData.every(
+      (item) =>
+        item.sucursal != null &&
+        item.id_articulo
+    );
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar los campos obligatorios antes de guardar.',
+        'error'
+      );
+      return;
+    }
+    const newRows      = allData.filter(r => r.__isNew);
+    const modifiedRows = allData.filter(r => r.__modified && !r.__isNew);
     if (newRows.length === 0 && modifiedRows.length === 0) return;
 
     try {
@@ -1023,6 +1038,44 @@ export class AlmmoliendaComponent {
     if (this.gridApi) this.gridApi.setGridOption('rowData', reverted);
   }
 
+  private hasRelatedRecords(row: any): boolean {
+    return Number(row?.entradas ?? 0) > 0 || Number(row?.salidas ?? 0) > 0;
+  }
+
+  private async confirmSetInactive(row: any): Promise<boolean> {
+    const result = await alerts.confirmAlert(
+      'Este artículo ya tiene registros',
+      '¿Quiere que lo pase a inactivo?',
+      'warning',
+      'Sí, pasar a inactivo'
+    );
+    if (!result.isConfirmed) return false;
+
+    try {
+      row.active = false;
+      row.__modified = false;
+      await lastValueFrom(this.moliendaService.update(row.id, this.toPayload(row)));
+
+      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
+      this.rowData.set(sorted);
+      this.originalRowData = JSON.parse(JSON.stringify(sorted));
+      this.hasUnsavedChanges = false;
+      this.selectedRow = sorted.find(r => r.id === row.id) ?? null;
+
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', sorted);
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      this.showToast('Marcado como inactivo');
+      return true;
+    } catch (error) {
+      console.error('Error setting molienda inactive:', error);
+      alerts.basicAlert('Error', 'No se pudo cambiar el artículo a inactivo.', 'error');
+      return false;
+    }
+  }
+
   async deleteRow() {
     if (!this.selectedRow) return;
 
@@ -1032,6 +1085,11 @@ export class AlmmoliendaComponent {
       this.selectedRow = null;
       this.hasUnsavedChanges = filtered.some((r: any) => r.__isNew || r.__modified);
       if (this.gridApi) this.gridApi.setGridOption('rowData', filtered);
+      return;
+    }
+
+    if (this.hasRelatedRecords(this.selectedRow)) {
+      await this.confirmSetInactive(this.selectedRow);
       return;
     }
 
@@ -1048,8 +1106,23 @@ export class AlmmoliendaComponent {
       if (this.gridApi) this.gridApi.setGridOption('rowData', afterDelete);
       this.selectedRow = null;
       this.showToast('Eliminado');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting molienda:', error);
+
+      const errorText = `${error?.error?.message ?? ''} ${error?.message ?? ''}`.toLowerCase();
+      const shouldOfferInactive =
+        error?.status === 400 ||
+        error?.status === 409 ||
+        errorText.includes('constraint') ||
+        errorText.includes('foreign key') ||
+        errorText.includes('reference') ||
+        errorText.includes('registro');
+
+      if (shouldOfferInactive) {
+        await this.confirmSetInactive(this.selectedRow);
+        return;
+      }
+
       alerts.basicAlert('Error', 'Ocurrió un error al eliminar.', 'error');
     }
   }
