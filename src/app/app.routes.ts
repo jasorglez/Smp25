@@ -1424,8 +1424,8 @@ export const routes: Routes = [
                 path: 'ingresos',
                 loadComponent: () =>
                   import(
-                    './domains/ModAdmon/components/ingresos-palacio/ingresos-palacio.component'
-                  ).then((i) => i.IngresosPalacioComponent),
+                    './domains/ModAdmon/components/ingresos-palacio/ingresos-palacio-shell.component'
+                  ).then((i) => i.IngresosPalacioShellComponent),
                 canActivate: [TrackingGuard],
                 data: {
                   tracking: {
