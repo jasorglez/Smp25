@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.142 (15 Mayo 2026 23:10) - Hide: Categoría/Familia/Subfamilia ocultos en modal Nuevo Artículo (se setean automáticamente por default)'
+  version: '2.52.143 (18 Mayo 2026 10:20) - Molienda: si un artículo ya tiene registros, borrar ofrece pasarlo a inactivo'
 };
