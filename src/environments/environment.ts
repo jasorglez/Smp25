@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.97 (18 Mayo 2026 14:30) feat(ventas): reporte por número de celular con puntos fidelidad',
+  version: '5.98 (18 Mayo 2026 15:00) feat(ventas): reporte celular con modo uno / todos + detalle productos',
 };
