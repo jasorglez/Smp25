@@ -82,9 +82,10 @@ export class MaterialsService {
     return forkJoin([
       this.getMaterials(idCompany, 'PRODSALES'),
       this.getMaterials(idCompany, 'MATERIAL'),
+      this.getMaterials(idCompany, 'CONSUMABLE'),
     ]).pipe(
-      map(([prodsales, material]) => {
-        const combined = [...(prodsales as any[]), ...(material as any[])];
+      map(([prodsales, material, consumable]) => {
+        const combined = [...(prodsales as any[]), ...(material as any[]), ...(consumable as any[])];
         // Normaliza el campo precio: ventaMN es el precio de venta
         return combined.map(p => ({
           ...p,
