@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.07 (19 Mayo 2026 16:00) feat(municipios): shell con Egresos x Fechas + tabs de cuentas',
+  version: '6.08 (19 Mayo 2026 16:30) feat(municipios): Ingresos x Fechas + nav-tabs en ingresos palacio',
 };
