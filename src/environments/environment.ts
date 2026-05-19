@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.99 (18 Mayo 2026 15:30) feat(ventas): PDF en reporte celular — uno y todos con productos',
+  version: '6.00 (19 Mayo 2026 10:00) feat(loyalty): tab Puntos por Familia con factor global y por familia',
 };
