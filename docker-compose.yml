@@ -1,3 +1,5 @@
+name: delison-frontend
+
 services:
   Delison-Frontend:
     build:
