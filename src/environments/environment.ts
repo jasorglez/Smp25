@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.09 (19 Mayo 2026 17:45) feat(telegram-pos): búsqueda por nombre en Nueva Venta',
+  version: '6.10 (19 Mayo 2026 18:30) fix(pos): iniciar turno tolerante a errores por tipo de material',
 };
