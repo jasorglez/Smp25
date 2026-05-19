@@ -11,6 +11,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
 import { PosService } from 'app/services/pos.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CustomersService } from 'app/services/customers.service';
+import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { firstValueFrom } from 'rxjs';
 
@@ -29,6 +30,7 @@ export class PosComponent implements OnInit {
   private materialsService = inject(MaterialsService);
   private customersService = inject(CustomersService);
   private router = inject(Router);
+  private signalsService = inject(SignalsService);
 
   session: PosSession | null = null;
   pendingCount = 0;
@@ -147,7 +149,9 @@ export class PosComponent implements OnInit {
 
   async ngOnInit() {
     this.session = await this.posDb.getSession();
-    if (!this.session) {
+    const activeCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!this.session || (activeCompany && this.session.idCompany !== activeCompany)) {
+      await this.posDb.clearSession();
       this.router.navigate(['/procsales/before-pos']);
       return;
     }
