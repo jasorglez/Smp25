@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.00 (19 Mayo 2026 10:00) feat(loyalty): tab Puntos por Familia con factor global y por familia',
+  version: '6.01 (19 Mayo 2026 11:30) fix(loyalty): familias desde catálogo FAMILY en lugar de masterFamily',
 };
