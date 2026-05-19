@@ -12,6 +12,14 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = pdfFonts.vfs;
 
+export interface PhoneRow {
+  phone: string;
+  visitCount: number;
+  totalAmount: number;
+  lastVisit: string;
+  products: { description: string; totalQty: number; totalAmount: number; purchaseCount: number }[];
+}
+
 export interface SaleReport {
   id: number;
   numberNote: string;
@@ -65,16 +73,37 @@ export class SalesReportsComponent implements OnInit {
 
   // --- Pestaña: Reporte por Celular ---
   activeTab: 'ventas' | 'celular' = 'ventas';
-  phoneSearch   = '';
-  phoneLoading  = false;
+  phoneMode: 'single' | 'all' = 'single';
+
+  // Modo: un celular específico
+  phoneSearch    = '';
+  phoneLoading   = false;
   phoneConsulted = false;
   phoneErrorMsg  = '';
   phoneSummary: any = null;
   phoneLoyalty: any = null;
   phoneLoyaltyTxns: any[] = [];
 
+  // Modo: todos los celulares
+  allPhoneFrom    = this.monthStartStr();
+  allPhoneTo      = this.todayStr();
+  allPhoneLoading = false;
+  allPhoneConsulted = false;
+  allPhoneErrorMsg  = '';
+  allPhoneRows: PhoneRow[] = [];
+  expandedPhones = new Set<string>();
+
   get phoneSearchValid(): boolean {
     return this.phoneSearch.trim().length === 10;
+  }
+
+  get allPhoneTotal(): number {
+    return this.allPhoneRows.reduce((s, r) => s + r.totalAmount, 0);
+  }
+
+  togglePhone(phone: string) {
+    if (this.expandedPhones.has(phone)) this.expandedPhones.delete(phone);
+    else this.expandedPhones.add(phone);
   }
 
   // Totales
@@ -334,7 +363,57 @@ export class SalesReportsComponent implements OnInit {
     }
   }
 
+  async consultarTodos() {
+    this.allPhoneLoading   = true;
+    this.allPhoneConsulted = false;
+    this.allPhoneErrorMsg  = '';
+    this.allPhoneRows = [];
+    this.expandedPhones.clear();
+    try {
+      const url = `${environment.urlAdministration}/Salesxcustomer/report?dateFrom=${this.allPhoneFrom}&dateTo=${this.allPhoneTo}&paymentType=TODAS`;
+      const sales = await firstValueFrom(this.http.get<any[]>(url, { headers: this.trackingService.getHeaders() }));
+
+      // Agrupar por phoneNumber (solo ventas con celular)
+      const map = new Map<string, PhoneRow>();
+      for (const sale of sales) {
+        const phone = (sale.phoneNumber ?? '').trim();
+        if (!phone) continue;
+        if (!map.has(phone)) map.set(phone, { phone, visitCount: 0, totalAmount: 0, lastVisit: sale.date, products: [] });
+        const row = map.get(phone)!;
+        row.visitCount++;
+        row.totalAmount += sale.amount ?? 0;
+        if (sale.date > row.lastVisit) row.lastVisit = sale.date;
+        // Agrupar productos
+        for (const c of (sale.concepts ?? [])) {
+          const desc = c.description || `#${c.idProduct}`;
+          const existing = row.products.find(p => p.description === desc);
+          if (existing) {
+            existing.totalQty    += c.quantity ?? 0;
+            existing.totalAmount += c.total ?? 0;
+            existing.purchaseCount++;
+          } else {
+            row.products.push({ description: desc, totalQty: c.quantity ?? 0, totalAmount: c.total ?? 0, purchaseCount: 1 });
+          }
+        }
+      }
+
+      this.allPhoneRows = Array.from(map.values())
+        .sort((a, b) => b.totalAmount - a.totalAmount);
+      this.allPhoneConsulted = true;
+    } catch {
+      this.allPhoneErrorMsg = 'Error al cargar. Verifica tu conexión.';
+    } finally {
+      this.allPhoneLoading = false;
+    }
+  }
+
   private todayStr() {
     return new Date().toISOString().substring(0, 10);
+  }
+
+  private monthStartStr() {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().substring(0, 10);
   }
 }
