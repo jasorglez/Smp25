@@ -174,7 +174,6 @@ export default class DetailClock2Component implements OnInit {
     resizable: true,
     lockPosition: false,
     enableRowGroup: true,
-    minWidth: 80,
   };
 
   currentIndex = 0;
@@ -194,11 +193,8 @@ export default class DetailClock2Component implements OnInit {
     rowHeight: 20,
     groupDefaultExpanded: -1,
     suppressAggFuncInHeader: true,
-    onRowDataUpdated: (params) => {
-      requestAnimationFrame(() => {
-        const allColumnIds = params.api.getColumns()?.map(col => col.getColId()) ?? [];
-        params.api.autoSizeColumns(allColumnIds);
-      });
+    onRowGroupOpened: (params) => {
+      setTimeout(() => params.api.autoSizeAllColumns(), 50);
     },
     getRowClass: (params) => {
       if (params.node.isSelected()) {
@@ -207,12 +203,15 @@ export default class DetailClock2Component implements OnInit {
       return '';
     },
     onRowClicked: (event) => {
-      event.node.setSelected(true);
+      if (!event.node.group) {
+        event.node.setSelected(true);
+      }
     },
     onRowSelected: (event) => {
+      if (event.node.group) return;
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
+          if (!node.group && node.id !== event.node.id) {
             node.setSelected(false);
           }
         });
@@ -226,21 +225,18 @@ export default class DetailClock2Component implements OnInit {
         field: 'id',
         headerName: 'ID',
         editable: true,
-        width: 80,
         hide: true,
       },
       {
         field: 'idEmployee',
         headerName: 'ID Empleado',
         editable: true,
-        width: 110,
         hide: true,
       },
       {
         field: 'idBranch',
         headerName: 'ID Sucursal',
         editable: true,
-        width: 110,
         hide: true,
       },
       {
@@ -253,7 +249,6 @@ export default class DetailClock2Component implements OnInit {
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         cellEditor: 'agDateCellEditor',
-        width: 120,
         valueFormatter: (params) => {
           if (!params.value) return '';
           try {
@@ -307,7 +302,6 @@ export default class DetailClock2Component implements OnInit {
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         cellEditor: 'timeEditor',
-        width: 200,
         valueFormatter: (params) => {
           if (!params.value) return '';
           return params.value.split('.')[0];
@@ -318,7 +312,6 @@ export default class DetailClock2Component implements OnInit {
         headerName: 'Hora de Registro de Sistema',
         editable: false,
         cellEditor: 'timeEditor',
-        width: 200,
         valueFormatter: (params) => {
           if (!params.value) return '';
           return params.value.split('.')[0];
@@ -329,7 +322,6 @@ export default class DetailClock2Component implements OnInit {
         headerName: 'Hora de Registro Respaldo',
         editable: false,
         cellEditor: 'timeEditor',
-        width: 200,
         valueFormatter: (params) => {
           if (!params.value) return '';
           return params.value.split('.')[0];
@@ -344,7 +336,6 @@ export default class DetailClock2Component implements OnInit {
           }
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
-        width: 100,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['IN', 'OUT'],
@@ -355,7 +346,6 @@ export default class DetailClock2Component implements OnInit {
         headerName: 'Horas Laboradas',
         field: 'hoursWorked',
         editable: false,
-        width: 200,
         cellRenderer: (params) => {
           if (params.node.group) {
             const groupData = params.node.allLeafChildren;
@@ -483,7 +473,6 @@ export default class DetailClock2Component implements OnInit {
         headerName: 'Retardos',
         field: 'delays',
         editable: false,
-        width: 200,
         cellRenderer: (params) => {
           if (params.node.group) {
             const groupData = params.node.allLeafChildren;
@@ -509,7 +498,6 @@ export default class DetailClock2Component implements OnInit {
         headerName: 'Salidas pendientes',
         field: 'pendingExits',
         editable: false,
-        width: 150,
         enableValue: false,
         cellRenderer: (params) => {
           if (params.node.group) {
@@ -547,13 +535,11 @@ export default class DetailClock2Component implements OnInit {
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         cellStyle: (params) => params.data?.valid === true ? { cursor: 'not-allowed' } : null,
-        width: 100
       },
       {
         headerName: 'Faltas',
         field: 'absences',
         editable: false,
-        width: 200,
         cellRenderer: (params) => {
           if (params.node.group) {
             const groupData = params.node.allLeafChildren;
@@ -581,7 +567,6 @@ export default class DetailClock2Component implements OnInit {
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
         cellStyle: (params) => params.data?.valid === true ? { cursor: 'not-allowed' } : null,
-        width: 200,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.catalogoAusencias.map(item => item.id.toString()),
@@ -601,7 +586,6 @@ export default class DetailClock2Component implements OnInit {
         editable: false,
         cellDataType: 'number',
         cellEditor: 'agTextCellEditor',
-        width: 200,
       },
       {
         field: 'minuteDiscountBackup',
@@ -609,25 +593,21 @@ export default class DetailClock2Component implements OnInit {
         editable: false,
         cellDataType: 'number',
         cellEditor: 'agTextCellEditor',
-        width: 250,
       },
       {
         field: 'edited',
         headerName: 'Editado',
         editable: false,
-        width: 100
       },
       {
         field: 'byTimeClock',
         headerName: 'Checador?',
         editable: false,
-        width: 150
       },
       {
         field: 'editedBy',
         headerName: 'Editado por',
         editable: false,
-        width: 200,
       },
     ];
   }
@@ -671,9 +651,7 @@ export default class DetailClock2Component implements OnInit {
           date: item.date ? new Date(item.date).toISOString().split('T')[0] : null
         }));
         this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador',  this.trackingService.getEmail());
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
+        setTimeout(() => this.gridApi?.autoSizeAllColumns(), 50);
       });
   }
 
