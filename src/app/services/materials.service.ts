@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { forkJoin, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { forkJoin, Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { TrackingService } from './tracking.service';
 import { MaterialsResponse } from 'app/interface/materials.interface';
 
@@ -80,13 +80,12 @@ export class MaterialsService {
   // (descripción, barcode, ventaMN como precio de venta)
   getMaterialsForPosCache(idCompany: number): Observable<MaterialsResponse[]> {
     return forkJoin([
-      this.getMaterials(idCompany, 'PRODSALES'),
-      this.getMaterials(idCompany, 'MATERIAL'),
-      this.getMaterials(idCompany, 'CONSUMABLE'),
+      this.getMaterials(idCompany, 'PRODSALES').pipe(catchError(() => of([]))),
+      this.getMaterials(idCompany, 'MATERIAL').pipe(catchError(() => of([]))),
+      this.getMaterials(idCompany, 'CONSUMABLE').pipe(catchError(() => of([]))),
     ]).pipe(
       map(([prodsales, material, consumable]) => {
         const combined = [...(prodsales as any[]), ...(material as any[]), ...(consumable as any[])];
-        // Normaliza el campo precio: ventaMN es el precio de venta
         return combined.map(p => ({
           ...p,
           price: p.ventaMN ?? p.sellingprice ?? p.listprice ?? 0,

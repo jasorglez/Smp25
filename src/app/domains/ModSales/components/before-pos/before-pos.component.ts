@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { StoresService } from 'app/services/stores.service';
 import { CashRegistersService } from 'app/services/cash-registers.service';
 import { CustomersService } from 'app/services/customers.service';
@@ -76,7 +77,7 @@ export class BeforePosComponent implements OnInit {
     try {
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(idCompany)),
-        firstValueFrom(this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS')),
+        firstValueFrom(this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS').pipe(catchError(() => of([])))),
       ]);
 
       await this.posDb.saveProducts(products as any[]);
@@ -114,7 +115,7 @@ export class BeforePosComponent implements OnInit {
     try {
       const [products, clients] = await Promise.all([
         firstValueFrom(this.materialsService.getMaterialsForPosCache(idCompany)),
-        firstValueFrom(this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS')),
+        firstValueFrom(this.customersService.getCustomersByCompany(idCompany, 'CUSTOMERS').pipe(catchError(() => of([])))),
       ]);
       await this.posDb.saveProducts(products as any[]);
       await this.posDb.saveClients(clients as any[]);
