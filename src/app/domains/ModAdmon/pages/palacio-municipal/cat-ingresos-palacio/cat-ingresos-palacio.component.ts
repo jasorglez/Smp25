@@ -553,6 +553,7 @@ export class CatIngresosPalacioComponent {
   }
 
   async saveChanges() {
+    if (this.saving) return;
     const newRows = this.treeData.filter((row) => row.__isNew);
     const modifiedRows = this.treeData.filter(
       (row) => row.__modified && !row.__isNew
@@ -569,14 +570,10 @@ export class CatIngresosPalacioComponent {
       return this.catalogadmonService.updateCatalog(itemId, cleanedData);
     });
 
+    this.saving = true;
     try {
-      const responses = await lastValueFrom(
+      await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
       );
       this.newlyAddedRows = [];
       this.obtenerDatos();
@@ -587,6 +584,8 @@ export class CatIngresosPalacioComponent {
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
         'error'
       );
+    } finally {
+      this.saving = false;
     }
   }
 
