@@ -57,8 +57,20 @@ export class PosService {
     return this.http.get(`${environment.urlAdministration}/Loyalty/config/${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
-  earnLoyaltyPoints(data: { phoneNumber: string; idCompany: number; idSale: number; amount: number }): Observable<any> {
+  earnLoyaltyPoints(data: { phoneNumber: string; idCompany: number; idSale: number; amount: number; lines?: { idFamilia: number; amount: number }[] }): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/Loyalty/earn`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  getLoyaltyFamilyConfig(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/Loyalty/family-config/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  saveLoyaltyFamilyConfig(idCompany: number, configs: any[]): Observable<any[]> {
+    return this.http.post<any[]>(`${environment.urlAdministration}/Loyalty/family-config/${idCompany}`, configs, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateLoyaltyConfig(idCompany: number, factorPuntos: number): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/Loyalty/config`, { idCompany, factorPuntos }, { headers: this.trackingService.getHeaders() });
   }
 
 }

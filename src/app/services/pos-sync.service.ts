@@ -45,11 +45,27 @@ export class PosSyncService implements OnDestroy {
           // Acumular puntos de fidelidad si la venta tiene celular
           if (sale.phone_number && sale.id_company && saleId) {
             try {
+              // Construir desglose por familia usando el caché de productos
+              const allProducts = await this.posDb.getProducts();
+              const familyMap = new Map<number, { idFamilia: number; amount: number }>();
+              for (const c of concepts) {
+                const prod = allProducts.find((p: any) => p.id === c.id_product);
+                const idFamilia: number = prod?.idFamilia ?? 0;
+                const lineAmount: number = (c.quantity ?? 0) * (c.pu ?? 0);
+                if (idFamilia && lineAmount > 0) {
+                  const existing = familyMap.get(idFamilia);
+                  if (existing) existing.amount += lineAmount;
+                  else familyMap.set(idFamilia, { idFamilia, amount: lineAmount });
+                }
+              }
+              const lines = Array.from(familyMap.values());
+
               await this.posService.earnLoyaltyPoints({
                 phoneNumber: sale.phone_number,
                 idCompany: sale.id_company,
                 idSale: saleId,
-                amount: sale.amount
+                amount: sale.amount,
+                lines: lines.length > 0 ? lines : undefined
               }).toPromise();
             } catch {
               // No crítico — no bloquear el sync por esto

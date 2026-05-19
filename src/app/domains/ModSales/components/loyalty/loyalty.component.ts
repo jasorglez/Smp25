@@ -8,7 +8,9 @@ import { LoyaltyService } from 'app/services/loyalty.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
-import { catchError, EMPTY } from 'rxjs';
+import { PosService } from 'app/services/pos.service';
+import { FamilySubFamily } from 'app/services/familySubFamily.service';
+import { catchError, EMPTY, forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -23,10 +25,19 @@ export class LoyaltyComponent implements OnInit {
   private materialsService = inject(MaterialsService);
   private customersService = inject(CustomersService);
   private signalsService   = inject(SignalsService);
+  private posService       = inject(PosService);
+  private familyService    = inject(FamilySubFamily);
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
-  activeTab: 'programs' | 'cards' = 'programs';
+  activeTab: 'programs' | 'cards' | 'family-factors' = 'programs';
   idCompany = 0;
+
+  // ── Puntos por Familia ─────────────────────────────────────────────────────
+  familyRows: { idFamilia: number; nombreFamilia: string; factorPuntos: number; usingGlobal: boolean }[] = [];
+  familyLoading = false;
+  familySaving  = false;
+  globalFactor  = 0.10;
+  globalFactorInput = 10; // shown as percentage
 
   // ── Productos para el combo ────────────────────────────────────────────────
   productos: { id: number; description: string }[] = [];
@@ -383,5 +394,78 @@ export class LoyaltyComponent implements OnInit {
     const idx = this.productosSeleccionadosModal.indexOf(idProduct);
     if (idx > -1) this.productosSeleccionadosModal.splice(idx, 1);
     else this.productosSeleccionadosModal.push(idProduct);
+  }
+
+  // ── Puntos por Familia ─────────────────────────────────────────────────────
+  loadFamilyFactors() {
+    if (!this.idCompany) return;
+    this.familyLoading = true;
+    forkJoin({
+      global:   this.posService.getLoyaltyConfig(this.idCompany),
+      configs:  this.posService.getLoyaltyFamilyConfig(this.idCompany),
+      families: this.familyService.getMasterFamily(this.idCompany),
+    }).subscribe({
+      next: ({ global, configs, families }) => {
+        this.globalFactor      = global?.factorPuntos ?? 0.10;
+        this.globalFactorInput = Math.round(this.globalFactor * 1000) / 10;
+
+        const configMap = new Map<number, any>();
+        (configs ?? []).forEach((c: any) => configMap.set(c.idFamilia, c));
+
+        this.familyRows = (families ?? []).map((f: any) => {
+          const id   = f.id ?? f.idFamilia ?? 0;
+          const name = f.masterFamily ?? f.description ?? f.name ?? '';
+          const cfg  = configMap.get(id);
+          return {
+            idFamilia:    id,
+            nombreFamilia: cfg?.nombreFamilia || name,
+            factorPuntos: cfg ? cfg.factorPuntos : this.globalFactor,
+            usingGlobal:  !cfg,
+          };
+        });
+        this.familyLoading = false;
+      },
+      error: () => { this.familyLoading = false; },
+    });
+  }
+
+  setFamilyFactor(row: any, pct: number) {
+    row.factorPuntos = Math.round(pct * 10) / 1000;
+    row.usingGlobal  = false;
+  }
+
+  resetToGlobal(row: any) {
+    row.factorPuntos = this.globalFactor;
+    row.usingGlobal  = true;
+  }
+
+  async saveFamilyFactors() {
+    if (!this.idCompany) return;
+    this.familySaving = true;
+    try {
+      const newGlobal = Math.round(this.globalFactorInput * 10) / 1000;
+      if (newGlobal !== this.globalFactor) {
+        await this.posService.updateLoyaltyConfig(this.idCompany, newGlobal).toPromise();
+        this.globalFactor = newGlobal;
+      }
+
+      const payload = this.familyRows
+        .filter(r => !r.usingGlobal)
+        .map(r => ({
+          idFamilia:    r.idFamilia,
+          nombreFamilia: r.nombreFamilia,
+          factorPuntos:  r.factorPuntos,
+        }));
+
+      if (payload.length > 0) {
+        await this.posService.saveLoyaltyFamilyConfig(this.idCompany, payload).toPromise();
+      }
+
+      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudieron guardar los factores.', 'error');
+    } finally {
+      this.familySaving = false;
+    }
   }
 }
