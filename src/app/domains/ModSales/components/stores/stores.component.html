@@ -21,8 +21,9 @@
             <ag-grid-angular style="width: 100%; height: 500px;" [defaultColDef]="defaultColDef" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
                 [columnDefs]="columnDefs" (selectionChanged)="onSelectionChanged($event)" [gridOptions]="gridOptions"
                 (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
-                (gridReady)="onGridReady($event)" rowSelection="single" [pivotPanelShow]="pivotPanelShow"
-                [rowSelection]="rowSelection" [rowGroupPanelShow]="rowGroupPanelShow" [stopEditingWhenCellsLoseFocus]="true">
+                (gridReady)="onGridReady($event)" rowSelection="single" 
+                [rowSelection]="rowSelection" 
+                [stopEditingWhenCellsLoseFocus]="true">
             </ag-grid-angular>
         </div>
     </div>
