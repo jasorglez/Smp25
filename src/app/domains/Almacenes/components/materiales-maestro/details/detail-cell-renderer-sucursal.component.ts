@@ -4,6 +4,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 
 @Component({
   selector: 'app-detail-cell-renderer-sucursal',
@@ -53,7 +54,8 @@ export class DetailCellRendererSucursalComponent implements ICellRendererAngular
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   sucursalColumnDefs = [
@@ -108,7 +110,6 @@ export class DetailCellRendererSucursalComponent implements ICellRendererAngular
 
   onSucursalGridReady(params: any) {
     this.sucursalGridApi = params.api;
-    params.api.sizeColumnsToFit();
   }
 
   onSucursalSelectionChanged(event: any): void {

@@ -73,6 +73,10 @@ export class RolesService {
     return this.http.get(`${environment.urlSecurity}/CrudPremissionsDelison/roles-by-branch/${idUser}/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getAuthorizedDepartments(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/Roles/authorized-departments?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
 
 export interface RolesxDetailedPermission {

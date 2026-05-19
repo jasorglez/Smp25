@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { DetailCellRendererCaracteristicasComponent } from './detail-cell-renderer-caracteristicas.component';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 
 @Component({
   selector: 'app-detail-cell-renderer-familia',
@@ -66,7 +67,8 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
         return { component: 'detailCellRendererCaracteristicas' };
       }
       return undefined;
-    }
+    },
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   components = {
@@ -111,7 +113,6 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
 
   onFamiliaGridReady(params: any) {
     this.familiaGridApi = params.api;
-    params.api.sizeColumnsToFit();
   }
 
   onFamiliaSelectionChanged(event: any): void {

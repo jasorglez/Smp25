@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2, HostListener, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -8,10 +8,11 @@ import { alerts } from 'app/helpers/alerts';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { firstValueFrom, lastValueFrom, Subscription } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
@@ -21,14 +22,25 @@ import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CustomersService } from 'app/services/customers.service';
+import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/searchable-combobox.component';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent, SearchableComboboxComponent],
   template: `
     <!-- Items Grid View -->
     <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+      <!-- Banner BLOQUEADA -->
+      <div *ngIf="hasProviderAssigned"
+           style="flex-shrink:0;background:#b71c1c;color:#fff;font-weight:700;font-size:0.8rem;
+                  letter-spacing:1px;text-align:center;padding:4px 10px;border-radius:4px;
+                  margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <i class="bi bi-lock-fill"></i>
+        REQUISICIÓN BLOQUEADA — No se pueden agregar ni eliminar artículos
+      </div>
+
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
         <strong>Artículos de la Requisición</strong>
         <div class="d-flex gap-2">
@@ -47,10 +59,10 @@ import { CustomersService } from 'app/services/customers.service';
           <i class="bi bi-trash"></i> Eliminar
         </button>
         
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!isAddingNewItem && !hasUnsavedChanges" *ngIf="authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'create') || authService.getCrudPermissionDetail('shoppingDelison', 'requisitions','Req_Art', 'update')">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="isAddingNewItem">
+            *ngIf="isAddingNewItem || hasUnsavedChanges">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
@@ -103,97 +115,159 @@ import { CustomersService } from 'app/services/customers.service';
       </div>
     </div>
 
-     <!-- Modal para Nuevo Artículo -->
-    <div class="modal" tabindex="-1" [ngStyle]="{'display': isNewArticleModalVisible ? 'block' : 'none'}">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Registrar Nuevo Artículo</h5>
-            <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
+     <!-- Modal para Nuevo Artículo (NgbModal lo monta en <body> para quedar por encima de todo) -->
+    <ng-template #newArticleModalTpl>
+      <div class="modal-header">
+        <h5 class="modal-title">Registrar Nuevo Artículo</h5>
+        <button type="button" class="btn-close" (click)="closeNewArticleModal()"></button>
+      </div>
+      <form class="modal-body" #newArticleForm="ngForm" (ngSubmit)="saveNewArticle()">
+        <div class="mb-3">
+          <label for="newArticleName" class="form-label">
+            Nombre del Artículo <span class="text-danger">*</span>
+          </label>
+          <app-searchable-combobox
+            name="newArticleName"
+            inputId="newArticleName"
+            inputName="newArticleName"
+            [options]="newArticleNameOptions"
+            placeholder="Escriba el nombre del artículo..."
+            [uppercase]="true"
+            [openOnFocus]="false"
+            [statusField]="'status'"
+            required
+            #newArticleNameModel="ngModel"
+            [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
+            [(ngModel)]="newArticle.description"
+            (ngModelChange)="onArticleNameTyped($event)"
+            (optionSelected)="onArticleSelected($event)">
+          </app-searchable-combobox>
+          <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleNameModel.invalid">
+            El nombre del artículo es obligatorio.
           </div>
-          <form class="modal-body" #newArticleForm="ngForm" (ngSubmit)="saveNewArticle()">
-            <div class="mb-3">
-              <label for="newArticleName" class="form-label">
-                Nombre del Artículo <span class="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                class="form-control"
-                id="newArticleName"
-                name="newArticleName"
-                required
-                #newArticleNameModel="ngModel"
-                [class.is-invalid]="newArticleFormSubmitted && newArticleNameModel.invalid"
-                [(ngModel)]="newArticle.description"
-                (input)="newArticle.description = $any($event.target).value.toUpperCase()"
-                style="text-transform: uppercase;">
-              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleNameModel.invalid">
-                El nombre del artículo es obligatorio.
-              </div>
-            </div>
-            <div class="mb-3">
-              <label for="newArticleDesc" class="form-label">
-                Descripción del Artículo <span class="text-danger">*</span>
-              </label>
-              <textarea
-                class="form-control"
-                id="newArticleDesc"
-                name="newArticleDesc"
-                rows="2"
-                required
-                #newArticleDescModel="ngModel"
-                [class.is-invalid]="newArticleFormSubmitted && newArticleDescModel.invalid"
-                [(ngModel)]="newArticle.descriptionNewArticle"
-                (input)="newArticle.descriptionNewArticle = $any($event.target).value.toUpperCase()"
-                style="text-transform: uppercase;"></textarea>
-              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleDescModel.invalid">
-                La descripción del artículo es obligatoria.
-              </div>
-            </div>
-            <div class="mb-3">
-              <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
-              <input
-                type="text"
-                class="form-control"
-                id="newArticleLink"
-                name="newArticleLink"
-                [(ngModel)]="newArticle.urlNewArticle">
-            </div>
-            <div class="mb-3">
-              <label for="newArticleUsage" class="form-label">
-                ¿Para qué se va a usar? <span class="text-danger">*</span>
-              </label>
-              <textarea
-                class="form-control"
-                id="newArticleUsage"
-                name="newArticleUsage"
-                rows="2"
-                required
-                #newArticleUsageModel="ngModel"
-                [class.is-invalid]="newArticleFormSubmitted && newArticleUsageModel.invalid"
-                [(ngModel)]="newArticle.justificationNewArticle"
-                (input)="newArticle.justificationNewArticle = $any($event.target).value.toUpperCase()"
-                style="text-transform: uppercase;"></textarea>
-              <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleUsageModel.invalid">
-                Este campo es obligatorio.
-              </div>
-            </div>
-          </form>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              (click)="saveNewArticle()"
-              [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim()">
-              Guardar
-            </button>
+          <div *ngIf="newArticleIsDuplicate"
+               style="color:#b71c1c; font-size:12px; font-weight:600; margin-top:4px; display:flex; align-items:center; gap:4px;">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            No puedes registrar este producto porque ya está registrado.
           </div>
         </div>
+        <div class="mb-3">
+          <label for="newArticleDesc" class="form-label">
+            Descripción del Artículo <span class="text-danger">*</span>
+          </label>
+          <textarea
+            class="form-control"
+            id="newArticleDesc"
+            name="newArticleDesc"
+            rows="2"
+            required
+            #newArticleDescModel="ngModel"
+            [class.is-invalid]="newArticleFormSubmitted && newArticleDescModel.invalid"
+            [(ngModel)]="newArticle.descriptionNewArticle"
+            (input)="newArticle.descriptionNewArticle = $any($event.target).value.toUpperCase()"
+            style="text-transform: uppercase;"></textarea>
+          <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleDescModel.invalid">
+            La descripción del artículo es obligatoria.
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="newArticleLink" class="form-label">Link del Artículo (Opcional)</label>
+          <input
+            type="text"
+            class="form-control"
+            id="newArticleLink"
+            name="newArticleLink"
+            [(ngModel)]="newArticle.urlNewArticle">
+        </div>
+
+        <!-- Categoría -->
+        <div class="mb-3" [hidden]="true">
+          <label for="newArticleCategory" class="form-label">
+            Categoría <span class="text-danger">*</span>
+          </label>
+          <select
+            class="form-control"
+            id="newArticleCategory"
+            name="newArticleCategory"
+            required
+            [(ngModel)]="newArticle.idCategory"
+            (change)="onCategoryChange()">
+            <option value="">Seleccionar categoría</option>
+            <option *ngFor="let cat of categories" [value]="cat.id">
+              {{ cat.description }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Familia -->
+        <div class="mb-3" [hidden]="true">
+          <label for="newArticleFamily" class="form-label">
+            Familia <span class="text-danger">*</span>
+          </label>
+          <select
+            class="form-control"
+            id="newArticleFamily"
+            name="newArticleFamily"
+            required
+            [(ngModel)]="newArticle.idFamilia"
+            (change)="onFamilyChange()">
+            <option value="">Seleccionar familia</option>
+            <option *ngFor="let fam of getFamiliesByCategory(newArticle.idCategory)" [value]="fam.id">
+              {{ fam.description }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Subfamilia -->
+        <div class="mb-3" [hidden]="true">
+          <label for="newArticleSubFamily" class="form-label">
+            Subfamilia <span class="text-danger">*</span>
+          </label>
+          <select
+            class="form-control"
+            id="newArticleSubFamily"
+            name="newArticleSubFamily"
+            required
+            [(ngModel)]="newArticle.idSubfamilia">
+            <option value="">Seleccionar subfamilia</option>
+            <option *ngFor="let subfam of getSubfamiliesByFamily(newArticle.idFamilia)" [value]="subfam.id">
+              {{ subfam.description }}
+            </option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="newArticleUsage" class="form-label">
+            ¿Para qué se va a usar? <span class="text-danger">*</span>
+          </label>
+          <textarea
+            class="form-control"
+            id="newArticleUsage"
+            name="newArticleUsage"
+            rows="2"
+            required
+            #newArticleUsageModel="ngModel"
+            [class.is-invalid]="newArticleFormSubmitted && newArticleUsageModel.invalid"
+            [(ngModel)]="newArticle.justificationNewArticle"
+            (input)="newArticle.justificationNewArticle = $any($event.target).value.toUpperCase()"
+            style="text-transform: uppercase;"></textarea>
+          <div class="invalid-feedback" *ngIf="newArticleFormSubmitted && newArticleUsageModel.invalid">
+            Este campo es obligatorio.
+          </div>
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeNewArticleModal()">Salir</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="saveNewArticle()"
+          [disabled]="!newArticle.description?.trim() || !newArticle.descriptionNewArticle?.trim() || !newArticle.justificationNewArticle?.trim() || newArticleIsDuplicate"
+          [title]="(newArticleIsDuplicate ? '❌ Artículo duplicado - no se puede guardar' : '') + (!newArticle.description?.trim() ? 'Falta Nombre' : '') + (!newArticle.descriptionNewArticle?.trim() ? ' | Falta Descripción' : '') + (!newArticle.justificationNewArticle?.trim() ? ' | Falta Justificación' : '')">
+          Guardar
+        </button>
       </div>
-    </div>
-    <!-- Backdrop para el modal -->
-    <div class="modal-backdrop fade show" *ngIf="isNewArticleModalVisible"></div>
+    </ng-template>
 
     <!-- Multi-line editor component -->
     <app-multi-line-editor></app-multi-line-editor>
@@ -246,6 +320,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
+  private catalogsService = inject(CatalogsService);
   private modalService = inject(ModalService);
   private sanitizer = inject(DomSanitizer);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
@@ -254,6 +329,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private providersService = inject(ProvidersService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private customersService = inject(CustomersService);
+  private ngbModal = inject(NgbModal);
   private commentSub?: Subscription;
   private sucursalSub?: Subscription;
   authService = inject(AuthService);
@@ -263,6 +339,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
+  }
+
+  private localISOString(): string {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
   }
 
   readonly actionMap: Record<string, () => void> = {
@@ -303,12 +384,30 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   // Propiedades para el modal de nuevo artículo
   isNewArticleModalVisible = false;
   newArticleFormSubmitted = false;
+  @ViewChild('newArticleModalTpl') newArticleModalTpl?: TemplateRef<unknown>;
+  private newArticleModalRef: NgbModalRef | null = null;
   newArticle = {
     description: '',
     descriptionNewArticle: '',
     urlNewArticle: '',
-    justificationNewArticle: ''
+    justificationNewArticle: '',
+    idCategory: null as number | null,
+    idFamilia: null as number | null,
+    idSubfamilia: null as number | null
   };
+
+  // Opciones para el combobox de "Nombre del Artículo" (se cargan desde materiales maestros)
+  newArticleNameOptions: any[] = [];
+
+  // Bandera para detectar duplicados
+  newArticleIsDuplicate: boolean = false;
+
+  // Catálogos para los selects
+  categories: any[] = [];
+  familias: any[] = [];
+  subfamilias: any[] = [];
+  filteredFamilias: any[] = [];
+  filteredSubfamilias: any[] = [];
   private currentRowForNewArticle: any = null;
   private originalRecurrentValue: string | null = null;
 
@@ -318,8 +417,18 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
-    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
+    this.commentSub = this.itemCommentsService.commentSaved$.subscribe(async () => {
+      // Actualizar la fecha de modificación del maestro para que se reordene en el padre
+      try {
+        const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+          ...maestro,
+          dateModified: this.localISOString()
+        }));
+      } catch { /* no bloquear el flujo */ }
+
       this.loadData();
+      this.refreshParentGridAfterSave();
     });
 
     // ✅ Sincronización en tiempo real:
@@ -344,6 +453,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     if (this.detailType === 'items') {
       this.loadMaterials();
       this.loadData();
+      this.loadCatalogs();
     } else if (this.detailType === 'pdf') {
       this.generatePDF();
     }
@@ -385,11 +495,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           idProvider: item.idProvider || 0,
           nameProvider: item.nameProvider || '',
           comment: item.comment || '',
-          dateuse: item.dateuse || new Date().toISOString(),
+          dateuse: item.dateuse || this.localISOString(),
           active: item.active !== undefined ? item.active : true,
           recurrent: item.recurrent || 'Recurrente', // Por defecto recurrente
-          nameArticle: item.nameArticle || '',
-          numArticle: item.numArticle || '',
+          nameArticle: item.namearticle || item.nameArticle || '',
+          numArticle: item.numarticle || item.numArticle || '',
           provint: item.provint || '',
           typePriority: item.typePriority || 'Normal',
           pedimiento: item.pedimento || false, // ✅ Cargar desde backend, siempre debe ser false después de Multiguardar
@@ -398,6 +508,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
           justificationNewArticle: item.justificationNewArticle || '', // Justificación del artículo nuevo
           typeOC: item.typeoc || item.typeOC || '',
+          compraRapida: item.compraRapida === true,
           __isNew: false,
           __modified: false,
           saved: true
@@ -430,7 +541,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           next: (req: any) => {
             this.hasProviderAssigned = req?.locked === true;
           },
-          error: () => {} // silencioso
+          error: () => { } // silencioso
         });
       },
       error: (error) => {
@@ -462,25 +573,35 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       next: (data) => {
         // Mapear los datos del endpoint al formato esperado por el SearchableSelect
         this.materials = data
-          .filter(material => material.vigente) // Solo materiales activos
+          .filter(material => material.active) // Solo materiales activos
           .map(material => ({
             id: material.id,
             description: material.articulo,  // Nombre del artículo
             code: material.insumo,            // Código/número de material
             measure: material.measure || '',
-            active: material.vigente,
+            active: material.active,
             // Campos adicionales que podrían ser útiles
             idCategory: material.idCategory,
             idFamilia: material.idFamilia,
             idSubfamilia: material.idSubfamilia
           }));
 
+        // Cargar opciones para el combobox "Nombre del Artículo" en el modal
+        // Incluye activos e inactivos para detectar duplicados en cualquier caso
+        this.newArticleNameOptions = data
+          .filter((material: any) => material.articulo?.trim())
+          .sort((a: any, b: any) => (a.articulo || '').localeCompare(b.articulo || ''))
+          .map((material: any) => ({
+            description: material.articulo,
+            status: material.active ? 'Activo' : 'Inactivo'
+          }));
 
       },
       error: (error) => {
         console.error('❌ Error al cargar materiales:', error);
         alerts.reqErrorToast('Error', 'No se pudieron cargar los materiales');
         this.materials = [];
+        this.newArticleNameOptions = [];
       }
     });
   }
@@ -494,8 +615,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log(`🔍 Iniciando validación para Material: ${materialId}, Sucursal Requisición: ${this.currentBranchId}`);
-      
+
       // 1. Obtener datos maestros (Nombres y Tipos) de proveedores
       const [allProvidersRaw, warehouseProviders]: any = await Promise.all([
         firstValueFrom(this.customersService.getCustomersByCompany(this.idRoot || 0, 'PROVIDERS')),
@@ -504,7 +624,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       // Mapa para búsqueda rápida de datos maestros
       const providerDataMap = new Map<number, { name: string, type: string }>();
-      
+
       // Llenar mapa con nombres desde CustomersService
       (allProvidersRaw || []).forEach((p: any) => {
         const name = p.name || p.company || p.description || `Proveedor ${p.id}`;
@@ -528,7 +648,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.providersService.getMaterXTable(materialId, 'MATERIAL')
       );
 
-      console.log(`📦 Relaciones encontradas en ProveedorXTabla:`, relations);
 
       if (!Array.isArray(relations)) return [];
 
@@ -539,12 +658,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         try {
           const providerId = rel.idTabla;
           const masterData = providerDataMap.get(providerId);
-          
+
           const realName = masterData?.name || rel.providerName || `Proveedor ${providerId}`;
           const realType = masterData?.type || rel.typeIntOrExt || 'Externo';
-          
-          console.log(`⚙️ Validando relación ID: ${rel.id} (Proveedor: ${realName}, Tipo Real: ${realType})`);
-          
+
+
           // Consultar sucursales autorizadas para esta relación específica
           const authBranches = await firstValueFrom(
             this.sucursalByMaterialProveedorService.getSucursalByMaterial(rel.id)
@@ -553,7 +671,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           // 4. EL FILTRO DE TRES NIVELES:
           const isAuthorized = Array.isArray(authBranches) && authBranches.some(branch => {
             const match = Number(branch.idSucursal) === Number(this.currentBranchId) &&
-                         (branch.vigente === true || branch.vigente === 1);
+              (branch.vigente === true || branch.vigente === 1);
             return match;
           });
 
@@ -570,7 +688,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         }
       }
 
-      console.log(`🏁 Total proveedores validados para material ${materialId}: ${validatedProviders.length}`);
       this.providersCache.set(cacheKey, validatedProviders);
       return validatedProviders;
     } catch (error) {
@@ -634,10 +751,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   private autoAdjustColumns(): void {
     if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-    }
+    this.gridApi.autoSizeAllColumns();
   }
 
   private _colDefs: ColDef[] = [];
@@ -662,8 +776,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'recurrent',
         headerName: 'Recurrente',
-        minWidth: 130,
-        flex: 0,
+        width: 110,
         suppressSizeToFit: true,
         editable: true,
         cellEditor: 'agSelectCellEditor',
@@ -820,9 +933,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
               description: params.data.nameArticle || '',
               descriptionNewArticle: params.data.descriptionNewArticle || '',
               urlNewArticle: params.data.urlNewArticle || '',
-              justificationNewArticle: params.data.justificationNewArticle || ''
+              justificationNewArticle: params.data.justificationNewArticle || '',
+              idCategory: params.data.idCategory || null,
+              idFamilia: params.data.idFamilia || null,
+              idSubfamilia: params.data.idSubfamilia || null
             };
-            this.isNewArticleModalVisible = true;
+            // Si no hay valores cargados, establecer valores por defecto
+            if (!this.newArticle.idCategory && !this.newArticle.idFamilia && !this.newArticle.idSubfamilia) {
+              this.setDefaultCatalogValues();
+            }
+            this.openNewArticleModal();
           }
         },
         cellStyle: (params: any) => {
@@ -844,8 +964,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'numArticle',
         headerName: '# del Articulo',
-        minWidth: 140,
-        flex: 0,
+        width: 140,
         suppressSizeToFit: true,
         editable: false,
         cellStyle: { textAlign: 'left' },
@@ -856,9 +975,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       {
         field: 'quantity',
-        headerName: 'cantidad',
-        minWidth: 110,
-        flex: 0,
+        headerName: 'Cantidad Requerida',
+        width: 100,
         suppressSizeToFit: true,
         editable: true,
         type: 'numericColumn',
@@ -903,8 +1021,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'intorext',
         headerName: 'Proveedor',
-        minWidth: 130,
-        flex: 0,
+        width: 110,
         suppressSizeToFit: true,
         editable: (params) => params.data.recurrent !== 'Nuevo',
         cellEditor: 'agSelectCellEditor',
@@ -944,9 +1061,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'idProvider',
         headerName: 'Proveedor Interno',
-        minWidth: 190,
-        flex: 0,
-        suppressSizeToFit: true,
+        width: 139,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
         editable: (params) => {
           // Solo editable si hay un material seleccionado Y el tipo es "Interno"
           const materialId = params.data.idSupplie || params.data.materialId || 0;
@@ -967,16 +1084,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           // Buscar proveedores en el caché (clave solo por material)
           const providers = this.providersCache.get(`${materialId}`) || [];
 
-          // 🔍 DEBUG: Ver TODOS los proveedores y sus tipos
-          console.log(`🔍 cellEditorParams - Material: ${materialId}, Tipo fila: ${type}, Total en caché: ${providers.length}`);
-          if (providers.length > 0) {
-            console.log('📦 Todos los proveedores en caché:', providers.map(p => ({ id: p.idProvider, name: p.providerName, type: p.typeIntOrExt })));
-          }
-
-          // ✅ FILTRAR: Solo mostrar proveedores que sean typeIntOrExt === 'Interno'
+          // FILTRAR: Solo mostrar proveedores que sean typeIntOrExt === 'Interno'
           const filteredProviders = providers.filter(p => p.typeIntOrExt === 'Interno');
-
-          console.log(`✅ Filtrados (Interno): ${filteredProviders.length}`);
 
           return {
             options: filteredProviders.map(p => {
@@ -1047,9 +1156,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'typePriority',
         headerName: 'Prioridad',
-        minWidth: 120,
-        flex: 0,
-        suppressSizeToFit: true,
+        width: 135,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -1057,64 +1164,103 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         },
       },
 
-     /* {
-        field: 'comment',
-        headerName: 'Observaciones',
-        width: 160,
-        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Obs'),
-        editable: true,
-        // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
-        onCellClicked: (params: any) => {
-          if (params.event.target.classList.contains('ag-cell')) {
-            this.modalService.showModal({ params });
-          }
-        },
-        valueSetter: (params: any) => {
-          params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
-
-          return true;
-        },
-        cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
-      },*/
+      /* {
+         field: 'comment',
+         headerName: 'Observaciones',
+         width: 100,
+         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Obs'),
+         editable: true,
+         // ✅ CAMBIO 3: Usar MultiLineEditor para comentarios
+         onCellClicked: (params: any) => {
+           if (params.event.target.classList.contains('ag-cell')) {
+             this.modalService.showModal({ params });
+           }
+         },
+         valueSetter: (params: any) => {
+           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
+ 
+           return true;
+         },
+         cellStyle: { cursor: 'pointer', backgroundColor: '#f0f8ff' }
+       },*/
 
       {
         headerName: 'Comentarios💬',
-        minWidth: 140,
-        flex: 0,
-        suppressSizeToFit: true,
+        width: 165,
         sortable: false,
         filter: false,
         cellRenderer: ItemCommentsCellRendererComponent,
         cellRendererParams: (params: any) => ({
           documentType: 'REQ',
           idDocument: this.requisitionId,
-          numArticle: params.data?.numArticle || ''
+          numArticle: params.data?.numArticle || (!params.data?.__isNew && params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''),
+          locked: !!params.data?.__isNew
         }),
       },
 
       {
+        field: 'compraRapida',
+        headerName: 'Compra Rapida',
+        width: 110,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
+        suppressSizeToFit: true,
+        editable: false,
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        cellRenderer: (params: any) => {
+          const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
+          const hasPedimentoNumber = !!params.data.pedimentoNumber;
+          const isDisabled = isInterno || hasPedimentoNumber;
+          if (isDisabled && params.data.compraRapida) {
+            params.data.compraRapida = false;
+          }
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = isDisabled ? false : params.value === true;
+          input.disabled = isDisabled;
+          input.style.width = '16px';
+          input.style.height = '16px';
+          input.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+          input.style.opacity = isDisabled ? '0.4' : '1';
+          input.title = isInterno ? 'No disponible para Proveedor Interno' : hasPedimentoNumber ? 'No disponible cuando hay número de pedimento asignado' : '';
+          input.addEventListener('change', () => {
+            params.data.compraRapida = input.checked;
+            if (input.checked) {
+              params.data.pedimiento = false;
+            }
+            params.data.__modified = true;
+            this.hasUnsavedChanges = true;
+            params.api.refreshCells({ rowNodes: [params.node], columns: ['compraRapida', 'pedimiento'] });
+            this.checkPedimentoSelection();
+          });
+          return input;
+        }
+      },
+
+      {
         field: 'pedimiento',
-        headerName: 'Pedimiento',
-        minWidth: 120,
-        flex: 0,
+        headerName: 'Pedimento',
+        width: 112,
         suppressSizeToFit: true,
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Ped'),
         editable: true,
         cellRenderer: (params: any) => {
           const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
+          const isCompraRapida = params.data.compraRapida === true;
+          const isDisabled = isInterno || isCompraRapida;
 
-          // Forzar apagado si es Interno
-          if (isInterno && params.data.pedimiento) {
+          // Forzar apagado si es Interno o Compra Rapida
+          if (isDisabled && params.data.pedimiento) {
             params.data.pedimiento = false;
           }
 
           const input = document.createElement('input');
           input.type = 'checkbox';
-          input.checked = isInterno ? false : params.value === true;
-          input.disabled = isInterno;
-          input.style.cursor = isInterno ? 'not-allowed' : 'pointer';
-          input.style.opacity = isInterno ? '0.4' : '1';
-          input.title = isInterno ? 'No disponible para Proveedor Interno' : '';
+          input.checked = isDisabled ? false : params.value === true;
+          input.disabled = isDisabled;
+          input.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+          input.style.opacity = isDisabled ? '0.4' : '1';
+          input.title = isInterno ? 'No disponible para Proveedor Interno' : isCompraRapida ? 'No disponible cuando Compra Rapida está activa' : '';
 
           input.addEventListener('change', () => {
             params.data.pedimiento = input.checked;
@@ -1130,8 +1276,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         field: 'pedimentoNumber',
         headerName: 'Pedimento #',
         hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_PeN'),
-        minWidth: 150,
-        flex: 0,
+        width: 110,
         suppressSizeToFit: true,
         editable: false,
         cellRenderer: (params: any) => {
@@ -1161,12 +1306,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   checkPedimentoSelection() {
-    const anyChecked = this.rowData.some(item => item.pedimiento === true);
+    const anyChecked = this.rowData.some(item => item.pedimiento === true && !item.compraRapida);
     this.hasPedimentoSelection = anyChecked;
   }
 
   private refreshParentGridAfterSave(): void {
-    // ✅ Después de guardar, recargar la tabla nivel 1 completa
+    // Recargar grilla padre para reordenar la requisición al tope
+    // Con getRowId implementado, AG Grid mantiene el estado de expansión
     if (this.context?.reloadParentGrid) {
       this.context.reloadParentGrid();
     }
@@ -1178,10 +1324,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     animateRows: true,
     // Evita columnas “mini” cuando hay pocas filas: repartir al ancho del grid
     autoSizeStrategy: {
-      type: 'fitGridWidth',
-      defaultMinWidth: 90,
+      type: 'fitCellContents',
     },
     rowSelection: 'multiple',
+    getRowId: (params: any) => String(params.data.id),
     singleClickEdit: false, // Doble-click para editar (como tipo-proveedor)
     domLayout: 'normal', // El grid se ajusta al contenedor y permite scroll
     suppressHorizontalScroll: false,
@@ -1214,6 +1360,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       internalProvider: '',
       typePriority: 'Normal',
       comment: '',
+      compraRapida: false,
       __isNew: true,
       __modified: false
     };
@@ -1283,6 +1430,19 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         this.context.ITEMS.updateCount(this.params.data.id, this.rowData.length);
       }
 
+      // Actualizar fecha de modificación del maestro
+      try {
+        const maestro: any = await firstValueFrom(this.ocAndReqsService.getDetailedReq(this.requisitionId));
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
+          ...maestro,
+          dateModified: this.localISOString()
+        }));
+      } catch { /* no bloquear el flujo */ }
+
+      // Recargar datos para sincronizar con servidor
+      this.loadData();
+      this.refreshParentGridAfterSave();
+
       alerts.reqSuccessToast('Eliminado', 'Item eliminado correctamente');
     } catch (error) {
       console.error('❌ Error al eliminar item:', error);
@@ -1290,8 +1450,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
   }
 
-  saveChanges() {
-    if (!this.isAddingNewItem) {
+  async saveChanges() {
+    if (!this.params?.data?.departmentId) {
+      alerts.reqWarningToast('Departamento requerido', 'Asigna un departamento a la requisición antes de guardar artículos');
+      return;
+    }
+
+    if (!this.isAddingNewItem && !this.hasUnsavedChanges) {
       alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
     }
@@ -1344,14 +1509,74 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Crear materiales para artículos nuevos sin materialId en BD
+    for (const item of newItems) {
+      if (item.recurrent === 'Nuevo' && (!item.materialId || item.materialId === 0)) {
+        const idRoot = this.signalsService.getRootSelectedBySidebar()();
+        try {
+          const matResponse = await lastValueFrom(this.materialsService.addMaterial({
+            idCompany: idRoot,
+            articulo: '',
+            description: item.description || item.article || '',
+            idCategory: item.idCategory || null,
+            idFamilia: item.idFamilia || null,
+            idSubfamilia: item.idSubfamilia || null,
+            insumo: (item.description || item.article || '').substring(0, 35),
+            typeMaterial: 'CONSUMABLE',
+            active: true,
+            vigente: true,
+            porAutorizar: true
+          }));
+          item.materialId = matResponse.id || matResponse.ID || 0;
+          item.idSupplie = item.materialId;
+          // Tomar el num-mat (insumo) del material recién creado para el "# del Articulo"
+          item.numArticle = matResponse.insumo || matResponse.Insumo || item.numArticle || '';
+          item.code = item.numArticle;
+        } catch (err) {
+          // Silenciar error - idSupplie permanece 0
+        }
+      }
+    }
+
+    // Crear materiales para artículos modificados que fueron cambiados a "Nuevo" sin materialId
+    for (const item of modifiedItems) {
+      if (item.recurrent === 'Nuevo' && (!item.materialId || item.materialId === 0)) {
+        const idRoot = this.signalsService.getRootSelectedBySidebar()();
+        try {
+          const matResponse = await lastValueFrom(this.materialsService.addMaterial({
+            idCompany: idRoot,
+            articulo: '',
+            description: item.description || item.article || '',
+            idCategory: item.idCategory || null,
+            idFamilia: item.idFamilia || null,
+            idSubfamilia: item.idSubfamilia || null,
+            insumo: (item.description || item.article || '').substring(0, 35),
+            typeMaterial: 'CONSUMABLE',
+            active: true,
+            vigente: true,
+            porAutorizar: true
+          }));
+          item.materialId = matResponse.id || matResponse.ID || 0;
+          item.idSupplie = item.materialId;
+          // Tomar el num-mat (insumo) del material recién creado para el "# del Articulo"
+          item.numArticle = matResponse.insumo || matResponse.Insumo || item.numArticle || '';
+          item.code = item.numArticle;
+        } catch (err) {
+          // Silenciar error - idSupplie permanece 0
+        }
+      }
+    }
+
     // Guardar items nuevos (POST)
     const newItemsPromises = newItems.map(item => {
-      // Si el artículo fue creado como "Nuevo", idSupplie debe ser 0
+      // Si el artículo fue creado como "Nuevo", usar materialId si existe, sino 0
       const isNewArticle = item.recurrent === 'Nuevo';
+      const materialId = item.materialId || item.idSupplie || 0;
+      const idSupplieValue = isNewArticle ? (materialId > 0 ? materialId : 0) : (materialId || 0);
 
       const payload = {
         idMovement: this.requisitionId,
-        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        idSupplie: idSupplieValue,
         description: item.article || '',
         nameArticle: item.article || '', // Guardar el nombre en nameArticle
         code: item.code || '',
@@ -1366,15 +1591,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         idProvider: item.idProvider || 0,
         nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
-        dateuse: item.dateuse || new Date().toISOString(),
+        dateuse: item.dateuse || this.localISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
         provint: item.provint || '',
-        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
-        pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma
-        descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
-        urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
-        justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
+        pedimento: item.pedimiento || false,
+        pedimentoNum: item.pedimentoNumber || '',
+        compraRapida: item.compraRapida === true,
+        descriptionNewArticle: item.descriptionNewArticle || '',
+        urlNewArticle: item.urlNewArticle || '',
+        justificationNewArticle: item.justificationNewArticle || ''
       };
 
       return firstValueFrom(this.ocAndReqsService.addReqItem(payload));
@@ -1382,13 +1608,15 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     // Guardar items modificados (PUT) - enviar la fila completa
     const modifiedItemsPromises = modifiedItems.map(item => {
-      // Si el artículo fue cambiado a "Nuevo", idSupplie debe ser 0
+      // Si el artículo fue cambiado a "Nuevo", usar materialId si existe, sino 0
       const isNewArticle = item.recurrent === 'Nuevo';
+      const materialId = item.materialId || item.idSupplie || 0;
+      const idSupplieValue = isNewArticle ? (materialId > 0 ? materialId : 0) : (materialId || 0);
 
       const payload = {
         id: item.id,
         idMovement: this.requisitionId,
-        idSupplie: isNewArticle ? 0 : (item.idSupplie || item.materialId || 0),
+        idSupplie: idSupplieValue,
         description: item.article || '',
         nameArticle: item.article || '', // Guardar el nombre en nameArticle
         code: item.code || '',
@@ -1403,15 +1631,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         idProvider: item.idProvider || 0,
         nameProvider: item.nameProvider || '', // Enviar el nombre del proveedor
         comment: item.comment || '',
-        dateuse: item.dateuse || new Date().toISOString(),
+        dateuse: item.dateuse || this.localISOString(),
         active: item.active !== undefined ? item.active : true,
         numArticle: item.numArticle || '',
         provint: item.provint || '',
-        pedimento: item.pedimiento || false, // ✅ Estado del checkbox
-        pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma
-        descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
-        urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
-        justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
+        pedimento: item.pedimiento || false,
+        pedimentoNum: item.pedimentoNumber || '',
+        compraRapida: item.compraRapida === true,
+        descriptionNewArticle: item.descriptionNewArticle || '',
+        urlNewArticle: item.urlNewArticle || '',
+        justificationNewArticle: item.justificationNewArticle || ''
       };
 
       return firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), payload));
@@ -1442,7 +1671,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Propagar cambios a todos los pedimentos existentes
         await this.propagateChangesToPedimentos(newItemsData, modifiedItemsData);
 
-        // Actualizar solicit y dateCreate del maestro con el usuario actual y fecha de hoy
+        // Actualizar dateModified del maestro para que se reordene en el padre
         try {
           const currentUser = this.signalsService.getDisplayName()();
           const today = new Date();
@@ -1452,7 +1681,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           await firstValueFrom(this.ocAndReqsService.updateOcAndReq(this.requisitionId, {
             ...maestro,
             solicit: currentUser,
-            dateCreate: todayStr
+            dateModified: this.localISOString()
           }));
 
           // Actualizar el maestro vía contexto (actualiza rowData + refresca celdas del grid padre)
@@ -1466,7 +1695,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         // Recargar datos desde el servidor
         this.loadData();
 
-        // ✅ Actualizar y reordenar tabla padre inmediatamente
+        // ✅ Forzar reordenamiento en tiempo real en el padre
+        if (this.context?.ITEMS?.updateCount) {
+          this.context.ITEMS.updateCount(this.requisitionId, this.rowData.length);
+        }
+
+        // ✅ Actualizar y reordenar tabla padre inmediatamente (ahora solo como respaldo)
         this.refreshParentGridAfterSave();
       })
       .catch(() => {
@@ -1519,7 +1753,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           requisicionOriginal = { ...requisicionOriginal, ...reqFresca };
         }
       } catch (err) {
-        console.warn('⚠️ No se pudieron cargar datos frescos, usando datos locales:', err);
+        // Usar datos locales si falla la carga fresca
       }
 
       // 3. Consultar cuántas cotizaciones ya existen para esta requisición
@@ -1549,13 +1783,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         typeReference: 'requisition',
         idReq: requisicionOriginal.id,
         idReference: requisicionOriginal.id, // ✅ Relación con la requisición original
-        dateCreate: new Date().toISOString(),
+        dateCreate: this.localISOString(),
         idProvider: 0,
         idDepartament: requisicionOriginal.idDepartament || 0,
         delivery: requisicionOriginal.delivery || 'NO APLICA',
         deliveryTime: requisicionOriginal.deliveryTime || '1 DAY',
         typeOc: requisicionOriginal.typeOc || 'INSUMOS',
-        dateSupply: requisicionOriginal.dateSupply || new Date().toISOString(),
+        dateSupply: requisicionOriginal.dateSupply || this.localISOString(),
         idPayment: requisicionOriginal.idPayment || 0,
         idCurrency: requisicionOriginal.idCurrency || 0,
         conditions: requisicionOriginal.conditions || null,
@@ -1628,7 +1862,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           type: 'COTIZ', // ✅ Tipo = COTIZ
           idProvider: item.idProvider || 0,
           comment: item.comment || '',
-          dateuse: item.dateuse || new Date().toISOString(),
+          dateuse: item.dateuse || this.localISOString(),
           active: true,
           recurrent: item.recurrent || 'Recurrente',
           numArticle: item.numArticle || '',
@@ -1683,7 +1917,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           type: item.type || 'REQUIS',
           idProvider: item.idProvider || 0,
           comment: item.comment || '',
-          dateuse: item.dateuse || new Date().toISOString(),
+          dateuse: item.dateuse || this.localISOString(),
           active: item.active !== undefined ? item.active : true,
           recurrent: item.recurrent || 'Recurrente',
           numArticle: item.numArticle || '',
@@ -1717,6 +1951,20 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       // 12. Cerrar alerta de progreso y mostrar mensaje de éxito
       alerts.closeLoading();
 
+      // ✅ Actualizar dateModified del maestro para que se reordene en el padre
+      try {
+        const maestroActual: any = await firstValueFrom(
+          this.ocAndReqsService.getDetailedReq(requisicionOriginal.id)
+        );
+        await firstValueFrom(this.ocAndReqsService.updateOcAndReq(requisicionOriginal.id, {
+          ...maestroActual,
+          dateModified: this.localISOString()
+        }));
+        this.refreshParentGridAfterSave();
+      } catch (err) {
+        // No se pudo actualizar dateModified
+      }
+
       setTimeout(() => {
         const message = `Cotización ${folioCotizacion} creada exitosamente con ${checkedItems.length} artículo(s)`;
         alerts.reqSuccessToast('Cotización Creada', message);
@@ -1724,7 +1972,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
 
     } catch (error) {
-      console.error('❌ Error al crear cotización:', error);
       alerts.closeLoading();
       alerts.reqErrorToast('Error', 'No se pudo crear la cotización');
     }
@@ -1778,24 +2025,24 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
   }
 
-  saveNewArticle() {
+  async saveNewArticle() {
     this.newArticleFormSubmitted = true;
 
     const name = (this.newArticle.description || '').trim();
     const desc = (this.newArticle.descriptionNewArticle || '').trim();
     const usage = (this.newArticle.justificationNewArticle || '').trim();
 
-    // Validación: campos obligatorios
+    // Validación: campos obligatorios visibles
     if (!name || !desc || !usage) {
-      alerts.reqWarningToast('Validación', 'Completa los campos obligatorios antes de guardar');
+      alerts.reqWarningToast('Validación', 'Completa todos los campos obligatorios antes de guardar');
       return;
     }
 
+    const materialId = 0;
 
-    // Guardar los datos del formulario en la fila actual
-    // idSupplie = 0 indica que es un artículo nuevo (no recurrente)
-    this.currentRowForNewArticle.data.idSupplie = 0;
-    this.currentRowForNewArticle.data.materialId = 0;
+    // Guardar los datos del formulario en la fila actual CON EL ID DEL MATERIAL
+    this.currentRowForNewArticle.data.idSupplie = materialId;
+    this.currentRowForNewArticle.data.materialId = materialId;
     this.currentRowForNewArticle.data.article = name;
     this.currentRowForNewArticle.data.nameArticle = name;
     this.currentRowForNewArticle.data.descriptionNewArticle = desc;
@@ -1804,6 +2051,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.currentRowForNewArticle.data.code = '';
     this.currentRowForNewArticle.data.numArticle = '';
     this.currentRowForNewArticle.data.description = this.newArticle.description.trim();
+    // Guardar categoría, familia y subfamilia
+    this.currentRowForNewArticle.data.idCategory = this.newArticle.idCategory;
+    this.currentRowForNewArticle.data.idFamilia = this.newArticle.idFamilia;
+    this.currentRowForNewArticle.data.idSubfamilia = this.newArticle.idSubfamilia;
     this.currentRowForNewArticle.data.__modified = true;
     this.hasUnsavedChanges = true;
     this.isAddingNewItem = true;
@@ -1819,10 +2070,150 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.closeNewArticleModal();
   }
 
+  onArticleNameTyped(value: string): void {
+    const typed = (value || '').trim().toUpperCase();
+    if (!typed) {
+      this.newArticleIsDuplicate = false;
+      return;
+    }
+    this.newArticleIsDuplicate = this.newArticleNameOptions.some(opt => {
+      const name = typeof opt === 'string' ? opt : (opt?.description || '');
+      return name.trim().toUpperCase() === typed;
+    });
+  }
+
+  onArticleSelected(option: any): void {
+    const selectedArticle = typeof option === 'string' ? option : option?.description || option;
+    if (!selectedArticle?.trim?.()) return;
+    this.newArticle.description = String(selectedArticle).trim();
+    this.onArticleNameTyped(String(selectedArticle));
+  }
+
+  private openNewArticleModal() {
+    this.isNewArticleModalVisible = true;
+    this.newArticleFormSubmitted = false;
+    this.newArticleIsDuplicate = false; // Resetear estado de duplicado
+
+    // Resetear valores del formulario al abrir
+    this.newArticle = {
+      description: '',
+      descriptionNewArticle: '',
+      urlNewArticle: '',
+      justificationNewArticle: '',
+      idCategory: null,
+      idFamilia: null,
+      idSubfamilia: null
+    };
+
+    // Asegurar que el catálogo esté disponible antes de abrir (evita selects vacíos)
+    if (!this.categories?.length || !this.familias?.length || !this.subfamilias?.length) {
+      void this.loadCatalogs();
+    }
+
+    if (!this.newArticleModalTpl) {
+      // El ViewChild podría no estar listo en algunos ciclos
+      setTimeout(() => this.openNewArticleModal(), 0);
+      return;
+    }
+
+    // Establecer valores por defecto después de resetear
+    this.setDefaultCatalogValues();
+
+    // Cerrar uno previo si existiera
+    try { this.newArticleModalRef?.close(); } catch { }
+
+    this.newArticleModalRef = this.ngbModal.open(this.newArticleModalTpl, {
+      centered: true,
+      backdrop: 'static',
+      keyboard: false,
+      size: 'lg',
+      windowClass: 'new-article-modal-top'
+    });
+
+    this.newArticleModalRef.result.finally(() => {
+      // Si el usuario cierra por cualquier vía, limpiar bandera
+      this.isNewArticleModalVisible = false;
+      this.newArticleModalRef = null;
+    });
+  }
+
   closeNewArticleModal() {
     this.isNewArticleModalVisible = false;
+    try { this.newArticleModalRef?.close(); } catch { }
+    this.newArticleModalRef = null;
     this.currentRowForNewArticle = null;
     this.newArticleFormSubmitted = false;
+  }
+
+  // ==================== CATÁLOGOS PARA NUEVO ARTÍCULO ====================
+
+  private async loadCatalogs(): Promise<void> {
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (!idRoot) {
+        console.warn('⚠️ No idRoot disponible para cargar catálogos');
+        return;
+      }
+
+      // Cargar TODAS las categorías/familias/subfamilias (sin filtro de bit MATERIAL)
+      [this.categories, this.familias, this.subfamilias] = await Promise.all([
+        lastValueFrom(this.catalogsService.getCatalogs(idRoot, 'CATEGORY')),
+        lastValueFrom(this.catalogsService.getCatalogs(idRoot, 'FAM-CAT')),
+        lastValueFrom(this.catalogsService.getCatalogs(idRoot, 'SUB-FAM'))
+      ]);
+    } catch (err) {
+      // Error cargando catálogos
+    }
+  }
+
+  onCategoryChange(): void {
+    // Limpiar selecciones dependientes
+    this.newArticle.idFamilia = null;
+    this.newArticle.idSubfamilia = null;
+  }
+
+  onFamilyChange(): void {
+    // Limpiar selección dependiente
+    this.newArticle.idSubfamilia = null;
+  }
+
+  private setDefaultCatalogValues(): void {
+    // Buscar "NUEVO" en categorías (para que el artículo caiga en "Artículos y Servicios Nuevos")
+    const categoriaNuevo = this.categories.find(c =>
+      c.description?.trim().toUpperCase() === 'NUEVO'
+    );
+    if (categoriaNuevo) {
+      this.newArticle.idCategory = categoriaNuevo.id;
+    }
+
+    // Buscar "PRODUCTO NUEVO" en familias
+    const productoNuevoFam = this.familias.find(f =>
+      f.description?.toUpperCase().includes('PRODUCTO NUEVO')
+    );
+    if (productoNuevoFam) {
+      this.newArticle.idFamilia = productoNuevoFam.id;
+    }
+
+    // Buscar "PRODUCTO NUEVO" en subfamilias
+    const productoNuevoSubfam = this.subfamilias.find(sf =>
+      sf.description?.toUpperCase().includes('PRODUCTO NUEVO')
+    );
+    if (productoNuevoSubfam) {
+      this.newArticle.idSubfamilia = productoNuevoSubfam.id;
+    }
+  }
+
+  getFamiliesByCategory(categoryId: number | null | string): any[] {
+    if (!categoryId) return [];
+    const catIdNum = Number(categoryId);
+    const result = this.familias.filter(f => Number(f.parentId) === catIdNum);
+    return result;
+  }
+
+  getSubfamiliesByFamily(familyId: number | null | string): any[] {
+    if (!familyId) return [];
+    const famIdNum = Number(familyId);
+    return this.subfamilias.filter(sf => Number(sf.subParentId) === famIdNum);
   }
 
   onCellClicked(event: any): void {
@@ -1897,7 +2288,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             type: 'COTIZ',
             idProvider: newItem.idProvider || 0,
             comment: newItem.comment || '',
-            dateuse: newItem.dateuse || new Date().toISOString(),
+            dateuse: newItem.dateuse || this.localISOString(),
             active: true,
             recurrent: newItem.recurrent || 'Recurrente',
             numArticle: newItem.numArticle || '',
@@ -1945,7 +2336,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             type: matchingItem.type || 'COTIZ',
             idProvider: matchingItem.idProvider || 0,
             comment: modItem.comment || '', // Observación actualizada
-            dateuse: matchingItem.dateuse || new Date().toISOString(),
+            dateuse: matchingItem.dateuse || this.localISOString(),
             active: matchingItem.active !== undefined ? matchingItem.active : true,
             recurrent: matchingItem.recurrent || 'Recurrente',
             numArticle: matchingItem.numArticle || '',
@@ -2024,7 +2415,6 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
       const hasCotiz = Array.isArray(existingCotiz) && existingCotiz.some((c: any) => c.idReq === this.requisitionId);
       if (hasCotiz) {
-        console.log('ℹ️ La cotización ya existe para esta requisición');
         return;
       }
 
@@ -2048,13 +2438,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         typeReference: 'requisition', // ✅ Las cotizaciones se relacionan a requisiciones
         idReq: this.requisitionId, // ✅ Vinculado a la requisición
         idReference: this.requisitionId, // ✅ Para que se encuentre con getOcAndReqs('requisition', idReq, 'COTIZ')
-        dateCreate: new Date().toISOString(),
+        dateCreate: this.localISOString(),
         idProvider: requisitionData.idProvider || 0,
         idDepartament: requisitionData.idDepartament || 0,
         delivery: requisitionData.delivery || 'NO APLICA',
         deliveryTime: requisitionData.deliveryTime || '1 DAY',
         typeOc: requisitionData.typeOc || 'INSUMOS',
-        dateSupply: requisitionData.dateSupply || new Date().toISOString(),
+        dateSupply: requisitionData.dateSupply || this.localISOString(),
         idPayment: requisitionData.idPayment || 0,
         idCurrency: requisitionData.idCurrency || 0,
         conditions: requisitionData.conditions || null,
@@ -2090,10 +2480,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       } catch (err) {
         console.warn('⚠️ No se pudo confirmar el folio de cotización:', err);
       }
-
-      console.log(`✅ Cotización ${folioCotiz} creada automáticamente`);
     } catch (error) {
-      console.error('❌ Error al crear cotización automáticamente:', error);
       throw error;
     }
   }
@@ -2263,3 +2650,4 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
 }
+

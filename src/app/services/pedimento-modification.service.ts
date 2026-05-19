@@ -4,4 +4,5 @@ import { Subject } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class PedimentoModificationService {
   readonly pedimentoModified$ = new Subject<number>();
+  readonly requisitionModified$ = new Subject<number>();
 }

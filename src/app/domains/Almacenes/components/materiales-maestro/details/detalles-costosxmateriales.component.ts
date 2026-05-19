@@ -10,6 +10,7 @@ import { Parser } from 'expr-eval';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { DetailCellRendererParametrosComponent } from './detail-cell-renderer-parametros.component';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { RawMaterialsService } from 'app/services/raw-materials.service';
 import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
@@ -217,6 +218,7 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       // Si no tiene fórmula, copiamos el valor simple (initialValues[0]).
       return sourceFormula || initialValues[0];
      },
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
     context: {}, // Declarar explícitamente la propiedad context
     
   };
@@ -1030,10 +1032,8 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    // Defer sizing and totals update until after AG Grid finishes the initial render
     setTimeout(() => {
       if (!this.gridApi || this.gridApi.isDestroyed()) return;
-      this.gridApi.sizeColumnsToFit();
       this.updatePinnedRowTotals();
     }, 0);
   }

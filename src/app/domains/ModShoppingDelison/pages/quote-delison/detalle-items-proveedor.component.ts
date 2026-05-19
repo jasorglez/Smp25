@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, Renderer2, RendererFactory2, OnDestroy } from '@angular/core';
+import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -11,6 +11,9 @@ import { PedimentoModificationService } from 'app/services/pedimento-modificatio
 import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { UnsavedChangesTrackerService } from 'app/services/unsaved-changes-tracker.service';
 import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { lastValueFrom } from 'rxjs';
@@ -18,13 +21,15 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
+import { ProveedorItemsOverlayData } from 'app/services/proveedor-items-overlay.service';
+import { ClasificacionCascadaComponent } from './clasificacion-cascada.component';
 
 pdfMake.vfs = pdfFonts.vfs;
 
 @Component({
   selector: 'app-detalle-items-proveedor',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ItemCommentsCellRendererComponent, ClasificacionCascadaComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Banner de candado cuando ya existe OC -->
@@ -39,20 +44,25 @@ pdfMake.vfs = pdfFonts.vfs;
       <div style="margin-bottom: 5px; padding: 6px 10px; flex-shrink: 0; display: flex; align-items: center;">
         <label class="form-label small mb-0 me-1" style="white-space: nowrap;">Proveedor:</label>
         <ng-select
-          [items]="providers"
+          [items]="filteredProviders"
           bindValue="id"
           bindLabel="description"
-          [groupBy]="'group'"
           [(ngModel)]="selectedProviderId"
           [clearable]="true"
           [disabled]="ocGenerated"
           placeholder="Seleccione proveedor"
           (ngModelChange)="onProviderChange()"
           style="width: 50%; min-width: 150px;">
-          <ng-template ng-optgroup-tmp let-item="item">
-            <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; display: inline-block;">
-              {{ item.group }}
+          <ng-template ng-option-tmp let-item="item">
+            <span *ngIf="item.__isHeader" style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; display: inline-block; color: #6c757d; background-color: #f5f5f5;">
+              {{ item.description }}
             </span>
+            <ng-container *ngIf="!item.__isHeader">
+              <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span>{{ item.description }}
+            </ng-container>
+          </ng-template>
+          <ng-template ng-label-tmp let-item="item">
+            <span *ngIf="item.isPrincipal">⭐ </span>{{ item.description }}
           </ng-template>
         </ng-select>
         <input type="file" #fileInput accept=".pdf" style="display: none;" (change)="onFileSelected($event)">
@@ -62,7 +72,7 @@ pdfMake.vfs = pdfFonts.vfs;
         <button class="btn btn-sm btn-outline-secondary" type="button" (click)="generatePlaceholderPdf()" [disabled]="ocGenerated" title="Ver PDF">
           <i class="bi bi-file-earmark-pdf text-danger"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="savingChanges || ocGenerated" title="Guardar cotización">
+        <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="savingChanges || ocGenerated || !allCostosValid" title="Guardar cotización">
           <span *ngIf="savingChanges" class="spinner-border spinner-border-sm"></span>
           <i *ngIf="!savingChanges" class="bi bi-floppy"></i>
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="hasUnsavedChanges && !savingChanges && !ocGenerated">
@@ -78,7 +88,7 @@ pdfMake.vfs = pdfFonts.vfs;
       </div>
 
       <!-- Grid con tamaño completo -->
-      <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
+      <div #gridWrapper style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
           [rowData]="rowData"
@@ -114,6 +124,7 @@ pdfMake.vfs = pdfFonts.vfs;
       flex-direction: column;
       box-sizing: border-box;
       overflow: hidden;
+      position: relative;
     }
     .form-label {
       margin-bottom: 2px;
@@ -130,9 +141,13 @@ export class DetalleItemsProveedorComponent {
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private catalogadmonService = inject(CatalogadmonService);
   private itemCommentsService = inject(ItemCommentsService);
+  private materialsService = inject(MaterialsService);
+  private catalogsService = inject(CatalogsService);
+  private unsavedTracker = inject(UnsavedChangesTrackerService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
+  @ViewChild('gridWrapper') private gridWrapper!: ElementRef;
   private renderer: Renderer2;
   private newProviderOverlayEl: HTMLElement | null = null;
   private newProviderOverlayUnlisteners: Array<() => void> = [];
@@ -143,10 +158,34 @@ export class DetalleItemsProveedorComponent {
 
   rowData: any[] = [];
   providers: any[] = [];
+  filteredProviders: any[] = [];
   selectedProviderId: number | null = null;
   selectedProviderObj: any = null;
+  /** Snapshot del último proveedor "persistido" (params.data o BD o tras save) — usado por revertChanges. */
+  private originalProviderId: number | null = null;
   fechaProveedor: string = new Date().toISOString().split('T')[0];
-  hasUnsavedChanges: boolean = false;
+
+  /** Slot dinámico: contiene cotizId, slotIndex, idProvider, folio, name. */
+  private slotInfo: any = null;
+  /** Prefijo de sucursal (ej: "BOD15") extraído del folio de la requisición. */
+  private branchPrefix: string = 'NOPREF';
+  /** Número de pedimento (1, 2, 3...) usado en el folio: ${type}-{branchPrefix}-P{pedimentoNum}-PRO{idProvider}. */
+  private pedimentoNum: number = 0;
+  /** Slots hermanos (proveedores ya asignados al mismo pedimento, excepto este slot) — para evitar duplicados. */
+  private siblingSlots: any[] = [];
+  /** Callback al padre cuando se guarda un slot (para refrescar UI sin recargar). */
+  private onSlotSavedCallback: ((savedSlot: any) => void) | null = null;
+  private _hasUnsavedChanges: boolean = false;
+  private _trackerKey: string = '';
+  get hasUnsavedChanges(): boolean {
+    return this._hasUnsavedChanges;
+  }
+  set hasUnsavedChanges(value: boolean) {
+    this._hasUnsavedChanges = value;
+    if (this._trackerKey) {
+      this.unsavedTracker.setDirty(this._trackerKey, value);
+    }
+  }
   totalCostoTotal: number = 0;
   providerLabel: string = '';
   providerField: string = '';
@@ -178,67 +217,104 @@ export class DetalleItemsProveedorComponent {
   private readonly AUTHORIZED_TYPES = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
   private readonly NEW_PROVIDER_SENTINEL = -1;
   private rowsMissingProvider: any[] = [];
+  private principalProviderIds = new Set<number>();
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
+  // ===== Cascada de clasificación (artículos NUPNPN sin clasificar) =====
+  // Catálogos consumidos por el detail renderer (ClasificacionCascadaComponent) vía context.
+  catCategorias: any[] = [];
+  catFamilias: any[] = [];
+  catSubfamilias: any[] = [];
+
+  /**
+   * ✅ Vía de entrada cuando el componente se usa como MODAL (no como cell renderer de AG Grid).
+   * Construye un objeto params-like y reutiliza la MISMA lógica de agInit(), por lo que el
+   * comportamiento es idéntico a cuando AG Grid lo monta. No afecta el uso como cell renderer.
+   */
+  @Input() set modalInit(data: ProveedorItemsOverlayData | null) {
+    if (!data) return;
+    const fakeParams: any = {
+      data: data.pedimentoData,
+      node: { data: data.pedimentoData },
+      context: {},
+      providerLabel: data.providerLabel,
+      providerField: data.providerField,
+      slotInfo: data.slotInfo,
+      branchPrefix: data.branchPrefix,
+      pedimentoNum: data.pedimentoNum,
+      siblingSlots: data.siblingSlots,
+      onSlotSaved: data.onSlotSaved
+    };
+    this.agInit(fakeParams);
+  }
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.providerLabel = (params as any).providerLabel || params.data?.providerLabel || params.context?.providerLabel || 'Proveedor';
     this.providerField = (params as any).providerField || params.data?.providerField || params.context?.providerField || 'idProvider';
+    this.slotInfo = (params as any).slotInfo || params.data?.slotInfo || params.context?.slotInfo || null;
+    this.branchPrefix = (params as any).branchPrefix || params.data?.branchPrefix || 'NOPREF';
+    this.pedimentoNum = (params as any).pedimentoNum || params.data?.numeroPedimentoRaw || 0;
+    this.siblingSlots = (params as any).siblingSlots || [];
+    this.onSlotSavedCallback = (params as any).onSlotSaved || null;
     this.requisitionId = params.data?.requisitionId || null;
     this.idBranch = params.data?.idBranch || null;
     this.branchName = params.data?.branchName || '';
+    const slotKeyForTracker = this.slotInfo?.idProvider != null
+      ? `pro_${this.slotInfo.idProvider}`
+      : `new_${this.slotInfo?.slotIndex ?? 'x'}`;
+    this._trackerKey = `detalle-items-proveedor:${params.data?.cotizacionId ?? 'x'}:${slotKeyForTracker}`;
 
-    const currentProviderId = this.params.data[this.providerField];
-    if (currentProviderId && currentProviderId > 0) {
-      this.selectedProviderId = currentProviderId;
+    // ✅ Inicializar provider desde slotInfo (no desde providerField legacy)
+    const currentProviderId = this.slotInfo?.idProvider ?? null;
+    if (currentProviderId && Number(currentProviderId) > 0) {
+      this.selectedProviderId = Number(currentProviderId);
+      this.originalProviderId = Number(currentProviderId);
+    } else {
+      this.originalProviderId = null;
     }
 
     this.catalogadmonService.getCatalogs(9, 'TYPEOC').subscribe({
       next: (items: any[]) => {
         this.typeocValues = items.filter(i => i.active).map(i => i.description as string);
-        this._colDefs = null;
+        if (this.gridApi) {
+          this.gridApi.setGridOption('columnDefs', this.colDefs);
+        }
       },
       error: () => { this.typeocValues = []; }
     });
 
     this.buildRowData();
+    this.cargarCatalogosClasificacion();
     this.loadProviders().then(() => {
       if (this.selectedProviderId) {
         this.selectedProviderObj = this.providers.find(p => p.id === this.selectedProviderId) || null;
       }
+      this.refreshFilteredProviders();
       this.loadExistingCotiz();
+      this.loadPrincipalProviders();
     });
   }
 
   onGridReady(params: any) {
     this.gridApi = params.api;
     if (this.ocGenerated) this.lockGrid();
-    this.autoAdjustColumns();
   }
 
-  @HostListener('window:resize')
-  onWindowResize() {
-    this.autoAdjustColumns();
-  }
-
-  private autoAdjustColumns() {
-    if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    if (typeof apiAny.autoSizeAllColumns === 'function') {
-      apiAny.autoSizeAllColumns(true);
-    } else if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-    }
-  }
 
   async loadProviders(): Promise<void> {
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
-      const allProviders: any = await this.customersService.getCustomersByCompany(idRoot, 'PROVIDERS').toPromise();
-      const active = (allProviders || []).map((p: any) => {
-        const company = (p.name ?? '').trim();
-        const contact = (p.Description ?? p.description ?? '').trim();
+      const allProviders: any = await this.customersService.getProvidersForGrid(idRoot).toPromise();
+      const filtered = (allProviders || []).filter((p: any) => {
+        const isExterno = p.typeIntOrExt === 'Externo';
+        const isActive = p.vigente === true || p.active === true || p.Vigente === true;
+        return isExterno && isActive;
+      });
+      const active = filtered.map((p: any) => {
+        const company = (p.company ?? p.name ?? '').trim();
+        const contact = (p.nameContact ?? p.namecontact ?? p.Description ?? p.description ?? '').trim();
         const isCompany = !!company;
         return {
           id: p.id,
@@ -251,25 +327,40 @@ export class DetalleItemsProveedorComponent {
         return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
       });
 
-      this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }, ...active];
+      const companies = active.filter((p: any) => p.group === 'Compañía');
+      const contacts = active.filter((p: any) => p.group === 'Contacto');
+      const result: any[] = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
+      if (companies.length > 0) {
+        result.push({ id: '__header_company__', description: 'Compañía', disabled: true, __isHeader: true });
+        result.push(...companies);
+      }
+      if (contacts.length > 0) {
+        result.push({ id: '__header_contact__', description: 'Contacto', disabled: true, __isHeader: true });
+        result.push(...contacts);
+      }
+      this.providers = result;
+      this.refreshFilteredProviders();
     } catch (error) {
       this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
+      this.refreshFilteredProviders();
     }
   }
 
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter((item: any) => !!item.pedimento);
+    console.log('🔨 buildRowData: Construyendo datos iniciales con', articulos.length, 'artículos');
     this.rowData = articulos.map((item: any, index: number) => ({
+      id: item.id || 0,
       active: true,
       idSupplie: item.idSupplie || 0,
       recurrent: item.recurrent || 'Recurrente',
-      numArticulo: item.recurrent === 'Nuevo' ? '' : (item.numArticle || (index + 1)),
+      numArticulo: item.numarticle || item.numArticle || (item.recurrent === 'Nuevo' ? '' : (index + 1)),
       articulo: item.article || '',
       codigoExterno: '',
       proveedorXTablaId: 0,
       costoUnitario: item.price || 0,
       compraMinima: 1,
-      tiempoEntrega: '',
+      tiempoEntrega: 1,
       cantidadConfirmada: item.quantity || 0,
       costoTotal: (item.price || 0) * (item.quantity || 0),
       autorizado: false,
@@ -278,8 +369,103 @@ export class DetalleItemsProveedorComponent {
       comment: '',
       datePostpone: ''
     }));
+    console.log('✅ buildRowData: rowData inicial:', this.rowData);
     this.updateTotal();
     this.updateHasRowsWithTypeOC();
+    this.refrescarNumArticuloDesdeBD();
+  }
+
+  // ===== Cascada de clasificación (artículos NUPNPN) =====
+
+  private cargarCatalogosClasificacion(): void {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    // Se muestra si está marcado como MATERIA PRIMA o como BIENES Y SERVICIOS
+    // (solo se oculta cuando ambos son false)
+    const tieneBits = (x: any) =>
+      (x?.valueAdditionBit === true || x?.valueAdditionBit === 1) ||
+      (x?.valueAdditionBit3 === true || x?.valueAdditionBit3 === 1);
+    this.catalogsService.getCatalogs(idCompany, 'CATEGORY').subscribe({
+      next: (d: any[]) => this.catCategorias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catCategorias = []
+    });
+    this.catalogsService.getCatalogs(idCompany, 'FAM-CAT').subscribe({
+      next: (d: any[]) => this.catFamilias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catFamilias = []
+    });
+    this.catalogsService.getCatalogs(idCompany, 'SUB-FAM').subscribe({
+      next: (d: any[]) => this.catSubfamilias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catSubfamilias = []
+    });
+  }
+
+  // Llamado por el detail renderer cuando el usuario edita la clasificación.
+  marcarClasifModificado(): void {
+    this.hasUnsavedChanges = true;
+  }
+
+  // Refresca numArticulo de filas NUPNPN consultando el insumo real del material en BD.
+  // params.data.articulos es un snapshot: si el material ya se clasificó en otro
+  // proveedor, este slot debe mostrar el código real y no volver a abrir la cascada.
+  private async refrescarNumArticuloDesdeBD(): Promise<void> {
+    const hayPendientes = this.rowData.some(
+      r => r.idSupplie > 0 && String(r?.numArticulo || '').toUpperCase().startsWith('NUPNPN')
+    );
+    if (!hayPendientes) return;
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot) return;
+    try {
+      const materiales: any[] = await lastValueFrom(this.materialsService.getMaterialsxview(idRoot));
+      const insumoPorId = new Map<number, string>();
+      (materiales || []).forEach((m: any) => {
+        const insumo = m?.insumo ?? m?.Insumo;
+        if (m?.id != null && insumo) insumoPorId.set(Number(m.id), String(insumo));
+      });
+      let cambios = false;
+      this.rowData.forEach(row => {
+        if (!(row.idSupplie > 0)) return;
+        if (!String(row?.numArticulo || '').toUpperCase().startsWith('NUPNPN')) return;
+        const insumoReal = insumoPorId.get(Number(row.idSupplie));
+        if (insumoReal && insumoReal !== row.numArticulo) {
+          row.numArticulo = insumoReal;
+          cambios = true;
+        }
+      });
+      // Re-set rowData para que AG Grid re-evalúe isRowMaster (oculta la cascada)
+      if (cambios && this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+    } catch (e) {
+      console.error('Error refrescando numArticulo desde BD', e);
+    }
+  }
+
+  // Alto del detail = alto del área del grid menos el header y la fila maestra visible.
+  private computeDetailHeight(): number {
+    const h = this.gridWrapper?.nativeElement?.clientHeight || 0;
+    return Math.max(200, h - 30 - 28);
+  }
+
+  // Reclasifica los materiales con cascada pendiente; el backend regenera el num-mat (insumo).
+  private async guardarClasificaciones(): Promise<void> {
+    const rows = this.rowData.filter(r => r.__clasifPendiente && r.idSupplie > 0);
+    for (const row of rows) {
+      try {
+        const resp: any = await lastValueFrom(this.materialsService.updateMaterial(String(row.idSupplie), {
+          idCategory: row.clasifCategoria,
+          idFamilia: row.clasifFamilia,
+          idSubfamilia: row.clasifSubfamilia
+        }));
+        const nuevoInsumo = resp?.insumo || resp?.Insumo;
+        if (nuevoInsumo) row.numArticulo = nuevoInsumo;
+        delete row.__clasifPendiente;
+      } catch (e) {
+        console.error('Error reclasificando material', row.idSupplie, e);
+      }
+    }
+    if (rows.length > 0 && this.gridApi) {
+      this.gridApi.refreshCells({ force: true, columns: ['numArticulo'] });
+    }
   }
 
   async onProviderChange() {
@@ -306,15 +492,20 @@ export class DetalleItemsProveedorComponent {
         const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
         if (match) {
           row.codigoExterno = match.campo11 || '';
+          row.compraMinima = match.minCompra || 0;
+          row.costoUnitario = match.campo9 || 0;
+          row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
           row.proveedorXTablaId = match.id || 0;
           row.proveedorXTablaObj = match;
         } else {
           row.codigoExterno = '';
+          row.compraMinima = 0;
           row.proveedorXTablaId = 0;
           row.proveedorXTablaObj = null;
           if (row.idSupplie) missingCodes.push(row);
         }
       });
+      this.updateTotal();
 
       // ALERTA 1: Vínculo Artículo-Proveedor
       if (missingCodes.length > 0) {
@@ -328,19 +519,24 @@ export class DetalleItemsProveedorComponent {
           this.selectedProviderObj = null;
           this.rowData.forEach(row => { row.codigoExterno = ''; row.proveedorXTablaId = 0; });
           this.gridApi?.setGridOption('rowData', this.rowData);
+          this.refreshFilteredProviders();
           return;
         }
       }
 
-      // --- PASO 2: VALIDAR AUTORIZACIÓN DE SUCURSAL ---
+      // --- PASO 2: VALIDAR AUTORIZACIÓN DE SUCURSAL Y CARGAR TIEMPO DE ENTREGA ---
       const unauthorizedForBranch: any[] = [];
       for (const row of this.rowData) {
         if (row.proveedorXTablaId > 0 && this.idBranch) {
           try {
             const sucursales: any = await lastValueFrom(this.sucursalByMaterialProveedorService.getSucursalByMaterial(row.proveedorXTablaId));
             const listSuc = Array.isArray(sucursales) ? sucursales : [];
-            const tienePermiso = listSuc.some((s: any) => Number(s.idSucursal) === Number(this.idBranch));
-            if (!tienePermiso) unauthorizedForBranch.push(row);
+            const sucursal = listSuc.find((s: any) => Number(s.idSucursal) === Number(this.idBranch));
+            if (!sucursal) {
+              unauthorizedForBranch.push(row);
+            } else {
+              row.tiempoEntrega = sucursal.tiempoDeEntrega || row.tiempoEntrega || 1;
+            }
           } catch (err) { console.warn(`Error validando sucursal para ${row.articulo}`, err); }
         }
       }
@@ -364,7 +560,7 @@ export class DetalleItemsProveedorComponent {
         if (!materialProviderId || materialProviderId === 0) {
           const provPayload = {
             idTabla: this.selectedProviderId, campo1: row.idSupplie, campo2: 'NA', campo3: 'NA', campo4: 'NA', campo5: 'NA', campo6: 'NA',
-            campo7: true, campo11: row.codigoExterno || '', campo9: row.costoUnitario || 0, campo10: this.idBranch, type: 'MATERIAL', vigente: true, principal: false, active: true
+            campo7: true, campo11: row.codigoExterno || '', campo9: row.costoUnitario || 0, campo10: this.idBranch, minCompra: row.compraMinima || 0, type: 'MATERIAL', vigente: true, principal: false, active: true
           };
           const createdProv: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
           materialProviderId = createdProv?.id ?? createdProv?.ID ?? 0;
@@ -397,6 +593,9 @@ export class DetalleItemsProveedorComponent {
         const created: any = await lastValueFrom(this.providersService.addProviderXTable(provPayload));
         row.proveedorXTablaId = created?.id || 0;
         row.proveedorXTablaObj = created || null;
+        await lastValueFrom(
+          this.ocandreqsService.patchProveedorXTablaCampo7(row.idSupplie, this.selectedProviderId, true)
+        ).catch(() => {});
       } catch (error) { console.error(`Error creando asignación para ${row.articulo}`, error); }
     }
     this.rowsMissingProvider = [];
@@ -406,25 +605,72 @@ export class DetalleItemsProveedorComponent {
     if (!this.selectedProviderId) { alert('Seleccione un proveedor.'); return; }
     if (this.savingChanges) return;
     this.gridApi?.stopEditing();
+    const rowsInvalid = this.rowData.filter(r => !(r.costoUnitario > 0));
+    if (rowsInvalid.length > 0) {
+      const nombres = rowsInvalid.map((r: any) => `• ${r.articulo}`).join('\n');
+      alerts.reqErrorToast('Costo requerido', `Los siguientes artículos no tienen costo unitario:\n${nombres}`);
+      return;
+    }
+    const rowsInvalidTiempo = this.rowData.filter(r => !(r.tiempoEntrega > 0));
+    if (rowsInvalidTiempo.length > 0) {
+      const nombres = rowsInvalidTiempo.map((r: any) => `• ${r.articulo}`).join('\n');
+      alerts.reqErrorToast('T. Entrega requerido', `Los siguientes artículos no tienen tiempo de entrega:\n${nombres}`);
+      return;
+    }
+    const rowsInvalidCompra = this.rowData.filter(r => !(r.compraMinima > 0));
+    if (rowsInvalidCompra.length > 0) {
+      const nombres = rowsInvalidCompra.map((r: any) => `• ${r.articulo}`).join('\n');
+      alerts.reqErrorToast('Compra Mín. requerida', `Los siguientes artículos no tienen compra mínima:\n${nombres}`);
+      return;
+    }
     this.savingChanges = true;
     try {
+      await this.guardarClasificaciones();
       await this.saveCotizOrOC('COTIZ');
       this.setArticulosPedimentoLocked(true);
       if (this.rowsMissingProvider.length > 0) await this.createMissingProviderAssignments();
+
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
+      this.originalProviderId = this.selectedProviderId;
       const providerName = this.getSelectedProviderName();
-      this.params.node.data[this.providerField] = this.selectedProviderId;
-      this.params.node.data['name_' + this.providerField] = providerName;
-      this.params.api?.refreshCells({ rowNodes: [this.params.node], columns: [this.providerField], force: true });
+
+      // ✅ Notificar al padre que el slot quedó guardado (actualiza providerSlots y UI)
+      const savedSlot = {
+        slotIndex: this.slotInfo?.slotIndex,
+        cotizId: this.savedOcId,
+        folio: this.savedCotizFolio,
+        idProvider: this.selectedProviderId,
+        name: providerName
+      };
+      // Actualizar slotInfo local (para futuras operaciones en este mismo detalle)
+      this.slotInfo = { ...this.slotInfo, ...savedSlot };
+      if (this.onSlotSavedCallback) {
+        try { this.onSlotSavedCallback(savedSlot); } catch (e) { console.warn('onSlotSaved error', e); }
+      }
+      this.refreshFilteredProviders();
       const cotizId = this.params.data.cotizacionId;
       const maestro: any = await lastValueFrom(this.ocandreqsService.getDetailedReq(cotizId));
       if (maestro) {
         maestro.dateModified = new Date().toISOString();
         await lastValueFrom(this.ocandreqsService.updateOcAndReq(cotizId, maestro));
-        this.pedimentoModificationService.pedimentoModified$.next(cotizId);
+        // Se elimina la notificación global para evitar el cierre de tablas por reordenamiento
+        // this.pedimentoModificationService.pedimentoModified$.next(cotizId);
       }
       await alerts.ocCotizSaved(this.savedCotizFolio);
+
+      // Aviso si quedaron artículos sin clasificar (# interno de articulo aún NUPNPN)
+      const hayClaseNueva = this.rowData.some(
+        r => String(r?.numArticulo || '').toUpperCase().startsWith('NUPNPN')
+      );
+      if (hayClaseNueva) {
+        await alerts.basicAlert(
+          'Artículos con clase nueva',
+          'Estás guardando artículos con clase nueva, por favor asigna la categoría adecuada lo más pronto posible.',
+          'warning'
+        );
+      }
+
       const hasAuthorized = this.rowData.some(row => this.AUTHORIZED_TYPES.includes(row.typeOC));
       if (hasAuthorized) { this.savingChanges = false; await this.generateOC(); }
     } catch (error) { alert('Error al guardar.'); } finally { this.savingChanges = false; }
@@ -437,90 +683,351 @@ export class DetalleItemsProveedorComponent {
     }
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    const slotSuffix = this.providerField === 'idProvider' ? 'A' : this.providerField === 'idProvider2' ? 'B' : 'C';
-    const folio = `${type}-${this.params.data.cotizacionId}-${slotSuffix}-${Date.now()}`;
+    // ✅ Nueva nomenclatura de folio: ${type}-{branchPrefix}-P{pedimentoNum}-PRO{idProvider}
+    // Ejemplo: COTIZ-BOD15-P1-PRO1414  /  OC-BOD15-P1-PRO1414
+    const folio = `${type}-${this.branchPrefix || 'NOPREF'}-P${this.pedimentoNum || 0}-PRO${this.selectedProviderId}`;
     const providerName = this.getSelectedProviderName();
+    const dateCreate = new Date().toISOString().split('T')[0];
     const ocPayload = {
       idRoot, folio, typeReference: type === 'OC' ? 'branch' : 'delison', idReference: type === 'OC' ? (idBranch || 0) : (this.params.data.cotizacionId || 0),
-      idReq: this.params.data.requisitionId || 0, dateCreate: new Date().toISOString().split('T')[0], idProvider: this.selectedProviderId, solicit: providerName.substring(0, 50),
+      idReq: this.params.data.requisitionId || 0, dateCreate, idProvider: this.selectedProviderId, solicit: providerName.substring(0, 50),
       idDepartament: 0, delivery: 'NO APLICA', deliveryTime: '1 DAY', typeOc: 'INSUMOS', idPayment: 0, idCurrency: 0, type, datesupply: this.fechaProveedor, active: true
     };
     const created: any = await lastValueFrom(this.ocandreqsService.addOcAndReq(ocPayload));
+    console.log('🔑 Respuesta addOcAndReq:', JSON.stringify(created));
     const newOcId = Number(created?.id ?? created?.data?.id ?? created?.project?.id);
+    console.log('🔑 newOcId calculado:', newOcId);
     const gridRows: any[] = [];
     this.gridApi.forEachNode((node: any) => gridRows.push(node.data));
     const rowsForDetails = type === 'OC' ? gridRows.filter((row: any) => this.AUTHORIZED_TYPES.includes(row.typeOC)) : gridRows;
-    const details = rowsForDetails.map((row: any) => ({
-      idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
-      price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: row.codigoExterno || '', typeOc: row.typeOC || '', comment: row.comment || ''
-    }));
-    for (const d of details) await lastValueFrom(this.ocandreqsService.addReqItem(d));
-    if (type === 'COTIZ') { this.savedCotizFolio = folio; this.savedOcId = newOcId; await this.loadSavedItems(newOcId); }
+    const details = rowsForDetails.map((row: any) => {
+      const weeks = parseInt(String(row.tiempoEntrega)) || 0;
+      const d = new Date(dateCreate);
+      if (weeks > 0) d.setDate(d.getDate() + weeks * 7);
+      const datePostpone = weeks > 0 ? d.toISOString().split('T')[0] : '';
+      return {
+        idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
+        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)), caducidadMinimaRequerida: row.caducidadMinimaRequerida || '', datePostpone
+      };
+    });
+    console.log('📝 saveCotizOrOC: Guardando', details.length, 'items con estos datos:');
+    console.log(JSON.stringify(details, null, 2));
+    for (const d of details) {
+      console.log('💾 saveCotizOrOC: Guardando item:', d);
+      try {
+        await lastValueFrom(this.ocandreqsService.addReqItem(d));
+        console.log('✅ saveCotizOrOC: Item guardado exitosamente');
+      } catch (err) {
+        console.error('❌ saveCotizOrOC: Error guardando item:', err);
+      }
+    }
+
+    // Refrescar proveedorXTablaObj desde BD antes del PUT para preservar active/campo7 ya modificados
+    if (this.selectedProviderId && type === 'COTIZ') {
+      await this.syncProveedorXTablaFields(this.selectedProviderId);
+    }
+
+    // Sincronizar codigoExterno (campo11), compraMinima (minima_compra) y costoUnitario (campo9) → proveedorxtablas en un solo PUT
+    if (this.selectedProviderId) {
+      for (const row of rowsForDetails) {
+        if (row.proveedorXTablaId > 0 && row.proveedorXTablaObj) {
+          const updatedProv = {
+            ...row.proveedorXTablaObj,
+            campo11: String(row.codigoExterno ?? '').trim(),
+            minCompra: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)),
+            campo9: isNaN(parseFloat(String(row.costoUnitario))) ? 0 : parseFloat(String(row.costoUnitario))
+          };
+          this.providersService.updateProviderXTable(row.proveedorXTablaId, updatedProv)
+            .subscribe({ error: e => console.warn(`⚠️ No se pudo sincronizar proveedorxtabla para ${row.articulo}:`, e) });
+        }
+      }
+    }
+
+    if (type === 'COTIZ') {
+      this.savedCotizFolio = folio;
+      this.savedOcId = newOcId;
+      await this.loadSavedItems(newOcId);
+      if (this.selectedProviderId) {
+        await this.syncProveedorXTablaFields(this.selectedProviderId);
+        // Sincronizar tiempoEntrega DESPUÉS de obtener proveedorXTablaId
+        await this.syncTiempoEntregaFields(rowsForDetails);
+      }
+    }
     return folio;
+  }
+
+  private async syncProveedorXTablaFields(idProvider: number): Promise<void> {
+    try {
+      const assignments: any = await lastValueFrom(this.providersService.getProvidersXTable(idProvider, 'MATERIAL'));
+      const list: any[] = Array.isArray(assignments) ? assignments : [];
+      this.rowData.forEach(row => {
+        const match = list.find((a: any) => Number(a.campo1) === Number(row.idSupplie));
+        if (match) {
+          // codigoExterno NO se sobreescribe: cada cotización conserva su propio valor de detailsreqoc
+          // compraMinima NO se sobreescribe: cada cotización conserva su propio valor de detailsreqoc
+          row.proveedorXTablaId = match.id || 0;
+          row.proveedorXTablaObj = match;
+        }
+      });
+      if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
+    } catch (e) {
+      console.warn('⚠️ syncProveedorXTablaFields: Error cargando proveedorxtablas', e);
+    }
+  }
+
+  private async syncTiempoEntregaFields(rowsForDetails: any[]): Promise<void> {
+    try {
+      for (const row of rowsForDetails) {
+        if (this.idBranch > 0 && row.proveedorXTablaId > 0 && row.tiempoEntrega !== undefined && row.tiempoEntrega !== null && row.tiempoEntrega > 0) {
+          await lastValueFrom(
+            this.sucursalByMaterialProveedorService.patchTiempoDeEntrega(row.proveedorXTablaId, this.selectedProviderId, this.idBranch, row.tiempoEntrega)
+          ).catch(e => console.warn(`⚠️ No se pudo sincronizar tiempo de entrega para ${row.articulo}:`, e));
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ syncTiempoEntregaFields: Error sincronizando tiempoEntrega', e);
+    }
   }
 
   async loadExistingCotiz(): Promise<void> {
     const cotizacionId = this.params.data.cotizacionId;
-    if (!cotizacionId) return;
-    const slotSuffix = this.providerField === 'idProvider' ? '-A-' : this.providerField === 'idProvider2' ? '-B-' : '-C-';
+    console.log('🔍 loadExistingCotiz: Iniciando con cotizacionId:', cotizacionId, 'slotInfo:', this.slotInfo);
+    if (!cotizacionId) { console.log('⚠️ loadExistingCotiz: No hay cotizacionId'); return; }
+
+    // Slot nuevo (sin cotizId): no hay nada que cargar todavía
+    if (!this.slotInfo?.cotizId || this.slotInfo.cotizId === 0) {
+      console.log('🆕 loadExistingCotiz: Slot nuevo (sin guardar), nada que cargar');
+      return;
+    }
+
     try {
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
       const reqId = this.params.data.requisitionId || 0;
+      const slotProviderId = Number(this.slotInfo.idProvider);
       const [cotizData, ocData] = await Promise.all([
         lastValueFrom(this.ocandreqsService.getOcAndReqs('delison', cotizacionId, 'COTIZ')),
         lastValueFrom(this.ocandreqsService.getOcAndReqs('branch', idBranch, 'OC'))
       ]);
+      // Detectar OC ya generada para ESTE slot (mismo idProvider, mismo cotizacion padre)
       const ocList = (Array.isArray(ocData) ? ocData : []).filter((c: any) => Number(c.idReq) === Number(reqId));
-      if (ocList.some((c: any) => c.folio?.includes(slotSuffix))) { this.ocGenerated = true; this.cotizacionSaved = true; this.lockGrid(); this.setArticulosPedimentoLocked(true); }
-      const existing = (Array.isArray(cotizData) ? cotizData : []).filter((c: any) => c.folio?.includes(slotSuffix)).sort((a: any, b: any) => b.id - a.id)[0];
+      const ocForThisProvider = ocList.find((c: any) =>
+        Number(c.idProvider) === slotProviderId && (c.folio || '').includes(`PRO${slotProviderId}`)
+      );
+      if (ocForThisProvider) {
+        console.log('⚠️ loadExistingCotiz: OC ya generada para este slot, bloqueando grid');
+        this.ocGenerated = true; this.cotizacionSaved = true; this.lockGrid(); this.setArticulosPedimentoLocked(true);
+      }
+      // Cargar el COTIZ específico del slot (por cotizId directo, sin filtrar por folio)
+      const existing = (Array.isArray(cotizData) ? cotizData : []).find(
+        (c: any) => Number(c.id) === Number(this.slotInfo.cotizId)
+      );
+      console.log('🔎 loadExistingCotiz: Cotización del slot encontrada:', existing);
       if (existing) {
         this.savedOcId = existing.id; this.cotizacionSaved = true; this.savedCotizFolio = existing.folio;
-        if (existing.idProvider) { this.selectedProviderId = existing.idProvider; this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null; }
+        if (existing.idProvider) {
+          this.selectedProviderId = existing.idProvider;
+          this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null;
+          this.originalProviderId = existing.idProvider;
+        }
         if (existing.datesupply) this.fechaProveedor = String(existing.datesupply).substring(0, 10);
-        await this.loadSavedItems(existing.id); this.setArticulosPedimentoLocked(true);
+        await this.loadSavedItems(existing.id);
+        if (existing.idProvider) await this.syncProveedorXTablaFields(existing.idProvider);
+        this.setArticulosPedimentoLocked(true);
       }
-    } catch (err) { console.error('Error loadExistingCotiz', err); }
+    } catch (err) { console.error('❌ Error loadExistingCotiz:', err); }
   }
 
   async loadSavedItems(ocId: number): Promise<void> {
     try {
+      console.log('🔍 loadSavedItems: Cargando items para ocId:', ocId);
       const items: any = await lastValueFrom(this.ocandreqsService.getReqItems(ocId));
-      this.rowData = (Array.isArray(items) ? items : []).map((item: any) => ({
-        idSupplie: item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numArticle || '', articulo: item.description || item.nameArticle || '',
-        codigoExterno: item.observation || '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima || 1, tiempoEntrega: item.tiempoEntrega || '',
-        cantidadConfirmada: item.quantity || 0, costoTotal: item.total || 0, autorizado: item.autorizado || false, oc: '', typeOC: item.typeOc || '', comment: item.comment || ''
+      console.log('📦 loadSavedItems: Items recibidos del servidor:', items);
+
+      // Si no hay items guardados, mantener los datos originales de buildRowData
+      if (!Array.isArray(items) || items.length === 0) {
+        console.warn('⚠️ loadSavedItems: No hay items guardados para ocId:', ocId, '- Manteniendo datos originales de buildRowData');
+        console.log('📊 loadSavedItems: rowData original (sin cambios):', this.rowData);
+        return; // No sobrescribir, mantener datos originales
+      }
+
+      const mappedData = items.map((item: any) => ({
+        id: item.id || 0, idSupplie: item.id_supplie || item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.namearticle || item.description || item.nameArticle || '',
+        codigoExterno: item.observation ?? '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima ?? item.compraminima ?? 0, tiempoEntrega: parseInt(item.tiempoentrega ?? item.tiempoEntrega ?? '0') || 0,
+        cantidadConfirmada: item.quantity || 0, costoTotal: item.total || 0, autorizado: item.autorizado || false, oc: '', typeOC: item.typeoc || item.typeOc || '', comment: item.comment || ''
       }));
-      this.gridApi?.setGridOption('rowData', this.rowData); this.updateTotal(); this.updateHasRowsWithTypeOC();
-    } catch (err) { console.error('Error loadSavedItems', err); }
+
+      console.log('✅ loadSavedItems: Datos mapeados:', mappedData);
+      this.rowData = mappedData;
+      console.log('📊 loadSavedItems: rowData asignado:', this.rowData);
+
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        console.log('✅ loadSavedItems: Grid actualizado');
+      } else {
+        console.warn('⚠️ loadSavedItems: gridApi no disponible');
+      }
+      this.updateTotal();
+      this.updateHasRowsWithTypeOC();
+      this.refrescarNumArticuloDesdeBD();
+    } catch (err) { console.error('❌ Error loadSavedItems:', err); }
   }
 
-  revertChanges() { this.buildRowData(); this.updateTotal(); this.hasUnsavedChanges = false; this.gridApi?.setGridOption('rowData', this.rowData); }
+  revertChanges() {
+    this.buildRowData();
+    this.updateTotal();
+    // Restaurar selección de proveedor al último estado "persistido"
+    this.selectedProviderId = this.originalProviderId;
+    this.selectedProviderObj = this.originalProviderId
+      ? (this.providers.find(p => p.id === this.originalProviderId) || null)
+      : null;
+    this.refreshFilteredProviders();
+    this.hasUnsavedChanges = false;
+    this.gridApi?.setGridOption('rowData', this.rowData);
+  }
   deleteItem() { alert('Eliminación no implementada.'); }
 
   get colDefs(): ColDef[] {
-    if (this._colDefs) return this._colDefs;
+    if (this._colDefs && this._colDefs.length > 0) return this._colDefs;
+
     this._colDefs = [
-      { field: 'active', headerName: 'Activo', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: true },
-      { field: 'numArticulo', headerName: '# Art', width: 130 },
-      { field: 'articulo', headerName: 'Artículo', width: 140 },
-      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 120, editable: true },
-      { field: 'tiempoEntrega', headerName: 'T. Entrega', width: 120, editable: true },
-      { field: 'compraMinima', headerName: 'Compra Mín.', width: 130, editable: true },
-      { field: 'costoUnitario', headerName: 'Costo Unit.', width: 130, editable: true, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 130, editable: true, hide: true },
-      { field: 'costoTotal', headerName: 'Costo Total', width: 150, valueFormatter: params => params.value ? `$${params.value.toFixed(2)}` : '$0.00' },
-      { headerName: 'Comentarios💬', width: 140, sortable: false, filter: false, cellRenderer: ItemCommentsCellRendererComponent, cellRendererParams: (params: any) => ({ documentType: 'REQ', idDocument: this.requisitionId, numArticle: params.data?.numArticulo || '', locked: this.ocGenerated }) },
-      { field: 'typeOC', headerName: 'Tipo OC', width: 220, editable: true, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
-      { field: 'oc', headerName: 'OC', width: 80, editable: true, hide: true }
+      { field: 'active', headerName: 'Activo', width: 120, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
+      {
+        field: 'numArticulo', headerName: '# interno de articulo', width: 169,
+        cellStyle: (p: any) => String(p.value || '').toUpperCase().startsWith('NUPNPN')
+          ? { cursor: 'pointer', backgroundColor: '#fff9e6', textDecoration: 'underline', color: '#b8860b' }
+          : null,
+        cellRenderer: (p: any) => {
+          const val = String(p.value ?? '');
+          if (val.toUpperCase().startsWith('NUPNPN')) {
+            const chevron = p.node?.expanded ? '▼' : '▶';
+            return `<span style="margin-right:4px;">${chevron}</span>${val}`;
+          }
+          return val;
+        },
+        onCellClicked: (e: any) => {
+          const val = String(e.data?.numArticulo || '').toUpperCase();
+          if (!val.startsWith('NUPNPN') || this.ocGenerated) return;
+          const willExpand = !e.node.expanded;
+          if (willExpand) {
+            // Acordeón: ocultar las demás filas, solo queda visible la fila enfocada + su detalle.
+            // El detail toma su alto vía getRowHeight (computeDetailHeight) al expandirse.
+            this.gridApi.forEachNode((other: any) => {
+              if (other.id !== e.node.id) other.setRowHeight(0);
+            });
+            e.node.setExpanded(true);
+          } else {
+            e.node.setExpanded(false);
+            // Restaurar la altura de todas las filas
+            this.gridApi.forEachNode((other: any) => other.setRowHeight(undefined));
+          }
+          this.gridApi.onRowHeightChanged();
+          this.gridApi.refreshCells({ rowNodes: [e.node], columns: ['numArticulo'], force: true });
+        }
+      },
+      { field: 'articulo', headerName: 'Artículo', width: 260 },
+      { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated,
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value ?? '';
+        }
+      },
+      { field: 'tiempoEntrega', headerName: 'T. Entrega x Semanas', width: 170, editable: !this.ocGenerated,
+        cellEditor: 'agNumberCellEditor', cellEditorParams: { precision: 0, min: 0 },
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value > 0 ? String(params.value) : '';
+        },
+        valueSetter: (params: any) => {
+          const n = parseInt(String(params.newValue));
+          if (isNaN(n) || n <= 0) { alerts.reqErrorToast('T. Entrega inválido', 'El tiempo de entrega debe ser mayor que cero'); return false; }
+          params.data.tiempoEntrega = n;
+          return true;
+        }
+      },
+      { field: 'compraMinima', headerName: 'Compra Mín.', width: 145, editable: !this.ocGenerated,
+        cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0, precision: 0 },
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value > 0 ? String(Math.floor(params.value)) : '';
+        },
+        valueSetter: (params: any) => {
+          const n = parseInt(String(params.newValue));
+          if (isNaN(n) || n <= 0) { alerts.reqErrorToast('Compra Mín. inválida', 'La compra mínima debe ser mayor que cero'); return false; }
+          params.data.compraMinima = n;
+          return true;
+        }
+      },
+      { field: 'cantidadConfirmada', headerName: 'Cantidad Requerida', width: 150, editable: false,
+        cellStyle: { textAlign: 'right' },
+        valueFormatter: (params: any) => {
+          if (params.value === null || params.value === undefined || params.value === '') return '';
+          return String(params.value);
+        }
+      },
+      { field: 'costoUnitario', headerName: 'Costo Unit.', width: 140, editable: !this.ocGenerated,
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value ? `$${Number(params.value).toFixed(2)}` : '$0.00';
+        },
+        valueSetter: (params: any) => {
+          const val = parseFloat(params.newValue);
+          if (isNaN(val) || val <= 0) { alerts.reqErrorToast('Costo inválido', 'El costo unitario debe ser mayor que cero'); return false; }
+          params.data.costoUnitario = val;
+          params.data.costoTotal = val * (params.data.cantidadConfirmada || 0);
+          return true;
+        } },
+      { field: 'costoTotal', headerName: 'Costo Total', width: 170,
+        valueFormatter: (params: any) => {
+          if (!this.selectedProviderId) return '-';
+          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+        }
+      },
+      { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: (params: any) => ({
+          documentType: 'REQ',
+          idDocument: this.requisitionId,
+          numArticle: params.data?.numArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''),
+          idProvider: Number(this.selectedProviderId ?? 0),
+          locked: this.ocGenerated
+        }),
+        onCellClicked: (params: any) => {
+          if (this.ocGenerated) return;
+          const numArticle = params.data?.numArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : '');
+          if (!numArticle || !this.requisitionId) return;
+          const providerId = Number(this.selectedProviderId ?? 0);
+          this.itemCommentsService.openChatFor$.next({
+            documentType: 'REQ',
+            idDocument: this.requisitionId,
+            numArticle,
+            articleName: String(params.data?.articulo ?? ''),
+            providerMessages: providerId
+              ? { idProvider: providerId, providerName: this.getSelectedProviderName() }
+              : undefined
+          });
+        }
+      },
+      { field: 'typeOC', headerName: 'Tipo OC', width: 130, editable: !this.ocGenerated, hide: true, cellEditor: 'agRichSelectCellEditor', cellEditorParams: () => ({ values: this.typeocValues }), cellEditorPopup: true },
+      { field: 'oc', headerName: 'OC', width: 100, editable: !this.ocGenerated, hide: true }
     ];
-    if (this.ocGenerated) this._colDefs = this._colDefs.map(col => ({ ...col, editable: false }));
     return this._colDefs;
   }
 
   public gridOptions: any = {
     headerHeight: 30, rowHeight: 28, animateRows: true, suppressCellFocus: false, stopEditingWhenCellsLoseFocus: true, tooltipShowDelay: 400,
-    defaultColDef: { resizable: true, sortable: true, filter: true, flex: 1, minWidth: 120 },
-    onCellEditingStarted: () => { if (this.ocGenerated) this.gridApi?.stopEditing(true); }
+    autoSizeStrategy: {
+      type: 'fitCellContents',
+    },
+    defaultColDef: { resizable: true, sortable: true, filter: true },
+    onCellEditingStarted: () => { if (this.ocGenerated) this.gridApi?.stopEditing(true); },
+    // Master-detail: solo los artículos nuevos (NUPNPN) se expanden con la cascada de clasificación
+    masterDetail: true,
+    isRowMaster: (dataItem: any) =>
+      String(dataItem?.numArticulo || '').toUpperCase().startsWith('NUPNPN'),
+    detailCellRenderer: ClasificacionCascadaComponent,
+    // El detail ocupa todo el alto disponible del grid (getRowHeight se evalúa al expandir)
+    getRowHeight: (p: any) => p?.node?.detail ? this.computeDetailHeight() : undefined,
+    context: { componentParent: this }
   };
 
   private setArticulosPedimentoLocked(locked: boolean): void {
@@ -530,9 +1037,7 @@ export class DetalleItemsProveedorComponent {
 
   private lockGrid() {
     if (!this.gridApi) return;
-    this._colDefs = null;
-    const lockedDefs = this.colDefs.map(col => ({ ...col, editable: false }));
-    this.gridApi.setGridOption('columnDefs', lockedDefs);
+    this.gridApi.setGridOption('columnDefs', this.colDefs);
     this.gridApi.setGridOption('suppressClickEdit', true);
     this.gridApi.refreshCells({ force: true });
   }
@@ -540,11 +1045,72 @@ export class DetalleItemsProveedorComponent {
   private getSelectedProviderName(): string { return this.selectedProviderObj?.description || 'Sin seleccionar'; }
   updateTotal() { this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0); }
   updateHasRowsWithTypeOC() { this.hasRowsWithTypeOC = this.rowData.some(row => !!(row.typeOC && row.typeOC.trim() !== '')); }
+  get allCostosValid(): boolean { return !!this.selectedProviderId; }
+
+  private async loadPrincipalProviders(): Promise<void> {
+    this.principalProviderIds.clear();
+    const uniqueIds = [...new Set(
+      this.rowData.filter(r => r.idSupplie > 0).map(r => r.idSupplie as number)
+    )];
+    await Promise.all(uniqueIds.map(async (idSupplie) => {
+      try {
+        const relations: any = await lastValueFrom(this.providersService.getMaterXTable(idSupplie, 'MATERIAL'));
+        const principal = (Array.isArray(relations) ? relations : [])
+          .find((rel: any) => rel.principal === true && rel.active === true);
+        if (principal?.idTabla) {
+          this.principalProviderIds.add(principal.idTabla);
+        }
+      } catch { /* silencioso */ }
+    }));
+    this.refreshFilteredProviders();
+  }
+
+  private refreshFilteredProviders(): void {
+    // ✅ Slots hermanos vienen del padre (todos menos este), N proveedores soportados
+    const usedIds = new Set(
+      (this.siblingSlots || [])
+        .map((s: any) => Number(s?.idProvider))
+        .filter((id: number) => Number.isFinite(id) && id > 0)
+    );
+    const base = usedIds.size === 0
+      ? this.providers
+      : this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
+
+    // Construir orden manual: + Nuevo → ⭐ Principales → Header Compañía → Compañías → Header Contacto → Contactos
+    const withFlag = base.map(p => ({ ...p, isPrincipal: this.principalProviderIds.has(p.id) }));
+    const newProvider = withFlag.find(p => p.id === this.NEW_PROVIDER_SENTINEL);
+    const headerCompany = withFlag.find(p => p.__isHeader && p.id === '__header_company__');
+    const headerContact = withFlag.find(p => p.__isHeader && p.id === '__header_contact__');
+    const realProviders = withFlag.filter(p => !p.__isHeader && p.id !== this.NEW_PROVIDER_SENTINEL);
+    const principals = realProviders
+      .filter(p => p.isPrincipal)
+      .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
+    const companies = realProviders
+      .filter(p => !p.isPrincipal && p.group === 'Compañía')
+      .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
+    const contacts = realProviders
+      .filter(p => !p.isPrincipal && p.group === 'Contacto')
+      .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
+
+    const result: any[] = [];
+    if (newProvider) result.push(newProvider);
+    if (principals.length > 0) result.push(...principals);
+    if (companies.length > 0 && headerCompany) {
+      result.push(headerCompany);
+      result.push(...companies);
+    }
+    if (contacts.length > 0 && headerContact) {
+      result.push(headerContact);
+      result.push(...contacts);
+    }
+    this.filteredProviders = result;
+  }
   onCellValueChanged(event: any) {
     this.hasUnsavedChanges = true;
     if (event.column.getColId() === 'costoUnitario' || event.column.getColId() === 'cantidadConfirmada') {
       const row = event.data; row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
-      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      // Usar force: false para actualizar datos sin destruir el editor (evita perder el focus)
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: false });
     }
     this.updateTotal(); this.updateHasRowsWithTypeOC();
   }
@@ -556,8 +1122,26 @@ export class DetalleItemsProveedorComponent {
   }
   generatePlaceholderPdf() { alerts.basicAlert('PDF', 'Abriendo vista previa...', 'info'); }
   async generateOC() { this.generatingOC = true; setTimeout(() => { this.generatingOC = false; alerts.ocGenerated('OC-TEMP-123'); }, 1000); }
+
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this._hasUnsavedChanges) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+
+  /** Llamado por el componente padre antes de colapsar/cambiar la cascada. */
+  async canCloseDetail(): Promise<boolean> {
+    if (!this._hasUnsavedChanges) return true;
+    return this.unsavedTracker.confirmExitIfAny();
+  }
+
   ngOnDestroy(): void {
     this.closeNewProviderOverlay();
+    if (this._trackerKey) {
+      this.unsavedTracker.unregister(this._trackerKey);
+    }
   }
 
   cancelNewProvider() {
@@ -566,13 +1150,16 @@ export class DetalleItemsProveedorComponent {
   onCompanyInput(value: string) {
     if (!value) { this.companySuggestions = []; this.showCompanySuggestions = false; return; }
     const term = value.toLowerCase();
-    this.companySuggestions = this.providers.filter(p => p.id !== this.NEW_PROVIDER_SENTINEL && p.description.toLowerCase().includes(term)).map(p => p.description);
+    this.companySuggestions = this.providers.filter(p => p.id !== this.NEW_PROVIDER_SENTINEL && !p.__isHeader && p.description.toLowerCase().includes(term)).map(p => p.description);
     this.showCompanySuggestions = this.companySuggestions.length > 0;
   }
   hideCompanySuggestionsDelayed() { setTimeout(() => { this.showCompanySuggestions = false; }, 200); }
   selectCompanySuggestion(name: string) { this.newProvider.company = name; this.showCompanySuggestions = false; }
   async confirmNewProvider() {
-    if (!this.newProvider.company.trim()) return;
+    if (!this.newProvider.company.trim() && !this.newProvider.nameContact.trim()) {
+      alerts.reqErrorToast('Requerido', 'Ingresa la compañía y/o el contacto principal');
+      return;
+    }
 
     this.savingProvider = true;
     try {
@@ -706,6 +1293,18 @@ export class DetalleItemsProveedorComponent {
       return wrap;
     };
 
+    const msg = this.renderer.createElement('div') as HTMLElement;
+    this.renderer.setStyle(msg, 'font-size', '13px');
+    this.renderer.setStyle(msg, 'color', '#856404');
+    this.renderer.setStyle(msg, 'margin-bottom', '12px');
+    this.renderer.setStyle(msg, 'padding', '10px');
+    this.renderer.setStyle(msg, 'background', '#fff3cd');
+    this.renderer.setStyle(msg, 'border', '1px solid #ffc107');
+    this.renderer.setStyle(msg, 'border-radius', '4px');
+    this.renderer.setStyle(msg, 'font-weight', '600');
+    this.renderer.appendChild(msg, this.renderer.createText('⚠ Ingresa la compañía y/o el contacto principal'));
+    body.appendChild(msg);
+
     body.appendChild(mkField('Compañía *', 'Nombre de la empresa', this.newProvider.company, (v) => {
       this.newProvider.company = v;
       this.companyDuplicateWarning = '';
@@ -742,7 +1341,9 @@ export class DetalleItemsProveedorComponent {
     this.newProviderOverlayUnlisteners.push(this.renderer.listen(backdrop, 'click', () => this.closeNewProviderOverlay()));
     this.newProviderOverlayUnlisteners.push(this.renderer.listen(modal, 'click', (e: Event) => e.stopPropagation()));
     this.newProviderOverlayUnlisteners.push(this.renderer.listen(create, 'click', () => {
-      if (!String(this.newProvider.company || '').trim()) return;
+      const hasCompany = String(this.newProvider.company || '').trim();
+      const hasContact = String(this.newProvider.nameContact || '').trim();
+      if (!hasCompany && !hasContact) return;
       void this.confirmNewProvider();
     }));
 

@@ -9,6 +9,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 
 @Component({
   selector: 'app-detalles-sucursalesproveedor',
@@ -73,8 +74,13 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     rowSelection: 'single' as const,
     suppressClickEdit: false,
     stopEditingWhenCellsLoseFocus: true,
-    enableFiltering: true,
-    enableSorting: true,
+    defaultColDef: {
+      filter: false,
+      suppressHeaderFilterButton: true,
+      floatingFilter: false,
+      sortable: true,
+    },
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   public sucursalColumnDefs: ColDef[] = [];
@@ -83,7 +89,21 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     this.params = params;
     this.signalsService.setIdProveedor(params.data.id);
     this.loadCatalogData();
-    this.providerName = params.data.providerName || 'N/A';
+
+    // Obtener nombre del proveedor: primero desde providerName, sino buscar en contexto
+    let displayName = params.data.providerName || 'N/A';
+    if ((!params.data.providerName || params.data.providerName === '') && params.data.idTabla) {
+      const providers = params.context?.providers || [];
+      const filteredProviders = params.context?.filteredProviders || [];
+      const provider = filteredProviders.find((p: any) => p.id === params.data.idTabla)
+        || providers.find((p: any) => p.id === params.data.idTabla);
+
+      if (provider) {
+        displayName = provider.name || provider.description || provider.nameContact || provider.company || 'N/A';
+      }
+    }
+    this.providerName = displayName;
+
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     this.loadAllBranches().then(() => {
@@ -93,7 +113,6 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           headerName: 'Sucursal',
           width: 200,
           editable: true,
-          filter: true,
 
           cellEditor: SelectWithTooltipEditorV2Component,
 
@@ -171,7 +190,6 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           headerName: 'Fecha Alta',
           width: 120,
           editable: true,
-          filter: 'agDateColumnFilter',
           cellEditor: 'agDateCellEditor',
           valueFormatter: (params) => {
             if (!params.value) return '';
@@ -181,34 +199,39 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           },
           cellStyle: { textAlign: 'center' }
         },
-        { field: 'stockMinimo', headerName: 'Stock Minimo', width: 120, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
-        { field: 'resurtido', headerName: 'Resurtido', width: 120, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
-        { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
+        { field: 'stockMinimo', headerName: 'Stock Minimo', width: 120, editable: true, type: 'numericColumn' },
+        { field: 'resurtido', headerName: 'Resurtido', width: 120, editable: true, type: 'numericColumn' },
+        { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn' },
         {
           field: 'tiempoDeEntrega',
           headerName: 'Tiempo de Entrega en semanas',
           width: 150,
           editable: true,
-          type: 'numericColumn',
-          filter: 'agNumberColumnFilter',
+          cellEditor: 'agNumberCellEditor',
+          cellEditorParams: { precision: 0, min: 0 },
+          valueFormatter: (params: any) => (params.value > 0 ? String(params.value) : ''),
           valueSetter: (params: any) => {
-            params.data.tiempoDeEntrega = params.newValue;
+            const n = parseInt(String(params.newValue));
+            params.data.tiempoDeEntrega = isNaN(n) || n < 0 ? 0 : n;
             return true;
           }
         },
         {
           field: 'vigente', headerName: 'Activo', width: 100, editable: true,
           cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor',
-          filter: true
         },
         // Columna 8 (oculta o para datos internos)
         { field: 'id', headerName: 'ID', width: 80, hide: true }
       ];
 
-      // Usar los datos falsos generados en el componente padre
-      //this.sucursalRowData = params.data.sucursalDetailData || [];
-      //this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData)); // Guardar copia original
+      // Columnas asíncronas: onFirstDataRendered puede haber corrido sin defs; repetir autosize al estar listas.
+      setTimeout(() => this.scheduleAutosize(), 0);
     });
+  }
+
+  private scheduleAutosize(): void {
+    if (!this.gridApi) return;
+    runAutosizeAllColumns(this.gridApi);
   }
 
   async loadAllBranches() {
@@ -226,6 +249,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           fechaAlta: row.fechaAlta ? new Date(row.fechaAlta) : null
         }));
         this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData));
+        setTimeout(() => this.scheduleAutosize(), 0);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -237,7 +261,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    params.api.sizeColumnsToFit();
+    setTimeout(() => this.scheduleAutosize(), 0);
   }
 
   onCellValueChanged(event: any) {
@@ -271,6 +295,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     this.sucursalRowData = [newRow, ...this.sucursalRowData];
     this.hasChanges = true;
     setTimeout(() => {
+      this.scheduleAutosize();
       this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idSucursal' });
     }, 100);
   }

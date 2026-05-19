@@ -125,8 +125,7 @@ export class PrefixSetupService {
           break;
       }
 
-      // Concatenar prefijo + guion + consecutivo formateado a 4 dígitos (ej: BOD-0001)
-      const formattedConsecutive = consecutive.toString().padStart(4, '0');
+      const formattedConsecutive = consecutive.toString();
       const folio = `${prefix}-${formattedConsecutive}`;
 
       return folio;

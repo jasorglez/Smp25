@@ -43,7 +43,7 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })
@@ -1045,16 +1045,16 @@ obtenerProveedores() {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      // Lock requisitions that are assigned to saved QUOTEs
-      // Get all rows that have a requisition associated
-      const allRowsWithReq = [...newRows, ...modifiedRows].filter(row => row.idReq);
-
-      for (const row of allRowsWithReq) {
+      // Lock requisition only when ALL its pedimentos have OCs generated
+      const uniqueReqIds = [...new Set([...newRows, ...modifiedRows].filter(row => row.idReq).map(row => row.idReq))];
+      for (const idReq of uniqueReqIds) {
         try {
-          // Use the new PATCH endpoint to lock the requisition
-          await lastValueFrom(this.quotesService.lockRequisition(row.idReq, true));
+          const check = await lastValueFrom(this.quotesService.shouldLockRequisicion(idReq));
+          if (check?.shouldLock) {
+            await lastValueFrom(this.quotesService.lockRequisition(idReq, true));
+          }
         } catch (err) {
-          console.error('Error locking requisition:', row.idReq, err);
+          console.error('Error checking/locking requisicion:', idReq, err);
         }
       }
 
@@ -1549,7 +1549,7 @@ createQuote(idQuote: number, action: string) {
             priority: item.typePriority || 'Normal',
             comment: item.comment || '',
             pedimento: item.pedimento || false,
-            numArticle: item.numArticle || '',
+            numArticle: item.numarticle || item.numArticle || '',
             code: item.code || '',
             pedimentoNumber: item.pedimentoNum || '',
             idMovement: item.idMovement || 0,

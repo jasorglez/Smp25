@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { MaterialsService } from 'app/services/materials.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -188,7 +189,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
             return '';
         }
     }
-}
+},
+
+      onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
 
     };
   }
@@ -334,13 +337,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   // Grid listo
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-
-    // Autoajustar columnas al contenido o al header (lo que sea más largo)
-    setTimeout(() => {
-      if (this.gridApi) {
-        this.gridApi.sizeColumnsToFit();
-      }
-    }, 100);
   }
 
   // Métodos de catálogo no usados en estructura plana (removidos)

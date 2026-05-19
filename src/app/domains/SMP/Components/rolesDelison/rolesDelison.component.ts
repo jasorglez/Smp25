@@ -333,6 +333,22 @@ export class RolesDelisonComponent {
         }
       },
       {
+        field: 'visualizadorAlmacenMoliendaDepto',
+        headerName: 'Visualizador Almacen molienda Depto',
+        width: 120,
+        maxWidth: 140,
+        cellRenderer: (params: any) => {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = !!params.value;
+          checkbox.style.cursor = 'pointer';
+          checkbox.addEventListener('change', () => {
+            params.node.setDataValue('visualizadorAlmacenMoliendaDepto', checkbox.checked);
+          });
+          return checkbox;
+        },
+      },
+      {
         field: 'posiciones',
         headerName: 'Posiciones*',
 
@@ -428,6 +444,7 @@ export class RolesDelisonComponent {
       description: '',
       comment: '',
       active: true,
+      visualizadorAlmacenMoliendaDepto: false,
       __isNew: true
     };
 

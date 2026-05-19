@@ -76,5 +76,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '3.113 (25 Abril 2026) - molienda fix tipos columnas DB',
+  version: '2.52.182 (19 Mayo 2026 01:30) - Columna "Nivel x monto" en Usuarios ahora muestra "descripcion = $min / $max" en dropdown y celda'
 };

@@ -8,7 +8,7 @@ import {
 } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -19,10 +19,9 @@ import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { SearchableSelectComponent } from 'app/shared/searchable-select/searchable-select.component';
 import { States } from 'app/interface/states';
-import { EmployeesxLoansComponent } from '../loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
-import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -34,7 +33,11 @@ import { PermitionsService } from 'app/services/permitions.service';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
-
+import { DetailEmployeeClockComponent } from '../detail-employee-clock/detail-employee-clock.component';
+import { DetailEmployeeLoansComponent } from '../detail-employee-loans/detail-employee-loans.component';
+import { DetailEmployeeSavingsComponent } from '../detail-employee-savings/detail-employee-savings.component';
+import { DetailEmployeeDocumentsComponent } from '../detail-employee-documents/detail-employee-documents.component';
+import { DetailEmployeePersonalDataComponent } from '../detail-employee-personal-data/detail-employee-personal-data.component';
 
 @Component({
   selector: 'app-employees-table',
@@ -44,8 +47,11 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
     FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
-    EmployeesxLoansComponent,
-    EmployeesxSavingsComponent,
+    SearchableSelectComponent,
+    DetailEmployeeClockComponent,
+    DetailEmployeeLoansComponent,
+    DetailEmployeeSavingsComponent,
+    DetailEmployeeDocumentsComponent,
   ],
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.scss'],
@@ -71,6 +77,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   id: number;
   idBranch: number;
   idRoot: number;
+  idUser: number;
   idEmployee: number;
   idPosicionSelect: number;
 
@@ -83,6 +90,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   rowData: any[] = [];
   banks: any[] = [];
+  usersCatalog: any[] = [];
   catalogGeneralPosiciones: any[] = [];
   depto: any[] = [];
   catalogPosiciones: any[] = [];
@@ -96,13 +104,16 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   tempIdCounter: number = 0; // Contador para IDs temporales
   private digits: number = 4; // Nueva variable para configuración de dígitos
   private gridApi: GridApi; // API del grid
-  private isOpen: boolean = false; // Variable para controlar el modal de edición
   public defaultColDef: ColDef = {
     sortable: true,
     filter: false,
     resizable: true,
     lockPosition: false,
     enableRowGroup: true,
+    suppressKeyboardEvent: (params) => {
+      // Suppress Enter so we can handle it in onCellKeyDown
+      return params.event.key === 'Enter';
+    }
   };
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -110,8 +121,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   // Declare the missing properties
   gridHeight: string = '80vh';
-  showLoansTab: boolean = false;
-  showSavingsTab: boolean = false;
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
@@ -128,7 +137,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    searchableSelectComponent: SearchableSelectComponent,
+    detailEmployeeClock: DetailEmployeeClockComponent,
+    detailEmployeeLoans: DetailEmployeeLoansComponent,
+    detailEmployeeSavings: DetailEmployeeSavingsComponent,
+    detailEmployeeDocuments: DetailEmployeeDocumentsComponent,
+    detailEmployeePersonalData: DetailEmployeePersonalDataComponent,
   };
+
 
   constructor() {
     effect(async () => {
@@ -139,25 +155,30 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     }, { allowSignalWrites: true });
 
+
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      if (this.idBranch == null) {
-        this.rowData = [];
-        alerts.basicAlert(
-          'Empleados',
-          'Debe elegir una sucursal primero.',
-          'error'
-        );
-      } else {
-        this.getGeneralPosicion();
-        this.getRoles()
-        this.obtenerDatos();
-        this.obtenerBranchs();
-        this.getBanks();
-        this.getDeptoandPosition();
-        this.getStates();
-      }
+      this.idUser = this.signalsService.getIdUSer()();
+      if (!this.idRoot) return;
+      this.getGeneralPosicion();
+      this.getRoles();
+      this.obtenerBranchs();
+      this.getBanks();
+      this.loadUsersCatalog();
+      this.getDeptoandPosition();
+      this.getStates();
+    });
+
+    effect(() => {
+      const update = this.signalsService.getEmployeeBaseHoursUpdate()();
+      if (!update || !this.gridApi) return;
+      this.gridApi.forEachNode((node: any) => {
+        if (node.data?.id === update.id) {
+          node.data.baseHours = parseFloat(update.baseHours);
+          this.gridApi.refreshCells({ rowNodes: [node], columns: ['baseHours'], force: true });
+        }
+      });
     });
   }
 
@@ -166,6 +187,19 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     headerHeight: 25,
     rowHeight: 20,
     rowBuffer: 20,
+    masterDetail: true,
+    isRowMaster: () => true,
+    detailCellRendererSelector: (params) => {
+      const t = params.data?.detailType;
+      if (t === 'loans') return { component: 'detailEmployeeLoans' };
+      if (t === 'savings') return { component: 'detailEmployeeSavings' };
+      if (t === 'documents') return { component: 'detailEmployeeDocuments' };
+      if (t === 'personalData') return { component: 'detailEmployeePersonalData' };
+      return { component: 'detailEmployeeClock' };
+    },
+    detailRowHeight: 980,
+    keepDetailRows: false,
+    onRowGroupOpened: (_event: any) => {},
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -190,37 +224,69 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     },
     onCellKeyDown: (params) => {
       if (params.event.key === 'Enter') {
-        // Obtener todas las columnas editables
-        const editableColumns = this.colMaster.filter((col) => col.editable);
+        // Obtener todas las columnas editables en el orden mostrado
+        const displayedCols = params.api.getAllDisplayedColumns();
+        const editableColumns = displayedCols.filter((col: any) => {
+          const colDef = col.getColDef();
+          if (typeof colDef.editable === 'function') {
+            return colDef.editable({ ...params, column: col, colDef: colDef });
+          }
+          return colDef.editable === true;
+        });
+
         const currentColIndex = editableColumns.findIndex(
-          (col) => col.field === params.column.getColDef().field
+          (col: any) => col.getColId() === params.column.getColId()
         );
 
-        if (currentColIndex < editableColumns.length - 1) {
-          // Añadir delay de 50ms antes de mover el foco
-          requestAnimationFrame(() => {
-            // Mover a la siguiente columna editable
+        if (currentColIndex >= 0 && currentColIndex < editableColumns.length - 1) {
+          params.api.stopEditing();
+
+          const nextColId = editableColumns[currentColIndex + 1].getColId();
+          params.api.setFocusedCell(params.node.rowIndex, nextColId);
+
+          // CRITICAL: AG-Grid ignores startEditingCell if called synchronously inside an event handler
+          setTimeout(() => {
+            const nextColDef = params.api.getColumn(nextColId)?.getColDef();
+            const isSelect = nextColDef?.cellEditor === 'agSelectCellEditor';
+
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
-              colKey: editableColumns[currentColIndex + 1].field,
+              colKey: nextColId,
             });
-          }); // Retraso para permitir que termine la edición actual
+            if (isSelect) {
+              setTimeout(() => this.openAgSelectDropdown(), 120);
+            }
+          }, 50);
+        } else {
+          params.api.stopEditing();
         }
         params.event.preventDefault(); // Prevenir comportamiento por defecto
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onFirstDataRendered: (params) => {
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-      // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, false);
-    }
+    onColumnPinned: () => this.saveColumnState(),
+    onColumnVisible: () => this.saveColumnState(),
+    onColumnMoved: (event) => { if (event.finished) this.saveColumnState(); },
+    onColumnResized: (event) => { if (event.finished) this.saveColumnState(); },
   };
-  
+
+
+  private readonly COLUMN_STATE_KEY = 'employees-table-column-state-v2';
+
+  private saveColumnState(): void {
+    if (!this.gridApi) return;
+    localStorage.setItem(this.COLUMN_STATE_KEY, JSON.stringify(this.gridApi.getColumnState()));
+  }
+
+  private restoreColumnState(): void {
+    const saved = localStorage.getItem(this.COLUMN_STATE_KEY);
+    if (!saved || !this.gridApi) return;
+    try {
+      this.gridApi.applyColumnState({ state: JSON.parse(saved), applyOrder: true });
+    } catch {
+      localStorage.removeItem(this.COLUMN_STATE_KEY);
+    }
+  }
 
   // CRÍTICO: Debe ser una propiedad cacheada, NO un getter puro, para evitar re-evaluación constante
   // que causa re-renderizado de filtros en cada ciclo de change detection
@@ -233,1465 +299,1205 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     }
 
     // Inicializar una sola vez basado en el modo
-    if(this.isAdvanced == true){
-    this._colMaster = [
-      {
-        headerName: '#',
-        width: 50,
-        valueGetter: (params) => params.node!.rowIndex! + 1,
-        editable: false,
-        pinned: 'left',
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold', textAlign: 'center' }
-      },
-      {
-        field: 'id',
-        headerName: 'Id',
-        editable: false,
-        width: 70,
-        hide: true,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
-        },
-      },
-      {
-        field: 'vigente',
-        hide: this.idRoot == 18,
-        headerName: 'Activo',        
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        /*suppressMovable: true,
-        filter: true,*/
-        width: 100,
-      },
-      {
-        field: 'idBranch',
-        headerName: 'Sucursal',
-        headerClass: 'required-header',
-        hide: false,
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: true,
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'windows',
-        },
-
-        cellEditorParams: (params) => {
-          return {
-            values: this.branchs
-              ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
-              : [],
-          };
-        },
-
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-
-          return foundBranch ? foundBranch.name : params.value;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
-        },
-      },
-      {
-        field: 'name',
-        headerName: 'Nombre',
-        headerClass: 'required-header',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin', 'update');
-        },
-        suppressMovable: true,
-        width: 270,
-        filter: 'agSetColumnFilter',
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
-          filterKey: 'name',
-          placeholder: 'Buscar empleado...',
-          minLength: 1,
-        },
-        valueSetter: (params) => {
-          const rawValue = params.newValue;
-          if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-            return false;
-          }
-      
-          const normalizedValue = rawValue.trim().toUpperCase();
-      
-          if (!normalizedValue) {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-            return false;
-          }
-      
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex &&
-              row.name?.toUpperCase() === normalizedValue
-          );
-      
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Nombre duplicado',
-              'Ya existe un empleado con ese nombre.',
-              'error'
-            );
-            return false;
-          }
-      
-          params.data[params.colDef.field] = normalizedValue;
-          return true;
-        },
-        valueFormatter: (params) => params.value || '',
-      },
-      {
-        field: 'employeeCode',
-        headerName: 'UserName22',
-        headerClass: 'required-header',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin','update');
-        },
-        suppressMovable: true,
-        width: 170,
-        filter: 'agSetColumnFilter',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        filterParams: {
-          defaultToNothingSelected: true,
-        },
-        //cellStyle: (params) => this.validateRequiredField(params.value),
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData?.map((e) => e.employeeCode?.toUpperCase()) || [],
-          filterKey: 'employeeCode',
-          placeholder: 'Buscar código...',
-          minLength: 1,
-        },
-        valueSetter: (params) => {
-          const rawValue = params.newValue;
-          if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
-            return false;
-          }
-      
-          const normalizedValue = rawValue.trim().toUpperCase();
-      
-          if (!normalizedValue) {
-            alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
-            return false;
-          }
-      
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex &&
-              row.employeeCode?.toUpperCase() === normalizedValue
-          );
-      
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Código duplicado',
-              'Ya existe un empleado con ese código.',
-              'error'
-            );
-            return false;
-          }
-      
-          params.data[params.colDef.field] = normalizedValue;
-          return true;
-        },
-        valueFormatter: (params) => params.value || '',
-      },
-      {
-        field: 'clockPassword',
-        headerName: 'Contraseña Reloj',
-        width: 100,
-        hide: this.idRoot == 18,
-        editable: false,
-        cellRenderer: (params: ICellRendererParams) => {
-          // Mostrar valor real para nuevas filas, ocultar para existentes
-          if (params.data.id.toString().startsWith('temp_')) {
-            return params.value;
-          }
-          return '••••'; // Mostrar puntos para contraseñas existentes
-        },
-        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
-          if (!params.data.id.toString().startsWith('temp_')) {
-            alerts.basicAlert(
-              'Contraseña Reloj',
-              `La contraseña es: ${params.data.clockPassword}`,
-              'info'
-            );
-          }
-        },
-      },
-      {
-        field: 'loan',
-        headerName: 'Préstamos',
-        editable: false,
-        hide: this.idRoot == 18 || !this.authService.hasSubDetailedPermission('hr', 'employees', 'Emp_Pre'),
-        filter: 'agNumberColumnFilter',
-        suppressMovable: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 110,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      {
-        field: 'saving',
-        headerName: 'Ahorro',
-        hide: this.idRoot == 18 || !this.authService.hasSubDetailedPermission('hr', 'employees', 'Emp_Aho'),
-        editable: false,
-        filter: 'agNumberColumnFilter',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        suppressMovable: true,
-        width: 100,
-        
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      {
-        field: 'priceXHour',
-        headerName: 'Precio por hora *',
-        hide: this.idRoot == 18,
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: 'agNumberColumnFilter',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 150,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 999999,
-          precision: 2,
-        },
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '';
-        },
-      },
-      {
-        field: 'baseHours',
-        headerName: 'Horas base',
-        hide: this.idRoot == 18,
-        editable: false,
-        valueFormatter: (params) => {
-        const value = params.value;
-        if (typeof value !== 'number' || isNaN(value)) return '';
-      
-        const hours = Math.floor(value);
-        const minutes = Math.round((value - hours) * 60);
-      
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      },
-      },
-      {
-        field: 'idDepto',
-        headerName: 'Departamento',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        suppressMovable: true,
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 190,
-        cellEditor: 'agSelectCellEditor',
-        onCellValueChanged: (params) => {
-          const newRolId = params.newValue;
-          if (newRolId && newRolId !== params.oldValue) {
-            // Llama al método que recarga las posiciones válidas para ese rol
-            this.getPoscionesbyRole(newRolId);
-          }
-        },
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogRoles 
-              ? this.catalogRoles.map(item => item.id)
-              : []
-          };
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.catalogRoles?.find(item => item.id === params.value);
-          return found ? found.description : params.value;
-        },
-        valueSetter: (params) => {
-          const newDeptId = params.newValue;
-
-          if (params.data.idDepto === newDeptId) return false;
-
-          params.data.idDepto = newDeptId;
-
-          this.getPoscionesbyRole(newDeptId).then((posiciones) => {
-            // Guardar las posiciones directamente en la fila
-            this.catalogPosiciones = posiciones;
-
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Verificar si la posición actual sigue siendo válida en el nuevo catálogo
-            const currentPositionId = params.data.idPosition;
-            const isPositionStillValid = posiciones.some(p => p.id === currentPositionId);
-
-            // Si la posición ya no es válida, la reseteamos. Si no, la mantenemos.
-            if (!isPositionStillValid) {
-              params.data.idPosition = null;
-            }
-            // --- FIN DE LA CORRECCIÓN ---
-
-            // Refrescar celdas
-            if (this.gridApi) {
-              this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
-            }
-          });
-        
-          return true;
-        },
-        valueGetter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.data || !params.data.idDepto) return '';
-
-          const foundDepto = this.catalogRoles
-            ? this.catalogRoles.find((d) => d.id === params.data.idDepto)
-            : null;
-
-          return foundDepto ? foundDepto.description :'';
-        },
-        
-        
-      },
-      {
-        field: 'idPosition',
-        headerName: 'Posicion',
-        width: 190,
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        suppressMovable: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        filter: true, // Opcional: Ocultar el botón de filtro si no es para el usuario
-        flex: 0,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogPosiciones
-              ? this.catalogPosiciones.map(item => item.description)
-              : []
-          };
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-            const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
-            return found ? found.description : params.value;
-
-        },
-        valueSetter: (params) => {
-          const selectedDesc = params.newValue;
-          let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
-          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
-          if (!found) return false;
-          params.data.idPosition = found.id;
-          return true;
-        },
-        valueGetter: (params) => {
-          if (!params.data || params.data.idPosition == null) return '';
-          const found = this.catalogGeneralPosiciones
-            ? this.catalogGeneralPosiciones.find((d) => d.id == params.data.idPosition)
-            : null;
-          return found ? found.description : '';
-        },
-      },
-
-      {
-        field: 'idBank',
-        headerName: 'Banco',
-        hide: this.idRoot == 18,
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        suppressMovable: true,
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 200,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.banks.map((user) => user.id),
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBank) return 'EFECTIVO';
-          const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-          return foundBank ? foundBank.name : 'EFECTIVO';
-        },
-        valueFormatter: (params) => {
-          const foundBank = this.banks
-            ? this.banks.find((user) => user.id === params.value)
-            : null;
-          return foundBank ? `${foundBank.name}` : params.value;
-        },
-       
-      },
-      {
-        field: 'ingressDate',
-        headerName: 'Fecha de ingreso',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: 'agDateColumnFilter',
-        filterParams: {
-          defaultToNothingSelected: true,
-        },
-        width: 150,
-        cellEditor: 'agDateCellEditor',
-        valueGetter: (params) => {
-          // Asegurar que siempre devuelva un objeto Date
-          if (!params.data.ingressDate) {
-            return new Date();
-          }
-          return params.data.ingressDate instanceof Date
-            ? params.data.ingressDate
-            : new Date(params.data.ingressDate);
-        },
-        valueSetter: (params) => {
-          // Asegurar que siempre se guarde como objeto Date
-          if (!params.newValue) {
-            params.data.ingressDate = new Date();
-            return true;
-          }
-
-          const date = params.newValue instanceof Date
-            ? params.newValue
-            : new Date(params.newValue);
-
-          if (isNaN(date.getTime())) {
-            alerts.basicAlert('Error', 'Fecha inválida', 'error');
-            return false;
-          }
-
-          params.data.ingressDate = date;
-          return true;
-        },
-        valueFormatter: (params) => {
-          try {
-            if (!params.value) return '';
-            const date = params.value instanceof Date ? params.value : new Date(params.value);
-            if (isNaN(date.getTime())) return '';
-            return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-          } catch {
-            return '';
-          }
-        },
-      },
-      {
-        field: 'phone',
-        headerName: 'Teléfono',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: false,
-        width: 150,
-        valueSetter: (params) => {
-          const phoneValue = params.newValue;
-          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
-          const isValidPhone = /^\d{10}$/.test(phoneValue);
-          if (!isValidPhone) {
-            alerts.basicAlert(
-              'Teléfono inválido',
-              'El teléfono debe contener exactamente 10 dígitos numéricos.',
-              'error'
-            );
-            return false; // No se permite el cambio
-          }
-          params.data[params.colDef.field] = phoneValue;
-          return true;
-        },
-      },
-      {
-        field: 'cp',
-        headerName: 'CP',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 100,
-      },
-      {
-        field: 'address',
-        headerName: 'Dirección',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        filter: 'agTextColumnFilter',
-        width: 300,
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        },
-        
-      },
-
-      {
-        field: 'state',
-        headerName: 'Estado',
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 150,
-        editable: false,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.estados,
-        },
-      },
-      {
-        field: 'city',
-        headerName: 'Ciudad',
-        editable: false,
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 150,
-      },
-      {
-        field: 'neighborhood',
-        headerName: 'Colonia',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 300,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          if (this.infoCp && this.infoCp.length > 0) {
-            const asentamientos = this.infoCp[0].asentamientos;
-            // Ordenar los asentamientos alfabéticamente
-            const sortedAsentamientos = asentamientos.sort((a, b) =>
-              a.localeCompare(b)
-            );
-            return {
-              values: sortedAsentamientos,
-            };
-          }
-          return { values: [] };
-        },
-        valueFormatter: (params) => {
-          return params.value || 'Seleccionar asentamiento';
-        },
-      },
-
-      {
-        field: 'rfc',
-        headerName: 'RFC',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 150,
-      },
-    ];
-    } else {
+    if (this.isAdvanced == true) {
       this._colMaster = [
-      {
-        headerName: '#',
-        width: 50,
-        hide: true,
-        valueGetter: (params) => params.node!.rowIndex! + 1,
-        editable: false,
-        pinned: 'left',
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold', textAlign: 'center' }
-      },
-      {
-        field: 'id',
-        headerName: 'Id',
-        editable: false,
-        width: 70,
-        hide: true,
-        filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
-        filterParams: {
-          filterOptions: ['equals'], // Opciones de filtro
+        {
+          headerName: '#',
+          width: 50,
+          valueGetter: (params) => params.node!.rowIndex! + 1,
+          editable: false,
+          pinned: 'left',
+          cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold', textAlign: 'center' }
         },
-      },
-      {
-        field: 'vigente',
-        hide: this.idRoot == 18,
-        headerName: 'Activo',        
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
+        {
+          field: 'id',
+          headerName: 'Id',
+          editable: false,
+          width: 70,
+          hide: true,
+          filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+          filterParams: {
+            filterOptions: ['equals'], // Opciones de filtro
+          },
         },
-        /*suppressMovable: true,
-        filter: true,*/
-        width: 100,
-      },
-      /*{
-        field: 'picture',
-        headerName: 'Fotografía 2',
-        cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
-          this.imageHandlerService
-        ),
-        cellRendererParams: {
-          clicked: this.imageHandlerService.onImageCellClicked.bind(
-            this.imageHandlerService
-          ),
-          field: 'picture',
+        {
+          field: 'vigente',
+          hide: this.idRoot == 18,
+          headerName: 'Activo',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          /*suppressMovable: true,
+          filter: true,*/
+          width: 100,
         },
-        editable: false,
-        width: 100,
-      },*/
-      {
-        field: 'idBranch',
-        headerName: 'Sucursal',
-        headerClass: 'required-header',
-        hide: false,
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: true,
-        width: 170,
-        cellEditor: 'agSelectCellEditor',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'windows',
-        },
+        {
+          field: 'idBranch',
+          headerName: 'Sucursal',
+          headerClass: 'required-header',
+          hide: false,
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          filter: true,
+          width: 170,
+          cellEditor: 'agSelectCellEditor',
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'windows',
+          },
 
-        cellEditorParams: (params) => {
-          return {
-            values: this.branchs
-              ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
-              : [],
-          };
-        },
-
-        valueFormatter: (params) => {
-          // Handle potential null values and properly format the displayed value
-          if (!params.value) return '';
-
-          const foundBranch = this.branchs
-            ? this.branchs.find((item) => item.id === params.value)
-            : null;
-
-          return foundBranch ? foundBranch.name : params.value;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBranch) return '';
-          const branch = this.branchs?.find(b => b.id === params.data.idBranch);
-          return branch ? branch.name : '';
-        },
-      },
-      {
-        field: 'name',
-        headerName: 'Nombre',
-        headerClass: 'required-header',
-        editable: (params) => {
-          if (params.data.__isNew) {
+          cellEditorParams: (params) => {
+            return {
+              values: this.branchs
+                ? this.branchs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
+                : [],
+            };
+          },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
             return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
+          },
+
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const foundBranch = this.branchs
+              ? this.branchs.find((item) => item.id === params.value)
+              : null;
+            return foundBranch ? foundBranch.name : params.value;
+          },
+          valueGetter: (params) => {
+            if (!params.data || !params.data.idBranch) return '';
+            const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+            return branch ? branch.name : '';
+          },
         },
-        suppressMovable: true,
-        width: 270,
-        filter: 'agSetColumnFilter',
-        //esta es la busqueda correcta
-        filterParams: {
-          //excelMode: 'mac',
-          defaultToNothingSelected: true,
-        },
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData?.map((e) => e.name.toUpperCase()) || [],
-          filterKey: 'name',
-          placeholder: 'Buscar empleado...',
-          minLength: 1,
-        },
-        valueSetter: (params) => {
-          const rawValue = params.newValue;
-          if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-            return false;
-          }
-      
-          const normalizedValue = rawValue.trim().toUpperCase();
-      
-          if (!normalizedValue) {
-            alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
-            return false;
-          }
-      
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex &&
-              row.name?.toUpperCase() === normalizedValue
-          );
-      
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Nombre duplicado',
-              'Ya existe un empleado con ese nombre.',
-              'error'
-            );
-            return false;
-          }
-      
-          params.data[params.colDef.field] = normalizedValue;
-          return true;
-        },
-        valueFormatter: (params) => params.value || '',
-      },
-      {
-        field: 'employeeCode',
-        headerName: 'UserName',
-        headerClass: 'required-header',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        suppressMovable: true,
-        width: 170,
-        filter: 'agSetColumnFilter',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        filterParams: {
-          defaultToNothingSelected: true,
-        },
-        //cellStyle: (params) => this.validateRequiredField(params.value),
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: {
-          filterList: this.rowData?.map((e) => e.employeeCode?.toUpperCase()) || [],
-          filterKey: 'employeeCode',
-          placeholder: 'Buscar código...',
-          minLength: 1,
-        },
-        valueSetter: (params) => {
-          const rawValue = params.newValue;
-          if (!rawValue || typeof rawValue !== 'string') {
-            alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
-            return false;
-          }
-      
-          const normalizedValue = rawValue.trim().toUpperCase();
-      
-          if (!normalizedValue) {
-            alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
-            return false;
-          }
-      
-          const duplicateExists = this.rowData.some(
-            (row, index) =>
-              index !== params.node.rowIndex &&
-              row.employeeCode?.toUpperCase() === normalizedValue
-          );
-      
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Código duplicado',
-              'Ya existe un empleado con ese código.',
-              'error'
-            );
-            return false;
-          }
-      
-          params.data[params.colDef.field] = normalizedValue;
-          return true;
-        },
-        valueFormatter: (params) => params.value || '',
-      },
-      /*{
-        field: 'email',
-        headerName: 'Correo electrónico',
-        //headerClass: 'required-header',
-        //cellStyle: (params) => this.validateRequiredField(params.value),
-        cellEditor: 'agTextCellEditor',
-        editable: true,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        valueFormatter: (params) => params.value,
-        valueSetter: (params) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (emailRegex.test(params.newValue)) {
+        {
+          field: 'name',
+          headerName: 'Nombre',
+          headerClass: 'required-header',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          width: 270,
+          filter: 'agSetColumnFilter',
+          filterParams: {
+            //excelMode: 'mac',
+            defaultToNothingSelected: true,
+          },
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeNameEditorParams(params),
+          valueSetter: (params) => {
+            const rawValue = params.newValue;
+            if (!rawValue || typeof rawValue !== 'string') {
+              alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+              return false;
+            }
+
+            const normalizedValue = rawValue.trim().toUpperCase();
+
+            if (!normalizedValue) {
+              alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+              return false;
+            }
+
+            if (!/^[A-ZÁÉÍÓÚÑÜ\s'-]+$/i.test(normalizedValue)) {
+              alerts.basicAlert('Nombre inválido', 'El nombre solo puede contener letras, espacios, guiones y apóstrofes.', 'error');
+              return false;
+            }
+
             const duplicateExists = this.rowData.some(
               (row, index) =>
-                index !== params.node.rowIndex && row.email === params.newValue
+                index !== params.node.rowIndex &&
+                row.name?.toUpperCase() === normalizedValue
             );
 
             if (duplicateExists) {
               alerts.basicAlert(
-                'Email duplicado',
-                'Ya existe un empleado con ese correo electrónico.',
+                'Nombre duplicado',
+                'Ya existe un empleado con ese nombre.',
                 'error'
               );
               return false;
             }
 
-            params.data[params.colDef.field] = params.newValue;
+            params.data[params.colDef.field] = normalizedValue;
             return true;
-          } else {
-            alerts.basicAlert(
-              'Email inválido',
-              'Formato de correo electrónico no válido.',
-              'error'
-            );
-            return false;
-          }
+          },
+          valueFormatter: (params) => params.value || '',
         },
-        //filter: "agSetColumnFilter",
-        //suppressMovable: true,
-      },*/
-      {
-        field: 'clockPassword',
-        headerName: 'Contraseña Reloj',
-        width: 100,
-        hide: this.idRoot == 18,
-        editable: false,
-        cellRenderer: (params: ICellRendererParams) => {
-          // Mostrar valor real para nuevas filas, ocultar para existentes
-          if (params.data.id.toString().startsWith('temp_')) {
-            return params.value;
-          }
-          return '••••'; // Mostrar puntos para contraseñas existentes
-        },
-        onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
-          if (!params.data.id.toString().startsWith('temp_')) {
-            alerts.basicAlert(
-              'Contraseña Reloj',
-              `La contraseña es: ${params.data.clockPassword}`,
-              'info'
-            );
-          }
-        },
-      },
-      {
-        field: 'loan',
-        headerName: 'Préstamos',
-        editable: false,
-        hide: this.idRoot == 18,
-        filter: 'agNumberColumnFilter',
-        suppressMovable: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 110,
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      {
-        field: 'saving',
-        headerName: 'Ahorro',
-        hide: this.idRoot == 18,
-        editable: false,
-        filter: 'agNumberColumnFilter',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        suppressMovable: true,
-        width: 100,
-        
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '$0.00';
-        },
-        cellStyle: { backgroundColor: '#d4edda' },
-      },
-      {
-        field: 'priceXHour',
-        headerName: 'Precio por hora *',
-        hide: this.idRoot == 18,
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: 'agNumberColumnFilter',
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 150,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 999999,
-          precision: 2,
-        },
-        valueFormatter: (params) => {
-          if (params.value) {
-            return new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-            }).format(params.value);
-          }
-          return '';
-        },
-      },
-      {
-        field: 'baseHours',
-        headerName: 'Horas base',
-        hide: this.idRoot == 18,
-        editable: false,
-        valueFormatter: (params) => {
-        const value = params.value;
-        if (typeof value !== 'number' || isNaN(value)) return '';
-      
-        const hours = Math.floor(value);
-        const minutes = Math.round((value - hours) * 60);
-      
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      },
-      },
-      {
-        field: 'idDepto',
-        headerName: 'Departamento',
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        suppressMovable: true,
-        filter: true,
-        filterParams: {
-          defaultToNothingSelected: true,
-        },
-        width: 190,
-        cellEditor: 'agSelectCellEditor',
-        onCellValueChanged: (params) => {
-          const newRolId = params.newValue;
-          if (newRolId && newRolId !== params.oldValue) {
-            this.getPoscionesbyRole(newRolId);
-          }
-        },
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogRoles
-              ? this.catalogRoles.map(item => item.id)
-              : []
-          };
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const found = this.catalogRoles?.find(item => item.id === params.value);
-          return found ? found.description : params.value;
-        },
-        valueSetter: (params) => {
-          const newDeptId = params.newValue;
-
-          if (params.data.idDepto === newDeptId) return false;
-
-          params.data.idDepto = newDeptId;
-
-          this.getPoscionesbyRole(newDeptId).then((posiciones) => {
-            this.catalogPosiciones = posiciones;
-
-            const currentPositionId = params.data.idPosition;
-            const isPositionStillValid = posiciones.some(p => p.id === currentPositionId);
-
-            if (!isPositionStillValid) {
-              params.data.idPosition = null;
+        {
+          field: 'employeeCode',
+          headerName: 'UserName22',
+          headerClass: 'required-header',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          width: 170,
+          filter: 'agSetColumnFilter',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          filterParams: {
+            defaultToNothingSelected: true,
+          },
+          //cellStyle: (params) => this.validateRequiredField(params.value),
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeCodeEditorParams(params),
+          valueSetter: (params) => {
+            const rawValue = params.newValue;
+            if (!rawValue || typeof rawValue !== 'string') {
+              alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
+              return false;
             }
 
-            if (this.gridApi) {
-              this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
+            const normalizedValue = rawValue.trim().toUpperCase();
+
+            if (!normalizedValue) {
+              alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
+              return false;
             }
-          });
 
-          return true;
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idDepto) return '';
-
-          const foundDepto = this.catalogRoles
-            ? this.catalogRoles.find((d) => d.id === params.data.idDepto)
-            : null;
-
-          return foundDepto ? foundDepto.description :'';
-        },
-
-      },
-      {
-        field: 'idPosition',
-        headerName: 'Posicion',
-        width: 190,
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        suppressMovable: true,
-        filterParams: {
-          defaultToNothingSelected: true,
-        },
-        filter: true,
-        flex: 0,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogPosiciones
-              ? this.catalogPosiciones.map(item => item.description)
-              : []
-          };
-        },
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-            const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
-            return found ? found.description : params.value;
-
-        },
-        valueSetter: (params) => {
-          const selectedDesc = params.newValue;
-          let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
-          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
-          if (!found) return false;
-          params.data.idPosition = found.id;
-          return true;
-        },
-        valueGetter: (params) => {
-          if (!params.data || params.data.idPosition == null) return '';
-          const found = this.catalogGeneralPosiciones
-            ? this.catalogGeneralPosiciones.find((d) => d.id == params.data.idPosition)
-            : null;
-          return found ? found.description : '';
-        },
-      },
-
-      {
-        field: 'idBank',
-        headerName: 'Banco',
-        hide: this.idRoot == 18,
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        headerClass: 'required-header',
-        cellStyle: (params) => this.validateRequiredField(params.value),
-        suppressMovable: true,
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 200,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.banks.map((user) => user.id),
-        },
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idBank) return 'EFECTIVO';
-          const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-          return foundBank ? foundBank.name : 'EFECTIVO';
-        },
-        valueFormatter: (params) => {
-          const foundBank = this.banks
-            ? this.banks.find((user) => user.id === params.value)
-            : null;
-          return foundBank ? `${foundBank.name}` : params.value;
-        },
-       
-      },
-      {
-        field: 'ingressDate',
-        headerName: 'Fecha de ingreso',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: 'agDateColumnFilter',
-        filterParams: {
-          defaultToNothingSelected: true,
-        },
-        width: 150,
-        cellEditor: 'agDateCellEditor',
-        valueGetter: (params) => {
-          // Asegurar que siempre devuelva un objeto Date
-          if (!params.data.ingressDate) {
-            return new Date();
-          }
-          return params.data.ingressDate instanceof Date
-            ? params.data.ingressDate
-            : new Date(params.data.ingressDate);
-        },
-        valueSetter: (params) => {
-          // Asegurar que siempre se guarde como objeto Date
-          if (!params.newValue) {
-            params.data.ingressDate = new Date();
-            return true;
-          }
-
-          const date = params.newValue instanceof Date
-            ? params.newValue
-            : new Date(params.newValue);
-
-          if (isNaN(date.getTime())) {
-            alerts.basicAlert('Error', 'Fecha inválida', 'error');
-            return false;
-          }
-
-          params.data.ingressDate = date;
-          return true;
-        },
-        valueFormatter: (params) => {
-          try {
-            if (!params.value) return '';
-            const date = params.value instanceof Date ? params.value : new Date(params.value);
-            if (isNaN(date.getTime())) return '';
-            return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
-          } catch {
-            return '';
-          }
-        },
-      },
-      {
-        field: 'phone',
-        headerName: 'Teléfono',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filter: false,
-        width: 150,
-        valueSetter: (params) => {
-          const phoneValue = params.newValue;
-          // Verificar que el número tenga exactamente 10 dígitos y sea numérico
-          const isValidPhone = /^\d{10}$/.test(phoneValue);
-          if (!isValidPhone) {
-            alerts.basicAlert(
-              'Teléfono inválido',
-              'El teléfono debe contener exactamente 10 dígitos numéricos.',
-              'error'
+            const duplicateExists = this.rowData.some(
+              (row, index) =>
+                index !== params.node.rowIndex &&
+                row.employeeCode?.toUpperCase() === normalizedValue
             );
-            return false; // No se permite el cambio
-          }
-          params.data[params.colDef.field] = phoneValue;
-          return true;
-        },
-      },
-      {
-        field: 'cp',
-        headerName: 'CP',
-        editable: (params) => {
-          if (params.data.__isNew) {
+
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Código duplicado',
+                'Ya existe un empleado con ese código.',
+                'error'
+              );
+              return false;
+            }
+
+            params.data[params.colDef.field] = normalizedValue;
             return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
+          },
+          valueFormatter: (params) => params.value || '',
         },
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        width: 100,
-      },
-      {
-        field: 'address',
-        headerName: 'Dirección',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
-        },
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        filter: 'agTextColumnFilter',
-        width: 300,
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        },
-        /*cellEditor: 'agPopupTextCellEditor',
-        cellEditorParams: {
-          maxLength: 100,
-          cols: 50,
-          rows: 3,
-          onKeyDown: (event: KeyboardEvent) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.stopPropagation();
+        {
+          field: 'clockPassword',
+          headerName: 'Contraseña Reloj',
+          width: 100,
+          hide: this.idRoot == 18,
+          editable: false,
+          cellRenderer: (params: ICellRendererParams) => {
+            // Mostrar valor real para nuevas filas, ocultar para existentes
+            if (params.data.id.toString().startsWith('temp_')) {
+              return params.value;
+            }
+            return '••••'; // Mostrar puntos para contraseñas existentes
+          },
+          onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
+            if (!params.data.id.toString().startsWith('temp_')) {
+              alerts.basicAlert(
+                'Contraseña Reloj',
+                `La contraseña es: ${params.data.clockPassword}`,
+                'info'
+              );
             }
           },
         },
-        // Modal deshabilitado para evitar conflictos entre componentes
-        // onCellDoubleClicked: (event: CellDoubleClickedEvent) => {
-        //   if (!event.node.group) {
-        //     this.modalServiceTable.showModal({
-        //       params: event,
-        //       value: event.value,
-        //     });
-        //   }
-        // },
-        cellRenderer: (params: ICellRendererParams) => {
-          if (params.node.group) {
-            return params.value.toUpperCase();
-          }
-          return params.value.toUpperCase();
-        },*/
-      },
-
-      {
-        field: 'state',
-        headerName: 'Estado',
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
+        {
+          field: 'baseHours',
+          headerName: 'Horas base',
+          hide: this.idRoot == 18,
+          editable: false,
+          cellStyle: { backgroundColor: '#d4edda' },
+          cellRenderer: (params: any) => {
+            const v = params.value;
+            let hoursStr = '';
+            if (typeof v === 'number' && !isNaN(v)) {
+              const h = Math.floor(v);
+              const m = Math.round((v - h) * 60);
+              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
+          },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'clock'),
         },
-        width: 150,
-        editable: false,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.estados,
+        {
+          field: 'loan',
+          headerName: 'Préstamos',
+          editable: false,
+          hide: this.idRoot == 18 || !this.authService.hasSubDetailedPermission('hr', 'employees', 'Emp_Pre'),
+          filter: 'agNumberColumnFilter',
+          suppressMovable: true,
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 110,
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+              }).format(params.value);
+            }
+            return '$0.00';
+          },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'loans'),
         },
-      },
-      {
-        field: 'city',
-        headerName: 'Ciudad',
-        editable: false,
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
+        {
+          field: 'saving',
+          headerName: 'Ahorro',
+          hide: this.idRoot == 18 || !this.authService.hasSubDetailedPermission('hr', 'employees', 'Emp_Aho'),
+          editable: false,
+          filter: 'agNumberColumnFilter',
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          suppressMovable: true,
+          width: 100,
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+              }).format(params.value);
+            }
+            return '$0.00';
+          },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'savings'),
         },
-        width: 150,
-      },
-      {
-        field: 'neighborhood',
-        headerName: 'Colonia',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
+        {
+          field: 'priceXHour',
+          headerName: 'Precio por hora *',
+          hide: this.idRoot == 18,
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          filter: 'agNumberColumnFilter',
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 150,
+          cellEditor: 'agNumberCellEditor',
+          cellEditorParams: {
+            min: 0,
+            max: 999999,
+            precision: 2,
+          },
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+              }).format(params.value);
+            }
+            return '';
+          },
         },
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
+        {
+          field: 'personalData',
+          headerName: 'Datos Personales',
+          editable: false,
+          suppressMovable: true,
+          width: 120,
+          cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
+          cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'personalData'),
         },
-        width: 300,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          if (this.infoCp && this.infoCp.length > 0) {
-            const asentamientos = this.infoCp[0].asentamientos;
-            // Ordenar los asentamientos alfabéticamente
-            const sortedAsentamientos = asentamientos.sort((a, b) =>
-              a.localeCompare(b)
-            );
+        {
+          field: 'idDepto',
+          headerName: 'Departamento',
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          filter: true,
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 190,
+          cellEditor: 'agSelectCellEditor',
+          onCellValueChanged: (params) => {
+            const newRolId = params.newValue;
+            if (newRolId && newRolId !== params.oldValue) {
+              // Llama al método que recarga las posiciones válidas para ese rol
+              this.getPoscionesbyRole(newRolId);
+            }
+          },
+          cellEditorParams: (params) => {
             return {
-              values: sortedAsentamientos,
+              values: this.catalogRoles
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
+                : []
             };
-          }
-          return { values: [] };
-        },
-        valueFormatter: (params) => {
-          return params.value || 'Seleccionar asentamiento';
-        },
-      },
+          },
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const found = this.catalogRoles?.find(item => item.id === params.value);
+            return found ? found.description : params.value;
+          },
+          valueSetter: (params) => {
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find(r => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
 
-      {
-        field: 'rfc',
-        headerName: 'RFC',
-        editable: (params) => {
-          if (params.data.__isNew) {
+            if (params.data.idDepto === newDeptId) return false;
+
+            params.data.idDepto = newDeptId;
+
+            this.getPoscionesbyRole(newDeptId).then((posiciones) => {
+              // Guardar las posiciones directamente en la fila
+              this.catalogPosiciones = posiciones;
+
+              // --- INICIO DE LA CORRECCIÓN ---
+              // Verificar si la posición actual sigue siendo válida en el nuevo catálogo
+              const currentPositionId = params.data.idPosition;
+              const isPositionStillValid = posiciones.some(p => p.id === currentPositionId);
+
+              // Si la posición ya no es válida, la reseteamos. Si no, la mantenemos.
+              if (!isPositionStillValid) {
+                params.data.idPosition = null;
+              }
+              // --- FIN DE LA CORRECCIÓN ---
+
+              // Refrescar celdas
+              if (this.gridApi) {
+                this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
+              }
+            });
+
             return true;
-          }
-          return this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin',  'update');
+          },
+          valueGetter: (params) => {
+            // Handle potential null values and properly format the displayed value
+            if (!params.data || !params.data.idDepto) return '';
+
+            const foundDepto = this.catalogRoles
+              ? this.catalogRoles.find((d) => d.id === params.data.idDepto)
+              : null;
+
+            return foundDepto ? foundDepto.description : '';
+          },
+
+
         },
-        filter: true,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
+        {
+          field: 'idPosition',
+          headerName: 'Posicion',
+          width: 190,
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          filter: true, // Opcional: Ocultar el botón de filtro si no es para el usuario
+          flex: 0,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: (params) => {
+            return {
+              values: this.catalogPosiciones
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
+                : []
+            };
+          },
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
+            return found ? found.description : params.value;
+
+          },
+          valueSetter: (params) => {
+            const selectedDesc = params.newValue;
+            let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
+            if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
+            if (!found) return false;
+            params.data.idPosition = found.id;
+            return true;
+          },
+          valueGetter: (params) => {
+            if (!params.data || params.data.idPosition == null) return '';
+            const found = this.catalogGeneralPosiciones
+              ? this.catalogGeneralPosiciones.find((d) => d.id == params.data.idPosition)
+              : null;
+            return found ? found.description : '';
+          },
         },
-        width: 150,
-      },
-    ];
+
+        {
+          field: 'idBank',
+          headerName: 'Banco',
+          hide: this.idRoot == 18,
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          suppressMovable: true,
+          filter: true,
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 200,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: () => ({
+            values: this.banks
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
+              : [],
+          }),
+          valueGetter: (params) => {
+            if (!params.data || !params.data.idBank) return '';
+            const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
+            return foundBank ? foundBank.name : '';
+          },
+          valueSetter: (params) => {
+            const selectedName = params.newValue;
+            const found = this.banks?.find(b => b.name === selectedName);
+            if (!found) return false;
+            params.data.idBank = found.id;
+            return true;
+          },
+
+        },
+        {
+          field: 'ingressDate',
+          headerName: 'Fecha de ingreso',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          filter: 'agDateColumnFilter',
+          filterParams: {
+            defaultToNothingSelected: true,
+          },
+          width: 150,
+          cellEditor: 'agDateCellEditor',
+          valueGetter: (params) => {
+            // Asegurar que siempre devuelva un objeto Date
+            if (!params.data.ingressDate) {
+              return new Date();
+            }
+            return params.data.ingressDate instanceof Date
+              ? params.data.ingressDate
+              : new Date(params.data.ingressDate);
+          },
+          valueSetter: (params) => {
+            // Asegurar que siempre se guarde como objeto Date
+            if (!params.newValue) {
+              params.data.ingressDate = new Date();
+              return true;
+            }
+
+            const date = params.newValue instanceof Date
+              ? params.newValue
+              : new Date(params.newValue);
+
+            if (isNaN(date.getTime())) {
+              alerts.basicAlert('Error', 'Fecha inválida', 'error');
+              return false;
+            }
+
+            params.data.ingressDate = date;
+            return true;
+          },
+          valueFormatter: (params) => {
+            try {
+              if (!params.value) return '';
+              const date = params.value instanceof Date ? params.value : new Date(params.value);
+              if (isNaN(date.getTime())) return '';
+              return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+            } catch {
+              return '';
+            }
+          },
+        },
+      ];
+    } else {
+      this._colMaster = [
+        {
+          headerName: '#',
+          width: 50,
+          hide: true,
+          valueGetter: (params) => params.node!.rowIndex! + 1,
+          editable: false,
+          pinned: 'left',
+          cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold', textAlign: 'center' }
+        },
+        {
+          field: 'id',
+          headerName: 'Id',
+          editable: false,
+          width: 70,
+          hide: true,
+          filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
+          filterParams: {
+            filterOptions: ['equals'], // Opciones de filtro
+          },
+        },
+        {
+          field: 'vigente',
+          hide: this.idRoot == 18,
+          headerName: 'Activo',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          /*suppressMovable: true,
+          filter: true,*/
+          width: 100,
+        },
+        /*{
+          field: 'picture',
+          headerName: 'Fotografía 2',
+          cellRenderer: this.imageHandlerService.imageCellRenderer.bind(
+            this.imageHandlerService
+          ),
+          cellRendererParams: {
+            clicked: this.imageHandlerService.onImageCellClicked.bind(
+              this.imageHandlerService
+            ),
+            field: 'picture',
+          },
+          editable: false,
+          width: 100,
+        },*/
+        {
+          field: 'idBranch',
+          headerName: 'Sucursal',
+          headerClass: 'required-header',
+          hide: false,
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          filter: true,
+          width: 170,
+          cellEditor: 'agSelectCellEditor',
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'windows',
+          },
+
+          cellEditorParams: (params) => {
+            return {
+              values: this.branchs
+                ? this.branchs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
+                : [],
+            };
+          },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
+            return true;
+          },
+
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const foundBranch = this.branchs
+              ? this.branchs.find((item) => item.id === params.value)
+              : null;
+            return foundBranch ? foundBranch.name : params.value;
+          },
+          valueGetter: (params) => {
+            if (!params.data || !params.data.idBranch) return '';
+            const branch = this.branchs?.find(b => b.id === params.data.idBranch);
+            return branch ? branch.name : '';
+          },
+        },
+        {
+          field: 'name',
+          headerName: 'Nombre',
+          headerClass: 'required-header',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          width: 270,
+          filter: 'agSetColumnFilter',
+          //esta es la busqueda correcta
+          filterParams: {
+            //excelMode: 'mac',
+            defaultToNothingSelected: true,
+          },
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeNameEditorParams(params),
+          valueSetter: (params) => {
+            const rawValue = params.newValue;
+            if (!rawValue || typeof rawValue !== 'string') {
+              alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+              return false;
+            }
+
+            const normalizedValue = rawValue.trim().toUpperCase();
+
+            if (!normalizedValue) {
+              alerts.basicAlert('Campo requerido', 'El nombre es obligatorio', 'error');
+              return false;
+            }
+
+            if (!/^[A-ZÁÉÍÓÚÑÜ\s'-]+$/i.test(normalizedValue)) {
+              alerts.basicAlert('Nombre inválido', 'El nombre solo puede contener letras, espacios, guiones y apóstrofes.', 'error');
+              return false;
+            }
+
+            const duplicateExists = this.rowData.some(
+              (row, index) =>
+                index !== params.node.rowIndex &&
+                row.name?.toUpperCase() === normalizedValue
+            );
+
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Nombre duplicado',
+                'Ya existe un empleado con ese nombre.',
+                'error'
+              );
+              return false;
+            }
+
+            params.data[params.colDef.field] = normalizedValue;
+            return true;
+          },
+          valueFormatter: (params) => params.value || '',
+        },
+        {
+          field: 'employeeCode',
+          headerName: 'UserName',
+          headerClass: 'required-header',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          width: 170,
+          filter: 'agSetColumnFilter',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          filterParams: {
+            defaultToNothingSelected: true,
+          },
+          //cellStyle: (params) => this.validateRequiredField(params.value),
+          cellEditor: 'searchableSelectComponent',
+          cellEditorParams: (params) => this.getEmployeeCodeEditorParams(params),
+          valueSetter: (params) => {
+            const rawValue = params.newValue;
+            if (!rawValue || typeof rawValue !== 'string') {
+              alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
+              return false;
+            }
+
+            const normalizedValue = rawValue.trim().toUpperCase();
+
+            if (!normalizedValue) {
+              alerts.basicAlert('Campo requerido', 'El código es obligatorio.', 'error');
+              return false;
+            }
+
+            const duplicateExists = this.rowData.some(
+              (row, index) =>
+                index !== params.node.rowIndex &&
+                row.employeeCode?.toUpperCase() === normalizedValue
+            );
+
+            if (duplicateExists) {
+              alerts.basicAlert(
+                'Código duplicado',
+                'Ya existe un empleado con ese código.',
+                'error'
+              );
+              return false;
+            }
+
+            params.data[params.colDef.field] = normalizedValue;
+            return true;
+          },
+          valueFormatter: (params) => params.value || '',
+        },
+        /*{
+          field: 'email',
+          headerName: 'Correo electrónico',
+          //headerClass: 'required-header',
+          //cellStyle: (params) => this.validateRequiredField(params.value),
+          cellEditor: 'agTextCellEditor',
+          editable: true,
+          cellEditorParams: {
+            useFormatter: true,
+          },
+          valueFormatter: (params) => params.value,
+          valueSetter: (params) => {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (emailRegex.test(params.newValue)) {
+              const duplicateExists = this.rowData.some(
+                (row, index) =>
+                  index !== params.node.rowIndex && row.email === params.newValue
+              );
+  
+              if (duplicateExists) {
+                alerts.basicAlert(
+                  'Email duplicado',
+                  'Ya existe un empleado con ese correo electrónico.',
+                  'error'
+                );
+                return false;
+              }
+  
+              params.data[params.colDef.field] = params.newValue;
+              return true;
+            } else {
+              alerts.basicAlert(
+                'Email inválido',
+                'Formato de correo electrónico no válido.',
+                'error'
+              );
+              return false;
+            }
+          },
+          //filter: "agSetColumnFilter",
+          //suppressMovable: true,
+        },*/
+        {
+          field: 'clockPassword',
+          headerName: 'Contraseña Reloj',
+          width: 100,
+          hide: this.idRoot == 18,
+          editable: false,
+          cellRenderer: (params: ICellRendererParams) => {
+            // Mostrar valor real para nuevas filas, ocultar para existentes
+            if (params.data.id.toString().startsWith('temp_')) {
+              return params.value;
+            }
+            return '••••'; // Mostrar puntos para contraseñas existentes
+          },
+          onCellDoubleClicked: (params: CellDoubleClickedEvent) => {
+            if (!params.data.id.toString().startsWith('temp_')) {
+              alerts.basicAlert(
+                'Contraseña Reloj',
+                `La contraseña es: ${params.data.clockPassword}`,
+                'info'
+              );
+            }
+          },
+        },
+        {
+          field: 'baseHours',
+          headerName: 'Horas base',
+          hide: this.idRoot == 18,
+          editable: false,
+          cellStyle: { backgroundColor: '#d4edda' },
+          cellRenderer: (params: any) => {
+            const v = params.value;
+            let hoursStr = '';
+            if (typeof v === 'number' && !isNaN(v)) {
+              const h = Math.floor(v);
+              const m = Math.round((v - h) * 60);
+              hoursStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+            return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
+          },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'clock'),
+        },
+        {
+          field: 'loan',
+          headerName: 'Préstamos',
+          editable: false,
+          hide: this.idRoot == 18,
+          filter: 'agNumberColumnFilter',
+          suppressMovable: true,
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 110,
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+              }).format(params.value);
+            }
+            return '$0.00';
+          },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'loans'),
+        },
+        {
+          field: 'saving',
+          headerName: 'Ahorro',
+          hide: this.idRoot == 18,
+          editable: false,
+          filter: 'agNumberColumnFilter',
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          suppressMovable: true,
+          width: 100,
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+              }).format(params.value);
+            }
+            return '$0.00';
+          },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'savings'),
+        },
+        {
+          field: 'priceXHour',
+          headerName: 'Precio por hora *',
+          hide: this.idRoot == 18,
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          filter: 'agNumberColumnFilter',
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 150,
+          cellEditor: 'agNumberCellEditor',
+          cellEditorParams: {
+            min: 0,
+            max: 999999,
+            precision: 2,
+          },
+          valueFormatter: (params) => {
+            if (params.value) {
+              return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+              }).format(params.value);
+            }
+            return '';
+          },
+        },
+        {
+          field: 'personalData',
+          headerName: 'Datos Personales',
+          editable: false,
+          suppressMovable: true,
+          width: 120,
+          cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
+          cellStyle: { backgroundColor: '#d4edda', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'personalData'),
+        },
+        {
+          field: 'idDepto',
+          headerName: 'Departamento',
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          filter: true,
+          filterParams: {
+            defaultToNothingSelected: true,
+          },
+          width: 190,
+          cellEditor: 'agSelectCellEditor',
+          onCellValueChanged: (params) => {
+            // params.newValue es la descripción; buscar el ID correspondiente
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            const newRolId = found?.id;
+            if (newRolId && newRolId !== params.oldValue) {
+              this.getPoscionesbyRole(newRolId);
+            }
+          },
+          cellEditorParams: (params) => {
+            return {
+              values: this.catalogRoles
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
+                : []
+            };
+          },
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const found = this.catalogRoles?.find(item => item.id === params.value);
+            return found ? found.description : params.value;
+          },
+          valueSetter: (params) => {
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
+
+            if (params.data.idDepto === newDeptId) return false;
+
+            params.data.idDepto = newDeptId;
+
+            this.getPoscionesbyRole(newDeptId).then((posiciones) => {
+              this.catalogPosiciones = posiciones;
+
+              const currentPositionId = params.data.idPosition;
+              const isPositionStillValid = posiciones.some(p => p.id === currentPositionId);
+
+              if (!isPositionStillValid) {
+                params.data.idPosition = null;
+              }
+
+              if (this.gridApi) {
+                this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
+              }
+            });
+
+            return true;
+          },
+          valueGetter: (params) => {
+            if (!params.data || !params.data.idDepto) return '';
+
+            const foundDepto = this.catalogRoles
+              ? this.catalogRoles.find((d) => d.id === params.data.idDepto)
+              : null;
+
+            return foundDepto ? foundDepto.description : '';
+          },
+
+        },
+        {
+          field: 'idPosition',
+          headerName: 'Posicion',
+          width: 190,
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          suppressMovable: true,
+          filterParams: {
+            defaultToNothingSelected: true,
+          },
+          filter: true,
+          flex: 0,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: (params) => {
+            return {
+              values: this.catalogPosiciones
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
+                : []
+            };
+          },
+          valueFormatter: (params) => {
+            if (!params.value) return '';
+            const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
+            return found ? found.description : params.value;
+
+          },
+          valueSetter: (params) => {
+            const selectedDesc = params.newValue;
+            let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
+            if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
+            if (!found) return false;
+            params.data.idPosition = found.id;
+            return true;
+          },
+          valueGetter: (params) => {
+            if (!params.data || params.data.idPosition == null) return '';
+            const found = this.catalogGeneralPosiciones
+              ? this.catalogGeneralPosiciones.find((d) => d.id == params.data.idPosition)
+              : null;
+            return found ? found.description : '';
+          },
+        },
+
+        {
+          field: 'idBank',
+          headerName: 'Banco',
+          hide: this.idRoot == 18,
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          headerClass: 'required-header',
+          cellStyle: (params) => this.validateRequiredField(params.value),
+          suppressMovable: true,
+          filter: true,
+          filterParams: {
+            // can be 'windows' or 'mac'
+            defaultToNothingSelected: true,
+            //excelMode: 'mac',
+          },
+          width: 200,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: () => ({
+            values: this.banks
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
+              : [],
+          }),
+          valueGetter: (params) => {
+            if (!params.data || !params.data.idBank) return '';
+            const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
+            return foundBank ? foundBank.name : '';
+          },
+          valueSetter: (params) => {
+            const selectedName = params.newValue;
+            const found = this.banks?.find(b => b.name === selectedName);
+            if (!found) return false;
+            params.data.idBank = found.id;
+            return true;
+          },
+
+        },
+        {
+          field: 'ingressDate',
+          headerName: 'Fecha de ingreso',
+          editable: (params) => {
+            if (params.data.__isNew) {
+              return true;
+            }
+            return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+          },
+          filter: 'agDateColumnFilter',
+          filterParams: {
+            defaultToNothingSelected: true,
+          },
+          width: 150,
+          cellEditor: 'agDateCellEditor',
+          valueGetter: (params) => {
+            // Asegurar que siempre devuelva un objeto Date
+            if (!params.data.ingressDate) {
+              return new Date();
+            }
+            return params.data.ingressDate instanceof Date
+              ? params.data.ingressDate
+              : new Date(params.data.ingressDate);
+          },
+          valueSetter: (params) => {
+            // Asegurar que siempre se guarde como objeto Date
+            if (!params.newValue) {
+              params.data.ingressDate = new Date();
+              return true;
+            }
+
+            const date = params.newValue instanceof Date
+              ? params.newValue
+              : new Date(params.newValue);
+
+            if (isNaN(date.getTime())) {
+              alerts.basicAlert('Error', 'Fecha inválida', 'error');
+              return false;
+            }
+
+            params.data.ingressDate = date;
+            return true;
+          },
+          valueFormatter: (params) => {
+            try {
+              if (!params.value) return '';
+              const date = params.value instanceof Date ? params.value : new Date(params.value);
+              if (isNaN(date.getTime())) return '';
+              return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+            } catch {
+              return '';
+            }
+          },
+        },
+      ];
     }
 
     // Retornar la instancia cacheada (inicializada en if o else)
@@ -1701,40 +1507,52 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   // ==================== MASTER METHODS ====================
 
   obtenerBranchs() {
-    // alert('this.branchs'+ this.idBranch)
-    this.branchesService.getBrancheswoa(this.idRoot).subscribe(
-      (data: any) => {
-        this.branchs = data;
+    this.branchesService.getBranchesByUserAndCompany(this.idUser, this.idRoot).subscribe({
+      next: (data: any) => {
+        this.branchs = (data.project || []).map((row: any) => ({
+          id: row.idPermission || row.idBranch || row.id,
+          name: row.name || row.description || ''
+        }));
+        this.obtenerDatos();
       },
-      (error) => console.error('Error fetching data:', error)
-    );
+      error: (error) => console.error('Error fetching branches:', error)
+    });
   }
 
   obtenerDatos() {
     return new Promise((resolve) => {
-      this.employeeService.getEmployees(this.idBranch).subscribe(
-        (data: any) => {
-          if(this.authService.getCrudPermissionDetail('hr', 'employees','Emp_prin', 'read')){
-            this.rowData = data;
-          }else{
-            this.rowData =[];
+      if (!this.branchs || this.branchs.length === 0) {
+        this.rowData = [];
+        this.gridApi?.setGridOption('rowData', this.rowData);
+        resolve(false);
+        return;
+      }
+
+      const branchesToLoad = this.idBranch > 0
+        ? this.branchs.filter(b => b.id === this.idBranch)
+        : this.branchs;
+
+      const requests = branchesToLoad.map(branch =>
+        this.employeeService.getEmployees(branch.id).pipe(catchError(() => of([])))
+      );
+
+      forkJoin(requests).subscribe({
+        next: (results: any[]) => {
+          const allEmployees = results.flat();
+          if (this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'read')) {
+            this.rowData = allEmployees;
+          } else {
+            this.rowData = [];
           }
-          
           this.captureOriginalRows(this.rowData);
-
-          // Actualizar el grid y esperar a que termine
           this.gridApi.setGridOption('rowData', this.rowData);
-
-          // Dar tiempo al grid para actualizar los datos
-          setTimeout(() => {
-            resolve(true);
-          }, 100);
+          setTimeout(() => resolve(true), 100);
         },
-        (error) => {
-          console.error('Error fetching data:', error);
+        error: (error) => {
+          console.error('Error fetching employees:', error);
           resolve(false);
         }
-      );
+      });
     });
   }
 
@@ -1749,23 +1567,23 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
     });
   }
-    getGeneralPosicion() {
+  getGeneralPosicion() {
     this.rolesService.getGeneralPosicion(this.idRoot).subscribe(
       (data: any) => {
         this.catalogGeneralPosiciones = data;
-      },      
+      },
       (error) => {
         if (error.status == 404) this.catalogGeneralPosiciones = [];
         console.error('Error fetching data:', error);
       }
     );
   }
-   getRoles() {
+  getRoles() {
     this.rolesService.getCatalogRoles(this.idRoot).subscribe(
       (data: any) => {
         this.catalogRoles = data;
         //console.log(this.catalogRoles)
-      },      
+      },
       (error) => {
         if (error.status == 404) this.catalogRoles = [];
         console.error('Error fetching data:', error);
@@ -1776,7 +1594,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     return new Promise((resolve, reject) => {
       this.rolesService.getCatalogPosiciones(this.idRoot, roles).subscribe({
         next: (data: any) => {
-          
+
           resolve(data || []);
         },
         error: (error) => {
@@ -1815,13 +1633,131 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ idBank: '', name: 'EFECTIVO' }, ...data];
-      },      
+        this.banks = data;
+      },
       (error) => {
         if (error.status == 404) this.banks = [];
         console.error('Error fetching data:', error);
       }
     );
+  }
+
+  private getEmployeeNameEditorParams(params: any) {
+    return {
+      options: this.buildEmployeeNameOptions(params),
+      displayField: 'name',
+      valueField: 'name',
+      searchFields: ['name', 'email', 'employeeCode'],
+      placeholder: 'Buscar empleado...',
+      popupWidth: 310,
+      onOptionSelected: (option: any) => this.applySelectedEmployeeToRow(option, params),
+      postEnterAction: (editorParams: any) => {
+        const rowIndex = editorParams.node?.rowIndex ?? editorParams.rowIndex;
+        if (rowIndex == null) return;
+        this.gridApi.setFocusedCell(rowIndex, 'employeeCode');
+        setTimeout(() => {
+          this.gridApi.startEditingCell({ rowIndex, colKey: 'employeeCode' });
+        }, 50);
+      },
+    };
+  }
+
+  private getEmployeeCodeEditorParams(params: any) {
+    return {
+      options: this.buildEmployeeCodeOptions(params),
+      displayField: 'employeeCode',
+      valueField: 'employeeCode',
+      searchFields: ['employeeCode', 'name', 'email'],
+      placeholder: 'Buscar código...',
+      popupWidth: 310,
+      postEnterAction: (editorParams: any) => {
+        // Saltar a Precio por Hora al dar Enter en Username
+        const targetCol = this.idRoot !== 18 ? 'priceXHour' : 'idDepto';
+        const rowIndex = editorParams.node?.rowIndex ?? editorParams.rowIndex;
+        if (rowIndex == null) return;
+        this.gridApi.setFocusedCell(rowIndex, targetCol);
+        setTimeout(() => {
+          this.gridApi.startEditingCell({ rowIndex, colKey: targetCol });
+        }, 50);
+      },
+    };
+  }
+
+  private buildEmployeeNameOptions(params: any): any[] {
+    const currentRowId = params?.data?.id;
+
+    return (this.rowData || [])
+      .filter((employee: any) => !employee?.__isNew && employee?.id !== currentRowId)
+      .map((employee: any) => ({
+        id: employee?.id ?? null,
+        name: String(employee?.name ?? '').trim().toUpperCase(),
+        email: String(employee?.email ?? '').trim(),
+        employeeCode: String(employee?.employeeCode ?? '').trim().toUpperCase(),
+        idBranch: employee?.idBranch ?? null,
+      }))
+      .filter((employee: any) => employee.name)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  private buildEmployeeCodeOptions(params: any): any[] {
+    const currentRowId = params?.data?.id;
+
+    return (this.rowData || [])
+      .filter((employee: any) => !employee?.__isNew && employee?.id !== currentRowId)
+      .map((employee: any) => ({
+        id: employee?.id ?? null,
+        employeeCode: String(employee?.employeeCode ?? '').trim().toUpperCase(),
+        name: String(employee?.name ?? '').trim().toUpperCase(),
+        email: String(employee?.email ?? '').trim(),
+      }))
+      .filter((employee: any) => employee.employeeCode)
+      .sort((a, b) => a.employeeCode.localeCompare(b.employeeCode));
+  }
+
+  private applySelectedEmployeeToRow(option: any, params: any): void {
+    const row = params?.data;
+    if (!row || !option) return;
+
+    const selectedName = String(option.name ?? '').trim().toUpperCase();
+    if (!selectedName) return;
+
+    const rowIndex = params?.node?.rowIndex ?? -1;
+    if (this.hasDuplicateEmployeeName(selectedName, rowIndex)) {
+      return;
+    }
+
+    if (row.__isNew || !String(row.email ?? '').trim()) {
+      row.email = option.email || '';
+    }
+
+    if (row.__isNew || !String(row.employeeCode ?? '').trim()) {
+      row.employeeCode = option.employeeCode || '';
+    }
+
+    row.__linkedEmployeeId = option.id ?? null;
+
+    if (this.gridApi && params?.node) {
+      this.gridApi.refreshCells({
+        rowNodes: [params.node],
+        columns: ['employeeCode', 'email'],
+        force: true,
+      });
+    }
+  }
+
+  private hasDuplicateEmployeeName(name: string, currentRowIndex: number): boolean {
+    return this.rowData.some(
+      (row, index) =>
+        index !== currentRowIndex &&
+        String(row?.name ?? '').trim().toUpperCase() === name
+    );
+  }
+
+  loadUsersCatalog() {
+    this.usersService.get2fieldsUsers(this.idRoot).subscribe({
+      next: (data: any) => { this.usersCatalog = data?.data || data || []; },
+      error: () => { this.usersCatalog = []; }
+    });
   }
 
   getDeptoandPosition() {
@@ -1881,7 +1817,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    
+    this.restoreColumnState();
+    setTimeout(() => this.gridApi.autoSizeAllColumns(false), 0);
   }
 
   onMasterRowSelected(event: any) {
@@ -1893,7 +1830,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idBranch: this.idBranch > 0 ? this.idBranch : null,
+      idBranch: this.idBranch > 0 ? this.idBranch : (this.branchs.length > 0 ? this.branchs[0].id : null),
       name: '',
       address: '',
       cp: '',
@@ -1925,12 +1862,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     // Encontrar el índice de la nueva fila
     const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
 
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.colMaster.find((col) => col.editable);
-    const firstEditableColKey = firstEditableCol
-      ? firstEditableCol.field
-      : null;
-
     // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
     setTimeout(() => {
       // Refrescar la celda de fecha para aplicar el valueFormatter
@@ -1943,14 +1874,59 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         });
       }
 
-      if (firstEditableColKey) {
-        this.gridApi.startEditingCell({
-          rowIndex: newRowIndex,
-          colKey: 'idBranch', // Editar la primera columna editable
+      // Para filas nuevas, enfocar directamente la columna Sucursal (idBranch).
+      // Si no está visible, caer al primer editable que no sea checkbox (vigente).
+      const displayedCols = this.gridApi.getAllDisplayedColumns();
+      const firstEditableCol =
+        displayedCols.find((col: any) => col.getColId() === 'idBranch') ??
+        displayedCols.find((col: any) => {
+          const colDef = col.getColDef();
+          if (colDef.field === 'vigente') return false;
+          if (typeof colDef.editable === 'function') {
+            return colDef.editable({ data: newItem, node: rowNode, column: col, colDef });
+          }
+          return colDef.editable === true;
         });
+
+      if (firstEditableCol) {
+        const firstColKey = firstEditableCol.getColId();
+        this.gridApi.startEditingCell({ rowIndex: newRowIndex, colKey: firstColKey });
+        // Abrir dropdown si es un agSelectCellEditor
+        if (firstEditableCol.getColDef()?.cellEditor === 'agSelectCellEditor') {
+          setTimeout(() => this.openAgSelectDropdown(), 120);
+        }
       }
     }, 100);
 
+  }
+
+  /** Abre el dropdown del agSelectCellEditor activo disparando mousedown+click en su trigger. */
+  private openAgSelectDropdown(): void {
+    // 1. Intentar via la instancia del editor (más fiable)
+    const editors = this.gridApi?.getCellEditorInstances?.();
+    if (editors && editors.length > 0) {
+      const editorInstance = editors[0] as any;
+      const editorEl: HTMLElement =
+        editorInstance.getGui?.() ?? editorInstance.eGui ?? null;
+      if (editorEl) {
+        const picker = editorEl.querySelector(
+          '.ag-picker-field-wrapper'
+        ) as HTMLElement;
+        if (picker) {
+          picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+          picker.click();
+          return;
+        }
+      }
+    }
+    // 2. Fallback: buscar en el documento completo
+    const picker = document.querySelector(
+      '.ag-popup-editor .ag-picker-field-wrapper, .ag-cell-editor .ag-picker-field-wrapper'
+    ) as HTMLElement;
+    if (picker) {
+      picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      picker.click();
+    }
   }
 
   async saveMasterChanges() {
@@ -1958,7 +1934,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       (item) =>
         item.name &&
         item.idBranch &&
-        (item.employeeCode || item.email )&&
+        (item.employeeCode || item.email) &&
         item.idDepto && // se agregan dos inputs para la validación de los campos requeridos
         item.idPosition &&
         (item.priceXHour || this.idRoot == 18)
@@ -2023,6 +1999,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       this.newlyAddedRows = [];
 
       await this.obtenerDatos(); // Esperar a que se actualicen los datos
+
+      // Vincular empleados nuevos a su usuario si existe match por nombre
+      for (const newRow of newRows) {
+        await this.linkNewEmployeeToUser(newRow);
+      }
 
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
@@ -2136,6 +2117,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.__linkedUserId;
+    delete cleanedData.__linkedEmployeeId;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
@@ -2319,6 +2302,50 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     return [...candidateIds];
   }
 
+  private async linkNewEmployeeToUser(newRow: any): Promise<void> {
+    const targetName = this.normalizeMatchString(newRow?.name);
+    if (!targetName) return;
+
+    // Find the saved employee in reloaded rowData to get its real ID
+    const saved = this.rowData.find(
+      r => typeof r.id === 'number' && this.normalizeMatchString(r.name) === targetName
+    );
+    if (!saved) return;
+    const employeeId = Number(saved.id);
+
+    // Fetch users for this company
+    const rawUsers = await lastValueFrom(
+      this.usersService.getDataUsers(this.idRoot).pipe(catchError(() => of([])))
+    );
+    let users = this.toUsersArray(rawUsers);
+    if (users.length === 0) {
+      const allRaw = await lastValueFrom(this.usersService.getAllUsers().pipe(catchError(() => of([]))));
+      users = this.toUsersArray(allRaw);
+    }
+    if (users.length === 0) return;
+
+    const activeUsers = users.filter((u: any) => Number(u?.active ?? 1) !== 0);
+    const pool = activeUsers.length > 0 ? activeUsers : users;
+
+    const matches = pool.filter(
+      (u: any) => this.normalizeMatchString(u?.displayName) === targetName
+    );
+    if (matches.length !== 1) return; // No match or ambiguous — skip
+
+    const user = matches[0];
+    const userId = Number(user?.id ?? 0);
+    if (userId <= 0) return;
+
+    // Don't overwrite an existing employee link
+    const existingLink = Number(user?.idEmpleado ?? user?.idEmployee ?? 0);
+    if (existingLink > 0) return;
+
+    await lastValueFrom(
+      this.usersService.updateUser(String(userId), { ...user, idEmpleado: employeeId })
+        .pipe(catchError(() => of(null)))
+    );
+  }
+
   private async syncSingleUserPrincipalBranch(idUser: number, row: any): Promise<void> {
     const newBranchId = Number(row?.idBranch ?? 0) || 0;
     const oldBranchId = this.getOriginalBranchId(row);
@@ -2402,7 +2429,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       );
       const combos: any[] = Array.isArray(rawCombos) ? rawCombos
         : Array.isArray(rawCombos?.data) ? rawCombos.data
-        : [];
+          : [];
 
       const newComboExists = combos.some((c: any) =>
         Number(c?.idRole ?? c?.IdRole ?? 0) === newDepto &&
@@ -2502,9 +2529,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   }
 
   resetGridSize() {
-    this.gridHeight = '80vh'; // Reset to default height
-    this.showLoansTab = false;
-    this.showSavingsTab = false;
+    this.gridHeight = '80vh';
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
@@ -2517,51 +2542,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       console.warn('No hay datos en la fila seleccionada');
       return;
     }
-  
+
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
     const selectedId = selectedRowData.id; // Obtener el ID del registro 
-  
+
     this.notSavedChanges = true;
     this.selectedRowData = selectedRowData;
-  
-    // Filtrar el grid para mostrar solo el registro con el ID seleccionado
-    if (colId === 'loan' || colId === 'saving') {
-      if (this.gridApi) {
-        const filterModel = {
-          id: {
-            type: 'equals',
-            filter: selectedId,
-          },
-        };
-        this.gridApi.setFilterModel(filterModel);
-        this.gridApi.onFilterChanged();
-      } else {
-        alert('gridApi no disponible');
-      }
-    }
-  
-    // Activar la pestaña de préstamos si la columna es 'loan'
-    if (colId === 'loan') {
-      try {
-        await this.activateLoansTab();
-      } catch (error) {
-        console.error('Error activando la pestaña de préstamos:', error);
-      }
-    }
-  
-    // Activar la pestaña de ahorros si la columna es 'saving'
-    if (colId === 'saving') {
-      try {
-        await this.activateSavingsTab();
-      } catch (error) {
-        console.error('Error activando la pestaña de ahorros:', error);
-      }
-    }
-  
-    // Eliminar la asignación duplicada de selectedRowData
-    // this.selectedRowData = selectedRowData; // Esta línea ya se encuentra al principio
   }
+
   async onCellClicked(event: any): Promise<void> {
     const colId = event.column.getColId();
     if (colId === 'idDepto') {
@@ -2573,7 +2562,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     }
     if (colId === 'idPosition') {
-      const selectedData = event.data;
       const roleId = event.data.idDepto;
       this.idPosicionSelect = event.data.idPosition
       if (roleId) {
@@ -2583,33 +2571,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     }
   }
-  
-  async activateLoansTab() {
-    if (!this.isOpen || this.showSavingsTab) {
-      await this.adjustGridSize();
-      this.showLoansTab = true;
-      this.showSavingsTab = false;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
-    }
-  }
 
-  async activateSavingsTab() {
-    if (!this.isOpen || this.showLoansTab) {
-      await this.adjustGridSize();
-      this.showLoansTab = false;
-      this.showSavingsTab = true;
-      this.isOpen = true;
-    } else {
-      await this.resetGridSize();
-      this.isOpen = false;
-    }
-  }
+  private toggleDetailColumn(params: any, detailType: string): void {
+    const node = params.node;
+    const api = params.api;
+    const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
 
-  async adjustGridSize() {
-    this.gridHeight = '20vh'; // Adjust as needed
+    api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+
+    if (isCurrentlyExpanded) {
+      api.setFilterModel(null);
+    } else {
+      api.setFilterModel(null);
+      params.data.detailType = detailType;
+      api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+      node.setExpanded(true);
+    }
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

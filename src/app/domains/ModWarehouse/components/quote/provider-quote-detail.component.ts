@@ -12,6 +12,7 @@ import { ProvidersService } from 'app/services/providers.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { SignalsService } from 'app/services/signals.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
@@ -70,6 +71,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   private prefixSetupService = inject(PrefixSetupService);
+  private signalsService = inject(SignalsService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -458,6 +460,18 @@ export class ProviderQuoteDetailComponent implements OnInit {
         this.ocAndReqsService.getDetailedReq(this.cotizId)
       );
 
+      // Extraer el número de pedimento del folio de la COTIZ proveedor
+      // El folio tiene formato "COTIZ-{pedimentoId}-{sufijo}-{timestamp}"
+      let pedimentoNum = 0;
+      const pedimentoMatch = (cotizMaster.folio || '').match(/^COTIZ-(\d+)-/);
+      if (pedimentoMatch) {
+        const pedimentoParentId = parseInt(pedimentoMatch[1]);
+        const pedimentoData: any = await lastValueFrom(
+          this.ocAndReqsService.getDetailedReq(pedimentoParentId)
+        );
+        pedimentoNum = pedimentoData?.pedimento || 0;
+      }
+
       // Generar folio automáticamente desde PrefixSetup
       const type: 'project' | 'branch' = cotizMaster.typeReference === 'project' ? 'project' : 'branch';
       const folio = await this.prefixSetupService.getNextFolio(type, cotizMaster.idReference, 'oc');
@@ -480,6 +494,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
         idPayment: cotizMaster.idPayment || 0,
         idCurrency: cotizMaster.idCurrency || 0,
         idAuthorize: cotizMaster.idAuthorize || 0,
+        pedimento: pedimentoNum,
         active: true
       };
 
@@ -501,6 +516,11 @@ export class ProviderQuoteDetailComponent implements OnInit {
           active: true
         };
         await lastValueFrom(this.ocAndReqsService.addReqItem(detailData));
+
+        // Notify almmolienda that a new OC item was created
+        if (ocData.typeReference === 'branch') {
+          this.signalsService.notifyOcCreated(ocData.idReq, item.idSupplie, ocData.idReference);
+        }
       }
 
       // Lock the COTIZ using the PATCH endpoint

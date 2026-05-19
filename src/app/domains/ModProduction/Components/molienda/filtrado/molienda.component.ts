@@ -11,6 +11,7 @@ import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { MoliendaService } from 'app/services/molienda.service';
 import { DetallesEntradasMoliendaComponent } from './detalles-entradasmolienda.component';
+import { DetallesInventarioMoliendaComponent } from './detalles-inventario-molienda.component';
 
 @Component({
   selector: 'app-molienda-filtrado',
@@ -78,6 +79,7 @@ export class MoliendaComponent {
 
   private idCompany = 0;
   private idBranch  = 0;
+  private activeMatPrimaFilter: number | null = null;
 
   get colDefs(): ColDef[] {
     return [
@@ -103,11 +105,20 @@ export class MoliendaComponent {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorPopup: true,
-        cellEditorParams: () => ({
-          values: this.matPrimaOptions.map(m => m.id),
-          valueListMaxHeight: 220,
-          formatValue: (val: any) => this.matPrimaOptions.find(m => m.id === val)?.name ?? String(val ?? ''),
-        }),
+        cellEditorParams: (params: any) => {
+          const currentSucursal = params.data?.sucursal;
+          const usedMatPrimas = this.rowData
+            .filter(row => row.sucursal === currentSucursal && row.matPrima != null)
+            .map(row => row.matPrima);
+          const availableMatPrimas = this.matPrimaOptions
+            .filter(m => !usedMatPrimas.includes(m.id))
+            .map(m => m.id);
+          return {
+            values: availableMatPrimas,
+            valueListMaxHeight: 220,
+            formatValue: (val: any) => this.matPrimaOptions.find(m => m.id === val)?.name ?? String(val ?? ''),
+          };
+        },
         valueFormatter: p => this.matPrimaOptions.find(m => m.id === p.value)?.name ?? '',
         valueSetter: p => { p.data.matPrima = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
       },
@@ -126,21 +137,20 @@ export class MoliendaComponent {
         headerName: 'Inventario',
         width: 138,
         editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' },
-        cellRenderer: (params: any) => {
-          const value  = params.value;
+        cellStyle: (params: any) => {
           const hasAlm = params.data?.idAlm != null;
-          const container = document.createElement('div');
-          container.style.cssText = hasAlm
-            ? 'display:flex;align-items:center;cursor:pointer;color:#2e7d32;text-decoration:underline;'
-            : 'display:flex;align-items:center;cursor:default;color:#999;';
-          container.innerHTML = value != null
-            ? `<span>${Math.trunc(Number(value))}</span>`
-            : '<span>—</span>';
-          if (hasAlm) {
-            container.addEventListener('click', () => this.toggleCascade(params.node));
+          return {
+            backgroundColor: '#e8f5e9',
+            cursor: hasAlm ? 'pointer' : 'default',
+            color: hasAlm ? '#2e7d32' : '#999',
+            textDecoration: hasAlm ? 'underline' : 'none',
+          };
+        },
+        valueFormatter: (params: any) => params.value != null ? String(Math.trunc(Number(params.value))) : '—',
+        onCellClicked: (event: any) => {
+          if (event.data?.idAlm != null) {
+            this.toggleCascade(event.node);
           }
-          return container;
         },
       },
       { field: 'cuantoQueda',    headerName: 'Cuanto queda',    width: 120, editable: true, cellEditor: 'agNumberCellEditor' },
@@ -159,7 +169,9 @@ export class MoliendaComponent {
     masterDetail: true,
     detailRowHeight: 260,
     isRowMaster: (data: any) => !!data?.idAlm,
-    detailCellRenderer: DetallesEntradasMoliendaComponent,
+    detailCellRenderer: DetallesInventarioMoliendaComponent,
+    isExternalFilterPresent: () => this.activeMatPrimaFilter != null,
+    doesExternalFilterPass: (node: any) => node.data?.matPrima === this.activeMatPrimaFilter,
     onRowSelected: (e: any) => {
       if (e.node.isSelected()) this.selectedRow = e.data;
     },
@@ -295,7 +307,18 @@ export class MoliendaComponent {
 
   toggleCascade(node: any) {
     if (!node.data?.idAlm) return;
-    node.setExpanded(!node.expanded);
+
+    if (this.activeMatPrimaFilter === node.data.matPrima) {
+      this.activeMatPrimaFilter = null;
+      node.setExpanded(false);
+    } else {
+      this.activeMatPrimaFilter = node.data.matPrima;
+      node.setExpanded(true);
+    }
+
+    if (this.gridApi) {
+      this.gridApi.onFilterChanged();
+    }
   }
 
   addRow() {

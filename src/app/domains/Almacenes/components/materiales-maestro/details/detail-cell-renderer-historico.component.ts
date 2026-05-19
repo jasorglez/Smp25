@@ -4,6 +4,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-community';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 
 @Component({
   selector: 'app-detail-cell-renderer-historico',
@@ -34,6 +35,7 @@ export class DetailCellRendererHistoricoComponent implements ICellRendererAngula
   public gridOptions = {
     headerHeight: 25,
     rowHeight: 20,
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   public historicoColumnDefs: ColDef[] = [
@@ -62,7 +64,6 @@ export class DetailCellRendererHistoricoComponent implements ICellRendererAngula
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.gridApi.sizeColumnsToFit();
   }
 
   private generateFakeHistoricoData(rowCount: number): any[] {

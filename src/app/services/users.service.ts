@@ -71,6 +71,14 @@ export class UsersService {
 
   }
 
+  getUsersByNivelMonto(idNivel: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/User/by-nivel-monto/${idNivel}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  reasignarNivelMonto(fromNivel: number, toNivel: number): Observable<any> {
+    return this.http.put(`${environment.urlSecurity}/User/reasignar-nivel-monto?fromNivel=${fromNivel}&toNivel=${toNivel}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
   // Aqui terminan los cambios a SMP
 
   getdataUserAut() {

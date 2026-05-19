@@ -16,6 +16,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { RolesService } from 'app/services/roles.service';
+import { PermitionsService } from 'app/services/permitions.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
@@ -49,6 +50,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private prefixSetupService = inject(PrefixSetupService);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private rolesService = inject(RolesService);
+  private permitionsService = inject(PermitionsService);
   public   authService = inject(AuthService);
 
   private gridApi!: GridApi;
@@ -115,6 +117,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   fullRowData: any[] = []; // Store original unfiltered data
   gridHeight: string = '80vh';
   hasUnsavedChanges: boolean = false;
+  private pendingNewIds = new Set<number>(); // IDs de registros recién creados para mostrar al frente
   tempIdCounter: number = 0;
   expandedRowId: string | null = null;
 
@@ -129,6 +132,9 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   // ✅ Cache de roles por sucursal: Map<idBranch, roles[]>
   private rolesByBranchCache: Map<number, any[]> = new Map();
+
+  // ✅ Cache de departamento principal por sucursal: Map<idBranch, {id, description}>
+  private primaryDepartmentByBranch: Map<number, any> = new Map();
 
   // Datos del prefijo actual
   currentPrefixData: any = null;
@@ -320,7 +326,8 @@ export class RequisitionsDelisonComponent implements OnInit {
           id: req.id,
           branch: branchName,
           requisitionNumber: req.folio || '',
-          requestDate: req.dateCreate || new Date().toISOString(),
+          requestDate: req.dateCreate || this.localISOString(),
+          dateModified: req.dateModified,
           departmentId: req.idDepartament || null,
           departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
           solicitedBy: req.solicit || '',
@@ -347,7 +354,15 @@ export class RequisitionsDelisonComponent implements OnInit {
       });
 
       // ✅ Ordenar por dateModified descendente (más recientemente modificado primero) - viene del backend
-      this.fullRowData.sort((a, b) => new Date(b.dateModified).getTime() - new Date(a.dateModified).getTime());
+      this.fullRowData.sort((a, b) => new Date(b.dateModified || b.requestDate).getTime() - new Date(a.dateModified || a.requestDate).getTime());
+
+      // ✅ Si hay registros recién creados, moverlos al frente
+      if (this.pendingNewIds.size > 0) {
+        const newRows = this.fullRowData.filter(r => this.pendingNewIds.has(r.id));
+        const otherRows = this.fullRowData.filter(r => !this.pendingNewIds.has(r.id));
+        this.fullRowData = [...newRows, ...otherRows];
+        this.pendingNewIds.clear();
+      }
 
       this.rowData = [...this.fullRowData];
 
@@ -360,14 +375,34 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.refreshCells({ force: true });
 
-        // ✅ Reabrir la fila que estaba expandida
+        // ✅ Reabrir la fila que estaba expandida y aplicar restricciones de altura
         if (expandedRequisitionId) {
           setTimeout(() => {
             const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
             if (nodeToExpand) {
+              // Replicar el mismo flujo que onRowClicked()
+              // 1. Ocultar todas las demás filas (altura 0)
+              this.gridApi.forEachNode((otherNode: any) => {
+                if (otherNode.id !== String(expandedRequisitionId)) {
+                  otherNode.setRowHeight(0);
+                }
+              });
+
+              // 2. Aplicar cambios de altura
+              this.gridApi.onRowHeightChanged();
+
+              // 3. Expandir la fila
               nodeToExpand.setExpanded(true);
+              nodeToExpand.data.detailType = 'items';
+              nodeToExpand.data.isExpanded = true;
+              this.expandedRowId = nodeToExpand.id;
+
+              // 4. Redraw
+              this.gridApi.redrawRows();
             }
-          }, 100);
+          }, 50);
+        } else {
+          this.gridApi.ensureIndexVisible(0);
         }
       }
 
@@ -400,7 +435,8 @@ export class RequisitionsDelisonComponent implements OnInit {
             id: req.id,
             branch: branchName, // Nombre de la sucursal desde el catálogo
             requisitionNumber: req.folio || '', // Número de requisición
-            requestDate: req.dateCreate || new Date().toISOString(), // Fecha de creación
+            requestDate: req.dateCreate || this.localISOString(), // Fecha de creación
+            dateModified: req.dateModified,
             departmentId: req.idDepartament || null,
             departmentName: departmentName, // ✅ Nombre del departamento desde el catálogo
             solicitedBy: req.solicit || '', // Usuario que solicita
@@ -427,8 +463,16 @@ export class RequisitionsDelisonComponent implements OnInit {
           };
         }) : [];
 
-        // ✅ Ordenar por __lastModified descendente (más recientemente modificado primero)
-        this.fullRowData.sort((a, b) => new Date(b.__lastModified).getTime() - new Date(a.__lastModified).getTime());
+        // ✅ Ordenar por dateModified descendente (más recientemente modificado primero)
+        this.fullRowData.sort((a, b) => new Date(b.dateModified || b.requestDate).getTime() - new Date(a.dateModified || a.requestDate).getTime());
+
+        // ✅ Si hay registros recién creados, moverlos al frente
+        if (this.pendingNewIds.size > 0) {
+          const newRows = this.fullRowData.filter(r => this.pendingNewIds.has(r.id));
+          const otherRows = this.fullRowData.filter(r => !this.pendingNewIds.has(r.id));
+          this.fullRowData = [...newRows, ...otherRows];
+          this.pendingNewIds.clear();
+        }
 
         this.rowData = [...this.fullRowData];
 
@@ -440,17 +484,36 @@ export class RequisitionsDelisonComponent implements OnInit {
         // Refrescar el grid si ya existe
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
-          // Forzar actualización de las columnas para que muestren los nombres correctos
           this.gridApi.refreshCells({ force: true });
 
-          // ✅ Reabrir la fila que estaba expandida
+          // ✅ Reabrir la fila que estaba expandida y aplicar restricciones de altura
           if (expandedRequisitionId) {
             setTimeout(() => {
               const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
               if (nodeToExpand) {
+                // Replicar el mismo flujo que onRowClicked()
+                // 1. Ocultar todas las demás filas (altura 0)
+                this.gridApi.forEachNode((otherNode: any) => {
+                  if (otherNode.id !== String(expandedRequisitionId)) {
+                    otherNode.setRowHeight(0);
+                  }
+                });
+
+                // 2. Aplicar cambios de altura
+                this.gridApi.onRowHeightChanged();
+
+                // 3. Expandir la fila
                 nodeToExpand.setExpanded(true);
+                nodeToExpand.data.detailType = 'items';
+                nodeToExpand.data.isExpanded = true;
+                this.expandedRowId = nodeToExpand.id;
+
+                // 4. Redraw
+                this.gridApi.redrawRows();
               }
-            }, 100);
+            }, 50);
+          } else {
+            this.gridApi.ensureIndexVisible(0);
           }
         }
 
@@ -486,13 +549,13 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Mantiene un layout “bonito” (sin columnas mini) llenando el ancho disponible.
     // En AG Grid nuevas versiones esto evita tener que autoSizeAllColumns.
     autoSizeStrategy: {
-      type: 'fitGridWidth',
-      defaultMinWidth: 110,
+      type: 'fitCellContents',
     },
     masterDetail: true,
     // Se recalcula en caliente en updateDetailRowHeight() para ocupar el alto disponible.
     detailRowHeight: 700,
     isRowMaster: (dataItem: any) => true,
+    getRowId: (params: any) => String(params.data.id),
     detailCellRenderer: DetallesRequisicionDelisonComponent,
     onFirstDataRendered: () => {
       this.autoAdjustColumns();
@@ -534,12 +597,33 @@ export class RequisitionsDelisonComponent implements OnInit {
 
 
       event.data.__modified = true;
+      event.data.dateModified = this.localISOString();
       this.hasUnsavedChanges = true;
+      this.moveRowToTop(event.data.id);
 
 
       setTimeout(() => {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }, 0);
+    },
+    onRowGroupOpened: (event: any) => {
+      // ✅ Si se cerró la fila (expanded === false), ejecutar el reordenamiento
+      if (!event.node.expanded) {
+        // Solo reordenar si hay datos
+        if (this.rowData.length > 0) {
+          // Reordenar por marca de tiempo (lo más reciente arriba)
+          this.rowData.sort((a, b) => {
+            const timeA = new Date(a.dateModified || a.requestDate).getTime();
+            const timeB = new Date(b.dateModified || b.requestDate).getTime();
+            return timeB - timeA;
+          });
+          
+          // Aplicar el nuevo orden al grid
+          if (this.gridApi) {
+            this.gridApi.setGridOption('rowData', [...this.rowData]);
+          }
+        }
+      }
     }
   };
 
@@ -551,16 +635,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   private autoAdjustColumns(): void {
     if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    // Preferimos “fit” al ancho del grid para evitar columnas minúsculas.
-    if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-      return;
-    }
-    // Fallback (si existiera en esta versión)
-    if (typeof apiAny.autoSizeAllColumns === 'function') {
-      apiAny.autoSizeAllColumns(false);
-    }
+    this.gridApi.autoSizeAllColumns();
   }
 
   /**
@@ -656,7 +731,17 @@ export class RequisitionsDelisonComponent implements OnInit {
             // Precargar departamentos del backend para la sucursal recién seleccionada
             this.preloadRolesForBranch(branchId);
 
-
+            // ✅ Cargar el departamento principal de la nueva sucursal y actualizar automáticamente
+            this.loadPrimaryDepartmentForBranch(branchId).then((principal) => {
+              if (principal) {
+                params.data.departmentId = principal.id;
+                params.data.departmentName = principal.description;
+                // Refrescar solo la celda del departamento para mostrar el cambio
+                if (this.gridApi) {
+                  this.gridApi.refreshCells({ rowNodes: [params.node], force: true, columns: ['departmentId'] });
+                }
+              }
+            });
 
             // 🔄 Obtener el próximo número de requisición para la nueva sucursal
             this.prefixSetupService.getNextFolio('branch', branchId, 'req').then((folio: string | null) => {
@@ -710,6 +795,16 @@ export class RequisitionsDelisonComponent implements OnInit {
           if (flags.changeSpec)
             return { backgroundColor: '#FFF59D', fontWeight: '600' };
           return { backgroundColor: '#f0f0f0' };
+        },
+        cellRenderer: (params: any) => {
+          const folio = params.value || '';
+          if (!params.data?.locked) return folio;
+          const wrap = document.createElement('span');
+          wrap.style.display = 'flex';
+          wrap.style.alignItems = 'center';
+          wrap.style.gap = '5px';
+          wrap.innerHTML = `${folio} <i class="bi bi-lock-fill" style="color:#b71c1c; font-size:0.85rem; flex-shrink:0;" title="Requisición procesada — OC generada"></i>`;
+          return wrap;
         }
       },
       {
@@ -742,7 +837,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'departmentId',
         headerName: 'Departamento que solicita',
-        width: 200,
+        width: 280,
         valueFormatter: (params: any) => {
           if (!params.value) return '';
 
@@ -759,7 +854,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         editable: (params: any) => {
           return params.data && params.data.idReference > 0;
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
           const branchId = params.data?.idReference;
 
@@ -800,7 +895,16 @@ export class RequisitionsDelisonComponent implements OnInit {
           return {
             values: roles.map(r => r.description),
             valueListGap: 0,
-            valueListMaxHeight: 220
+            valueListMaxHeight: 220,
+            cellWidth: 290,
+            // ✅ Formatear cómo se muestra cada opción en el dropdown
+            formatValue: (value: any) => {
+              if (!value) return '';
+              const role = roles.find(r => r.description === value);
+              return role?.description || value?.toString() || '';
+            },
+            allowTyping: false,
+            filterList: false
           };
         },
         valueGetter: (params: any) => {
@@ -1188,7 +1292,9 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (row) {
               row.detailData = data;
               row.articlesCount = data.length;
-              this.gridApi.refreshCells({ force: true });
+              row.dateModified = this.localISOString();
+              this.moveRowToTop(requisitionId);
+
               if (showAlert) {
                 alerts.reqSuccessToast('Guardado', 'Los detalles han sido guardados correctamente');
               }
@@ -1202,7 +1308,8 @@ export class RequisitionsDelisonComponent implements OnInit {
             const row = this.rowData.find(r => r.id === requisitionId);
             if (row) {
               row.articlesCount = count;
-              this.gridApi.refreshCells({ force: true });
+              row.dateModified = this.localISOString();
+              this.moveRowToTop(requisitionId);
             }
           },
           // Nueva función para forzar la actualización de la fila maestra
@@ -1213,13 +1320,13 @@ export class RequisitionsDelisonComponent implements OnInit {
             }
           },
           updateMasterUserAndDate: (requisitionId: number, solicitedBy: string, requestDate: string) => {
-            this.gridApi.forEachNode((node: any) => {
-              if (node.data && node.data.id === requisitionId) {
-                node.data.solicitedBy = solicitedBy;
-                node.data.requestDate = requestDate;
-                this.gridApi.refreshCells({ rowNodes: [node], columns: ['solicitedBy', 'requestDate'], force: true });
-              }
-            });
+            const row = this.rowData.find(r => r.id === requisitionId);
+            if (row) {
+              row.solicitedBy = solicitedBy;
+              row.requestDate = requestDate;
+              row.dateModified = this.localISOString();
+              this.moveRowToTop(requisitionId);
+            }
           }
         },
         PURCHASES: {
@@ -1278,6 +1385,35 @@ export class RequisitionsDelisonComponent implements OnInit {
     }
   }
 
+  onRowGroupOpened(event: any): void {
+    if (!event.expanded) {
+      // Fila se ha colapsado - reordenar si hay cambios
+      this.fullRowData.sort((a: any, b: any) =>
+        new Date(b.dateModified || b.requestDate).getTime() - new Date(a.dateModified || a.requestDate).getTime()
+      );
+      this.rowData = [...this.fullRowData];
+
+      // Guardar IDs de filas expandidas antes de vaciar
+      const expandedIds = new Set<string>();
+      this.gridApi.forEachNode((node: any) => {
+        if (node.expanded) expandedIds.add(node.id!);
+      });
+
+      // Forzar recarga: vaciar → repoblar → restaurar expansión
+      this.gridApi.setGridOption('rowData', []);
+      setTimeout(() => {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        if (expandedIds.size > 0) {
+          setTimeout(() => {
+            this.gridApi.forEachNode((node: any) => {
+              if (expandedIds.has(node.id!)) node.setExpanded(true);
+            });
+          }, 0);
+        }
+      }, 0);
+    }
+  }
+
   addRequisition(): void {
     // ✅ Validar que haya al menos una sucursal disponible
     if (!this.branches || this.branches.length === 0) {
@@ -1323,16 +1459,26 @@ export class RequisitionsDelisonComponent implements OnInit {
     const branch = this.branches.find(b => b.id === selectedBranchId);
     const branchName = branch?.name || branch?.description || '';
 
-    // Pre-poblar el primer departamento disponible del catálogo
-    const defaultDeptId = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].id : null;
-    const defaultDeptName = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].description : '';
+    // ✅ Pre-poblar con el departamento principal del usuario para esta sucursal
+    // Si no existe principal, usar el primer departamento disponible del catálogo
+    let defaultDeptId: number | null = null;
+    let defaultDeptName: string = '';
+
+    const principal = this.primaryDepartmentByBranch.get(selectedBranchId);
+    if (principal) {
+      defaultDeptId = principal.id;
+      defaultDeptName = principal.description;
+    } else if (this.departamentos && this.departamentos.length > 0) {
+      defaultDeptId = this.departamentos[0].id;
+      defaultDeptName = this.departamentos[0].description;
+    }
 
     const newId = `temp_${Date.now()}`;
     const newItem = {
       id: newId,
       branch: branchName,
       requisitionNumber: requisitionNumber,
-      requestDate: new Date().toISOString(),
+      requestDate: this.localISOString(),
       departmentId: defaultDeptId,
       departmentName: defaultDeptName,
       solicitedBy: this.currentUserName,
@@ -1469,11 +1615,56 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   /**
+   * ✅ Carga el departamento principal para una sucursal y retorna una Promise.
+   * Útil para casos donde necesitas esperar a que se cargue antes de actualizar datos.
+   */
+  private loadPrimaryDepartmentForBranch(branchId: number): Promise<any | null> {
+    return new Promise((resolve) => {
+      // Si ya está en cache, resolver inmediatamente
+      if (this.primaryDepartmentByBranch.has(branchId)) {
+        resolve(this.primaryDepartmentByBranch.get(branchId));
+        return;
+      }
+
+      // Si no está en cache, cargar y resolver cuando complete
+      this.permitionsService.getRolYPosicion(this.idUser, branchId).subscribe({
+        next: (permisos: any) => {
+          const permisosArr = Array.isArray(permisos)
+            ? permisos
+            : Array.isArray(permisos?.data)
+              ? permisos.data
+              : Array.isArray(permisos?.project)
+                ? permisos.project
+                : Array.isArray(permisos?.permissions)
+                  ? permisos.permissions
+                  : [];
+
+          const principal = permisosArr.find((p: any) => p?.principal === true || p?.principal === 1);
+          if (principal && principal.idRole) {
+            const deptData = {
+              id: principal.idRole,
+              description: principal.roleName || `ID: ${principal.idRole}`
+            };
+            this.primaryDepartmentByBranch.set(branchId, deptData);
+            resolve(deptData);
+          } else {
+            resolve(null);
+          }
+        },
+        error: () => resolve(null) // Resolver incluso en error
+      });
+    });
+  }
+
+  /**
    * Pre-carga los roles para todas las sucursales únicas presentes en las requisiciones
    * Esto permite que el valueFormatter muestre los nombres correctamente al cargar
+   * ✅ También carga el departamento principal del usuario para esa sucursal
    */
   private preloadRolesForBranch(branchId: number): void {
     if (!this.idUser || !branchId || branchId <= 0) return;
+
+    // Cargar roles disponibles
     this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
       next: (roles: any[]) => {
         this.rolesByBranchCache.set(branchId, roles.map(r => ({
@@ -1487,6 +1678,79 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       error: () => {}
     });
+
+    // ✅ Cargar departamento principal del usuario para esta sucursal
+    this.permitionsService.getRolYPosicion(this.idUser, branchId).subscribe({
+      next: (permisos: any) => {
+        const permisosArr = Array.isArray(permisos)
+          ? permisos
+          : Array.isArray(permisos?.data)
+            ? permisos.data
+            : Array.isArray(permisos?.project)
+              ? permisos.project
+              : Array.isArray(permisos?.permissions)
+                ? permisos.permissions
+                : [];
+
+        // Buscar el que tiene principal: true
+        const principal = permisosArr.find((p: any) => p?.principal === true || p?.principal === 1);
+
+        if (principal && principal.idRole) {
+          this.primaryDepartmentByBranch.set(branchId, {
+            id: principal.idRole,
+            description: principal.roleName || `ID: ${principal.idRole}`
+          });
+        }
+      },
+      error: () => {} // Silencioso si falla
+    });
+  }
+
+  private async ensureRolesForBranch(branchId: number): Promise<any[]> {
+    if (!this.idUser || !branchId || branchId <= 0) return [];
+
+    const cachedRoles = this.rolesByBranchCache.get(branchId);
+    if (cachedRoles) {
+      return cachedRoles;
+    }
+
+    try {
+      const rolesRaw: any = await firstValueFrom(this.rolesService.getRolesByBranchDelison(this.idUser, branchId));
+      const roles = Array.isArray(rolesRaw)
+        ? rolesRaw.map(r => ({
+            id: r.id,
+            description: r.description,
+            name: r.description
+          }))
+        : [];
+
+      this.rolesByBranchCache.set(branchId, roles);
+      return roles;
+    } catch {
+      return [];
+    }
+  }
+
+  private async validateDepartmentsBeforeSave(itemsToSave: any[]): Promise<string | null> {
+    for (const item of itemsToSave) {
+      const branchId = Number(item?.idReference || 0);
+      const departmentId = Number(item?.departmentId || 0);
+
+      if (branchId <= 0 || departmentId <= 0) {
+        const requisitionLabel = item?.requisitionNumber || `fila ${this.rowData.indexOf(item) + 1}`;
+        return `La requisición ${requisitionLabel} no tiene un Departamento que solicita válido.`;
+      }
+
+      const roles = await this.ensureRolesForBranch(branchId);
+      const departmentExists = roles.some((role: any) => Number(role?.id || 0) === departmentId);
+
+      if (!departmentExists) {
+        const requisitionLabel = item?.requisitionNumber || `fila ${this.rowData.indexOf(item) + 1}`;
+        return `El Departamento que solicita de la requisición ${requisitionLabel} no existe o no está autorizado para la sucursal seleccionada.`;
+      }
+    }
+
+    return null;
   }
 
   private preloadRolesForRequisitions(): void {
@@ -1529,12 +1793,85 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.localConsecutivesByBranch.clear();
   }
 
+  private localISOString(): string {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+  }
+
+  private normalizeRequestDate(requestDate: any): string {
+    if (!requestDate) {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    if (requestDate instanceof Date) {
+      const y = requestDate.getFullYear();
+      const m = String(requestDate.getMonth() + 1).padStart(2, '0');
+      const d = String(requestDate.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    return String(requestDate).substring(0, 10);
+  }
+
+  private moveRowToTop(rowId: string | number): void {
+    const rowIndex = this.rowData.findIndex(row => row.id === rowId);
+    if (rowIndex <= 0) {
+      if (this.gridApi) {
+        this.gridApi.ensureIndexVisible(0);
+      }
+      return;
+    }
+
+    const [targetRow] = this.rowData.splice(rowIndex, 1);
+    this.rowData = [targetRow, ...this.rowData];
+    this.fullRowData = [...this.rowData];
+
+    if (!this.gridApi) {
+      return;
+    }
+
+    const currentNode = this.gridApi.getRowNode(String(rowId));
+    const wasExpanded = !!currentNode?.expanded;
+    const wasSelected = !!currentNode?.isSelected?.();
+
+    this.gridApi.setGridOption('rowData', this.rowData);
+
+    setTimeout(() => {
+      this.gridApi.ensureIndexVisible(0);
+      const movedNode = this.gridApi.getRowNode(String(rowId));
+      if (wasSelected && movedNode) {
+        movedNode.setSelected(true);
+      }
+      if (wasExpanded && movedNode) {
+        movedNode.setExpanded(true);
+      }
+      this.gridApi.refreshCells({ force: true });
+    }, 0);
+  }
+
+  private async flushPendingGridEdits(): Promise<void> {
+    if (!this.gridApi) {
+      return;
+    }
+
+    this.gridApi.stopEditing();
+    await new Promise(resolve => setTimeout(resolve, 0));
+  }
+
   async saveChanges(): Promise<void> {
+    await this.flushPendingGridEdits();
+
     // Filtrar las filas nuevas o modificadas
     const itemsToSave = this.rowData.filter(row => row.__isNew || row.__modified);
+    const invalidDepartmentMessage = await this.validateDepartmentsBeforeSave(itemsToSave);
 
     if (itemsToSave.length === 0) {
       alerts.reqBasicAlert('Información', 'No hay cambios que guardar', 'info');
+      return;
+    }
+    if (invalidDepartmentMessage) {
+      alerts.reqWarningToast('Departamento invÃ¡lido', invalidDepartmentMessage);
       return;
     }
 
@@ -1564,7 +1901,7 @@ export class RequisitionsDelisonComponent implements OnInit {
             delivery: item.delivery || 'NO APLICA', // ✅ Valor por defecto del backend
             deliveryTime: item.deliveryTime || '1 DAY', // ✅ Valor por defecto del backend
             typeOc: item.typeOc || 'INSUMOS', // ✅ Valor por defecto del backend
-            dateSupply: item.dateSupply || new Date().toISOString(),
+            dateSupply: item.dateSupply || this.localISOString(),
             idPayment: item.idPayment || 0,
             idCurrency: item.idCurrency || 0,
             conditions: item.conditions || null, // ✅ null en lugar de string vacío
@@ -1590,7 +1927,10 @@ export class RequisitionsDelisonComponent implements OnInit {
           try {
             await new Promise<void>((resolve, reject) => {
               this.ocAndReqsService.addOcAndReq(newReqData).subscribe({
-                next: (response) => {
+                next: (response: any) => {
+                  if (response?.id) {
+                    this.pendingNewIds.add(response.id);
+                  }
                   resolve();
                 },
                 error: (err) => {
@@ -1625,14 +1965,14 @@ export class RequisitionsDelisonComponent implements OnInit {
       if (modifiedItems.length > 0) {
 
 
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
         for (const item of modifiedItems) {
           // Validar que tenga un ID válido (no temporal)
           if (!item.id || String(item.id).startsWith('temp_')) {
             continue;
           }
+
+          const requestDateToSave = this.normalizeRequestDate(item.requestDate);
+          const solicitToSave = item.solicitedBy || this.currentUserName;
 
           const updateReqData = {
             id: item.id,
@@ -1640,19 +1980,19 @@ export class RequisitionsDelisonComponent implements OnInit {
             typeReference: 'branch',
             idReq: 0,
             idReference: item.idReference,
-            dateCreate: todayStr,
+            dateCreate: requestDateToSave,
             idProvider: 0,
             idDepartament: item.departmentId || 0,
             delivery: item.delivery || 'NO APLICA',
             deliveryTime: item.deliveryTime || '1 DAY',
             typeOc: item.typeOc || 'INSUMOS',
-            dateSupply: item.dateSupply || new Date().toISOString(),
+            dateSupply: item.dateSupply || this.localISOString(),
             idPayment: item.idPayment || 0,
             idCurrency: item.idCurrency || 0,
             conditions: item.conditions || null,
             idAuthorize: 0,
             priority: item.column8 || null,
-            solicit: this.currentUserName,
+            solicit: solicitToSave,
             discount: 0,
             ivaRetention: 0,
             idSolicit: 0,
@@ -1671,8 +2011,8 @@ export class RequisitionsDelisonComponent implements OnInit {
             this.ocAndReqsService.updateOcAndReq(item.id, updateReqData).subscribe({
               next: () => {
                 // Actualizar display local
-                item.solicitedBy = this.currentUserName;
-                item.requestDate = todayStr;
+                item.solicitedBy = solicitToSave;
+                item.requestDate = requestDateToSave;
                 resolve();
               },
               error: (err) => {

@@ -37,6 +37,7 @@ export default class MasterClockComponent implements OnInit {
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    this.buildColMaster();
     this.obtenerConfig();
     this.Consultar();
     this.obtenerDatos();
@@ -69,6 +70,7 @@ export default class MasterClockComponent implements OnInit {
 
     effect(async () => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.buildColMaster();
       await this.obtenerConfig();
       await this.Consultar();
     });
@@ -119,6 +121,7 @@ export default class MasterClockComponent implements OnInit {
   id: string;
   idBranch: number;
   selectedTab: string = 'customers-payments';
+  colMaster: ColDef[] = [];
   idEmployee: number;
   fechaInicio: any;
   fechaFin: any;
@@ -129,9 +132,7 @@ export default class MasterClockComponent implements OnInit {
     filter: false,
     resizable: true,
     lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1,
-    minWidth: 100,
+    enableRowGroup: true,
   };
 
   currentIndex = 0;
@@ -140,8 +141,6 @@ export default class MasterClockComponent implements OnInit {
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
   public pivotPanelShow: 'always' | 'onlyWhenPivoting' | 'never' = 'never';
   public autoGroupColumnDef: ColDef = {
-    minWidth: 300,
-    width: 400,
     cellRenderer: 'agGroupCellRenderer',
     cellRendererParams: {
       suppressCount: true, // Esto quita el conteo automático de AG-Grid
@@ -177,12 +176,15 @@ export default class MasterClockComponent implements OnInit {
       return '';
     },
     onRowClicked: (event) => {
-      event.node.setSelected(true);
+      if (!event.node.group) {
+        event.node.setSelected(true);
+      }
     },
     onRowSelected: (event) => {
+      if (event.node.group) return;
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
+          if (!node.group && node.id !== event.node.id) {
             node.setSelected(false);
           }
         });
@@ -210,25 +212,15 @@ export default class MasterClockComponent implements OnInit {
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onFirstDataRendered: (params) => {
-
-      // Obtener todas las columnas
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-
-      // Autoajustar todas las columnas al contenido (skipHeader=true considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, true);
-
-    }
+    onRowGroupOpened: (params) => {
+      setTimeout(() => params.api.autoSizeAllColumns(), 50);
+    },
   };
 
 
 
-  get colMaster(): ColDef[] {
-    return [
+  private buildColMaster(): void {
+    this.colMaster = [
       // Nivel 1: Sucursal
       {
         field: 'nameBranch',
@@ -269,7 +261,6 @@ export default class MasterClockComponent implements OnInit {
         field: 'idEmployee',
         headerName: 'Id',
         editable: false,
-        width: 110,
         hide: true,
         filter: 'agNumberColumnFilter',
         filterParams: {
@@ -412,8 +403,7 @@ export default class MasterClockComponent implements OnInit {
           return null;
         }
       },
-    ]
-
+    ];
   }
 
   async obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
@@ -421,23 +411,10 @@ export default class MasterClockComponent implements OnInit {
       //console.log(this.idBranch, fechaInicio, fechaFin)
       this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe(
         (data: any) => {
-          this.rowData = [];
           this.rowData = data;
           this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
-          // Actualizar el grid y esperar a que termine
-          this.gridApi.setGridOption('rowData', this.rowData);
-
-          // Esperar a que el grid se actualice y luego ajustar las columnas
-          setTimeout(() => {
-            if (this.gridApi) {
-              // Obtener todas las columnas y ajustarlas automáticamente
-              const allColumnIds = this.gridApi.getColumns().map(column => column.getColId());
-              this.gridApi.autoSizeColumns(allColumnIds);
-              // Forzar un redraw del grid para asegurar que los cambios se apliquen
-              this.gridApi.redrawRows();
-              resolve(true);
-            }
-          }, 100);
+          setTimeout(() => this.gridApi?.autoSizeAllColumns(), 50);
+          resolve(true);
         },
         (error) => {
           console.error('Error fetching data:', error);

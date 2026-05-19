@@ -3,8 +3,13 @@ import { Subject } from 'rxjs';
 
 export interface ComparacionOverlayData {
   cotizacionId: number;
+  cotizacionFolio: string;
   requisitionId: number;
+  requisitionFolio: string;
   selectedProviderIds: number[];
+  idBranchFromReq?: number;
+  idDepartamentFromReq?: number;
+  departmentName?: string;
 }
 
 @Injectable({ providedIn: 'root' })

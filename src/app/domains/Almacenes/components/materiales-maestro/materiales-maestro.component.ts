@@ -1,10 +1,12 @@
 import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { DetalleAsignProveedsMaestroComponent } from './details/detalle-asignproveeds-matmaestro.component';
 import { DetailCellRendererFamiliaComponent } from './details/detail-cell-renderer-familia.component';
 import { DetailCellRendererSucursalComponent } from './details/detail-cell-renderer-sucursal.component';
@@ -67,7 +69,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
   private subfamiliaModalService = inject(SubfamiliaModalService);
+  private route = inject(ActivatedRoute);
   public activeModal = inject(NgbActiveModal, { optional: true });
+
+  // ✅ Cuando la ruta lo indica (secciones "Bienes y servicios no productivos" y
+  // "Articulos y servicios nuevos"), se ocultan columnas: Merma, Fecha Cambio,
+  // Materiales, Parametros, Donde Usa.
+  private hideNonProductiveColumns: boolean = false;
+
+  // ✅ Bit de catalogo por el que filtra la sección actual:
+  // 'MATERIAL' (Materia Prima), 'BIENESYSERVICIOS', 'ARTICULOSNUEVOS'.
+  private sectionBitFilter: string = 'MATERIAL';
 
   rowData: any[] = [];
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
@@ -139,20 +151,26 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const newIdRoot = this.signalsService.getRootSelectedBySidebar()();
       if (newIdRoot && newIdRoot !== this.idRoot) {
         this.idRoot = newIdRoot;
-        this.loadCatalogs();
         this.loadMaterials();
       }
     });
   }
 
   ngOnInit() {
+    // ✅ Detectar si la ruta pide ocultar columnas (sección "Vienes y servicios no productivos").
+    // En modo modal no aplica: siempre se muestran todas las columnas.
+    this.hideNonProductiveColumns =
+      !this.isModalMode && !!this.route.snapshot.data?.['hideNonProductive'];
+
+    this.sectionBitFilter =
+      (!this.isModalMode && this.route.snapshot.data?.['bitFilter']) || 'MATERIAL';
+
     // ✅ Si estamos en modo modal, usar idRootInput en lugar de signal
     if (this.isModalMode && this.idRootInput) {
       this.idRoot = this.idRootInput;
       this.loadCatalogs();
       this.loadMaterialByIdFilter();
     } else if (this.idRoot) {
-      this.loadCatalogs();
       this.loadMaterials();
     }
 
@@ -174,9 +192,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     try {
       // Cargar categorías, familias y subfamilias en paralelo
       [this.categories, this.families, this.subfamilies] = await Promise.all([
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT')),
-        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM'))
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'CATEGORY', this.sectionBitFilter)),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'FAM-CAT', this.sectionBitFilter)),
+        lastValueFrom(this.catalogsService.getCatalogsMaterialBit(this.idRoot, 'SUB-FAM', this.sectionBitFilter))
       ]);
 
     } catch (error) {
@@ -195,26 +213,50 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     return this.subfamilies.filter(sf => sf.subParentId === familyId);
   }
 
-  loadMaterials() {
+  async loadMaterials() {
     if (!this.idRoot) {
       console.warn('No idRoot available');
       return;
     }
 
-    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
-      next: (data) => {
-        this.rowData = data.map(material => ({
-          ...material,
-        }));
-        if (this.pendingScrollTarget) {
-          setTimeout(() => this.scrollToTarget(), 150);
-        }
-      },
-      error: (error) => {
-        console.error('Error loading materials:', error);
-        alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
-      }
-    });
+    // Cargar los catálogos (filtrados por el bit de la sección) antes de
+    // filtrar la tabla: un material solo se muestra si su categoría, familia
+    // y subfamilia están las 3 marcadas con el bit de la sección actual.
+    await this.loadCatalogs();
+
+        this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+          next: (data) => {
+            this.allMaterialsData = data; // snapshot del estado original en BD
+            this.rowData = this.filterMaterialsByCatalogBit(data)
+              .slice()
+              .sort((a, b) => {
+                const activeA = a.active ? 1 : 0;
+                const activeB = b.active ? 1 : 0;
+                return activeB - activeA;
+              })
+              .map(material => ({
+                ...material,
+              }));
+            if (this.pendingScrollTarget) {
+              setTimeout(() => this.scrollToTarget(), 150);
+            }
+          },
+          error: (error) => {
+            console.error('Error loading materials:', error);
+            alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
+          }
+        });
+  }
+
+  // Filtra materiales: solo los que tienen su categoría, familia y subfamilia
+  // presentes en los catálogos de la sección (los 3 niveles con el bit en true).
+  private filterMaterialsByCatalogBit(materials: any[]): any[] {
+    const catIds = new Set(this.categories.map(c => c.id));
+    const famIds = new Set(this.families.map(f => f.id));
+    const subIds = new Set(this.subfamilies.map(s => s.id));
+    return materials.filter(m =>
+      catIds.has(m.idCategory) && famIds.has(m.idFamilia) && subIds.has(m.idSubfamilia)
+    );
   }
 
   // ✅ Método para cargar un material específico (modo modal)
@@ -315,6 +357,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         if (params.data.__modified) {
           return 'modified-row';
         }
+        if (params.data.active === false || params.data.active === 0) {
+          return 'inactive-row-highlight';
+        }
         return '';
       },
       onRowSelected: (event: any) => {
@@ -328,9 +373,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       onCellValueChanged: (event: any) => {
 
-        // Convertir vigente a true/false (nunca NULL)
-        if (event.colDef.field === 'vigente') {
-          event.data.vigente = event.newValue === true || event.newValue === 1 ? true : false;
+        // Convertir active a true/false (nunca NULL)
+        if (event.colDef.field === 'active') {
+          event.data.active = event.newValue === true || event.newValue === 1 ? true : false;
         }
 
         event.data.__modified = true;
@@ -357,7 +402,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       onColumnResized: (event: any) => {
         this.saveColumnState();
-      }
+      },
+      onFirstDataRendered: (params: any) => {
+        runAutosizeAllColumns(params.api);
+      },
     };
 
     return this._gridOptions;
@@ -370,12 +418,35 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     this._colMaster = [
       {
-        field: 'vigente',
+        field: 'active',
         headerName: 'Activo',
         width: 100,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
+      },
+      {
+        colId: 'porAutorizar',
+        headerName: 'Por autorizar',
+        width: 130,
+        editable: false,
+        sortable: false,
+        filter: false,
+        valueGetter: (params: any) => {
+          // En algunos endpoints el flag puede venir con nombres distintos.
+          // Si no existe, por defecto mostramos "false".
+          return !!(params?.data?.autorizacion ?? params?.data?.porAutorizar ?? params?.data?.pendingAuthorization);
+        },
+        cellRenderer: (params: any) => {
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.disabled = true;
+          input.checked = !!params.value;
+          input.title = 'Por autorizar (solo lectura)';
+          input.style.margin = '0 auto';
+          return input;
+        },
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
       },
       {
         field: 'insumo',
@@ -556,11 +627,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return null;
         }
       },
-      { headerName: 'Merma', field: 'merma', editable: true },
+      { headerName: 'Merma', field: 'merma', editable: true, hide: this.hideNonProductiveColumns },
       {
         headerName: 'Fecha Cambio',
         field: 'fecha',
         editable: true,
+        hide: this.hideNonProductiveColumns,
         filter: 'agDateColumnFilter',
         filterParams: {
           // can be 'windows' or 'mac'
@@ -608,6 +680,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'costo',
         headerName: 'Materiales',
         width: 150,
+        hide: this.hideNonProductiveColumns,
         valueFormatter: (params: any) => {
           return `$${params.value}`;
         },
@@ -631,6 +704,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'parametros',
         headerName: 'Parametros',
         width: 150,
+        hide: this.hideNonProductiveColumns,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
           return count;
@@ -692,6 +766,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         field: 'subfamilyCount',
         headerName: 'Donde Usa',
         width: 150,
+        hide: this.hideNonProductiveColumns,
         cellRenderer: (params: any) => {
           const count = params.value || 0;
           return count;
@@ -837,10 +912,27 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     // Cargar estado de columnas desde localStorage
     this.loadColumnState();
 
+    // ✅ En la sección "Vienes y servicios no productivos" forzar que estas columnas
+    // queden ocultas, aunque un estado guardado intente mostrarlas.
+    if (this.hideNonProductiveColumns) {
+      this.gridApi.setColumnsVisible(
+        ['merma', 'fecha', 'costo', 'parametros', 'subfamilyCount'],
+        false
+      );
+    }
+
     // Configurar master-detail SOLO la primera vez
     if (!this._detailParams) {
       this.updateGridContext();
     }
+  }
+
+  // ✅ Clave de localStorage del estado de columnas. Distinta por sección para que
+  // "Materiales Maestro" y "Vienes y servicios no productivos" no se contaminen entre sí
+  // (de lo contrario, el estado de una sección reaparecería las columnas ocultas de la otra).
+  private getColumnStateKey(): string {
+    const suffix = this.sectionBitFilter === 'MATERIAL' ? '' : `_${this.sectionBitFilter.toLowerCase()}`;
+    return `materiales_column_state${suffix}_${this.idRoot}`;
   }
 
   // Guardar estado de columnas (pin, orden, visibilidades) en localStorage
@@ -849,7 +941,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
     try {
       const columnState = this.gridApi.getColumnState();
-      const localStorageKey = `materiales_column_state_${this.idRoot}`;
+      const localStorageKey = this.getColumnStateKey();
       localStorage.setItem(localStorageKey, JSON.stringify(columnState));
     } catch (error) {
       console.error('Error guardando estado de columnas:', error);
@@ -861,11 +953,23 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (!this.gridApi) return;
 
     try {
-      const localStorageKey = `materiales_column_state_${this.idRoot}`;
+      const localStorageKey = this.getColumnStateKey();
       const savedState = localStorage.getItem(localStorageKey);
 
       if (savedState) {
         const columnState = JSON.parse(savedState);
+
+        // Verificar si el estado guardado incluye "Por autorizar"
+        // Si no lo incluye, es un estado antiguo y debe borrarse
+        const hasPorAutorizarColumn = columnState.some((col: any) =>
+          col.colId === 'porAutorizar'
+        );
+
+        if (!hasPorAutorizarColumn) {
+          localStorage.removeItem(localStorageKey);
+          return;
+        }
+
         this.gridApi.applyColumnState({
           state: columnState,
           applyOrder: true
@@ -873,6 +977,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error cargando estado de columnas:', error);
+      // Si hay error, borrar el estado corrupto
+      try {
+        const localStorageKey = this.getColumnStateKey();
+        localStorage.removeItem(localStorageKey);
+      } catch (e) {}
     }
   }
 
@@ -1135,10 +1244,71 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         await lastValueFrom(this.materialsService.addMaterial(materialData));
       }
 
+      // Detectar materiales que dejaron de ser PRODUCTO NUEVO (para auto-llenado de cascada)
+      const PRODUCTO_NUEVO_FAM_ID = 1316;
+      const PRODUCTO_NUEVO_SUB_ID = 1317;
+      const materialsThatLeftProductoNuevo: any[] = [];
+
+      // Tracker de consecutivos asignados en este saveChanges (para no duplicar entre materiales del mismo lote)
+      const lastConsecutivoByPrefix = new Map<string, number>();
+
       // Actualizar registros modificados
       for (const modifiedRow of modifiedRows) {
+        const snapshot = this.allMaterialsData.find((m: any) => m.id === modifiedRow.id);
+        const previousActive = snapshot?.active;
+        const activeChanged = previousActive !== undefined && !!previousActive !== !!modifiedRow.active;
+        console.log(`🔍 cascade check id=${modifiedRow.id} previousActive=${previousActive} newActive=${modifiedRow.active} activeChanged=${activeChanged}`);
+
+        // Capturar si este material dejó de ser PRODUCTO NUEVO
+        if (snapshot) {
+          const wasProductoNuevo =
+            Number(snapshot.idFamilia) === PRODUCTO_NUEVO_FAM_ID ||
+            Number(snapshot.idSubfamilia) === PRODUCTO_NUEVO_SUB_ID;
+          const isStillProductoNuevo =
+            Number(modifiedRow.idFamilia) === PRODUCTO_NUEVO_FAM_ID ||
+            Number(modifiedRow.idSubfamilia) === PRODUCTO_NUEVO_SUB_ID;
+          if (wasProductoNuevo && !isStillProductoNuevo) {
+            materialsThatLeftProductoNuevo.push({ ...modifiedRow });
+          }
+        }
+
+        // Regenerar Num Mat (insumo) si cambió categoría, familia o subfamilia
+        if (snapshot) {
+          const categoryChanged = Number(snapshot.idCategory) !== Number(modifiedRow.idCategory);
+          const familiaChanged = Number(snapshot.idFamilia) !== Number(modifiedRow.idFamilia);
+          const subfamiliaChanged = Number(snapshot.idSubfamilia) !== Number(modifiedRow.idSubfamilia);
+
+          if (categoryChanged || familiaChanged || subfamiliaChanged) {
+            const newInsumo = this.generateInsumoCode(
+              Number(modifiedRow.idCategory),
+              Number(modifiedRow.idFamilia),
+              Number(modifiedRow.idSubfamilia),
+              lastConsecutivoByPrefix
+            );
+            if (newInsumo) {
+              modifiedRow.insumo = newInsumo;
+              // Reflejar el cambio inmediatamente en el grid
+              const gridRow = this.rowData.find((r: any) => r.id === modifiedRow.id);
+              if (gridRow) {
+                gridRow.insumo = newInsumo;
+              }
+            }
+          }
+        }
+
         const materialData = this.prepareMaterialData(modifiedRow);
         await lastValueFrom(this.materialsService.updateMaterial(modifiedRow.id.toString(), materialData));
+        if (activeChanged) {
+          console.log(`🚀 Llamando cascadeMaterialActive id=${modifiedRow.id} activate=${!!modifiedRow.active}`);
+          await lastValueFrom(this.providersService.cascadeMaterialActive(modifiedRow.id, !!modifiedRow.active))
+            .catch(e => console.warn(`⚠️ No se pudo propagar active al nivel 2/3 para material ${modifiedRow.id}:`, e));
+        }
+      }
+
+      // Auto-llenado de cascada para materiales que dejaron de ser PRODUCTO NUEVO (no bloqueante)
+      if (materialsThatLeftProductoNuevo.length > 0) {
+        await this.autoFillCascadeOnMaterialFamilyChange(materialsThatLeftProductoNuevo)
+          .catch(e => console.warn('⚠️ Error en auto-llenado de cascada (PRODUCTO NUEVO → real):', e));
       }
 
       alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
@@ -1200,7 +1370,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       typeMaterial: 'CONSUMABLE',
       folioOcorReq: '',
       vigente: row.vigente === true || row.vigente === 1 ? true : false,
-      active: row.active ?? true
+      active: row.active ?? true,
+      porAutorizar: !!(row.porAutorizar ?? row.autorizacion ?? row.pendingAuthorization ?? false)
     };
   }
 
@@ -1477,5 +1648,174 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         node.setSelected(true);
       }
     });
+  }
+
+  /**
+   * Cuando un material cambia su familia/subfamilia desde "PRODUCTO NUEVO" a valores reales,
+   * busca los proveedores asignados a ese material con por_autorizar=0 (autorizacion=false)
+   * e inserta el material en la tabla "Configurar Tipo Proveedor (cascada)" de cada uno.
+   *
+   * - vigente = true
+   * - idSubfamily = nueva subfamilia del material
+   * - principal = true si es el primer registro del proveedor, false si ya tenía registros
+   * - No duplica si ya existe esa subfamilia para ese proveedor
+   * - Si fue insert como principal=true, actualiza customer.typework con la cadena
+   *   CATEGORIA/FAMILIA/SUBFAMILIA del registro recién creado.
+   */
+  private async autoFillCascadeOnMaterialFamilyChange(materialsThatLeftProductoNuevo: any[]): Promise<void> {
+    if (!materialsThatLeftProductoNuevo || materialsThatLeftProductoNuevo.length === 0) return;
+
+    for (const material of materialsThatLeftProductoNuevo) {
+      const idMaterial = Number(material?.id);
+      const idSubfamilia = Number(material?.idSubfamilia);
+      if (!idMaterial || !idSubfamilia || idSubfamilia <= 0) continue;
+
+      // 1. Obtener proveedores asignados a este material
+      let materialProviders: any[] = [];
+      try {
+        const res: any = await lastValueFrom(this.providersService.getMaterXTable(idMaterial, 'MATERIAL'));
+        materialProviders = Array.isArray(res) ? res : [];
+      } catch (e) {
+        console.warn(`⚠️ No se pudo obtener proveedores del material ${idMaterial}:`, e);
+        continue;
+      }
+
+      // 2. Para cada proveedor, verificar por_autorizar=0 y procesar
+      for (const matProv of materialProviders) {
+        const idProvider = Number(matProv?.idTabla ?? matProv?.idProvider ?? 0);
+        if (!idProvider) continue;
+
+        // Cargar customer para verificar por_autorizar
+        let customer: any = null;
+        try {
+          customer = await lastValueFrom(this.customersService.getCustomerById(idProvider));
+        } catch (e) {
+          console.warn(`⚠️ No se pudo cargar customer ${idProvider}:`, e);
+          continue;
+        }
+        if (!customer) continue;
+
+        // por_autorizar=0 → autorizacion === false / 0
+        const isPorAutorizar =
+          customer?.autorizacion === true || customer?.autorizacion === 1 ||
+          customer?.porAutorizar === true || customer?.porAutorizar === 1 ||
+          customer?.por_autorizar === true || customer?.por_autorizar === 1;
+        if (isPorAutorizar) continue; // Solo procesar los que YA están autorizados (por_autorizar=0)
+
+        // 3. Obtener subfamilias ya asignadas a este proveedor
+        let existing: any[] = [];
+        try {
+          const res: any = await lastValueFrom(this.providersService.getSubfamilyxProviderByProvider(idProvider));
+          existing = Array.isArray(res) ? res : [];
+        } catch (e) {
+          console.warn(`⚠️ No se pudo cargar subfamilyxprovider para ${idProvider}:`, e);
+          continue;
+        }
+
+        const existingSubIds = new Set<number>(
+          existing
+            .map((r: any) => Number(r?.idSubfamily ?? r?.idSubFamily ?? 0))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
+        );
+
+        // 4. No duplicar si ya existe esa subfamilia para ese proveedor
+        if (existingSubIds.has(idSubfamilia)) continue;
+
+        // 5. principal=true sólo si es el primer registro del proveedor
+        const shouldBePrincipal = existing.length === 0;
+
+        // 6. INSERT en subfamilyxprovider
+        try {
+          await lastValueFrom(
+            this.providersService.addSubfamilyxProvider({
+              idSubfamily: idSubfamilia,
+              idProvider: idProvider,
+              vigente: true,
+              principal: shouldBePrincipal
+            })
+          );
+        } catch (e) {
+          console.warn(`⚠️ No se pudo crear subfamilyxprovider (prov=${idProvider}, subfam=${idSubfamilia}):`, e);
+          continue;
+        }
+
+        // 7. Si fue insert como principal=true, actualizar customer.typework
+        if (shouldBePrincipal) {
+          try {
+            const providerTypes: any = await lastValueFrom(this.providersService.getProviderType(idProvider));
+            if (Array.isArray(providerTypes) && providerTypes.length > 0) {
+              const principalRow = providerTypes.find((pt: any) =>
+                Number(pt?.idSubfamily ?? pt?.idSubFamily ?? 0) === idSubfamilia
+              ) || providerTypes.find((pt: any) => pt?.principal === true);
+
+              if (principalRow) {
+                const tipoProveedorConcatenado = `${principalRow.nameParent || ''}/${principalRow.nameSubparent || ''}/${principalRow.nameProduct || ''}`;
+                customer.typework = tipoProveedorConcatenado;
+                await lastValueFrom(this.customersService.updateCustomer(idProvider, customer));
+              }
+            }
+          } catch (eTw) {
+            console.warn(`⚠️ No se pudo actualizar typework para proveedor ${idProvider}:`, eTw);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Genera el código "Num Mat" (campo insumo) para un material a partir de sus IDs de
+   * categoría, familia y subfamilia. Formato: {abrCateg}{abrFam}{abrSubfam}-{consecutivo 4 dígitos}
+   *
+   * El consecutivo se calcula buscando el mayor número usado en allMaterialsData para ese
+   * prefijo y sumando 1. También considera consecutivos asignados en la misma sesión de save
+   * (via el Map lastConsecutivoByPrefix) para evitar duplicados entre múltiples materiales del
+   * mismo lote.
+   *
+   * Retorna cadena vacía si no se pueden resolver las 3 abreviaciones.
+   */
+  private generateInsumoCode(
+    idCategory: number,
+    idFamilia: number,
+    idSubfamilia: number,
+    lastConsecutivoByPrefix: Map<string, number>
+  ): string {
+    if (!idCategory || !idFamilia || !idSubfamilia) return '';
+
+    const cat = this.categories.find((c: any) => Number(c.id) === Number(idCategory));
+    const fam = this.families.find((f: any) => Number(f.id) === Number(idFamilia));
+    const sub = this.subfamilies.find((s: any) => Number(s.id) === Number(idSubfamilia));
+
+    if (!cat || !fam || !sub) return '';
+
+    const abrCat = String(cat.valueAddition2 || '').trim().toUpperCase();
+    const abrFam = String(fam.valueAddition2 || '').trim().toUpperCase();
+    const abrSub = String(sub.valueAddition2 || '').trim().toUpperCase();
+
+    if (!abrCat || !abrFam || !abrSub) return '';
+
+    const prefix = `${abrCat}${abrFam}${abrSub}`;
+
+    // Si ya asignamos consecutivos para este prefijo en esta sesión, usar ese +1
+    let maxConsec = lastConsecutivoByPrefix.get(prefix);
+    if (maxConsec === undefined) {
+      // Primera vez para este prefijo: buscar en allMaterialsData
+      maxConsec = 0;
+      const regex = new RegExp(`^${prefix}-(\\d+)$`, 'i');
+      for (const m of this.allMaterialsData) {
+        const ins = String((m as any).insumo || '');
+        const match = ins.match(regex);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (Number.isFinite(num) && num > maxConsec) {
+            maxConsec = num;
+          }
+        }
+      }
+    }
+
+    const nextConsec = maxConsec + 1;
+    lastConsecutivoByPrefix.set(prefix, nextConsec);
+
+    return `${prefix}-${nextConsec.toString().padStart(4, '0')}`;
   }
 }

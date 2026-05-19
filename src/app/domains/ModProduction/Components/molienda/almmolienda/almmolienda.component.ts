@@ -1,15 +1,22 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { Component, inject, signal, effect, Input, Renderer2, RendererFactory2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { DetalleMoliendaComponent } from './detalle-molienda.component';
+import { DetalleMoliendaComponent } from './detalle-almmolienda.component';
 import { lastValueFrom } from 'rxjs';
 import { SignalsService } from '../../../../../services/signals.service';
 import { BranchsService } from '../../../../../services/branchs.service';
 import { MaterialsService } from '../../../../../services/materials.service';
+import { MaterialXModuloService } from '../../../../../services/materialxmodulo.service';
 import { MoliendaService, Molienda } from '../../../../../services/molienda.service';
+import { OcAndReqsService } from '../../../../../services/ocandreqs.service';
+import { DepartmentsService } from '../../../../../services/departments.service';
+import { RolesService } from '../../../../../services/roles.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
+import { ExtractionFermentationBultosService } from '../../../../../services/extraction-fermentation-bultos.service';
+import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
+import { CatalogProductionService } from '../../../../../services/catalog-production.service';
 
 @Component({
   selector: 'app-almmolienda',
@@ -66,10 +73,11 @@ import { alerts } from 'app/helpers/alerts';
             [columnDefs]="columnDefs"
             [gridOptions]="gridOptions"
             (gridReady)="onGridReady($event)"
+            (firstDataRendered)="onFirstDataRendered($event)"
             (cellValueChanged)="onCellValueChanged($event)"
             (rowClicked)="onRowClicked($event)"
             (cellEditingStopped)="onCellEditingStopped($event)"
-            style="height: 350px; width: 100%;">
+            style="height: 80vh; width: 100%;">
           </ag-grid-angular>
         </div>
 
@@ -79,10 +87,19 @@ import { alerts } from 'app/helpers/alerts';
   `,
 })
 export class AlmmoliendaComponent {
+  @Input() tipo: string = 'Molienda';
+
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
   private materialsService = inject(MaterialsService);
-  private moliendaService = inject(MoliendaService);
+  private mxmService = inject(MaterialXModuloService);
+  private moliendaService  = inject(MoliendaService);
+  private ocAndReqsService = inject(OcAndReqsService);
+  private departmentsService = inject(DepartmentsService);
+  private rolesService = inject(RolesService);
+  private bultosService = inject(ExtractionFermentationBultosService);
+  private catalogService = inject(CatalogProductionService);
+  private catalogoCategorias = inject(ExtractionFermentationCatalogService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -96,22 +113,51 @@ export class AlmmoliendaComponent {
 
   userBranches: any[] = [];
   branchNames: string[] = [];
-  rawMaterials: any[] = [];
-  rawMaterialNames: string[] = [];
+  matPrimaOptions: { id: number; name: string; editBultos: boolean }[] = [];
+  departmentOptions: any[] = [];
+  idBranch: number | null = null;
   activeBranchFilter: number | null = null;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
   private _columnDefs: ColDef[] = [];
+  bultosCantidad: number | null = null;
+  bultosCantidadARevisar: number | null = null;
+  proporcionRevision: number | null = null;
+  catalogoCategoriasSucursal: ExtractionFermentationCatalogItem[] = [];
+  caracteristicasCategories: any[] = [];
+  caracteristicasFamilies: any[] = [];
+
+  // Datos precargados del último sync — se pasan al detalle para evitar HTTP redundante
+  private lastSyncedReqs: any[]    = [];
+  private lastSyncedDetails: any[] = [];
+
+  private renderer: Renderer2;
+  private tooltipElement: HTMLElement | null = null;
 
   get columnDefs(): ColDef[] {
     if (this._columnDefs.length > 0) return this._columnDefs;
 
     this._columnDefs = [
     {
+      headerName: 'Activo',
+      field: 'active',
+      width: 80,
+      editable: true,
+      cellDataType: 'boolean',
+      cellStyle: { textAlign: 'center' },
+      valueSetter: (params) => {
+        params.data.active = params.newValue ?? false;
+        params.data.__modified = true;
+        this.hasUnsavedChanges = true;
+        return true;
+      }
+    },
+    {
       headerName: 'Sucursal',
       field: 'sucursal',
       width: 200,
-      editable: () => !this.activeBranchFilter || this.activeBranchFilter < 0,
+      editable: (params: any) =>
+        (!this.activeBranchFilter || this.activeBranchFilter < 0) && !this.hasEntradas(params.data),
       cellEditor: 'agRichSelectCellEditor',
       cellEditorPopup: true,
       cellEditorParams: () => ({
@@ -133,7 +179,10 @@ export class AlmmoliendaComponent {
         const branch = this.userBranches.find(b => b.id === params.value);
         return branch?.name ?? '';
       },
-      cellStyle: () => {
+      cellStyle: (params: any) => {
+        if (this.hasEntradas(params.data)) {
+          return { backgroundColor: '#f0f0f0', color: '#6c757d' };
+        }
         if (this.activeBranchFilter && this.activeBranchFilter > 0) {
           return { backgroundColor: '#f0f0f0' };
         }
@@ -149,22 +198,62 @@ export class AlmmoliendaComponent {
     },
 
     {
+      headerName: 'Departamentos Autorizados',
+      field: 'departmentCount',
+      width: 150,
+      editable: false,
+      cellRenderer: (params: any) => {
+        const count = this.departmentOptions.length;
+        const container = document.createElement('div');
+        container.style.cssText = 'cursor: pointer; text-align: center; font-weight: bold;';
+        container.innerHTML = `${count} Departamento${count !== 1 ? 's' : ''}`;
+
+        container.addEventListener('mouseenter', () => {
+          if (this.departmentOptions.length > 0) {
+            const rect = container.getBoundingClientRect();
+            this.showDepartmentTooltip(this.departmentOptions, rect);
+          }
+        });
+
+        container.addEventListener('mouseleave', () => {
+          this.hideDepartmentTooltip();
+        });
+
+        return container;
+      },
+      cellStyle: { backgroundColor: '#e3f2fd', textAlign: 'center', cursor: 'pointer' }
+    },
+
+    {
       headerName: 'Artículo',
       field: 'id_articulo',
       flex: 1,
       minWidth: 180,
-      editable: true,
+      editable: (params: any) => !this.hasEntradas(params.data),
       cellDataType: 'text',
       cellEditor: 'selectV2',
-      cellEditorParams: () => ({
-        options: this.rawMaterialNames.map(name => ({ id: name, description: name })),
-      }),
+      cellEditorParams: (params: any) => {
+        const sucursal = params.data?.sucursal;
+        const usados = new Set(
+          this.rowData()
+            .filter(r => r !== params.data && r.sucursal === sucursal && r.id_articulo)
+            .map((r: any) => r.id_articulo)
+        );
+        return {
+          options: this.matPrimaOptions
+            .filter(m => !usados.has(m.name))
+            .map(m => ({ id: m.name, description: m.name })),
+        };
+      },
       valueSetter: (params) => {
         params.data.id_articulo = params.newValue ?? '';
         params.data.__modified = true;
         this.hasUnsavedChanges = true;
         return true;
-      }
+      },
+      cellStyle: (params: any) => this.hasEntradas(params.data)
+        ? { backgroundColor: '#f0f0f0', color: '#6c757d' }
+        : {}
     },
 
     {
@@ -198,33 +287,16 @@ export class AlmmoliendaComponent {
         const container = document.createElement('div');
         container.style.cssText = isNew
           ? 'display:flex;align-items:center;cursor:not-allowed;color:#aaa;'
-          : 'display:flex;align-items:center;cursor:pointer;color:#c62828;text-decoration:underline;';
+          : 'display:flex;align-items:center;cursor:pointer;color:#2e7d32;text-decoration:underline;';
         container.innerHTML = `<span>${count} registro(s)</span>`;
         if (!isNew) {
           container.addEventListener('click', () => this.toggleCascade(params.node, 'salidas'));
         }
         return container;
       },
-      cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer' }
+      cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
     },
-    {
-      headerName: 'Total Entradas',
-      field: 'totalEntradas',
-      width: 130,
-      editable: false,
-      type: 'numericColumn',
-      valueFormatter: (p) => p.value != null ? String(Math.trunc(p.value)) : '—',
-      cellStyle: { backgroundColor: '#e8f5e9', fontWeight: '600', color: '#2e7d32' }
-    },
-    {
-      headerName: 'Total Salidas',
-      field: 'totalSalidas',
-      width: 130,
-      editable: false,
-      type: 'numericColumn',
-      valueFormatter: (p) => p.value != null ? String(Math.trunc(p.value)) : '—',
-      cellStyle: { backgroundColor: '#fce4ec', fontWeight: '600', color: '#c62828' }
-    },
+   
     {
       headerName: 'Total Inventarios',
       field: 'totalInventarios',
@@ -263,10 +335,26 @@ export class AlmmoliendaComponent {
     isExternalFilterPresent: () => this.activeBranchFilter != null,
     doesExternalFilterPass: (node: any) => node.data?.sucursal === this.activeBranchFilter,
     masterDetail: true,
-    detailRowHeight: 280,
+    detailRowHeight: 700,
     isRowMaster: () => true,
     detailCellRenderer: DetalleMoliendaComponent,
+    detailCellRendererParams: (params: any) => {
+      const isEntradas = params.data?.detailType === 'entradas';
+      const materialConfig = this.getMaterialConfigByArticulo(params.data?.id_articulo);
+      return {
+        departmentOptions: this.departmentOptions,
+        preloadedReqs:     isEntradas ? this.lastSyncedReqs    : [],
+        preloadedDetails:  isEntradas ? this.lastSyncedDetails : [],
+        bultosCantidad:    this.bultosCantidad,
+        bultosCantidadARevisar: this.bultosCantidadARevisar,
+        proporcionRevision: this.proporcionRevision,
+        editBultos: materialConfig?.editBultos ?? false,
+        caracteristicasCategories: this.caracteristicasCategories,
+        caracteristicasFamilies: this.caracteristicasFamilies,
+      };
+    },
     defaultColDef: {
+      textAlign: 'center',
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
           this.enterPressed = true;
@@ -276,14 +364,19 @@ export class AlmmoliendaComponent {
         return false;
       },
     },
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
-  constructor() {
+  constructor(rendererFactory: RendererFactory2) {
+    this.renderer = rendererFactory.createRenderer(null, null);
+
     effect(() => {
       const idUser = this.signalsService.idUser();
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
+      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (idUser && idCompany) {
         this.idRoot = idCompany;
+        this.idBranch = idBranch;
         this.loadUserBranches();
         this.loadRawMaterials(idCompany);
       }
@@ -298,14 +391,130 @@ export class AlmmoliendaComponent {
         this.gridApi.onFilterChanged();
       }
     });
+
+    // Escucha notificación de OC creada para actualizar contador afectado
+    effect(() => {
+      const notification = this.signalsService.getOcCreatedNotification()();
+      if (notification) {
+        this.updateCounterForOcCreation(notification.idRequisition, notification.idMaterial, notification.idBranch);
+      }
+    });
+  }
+
+  private showDepartmentTooltip(departments: any[], cellRect: DOMRect): void {
+    this.hideDepartmentTooltip();
+
+    this.tooltipElement = this.renderer.createElement('div');
+    this.renderer.setStyle(this.tooltipElement, 'position', 'fixed');
+    this.renderer.setStyle(this.tooltipElement, 'z-index', '10001');
+    this.renderer.setStyle(this.tooltipElement, 'pointer-events', 'none');
+    this.renderer.setStyle(this.tooltipElement, 'min-width', '280px');
+    this.renderer.setStyle(this.tooltipElement, 'max-width', '400px');
+
+    const arrow = this.renderer.createElement('div');
+    this.renderer.setStyle(arrow, 'position', 'absolute');
+    this.renderer.setStyle(arrow, 'left', '-8px');
+    this.renderer.setStyle(arrow, 'top', '20px');
+    this.renderer.setStyle(arrow, 'width', '0');
+    this.renderer.setStyle(arrow, 'height', '0');
+    this.renderer.setStyle(arrow, 'border-top', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-bottom', '8px solid transparent');
+    this.renderer.setStyle(arrow, 'border-right', '8px solid #1e40af');
+    this.renderer.appendChild(this.tooltipElement, arrow);
+
+    const content = this.renderer.createElement('div');
+    this.renderer.setStyle(content, 'border-radius', '8px');
+    this.renderer.setStyle(content, 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.4)');
+    this.renderer.setStyle(content, 'overflow', 'hidden');
+    this.renderer.setStyle(content, 'border', '1px solid rgba(255, 255, 255, 0.1)');
+    this.renderer.setStyle(content, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+
+    const header = this.renderer.createElement('div');
+    this.renderer.setStyle(header, 'background', 'rgba(255, 255, 255, 0.15)');
+    this.renderer.setStyle(header, 'padding', '10px 14px');
+    this.renderer.setStyle(header, 'border-bottom', '1px solid rgba(255, 255, 255, 0.2)');
+    this.renderer.setStyle(header, 'color', '#ffffff');
+    this.renderer.setStyle(header, 'font-size', '13px');
+    this.renderer.setStyle(header, 'display', 'flex');
+    this.renderer.setStyle(header, 'align-items', 'center');
+    this.renderer.setStyle(header, 'gap', '8px');
+    this.renderer.setStyle(header, 'font-weight', '600');
+
+    const headerIcon = this.renderer.createElement('i');
+    this.renderer.addClass(headerIcon, 'bi');
+    this.renderer.addClass(headerIcon, 'bi-building');
+    this.renderer.setStyle(headerIcon, 'font-size', '16px');
+    this.renderer.appendChild(header, headerIcon);
+
+    const headerText = this.renderer.createElement('strong');
+    const headerTextNode = this.renderer.createText(`${departments.length} Departamento${departments.length !== 1 ? 's' : ''}`);
+    this.renderer.appendChild(headerText, headerTextNode);
+    this.renderer.appendChild(header, headerText);
+    this.renderer.appendChild(content, header);
+
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'padding', '12px 14px');
+    this.renderer.setStyle(body, 'color', '#e2e8f0');
+    this.renderer.setStyle(body, 'font-size', '12px');
+
+    departments.forEach((dept: any, index: number) => {
+      if (index > 0) {
+        const separator = this.renderer.createElement('hr');
+        this.renderer.setStyle(separator, 'margin', '6px 0');
+        this.renderer.setStyle(separator, 'border', 'none');
+        this.renderer.setStyle(separator, 'border-top', '1px solid rgba(255, 255, 255, 0.1)');
+        this.renderer.appendChild(body, separator);
+      }
+
+      const row = this.renderer.createElement('div');
+      this.renderer.setStyle(row, 'display', 'flex');
+      this.renderer.setStyle(row, 'align-items', 'center');
+      this.renderer.setStyle(row, 'gap', '8px');
+
+      const icon = this.renderer.createElement('i');
+      this.renderer.addClass(icon, 'bi');
+      this.renderer.addClass(icon, 'bi-check-circle-fill');
+      this.renderer.setStyle(icon, 'color', '#22c55e');
+      this.renderer.setStyle(icon, 'font-size', '14px');
+      this.renderer.appendChild(row, icon);
+
+      const text = this.renderer.createElement('span');
+      this.renderer.setStyle(text, 'color', '#ffffff');
+      const textNode = this.renderer.createText(dept.name || dept.description || '');
+      this.renderer.appendChild(text, textNode);
+      this.renderer.appendChild(row, text);
+      this.renderer.appendChild(body, row);
+    });
+
+    this.renderer.appendChild(content, body);
+    this.renderer.appendChild(this.tooltipElement, content);
+    this.renderer.appendChild(document.body, this.tooltipElement);
+
+    const top = cellRect.top;
+    const left = cellRect.right + 8;
+    this.renderer.setStyle(this.tooltipElement, 'top', `${top}px`);
+    this.renderer.setStyle(this.tooltipElement, 'left', `${left}px`);
+  }
+
+  private hideDepartmentTooltip(): void {
+    if (this.tooltipElement) {
+      this.renderer.removeChild(document.body, this.tooltipElement);
+      this.tooltipElement = null;
+    }
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('rowData', this.rowData());
-    if (this.userBranches.length > 0 || this.rawMaterialNames.length > 0) {
+    if (this.userBranches.length > 0 || this.matPrimaOptions.length > 0) {
       this._columnDefs = [];
       this.gridApi.setGridOption('columnDefs', this.columnDefs);
+    }
+  }
+
+  onFirstDataRendered(params: any) {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.autoSizeAllColumns();
     }
   }
 
@@ -333,13 +542,30 @@ export class AlmmoliendaComponent {
 
   async loadRawMaterials(idCompany: number) {
     try {
-      const data = await lastValueFrom(this.materialsService.getMaterialsxview(idCompany));
-      const list: any[] = Array.isArray(data) ? data : [];
-      this.rawMaterials = list;
-      this.rawMaterialNames = list.map(m => m.articulo || m.description || m.insumo || '').filter(Boolean);
+      const [mxmData, matsData, deptsResponse] = await Promise.all([
+        lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')),
+        lastValueFrom(this.materialsService.getMaterialsxview(idCompany)),
+        lastValueFrom(this.rolesService.getAuthorizedDepartments(idCompany)),
+      ]);
+      const deptsData = (deptsResponse as any)?.data || deptsResponse || [];
+      const matsMap = new Map<number, string>();
+      (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
+      console.log('Materiales crudos:', mxmData);
+      this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
+        .filter((m: any) => m.active !== false)
+        .map((m: any) => ({
+          id: m.idArticulo,
+          name: matsMap.get(m.idArticulo) ?? String(m.idArticulo),
+          editBultos: !!m.editBultos,
+        }))
+        .filter(m => m.name);
+      this.departmentOptions = Array.isArray(deptsData) ? deptsData : [];
       this._columnDefs = [];
       if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.columnDefs);
-      await this.loadData(this.idRoot);
+      await Promise.all([
+        this.loadData(this.idRoot),
+        this.loadCaracteristicasCategories(this.idRoot),
+      ]);
     } catch (error) {
       console.error('Error loading raw materials:', error);
     }
@@ -348,6 +574,101 @@ export class AlmmoliendaComponent {
   private showToast(msg: string) {
     this.toastMsg.set(msg);
     setTimeout(() => this.toastMsg.set(''), 1500);
+  }
+
+  private hasEntradas(row: any): boolean {
+    return Number(row?.entradas ?? 0) > 0;
+  }
+
+  private async loadBultosCantidad(idCompany: number, idBranch: number) {
+    try {
+      const result = await lastValueFrom(this.bultosService.getByBranch(idCompany, idBranch));
+      this.bultosCantidad = result?.cantidadBultos ?? null;
+      this.bultosCantidadARevisar = result?.cantidadARevisar ?? null;
+      this.proporcionRevision = result?.proporcionRevision ?? null;
+    } catch (error) {
+      console.error('Error loading bultos cantidad:', error);
+      this.bultosCantidad = null;
+      this.bultosCantidadARevisar = null;
+      this.proporcionRevision = null;
+    }
+  }
+
+  private async loadCaracteristicasCategories(idCompany: number, idCatalog?: number | null) {
+    try {
+      const categorias = await lastValueFrom(this.catalogoCategorias.getAllByBranch(idCompany, this.idBranch));
+      console.log('Categorías crudas:', categorias);
+
+      const allItems = await lastValueFrom(this.catalogService.getAll(idCompany, idCatalog));
+      const itemsArray = Array.isArray(allItems) ? allItems : [];
+      this.catalogoCategoriasSucursal = Array.isArray(categorias) ? categorias : [];
+
+      this.caracteristicasCategories = itemsArray
+        .filter((item: any) => item.type === 'CATEGORY')
+        .sort((a: any, b: any) => {
+          const aDesc = (a.description || '').toLowerCase();
+          const bDesc = (b.description || '').toLowerCase();
+          return aDesc.localeCompare(bDesc);
+        });
+
+      this.caracteristicasFamilies = itemsArray
+        .filter((item: any) => item.type === 'FAM-CAT')
+        .sort((a: any, b: any) => {
+          const aDesc = (a.description || '').toLowerCase();
+          const bDesc = (b.description || '').toLowerCase();
+          return aDesc.localeCompare(bDesc);
+        });
+    } catch (error) {
+      console.error('Error loading características:', error);
+      this.catalogoCategoriasSucursal = [];
+      this.caracteristicasCategories = [];
+      this.caracteristicasFamilies = [];
+    }
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    return (value ?? '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private getArticuloComparableText(idArticulo: string | null | undefined): string {
+    return this.normalizeText(idArticulo)
+      .replace(/^fruta\s+/, '')
+      .replace(/^fruto\s+/, '')
+      .trim();
+  }
+
+  private getCategoriaComparableText(description: string | null | undefined): string {
+    return this.normalizeText(description)
+      .replace(/^caracteristicas\s+de\s+/, '')
+      .trim();
+  }
+
+  private getCategoriaCatalogoIdByArticulo(idArticulo: string | null | undefined): number | null {
+    const articulo = this.getArticuloComparableText(idArticulo);
+    if (!articulo || !Array.isArray(this.catalogoCategoriasSucursal)) return null;
+
+    const exactMatch = this.catalogoCategoriasSucursal.find((categoria) =>
+      this.getCategoriaComparableText(categoria.description) === articulo
+    );
+    if (exactMatch?.id) return exactMatch.id;
+
+    const partialMatch = this.catalogoCategoriasSucursal.find((categoria) => {
+      const categoriaTexto = this.getCategoriaComparableText(categoria.description);
+      return categoriaTexto.includes(articulo) || articulo.includes(categoriaTexto);
+    });
+
+    return partialMatch?.id ?? null;
+  }
+
+  private getMaterialConfigByArticulo(idArticulo: string | null | undefined) {
+    return this.matPrimaOptions.find(m => m.name === idArticulo) ?? null;
   }
 
   onRowClicked(event: any)       { this.selectedRow = event.data; }
@@ -371,11 +692,50 @@ export class AlmmoliendaComponent {
 
   async loadData(idCompany: number) {
     try {
-      const items = await lastValueFrom(this.moliendaService.getAll(idCompany));
+      const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
+      console.log('Raw data from API:', items);
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
-      this.originalRowData = JSON.parse(JSON.stringify(mapped));
-      this.rowData.set(mapped);
-      if (this.gridApi) this.gridApi.setGridOption('rowData', mapped);
+
+      const deptsCsv = this.departmentOptions
+        .map((d: any) => d.id)
+        .filter((id: any) => id)
+        .join(',');
+
+      // Entradas: contar requisiciones reales en ocandreq (no DetailsMolienda).
+      // Esto da el valor correcto sin necesidad de abrir la cascada.
+      // Salidas: sigue contando DetailsMolienda (no hay sync automático para salidas).
+      const countsPromises = mapped
+        .filter(row => row.id && row.sucursal && row.idMaterial)
+        .map(async row => {
+          const [reqs, salidas] = await Promise.all([
+            lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(row.sucursal, row.idMaterial, deptsCsv)),
+            lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA')),
+          ]);
+          return {
+            id: row.id,
+            entradas: (reqs as any[]).length,
+            salidas: salidas.length,
+          };
+        });
+
+      const detailsCounts = await Promise.all(countsPromises);
+      const countsMap = new Map(detailsCounts.map(d => [d.id, d]));
+
+      mapped.forEach(row => {
+        const counts = countsMap.get(row.id);
+        if (counts) {
+          row.entradas = counts.entradas;
+          row.salidas  = counts.salidas;
+        }
+      });
+
+      const sorted = this.sortRowsByBranchAndArticle(mapped);
+
+      this.originalRowData = JSON.parse(JSON.stringify(sorted));
+      
+      this.rowData.set(sorted);
+      //console.log('Loaded molienda:', this.rowData());  
+      if (this.gridApi) this.gridApi.setGridOption('rowData', sorted);
     } catch (error) {
       console.error('Error loading molienda:', error);
       this.rowData.set([]);
@@ -383,15 +743,76 @@ export class AlmmoliendaComponent {
     }
   }
 
+  private sortRowsByBranchAndArticle(rows: any[]): any[] {
+    return rows
+      .map((row, index) => ({ row, index }))
+      .sort((a, b) => {
+        const activeA = a.row.active !== false;
+        const activeB = b.row.active !== false;
+        if (activeA !== activeB) {
+          return activeA ? -1 : 1;
+        }
+
+        const branchNameA = this.getBranchName(a.row.sucursal);
+        const branchNameB = this.getBranchName(b.row.sucursal);
+        const branchCompare = branchNameA.localeCompare(branchNameB, 'es', { sensitivity: 'base' });
+        if (branchCompare !== 0) return branchCompare;
+
+        const articleNameA = (a.row.id_articulo ?? '').toString();
+        const articleNameB = (b.row.id_articulo ?? '').toString();
+        const articleCompare = articleNameA.localeCompare(articleNameB, 'es', { sensitivity: 'base' });
+        if (articleCompare !== 0) return articleCompare;
+
+        return a.index - b.index;
+      })
+      .map(item => item.row);
+  }
+
+  private getBranchName(idBranch: number | null | undefined): string {
+    return this.userBranches.find(b => b.id === idBranch)?.name ?? '';
+  }
+
+  private async updateCounterForOcCreation(idRequisition: number, idMaterial: number, idBranch: number) {
+    try {
+      const currentRowData = this.rowData();
+      const affectedRow = currentRowData.find(r => r.idMaterial === idMaterial && r.sucursal === idBranch);
+
+      if (!affectedRow || !affectedRow.id) return;
+
+      const deptsCsv = this.departmentOptions
+        .map((d: any) => d.id)
+        .filter((id: any) => id)
+        .join(',');
+
+      // Cuenta requisiciones reales (no DetailsMolienda — esos solo existen tras abrir cascada)
+      const reqs = await lastValueFrom(
+        this.ocAndReqsService.getReqsByBranchMaterial(affectedRow.sucursal, affectedRow.idMaterial, deptsCsv)
+      );
+
+      affectedRow.entradas = (reqs as any[]).length;
+
+      if (this.gridApi) {
+        const node = this.gridApi.getRowNode(affectedRow.id.toString());
+        if (node) {
+          node.setData(affectedRow);
+          this.gridApi.refreshCells({ rowNodes: [node], columns: ['entradas'], force: true });
+        }
+      }
+
+      this.toastMsg.set(`✓ Contador actualizado`);
+      setTimeout(() => this.toastMsg.set(''), 1500);
+    } catch (error) {
+      console.warn('Error updating counter for OC creation:', error);
+    }
+  }
+
   private mapRow(i: any): any {
-    // Convertir idMaterial (número) al nombre para mostrarlo en el selectV2
-    const material = this.rawMaterials.find(m => m.id === i.idMaterial);
-    const nombreMaterial = material
-      ? (material.articulo || material.description || material.insumo || '')
-      : (i.idMaterial ?? '');
+    const nombreMaterial = this.matPrimaOptions.find(m => m.id === i.idMaterial)?.name ?? '';
     return {
       id:                 i.id,
+      active:             i.active ?? true,
       sucursal:           i.idSucursal   ?? null,
+      idMaterial:         i.idMaterial   ?? null,
       id_articulo:        nombreMaterial,
       entradas:           i.entradas     ?? 0,
       salidas:            i.salidas      ?? 0,
@@ -406,24 +827,22 @@ export class AlmmoliendaComponent {
   }
 
   private toPayload(row: any): Molienda {
-    // Convertir el nombre del artículo de vuelta a su ID numérico
-    const material = this.rawMaterials.find(
-      m => (m.articulo || m.description || m.insumo || '') === row.id_articulo
-    );
+    const idMaterial = this.matPrimaOptions.find(m => m.name === row.id_articulo)?.id ?? null;
     return {
       idCompany:          this.idRoot,
       idSucursal:         row.sucursal       ?? null,
-      idMaterial:         material?.id       ?? null,
+      idMaterial:         idMaterial,
       entradas:           row.entradas       ?? 0,
       salidas:            row.salidas        ?? 0,
       totalInventarios:   row.totalInventarios   ?? 0,
       ajustesInventarios: row.ajustesInventarios ?? 0,
       comentarios:        row.comentarios    || null,
-      active:             true,
+      type:               this.tipo,
+      active:             row.active ?? true,
     };
   }
 
-  toggleCascade(node: any, type: string) {
+  async toggleCascade(node: any, type: string) {
     if (node.data?.__isNew) return;
 
     if (this.expandedRowId === node.id && this.expandedDetailType === type) {
@@ -434,6 +853,10 @@ export class AlmmoliendaComponent {
       this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
       this.gridApi.onRowHeightChanged();
       return;
+    }
+
+    if (type === 'entradas') {
+      await this.syncEntradasDetails(node.data);
     }
 
     if (this.expandedRowId) {
@@ -453,13 +876,94 @@ export class AlmmoliendaComponent {
     setTimeout(() => node.setExpanded(true), 0);
   }
 
+  private async syncEntradasDetails(rowData: any) {
+    const { id: idMolienda, sucursal, idMaterial } = rowData;
+    if (!idMolienda || !sucursal || !idMaterial) return;
+
+    await this.loadBultosCantidad(this.idRoot, sucursal);
+    const idCatalog = this.getCategoriaCatalogoIdByArticulo(rowData?.id_articulo);
+    await this.loadCaracteristicasCategories(this.idRoot, idCatalog);
+
+    const today = new Date().toISOString().substring(0, 10);
+    const deptsCsv = this.departmentOptions
+      .map((d: any) => d.id)
+      .filter((id: any) => id)
+      .join(',');
+
+    const [reqs, existing] = await Promise.all([
+      lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(sucursal, idMaterial, deptsCsv)),
+      lastValueFrom(this.moliendaService.getDetails(idMolienda, 'ENTRADA')),
+    ]);
+
+    const existingMap = new Map(existing.map((d: any) => [d.idRequisition, d]));
+    const reqIds = new Set(reqs.map((r: any) => r.id));
+
+    const deletePromises = existing
+      .filter((detail: any) => detail.idRequisition && !reqIds.has(detail.idRequisition))
+      .map(detail => lastValueFrom(this.moliendaService.deleteDetail(detail.id!)));
+
+    const createUpdatePromises: Promise<any>[] = [];
+    for (const req of reqs as any[]) {
+      const existingDetail = existingMap.get(req.id) as any;
+      if (!existingDetail) {
+        createUpdatePromises.push(
+          lastValueFrom(this.moliendaService.createDetail({
+            idMolienda,
+            idRequisition: req.id,
+            type: 'ENTRADA',
+            cantidadReq:   req.cantidadReq,
+            numCantidadOc: req.numCantidadOc,
+            cantidad:      0,
+            fecha:         today,
+            idCatalog,
+          }))
+        );
+      } else if (
+        existingDetail.cantidadReq   !== req.cantidadReq ||
+        existingDetail.numCantidadOc !== req.numCantidadOc ||
+        (existingDetail.idCatalog ?? null) !== idCatalog
+      ) {
+        createUpdatePromises.push(
+          lastValueFrom(this.moliendaService.updateDetail(existingDetail.id, {
+            idMolienda,
+            idRequisition: req.id,
+            type:          'ENTRADA',
+            cantidadReq:   req.cantidadReq,
+            numCantidadOc: req.numCantidadOc,
+            cantidad:      existingDetail.cantidad ?? 0,
+            fecha:         existingDetail.fecha ?? today,
+            idCatalog,
+          }))
+        );
+      }
+    }
+
+    await Promise.all([...deletePromises, ...createUpdatePromises]);
+
+    // Guardar estado final en memoria para pasarlo al componente detalle sin HTTP extra
+    this.lastSyncedReqs = reqs as any[];
+    this.lastSyncedDetails = (reqs as any[]).map(req => {
+      const ex = existingMap.get(req.id) as any;
+      return {
+        id:            ex?.id ?? null,
+        idRequisition: req.id,
+        cantidadReq:   req.cantidadReq,
+        numCantidadOc: req.numCantidadOc,
+        cantidad:      ex?.cantidad ?? 0,
+        idCatalog:     ex?.idCatalog ?? idCatalog ?? null,
+      };
+    });
+  }
+
   add() {
     const branchName = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
     const currentBranch = this.userBranches.find(b => b.name === branchName);
     const newRow = {
       id: null,
       __tempId: `new_${Date.now()}`,
+      active: true,
       sucursal: currentBranch?.id ?? null,
+      tipo: this.tipo,
       id_articulo: '',
       entradas: 0,
       salidas: 0,
@@ -480,8 +984,23 @@ export class AlmmoliendaComponent {
   }
 
   async saveChanges() {
-    const newRows      = this.rowData().filter(r => r.__isNew);
-    const modifiedRows = this.rowData().filter(r => r.__modified && !r.__isNew);
+    const allData = this.rowData();
+    console.log('Attempting to save data:', allData);
+    const isValid = allData.every(
+      (item) =>
+        item.sucursal != null &&
+        item.id_articulo
+    );
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar los campos obligatorios antes de guardar.',
+        'error'
+      );
+      return;
+    }
+    const newRows      = allData.filter(r => r.__isNew);
+    const modifiedRows = allData.filter(r => r.__modified && !r.__isNew);
     if (newRows.length === 0 && modifiedRows.length === 0) return;
 
     try {
@@ -496,9 +1015,14 @@ export class AlmmoliendaComponent {
       }
 
       const saved = newRows.length + modifiedRows.length;
+      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
       this.hasUnsavedChanges = false;
-      this.originalRowData   = JSON.parse(JSON.stringify(this.rowData()));
-      if (this.gridApi) this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
+      this.rowData.set(sorted);
+      this.originalRowData   = JSON.parse(JSON.stringify(sorted));
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', sorted);
+        this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
+      }
       this.showToast(`${saved} registro(s) guardado(s)`);
     } catch (error) {
       console.error('Error saving molienda:', error);
@@ -507,11 +1031,49 @@ export class AlmmoliendaComponent {
   }
 
   revertChanges() {
-    const reverted = JSON.parse(JSON.stringify(this.originalRowData));
+    const reverted = this.sortRowsByBranchAndArticle(JSON.parse(JSON.stringify(this.originalRowData)));
     this.rowData.set(reverted);
     this.hasUnsavedChanges = false;
     this.selectedRow = null;
     if (this.gridApi) this.gridApi.setGridOption('rowData', reverted);
+  }
+
+  private hasRelatedRecords(row: any): boolean {
+    return Number(row?.entradas ?? 0) > 0 || Number(row?.salidas ?? 0) > 0;
+  }
+
+  private async confirmSetInactive(row: any): Promise<boolean> {
+    const result = await alerts.confirmAlert(
+      'Este artículo ya tiene registros',
+      '¿Quiere que lo pase a inactivo?',
+      'warning',
+      'Sí, pasar a inactivo'
+    );
+    if (!result.isConfirmed) return false;
+
+    try {
+      row.active = false;
+      row.__modified = false;
+      await lastValueFrom(this.moliendaService.update(row.id, this.toPayload(row)));
+
+      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
+      this.rowData.set(sorted);
+      this.originalRowData = JSON.parse(JSON.stringify(sorted));
+      this.hasUnsavedChanges = false;
+      this.selectedRow = sorted.find(r => r.id === row.id) ?? null;
+
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', sorted);
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      this.showToast('Marcado como inactivo');
+      return true;
+    } catch (error) {
+      console.error('Error setting molienda inactive:', error);
+      alerts.basicAlert('Error', 'No se pudo cambiar el artículo a inactivo.', 'error');
+      return false;
+    }
   }
 
   async deleteRow() {
@@ -523,6 +1085,11 @@ export class AlmmoliendaComponent {
       this.selectedRow = null;
       this.hasUnsavedChanges = filtered.some((r: any) => r.__isNew || r.__modified);
       if (this.gridApi) this.gridApi.setGridOption('rowData', filtered);
+      return;
+    }
+
+    if (this.hasRelatedRecords(this.selectedRow)) {
+      await this.confirmSetInactive(this.selectedRow);
       return;
     }
 
@@ -539,8 +1106,23 @@ export class AlmmoliendaComponent {
       if (this.gridApi) this.gridApi.setGridOption('rowData', afterDelete);
       this.selectedRow = null;
       this.showToast('Eliminado');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting molienda:', error);
+
+      const errorText = `${error?.error?.message ?? ''} ${error?.message ?? ''}`.toLowerCase();
+      const shouldOfferInactive =
+        error?.status === 400 ||
+        error?.status === 409 ||
+        errorText.includes('constraint') ||
+        errorText.includes('foreign key') ||
+        errorText.includes('reference') ||
+        errorText.includes('registro');
+
+      if (shouldOfferInactive) {
+        await this.confirmSetInactive(this.selectedRow);
+        return;
+      }
+
       alerts.basicAlert('Error', 'Ocurrió un error al eliminar.', 'error');
     }
   }

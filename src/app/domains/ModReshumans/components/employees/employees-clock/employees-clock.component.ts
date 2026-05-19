@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, input } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgbTimepickerModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectComponent } from '@ng-select/ng-select';
@@ -24,6 +24,8 @@ export class EmployeesClockComponent {
   authService = inject(AuthService);
   
 
+  externalIdEmployee = input<number | null>(null);
+
   idEmployee: number = null;
   horario: any = [];
   diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -31,10 +33,12 @@ export class EmployeesClockComponent {
   idBranch: number;
   employees: any= [];
   totalHoras: number = 0;
+  errores: { [day: string]: string } = {};
 
   baseHours: string;
 
   ngOnInit() {
+    if (this.externalIdEmployee() != null) return;
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getEmployees();
     this.initializeWeek();
@@ -42,11 +46,21 @@ export class EmployeesClockComponent {
   }
 
   constructor() {
+    // Modo standalone: reacciona al cambio de sucursal
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      if (this.externalIdEmployee() != null) return;
       this.idEmployee = null;
       this.getEmployees();
       this.initializeWeek();
+      this.getEmployeeClock();
+    });
+
+    // Modo cascada: carga el horario del empleado externo
+    effect(() => {
+      const extId = this.externalIdEmployee();
+      if (extId == null) return;
+      this.idEmployee = extId;
       this.getEmployeeClock();
     });
   }
@@ -115,30 +129,52 @@ export class EmployeesClockComponent {
     return { hour: hours, minute: minutes };
   }
 
+  private toMin(t: { hour: number; minute: number } | null): number | null {
+    if (!t || t.hour == null) return null;
+    return t.hour * 60 + (t.minute || 0);
+  }
+
   guardarHorario() {
-    // Validación de campos requeridos
-    const diasInvalidos = this.horario.filter(dia =>
-      dia.enabled && (!dia.entry1?.hour || !dia.exit1?.hour)
-    );
-
-    if (diasInvalidos.length > 0) {
-      alerts.basicAlert('Error', 'Los días activados deben tener horarios de entrada y salida 1 completos', 'error');
-      return;
-    }
-
+    if (this.hasErrors) return;
     if (this.horario.length !== 7) {
       alerts.basicAlert('Días no completos', 'Todos los días deberían ser enviados. Este error no debería ocurrir, por favor contacte al administrador', 'error');
       return;
     }
 
-    // Validación de que entry_1 no puede ser mayor que exit_1
-    const diasInvalidos2 = this.horario.filter(dia =>
-      dia.enabled && dia.entry1 && dia.exit1 && dia.entry1.hour > dia.exit1.hour
-    );
+    for (const dia of this.horario) {
+      if (!dia.enabled) continue;
+      const name = dia.day;
+      const e1 = this.toMin(dia.entry1);
+      const s1 = this.toMin(dia.exit1);
+      const e2 = this.toMin(dia.entry2);
+      const s2 = this.toMin(dia.exit2);
 
-    if (diasInvalidos2.length > 0) {
-      alerts.basicAlert('Error', 'Los horarios de entrada no pueden ser mayores que los horarios de salida', 'error');
-      return;
+      if (e1 == null || s1 == null) {
+        alerts.basicAlert('Error', `${name}: la Entrada 1 y Salida 1 son requeridas.`, 'error');
+        return;
+      }
+      if (s1 <= e1) {
+        alerts.basicAlert('Error', `${name}: la Salida 1 debe ser posterior a la Entrada 1.`, 'error');
+        return;
+      }
+      if (e2 != null) {
+        if (e2 <= s1) {
+          alerts.basicAlert('Error', `${name}: la Entrada 2 no puede estar dentro o antes del turno 1 (debe ser posterior a la Salida 1).`, 'error');
+          return;
+        }
+        if (s2 == null) {
+          alerts.basicAlert('Error', `${name}: la Salida 2 es requerida cuando se establece Entrada 2.`, 'error');
+          return;
+        }
+        if (s2 <= s1) {
+          alerts.basicAlert('Error', `${name}: la Salida 2 debe ser posterior a la Salida 1.`, 'error');
+          return;
+        }
+        if (s2 <= e2) {
+          alerts.basicAlert('Error', `${name}: la Salida 2 debe ser posterior a la Entrada 2.`, 'error');
+          return;
+        }
+      }
     }
 
     const horarioFormateado = this.horario.map((dia: any) => ({
@@ -180,25 +216,25 @@ export class EmployeesClockComponent {
     // Opcional: Mostrar confirmación al usuario
     alerts.basicAlert('Horario guardado', `Horario ${this.isNew ? 'creado' : 'actualizado'} correctamente`, 'success');
     this.guardarHoras();
+    this.signalsService.setEmployeeBaseHoursUpdate(this.idEmployee, this.baseHours);
     this.trackingService.addLog(this.trackingService.getnameComp(),'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
   }
 
   guardarHoras() {
-    const index = this.employees.findIndex(emp => emp.id === this.idEmployee);
-    if (index !== -1) {
-      this.employees[index].baseHours = this.baseHours;
-  
-      this.employeesService.updateEmployee(this.idEmployee, this.employees[index])
-        .subscribe({
+    this.employeesService.getEmployeeById(this.idEmployee).subscribe({
+      next: (data: any) => {
+        const emp = Array.isArray(data) ? data[0] : data;
+        if (!emp) return;
+        emp.baseHours = this.totalHoras;
+        this.employeesService.updateEmployee(this.idEmployee, emp).subscribe({
           next: () => {
-            this.trackingService.addLog(this.trackingService.getnameComp(),'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado',  this.trackingService.getEmail());
+            this.trackingService.addLog(this.trackingService.getnameComp(), 'Modificando Horario de Empleado', 'Menu Recursos Humanos Horario de Empleado', this.trackingService.getEmail());
           },
-          error: (err) => {
-            console.error(err);
-          }
+          error: (err) => console.error(err)
         });
-    } else {
-    }
+      },
+      error: (err) => console.error(err)
+    });
   }
   
 
@@ -220,6 +256,58 @@ export class EmployeesClockComponent {
         enabled: originDay.enabled
       };
     });
+  }
+
+  get hasErrors(): boolean {
+    return Object.keys(this.errores).length > 0;
+  }
+
+  validarDia(dia: any): void {
+    if (!dia.enabled) { delete this.errores[dia.day]; return; }
+    const e1 = this.toMin(dia.entry1);
+    const s1 = this.toMin(dia.exit1);
+    const e2 = this.toMin(dia.entry2);
+    const s2 = this.toMin(dia.exit2);
+
+    if (e1 == null || s1 == null) {
+      this.errores[dia.day] = 'Entrada 1 y Salida 1 son requeridas.';
+    } else if (s1 <= e1) {
+      this.errores[dia.day] = 'Salida 1 debe ser posterior a Entrada 1.';
+    } else if (e2 != null && e2 <= s1) {
+      this.errores[dia.day] = 'Entrada 2 debe ser posterior a Salida 1.';
+    } else if (e2 != null && s2 == null) {
+      this.errores[dia.day] = 'Salida 2 es requerida cuando hay Entrada 2.';
+    } else if (e2 != null && s2 != null && s2 <= s1) {
+      this.errores[dia.day] = 'Salida 2 debe ser posterior a Salida 1.';
+    } else if (e2 != null && s2 != null && s2 <= e2) {
+      this.errores[dia.day] = 'Salida 2 debe ser posterior a Entrada 2.';
+    } else {
+      delete this.errores[dia.day];
+    }
+  }
+
+  onKeyNav(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    const isMeridianBtn = target.closest('.ngb-tp-meridian') != null;
+
+    if (isMeridianBtn && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      event.preventDefault();
+      (target as HTMLButtonElement).click();
+      return;
+    }
+
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+
+    const inputs = Array.from(
+      document.querySelectorAll('.clock-table input.ngb-tp-input, .clock-table .ngb-tp-meridian button')
+    ) as HTMLElement[];
+    const idx = inputs.indexOf(target);
+    if (idx >= 0 && idx < inputs.length - 1) {
+      const next = inputs[idx + 1];
+      next.focus();
+      if (next instanceof HTMLInputElement) next.select();
+    }
   }
 
   onEmployeeChange(): void {

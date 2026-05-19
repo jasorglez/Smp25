@@ -8,7 +8,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class=" dropdown">
+    <div class="dropdown" [style.width]="popupWidth">
       <input
         #searchInput
         type="text"
@@ -18,7 +18,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
         class="form-control"
         autocomplete="off"
       />
-      <div class="dropdown-menu show">
+      <div class="dropdown-menu show" [style.width]="popupWidth">
         <div
           *ngFor="let option of filteredOptions; let i = index"
           class="form-control dropdown-item"
@@ -26,7 +26,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
           (click)="selectOption(option)"
           [attr.data-value]="option[params.valueField || 'id']"
         >
-          {{option[params.displayField || 'description']}}
+          {{ option[params.displayField || 'description'] }}
         </div>
         <div *ngIf="filteredOptions.length === 0" class="dropdown-item disabled text-center">
           No se encontraron resultados
@@ -37,23 +37,30 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   styles: [`
     .dropdown {
       position: relative;
-      width: 500px;
-      padding: 0.5rem 1rem;
+      padding: 0.35rem 0.6rem;
       background-color: #FFFFFF;
       border: 1px solid var(--bs-input-border);
       border-radius: 0.25rem;
+      font-size: 0.85rem;
+    }
+    .dropdown input {
+      font-size: 0.85rem;
+      line-height: 1.2;
+      padding: 0.35rem 0.5rem;
     }
     .dropdown-menu {
       max-height: 200px;
-      width: 500px;
       overflow-y: auto;
       overflow-x: hidden;
       margin-top: 0;
       padding: 0;
+      font-size: 0.85rem;
     }
     .dropdown-item {
-      padding: 0.5rem 1rem;
+      padding: 0.35rem 0.6rem;
       cursor: pointer;
+      font-size: 0.85rem;
+      line-height: 1.2;
     }
     .dropdown-item:hover:not(.disabled) {
       background-color: var(--bs-dropdown-link-hover-bg);
@@ -76,12 +83,15 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
   public allOptions: any[] = [];
   public filteredOptions: any[] = [];
   public selectedIndex: number = -1;
+  public popupWidth: string = '500px';
+  private selectedOption: any = null;
 
   constructor(private elementRef: ElementRef) {}
 
   @HostListener('document:click', ['$event'])
   handleClick(event: Event) {
     if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.value = this.selectedOption ? this.value : this.searchText;
       this.params.api.stopEditing();
     }
   }
@@ -105,13 +115,28 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
         event.preventDefault();
         event.stopPropagation();
         if (this.selectedIndex >= 0 && this.filteredOptions.length > 0) {
-          this.selectOption(this.filteredOptions[this.selectedIndex]);
-        } else if (this.filteredOptions.length > 0) {
-          // Si no hay selección, tomar el primero
-          this.selectOption(this.filteredOptions[0]);
+          const activeOption = this.filteredOptions[this.selectedIndex];
+          const displayField = this.params.displayField || 'description';
+          const typedValue = this.normalizeText(this.searchText);
+          const activeValue = this.normalizeText(activeOption?.[displayField]);
+
+          if (typedValue && typedValue === activeValue) {
+            this.selectOption(activeOption); // llama stopEditing + postEnterAction internamente
+          } else {
+            this.selectedOption = null;
+            this.value = this.searchText;
+            this.params.api.stopEditing();
+            if (typeof this.params.postEnterAction === 'function') {
+              setTimeout(() => this.params.postEnterAction(this.params), 0);
+            }
+          }
         } else {
-          // Si no hay opciones, solo cerrar
+          this.selectedOption = null;
+          this.value = this.searchText;
           this.params.api.stopEditing();
+          if (typeof this.params.postEnterAction === 'function') {
+            setTimeout(() => this.params.postEnterAction(this.params), 0);
+          }
         }
         break;
       case 'Escape':
@@ -123,31 +148,28 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
   }
 
   agInit(params: any): void {
-
     this.params = params;
     this.value = params.value;
+    this.searchText = params.value ?? '';
+    this.popupWidth = this.resolvePopupWidth(params?.popupWidth);
 
-    // Check if we have a searchFunction for dynamic search
     if (params.searchFunction) {
       this.allOptions = [];
       this.filteredOptions = [];
-      // For dynamic search, we'll load options when user types
     } else {
-      // Static options
       this.allOptions = params.options || [];
       this.filteredOptions = [...this.allOptions];
 
-
-      // Inicializar el texto de búsqueda con la descripción del valor actual
       const valueField = params.valueField || 'id';
       const displayField = params.displayField || 'description';
       const currentOption = this.allOptions.find(opt => opt[valueField] === this.value);
       if (currentOption) {
         this.searchText = currentOption[displayField];
+        this.selectedOption = currentOption;
       }
+      this.selectedIndex = this.filteredOptions.length > 0 ? 0 : -1;
     }
 
-    // Enfocar el input automáticamente
     setTimeout(() => {
       const input = this.elementRef.nativeElement.querySelector('input');
       if (input) {
@@ -158,12 +180,13 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
   }
 
   getValue(): any {
-    return this.value;
+    return this.selectedOption ? this.value : this.searchText;
   }
 
   filterOptions(): void {
+    this.selectedOption = null;
+
     if (this.params.searchFunction && this.searchText.trim().length > 0) {
-      // Dynamic search - call the API
       this.params.searchFunction(this.searchText.trim()).subscribe({
         next: (data: any[]) => {
           this.allOptions = data || [];
@@ -177,11 +200,17 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
         }
       });
     } else if (this.allOptions.length > 0) {
-      // Static filtering - usar displayField dinámicamente
-      const displayField = this.params.displayField || 'description';
+      const normalizedSearch = this.normalizeText(this.searchText);
+      const searchFields = Array.isArray(this.params.searchFields) && this.params.searchFields.length > 0
+        ? this.params.searchFields
+        : [this.params.displayField || 'description'];
+
       this.filteredOptions = this.allOptions.filter(option => {
-        const value = option[displayField];
-        return value && value.toString().toLowerCase().includes(this.searchText.toLowerCase());
+        if (!normalizedSearch) return true;
+        return searchFields.some((field: string) => {
+          const value = option?.[field];
+          return this.normalizeText(value).includes(normalizedSearch);
+        });
       });
       this.selectedIndex = this.filteredOptions.length > 0 ? 0 : -1;
     } else {
@@ -193,11 +222,17 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
   selectOption(option: any): void {
     const valueField = this.params.valueField || 'id';
     const displayField = this.params.displayField || 'description';
+    this.selectedOption = option;
     this.value = option[valueField];
     this.searchText = option[displayField];
-    // Cerrar inmediatamente sin delay
+    if (typeof this.params.onOptionSelected === 'function') {
+      this.params.onOptionSelected(option, this.params);
+    }
     setTimeout(() => {
       this.params.api.stopEditing();
+      if (typeof this.params.postEnterAction === 'function') {
+        setTimeout(() => this.params.postEnterAction(this.params), 0);
+      }
     }, 0);
   }
 
@@ -214,10 +249,28 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
 
   private scrollToSelected() {
     setTimeout(() => {
-      const selectedElement = this.elementRef.nativeElement.querySelector('.selected');
+      const selectedElement = this.elementRef.nativeElement.querySelector('.dropdown-item.active');
       if (selectedElement) {
         selectedElement.scrollIntoView({ block: 'nearest' });
       }
     });
+  }
+
+  private resolvePopupWidth(width: string | number | undefined): string {
+    if (typeof width === 'number' && Number.isFinite(width)) {
+      return `${width}px`;
+    }
+    if (typeof width === 'string' && width.trim().length > 0) {
+      return width.trim();
+    }
+    return '500px';
+  }
+
+  private normalizeText(value: any): string {
+    return String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
   }
 }

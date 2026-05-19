@@ -970,4 +970,28 @@ getMasterUpdateTrigger() {
   getReqTypeOcMap() {
     return this.reqTypeOcMap;
   }
+
+  // ── HR: actualizar horas base de empleado tras guardar horario ──────────
+  private employeeBaseHoursUpdate = signal<{ id: number; baseHours: string } | null>(null);
+
+  setEmployeeBaseHoursUpdate(id: number, baseHours: string) {
+    this.employeeBaseHoursUpdate.set({ id, baseHours });
+    setTimeout(() => this.employeeBaseHoursUpdate.set(null), 0);
+  }
+
+  getEmployeeBaseHoursUpdate() {
+    return this.employeeBaseHoursUpdate;
+  }
+
+  // ── Notificación de OC creada: para actualizar almmolienda counters ──────
+  private ocCreatedNotification = signal<{ idRequisition: number; idMaterial: number; idBranch: number; timestamp: number } | null>(null);
+
+  notifyOcCreated(idRequisition: number, idMaterial: number, idBranch: number) {
+    this.ocCreatedNotification.set({ idRequisition, idMaterial, idBranch, timestamp: Date.now() });
+    setTimeout(() => this.ocCreatedNotification.set(null), 0);
+  }
+
+  getOcCreatedNotification() {
+    return this.ocCreatedNotification;
+  }
 }

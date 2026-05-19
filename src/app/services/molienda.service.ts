@@ -14,6 +14,7 @@ export interface Molienda {
   totalInventarios?: number | null;
   ajustesInventarios?: number | null;
   comentarios?: string | null;
+  type?: string | null;
   dateModified?: string;
   active?: boolean;
 }
@@ -21,7 +22,10 @@ export interface Molienda {
 export interface DetailsMolienda {
   id?: number;
   idMolienda: number;
+  idRequisition?: number | null;
   type: 'ENTRADA' | 'SALIDA';
+  cantidadReq?: number | null;
+  numCantidadOc?: number | null;
   fecha?: string | null;
   cantidad: number;
   idCatalog?: number | null;
@@ -35,11 +39,11 @@ export class MoliendaService {
 
   // ── Molienda maestro ─────────────────────────────────────────────
 
-  getAll(idCompany: number): Observable<Molienda[]> {
-    return this.http.get<Molienda[]>(
-      `${environment.urlWarehouse}/Molienda/byCompany/${idCompany}`,
-      { headers: this.trackingService.getHeaders() }
-    );
+  getAll(idCompany: number, type?: string): Observable<Molienda[]> {
+    const url = type
+      ? `${environment.urlWarehouse}/Molienda/byCompany/${idCompany}?type=${encodeURIComponent(type)}`
+      : `${environment.urlWarehouse}/Molienda/byCompany/${idCompany}`;
+    return this.http.get<Molienda[]>(url, { headers: this.trackingService.getHeaders() });
   }
 
   getById(id: number): Observable<Molienda> {

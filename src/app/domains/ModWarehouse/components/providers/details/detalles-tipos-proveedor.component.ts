@@ -372,6 +372,10 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         if (params.newValue === true) {
           this.rowData.forEach(row => {
             if (row.id !== params.data.id) {
+              // ✅ Si tenía principal=true, marcar como __modified para que se persista en BD
+              if (row.principal === true) {
+                row.__modified = true;
+              }
               row.principal = false;
             }
           });
@@ -924,13 +928,22 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
             this.params.data.typework = tipoProveedorConcatenado;
             this.params.data.typeProvider = tipoProveedorConcatenado;
 
-            // Forzar actualización visual en el grid padre
-            if (this.params.api) {
-              // Refrescar la celda específica en el grid padre
+            // Forzar actualización visual en el grid padre incluso con detalle abierto
+            if (this.params.api && this.params.node) {
+              // ✅ setDataValue notifica a AG Grid del cambio y refresca la celda en tiempo real
+              try {
+                this.params.node.setDataValue('typework', tipoProveedorConcatenado);
+                this.params.node.setDataValue('typeProvider', tipoProveedorConcatenado);
+              } catch (eSetData) {
+                console.warn('No se pudo aplicar setDataValue al nodo padre:', eSetData);
+              }
+
+              // Refrescar la celda específica en el grid padre como respaldo
               this.params.api.refreshCells({
                 rowNodes: [this.params.node],
                 columns: ['typeProvider'],
-                force: true
+                force: true,
+                suppressFlash: true
               });
             }
 

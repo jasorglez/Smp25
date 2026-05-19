@@ -8,12 +8,16 @@ import { ButtonCellRendererComponent } from '../purchaseorder/button-cell-render
 import { PdfButtonCellRendererPurchaseOrderComponent } from '../purchaseorder/pdf-button-cell-renderer-purchaseorder.component';
 import { DetailCellRendererPurchaseOrderItemsComponent } from '../purchaseorder/detail-cell-renderer-purchase-order-items.component';
 import { DetailCellRendererPurchaseOrderReportComponent } from '../purchaseorder/detail-cell-renderer-purchaseorder-report.component';
+import { PedimentosXRequisicionComponent } from './pedimentos-x-requisicion.component';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { AuthService } from 'app/services/auth.service';
 import { alerts } from 'app/helpers/alerts';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-purchaseorderdelison',
@@ -23,7 +27,8 @@ import { alerts } from 'app/helpers/alerts';
     ButtonCellRendererComponent,
     PdfButtonCellRendererPurchaseOrderComponent,
     DetailCellRendererPurchaseOrderItemsComponent,
-    DetailCellRendererPurchaseOrderReportComponent
+    DetailCellRendererPurchaseOrderReportComponent,
+    PedimentosXRequisicionComponent
   ],
   templateUrl: './purchaseorderdelison.component.html',
   styleUrl: './purchaseorderdelison.component.scss',
@@ -39,6 +44,8 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService   = inject(BranchsService);
   private providersService = inject(ProvidersService);
+  private customersService = inject(CustomersService);
+  private materialsService = inject(MaterialsService);
   public  authService      = inject(AuthService);
 
   private gridApi!: GridApi;
@@ -49,6 +56,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   fullRowData: any[] = [];
   gridHeight         = '80vh';
   hasUnsavedChanges  = false;
+  private columnState: any = null;
 
   idRoot: number   = null;
   idBranch: number = null;
@@ -56,7 +64,9 @@ export class PurchaseOrderDelisonComponent implements OnInit {
 
   branches: any[]   = [];
   proveedores: any[] = [];
+  productos: any[] = [];
   branchesLoaded    = false;
+  branchesMap: Map<number, string> = new Map();
 
   /** Contexto del grid maestro: AG Grid lo inyecta en params.context del detalle (ITEMS.load, proveedores…). */
   gridContext: Record<string, unknown> = {};
@@ -107,12 +117,14 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       if (this.idRoot) {
         this.loadBranches();
         this.loadProviders();
+        this.loadMaterials();
       } else {
         setTimeout(() => {
           this.idRoot = this.signalsService.getRootSelectedBySidebar()();
           if (this.idRoot) {
             this.loadBranches();
             this.loadProviders();
+            this.loadMaterials();
           }
         }, 300);
       }
@@ -129,6 +141,8 @@ export class PurchaseOrderDelisonComponent implements OnInit {
           id: row.idPermission || row.idBranch || row.id,
           name: row.name || row.description || ''
         }));
+        this.branchesMap.clear();
+        this.branches.forEach(b => this.branchesMap.set(b.id, b.name));
         this.branchesLoaded = true;
 
         const current = this.signalsService.getBranchSelectedBySidebar()();
@@ -145,44 +159,39 @@ export class PurchaseOrderDelisonComponent implements OnInit {
   }
 
   loadProviders() {
-    this.providersService.getProviders(this.idRoot).subscribe({
+    this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
       next: (data: any) => {
-        this.proveedores = Array.isArray(data) ? data : [];
+        this.proveedores = (Array.isArray(data) ? data : []).map((p: any) => ({
+          id:   p.id,
+          name: (p.name ?? '').trim() || (p.Description ?? p.description ?? '').trim() || `Proveedor ${p.id}`
+        }));
         this.patchGridContext();
       },
       error: () => {}
     });
   }
 
+  loadMaterials() {
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.productos = Array.isArray(data) ? data : [];
+        this.patchGridContext();
+      },
+      error: () => {
+        console.warn('Error cargando materiales', this.idRoot);
+      }
+    });
+  }
+
   private patchGridContext(): void {
-    this.gridContext = { ...this.gridContext, proveedores: this.proveedores };
+    this.gridContext['proveedores'] = this.proveedores;
+    this.gridContext['productos'] = this.productos;
     this.gridApi?.setGridOption('context', this.gridContext);
   }
 
   private buildInitialGridContext(): void {
     this.gridContext = {
-      componentParent: this,
-      proveedores: this.proveedores,
-      productos: [],
-      ITEMS: {
-        load: (ocId: number, callback: (data: any[]) => void) => {
-          this.ocAndReqsService.getReqItems(ocId).subscribe({
-            next: (data: any[]) => callback(Array.isArray(data) ? data : []),
-            error: (err) => {
-              console.error('[Órdenes compra] getReqItems falló', { ocId, err });
-              callback([]);
-            }
-          });
-        },
-        save: () => {},
-        delete: () => {},
-        updateCount: (ocId: number, count: number) => {
-          this.updateOcCount(ocId, count);
-        },
-        updateTotal: (ocId: number, total: number) => {
-          this.updateOcTotal(ocId, total);
-        }
-      }
+      componentParent: this
     };
   }
 
@@ -207,41 +216,45 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     }
   }
 
-  private mapOcRow(oc: any, branchName: string): any {
-    const rawCreate = oc.dateCreate ? String(oc.dateCreate).split('T')[0] : '';
-    const fechaCreate = rawCreate
-      ? (() => { const [y, m, d] = rawCreate.split('-'); return d && m && y ? `${d}/${m}/${y}` : rawCreate; })()
-      : '';
-
-    // El backend puede devolver datesupply o dateSupply según el mapeo
-    const supplyRaw = oc.datesupply || oc.dateSupply || '';
-    const rawSupply = supplyRaw ? String(supplyRaw).split('T')[0] : '';
-    const fechaSupply = rawSupply
-      ? (() => { const [y, m, d] = rawSupply.split('-'); return d && m && y ? `${d}/${m}/${y}` : rawSupply; })()
-      : '';
+  private mapOcRow(oc: any): any {
+    const branchName = this.branchesMap.get(oc.idReference) || `Sucursal ${oc.idReference}`;
 
     return {
-      id:           oc.id,
-      branch:       branchName,
-      idReference:  oc.idReference || oc.id_reference,
-      folio:        oc.folio || '',
-      fechaCreate,
-      fechaSupply,
-      idProvider:   oc.idProvider || oc.id_provider || 0,
-      providerName: oc.solicit || this.getProviderName(oc.idProvider || oc.id_provider),
-      solicit:      oc.solicit || '',
-      typeOc:       oc.typeOc || oc.typeoc || '',
-      delivery:     oc.delivery || '',
-      deliveryTime: oc.deliveryTime || oc.deliverytime || '',
-      conditions:   oc.conditions || '',
-      countrow:     oc.countrow || oc.countitem || 0,
-      total:        oc.total || 0,
-      active:       oc.active !== false,
-      detailType:   null
+      id:           oc.reqId,
+      sucursal:     branchName,
+      folio:        '',
+      ocCount:      oc.countPedimentos ?? 0,
+      catalogo:     '',
+      idReference:  oc.idReference,
+      idCompany:    this.idRoot,
+      active:       true,
+      detailType:   null,
+      idProvider:   null,
+      idDepartament: oc.idDepartament ?? null,
+      department:   oc.departmentName || 'Sin Departamento',
+      reqFolio:     oc.reqFolio || '',
+      dateModified: oc.dateModified || null,
+      dateCreate:   oc.dateModified || null
     };
   }
 
-  private loadFromAllBranches() {
+  private mapRequisitionRow(req: any, branchName: string, ocCount: number): any {
+    return {
+      id:           req.id,
+      sucursal:     branchName,
+      folio:        req.folio || '',
+      ocCount:      ocCount,
+      catalogo:     '',
+      idReference:  req.idReference || req.id_reference,
+      idCompany:    this.idRoot,
+      active:       req.active !== false,
+      detailType:   null,
+      dateModified: req.dateModified || null,
+      dateCreate:   req.dateCreate || null
+    };
+  }
+
+  private async loadFromAllBranches() {
     if (!this.branches || this.branches.length === 0) {
       this.fullRowData = [];
       this.rowData = [];
@@ -249,46 +262,63 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       return;
     }
 
-    const promises = this.branches.map(branch =>
+    const branchPromises = this.branches.map(branch =>
       new Promise<any[]>((resolve) => {
-        this.ocAndReqsService.getOcAndReqs('branch', branch.id, 'OC').subscribe({
+        this.ocAndReqsService.getOcsByBranch(branch.id).subscribe({
           next: (data: any) => resolve(Array.isArray(data) ? data : []),
           error: () => resolve([])
         });
-      }).then((ocs: any[]) => ocs.map(oc => this.mapOcRow(oc, branch.name)))
+      })
     );
 
-    Promise.all(promises).then((allData: any[][]) => {
-      this.fullRowData = allData.flat();
+    const branchResults = await Promise.all(branchPromises);
+    const allOcs = branchResults.flat();
+
+    const mapped = allOcs.map((oc: any) => this.mapOcRow(oc));
+
+    this.fullRowData = mapped.sort((a, b) => {
+      const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
+      const dateB = new Date(b.dateModified || b.dateCreate || 0).getTime();
+      return dateB - dateA;
+    });
+    this.rowData = [...this.fullRowData];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.refreshCells({ force: true });
+    }
+  }
+
+  private async loadFromSingleBranch(branchId: number) {
+    try {
+      const data: any = await lastValueFrom(this.ocAndReqsService.getOcsByBranch(branchId));
+      const ocs = Array.isArray(data) ? data : [];
+
+      const allMapped = ocs.map((oc: any) => this.mapOcRow(oc));
+      this.fullRowData = allMapped.sort((a, b) => {
+        const dateA = new Date(a.dateModified || a.dateCreate || 0).getTime();
+        const dateB = new Date(b.dateModified || b.dateCreate || 0).getTime();
+        return dateB - dateA;
+      });
+
       this.rowData = [...this.fullRowData];
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.refreshCells({ force: true });
       }
-    });
+    } catch {
+      alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de compra', 'error');
+      this.fullRowData = [];
+      this.rowData = [];
+    }
   }
 
-  private loadFromSingleBranch(branchId: number) {
-    const branch = this.branches.find(b => b.id === branchId);
-    const branchName = branch?.name || '';
-
-    this.ocAndReqsService.getOcAndReqs('branch', branchId, 'OC').subscribe({
-      next: (data: any) => {
-        this.fullRowData = Array.isArray(data)
-          ? data.map((oc: any) => this.mapOcRow(oc, branchName))
-          : [];
-        this.rowData = [...this.fullRowData];
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-          this.gridApi.refreshCells({ force: true });
-        }
-      },
-      error: () => {
-        alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de compra', 'error');
-        this.fullRowData = [];
-        this.rowData = [];
-      }
-    });
+  private async getPedimentoCount(idRequisicion: number): Promise<number> {
+    try {
+      const pedimentos = await lastValueFrom(this.ocAndReqsService.getPedimentosByRequisicion(idRequisicion));
+      return Array.isArray(pedimentos) ? pedimentos.length : 0;
+    } catch {
+      return 0;
+    }
   }
 
   // ==================== GRID CONFIG ====================
@@ -298,13 +328,10 @@ export class PurchaseOrderDelisonComponent implements OnInit {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 1035,
+    detailRowHeight: 1200,
     isRowMaster: () => true,
     detailCellRendererSelector: (params: any) => {
-      if (params.data.detailType === 'report') {
-        return { component: DetailCellRendererPurchaseOrderReportComponent, params: {} };
-      }
-      return { component: DetailCellRendererPurchaseOrderItemsComponent };
+      return { component: PedimentosXRequisicionComponent };
     },
     getRowClass: (params: any) => {
       if (params.node.isSelected())   return 'selected-row';
@@ -323,107 +350,68 @@ export class PurchaseOrderDelisonComponent implements OnInit {
           if (node.id !== event.node.id) node.setSelected(false);
         });
       }
-    }
+    },
+    onColumnResized: () => this.saveColumnState(),
+    onColumnMoved: () => this.saveColumnState()
   };
 
-  get colMaster(): ColDef[] {
-    return [
-      {
-        field: 'countrow',
-        headerName: 'Artículos',
-        width: 140,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: { onClick: (node: any) => this.toggleCascade(node) },
-        valueGetter: params => params.data?.countrow || 0,
-        editable: false,
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
-      },
-      {
-        field: 'pdf',
-        headerName: 'PDF',
-        width: 100,
-        cellRenderer: PdfButtonCellRendererPurchaseOrderComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleReportCascade(node),
-          icon: 'bi-file-earmark-pdf',
-          iconColor: '#dc3545',
-          title: 'Generar reporte PDF de la Orden de Compra'
-        },
-        editable: false,
-        cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
-      },
-      {
-        field: 'folio',
-        headerName: '# Orden de Compra',
-        width: 180,
-        filter: true,
-        editable: false,
-        cellStyle: { backgroundColor: '#f0f0f0', fontWeight: '500' }
-      },
-      {
-        field: 'providerName',
-        headerName: 'Proveedor',
-        width: 220,
-        filter: true,
-        editable: false
-      },
-      {
-        field: 'fechaCreate',
-        headerName: 'Fecha Creación',
-        width: 155,
-        editable: false
-      },
-      {
-        field: 'fechaSupply',
-        headerName: 'Fecha Entrega',
-        width: 155,
-        editable: false
-      },
-      {
-        field: 'branch',
-        headerName: 'Sucursal',
-        width: 200,
-        filter: true,
-        editable: false
-      },
-      {
-        field: 'typeOc',
-        headerName: 'Tipo OC',
-        width: 130,
-        filter: true,
-        editable: false
-      },
-      {
-        field: 'delivery',
-        headerName: 'Entrega',
-        width: 120,
-        editable: false
-      },
-      {
-        field: 'conditions',
-        headerName: 'Condiciones',
-        width: 160,
-        editable: false
-      },
-      {
-        field: 'solicit',
-        headerName: 'Solicitó',
-        width: 160,
-        editable: false
-      },
-      {
-        field: 'total',
-        headerName: 'Total OC',
-        width: 150,
-        editable: false,
-        valueFormatter: (params: any) => {
-          const v = params.value || 0;
-          return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v);
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', fontWeight: 'bold', textAlign: 'right' }
+  colMaster: ColDef[] = [
+    {
+      headerName: '#',
+      width: 45,
+      valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+    },
+    {
+      field: 'sucursal',
+      headerName: 'Sucursal',
+      width: 180,
+      filter: true,
+      editable: false
+    },
+    {
+      field: 'department',
+      headerName: 'Departamento',
+      width: 150,
+      editable: false,
+      cellStyle: { fontWeight: '500', textAlign: 'left' }
+    },
+    {
+      field: 'reqFolio',
+      headerName: '# Requisición',
+      width: 160,
+      filter: true,
+      editable: false,
+      cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '400', cursor: 'pointer', textDecoration: 'underline' },
+      onCellClicked: (event: any) => {
+        const isExpanding = !event.node.expanded;
+        if (isExpanding) {
+          event.api.forEachNode((node: any) => {
+            if (node.id !== event.node.id) {
+              node.setExpanded(false);
+              node.setRowHeight(0);
+            }
+          });
+          event.api.onRowHeightChanged();
+        } else {
+          event.api.forEachNode((node: any) => {
+            node.setRowHeight(undefined);
+          });
+          event.api.onRowHeightChanged();
+        }
+        event.node.setExpanded(isExpanding);
       }
-    ];
-  }
+    },
+    {
+      field: 'ocCount',
+      headerName: '# Pedimentos',
+      width: 160,
+      filter: true,
+      editable: false,
+      valueFormatter: (p) => p.value || 0,
+      cellStyle: { fontWeight: '500', textAlign: 'center' }
+    }
+  ];
 
   // ==================== GRID EVENTS ====================
 
@@ -438,124 +426,36 @@ export class PurchaseOrderDelisonComponent implements OnInit {
         p.successCallback([]);
       }
     });
+
+    // Cargar estado de columnas de localStorage una sola vez (con pequeño delay)
+    setTimeout(() => this.loadColumnStateFromStorage(), 50);
+  }
+
+  private saveColumnState() {
+    if (this.gridApi) {
+      this.columnState = this.gridApi.getColumnState();
+      localStorage.setItem('purchaseOrderColumnState', JSON.stringify(this.columnState));
+    }
+  }
+
+  private loadColumnStateFromStorage() {
+    try {
+      const stored = localStorage.getItem('purchaseOrderColumnState');
+      if (stored && this.gridApi) {
+        this.columnState = JSON.parse(stored);
+        this.gridApi.applyColumnState({ state: this.columnState });
+      }
+    } catch (e) {
+      console.warn('Error cargando estado de columnas:', e);
+    }
   }
 
   onSelectionChanged(_event: any) {}
   onCellValueChanged(_event: any) { this.hasUnsavedChanges = true; }
 
-  // ==================== CASCADE ====================
-
-  toggleCascade(node: any) {
-    const api = this.gridApi;
-    const isExpanded = node.expanded && node.data.detailType === 'items' && this.expandedRowId === node.id;
-
-    if (isExpanded) {
-      node.setExpanded(false);
-      node.data.detailType  = null;
-      node.data.isExpanded  = false;
-      this.expandedRowId    = null;
-      api.forEachNode((n: any) => n.setRowHeight(undefined));
-      api.onRowHeightChanged();
-      api.redrawRows();
-    } else {
-      // Colapsar fila previa
-      if (this.expandedRowId) {
-        api.forEachNode((n: any) => {
-          if (n.id === this.expandedRowId) {
-            n.setExpanded(false);
-            n.data.detailType = null;
-            n.data.isExpanded = false;
-          }
-        });
-      }
-      // Ocultar resto
-      api.forEachNode((n: any) => n.setRowHeight(n.id !== node.id ? 0 : undefined));
-
-      node.data.detailType = 'items';
-      node.data.isExpanded = true;
-      this.expandedRowId   = node.id;
-
-      api.onRowHeightChanged();
-      api.redrawRows();
-      setTimeout(() => node.setExpanded(true), 0);
-    }
-  }
-
-  toggleReportCascade(node: any) {
-    node.setSelected(true);
-    const api = this.gridApi;
-    const isExpanded = node.expanded && node.data.detailType === 'report' && this.expandedRowId === node.id;
-
-    if (isExpanded) {
-      node.setExpanded(false);
-      node.data.detailType = null;
-      node.data.isExpanded = false;
-      this.expandedRowId   = null;
-      api.forEachNode((n: any) => n.setRowHeight(undefined));
-      api.onRowHeightChanged();
-      api.redrawRows();
-    } else {
-      if (this.expandedRowId) {
-        api.forEachNode((n: any) => {
-          if (n.id === this.expandedRowId) {
-            n.setExpanded(false);
-            n.data.detailType = null;
-            n.data.isExpanded = false;
-          }
-        });
-      }
-      api.forEachNode((n: any) => n.setRowHeight(n.id !== node.id ? 0 : undefined));
-
-      node.data.detailType = 'report';
-      node.data.isExpanded = true;
-      this.expandedRowId   = node.id;
-
-      api.onRowHeightChanged();
-      api.redrawRows();
-      setTimeout(() => node.setExpanded(true), 0);
-    }
-  }
-
-  collapseReportDetail() {
-    if (this.expandedRowId && this.gridApi) {
-      this.gridApi.forEachNode((node: any) => {
-        if (node.id === this.expandedRowId) {
-          node.setExpanded(false);
-          node.data.isExpanded = false;
-          node.data.detailType = null;
-        }
-        node.setRowHeight(undefined);
-      });
-      this.expandedRowId = null;
-      this.gridApi.onRowHeightChanged();
-      this.gridApi.redrawRows();
-    }
-  }
-
   // ==================== UTILS ====================
 
   refreshData() {
     this.loadPurchaseOrders();
-  }
-
-  updateOcCount(ocId: number, count: number) {
-    const row = this.rowData.find(r => r.id === ocId);
-    if (row) {
-      row.countrow = count;
-      const node = this.gridApi?.getRowNode(String(ocId));
-      if (node) this.gridApi.refreshCells({ rowNodes: [node], columns: ['countrow'], force: true });
-    }
-  }
-
-  updateOcTotal(ocId: number, total: number) {
-    // Persiste en BD
-    this.ocAndReqsService.setTotal(ocId, total).subscribe();
-    // Actualiza celda en el grid master
-    const row = this.rowData.find(r => r.id === ocId);
-    if (row) {
-      row.total = total;
-      const node = this.gridApi?.getRowNode(String(ocId));
-      if (node) this.gridApi.refreshCells({ rowNodes: [node], columns: ['total'], force: true });
-    }
   }
 }

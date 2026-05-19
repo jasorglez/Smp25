@@ -1,0 +1,46 @@
+<div class="p-2">
+
+  <!-- Toolbar -->
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span class="fw-semibold">
+      <i class="bi bi-file-earmark-text me-1"></i> Documentos del Empleado
+    </span>
+    <div class="input-group input-group-sm me-auto" style="max-width:220px;">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control" placeholder="Filtrar…"
+        [(ngModel)]="quickFilter" (ngModelChange)="onQuickFilter($event)">
+      <button *ngIf="quickFilter" class="btn btn-outline-secondary" type="button"
+        (click)="clearFilter()"><i class="bi bi-x"></i></button>
+    </div>
+    <button class="btn btn-sm btn-success" (click)="addRow()" title="Agregar documento">
+      <i class="bi bi-plus-lg"></i>
+    </button>
+    <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" title="Guardar cambios">
+      <i class="bi bi-floppy"></i>
+      <span *ngIf="hasUnsavedChanges"
+        class="position-absolute top-0 end-0 translate-middle p-2 bg-danger border border-light rounded-circle">
+        <span class="visually-hidden">Cambios sin guardar</span>
+      </span>
+    </button>
+    <button class="btn btn-sm btn-warning" (click)="revertChanges()" title="Deshacer cambios">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+    <button class="btn btn-sm btn-danger" (click)="deleteEntry()" title="Eliminar documento">
+      <i class="bi bi-trash"></i>
+    </button>
+  </div>
+
+  <!-- Grid: cada fila se expande para mostrar la vista previa del PDF -->
+  <ag-grid-angular
+    class="ag-theme-quartz small-text-ag-grid"
+    style="height: 72vh; width: 100%;"
+    [rowData]="rowData"
+    [columnDefs]="columnDefs"
+    [gridOptions]="gridOptions"
+    [components]="components"
+    (gridReady)="onGridReady($event)"
+    (cellValueChanged)="onCellValueChanged($event)"
+    [stopEditingWhenCellsLoseFocus]="true">
+  </ag-grid-angular>
+
+</div>

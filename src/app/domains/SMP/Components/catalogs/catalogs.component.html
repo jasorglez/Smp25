@@ -11,6 +11,15 @@
               <i class="bi bi-list-ul"></i>CAT-FAM-SUB
             </a>
           </li>
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab"
+              [routerLink]="['autorizacion-montos']"
+              routerLinkActive="active"
+              (click)="showMontos()"
+              >
+              <i class="bi bi-cash-stack"></i> AUTORIZACIÓN DE MONTOS
+            </a>
+          </li>
           <li class="nav-item" *ngFor="let item of listsections">
             <a
               class="nav-link green-tab"
@@ -58,7 +67,7 @@
             </a>
           </li>-->
         </ul>
-        <div class="container-fluid mt-4 mb-4 light-blue-background" *ngIf="cat === false">
+        <div class="container-fluid mt-4 mb-4 light-blue-background" *ngIf="cat === false && montos === false && typeCatalog !== 'shoppingDelison'">
           <div class="row">
             <div class="col-md-2">
               <select 
@@ -136,6 +145,9 @@
         </div>
         <div *ngIf="cat === true">
           <app-cat-fam-sub></app-cat-fam-sub>
+        </div>
+        <div *ngIf="montos === true">
+          <app-autorizacion-montos></app-autorizacion-montos>
         </div>
       </div>
   </div>

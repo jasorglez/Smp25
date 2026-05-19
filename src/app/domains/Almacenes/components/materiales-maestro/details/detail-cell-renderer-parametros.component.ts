@@ -4,6 +4,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ParameterByMaterialDescriptionService } from 'app/services/parameterByMaterialDescription.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -84,15 +85,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     headerHeight: 25,
     rowHeight: 20,
     rowSelection: 'single',
-    onFirstDataRendered: (params) => {
-
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-      params.api.autoSizeColumns(allColumnIds, false);
-    }
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
    private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };

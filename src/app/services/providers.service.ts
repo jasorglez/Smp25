@@ -46,6 +46,10 @@ export class ProvidersService {
     return this.http.delete(`${environment.urlSmp}/Providers/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  patchProviderStatus(id: number, data: { active?: boolean; autorizacion?: boolean }) {
+    return this.http.patch(`${environment.urlSmp}/Providers/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
   getProviderByType(type: string) {
     return this.http.get(`${environment.urlSmp}/Providers/3fields?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
@@ -61,12 +65,20 @@ export class ProvidersService {
     return this.http.put(`${environment.urlWarehouse}/ProveedorXTabla/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  patchProviderXTablaCampo11(campo1: number, idTabla: number, valor: string) {
+    return this.http.patch(`${environment.urlWarehouse}/ProveedorXTabla/campo11/by-material-provider/${campo1}/${idTabla}`, { valor }, { headers: this.trackingService.getHeaders() });
+  }
+
   deleteProviderXTable(id: number) {
     return this.http.delete(`${environment.urlWarehouse}/ProveedorXTabla/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   updateAbonoProviderXTable(id: number, table: number) {
     return this.http.put(`${environment.urlWarehouse}/ProveedorXTabla/abonoTabla/${id}/${table}`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
+  cascadeMaterialActive(materialId: number, activate: boolean) {
+    return this.http.patch(`${environment.urlWarehouse}/ProveedorXTabla/cascade-material-active/${materialId}?activate=${activate}`, {}, { headers: this.trackingService.getHeaders() });
   }
 
   getProviderType(idProvider: number) {

@@ -2121,6 +2121,24 @@ export const routes: Routes = [
                 canDeactivate: [UnsavedChangesGuard],
               },
               {
+                path: 'vienes-servicios-no-productivos',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                data: { hideNonProductive: true, bitFilter: 'BIENESYSERVICIOS' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
+                path: 'articulos-servicios-nuevos',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/materiales-maestro/materiales-maestro.component'
+                  ).then((m) => m.MaterialesMaestroComponent),
+                data: { hideNonProductive: true, bitFilter: 'ARTICULOSNUEVOS' },
+                canDeactivate: [UnsavedChangesGuard],
+              },
+              {
                 path: 'cat-fam-sub',
                 loadComponent: () =>
                   import(
@@ -2152,6 +2170,7 @@ export const routes: Routes = [
                   import(
                     './domains/ModShoppingDelison/pages/quote-delison/quote-delison.component'
                   ).then((c) => c.QuoteDelisonComponent),
+                canDeactivate: [UnsavedChangesGuard],
               },
             ],
           },
@@ -2178,6 +2197,13 @@ export const routes: Routes = [
                   import(
                     './domains/Almacenes/components/cat-fam-sub/cat-fam-sub.component'
                   ).then((m) => m.CatFamSubComponent),
+              },
+              {
+                path: 'autorizacion-montos',
+                loadComponent: () =>
+                  import(
+                    './domains/ModShoppingDelison/pages/subPages/autorizacion-montos/autorizacion-montos.component'
+                  ).then((m) => m.AutorizacionMontosComponent),
               },
               {
                 path: ':section',

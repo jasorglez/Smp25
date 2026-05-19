@@ -1,0 +1,11 @@
+:host ::ng-deep .ag-theme-quartz .ag-cell-focus,
+:host ::ng-deep .ag-theme-quartz .ag-cell-inline-editing,
+:host ::ng-deep .ag-theme-quartz .ag-cell.ag-cell-not-inline-editing.ag-cell-focus {
+  background-color: #fff3a3 !important;
+  border: 1px solid #d4a017 !important;
+}
+
+:host ::ng-deep .ag-theme-quartz .ag-cell-inline-editing input,
+:host ::ng-deep .ag-theme-quartz .ag-cell-focus input {
+  background-color: #fff3a3 !important;
+}

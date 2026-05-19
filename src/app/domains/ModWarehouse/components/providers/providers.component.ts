@@ -46,6 +46,7 @@ import { InegiService } from 'app/services/inegi.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { RolesService } from 'app/services/roles.service';
 import { Icatalog } from 'app/interface/icatalog';
 import { ICustomer } from 'app/interface/icustomer';
 import { HttpClient } from '@angular/common/http';
@@ -90,9 +91,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
   authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
   private sucursalByMpService = inject(SucursalByMaterialProveedorService);
+  private rolesService = inject(RolesService);
 
   invited: boolean = false;
-
+  departmentOptions: any[] = [];
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -115,6 +117,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         this.obtenerDatos();
         this.obtenerBranchs();
         this.getTypecop();
+        this.loadDepartments();
       }
     }, { allowSignalWrites: true });
   }
@@ -450,6 +453,16 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
 
       {
+        field: 'typeIntOrExt',
+        headerName: 'Tipo',
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['Interno', 'Externo']
+        },
+      },
+
+      {
         field: 'autorizacion',
         headerName: 'Por autorizar',
         width: 130,
@@ -465,22 +478,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         headerName: 'Compañía *',
         editable: true,
         headerClass: 'my-header-red',
-        cellEditor: 'autocompleteEditor',
-        cellEditorParams: (params: any) => {
-          const companyList = this.rowData && Array.isArray(this.rowData)
-            ? this.rowData
-                .map(e => e.company)
-                .filter(name => name && typeof name === 'string' && name.trim() !== '')
-            : [];
-          
-          return {
-            filterList: companyList,
-            filterKey: 'company',
-            placeholder: 'Nombre Compañía',
-            minLength: 1,
-            onEnterPressed: () => { this.enterPressedFlag = true; }
-          };
-        },
+        cellEditorSelector: (params: any) => this.companyEditorSelector(params),
         valueSetter: (params) => {
           const rawValue = params.newValue;
 
@@ -608,17 +606,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           params.data[params.colDef.field] = rawValue.toString().toUpperCase();
           return true;
         }
-      },
-
-      // Nuevo campo: Tipo (Interno/Externo)
-      {
-        field: 'typeIntOrExt',
-        headerName: 'Tipo',
-        editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Interno', 'Externo']
-        },
       },
 
       //Es un combo de Tipo de Proveedor qe le compro
@@ -772,6 +759,70 @@ export class ProvidersComponent implements CanComponentDeactivate {
     if (colId === 'typeProvider') return 'tipoProveedor';
     if (colId === 'fieldMaterial') return 'materiales';
     return null;
+  }
+
+  // Carga los departamentos desde la BD
+  private loadDepartments() {
+    if (!this.idCompany) return;
+
+    this.rolesService.getRoles(this.idCompany).subscribe({
+      next: (data: any) => {
+        const raw = data?.data ?? data ?? [];
+        this.departmentOptions = Array.isArray(raw) ? raw : [];
+      },
+      error: (error) => {
+        console.error('Error cargando departamentos:', error);
+        this.departmentOptions = [];
+      }
+    });
+  }
+
+  // Selector de editor para columna Compañía (dropdown si es Interno, autocomplete si es Externo)
+  private companyEditorSelector(params: any) {
+    const typeIntOrExt = params.data?.typeIntOrExt;
+
+    if (typeIntOrExt === 'Interno') {
+      // Obtener nombres de departamentos desde departmentOptions
+      const allDepartments = this.departmentOptions
+        .filter(dept => dept.active)
+        .map(dept => dept.description)
+        .sort();
+
+      // Obtener departamentos ya asignados en otras filas
+      const assignedDepartments = this.rowData
+        .filter((row, index) => index !== params.node.rowIndex && row.typeIntOrExt === 'Interno' && row.company)
+        .map(row => row.company.toUpperCase());
+
+      // Filtrar departamentos disponibles (excluir los ya asignados)
+      const availableDepartments = allDepartments.filter(
+        dept => !assignedDepartments.includes(dept.toUpperCase())
+      );
+
+      return {
+        component: 'agSelectCellEditor',
+        params: {
+          values: availableDepartments
+        }
+      };
+    } else {
+      // Autocomplete para Externo (comportamiento original)
+      const companyList = this.rowData && Array.isArray(this.rowData)
+        ? this.rowData
+            .map(e => e.company)
+            .filter(name => name && typeof name === 'string' && name.trim() !== '')
+        : [];
+
+      return {
+        component: 'autocompleteEditor',
+        params: {
+          filterList: companyList,
+          filterKey: 'company',
+          placeholder: 'Nombre Compañía',
+          minLength: 1,
+          onEnterPressed: () => { this.enterPressedFlag = true; }
+        }
+      };
+    }
   }
 
 
@@ -947,6 +998,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
                 /* grid aún no listo */
               }
             }, 0);
+            // Cargar conteos reales (materiales + contactos) en paralelo (no bloquea la resolución)
+            this.loadDetailCounts(merged);
             resolve(true);
           },
           error: (error) => {
@@ -956,6 +1009,49 @@ export class ProvidersComponent implements CanComponentDeactivate {
         });
     });
 
+  }
+
+  /**
+   * Cuenta materiales y contactos por cada proveedor y actualiza fieldMaterial / fieldContact.
+   * Usa los MISMOS endpoints que las tablas de detalle (DetallesMaterialexprovComponent y
+   * DetailCellRendererComponentContact) para garantizar que los contadores coincidan con lo
+   * que el usuario ve al expandir.
+   */
+  private async loadDetailCounts(rows: any[]): Promise<void> {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+
+    const validRows = rows.filter(r => {
+      const id = Number(r?.id);
+      return Number.isFinite(id) && id > 0;
+    });
+
+    if (validRows.length === 0) return;
+
+    try {
+      await Promise.all(
+        validRows.map(async (row) => {
+          const id = Number(row.id);
+          // Cargar materiales y contactos en paralelo para cada proveedor
+          const [materials, contacts] = await Promise.all([
+            lastValueFrom(this.materialsService.getMaterialsByProvider(id)).catch(() => [] as any),
+            lastValueFrom(this.providersService.getProvidersXTable(id, 'CONTACT')).catch(() => [] as any)
+          ]);
+          row.fieldMaterial = Array.isArray(materials) ? materials.length : 0;
+          row.fieldContact = Array.isArray(contacts) ? contacts.length : 0;
+        })
+      );
+
+      // Refrescar solo las columnas afectadas
+      setTimeout(() => {
+        try {
+          this.gridApi?.refreshCells({ force: true, columns: ['fieldMaterial', 'fieldContact'] });
+        } catch {
+          /* grid aún no listo */
+        }
+      }, 0);
+    } catch (err) {
+      console.warn('Error cargando conteos de detalles:', err);
+    }
   }
 
   obtenerBranchs() {
@@ -1227,7 +1323,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       total: 0,
       radio: 0,
       vigente: true,
-      autorizacion: true,
+      autorizacion: false,
       NumCliente: 0,
       latitud: '',
       longitud: '',

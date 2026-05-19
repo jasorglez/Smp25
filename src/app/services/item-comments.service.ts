@@ -14,6 +14,7 @@ export interface ItemComment {
   documentType: string;   // 'REQ' | 'COTIZ' | 'PROVEEDOR'
   idDocument: number;
   numArticle: string;
+  idProvider?: number;
   idUser: number;
   userName: string;
   text: string;
@@ -27,14 +28,34 @@ export class ItemCommentsService {
   private trackingService = inject(TrackingService);
 
   /** Emite cuando un componente externo quiere abrir el chat de un ítem específico */
-  readonly openChatFor$ = new Subject<{ documentType: string; idDocument: number; numArticle: string; autoMessage?: string }>();
+  readonly openChatFor$ = new Subject<{
+    documentType: string;
+    idDocument: number;
+    numArticle: string;
+    autoMessage?: string;
+    forceComment?: boolean;
+    articleName?: string;
+    defaultTab?: 'articulo' | 'proveedor';
+    providerMessages?: { idProvider: number; providerName?: string };
+  }>();
 
   /** Emite cuando un comentario es guardado exitosamente */
   readonly commentSaved$ = new Subject<ItemComment>();
 
+  /** Emite cuando el chat se cierra — útil para diferir acciones que afectan el foco */
+  readonly chatClosed$ = new Subject<void>();
+
   getComments(documentType: string, idDocument: number, numArticle: string): Observable<ItemComment[]> {
     return this.http.get<ItemComment[]>(
       `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getProviderComments(documentType: string, idDocument: number, idProvider: number, numArticle: string = ''): Observable<ItemComment[]> {
+    const articleParam = numArticle ? `&numArticle=${encodeURIComponent(numArticle)}` : '';
+    return this.http.get<ItemComment[]>(
+      `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&idProvider=${idProvider}${articleParam}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

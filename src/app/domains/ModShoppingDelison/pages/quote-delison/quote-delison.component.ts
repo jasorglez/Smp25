@@ -10,27 +10,28 @@ import { DetailCellRendererPedimentosComponent } from './detalle-pedimentosxprov
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
-import { DepartmentsService } from 'app/services/departments.service';
 import { RolesService } from 'app/services/roles.service';
 import { PedimentoModificationService } from 'app/services/pedimento-modification.service';
-import { Subscription } from 'rxjs';
+import { UnsavedChangesTrackerService } from 'app/services/unsaved-changes-tracker.service';
+import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
+import { lastValueFrom, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-quote-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetailCellRendererPedimentosComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent],
   templateUrl: './quote-delison.component.html',
   styleUrl: './quote-delison.component.scss'
 })
-export class QuoteDelisonComponent implements OnInit, OnDestroy {
+export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDeactivate {
 
   // Inject services
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
-  private departmentsService = inject(DepartmentsService);
   private rolesService = inject(RolesService);
   private pedimentoModificationService = inject(PedimentoModificationService);
+  private unsavedTracker = inject(UnsavedChangesTrackerService);
 
   rowData: any[] = [];
   fullRowData: any[] = []; // Store original unfiltered data
@@ -39,6 +40,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   private gridApi: GridApi;
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
   private expandedRequisitionId: number | null = null; // Almacenar ID de la requisición expandida
+  private editingRequisitionId: number | null = null; // ID de requisición en edición (filtro)
   private modificationSub?: Subscription;
 
   idRoot: number = null;
@@ -54,6 +56,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  private _colMaster: (ColDef | ColGroupDef)[] | null = null;
 
   constructor() {
     this.updateGridHeight();
@@ -98,6 +101,9 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     singleClickEdit: true,
     masterDetail: true,
     detailRowHeight: 520,
+    autoSizeStrategy: {
+      type: 'fitCellContents',
+    },
     defaultColDef: {
       resizable: true,
       sortable: true,
@@ -105,6 +111,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
       flex: 1,
       minWidth: 120,
     },
+    getRowId: (params: any) => String(params.data.id),
     detailCellRendererParams: {
       autoHeight: false,
       context: {}
@@ -116,7 +123,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     this.updateGridHeight();
 
     // ✅ Suscribirse a modificaciones de pedimentos para reordenar el Nivel 1
-    this.modificationSub = this.pedimentoModificationService.pedimentoModified$.subscribe((cotizacionId: number) => {
+    this.modificationSub = this.pedimentoModificationService.requisitionModified$.subscribe((cotizacionId: number) => {
       this.reorderRequisitions(cotizacionId);
     });
 
@@ -148,35 +155,58 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.modificationSub?.unsubscribe();
+    this.unsavedTracker.clearAll();
+  }
+
+  async canDeactivate(): Promise<boolean> {
+    if (!this.unsavedTracker.hasAnyDirty()) return true;
+    const allowed = await this.unsavedTracker.confirmExitIfAny();
+    if (allowed) this.unsavedTracker.clearAll();
+    return allowed;
   }
 
   private reorderRequisitions(cotizacionId: number) {
-    if (!this.rowData.length) return;
+    if (!this.rowData.length || !this.gridApi) return;
 
     // 1. Encontrar cuál requisición contiene este pedimento
-    let targetRequisition: any = null;
-    for (const req of this.rowData) {
-      if (req.pedimentos?.some((p: any) => p.id === cotizacionId)) {
-        targetRequisition = req;
+    let targetRequisitionIndex = -1;
+    for (let i = 0; i < this.rowData.length; i++) {
+      if (this.rowData[i].pedimentos?.some((p: any) => p.id === cotizacionId)) {
+        targetRequisitionIndex = i;
         break;
       }
     }
 
-    if (targetRequisition) {
-      // 2. Actualizar marca de tiempo local para esta requisición
-      targetRequisition.__lastModifiedSort = new Date().getTime();
+    // 2. Si la requisición no está ya al inicio, moverla
+    if (targetRequisitionIndex > 0) {
+      console.log('🎯 Reordenando requisición en nivel 1, moviéndola al inicio');
+      const [targetRequisition] = this.rowData.splice(targetRequisitionIndex, 1);
+      this.rowData.unshift(targetRequisition);
+      this.fullRowData = [...this.rowData];
 
-      // 3. Reordenar rowData: lo más reciente arriba
-      this.rowData.sort((a, b) => {
-        const timeA = a.__lastModifiedSort || 0;
-        const timeB = b.__lastModifiedSort || 0;
-        return timeB - timeA;
-      });
+      // 3. Actualizar el grid sin hacer vaciar→repoblar (preserva nivel 2 y 3 abiertos)
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+  }
 
-      // 4. Notificar a AG Grid del cambio
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', [...this.rowData]);
-      }
+  onRowGroupOpened(event: any): void {
+    // Este evento se dispara cuando el usuario colapsa/expande una fila manualmente
+    // No hacemos nada aquí porque el reordenamiento se maneja en reorderRequisitions
+  }
+
+  filterToEditingRequisition(requisitionId: number): void {
+    this.editingRequisitionId = requisitionId;
+    this.rowData = this.fullRowData.filter(r => r.id === requisitionId);
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+  }
+
+  restoreAllRequisitions(): void {
+    this.editingRequisitionId = null;
+    this.rowData = [...this.fullRowData];
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
     }
   }
 
@@ -197,9 +227,9 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   }
 
   loadDepartments() {
-    this.departmentsService.getDepartments(this.idRoot).subscribe({
-      next: (data: any[]) => {
-        this.departments = data;
+    this.rolesService.getRoles(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.departments = data?.data ?? data ?? [];
         this.departmentsLoaded = true;
         this.checkAndLoadQuotes();
       },
@@ -227,7 +257,10 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     this.gridApi = params.api;
     // ✅ Pasar el método reloadParentGrid al contexto
     this.gridApi.setGridOption('context', {
-      reloadParentGrid: () => this.reloadParentGrid()
+      reloadParentGrid: () => this.reloadParentGrid(),
+      reorderRequisition: (cotizacionId: number) => this.reorderRequisitions(cotizacionId),
+      filterToEditingRequisition: (requisitionId: number) => this.filterToEditingRequisition(requisitionId),
+      restoreAllRequisitions: () => this.restoreAllRequisitions()
     });
     this.autoAdjustColumns();
   }
@@ -259,6 +292,18 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     if (typeof apiAny.sizeColumnsToFit === 'function') {
       apiAny.sizeColumnsToFit();
     }
+  }
+
+  /**
+   * Extrae el prefijo de sucursal del folio de la requisición.
+   * Folio típico: "BOD15-001" → "BOD15". Si lleva tipo (REQ-/COTIZ-/OC-), también lo limpia.
+   * Usado para construir folios de slots: `${type}-{branchPrefix}-P{ped}-PRO{idProvider}`.
+   */
+  private extractBranchPrefix(folio: string | null | undefined): string {
+    if (!folio) return 'NOPREF';
+    let prefix = String(folio).replace(/^(REQ-|COTIZ-|OC-|CO-)/i, '');
+    prefix = prefix.replace(/-\d+$/, '');
+    return prefix || 'NOPREF';
   }
 
   private updateGridHeight() {
@@ -354,6 +399,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
       const branch = this.branches.find(b => b.id === requisicion.idReference);
       const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
+      // ✅ Extraer prefijo de sucursal del folio de la requisición (ej: "BOD15-001" → "BOD15")
+      const branchPrefix = this.extractBranchPrefix(requisicion.folio);
 
       // ✅ PASO 2.1: Cargar COTIZACIONES de esta requisición
       let cotizaciones: any[] = [];
@@ -369,7 +416,11 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
         console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
       }
 
-      // ✅ PASO 2.2: Para cada cotización, cargar sus items y sus COTIZes de proveedor
+      // ✅ PASO 2.2: Cargar pedimentos e verificar lock correcto en paralelo
+      const shouldLockCheck = requisicion.locked === true
+        ? lastValueFrom(this.ocAndReqsService.shouldLockRequisicion(requisicion.id)).catch(() => ({ shouldLock: false }))
+        : Promise.resolve({ shouldLock: false });
+
       const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
         let items: any[] = [];
         try {
@@ -395,10 +446,17 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
           providerCotizs = Array.isArray(pcData) ? pcData : [];
         } catch (_) {}
 
-        // Mapear slot A/B/C por folio → extraer idProvider + nombre (solicit)
-        const slotA = providerCotizs.filter(c => c.folio?.includes('-A-')).sort((a,b) => b.id - a.id)[0];
-        const slotB = providerCotizs.filter(c => c.folio?.includes('-B-')).sort((a,b) => b.id - a.id)[0];
-        const slotC = providerCotizs.filter(c => c.folio?.includes('-C-')).sort((a,b) => b.id - a.id)[0];
+        // ✅ Generar providerSlots dinámicos (orden de creación ASC, sin slots vacíos)
+        const providerSlots = providerCotizs
+          .filter(c => Number(c.idProvider) > 0)
+          .sort((a, b) => a.id - b.id)
+          .map((cotiz, index) => ({
+            slotIndex: index + 1,
+            cotizId: cotiz.id,
+            folio: cotiz.folio || '',
+            idProvider: cotiz.idProvider,
+            name: cotiz.solicit || ''
+          }));
 
         return {
           id: cotizacion.id,
@@ -406,12 +464,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
           pedimento: cotizacion.pedimento,
           folio: cotizacion.folio || '',
           idDepartament: requisicion.idDepartament || 0,
-          idProvider:  slotA?.idProvider || 0,
-          idProvider2: slotB?.idProvider || 0,
-          idProvider3: slotC?.idProvider || 0,
-          name_idProvider:  slotA?.solicit || '',
-          name_idProvider2: slotB?.solicit || '',
-          name_idProvider3: slotC?.solicit || '',
+          providerSlots,
+          branchPrefix,
           createdBy: cotizacion.createdBy || cotizacion.solicit || '',
           items: items.map((item: any) => ({
             id: item.id,
@@ -425,7 +479,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             priority: item.typePriority || 'Normal',
             comment: item.comment || '',
             pedimento: item.pedimento || false,
-            numArticle: item.numArticle || '',
+            numArticle: item.numarticle || item.numArticle || '',
             code: item.code || '',
             pedimentoNumber: item.pedimentoNum || '',
             idMovement: item.idMovement || 0,
@@ -439,25 +493,35 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             typePriority: item.typePriority || 'Normal',
             descriptionNewArticle: item.descriptionNewArticle || '',
             urlNewArticle: item.urlNewArticle || '',
-            justificationNewArticle: item.justificationNewArticle || ''
+            justificationNewArticle: item.justificationNewArticle || '',
+            caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || ''
           })),
-          createdAt: cotizacion.dateCreate
+          createdAt: cotizacion.dateCreate,
+          dateModified: cotizacion.dateModified
         };
       }));
 
-      // ✅ PASO 2.3: Retornar requisición con sus cotizaciones
+      // ✅ PASO 2.3: Resolver lock correcto y retornar requisición con sus cotizaciones
+      const lockResult = await shouldLockCheck;
+      const correctLocked = requisicion.locked === true ? (lockResult?.shouldLock === true) : false;
+      // Si el lock en BD era incorrecto, corregirlo silenciosamente
+      if (requisicion.locked === true && !correctLocked) {
+        this.ocAndReqsService.lockRequisition(requisicion.id, false).subscribe();
+      }
+
       const dept = this.departments.find(d => d.id === requisicion.idDepartament);
       const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
 
       // Calcular la fecha de modificación más reciente (entre requisición y sus pedimentos)
-      const lastModifiedFromPedimentos = pedimentosConItems.length > 0 
-        ? Math.max(...pedimentosConItems.map(p => new Date(p.createdAt).getTime()))
+      const lastModifiedFromPedimentos = pedimentosConItems.length > 0
+        ? Math.max(...pedimentosConItems.map(p => new Date(p.dateModified || p.createdAt).getTime()))
         : new Date(requisicion.dateCreate).getTime();
 
       return {
         id: requisicion.id,
         branch: branchName,
         requisition: requisicion.folio || '',
+        locked: correctLocked,
         pedimentos: pedimentosConItems,
         requiredDate: requisicion.dateCreate || new Date().toISOString(),
         requestedBy: requisicion.solicit || '',
@@ -509,6 +573,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
           const branch = this.branches.find(b => b.id === requisicion.idReference);
           const branchName = branch?.name || branch?.description || requisicion.idReference?.toString() || '';
 
+          // ✅ Extraer prefijo de sucursal del folio de la requisición (ej: "BOD15-001" → "BOD15")
+          const branchPrefix = this.extractBranchPrefix(requisicion.folio);
 
           // ✅ PASO 2: Cargar COTIZACIONES de esta requisición
           let cotizaciones: any[] = [];
@@ -524,7 +590,11 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
             console.error(`❌ Error al cargar cotizaciones de requisición ${requisicion.id}:`, error);
           }
 
-          // ✅ PASO 3: Para cada cotización, cargar sus items y sus COTIZes de proveedor
+          // ✅ PASO 3: Cargar pedimentos y verificar lock correcto en paralelo
+          const shouldLockCheck2 = requisicion.locked === true
+            ? lastValueFrom(this.ocAndReqsService.shouldLockRequisicion(requisicion.id)).catch(() => ({ shouldLock: false }))
+            : Promise.resolve({ shouldLock: false });
+
           const pedimentosConItems = await Promise.all(cotizaciones.map(async (cotizacion: any) => {
             let items: any[] = [];
             try {
@@ -550,9 +620,17 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
               providerCotizs = Array.isArray(pcData) ? pcData : [];
             } catch (_) {}
 
-            const slotA = providerCotizs.filter(c => c.folio?.includes('-A-')).sort((a,b) => b.id - a.id)[0];
-            const slotB = providerCotizs.filter(c => c.folio?.includes('-B-')).sort((a,b) => b.id - a.id)[0];
-            const slotC = providerCotizs.filter(c => c.folio?.includes('-C-')).sort((a,b) => b.id - a.id)[0];
+            // ✅ Generar providerSlots dinámicos (orden de creación ASC, sin slots vacíos)
+            const providerSlots = providerCotizs
+              .filter(c => Number(c.idProvider) > 0)
+              .sort((a, b) => a.id - b.id)
+              .map((cotiz, index) => ({
+                slotIndex: index + 1,
+                cotizId: cotiz.id,
+                folio: cotiz.folio || '',
+                idProvider: cotiz.idProvider,
+                name: cotiz.solicit || ''
+              }));
 
             return {
               id: cotizacion.id,
@@ -560,12 +638,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
               pedimento: cotizacion.pedimento,
               folio: cotizacion.folio || '',
               idDepartament: requisicion.idDepartament || 0,
-              idProvider:  slotA?.idProvider || 0,
-              idProvider2: slotB?.idProvider || 0,
-              idProvider3: slotC?.idProvider || 0,
-              name_idProvider:  slotA?.solicit || '',
-              name_idProvider2: slotB?.solicit || '',
-              name_idProvider3: slotC?.solicit || '',
+              providerSlots,
+              branchPrefix,
               createdBy: cotizacion.createdBy || cotizacion.solicit || '',
               items: items.map((item: any) => ({
                 id: item.id,
@@ -579,7 +653,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
                 priority: item.typePriority || 'Normal',
                 comment: item.comment || '',
                 pedimento: item.pedimento || false,
-                numArticle: item.numArticle || '',
+                numArticle: item.numarticle || item.numArticle || '',
                 code: item.code || '',
                 pedimentoNumber: item.pedimentoNum || '',
                 idMovement: item.idMovement || 0,
@@ -593,25 +667,34 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
                 typePriority: item.typePriority || 'Normal',
                 descriptionNewArticle: item.descriptionNewArticle || '',
                 urlNewArticle: item.urlNewArticle || '',
-                justificationNewArticle: item.justificationNewArticle || ''
+                justificationNewArticle: item.justificationNewArticle || '',
+                caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || ''
               })),
-              createdAt: cotizacion.dateCreate
+              createdAt: cotizacion.dateCreate,
+              dateModified: cotizacion.dateModified
             };
           }));
 
-          // PASO 4: Retornar requisición con sus cotizaciones
+          // PASO 4: Resolver lock correcto y retornar requisición con sus cotizaciones
+          const lockResult2 = await shouldLockCheck2;
+          const correctLocked2 = requisicion.locked === true ? (lockResult2?.shouldLock === true) : false;
+          if (requisicion.locked === true && !correctLocked2) {
+            this.ocAndReqsService.lockRequisition(requisicion.id, false).subscribe();
+          }
+
           const dept = this.departments.find(d => d.id === requisicion.idDepartament);
           const departmentName = dept?.description || dept?.name || `[ID: ${requisicion.idDepartament}]`;
 
-          const lastModifiedFromPedimentos = pedimentosConItems.length > 0 
-            ? Math.max(...pedimentosConItems.map(p => new Date(p.createdAt).getTime()))
+          const lastModifiedFromPedimentos = pedimentosConItems.length > 0
+            ? Math.max(...pedimentosConItems.map(p => new Date(p.dateModified || p.createdAt).getTime()))
             : new Date(requisicion.dateCreate).getTime();
 
           return {
             id: requisicion.id,
             branch: branchName,
             requisition: requisicion.folio || '',
-            pedimentos: pedimentosConItems, // ✅ Array de cotizaciones (no un solo objeto)
+            locked: correctLocked2,
+            pedimentos: pedimentosConItems,
             requiredDate: requisicion.dateCreate || new Date().toISOString(),
             requestedBy: requisicion.solicit || '',
             department: departmentName,
@@ -658,7 +741,13 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     });
   }
 
-  togglePedimentosCascade(node: any) {
+  async togglePedimentosCascade(node: any) {
+    if (this.unsavedTracker.hasAnyDirty()) {
+      const allowed = await this.unsavedTracker.confirmExitIfAny();
+      if (!allowed) return;
+      this.unsavedTracker.clearAll();
+    }
+
     node.setSelected(true);
 
     const isCurrentlyExpanded = node.expanded;
@@ -696,21 +785,39 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
   }
 
   get colMaster(): (ColDef | ColGroupDef)[] {
-    return [
+    if (this._colMaster && this._colMaster.length > 0) {
+      return this._colMaster;
+    }
+
+    this._colMaster = [
       {
         field: 'branch',
         headerName: 'Sucursal',
         width: 120,
         editable: false
       },
-    
+
       {
         field: 'requisition',
         headerName: 'Requisicion',
-        width: 120,
-        editable: false
+        width: 150,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const div = document.createElement('div');
+          div.style.cssText = 'display:flex;align-items:center;gap:5px;';
+          if (params.data?.locked) {
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-lock-fill';
+            icon.style.cssText = 'color:#b71c1c;font-size:0.85rem;flex-shrink:0;';
+            div.appendChild(icon);
+          }
+          const text = document.createElement('span');
+          text.textContent = params.value || '';
+          div.appendChild(text);
+          return div;
+        }
       },
-    
+
       {
         field: 'pedimentos',
         headerName: 'Pedimentos',
@@ -755,6 +862,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy {
     }
 
    ];
+
+    return this._colMaster;
   }
 
 
