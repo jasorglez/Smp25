@@ -52,6 +52,12 @@
                 <i *ngIf="!phoneLoading" class="bi bi-search me-1"></i>Consultar
               </button>
             </div>
+            <div class="col-auto">
+              <button class="btn btn-sm btn-danger" (click)="imprimirPDFCelular()"
+                      [disabled]="!phoneConsulted || !phoneSummary">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -182,6 +188,12 @@
               <button class="btn btn-sm btn-primary" (click)="consultarTodos()" [disabled]="allPhoneLoading">
                 <span *ngIf="allPhoneLoading" class="spinner-border spinner-border-sm me-1"></span>
                 <i *ngIf="!allPhoneLoading" class="bi bi-people me-1"></i>Consultar todos
+              </button>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-sm btn-danger" (click)="imprimirPDFTodos()"
+                      [disabled]="!allPhoneConsulted || allPhoneRows.length === 0">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
               </button>
             </div>
           </div>
