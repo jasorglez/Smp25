@@ -1439,8 +1439,8 @@ export const routes: Routes = [
                 path: 'egresos',
                 loadComponent: () =>
                   import(
-                    './domains/ModAdmon/components/egresos-palacio/egresos-palacio.component'
-                  ).then((e) => e.EgresosPalacioComponent),
+                    './domains/ModAdmon/components/egresos-palacio/egresos-palacio-shell.component'
+                  ).then((e) => e.EgresosPalacioShellComponent),
                 canActivate: [TrackingGuard],
                 data: {
                   tracking: {
