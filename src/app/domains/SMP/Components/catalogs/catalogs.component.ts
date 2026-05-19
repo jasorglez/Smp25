@@ -49,6 +49,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   authService = inject(AuthService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   notSavedChanges: boolean = false;
+  saving: boolean = false;
   rowData: any;
 
   newlyAddedRows: string[] = [];
@@ -538,6 +539,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+    if (this.saving) return;
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
       alerts.basicAlert(
@@ -553,14 +555,10 @@ export class CatalogsComponent implements CanComponentDeactivate {
       (row) => row.__modified && !row.__isNew
     );
 
-    // console.log('modifiedRows', modifiedRows);
-
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-
       cleanedData.valueAddition = String(cleanedData.valueAddition);
-      console.log('añadidos', cleanedData.valueAddition);
-      return this, this.catalogService.addCatalog(cleanedData);
+      return this.catalogService.addCatalog(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
@@ -569,19 +567,14 @@ export class CatalogsComponent implements CanComponentDeactivate {
       return this.catalogService.updateCatalog(row.id, cleanedData);
     });
 
-    // Using concat to combine observables and lastValueFrom for async/await
+    this.saving = true;
     try {
-      const responses = await lastValueFrom(
+      await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
       );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
+      this.obtenerDatos();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -589,6 +582,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
         'error'
       );
+    } finally {
+      this.saving = false;
     }
   }
 
