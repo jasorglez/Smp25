@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.97 (18 Mayo 2026 14:00) fix(pos): carga productos CONSUMABLE en caché del POS',
+  version: '5.97 (18 Mayo 2026 14:30) feat(ventas): reporte por número de celular con puntos fidelidad',
 };

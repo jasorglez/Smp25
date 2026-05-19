@@ -63,6 +63,20 @@ export class SalesReportsComponent implements OnInit {
   consulted = false;
   errorMsg  = '';
 
+  // --- Pestaña: Reporte por Celular ---
+  activeTab: 'ventas' | 'celular' = 'ventas';
+  phoneSearch   = '';
+  phoneLoading  = false;
+  phoneConsulted = false;
+  phoneErrorMsg  = '';
+  phoneSummary: any = null;
+  phoneLoyalty: any = null;
+  phoneLoyaltyTxns: any[] = [];
+
+  get phoneSearchValid(): boolean {
+    return this.phoneSearch.trim().length === 10;
+  }
+
   // Totales
   get totalVentas()   { return this.sales.reduce((s, v) => s + v.amount, 0); }
   get totalEfectivo() { return this.sales.filter(v => v.paymentType === 'EFECTIVO').reduce((s, v) => s + v.amount, 0); }
@@ -274,6 +288,50 @@ export class SalesReportsComponent implements OnInit {
 
   conceptsQty(sale: SaleReport): number {
     return sale.concepts.reduce((s, c) => s + c.quantity, 0);
+  }
+
+  onPhoneInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, 10);
+    this.phoneSearch = input.value;
+  }
+
+  async buscarPorCelular() {
+    if (!this.phoneSearchValid) return;
+    this.phoneLoading   = true;
+    this.phoneConsulted = false;
+    this.phoneErrorMsg  = '';
+    this.phoneSummary   = null;
+    this.phoneLoyalty   = null;
+    this.phoneLoyaltyTxns = [];
+
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    const phone = this.phoneSearch.trim();
+
+    try {
+      const [summary, loyalty, txns] = await Promise.all([
+        firstValueFrom(this.http.get<any>(
+          `${environment.urlAdministration}/Salesxcustomer/byPhone/${phone}`,
+          { headers: this.trackingService.getHeaders() }
+        )),
+        firstValueFrom(this.http.get<any>(
+          `${environment.urlAdministration}/Loyalty/account/${phone}/${idCompany}`,
+          { headers: this.trackingService.getHeaders() }
+        )).catch(() => null),
+        firstValueFrom(this.http.get<any[]>(
+          `${environment.urlAdministration}/Loyalty/transactions/${phone}/${idCompany}`,
+          { headers: this.trackingService.getHeaders() }
+        )).catch(() => []),
+      ]);
+      this.phoneSummary     = summary;
+      this.phoneLoyalty     = loyalty;
+      this.phoneLoyaltyTxns = txns ?? [];
+      this.phoneConsulted   = true;
+    } catch {
+      this.phoneErrorMsg = 'Error al consultar. Verifica tu conexión.';
+    } finally {
+      this.phoneLoading = false;
+    }
   }
 
   private todayStr() {

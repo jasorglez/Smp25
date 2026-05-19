@@ -1,5 +1,180 @@
 <div class="container-fluid py-3">
 
+  <!-- Pestañas -->
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'ventas'" (click)="activeTab = 'ventas'">
+        <i class="bi bi-receipt me-1"></i>Ventas por fecha
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'celular'" (click)="activeTab = 'celular'">
+        <i class="bi bi-phone me-1"></i>Reporte por celular
+      </button>
+    </li>
+  </ul>
+
+  <!-- ===== TAB: REPORTE POR CELULAR ===== -->
+  <ng-container *ngIf="activeTab === 'celular'">
+
+    <!-- Buscador -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-auto">
+            <label class="form-label form-label-sm mb-1">Número de celular</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="bi bi-phone"></i></span>
+              <input type="tel" class="form-control" style="max-width:160px"
+                     [ngModel]="phoneSearch" (input)="onPhoneInput($event)"
+                     placeholder="10 dígitos" maxlength="10" inputmode="numeric"
+                     [class.is-valid]="phoneSearchValid">
+            </div>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-sm btn-primary" (click)="buscarPorCelular()"
+                    [disabled]="!phoneSearchValid || phoneLoading">
+              <span *ngIf="phoneLoading" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!phoneLoading" class="bi bi-search me-1"></i>Consultar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="phoneErrorMsg" class="alert alert-danger py-2 small">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ phoneErrorMsg }}
+    </div>
+
+    <!-- Resultados -->
+    <ng-container *ngIf="phoneConsulted && phoneSummary">
+
+      <div class="row g-3 mb-3">
+
+        <!-- Resumen visitas / monto -->
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header py-2 fw-semibold small">
+              <i class="bi bi-person-circle me-1"></i>Resumen del cliente
+            </div>
+            <div class="card-body">
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted small">Celular</span>
+                <span class="fw-bold">{{ phoneSummary.phone }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted small">Total visitas</span>
+                <span class="badge bg-primary fs-6">{{ phoneSummary.visitCount }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted small">Total comprado</span>
+                <span class="fw-bold text-success">{{ formatCurrency(phoneSummary.totalAmount) }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted small">Última visita</span>
+                <span class="small">{{ phoneSummary.lastVisit | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Puntos de fidelidad -->
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm h-100" [class.border-warning]="phoneLoyalty?.totalPoints > 0">
+            <div class="card-header py-2 fw-semibold small">
+              <i class="bi bi-star-fill text-warning me-1"></i>Puntos de fidelidad
+            </div>
+            <div class="card-body">
+              <ng-container *ngIf="phoneLoyalty?.totalPoints > 0; else sinPuntos">
+                <div class="text-center py-2">
+                  <div class="display-5 fw-bold text-warning">{{ phoneLoyalty.totalPoints | number:'1.0-2' }}</div>
+                  <div class="text-muted small mt-1">puntos acumulados</div>
+                  <div class="text-muted small mt-1">Última actualización: {{ phoneLoyalty.updatedAt | date:'dd/MM/yyyy' }}</div>
+                </div>
+              </ng-container>
+              <ng-template #sinPuntos>
+                <div class="text-center text-muted py-3">
+                  <i class="bi bi-star fs-2 d-block mb-1"></i>
+                  Sin puntos acumulados aún
+                </div>
+              </ng-template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Productos más comprados -->
+      <div class="card shadow-sm mb-3" *ngIf="phoneSummary.products?.length > 0">
+        <div class="card-header py-2 fw-semibold small">
+          <i class="bi bi-bag-check me-1"></i>Productos más comprados
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th>Descripción</th>
+                <th class="text-end">Cant. total</th>
+                <th class="text-end">Importe total</th>
+                <th class="text-end">Veces comprado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of phoneSummary.products">
+                <td class="small">{{ p.description || '#' + p.idProduct }}</td>
+                <td class="text-end small">{{ p.totalQty }}</td>
+                <td class="text-end small">{{ formatCurrency(p.totalAmount) }}</td>
+                <td class="text-end small">
+                  <span class="badge bg-secondary">{{ p.purchaseCount }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Historial de puntos ganados -->
+      <div class="card shadow-sm" *ngIf="phoneLoyaltyTxns.length > 0">
+        <div class="card-header py-2 fw-semibold small">
+          <i class="bi bi-clock-history me-1"></i>Historial de puntos
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-dark">
+              <tr>
+                <th>Fecha</th>
+                <th class="text-end">Venta #</th>
+                <th class="text-end">Monto</th>
+                <th class="text-end">Factor</th>
+                <th class="text-end">Puntos ganados</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let t of phoneLoyaltyTxns">
+                <td class="small text-nowrap">{{ t.date | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="text-end small">{{ t.idSale }}</td>
+                <td class="text-end small">{{ formatCurrency(t.amount) }}</td>
+                <td class="text-end small text-muted">{{ (t.factorUsed * 100) | number:'1.0-0' }}%</td>
+                <td class="text-end fw-bold text-warning">+{{ t.pointsEarned | number:'1.0-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </ng-container>
+
+    <!-- Sin resultados -->
+    <div *ngIf="!phoneConsulted && !phoneLoading" class="text-center text-muted py-5">
+      <i class="bi bi-phone fs-1 d-block mb-2"></i>
+      <p class="mb-0">Ingresa el número de celular y presiona <strong>Consultar</strong></p>
+    </div>
+
+  </ng-container>
+
+  <!-- ===== TAB: VENTAS POR FECHA ===== -->
+  <ng-container *ngIf="activeTab === 'ventas'">
+
   <!-- Filtros -->
   <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
@@ -229,5 +404,7 @@
     <i class="bi bi-bar-chart-line fs-1 d-block mb-2"></i>
     <p class="mb-0">Selecciona un rango de fechas y presiona <strong>Consultar</strong></p>
   </div>
+
+  </ng-container><!-- fin TAB ventas -->
 
 </div>
