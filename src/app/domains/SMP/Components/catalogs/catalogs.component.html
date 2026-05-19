@@ -94,7 +94,7 @@
                       type="button"
                       class="btn btn-success position-relative"
                       (click)="saveChanges()"
-                     
+                      [disabled]="saving"
                     >
                       <i class="bi bi-floppy"></i>
                       <span

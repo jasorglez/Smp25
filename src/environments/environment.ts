@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.10 (19 Mayo 2026 18:30) fix(pos): iniciar turno tolerante a errores por tipo de material',
+  version: '6.11 (19 Mayo 2026 19:00) fix(catalogos): evitar duplicados al guardar con doble clic',
 };
