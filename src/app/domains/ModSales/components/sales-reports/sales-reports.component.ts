@@ -126,7 +126,8 @@ export class SalesReportsComponent implements OnInit {
     this.consulted = false;
     this.errorMsg = '';
     try {
-      const url = `${environment.urlAdministration}/Salesxcustomer/report?dateFrom=${this.dateFrom}&dateTo=${this.dateTo}&paymentType=TODAS`;
+      const idCompany = this.signalsService.getRootSelectedBySidebar()();
+      const url = `${environment.urlAdministration}/Salesxcustomer/report?dateFrom=${this.dateFrom}&dateTo=${this.dateTo}&paymentType=TODAS&idCompany=${idCompany}`;
       this.sales = await firstValueFrom(
         this.http.get<SaleReport[]>(url, { headers: this.trackingService.getHeaders() })
       );
@@ -493,7 +494,7 @@ export class SalesReportsComponent implements OnInit {
     try {
       const [summary, loyalty, txns] = await Promise.all([
         firstValueFrom(this.http.get<any>(
-          `${environment.urlAdministration}/Salesxcustomer/byPhone/${phone}`,
+          `${environment.urlAdministration}/Salesxcustomer/byPhone/${phone}?idCompany=${idCompany}`,
           { headers: this.trackingService.getHeaders() }
         )),
         firstValueFrom(this.http.get<any>(
@@ -523,7 +524,8 @@ export class SalesReportsComponent implements OnInit {
     this.allPhoneRows = [];
     this.expandedPhones.clear();
     try {
-      const url = `${environment.urlAdministration}/Salesxcustomer/report?dateFrom=${this.allPhoneFrom}&dateTo=${this.allPhoneTo}&paymentType=TODAS`;
+      const idCompany = this.signalsService.getRootSelectedBySidebar()();
+      const url = `${environment.urlAdministration}/Salesxcustomer/report?dateFrom=${this.allPhoneFrom}&dateTo=${this.allPhoneTo}&paymentType=TODAS&idCompany=${idCompany}`;
       const sales = await firstValueFrom(this.http.get<any[]>(url, { headers: this.trackingService.getHeaders() }));
 
       // Agrupar por phoneNumber (solo ventas con celular)

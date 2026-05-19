@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.03 (19 Mayo 2026 13:00) fix(pos): invalidar sesión si empresa no coincide con sidebar',
+  version: '6.04 (19 Mayo 2026 14:30) fix(ventas): reportes filtrados por empresa',
 };
