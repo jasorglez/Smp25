@@ -209,9 +209,9 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.familias ? this.familias.map((item) => item.id) : [],
-        },
+        cellEditorParams: () => ({
+          values: (this.familias ?? []).map((item) => item.id),
+        }),
         valueFormatter: (params) => {
           const foundItem = this.familias
             ? this.familias.find((item) => item.id === params.value)
@@ -503,12 +503,11 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   }
 
   obtenerFamilias() {
-    this.catalogsService.getFamilyById(this.idRoot).subscribe(
-      (data: Icatalog[]) => {
-        this.familias = data;
-      },
-      (error) => console.error('Error fetching families:', error)
-    );
+    this.catalogsService.getFamilyById(this.idRoot).pipe(
+      catchError(() => [])
+    ).subscribe((data: Icatalog[]) => {
+      this.familias = data ?? [];
+    });
   }
 
   obtenerSubfamilias() {
@@ -646,7 +645,7 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idCompany: 1,
+      idCompany: this.idRoot,
       insumo: '',
       articulo: '',
       description: '',
