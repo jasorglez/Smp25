@@ -9,7 +9,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { PosService } from 'app/services/pos.service';
-import { FamilySubFamily } from 'app/services/familySubFamily.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { catchError, EMPTY, forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
@@ -25,8 +25,8 @@ export class LoyaltyComponent implements OnInit {
   private materialsService = inject(MaterialsService);
   private customersService = inject(CustomersService);
   private signalsService   = inject(SignalsService);
-  private posService       = inject(PosService);
-  private familyService    = inject(FamilySubFamily);
+  private posService        = inject(PosService);
+  private catalogsService   = inject(CatalogsService);
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   activeTab: 'programs' | 'cards' | 'family-factors' = 'programs';
@@ -403,7 +403,7 @@ export class LoyaltyComponent implements OnInit {
     forkJoin({
       global:   this.posService.getLoyaltyConfig(this.idCompany),
       configs:  this.posService.getLoyaltyFamilyConfig(this.idCompany),
-      families: this.familyService.getMasterFamily(this.idCompany),
+      families: this.catalogsService.getCatalogsVigente(this.idCompany, 'FAMILY'),
     }).subscribe({
       next: ({ global, configs, families }) => {
         this.globalFactor      = global?.factorPuntos ?? 0.10;
