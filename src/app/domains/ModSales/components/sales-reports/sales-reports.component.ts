@@ -290,6 +290,159 @@ export class SalesReportsComponent implements OnInit {
     pdfMake.createPdf(docDef).open();
   }
 
+  // ---- PDF: Un celular ----
+  async imprimirPDFCelular() {
+    if (!this.phoneSummary) return;
+    const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
+    const logoBase64 = await this.loadLogo();
+    const s = this.phoneSummary;
+    const loy = this.phoneLoyalty;
+
+    const productRows: any[][] = (s.products ?? []).map((p: any) => [
+      { text: p.description || `#${p.idProduct}`, style: 'cell' },
+      { text: p.totalQty,                style: 'cellR', alignment: 'right' },
+      { text: fmt(p.totalAmount),         style: 'cellR', alignment: 'right' },
+      { text: p.purchaseCount,            style: 'cellR', alignment: 'right' },
+    ]);
+
+    const txnRows: any[][] = (this.phoneLoyaltyTxns ?? []).map(t => [
+      { text: new Date(t.date).toLocaleDateString('es-MX'), style: 'cell' },
+      { text: `#${t.idSale}`,                               style: 'cell' },
+      { text: fmt(t.amount),             style: 'cell', alignment: 'right' },
+      { text: `${Math.round(t.factorUsed * 100)}%`,         style: 'cell', alignment: 'right' },
+      { text: `+${t.pointsEarned}`,      style: 'cell', alignment: 'right', color: '#b45309' },
+    ]);
+
+    const docDef: any = {
+      pageSize: 'LETTER', pageMargins: [40, 55, 40, 40],
+      content: [
+        ...(logoBase64 ? [{ columns: [{ image: logoBase64, width: 70 }, { text: 'Reporte de Cliente por Celular', style: 'header', alignment: 'right', margin: [0, 10, 0, 0] }], margin: [0, 0, 0, 6] }]
+          : [{ text: 'Reporte de Cliente por Celular', style: 'header', margin: [0, 0, 0, 6] }]),
+        { text: `Generado: ${new Date().toLocaleString('es-MX')}`, style: 'sub', margin: [0, 0, 0, 10] },
+        // Resumen
+        { text: 'Resumen del cliente', style: 'section' },
+        { table: { widths: ['*', '*', '*', '*'], body: [
+          [{ text: 'Celular', style: 'sumLabel' }, { text: 'Visitas', style: 'sumLabel' }, { text: 'Total comprado', style: 'sumLabel' }, { text: 'Última visita', style: 'sumLabel' }],
+          [{ text: s.phone, style: 'sumVal' }, { text: s.visitCount, style: 'sumVal' }, { text: fmt(s.totalAmount), style: 'sumVal', color: '#16a34a' },
+           { text: new Date(s.lastVisit).toLocaleDateString('es-MX'), style: 'sumVal' }],
+        ]}, layout: 'lightHorizontalLines', margin: [0, 0, 0, 10] },
+        // Puntos
+        ...(loy ? [
+          { text: 'Puntos de fidelidad', style: 'section' },
+          { table: { widths: ['*', '*'], body: [
+            [{ text: 'Puntos acumulados', style: 'sumLabel' }, { text: 'Última actualización', style: 'sumLabel' }],
+            [{ text: `★ ${loy.totalPoints}`, style: 'sumVal', color: '#b45309', fontSize: 14, bold: true },
+             { text: new Date(loy.updatedAt).toLocaleDateString('es-MX'), style: 'sumVal' }],
+          ]}, layout: 'lightHorizontalLines', margin: [0, 0, 0, 10] },
+        ] : []),
+        // Productos
+        ...(productRows.length ? [
+          { text: 'Productos comprados', style: 'section' },
+          { table: { headerRows: 1, widths: ['*', 60, 80, 60], body: [
+            [{ text: 'Descripción', style: 'th' }, { text: 'Cantidad', style: 'th', alignment: 'right' },
+             { text: 'Importe', style: 'th', alignment: 'right' }, { text: 'Veces', style: 'th', alignment: 'right' }],
+            ...productRows,
+          ]}, layout: 'lightHorizontalLines', margin: [0, 0, 0, 10] },
+        ] : []),
+        // Historial puntos
+        ...(txnRows.length ? [
+          { text: 'Historial de puntos ganados', style: 'section' },
+          { table: { headerRows: 1, widths: [70, 50, 70, 50, 60], body: [
+            [{ text: 'Fecha', style: 'th' }, { text: 'Venta #', style: 'th' },
+             { text: 'Monto', style: 'th', alignment: 'right' }, { text: 'Factor', style: 'th', alignment: 'right' },
+             { text: 'Puntos', style: 'th', alignment: 'right' }],
+            ...txnRows,
+          ]}, layout: 'lightHorizontalLines' },
+        ] : []),
+      ],
+      styles: {
+        header:  { fontSize: 15, bold: true },
+        sub:     { fontSize: 8, color: '#64748b' },
+        section: { fontSize: 10, bold: true, margin: [0, 4, 0, 4], color: '#1e3a5f' },
+        sumLabel:{ bold: true, fontSize: 8, alignment: 'center', fillColor: '#e2e8f0' },
+        sumVal:  { fontSize: 9, alignment: 'center', bold: true },
+        th:      { bold: true, fontSize: 8, fillColor: '#1e3a5f', color: '#ffffff', margin: [2, 3, 2, 3] },
+        cell:    { fontSize: 8 },
+        cellR:   { fontSize: 8 },
+      },
+      defaultStyle: { fontSize: 8 },
+    };
+    pdfMake.createPdf(docDef).open();
+  }
+
+  // ---- PDF: Todos los celulares ----
+  async imprimirPDFTodos() {
+    if (!this.allPhoneRows.length) return;
+    const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
+    const logoBase64 = await this.loadLogo();
+
+    const bodyRows: any[][] = [];
+    for (const row of this.allPhoneRows) {
+      // Fila del teléfono
+      bodyRows.push([
+        { text: row.phone,              bold: true, fontSize: 9, fillColor: '#e8f0fe' },
+        { text: row.visitCount,         bold: true, fontSize: 9, fillColor: '#e8f0fe', alignment: 'right' },
+        { text: fmt(row.totalAmount),   bold: true, fontSize: 9, fillColor: '#e8f0fe', alignment: 'right', color: '#16a34a' },
+        { text: new Date(row.lastVisit).toLocaleDateString('es-MX'), fontSize: 8, fillColor: '#e8f0fe' },
+      ]);
+      // Filas de productos
+      for (const p of row.products) {
+        bodyRows.push([
+          { text: `   ${p.description}`, fontSize: 7, color: '#475569' },
+          { text: p.totalQty,   fontSize: 7, color: '#475569', alignment: 'right' },
+          { text: fmt(p.totalAmount), fontSize: 7, color: '#475569', alignment: 'right' },
+          { text: `${p.purchaseCount} vez`, fontSize: 7, color: '#94a3b8' },
+        ]);
+      }
+    }
+    // Fila total
+    bodyRows.push([
+      { text: 'TOTAL', colSpan: 2, bold: true, alignment: 'right', fillColor: '#1e3a5f', color: '#fff', fontSize: 9 },
+      {},
+      { text: fmt(this.allPhoneTotal), bold: true, alignment: 'right', fillColor: '#1e3a5f', color: '#fff', fontSize: 9 },
+      { text: '', fillColor: '#1e3a5f' },
+    ]);
+
+    const docDef: any = {
+      pageSize: 'LETTER', pageMargins: [40, 55, 40, 40],
+      content: [
+        ...(logoBase64 ? [{ columns: [{ image: logoBase64, width: 70 }, { text: 'Reporte de Clientes por Celular', style: 'header', alignment: 'right', margin: [0, 10, 0, 0] }], margin: [0, 0, 0, 4] }]
+          : [{ text: 'Reporte de Clientes por Celular', style: 'header', margin: [0, 0, 0, 4] }]),
+        { columns: [
+          { text: `Período: ${this.allPhoneFrom}  al  ${this.allPhoneTo}`, style: 'sub' },
+          { text: `Generado: ${new Date().toLocaleString('es-MX')}`, style: 'sub', alignment: 'right' },
+        ], margin: [0, 0, 0, 10] },
+        { table: {
+            headerRows: 1,
+            widths: ['*', 45, 90, 70],
+            body: [
+              [{ text: 'Celular / Producto', style: 'th' }, { text: 'Visitas/Cant.', style: 'th', alignment: 'right' },
+               { text: 'Total', style: 'th', alignment: 'right' }, { text: 'Última visita', style: 'th' }],
+              ...bodyRows,
+            ],
+          },
+          layout: { hLineWidth: (i: number) => 0.5, vLineWidth: () => 0, hLineColor: () => '#e2e8f0' },
+        },
+      ],
+      styles: {
+        header: { fontSize: 15, bold: true },
+        sub:    { fontSize: 8, color: '#64748b' },
+        th:     { bold: true, fontSize: 8, fillColor: '#1e3a5f', color: '#ffffff', margin: [2, 3, 2, 3] },
+      },
+      defaultStyle: { fontSize: 8 },
+    };
+    pdfMake.createPdf(docDef).open();
+  }
+
+  private async loadLogo(): Promise<string | null> {
+    try {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(idRoot));
+      if (rootResponse?.picture) return this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+    } catch {}
+    return null;
+  }
+
   formatCurrency(v: number) {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
   }
