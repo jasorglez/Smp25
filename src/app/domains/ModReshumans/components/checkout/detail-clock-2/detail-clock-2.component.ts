@@ -503,13 +503,14 @@ export default class DetailClock2Component implements OnInit {
           if (params.node.group) {
             const groupData = params.node.allLeafChildren;
 
-            // Contar registros válidos de tipo IN
+            // Solo INs en horario normal (09:00–21:00) generan salida pendiente
             const validInCount = [...groupData].filter(node => {
               const record = node.data;
-              return record.valid === true && record.type === 'IN';
+              if (!record.valid || record.type !== 'IN') return false;
+              const hour = record.checkTime ? parseInt(record.checkTime.split(':')[0], 10) : -1;
+              return hour >= 9 && hour < 21;
             }).length;
 
-            // Contar registros válidos de tipo OUT
             const validOutCount = [...groupData].filter(node => {
               const record = node.data;
               return record.valid === true && record.type === 'OUT';
