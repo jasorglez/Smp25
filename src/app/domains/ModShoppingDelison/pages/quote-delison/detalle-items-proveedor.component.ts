@@ -1,4 +1,4 @@
-import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input } from '@angular/core';
+import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -12,6 +12,7 @@ import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { UnsavedChangesTrackerService } from 'app/services/unsaved-changes-tracker.service';
 import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -21,13 +22,14 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { ProveedorItemsOverlayData } from 'app/services/proveedor-items-overlay.service';
+import { ClasificacionCascadaComponent } from './clasificacion-cascada.component';
 
 pdfMake.vfs = pdfFonts.vfs;
 
 @Component({
   selector: 'app-detalle-items-proveedor',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ItemCommentsCellRendererComponent, ClasificacionCascadaComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Banner de candado cuando ya existe OC -->
@@ -86,7 +88,7 @@ pdfMake.vfs = pdfFonts.vfs;
       </div>
 
       <!-- Grid con tamaño completo -->
-      <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
+      <div #gridWrapper style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
           [rowData]="rowData"
@@ -122,6 +124,7 @@ pdfMake.vfs = pdfFonts.vfs;
       flex-direction: column;
       box-sizing: border-box;
       overflow: hidden;
+      position: relative;
     }
     .form-label {
       margin-bottom: 2px;
@@ -139,10 +142,12 @@ export class DetalleItemsProveedorComponent {
   private catalogadmonService = inject(CatalogadmonService);
   private itemCommentsService = inject(ItemCommentsService);
   private materialsService = inject(MaterialsService);
+  private catalogsService = inject(CatalogsService);
   private unsavedTracker = inject(UnsavedChangesTrackerService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
+  @ViewChild('gridWrapper') private gridWrapper!: ElementRef;
   private renderer: Renderer2;
   private newProviderOverlayEl: HTMLElement | null = null;
   private newProviderOverlayUnlisteners: Array<() => void> = [];
@@ -216,6 +221,12 @@ export class DetalleItemsProveedorComponent {
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
+  // ===== Cascada de clasificación (artículos NUPNPN sin clasificar) =====
+  // Catálogos consumidos por el detail renderer (ClasificacionCascadaComponent) vía context.
+  catCategorias: any[] = [];
+  catFamilias: any[] = [];
+  catSubfamilias: any[] = [];
+
   /**
    * ✅ Vía de entrada cuando el componente se usa como MODAL (no como cell renderer de AG Grid).
    * Construye un objeto params-like y reutiliza la MISMA lógica de agInit(), por lo que el
@@ -275,6 +286,7 @@ export class DetalleItemsProveedorComponent {
     });
 
     this.buildRowData();
+    this.cargarCatalogosClasificacion();
     this.loadProviders().then(() => {
       if (this.selectedProviderId) {
         this.selectedProviderObj = this.providers.find(p => p.id === this.selectedProviderId) || null;
@@ -342,7 +354,7 @@ export class DetalleItemsProveedorComponent {
       active: true,
       idSupplie: item.idSupplie || 0,
       recurrent: item.recurrent || 'Recurrente',
-      numArticulo: item.recurrent === 'Nuevo' ? '' : (item.numArticle || (index + 1)),
+      numArticulo: item.numarticle || item.numArticle || (item.recurrent === 'Nuevo' ? '' : (index + 1)),
       articulo: item.article || '',
       codigoExterno: '',
       proveedorXTablaId: 0,
@@ -360,6 +372,100 @@ export class DetalleItemsProveedorComponent {
     console.log('✅ buildRowData: rowData inicial:', this.rowData);
     this.updateTotal();
     this.updateHasRowsWithTypeOC();
+    this.refrescarNumArticuloDesdeBD();
+  }
+
+  // ===== Cascada de clasificación (artículos NUPNPN) =====
+
+  private cargarCatalogosClasificacion(): void {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    // Se muestra si está marcado como MATERIA PRIMA o como BIENES Y SERVICIOS
+    // (solo se oculta cuando ambos son false)
+    const tieneBits = (x: any) =>
+      (x?.valueAdditionBit === true || x?.valueAdditionBit === 1) ||
+      (x?.valueAdditionBit3 === true || x?.valueAdditionBit3 === 1);
+    this.catalogsService.getCatalogs(idCompany, 'CATEGORY').subscribe({
+      next: (d: any[]) => this.catCategorias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catCategorias = []
+    });
+    this.catalogsService.getCatalogs(idCompany, 'FAM-CAT').subscribe({
+      next: (d: any[]) => this.catFamilias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catFamilias = []
+    });
+    this.catalogsService.getCatalogs(idCompany, 'SUB-FAM').subscribe({
+      next: (d: any[]) => this.catSubfamilias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catSubfamilias = []
+    });
+  }
+
+  // Llamado por el detail renderer cuando el usuario edita la clasificación.
+  marcarClasifModificado(): void {
+    this.hasUnsavedChanges = true;
+  }
+
+  // Refresca numArticulo de filas NUPNPN consultando el insumo real del material en BD.
+  // params.data.articulos es un snapshot: si el material ya se clasificó en otro
+  // proveedor, este slot debe mostrar el código real y no volver a abrir la cascada.
+  private async refrescarNumArticuloDesdeBD(): Promise<void> {
+    const hayPendientes = this.rowData.some(
+      r => r.idSupplie > 0 && String(r?.numArticulo || '').toUpperCase().startsWith('NUPNPN')
+    );
+    if (!hayPendientes) return;
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot) return;
+    try {
+      const materiales: any[] = await lastValueFrom(this.materialsService.getMaterialsxview(idRoot));
+      const insumoPorId = new Map<number, string>();
+      (materiales || []).forEach((m: any) => {
+        const insumo = m?.insumo ?? m?.Insumo;
+        if (m?.id != null && insumo) insumoPorId.set(Number(m.id), String(insumo));
+      });
+      let cambios = false;
+      this.rowData.forEach(row => {
+        if (!(row.idSupplie > 0)) return;
+        if (!String(row?.numArticulo || '').toUpperCase().startsWith('NUPNPN')) return;
+        const insumoReal = insumoPorId.get(Number(row.idSupplie));
+        if (insumoReal && insumoReal !== row.numArticulo) {
+          row.numArticulo = insumoReal;
+          cambios = true;
+        }
+      });
+      // Re-set rowData para que AG Grid re-evalúe isRowMaster (oculta la cascada)
+      if (cambios && this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+    } catch (e) {
+      console.error('Error refrescando numArticulo desde BD', e);
+    }
+  }
+
+  // Alto del detail = alto del área del grid menos el header y la fila maestra visible.
+  private computeDetailHeight(): number {
+    const h = this.gridWrapper?.nativeElement?.clientHeight || 0;
+    return Math.max(200, h - 30 - 28);
+  }
+
+  // Reclasifica los materiales con cascada pendiente; el backend regenera el num-mat (insumo).
+  private async guardarClasificaciones(): Promise<void> {
+    const rows = this.rowData.filter(r => r.__clasifPendiente && r.idSupplie > 0);
+    for (const row of rows) {
+      try {
+        const resp: any = await lastValueFrom(this.materialsService.updateMaterial(String(row.idSupplie), {
+          idCategory: row.clasifCategoria,
+          idFamilia: row.clasifFamilia,
+          idSubfamilia: row.clasifSubfamilia
+        }));
+        const nuevoInsumo = resp?.insumo || resp?.Insumo;
+        if (nuevoInsumo) row.numArticulo = nuevoInsumo;
+        delete row.__clasifPendiente;
+      } catch (e) {
+        console.error('Error reclasificando material', row.idSupplie, e);
+      }
+    }
+    if (rows.length > 0 && this.gridApi) {
+      this.gridApi.refreshCells({ force: true, columns: ['numArticulo'] });
+    }
   }
 
   async onProviderChange() {
@@ -519,6 +625,7 @@ export class DetalleItemsProveedorComponent {
     }
     this.savingChanges = true;
     try {
+      await this.guardarClasificaciones();
       await this.saveCotizOrOC('COTIZ');
       this.setArticulosPedimentoLocked(true);
       if (this.rowsMissingProvider.length > 0) await this.createMissingProviderAssignments();
@@ -551,6 +658,19 @@ export class DetalleItemsProveedorComponent {
         // this.pedimentoModificationService.pedimentoModified$.next(cotizId);
       }
       await alerts.ocCotizSaved(this.savedCotizFolio);
+
+      // Aviso si quedaron artículos sin clasificar (# interno de articulo aún NUPNPN)
+      const hayClaseNueva = this.rowData.some(
+        r => String(r?.numArticulo || '').toUpperCase().startsWith('NUPNPN')
+      );
+      if (hayClaseNueva) {
+        await alerts.basicAlert(
+          'Artículos con clase nueva',
+          'Estás guardando artículos con clase nueva, por favor asigna la categoría adecuada lo más pronto posible.',
+          'warning'
+        );
+      }
+
       const hasAuthorized = this.rowData.some(row => this.AUTHORIZED_TYPES.includes(row.typeOC));
       if (hasAuthorized) { this.savingChanges = false; await this.generateOC(); }
     } catch (error) { alert('Error al guardar.'); } finally { this.savingChanges = false; }
@@ -748,6 +868,7 @@ export class DetalleItemsProveedorComponent {
       }
       this.updateTotal();
       this.updateHasRowsWithTypeOC();
+      this.refrescarNumArticuloDesdeBD();
     } catch (err) { console.error('❌ Error loadSavedItems:', err); }
   }
 
@@ -770,7 +891,39 @@ export class DetalleItemsProveedorComponent {
 
     this._colDefs = [
       { field: 'active', headerName: 'Activo', width: 120, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
-      { field: 'numArticulo', headerName: '# Art', width: 169 },
+      {
+        field: 'numArticulo', headerName: '# interno de articulo', width: 169,
+        cellStyle: (p: any) => String(p.value || '').toUpperCase().startsWith('NUPNPN')
+          ? { cursor: 'pointer', backgroundColor: '#fff9e6', textDecoration: 'underline', color: '#b8860b' }
+          : null,
+        cellRenderer: (p: any) => {
+          const val = String(p.value ?? '');
+          if (val.toUpperCase().startsWith('NUPNPN')) {
+            const chevron = p.node?.expanded ? '▼' : '▶';
+            return `<span style="margin-right:4px;">${chevron}</span>${val}`;
+          }
+          return val;
+        },
+        onCellClicked: (e: any) => {
+          const val = String(e.data?.numArticulo || '').toUpperCase();
+          if (!val.startsWith('NUPNPN') || this.ocGenerated) return;
+          const willExpand = !e.node.expanded;
+          if (willExpand) {
+            // Acordeón: ocultar las demás filas, solo queda visible la fila enfocada + su detalle.
+            // El detail toma su alto vía getRowHeight (computeDetailHeight) al expandirse.
+            this.gridApi.forEachNode((other: any) => {
+              if (other.id !== e.node.id) other.setRowHeight(0);
+            });
+            e.node.setExpanded(true);
+          } else {
+            e.node.setExpanded(false);
+            // Restaurar la altura de todas las filas
+            this.gridApi.forEachNode((other: any) => other.setRowHeight(undefined));
+          }
+          this.gridApi.onRowHeightChanged();
+          this.gridApi.refreshCells({ rowNodes: [e.node], columns: ['numArticulo'], force: true });
+        }
+      },
       { field: 'articulo', headerName: 'Artículo', width: 260 },
       { field: 'codigoExterno', headerName: 'Cód. Externo', width: 140, editable: !this.ocGenerated,
         valueFormatter: (params: any) => {
@@ -804,6 +957,13 @@ export class DetalleItemsProveedorComponent {
           return true;
         }
       },
+      { field: 'cantidadConfirmada', headerName: 'Cantidad Requerida', width: 150, editable: false,
+        cellStyle: { textAlign: 'right' },
+        valueFormatter: (params: any) => {
+          if (params.value === null || params.value === undefined || params.value === '') return '';
+          return String(params.value);
+        }
+      },
       { field: 'costoUnitario', headerName: 'Costo Unit.', width: 140, editable: !this.ocGenerated,
         valueFormatter: (params: any) => {
           if (!this.selectedProviderId) return '-';
@@ -816,7 +976,6 @@ export class DetalleItemsProveedorComponent {
           params.data.costoTotal = val * (params.data.cantidadConfirmada || 0);
           return true;
         } },
-      { field: 'cantidadConfirmada', headerName: 'Cant. Conf.', width: 120, editable: !this.ocGenerated, hide: true },
       { field: 'costoTotal', headerName: 'Costo Total', width: 170,
         valueFormatter: (params: any) => {
           if (!this.selectedProviderId) return '-';
@@ -860,7 +1019,15 @@ export class DetalleItemsProveedorComponent {
       type: 'fitCellContents',
     },
     defaultColDef: { resizable: true, sortable: true, filter: true },
-    onCellEditingStarted: () => { if (this.ocGenerated) this.gridApi?.stopEditing(true); }
+    onCellEditingStarted: () => { if (this.ocGenerated) this.gridApi?.stopEditing(true); },
+    // Master-detail: solo los artículos nuevos (NUPNPN) se expanden con la cascada de clasificación
+    masterDetail: true,
+    isRowMaster: (dataItem: any) =>
+      String(dataItem?.numArticulo || '').toUpperCase().startsWith('NUPNPN'),
+    detailCellRenderer: ClasificacionCascadaComponent,
+    // El detail ocupa todo el alto disponible del grid (getRowHeight se evalúa al expandir)
+    getRowHeight: (p: any) => p?.node?.detail ? this.computeDetailHeight() : undefined,
+    context: { componentParent: this }
   };
 
   private setArticulosPedimentoLocked(locked: boolean): void {

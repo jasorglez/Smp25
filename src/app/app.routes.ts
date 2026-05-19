@@ -2199,6 +2199,13 @@ export const routes: Routes = [
                   ).then((m) => m.CatFamSubComponent),
               },
               {
+                path: 'autorizacion-montos',
+                loadComponent: () =>
+                  import(
+                    './domains/ModShoppingDelison/pages/subPages/autorizacion-montos/autorizacion-montos.component'
+                  ).then((m) => m.AutorizacionMontosComponent),
+              },
+              {
                 path: ':section',
                 loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then(p => p.CatalogsComponent)
               },

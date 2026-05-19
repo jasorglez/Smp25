@@ -975,7 +975,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       {
         field: 'quantity',
-        headerName: 'Cantidad',
+        headerName: 'Cantidad Requerida',
         width: 100,
         suppressSizeToFit: true,
         editable: true,
@@ -1529,6 +1529,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           }));
           item.materialId = matResponse.id || matResponse.ID || 0;
           item.idSupplie = item.materialId;
+          // Tomar el num-mat (insumo) del material recién creado para el "# del Articulo"
+          item.numArticle = matResponse.insumo || matResponse.Insumo || item.numArticle || '';
+          item.code = item.numArticle;
         } catch (err) {
           // Silenciar error - idSupplie permanece 0
         }
@@ -1555,6 +1558,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           }));
           item.materialId = matResponse.id || matResponse.ID || 0;
           item.idSupplie = item.materialId;
+          // Tomar el num-mat (insumo) del material recién creado para el "# del Articulo"
+          item.numArticle = matResponse.insumo || matResponse.Insumo || item.numArticle || '';
+          item.code = item.numArticle;
         } catch (err) {
           // Silenciar error - idSupplie permanece 0
         }

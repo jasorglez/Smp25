@@ -167,6 +167,14 @@ export class OcAndReqsService {
     );
   }
 
+  patchProveedorXTablaPrincipal(campo1: number, idTabla: number, valor: boolean): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/ProveedorXTabla/principal/by-material-provider/${campo1}/${idTabla}`,
+      JSON.stringify(valor),
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   deactivateProveedorForMaterial(campo1: number, idTabla: number): Observable<any> {
     return this.http.patch(
       `${environment.urlWarehouse}/ProveedorXTabla/deactivate-for-material/${campo1}/${idTabla}`,

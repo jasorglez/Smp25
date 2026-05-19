@@ -1187,10 +1187,31 @@ export class CatFamSubComponent {
     }, 0);
   }
 
+  // Verificar si una abreviatura ya existe en el mismo nivel
+  private isAbbreviationDuplicated(abreviatura: string, nodeLevel: string, excludeId?: any): boolean {
+    if (!abreviatura || !abreviatura.trim()) return false;
+    const normalized = abreviatura.trim().toUpperCase();
+    return this.treeData.some(item =>
+      item.nodeLevel === nodeLevel &&
+      item.valueAddition2 &&
+      String(item.valueAddition2).trim().toUpperCase() === normalized &&
+      (excludeId === undefined || item.originalId !== excludeId)
+    );
+  }
+
   // Guardar nueva categoría
   async saveNewCategory() {
     if (!this.modalForm.description.trim()) {
       alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
+      return;
+    }
+
+    if (this.isAbbreviationDuplicated(this.modalForm.valueAddition2, 'category')) {
+      alerts.basicAlert(
+        'Abreviatura duplicada',
+        `La abreviatura "${this.modalForm.valueAddition2.trim().toUpperCase()}" ya está registrada en otra categoría.`,
+        'warning'
+      );
       return;
     }
 
@@ -1231,6 +1252,15 @@ export class CatFamSubComponent {
   async saveNewFamily() {
     if (!this.modalForm.description.trim()) {
       alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
+      return;
+    }
+
+    if (this.isAbbreviationDuplicated(this.modalForm.valueAddition2, 'family')) {
+      alerts.basicAlert(
+        'Abreviatura duplicada',
+        `La abreviatura "${this.modalForm.valueAddition2.trim().toUpperCase()}" ya está registrada en otra familia.`,
+        'warning'
+      );
       return;
     }
 
@@ -1286,6 +1316,15 @@ export class CatFamSubComponent {
   async saveNewSubfamily() {
     if (!this.modalForm.description.trim()) {
       alerts.basicAlert('Error', 'El nombre es obligatorio.', 'warning');
+      return;
+    }
+
+    if (this.isAbbreviationDuplicated(this.modalForm.valueAddition2, 'subfamily')) {
+      alerts.basicAlert(
+        'Abreviatura duplicada',
+        `La abreviatura "${this.modalForm.valueAddition2.trim().toUpperCase()}" ya está registrada en otra subfamilia.`,
+        'warning'
+      );
       return;
     }
 
@@ -1350,6 +1389,17 @@ export class CatFamSubComponent {
 
     if (!this.editingItem?.originalId) {
       alerts.basicAlert('Error', 'No se puede identificar el registro a actualizar.', 'error');
+      return;
+    }
+
+    if (this.isAbbreviationDuplicated(this.modalForm.valueAddition2, this.editingItem.nodeLevel, this.editingItem.originalId)) {
+      const levelLabel: Record<string, string> = { category: 'categoría', family: 'familia', subfamily: 'subfamilia' };
+      const label = levelLabel[this.editingItem.nodeLevel] || 'registro';
+      alerts.basicAlert(
+        'Abreviatura duplicada',
+        `La abreviatura "${this.modalForm.valueAddition2.trim().toUpperCase()}" ya está registrada en otra ${label}.`,
+        'warning'
+      );
       return;
     }
 

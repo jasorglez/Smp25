@@ -138,8 +138,26 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
             (cellValueChanged)="onCellValueChanged($event)"
             (cellMouseOver)="onCellMouseOver($event)"
             (cellMouseOut)="onCellMouseOut($event)"
-            style="width: 100%; flex: 1 1 auto; min-height: 0;">
+            (columnResized)="onColumnResized()"
+            style="width: 100%; flex: 0 0 auto;">
           </ag-grid-angular>
+
+          <!-- Footer "Total x Pedimento" - anchos sincronizados dinámicamente con columnas CANTIDAD X PROV., COSTO TOTAL y CHAT -->
+          <div *ngIf="rowData.length > 0"
+               style="display: flex; align-items: stretch; flex-shrink: 0; height: 40px; font-size: 11px; font-family: inherit;">
+            <div style="flex: 1 1 auto;"></div>
+            <div [style.width.px]="footerLabelWidth"
+                 style="background-color: #e8f5e9; color: #1b5e20; font-weight: 700;
+                        display: flex; align-items: center; justify-content: center; padding: 4px;">
+              Total x Pedimento
+            </div>
+            <div [style.width.px]="footerValueWidth"
+                 style="background-color: #81c784; color: #1b5e20; font-weight: 700;
+                        display: flex; align-items: center; justify-content: center; padding: 4px;">
+              {{ '$' + pinnedTotal.toFixed(2) }}
+            </div>
+            <div [style.width.px]="footerEndWidth"></div>
+          </div>
         </div>
       </div>
 
@@ -374,6 +392,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     'CAMBIO DE ESPECIFICACIONES',
     'ARTICULO NO AUTORIZADO'
   ];
+
+  /** Tipos OC positivos que exigen "Cantidad x Prov." >= "Compra Mínima" (excluye "SIN LIMITE"). */
+  private readonly POSITIVE_LIMITED_TYPES = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
 
   ngOnInit() {
     this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
@@ -665,7 +686,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           Number(slotItemIdsPorProv[provId] ?? slotItemIdsPorProv[provId.toString()] ?? 0) || 0;
         const tipoOc =
           tiposOcPorProv[provId] ?? tiposOcPorProv[provId.toString()] ?? 'SELECCIONE UNA OPCION';
-        const costoTotal = costoUnitario * cantidadComprar;
+        const costoTotal = costoUnitario * cantidadConceptualizada;
         const costoXCompraMinima = costoUnitario * compraMinima;
 
         const providerCodigosMap = this.codigosExternos.get(provId) || new Map();
@@ -711,6 +732,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       if (this.gridApi) {
         this.gridApi.setGridOption('columnDefs', this.colDefs);
         this.gridApi.setGridOption('rowData', this.rowData);
+        this.updatePinnedBottomRow();
       }
     }, 0);
   }
@@ -720,12 +742,41 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.gridApi.setGridOption('columnDefs', this.colDefs);
     if (this.rowData?.length) {
       this.gridApi.setGridOption('rowData', this.rowData);
+      this.updatePinnedBottomRow();
     }
   }
 
-  onFirstDataRendered(_params: any) {}
+  onFirstDataRendered(_params: any) {
+    this.updateFooterWidths();
+  }
 
   onRowDataUpdated() {}
+
+  onColumnResized() {
+    this.updateFooterWidths();
+  }
+
+  public pinnedTotal: number = 0;
+  public footerLabelWidth: number = 135;
+  public footerValueWidth: number = 105;
+  public footerEndWidth: number = 88;
+
+  private updatePinnedBottomRow() {
+    this.pinnedTotal = this.rowData.reduce((acc, r) => acc + (Number(r.costoTotal) || 0), 0);
+  }
+
+  private updateFooterWidths() {
+    if (!this.gridApi) return;
+    const cols = this.gridApi.getColumns?.();
+    if (!cols) return;
+    for (const col of cols) {
+      const field = col.getColDef?.()?.field;
+      const w = col.getActualWidth?.() || 0;
+      if (field === 'cantidadConceptualizada') this.footerLabelWidth = w;
+      else if (field === 'costoTotal') this.footerValueWidth = w;
+      else if (field === 'comentario') this.footerEndWidth = w;
+    }
+  }
 
   private getValidatedCantidadConceptualizada(rawValue: any, row: any) {
     const cantidadComprar = Number(row?.cantidadComprar) || 0;
@@ -746,14 +797,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.savedAtLeastOnce = false;
     const field = event.colDef?.field;
 
-    // Detectar cambio a "COMPRA AUTORIZADA EN OTRA FECHA"
-    if (field === 'tipoOc' && event.newValue === 'COMPRA AUTORIZADA EN OTRA FECHA') {
-      this.currentRowBeingEdited = event.data;
-      this.selectedDate = event.data.datePostpone ? String(event.data.datePostpone).substring(0, 10) : '';
-      this.openDateModal();
-      return;
-    }
-
     // Detectar cambio a "COMPRA AUTORIZADA SIN LIMITE": forzar cantidad = 0 (sin límite, no aplica cantidad)
     if (field === 'tipoOc' && event.newValue === 'COMPRA AUTORIZADA SIN LIMITE') {
       event.data.cantidadConceptualizada = 0;
@@ -769,7 +812,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           continue;
         }
         row.cantidadComprar = qty;
-        row.costoTotal = (Number(row.costoUnitario) || 0) * qty;
+        row.costoTotal = (Number(row.costoUnitario) || 0) * (Number(row.cantidadConceptualizada) || 0);
       }
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
@@ -831,23 +874,79 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
 
       this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+
+      // Cuando tipoOc cambia a un tipo positivo limitado, verificar que cantidadConceptualizada >= compraMinima
+      if (this.POSITIVE_LIMITED_TYPES.includes(event.newValue)) {
+        const compraMin = Number(event.data?.compraMinima) || 0;
+        const cantActual = Number(event.data?.cantidadConceptualizada) || 0;
+        if (compraMin > 0 && cantActual < compraMin) {
+          const articuloItemId = Number(event.data?.articuloItemId ?? 0);
+          const sumOtros = this.rowData
+            .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
+            .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+          const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
+          const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+          if (maxAllowed < compraMin) {
+            event.data.cantidadConceptualizada = 0;
+            this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+            alerts.basicAlert(
+              'Cantidad insuficiente',
+              `Solo quedan ${maxAllowed.toFixed(2)} piezas por asignar pero se requieren ${compraMin} (compra mínima) para "${event.data?.proveedorNombre ?? 'este proveedor'}". Ajuste la cantidad de los otros proveedores para liberar espacio.`,
+              'warning'
+            );
+          } else {
+            event.data.cantidadConceptualizada = compraMin;
+            this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+            alerts.basicAlert(
+              'Cantidad ajustada',
+              `Con tipo OC "${event.newValue}", la cantidad por proveedor no puede ser menor a la compra mínima (${compraMin}). Se ajustó al mínimo.`,
+              'warning'
+            );
+          }
+        }
+      }
     }
     if (field === 'cantidadConceptualizada') {
       const cantidadValidada = this.getValidatedCantidadConceptualizada(event.newValue, event.data);
       event.data.cantidadConceptualizada = cantidadValidada;
-      if (cantidadValidada < Number(event.newValue)) {
-        const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
-        const articuloItemId = Number(event.data?.articuloItemId ?? 0);
-        const sumOtros = this.rowData
-          .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
-          .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
-        const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+
+      const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
+      const articuloItemId = Number(event.data?.articuloItemId ?? 0);
+      const sumOtros = this.rowData
+        .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
+        .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+      const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+
+      // Tipo OC positivo (excepto SIN LIMITE) exige cantidad por proveedor >= compra mínima
+      const compraMin = Number(event.data?.compraMinima) || 0;
+      const belowMinimo = this.POSITIVE_LIMITED_TYPES.includes(event.data?.tipoOc)
+        && compraMin > 0 && cantidadValidada < compraMin;
+
+      if (belowMinimo) {
+        if (maxAllowed < compraMin) {
+          event.data.cantidadConceptualizada = 0;
+          alerts.basicAlert(
+            'Cantidad insuficiente',
+            `Solo quedan ${maxAllowed.toFixed(2)} piezas por asignar pero se requieren ${compraMin} (compra mínima) para "${event.data?.proveedorNombre ?? 'este proveedor'}". Ajuste la cantidad de los otros proveedores para liberar espacio.`,
+            'warning'
+          );
+        } else {
+          event.data.cantidadConceptualizada = compraMin;
+          alerts.basicAlert(
+            'Cantidad ajustada',
+            `Con tipo OC "${event.data.tipoOc}", la cantidad por proveedor no puede ser menor a la compra mínima (${compraMin}). Se ajustó al mínimo.`,
+            'warning'
+          );
+        }
+      } else if (cantidadValidada < Number(event.newValue)) {
         alerts.basicAlert(
           'Cantidad inválida',
           `La suma de cantidades por proveedor no puede superar la cantidad requerida (${cantidadComprar}). Máximo permitido para este proveedor: ${maxAllowed.toFixed(2)}.`,
           'warning'
         );
       }
+
+      event.data.costoTotal = (Number(event.data.costoUnitario) || 0) * (Number(event.data.cantidadConceptualizada) || 0);
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
       }
@@ -855,7 +954,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     if (field === 'costoUnitario' || field === 'compraMinima') {
       const row = event.data;
       const cu = Number(row.costoUnitario) || 0;
-      const q = Number(row.cantidadComprar) || 0;
+      const q = Number(row.cantidadConceptualizada) || 0;
       const cm = Number(row.compraMinima) || 0;
       row.costoTotal = cu * q;
       row.costoXCompraMinima = cu * cm;
@@ -863,6 +962,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }
     }
+    this.updatePinnedBottomRow();
   }
 
   async saveOnly() {
@@ -879,6 +979,23 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         );
         if (this.gridApi) this.gridApi.refreshCells({ force: true });
         return;
+      }
+    }
+
+    // Validar que filas con tipo OC positivo limitado tengan cantidad >= compra mínima
+    for (const row of this.rowData) {
+      if (this.POSITIVE_LIMITED_TYPES.includes(row.tipoOc)) {
+        const compraMin = Number(row.compraMinima) || 0;
+        const cantidad = Number(row.cantidadConceptualizada) || 0;
+        if (compraMin > 0 && cantidad < compraMin) {
+          alerts.basicAlert(
+            'Cantidad insuficiente',
+            `El proveedor "${row.proveedorNombre ?? ''}" tiene tipo OC "${row.tipoOc}" pero la cantidad asignada (${cantidad}) es menor a la compra mínima (${compraMin}). Corrija antes de guardar.`,
+            'warning'
+          );
+          if (this.gridApi) this.gridApi.refreshCells({ force: true });
+          return;
+        }
       }
     }
 
@@ -1001,6 +1118,26 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
       await this.updatePorAutorizarAfterOC();
       await this.updateMaterialsAfterOC();
+
+      // Marcar como principal=true al PRIMER proveedor procesado por cada artículo nuevo (PRODUCTO NUEVO).
+      // No depende de si el proveedor es nuevo en el sistema, sino de si el artículo es nuevo.
+      try {
+        const materialsPrincipalSet = new Set<number>();
+        for (const [provId, rows] of rowsByProvider) {
+          for (const row of rows) {
+            const nuevoRec = String(row?.nuevoRecurrente ?? '').toLowerCase();
+            if (nuevoRec !== 'nuevo') continue;
+            const idSupplie = Number(row?.idSupplie ?? 0);
+            if (idSupplie <= 0 || materialsPrincipalSet.has(idSupplie)) continue;
+            await lastValueFrom(
+              this.ocAndReqsService.patchProveedorXTablaPrincipal(idSupplie, provId, true)
+            ).catch(() => {});
+            materialsPrincipalSet.add(idSupplie);
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ No se pudo marcar principal en proveedorxtablas:', e);
+      }
     }
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
@@ -1341,7 +1478,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   private async updatePorAutorizarAfterOC(): Promise<void> {
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
-    const idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     for (const row of this.rowData) {
       const isNewArticle = (row.nuevoRecurrente || '').toLowerCase() === 'nuevo';
@@ -1349,30 +1485,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const hasMaterialId = row.idSupplie && row.idSupplie > 0;
 
       if (isNewArticle && hasAuthorizedType && hasMaterialId) {
+        // Partial update: solo aprobamos el producto nuevo (active=true, porAutorizar=false).
+        // No enviamos insumo/articulo/idCategory/idFamilia/idSubfamilia/idMedida/idUbication/costos/stock
+        // para no sobrescribir datos vigentes del maestro. El backend (MaterialService.Update) hace merge
+        // y solo aplica los campos con valor.
         const materialData = {
-          idCompany: idRoot,
-          idBranch: null,
-          idCustomer: null,
-          insumo: row.articulo || '',
-          articulo: row.articulo || '',
-          idCategory: null,
-          idFamilia: null,
-          idSubfamilia: null,
-          idMedida: null,
-          idUbication: null,
-          description: row.articulo || '',
-          merma: 0,
-          fecha: new Date().toISOString(),
-          aplicaResg: false,
-          costoMN: 0,
-          costoDLL: 0,
-          ventaMN: 0,
-          ventaDLL: 0,
-          stockMin: 0,
-          stockMax: 0,
-          picture: '',
-          typeMaterial: 'CONSUMABLE',
-          vigente: true,
           active: true,
           porAutorizar: false
         };
@@ -1659,15 +1776,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
       {
-        field: 'costoTotal',
-        headerName: 'COSTO TOTAL',
-        width: 105,
-        editable: false,
-        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
-        valueFormatter: (params: any) =>
-          params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
-      },
-      {
         field: 'costoXCompraMinima',
         headerName: 'COSTO X COMPRA MIN.',
         width: 120,
@@ -1681,20 +1789,24 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       {
         field: 'tipoOc',
         headerName: 'TIPO OC',
-        width: 150,
-        minWidth: 120,
+        width: 230,
+        minWidth: 200,
         editable: (params: any) => !this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0)),
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
+        cellEditorPopup: true,
         cellEditorParams: () => ({
           values: this.tipoOcOptions.filter(opt => opt !== 'SELECCIONE UNA OPCION'),
           searchable: false,
-          allowTyping: false
+          allowTyping: false,
+          valueListMaxWidth: 280,
+          valueListMaxHeight: 260
         }),
         tooltipValueGetter: (p: any) => p.data?.tipoOc || '',
         cellStyle: (params: any) => {
           const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
           return { textAlign: 'center', padding: '4px', fontSize: '10px', lineHeight: '1.2',
+                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                    backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
         }
       },
@@ -1727,6 +1839,15 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           return { textAlign: 'center', padding: '4px',
                    backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
         }
+      },
+      {
+        field: 'costoTotal',
+        headerName: 'COSTO TOTAL',
+        width: 105,
+        editable: false,
+        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
+        valueFormatter: (params: any) =>
+          params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
       {
         field: 'comentario',
@@ -1765,6 +1886,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   public gridOptions: any = {
     rowHeight: 40,
+    domLayout: 'autoHeight',
     enableBrowserTooltips: true,
     autoSizeStrategy: { type: 'fitGridWidth' },
     // Obligatorio para que colDef.rowSpan fusione celdas (sin esto cada fila sigue mostrando su propia celda)

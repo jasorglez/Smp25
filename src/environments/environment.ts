@@ -28,16 +28,16 @@ export const environment = {
   // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
 
 
-  urlSecurity: 'https://ms-pruebas-api.bi2.mx/api', // 5003
-  //urlSecurity     : 'http://localhost:5260/api',
+  //urlSecurity: 'https://ms-pruebas-api.bi2.mx/api', // 5003
+  urlSecurity     : 'http://localhost:5260/api',
 
   urlSmp: 'https://ms-pruebas-api.bi2.mx/smp/api', // 5004
   //urlSmp          : 'http://localhost:5183/api',
 
   urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
-  //urlWarehouse: 'http://localhost:5199/api',
+  //urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
+  urlWarehouse: 'http://localhost:5199/api',
 
   urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.142 (15 Mayo 2026 23:10) - Hide: Categoría/Familia/Subfamilia ocultos en modal Nuevo Artículo (se setean automáticamente por default)'
+  version: '2.52.182 (19 Mayo 2026 01:30) - Columna "Nivel x monto" en Usuarios ahora muestra "descripcion = $min / $max" en dropdown y celda'
 };

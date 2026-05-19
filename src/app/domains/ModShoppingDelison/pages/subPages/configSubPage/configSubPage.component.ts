@@ -1,12 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { FamilySubFamilyComponent } from 'app/domains/Almacenes/components/FamilySubFamily/FamilySubFamily.component';
-import { AutorizacionMontosComponent } from './autorizacion-montos/autorizacion-montos.component';
 
 @Component({
   selector: 'app-configShoppingDelison',
   standalone: true,
-  imports: [FamilySubFamilyComponent, AutorizacionMontosComponent],
+  imports: [FamilySubFamilyComponent],
   templateUrl: './configSubPage.component.html',
 })
 export class configShoppingDelisonComponent {
