@@ -1424,13 +1424,12 @@ export class EgresosPalacioComponent {
         }
       }, 500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error crítico en saveChanges:', error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al guardar los registros. Por favor, intente nuevamente.',
-        'error'
-      );
+      const status  = error?.status ?? '';
+      const detail  = error?.error?.message ?? error?.error ?? error?.message ?? String(error);
+      const msgHtml = status ? `<b>HTTP ${status}</b><br>${detail}` : detail;
+      alerts.basicAlert('Error al guardar', msgHtml, 'error');
     }
   }
 
@@ -1462,13 +1461,11 @@ export class EgresosPalacioComponent {
 
     selectedData.active = 0;
     this.incomesAndExpensesService.deleteIncomesAndExpenses(id).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Error al eliminar la entrada.',
-          'error'
-        );
-        console.error(error);
+      catchError((error: any) => {
+        console.error('Error al eliminar egreso:', error);
+        const status = error?.status ?? '';
+        const detail = error?.error?.message ?? error?.error ?? error?.message ?? String(error);
+        alerts.basicAlert('Error al eliminar', status ? `HTTP ${status}: ${detail}` : detail, 'error');
         return EMPTY;
       })
     )

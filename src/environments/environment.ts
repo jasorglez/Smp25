@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.05 (19 Mayo 2026 15:00) fix(ventas): reportes y celular filtrados por empresa + update id_company',
+  version: '6.06 (19 Mayo 2026 15:30) fix(egresos): mostrar mensaje de error real en CRUD',
 };
