@@ -77,6 +77,10 @@ export class RolesService {
     return this.http.get(`${environment.urlSecurity}/Roles/authorized-departments?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
+  canUserMultiguardar(idUser: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/Roles/user-can-multiguardar?idUser=${idUser}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
 
 export interface RolesxDetailedPermission {

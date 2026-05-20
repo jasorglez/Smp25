@@ -29,6 +29,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.service';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { PendingChangesService } from 'app/services/pending-changes.service';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -71,6 +72,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   private subfamiliaModalService = inject(SubfamiliaModalService);
   private route = inject(ActivatedRoute);
   public activeModal = inject(NgbActiveModal, { optional: true });
+  /** Bus central de cambios pendientes para Niveles 2 (proveedores) y 3 (sucursales).
+   *  El botón Guardar único persiste también esos cambios además de los del Nivel 1. */
+  public pendingChangesService = inject(PendingChangesService);
 
   // ✅ Cuando la ruta lo indica (secciones "Bienes y servicios no productivos" y
   // "Articulos y servicios nuevos"), se ocultan columnas: Merma, Fecha Cambio,
@@ -688,10 +692,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return `$${params.value}`;
         },
         cellStyle: (params: any) => {
-          // ✅ Bloqueo visual si es nuevo
-          if (params.data?.__isNew) {
-            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
-          }
+          // Bloqueo por `__isNew` removido: el Guardar centralizado del Nivel 1
+          // remapea ID temporal → real antes de persistir cascadas.
           const familia = this.families?.find((f: any) => f.id === params.data.idFamilia);
           const familiaDesc = familia?.description || params.data.familia || '';
           if (familiaDesc.toUpperCase().includes('BASICA')) {
@@ -709,12 +711,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const count = params.value || 0;
           return count;
         },
-        cellStyle: (params: any) => {
-          if (params.data?.__isNew) {
-            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
-          }
-          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
-        }
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
       
       
@@ -726,12 +723,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         cellRenderer: (params: any) => {
           return params.value || 0;
         },
-        cellStyle: (params: any) => {
-          if (params.data?.__isNew) {
-            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
-          }
-          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
-        }
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
 
      {
@@ -742,12 +734,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const count = params.value || 0;
           return count;
         },
-        cellStyle: (params: any) => {
-          if (params.data?.__isNew) {
-            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
-          }
-          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
-        }
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
 
 
@@ -771,12 +758,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const count = params.value || 0;
           return count;
         },
-        cellStyle: (params: any) => {
-          if (params.data?.__isNew) {
-            return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd', textDecoration: 'none' };
-          }
-          return { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' };
-        }
+        cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' }
       },
     ];
 
@@ -829,15 +811,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
-      // ✅ Bloqueo: Si la fila es nueva, no permitir entrar a detalles
-      if (event.data?.__isNew) {
-        alerts.basicAlert(
-          'Guarda primero',
-          'Debes guardar el material antes de poder gestionar sus detalles (Proveedores, Parámetros, etc).',
-          'warning'
-        );
-        return;
-      }
+      // Bloqueo previo por `__isNew` removido: con el Guardar centralizado del Nivel 1
+      // (PendingChangesService) ahora se puede capturar datos en cascadas antes de guardar
+      // el material; el saveChanges() remapea el ID temporal al real antes de persistir hijos.
 
       // Si la columna es "Materiales" y la Familia es "Básica", bloquear el clic
       if (colId === 'costo') {
@@ -1005,8 +981,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             load: (materialId: number, type: string, callback: (data: any[]) => void) => {
               this.loadMaterialXTableData(materialId, type, callback);
             },
-            save: (materialId: number, data: any[], type: string) => {
-              this.saveMaterialDetailsById(materialId, data, type);
+            // Devuelve un Map<tempProveedorId, realProveedorId> para que el Nivel 2
+            // pueda propagarlo a Nivel 3 (sucursales) vía el idMap del PendingChangesService.
+            save: (materialId: number, data: any[], type: string): Promise<Map<string, number>> => {
+              return this.saveMaterialDetailsById(materialId, data, type);
             },
             delete: (params: any, callback: () => void) => {
               this.deleteDetailRow(params, callback, 'MATERIAL');
@@ -1205,8 +1183,23 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges(): Promise<void> {
-    if (!this.hasUnsavedChanges) {
+    const hasChildChanges = this.pendingChangesService.hasAnyChanges();
+    if (!this.hasUnsavedChanges && !hasChildChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      return;
+    }
+
+    // Si SÓLO hay cambios de hijos (Nivel 2/3/4) y nada en Nivel 1, persistimos los hijos y salimos.
+    if (!this.hasUnsavedChanges && hasChildChanges) {
+      try {
+        // Sin Nivel 1 nuevo, no hay idMap; los hijos guardan con IDs ya conocidos.
+        await this.pendingChangesService.saveAll();
+        alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
+      } catch (error: any) {
+        console.error('Error al guardar cambios de hijos:', error);
+        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+        alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
+      }
       return;
     }
 
@@ -1215,6 +1208,19 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
+      // Nivel 1 no tiene cambios reales, pero podría haber cambios en hijos.
+      if (hasChildChanges) {
+        try {
+          await this.pendingChangesService.saveAll();
+          alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
+        } catch (error: any) {
+          console.error('Error al guardar cambios de hijos:', error);
+          const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+          alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
+        }
+        this.hasUnsavedChanges = false;
+        return;
+      }
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       this.hasUnsavedChanges = false;
       return;
@@ -1237,12 +1243,60 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       }
     }
 
+    // Mapa tempId → realId para que las cascadas (PendingChangesService) remapeen
+    // su referencia al material padre (campo1 en proveedores, etc.) antes de persistir.
+    const idMap = new Map<string, number>();
+
     try {
       // Guardar nuevos registros
       for (const newRow of newRows) {
+        const tempId = newRow.id; // ej. 'temp_1'
         const materialData = this.prepareMaterialData(newRow);
-        await lastValueFrom(this.materialsService.addMaterial(materialData));
+        const response: any = await lastValueFrom(this.materialsService.addMaterial(materialData));
+        console.log('[saveChanges] addMaterial response:', response, 'tempId:', tempId);
+        // Capturar ID real probando todos los shapes comunes del backend C#.
+        let realId = Number(
+          response?.id ??
+          response?.Id ??
+          response?.ID ??
+          response?.data?.id ??
+          response?.data?.Id ??
+          response?.Data?.id ??
+          response?.Data?.Id ??
+          response?.result?.id ??
+          0
+        );
+        // Fallback: recargar lista de materiales y buscar por `insumo` único.
+        if (!realId && newRow.insumo) {
+          try {
+            const all: any = await lastValueFrom(this.materialsService.getMaterialsxview(this.idRoot));
+            const found = (all || []).find((m: any) => m.insumo === newRow.insumo);
+            if (found?.id) {
+              realId = Number(found.id);
+              console.log('[saveChanges] realId obtenido vía fallback insumo:', realId);
+            } else {
+              console.warn('[saveChanges] fallback: insumo no encontrado en getMaterialsxview', newRow.insumo);
+            }
+          } catch (e) {
+            console.warn('[saveChanges] fallback getMaterialsxview falló:', e);
+          }
+        }
+        if (realId && typeof tempId === 'string' && tempId.startsWith('temp_')) {
+          idMap.set(tempId, realId);
+          newRow.id = realId; // Actualiza la fila para que próximas operaciones usen el ID real.
+          console.log('[saveChanges] idMap actualizado:', tempId, '→', realId);
+        } else if (!realId) {
+          console.error('[saveChanges] ⚠️ No se pudo extraer el ID real del material recién creado. Respuesta:', response);
+          // ABORTAR el guardado de hijos: sin idMap, los POSTs de cascadas fallarán con 400.
+          alerts.basicAlert(
+            'Error',
+            'No se pudo obtener el ID del material recién creado. Las cascadas (proveedores, etc.) no se guardarán automáticamente. Recarga la página.',
+            'error'
+          );
+          return;
+        }
       }
+      console.log('[saveChanges] idMap final antes de saveAll:', Array.from(idMap.entries()));
 
       // Detectar materiales que dejaron de ser PRODUCTO NUEVO (para auto-llenado de cascada)
       const PRODUCTO_NUEVO_FAM_ID = 1316;
@@ -1309,6 +1363,18 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (materialsThatLeftProductoNuevo.length > 0) {
         await this.autoFillCascadeOnMaterialFamilyChange(materialsThatLeftProductoNuevo)
           .catch(e => console.warn('⚠️ Error en auto-llenado de cascada (PRODUCTO NUEVO → real):', e));
+      }
+
+      // Persistir cambios de Niveles 2 (proveedores), 3 (sucursales) y 4 (empaque) en paralelo.
+      // Se pasa el `idMap` para que las cascadas que apuntaban a un material recién creado
+      // (con id temporal) actualicen su referencia al ID real antes de POSTear al backend.
+      // Si fallan, el Nivel 1 ya quedó guardado; reportamos el error sin bloquear el flujo principal.
+      try {
+        await this.pendingChangesService.saveAll(idMap);
+      } catch (childError: any) {
+        console.error('Error al guardar cambios de sub-grids:', childError);
+        const childMsg = childError?.error?.message || childError?.message || 'Error desconocido';
+        alerts.basicAlert('Aviso', `Material guardado pero algunos sub-grids fallaron: ${childMsg}`, 'warning');
       }
 
       alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
@@ -1409,13 +1475,32 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     });
   }
 
-  async saveMaterialDetailsById(materialId: number, data: any[], type: string) {
+  /**
+   * Guarda proveedores nuevos/modificados de un material.
+   * Devuelve un mapa `tempProveedorId → realProveedorId` con los IDs generados
+   * por el backend para que el Nivel 3 (sucursales) pueda remapear su FK.
+   */
+  async saveMaterialDetailsById(materialId: number, data: any[], type: string): Promise<Map<string, number>> {
     const newDetails = data.filter((row: any) => row.__isNew);
     const modifiedDetails = data.filter((row: any) => row.__modified && !row.__isNew);
+    const newIdMap = new Map<string, number>();
 
     try {
       for (const row of newDetails) {
-        await lastValueFrom(this.providersService.addProviderXTable(this.cleanDataForServer(row)));
+        const tempId = row.id;
+        const payload = this.cleanDataForServer(row);
+        console.log('[saveMaterialDetailsById] POST ProveedorXTabla payload:', payload);
+        const resp: any = await lastValueFrom(this.providersService.addProviderXTable(payload));
+        // Extraer id real probando shapes comunes del backend.
+        const realId = Number(
+          resp?.id ?? resp?.Id ?? resp?.ID ??
+          resp?.data?.id ?? resp?.data?.Id ??
+          resp?.Data?.id ?? resp?.Data?.Id ?? 0
+        );
+        if (realId && typeof tempId === 'string' && tempId.startsWith('temp_')) {
+          newIdMap.set(tempId, realId);
+          row.id = realId; // Reemplazar id temporal por real en la fila.
+        }
       }
 
       for (const row of modifiedDetails) {
@@ -1436,14 +1521,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         });
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving provider details:', error);
+      console.error('[saveMaterialDetailsById] backend error body:', error?.error);
+      console.error('[saveMaterialDetailsById] backend error status:', error?.status, 'statusText:', error?.statusText);
+      if (error?.error?.errors) {
+        console.error('[saveMaterialDetailsById] validation errors:', JSON.stringify(error.error.errors, null, 2));
+      }
       alerts.basicAlert(
         'Error',
         'Error al guardar los proveedores.',
         'error'
       );
     }
+    return newIdMap;
   }
 
   async deleteDetailRow(params: any, successCallback: () => void, type: string) {
@@ -1478,6 +1569,16 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    // El backend C# espera el nombre del proveedor en `proveedor` (campo requerido del modelo),
+    // pero en el frontend lo guardamos como `providerName` para la UI. Mapeamos antes de borrar.
+    if (cleanedData.providerName && !cleanedData.proveedor) {
+      cleanedData.proveedor = cleanedData.providerName;
+    }
+    // Campos auxiliares de UI que no existen en el modelo del backend C#.
+    delete cleanedData.providerName;
+    delete cleanedData.branchName;
+    delete cleanedData._hasSucursales;
+    delete cleanedData.detailType;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

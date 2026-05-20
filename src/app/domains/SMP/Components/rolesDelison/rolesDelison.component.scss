@@ -30,6 +30,12 @@
   flex-direction: column;
 }
 
+/* Encabezados del grid: permitir varias líneas sin recortar con "..." */
+:host ::ng-deep .roles-grid-wrapper .ag-header-cell-label {
+  white-space: normal;
+  line-height: 1.25;
+}
+
 /* Modal host para Ver Permisos (por posición) */
 .permissions-overlay {
   position: fixed;

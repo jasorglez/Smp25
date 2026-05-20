@@ -111,6 +111,14 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.gridApi.refreshCells({ columns: ['requisitionNumber'], force: true });
       }
     });
+
+    // ✅ Re-aplica el filtro externo cuando cambia el flag lecturaAmplia del usuario logueado.
+    effect(() => {
+      this.signalsService.lecturaAmplia(); // suscripción reactiva
+      if (this.gridApi) {
+        this.gridApi.onFilterChanged();
+      }
+    });
   }
 
   rowData: any[] = [];
@@ -617,13 +625,30 @@ export class RequisitionsDelisonComponent implements OnInit {
             const timeB = new Date(b.dateModified || b.requestDate).getTime();
             return timeB - timeA;
           });
-          
+
           // Aplicar el nuevo orden al grid
           if (this.gridApi) {
             this.gridApi.setGridOption('rowData', [...this.rowData]);
           }
         }
       }
+    },
+    // ✅ Filtro externo: oculta filas cuyo departamento no está autorizado al usuario logueado
+    // en esa sucursal. Solo aplica cuando lecturaAmplia === false ("Solo mis departamentos").
+    isExternalFilterPresent: () => {
+      return this.signalsService.lecturaAmplia() === false;
+    },
+    doesExternalFilterPass: (node: any) => {
+      // Filas nuevas o sin asignación todavía → pasan (no se restringe la creación).
+      if (node?.data?.__isNew) return true;
+      const branchId = Number(node?.data?.idReference || 0);
+      const deptId = Number(node?.data?.departmentId || 0);
+      if (branchId <= 0 || deptId <= 0) return true;
+      const allowedRoles = this.rolesByBranchCache.get(branchId);
+      // Si la cache aún no terminó de cargar para esa sucursal, ocultar por seguridad.
+      // Al terminar preloadRolesForBranch se dispara onFilterChanged() y se re-evalúa.
+      if (!allowedRoles) return false;
+      return allowedRoles.some((r: any) => Number(r?.id || 0) === deptId);
     }
   };
 
@@ -1674,6 +1699,8 @@ export class RequisitionsDelisonComponent implements OnInit {
         })));
         if (this.gridApi) {
           this.gridApi.refreshCells({ force: true });
+          // ✅ Re-evaluar filtro externo: la cache ya tiene los roles autorizados de esta sucursal.
+          this.gridApi.onFilterChanged();
         }
       },
       error: () => {}

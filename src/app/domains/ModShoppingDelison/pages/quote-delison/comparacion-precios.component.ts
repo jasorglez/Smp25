@@ -9,6 +9,8 @@ import { ProvidersService } from 'app/services/providers.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { UsersService } from 'app/services/users.service';
+import { AutorizacionMontoService } from 'app/services/autorizacion-monto.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -86,14 +88,19 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
               </span>
             </button>
 
-            <button
-              type="button"
-              class="btn btn-sm btn-primary position-relative"
-              (click)="generateOC()"
-              [disabled]="rowData.length === 0 || ocGenerada || !savedAtLeastOnce || hasUnsavedChanges"
-              [title]="ocGenerada ? 'Comparación cerrada' : (!savedAtLeastOnce || hasUnsavedChanges) ? 'Guarda los cambios antes de generar OC' : 'Generar Orden(es) de Compra'">
-              <i class="bi bi-file-earmark-check me-1"></i>Generar OC
-            </button>
+            <span
+              (mouseenter)="showGenerarOcTooltip($event)"
+              (mouseleave)="hideGenerarOcTooltip()"
+              style="display: inline-block;">
+              <button
+                type="button"
+                class="btn btn-sm btn-primary position-relative"
+                (click)="generateOC()"
+                [disabled]="rowData.length === 0 || ocGenerada || !savedAtLeastOnce || hasUnsavedChanges || userHasNoNivelMonto || ocAmountExceedsUserLevel"
+                [style.pointer-events]="(rowData.length === 0 || ocGenerada || !savedAtLeastOnce || hasUnsavedChanges || userHasNoNivelMonto || ocAmountExceedsUserLevel) ? 'none' : 'auto'">
+                <i class="bi bi-file-earmark-check me-1"></i>Generar OC
+              </button>
+            </span>
 
             <button
               type="button"
@@ -317,6 +324,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private ngbModal = inject(NgbModal);
   private materialsService = inject(MaterialsService);
+  private usersService = inject(UsersService);
+  private autorizacionMontoService = inject(AutorizacionMontoService);
   private renderer: Renderer2;
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
@@ -326,6 +335,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private slotFolioMap   = new Map<number, string>();
   private commentSub?: Subscription;
   private tooltipEl: HTMLElement | null = null;
+  private generarOcTooltipEl: HTMLElement | null = null;
 
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
@@ -363,6 +373,16 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   savedAtLeastOnce = false;
   loading = false;
   error: string | null = null;
+
+  /** Nivel de autorización de monto del usuario actual (id de autorizacion_monto).
+   *  null = usuario sin nivel asignado → botón "Generar OC" deshabilitado siempre. */
+  private userNivelMontoId: number | null = null;
+  /** Monto máximo autorizado para el usuario. null = "Sin límite" (autorización abierta). */
+  private userMontoMax: number | null = null;
+  /** Monto mínimo del rango autorizado para el usuario (no se valida actualmente, sólo referencia). */
+  private userMontoMin: number = 0;
+  /** Flag para saber si ya cargamos el nivel del usuario (evita habilitar botón antes de tiempo). */
+  private nivelMontoLoaded: boolean = false;
 
   get hasConflictingTipoOc(): boolean {
     const REJECTION = ['CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
@@ -402,12 +422,169 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         this.gridApi.refreshCells({ force: true });
       }
     });
+    this.loadUserNivelMonto();
     this.loadComparisonData();
+  }
+
+  /**
+   * Carga el nivel de autorización de monto del usuario actual.
+   * - Si el usuario tiene `nivelMonto` (id de autorizacion_monto), busca el rango montoMin/montoMax.
+   * - Si `nivelMonto` es null → no podrá generar OC nunca (tooltip lo explicará).
+   * - Si el monto total de la OC supera `montoMax` → no podrá generar OC (tooltip pide ayuda a supervisión).
+   * No se altera ningún flujo existente: sólo se agregan datos para una validación adicional.
+   */
+  private loadUserNivelMonto(): void {
+    const idUser = this.signalsService.idUser?.() ?? 0;
+    const idCompany = this.signalsService.getRootSelectedBySidebar()() ?? 0;
+    if (!idUser || !idCompany) {
+      // Sin contexto no podemos validar; dejamos como "sin nivel" para deshabilitar el botón con mensaje claro.
+      this.userNivelMontoId = null;
+      this.userMontoMax = null;
+      this.userMontoMin = 0;
+      this.nivelMontoLoaded = true;
+      return;
+    }
+
+    this.usersService.getUserById(idUser).subscribe({
+      next: (resp: any) => {
+        const userData = resp?.data ?? resp ?? {};
+        const nivelId = userData?.nivelMonto;
+        this.userNivelMontoId = (nivelId == null || nivelId === 0) ? null : Number(nivelId);
+
+        if (this.userNivelMontoId == null) {
+          this.userMontoMax = null;
+          this.userMontoMin = 0;
+          this.nivelMontoLoaded = true;
+          return;
+        }
+
+        this.autorizacionMontoService.getByCompany(idCompany).subscribe({
+          next: (niveles: any) => {
+            const list = Array.isArray(niveles) ? niveles : [];
+            const nivel = list.find((n: any) => Number(n.id) === Number(this.userNivelMontoId));
+            if (nivel) {
+              this.userMontoMin = Number(nivel.montoMin) || 0;
+              this.userMontoMax = (nivel.montoMax == null) ? null : Number(nivel.montoMax);
+            } else {
+              // Nivel asignado pero no encontrado en catálogo → trátalo como sin nivel.
+              this.userNivelMontoId = null;
+              this.userMontoMax = null;
+              this.userMontoMin = 0;
+            }
+            this.nivelMontoLoaded = true;
+          },
+          error: () => {
+            this.userMontoMax = null;
+            this.userMontoMin = 0;
+            this.nivelMontoLoaded = true;
+          }
+        });
+      },
+      error: () => {
+        this.userNivelMontoId = null;
+        this.userMontoMax = null;
+        this.userMontoMin = 0;
+        this.nivelMontoLoaded = true;
+      }
+    });
+  }
+
+  /** Indica si el usuario no tiene nivel de autorización de monto asignado. */
+  get userHasNoNivelMonto(): boolean {
+    return this.nivelMontoLoaded && this.userNivelMontoId == null;
+  }
+
+  /** Indica si el monto total de la OC excede el nivel autorizado del usuario. */
+  get ocAmountExceedsUserLevel(): boolean {
+    if (!this.nivelMontoLoaded || this.userNivelMontoId == null) return false;
+    if (this.userMontoMax == null) return false; // Sin límite
+    return (this.pinnedTotal || 0) > Number(this.userMontoMax);
+  }
+
+  /** Tooltip dinámico para el botón "Generar OC" según el estado actual. */
+  get generarOcTooltip(): string {
+    if (this.ocGenerada) return 'Comparación cerrada';
+    if (this.userHasNoNivelMonto) return 'No tienes asignado un nivel para compras';
+    if (this.ocAmountExceedsUserLevel) return 'Tu nivel de liberación no es suficiente para generar OC, pide ayuda a supervisión administrativa';
+    if (!this.savedAtLeastOnce || this.hasUnsavedChanges) return 'Guarda los cambios antes de generar OC';
+    return 'Generar Orden(es) de Compra';
+  }
+
+  /** Indica si el tooltip del botón "Generar OC" representa una restricción (mensaje rojo/alerta). */
+  get isGenerarOcRestriction(): boolean {
+    return this.ocGenerada || this.userHasNoNivelMonto || this.ocAmountExceedsUserLevel ||
+           !this.savedAtLeastOnce || this.hasUnsavedChanges;
+  }
+
+  /** Título del tooltip estilizado según el contexto (autorización vs. acción normal). */
+  get generarOcTooltipTitle(): string {
+    if (this.ocGenerada) return 'Comparación cerrada';
+    if (this.userHasNoNivelMonto) return 'Sin nivel de autorización';
+    if (this.ocAmountExceedsUserLevel) return 'Nivel insuficiente';
+    if (!this.savedAtLeastOnce || this.hasUnsavedChanges) return 'Cambios pendientes';
+    return 'Generar Orden(es) de Compra';
+  }
+
+  showGenerarOcTooltip(event: MouseEvent): void {
+    this.hideGenerarOcTooltip();
+
+    const message = this.generarOcTooltip;
+    if (!message) return;
+
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    this.generarOcTooltipEl = this.renderer.createElement('div');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'position', 'fixed');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'z-index', '10001');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'pointer-events', 'none');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'min-width', '260px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'max-width', '380px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'border-radius', '8px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'box-shadow', '0 8px 24px rgba(0,0,0,0.4)');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'padding', '12px 16px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'color', '#ffffff');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'font-size', '12px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'line-height', '1.6');
+
+    const title = this.renderer.createElement('div');
+    this.renderer.setStyle(title, 'font-weight', '600');
+    this.renderer.setStyle(title, 'font-size', '13px');
+    this.renderer.setStyle(title, 'margin-bottom', '6px');
+    this.renderer.setStyle(title, 'color', '#ffffff');
+    this.renderer.appendChild(title, this.renderer.createText(this.generarOcTooltipTitle));
+    this.renderer.appendChild(this.generarOcTooltipEl, title);
+
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'color', 'rgba(255,255,255,0.92)');
+    this.renderer.appendChild(body, this.renderer.createText(message));
+    this.renderer.appendChild(this.generarOcTooltipEl, body);
+
+    this.renderer.appendChild(document.body, this.generarOcTooltipEl);
+
+    // Posicionar debajo del botón, alineado a la derecha si no cabe a la izquierda
+    const tooltipWidth = this.generarOcTooltipEl!.offsetWidth || 280;
+    const viewportWidth = window.innerWidth;
+    let leftPos = rect.left;
+    if (leftPos + tooltipWidth + 10 > viewportWidth) {
+      leftPos = Math.max(10, rect.right - tooltipWidth);
+    }
+    this.renderer.setStyle(this.generarOcTooltipEl, 'top', `${rect.bottom + 8}px`);
+    this.renderer.setStyle(this.generarOcTooltipEl, 'left', `${leftPos}px`);
+  }
+
+  hideGenerarOcTooltip(): void {
+    if (this.generarOcTooltipEl) {
+      this.renderer.removeChild(document.body, this.generarOcTooltipEl);
+      this.generarOcTooltipEl = null;
+    }
   }
 
   ngOnDestroy() {
     this.commentSub?.unsubscribe();
     this.hideArticuloTooltip();
+    this.hideGenerarOcTooltip();
   }
 
   private loadComparisonData() {
@@ -634,6 +811,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.buildRowDataForAllArticulos();
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
+    // Datos cargados desde backend ya están persistidos: equivalente a haber guardado.
+    // Permite habilitar "Generar OC" al reabrir el modal sin exigir un Guardar redundante.
+    // Se resetea a false en onCellValueChanged si el usuario edita algo.
+    this.savedAtLeastOnce = true;
     this.cdr.detectChanges();
     this.pushRowDataToGridIfReady(true);
   }
@@ -1845,6 +2026,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'COSTO TOTAL',
         width: 105,
         editable: false,
+        // valueGetter calcula en tiempo real desde costoUnitario × cantidadConceptualizada,
+        // así no depende de que row.costoTotal esté sincronizado manualmente.
+        valueGetter: (params: any) => {
+          if (!params.data) return 0;
+          const cu = Number(params.data.costoUnitario) || 0;
+          const q  = Number(params.data.cantidadConceptualizada) || 0;
+          return cu * q;
+        },
         cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
         valueFormatter: (params: any) =>
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
