@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.200 (19 Mayo 2026 07:30) - Persistencia de proveedores no guardados en cache (params.data.__pendingProveedores): mismo patrón que sucursales. Los proveedores nuevos sobreviven al colapso/expansión del detail row del Nivel 2.'
+  version: '2.52.201 (20 Mayo 2026 13:50) - Modificación al master-clock y al detail-clock-2'
 };
