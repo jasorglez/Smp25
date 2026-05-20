@@ -48,6 +48,14 @@ export class ClockService {
     });
   }
 
+  calculateAdjustment(employeeId: number, timestamp: string, type: string): Observable<{ realTimeBySystem: string | null; adjustedTimeBySystem: string | null }> {
+    return this.http.post<{ realTimeBySystem: string | null; adjustedTimeBySystem: string | null }>(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/calculate-adjustment`,
+      { employeeId, timestamp, type },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
 
   updateCheckInOutForDiscrepancies(id: number, data: any): Observable<any> {
     return this.http.patch(`${environment.urlAdministration}/EmployeesxCheckInsOuts/${id}/discrepance`, data, {

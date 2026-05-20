@@ -17,7 +17,8 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ClockService } from 'app/services/clock.service';
 import { TimeEditorComponent } from 'app/shared/time-editor/time-editor.component';
 import { TimeEditorModule } from 'app/shared/time-editor/time-editor.module';
-import { lastValueFrom, concat, toArray } from 'rxjs';
+import { lastValueFrom, concat, toArray, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { EmployeesService } from 'app/services/employees.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -800,18 +801,35 @@ export default class DetailClock2Component implements OnInit {
       (row) => row.__modified && !row.__isNew
     );
 
-    // Mostrar los datos de las filas nuevas que se van a enviar
-    newRows.forEach((row, index) => {
-      const cleanedData = this.cleanDataForServer(row);
-    });
+    // Reglas 2 y 3: validar patrón por día afectado
+    const affectedDates = [...new Set(
+      [...newRows, ...modifiedRows].map(r => r.date).filter(Boolean)
+    )];
+    for (const date of affectedDates) {
+      const error = this.validateDayPattern(date as string);
+      if (error) {
+        alerts.basicAlert('Error de validación', error, 'error');
+        return;
+      }
+    }
 
-    // Mostrar los datos de las filas modificadas que se van a enviar
-    modifiedRows.forEach((row, index) => {
-      const cleanedData = this.cleanDataForServer(row);
-    });
+    // Regla 1: calcular ajuste horario para cada fila nueva
+    const adjustments = await Promise.all(
+      newRows.map(row => {
+        const dateStr = typeof row.date === 'string'
+          ? row.date
+          : new Date(row.date).toISOString().split('T')[0];
+        const time = row.checkTime.includes('.') ? row.checkTime.split('.')[0] : row.checkTime;
+        return lastValueFrom(
+          this.clockService.calculateAdjustment(row.idEmployee, `${dateStr}T${time}`, row.type).pipe(
+            catchError(() => of({ realTimeBySystem: null, adjustedTimeBySystem: null }))
+          )
+        );
+      })
+    );
 
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
+    const addObservables = newRows.map((row, i) => {
+      const cleanedData = this.cleanDataForServer(row, adjustments[i]);
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Add Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
       return this.clockService.checkInOut(cleanedData);
     });
@@ -821,19 +839,17 @@ export default class DetailClock2Component implements OnInit {
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Update Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
       return this.clockService.updateCheckInOut(row.id, cleanedData);
     });
+
     this.signalsService.triggerRefreshEmployees();
-    //alert(this.signalsService.getRefreshEmployees()() )
+
     try {
       await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      // Determinar qué ID vamos a seleccionar después de recargar
       if (modifiedRows.length > 0) {
-        // Si hay filas modificadas, guardamos el ID de la última modificada
         this.lastEditedRowId = modifiedRows[modifiedRows.length - 1].id;
       } else if (newRows.length > 0) {
-        // Si hay filas nuevas, marcaremos que necesitamos seleccionar el ID máximo
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
 
@@ -846,18 +862,16 @@ export default class DetailClock2Component implements OnInit {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
-      await this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin); // Esperar a que se actualicen los datos
+      await this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
 
-      // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
-          // Encontrar el ID máximo en los datos actuales
           const maxId = Math.max(...this.rowData.map((row) => Number(row.id)));
           this.selectRowById(maxId);
         } else {
           this.selectRowById(this.lastEditedRowId);
         }
-        this.lastEditedRowId = null; // Resetear el ID
+        this.lastEditedRowId = null;
       }
     } catch (error) {
       console.error(error);
@@ -869,16 +883,46 @@ export default class DetailClock2Component implements OnInit {
     }
   }
 
+  private validateDayPattern(dateStr: string): string | null {
+    const dayRows = (this.rowData as any[])
+      .filter(r => r.date === dateStr && r.active !== false)
+      .map(r => {
+        const time = (r.realHourBySystem || r.checkTime || '').split('.')[0];
+        const hour = time ? parseInt(time.split(':')[0], 10) : -1;
+        return { time, type: r.type as string, hour };
+      })
+      .filter(r => r.time && r.type)
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+    const normalRows = dayRows.filter(r => r.hour >= 9 && r.hour < 21);
+
+    // Regla 2: máximo 2 entradas y 2 salidas en horario normal
+    const inCount  = normalRows.filter(r => r.type === 'IN').length;
+    const outCount = normalRows.filter(r => r.type === 'OUT').length;
+    if (inCount > 2)
+      return `No se pueden registrar más de 2 entradas en horario normal para el día ${dateStr}.`;
+    if (outCount > 2)
+      return `No se pueden registrar más de 2 salidas en horario normal para el día ${dateStr}.`;
+
+    // Regla 3: no puede haber dos IN o dos OUT consecutivos
+    for (let i = 1; i < normalRows.length; i++) {
+      if (normalRows[i].type === normalRows[i - 1].type) {
+        return `Patrón inválido el ${dateStr}: dos registros "${normalRows[i].type}" consecutivos. El patrón debe ser IN-OUT o IN-OUT-IN-OUT.`;
+      }
+    }
+
+    return null;
+  }
+
   revertDetailData() {
     this.obtenerDatos(this.idEmployee, this.fechaInicio, this.fechaFin);
     this.notSavedChanges = false;
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Revertir Registro en Detalle de Checador', 'Menu Recursos Humanos Detalle de Checador', this.trackingService.getEmail());
   }
 
-private cleanDataForServer(data: any): any {
+private cleanDataForServer(data: any, adjustment?: { realTimeBySystem: string | null; adjustedTimeBySystem: string | null }): any {
   const cleanedData = { ...data };
 
-  // Eliminar campos basura
   delete cleanedData.employeeName;
   delete cleanedData.__isNew;
   delete cleanedData.__modified;
@@ -888,7 +932,6 @@ private cleanDataForServer(data: any): any {
     delete cleanedData.id;
   }
 
-  // Preparar la fecha como YYYY-MM-DD
   const dateStr = cleanedData.date
     ? (typeof cleanedData.date === 'string'
         ? cleanedData.date
@@ -896,17 +939,21 @@ private cleanDataForServer(data: any): any {
       ).split('T')[0]
     : null;
 
-  // Generar timeStamp y adjustedTimeBySystem si hay checkTime
   if (dateStr && cleanedData.checkTime) {
     const formattedCheckTime = cleanedData.checkTime.includes('.')
       ? cleanedData.checkTime.split('.')[0]
       : cleanedData.checkTime;
 
     cleanedData.timeStamp = `${dateStr}T${formattedCheckTime}`;
-    cleanedData.adjustedTimeBySystem = `${dateStr}T${formattedCheckTime}`;
+
+    if (adjustment) {
+      cleanedData.realTimeBySystem = adjustment.realTimeBySystem ?? null;
+      cleanedData.adjustedTimeBySystem = adjustment.adjustedTimeBySystem ?? null;
+    } else {
+      cleanedData.adjustedTimeBySystem = `${dateStr}T${formattedCheckTime}`;
+    }
   }
 
-  // Si hay modifiedCheckTime, se sobrescribe adjustedTimeBySystem
   if (dateStr && cleanedData.modifiedCheckTime) {
     const formattedModified = cleanedData.modifiedCheckTime.includes('.')
       ? cleanedData.modifiedCheckTime.split('.')[0]
@@ -917,7 +964,6 @@ private cleanDataForServer(data: any): any {
     cleanedData.realHourBySystem = null;
   }
 
-  // Limpiar campos originales
   delete cleanedData.date;
   delete cleanedData.checkTime;
   delete cleanedData.modifiedCheckTime;
