@@ -10,6 +10,7 @@ import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
 import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
 import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
+import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { alerts } from 'app/helpers/alerts';
 import { FechaEditorComponent } from '../../../../../shared/fecha-editor.component';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
@@ -158,6 +159,7 @@ export class DetalleMoliendaComponent {
   private trackingService = inject(TrackingService);
   private entradaService = inject(EntradaMoliendaService);
   private caracteristicasService = inject(CaracteristicasEntradaService);
+  private intandoutDocumentsService = inject(IntandoutDocumentsService);
 
   private internalParams: any;
   private gridApi!: GridApi;
@@ -469,9 +471,30 @@ export class DetalleMoliendaComponent {
       headerName: '📤 PDF',
       editable: false,
       suppressMovable: true,
-      width: 70,
+      width: 90,
       flex: 0,
-      cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos de la entrada"></i>`,
+      cellRenderer: (params: any) => {
+        const count = Number(params.value ?? 0);
+        const color = count > 0 ? '#0d6efd' : '#6c757d';
+
+        const container = document.createElement('div');
+        container.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;width:100%;height:100%;';
+
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-file-earmark-text';
+        icon.title = 'Ver documentos de la entrada';
+        icon.style.color = color;
+
+        const badge = document.createElement('span');
+        badge.textContent = String(count);
+        badge.style.cssText = 'font-size:0.72rem;font-weight:700;color:#0d3b66;line-height:1;';
+
+        
+        container.appendChild(badge);
+        container.appendChild(icon);
+
+        return container;
+      },
       cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
       onCellClicked: (params) => this.toggleDetailColumn(params, 'documents'),
     },
@@ -792,6 +815,10 @@ export class DetalleMoliendaComponent {
       );
 
       await Promise.all(this.cascadeEntradaData.map(async (entradaRow: any) => {
+        const documents = await lastValueFrom(
+          this.intandoutDocumentsService.getIntandoutDocumentsById(entradaRow.idEntrada, 'entrada')
+        ).catch(() => []);
+        entradaRow.pdfCount = Array.isArray(documents) ? documents.length : 0;
         try {
           const carats = await lastValueFrom(this.caracteristicasService.getByEntrada(entradaRow.idEntrada));
           if (carats && carats.length > 0) {
