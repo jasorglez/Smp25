@@ -156,6 +156,7 @@ export default class DetailClock2Component implements OnInit {
   rowData: any;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
+  toastMessage: string = '';
 
   id: string;
   idBranch: number;
@@ -284,10 +285,18 @@ export default class DetailClock2Component implements OnInit {
         valueParser: (params) => {
           if (!params.newValue) return null;
           try {
-            const [day, month, year] = params.newValue.split('-').map(Number);
-            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-          } catch (error) {
-            console.error('Error al parsear fecha:', error);
+            if ((params.newValue as any) instanceof Date) {
+              const d = params.newValue as any as Date;
+              return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            const str = String(params.newValue);
+            const parts = str.split('-').map(Number);
+            // YYYY-MM-DD (ya está en formato correcto)
+            if (parts[0] > 31) return str;
+            // DD-MM-YYYY
+            const [day, month, year] = parts;
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          } catch {
             return null;
           }
         },
@@ -514,7 +523,9 @@ export default class DetailClock2Component implements OnInit {
 
             const validOutCount = [...groupData].filter(node => {
               const record = node.data;
-              return record.valid === true && record.type === 'OUT';
+              if (!record.valid || record.type !== 'OUT') return false;
+              const hour = record.checkTime ? parseInt(record.checkTime.split(':')[0], 10) : -1;
+              return hour >= 9 && hour < 21;
             }).length;
 
             // Calcular la diferencia (no permitir valores negativos)
@@ -677,19 +688,112 @@ export default class DetailClock2Component implements OnInit {
     this.notSavedChanges = true;
     this.lastEditedRowId = event.data.id;
 
-    // Si se está editando el campo checkTime
     if (event.column.getColId() === 'checkTime') {
-      // Si modifiedCheckTime está vacío, guardamos el valor original
       if (!event.data.modifiedCheckTime && event.data.byTimeClock) {
         event.data.modifiedCheckTime = event.oldValue;
       }
-      // Si ya existe un valor en modifiedCheckTime, este no se cambia
     }
     if (event.column.getColId() === 'minuteDiscount') {
       if (!event.data.minuteDiscountBackup && event.data.byTimeClock) {
         event.data.minuteDiscountBackup = event.oldValue;
       }
     }
+
+    const col = event.column.getColId();
+    if (['type', 'checkTime', 'date'].includes(col) && event.data.date) {
+      const warning = this.validateDayPattern(event.data.date)
+        ?? this.validateExtraHoursWindow(event.data.date);
+      if (warning) this.showPatternToast(warning);
+    }
+  }
+
+  private showPatternToast(message: string) {
+    this.toastMessage = message;
+    setTimeout(() => {
+      const el = document.getElementById('clockPatternToast');
+      if (el) new bootstrap.Toast(el, { delay: 6000 }).show();
+    });
+  }
+
+  private toIsoDateStr(value: any): string | null {
+    if (!value) return null;
+    if (value instanceof Date) {
+      if (isNaN(value.getTime())) return null;
+      return value.toISOString().split('T')[0];
+    }
+    const str = String(value).split('T')[0];
+    const d = new Date(str + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : str;
+  }
+
+  private validateExtraHoursWindow(dateStr: string): string | null {
+    const normalized = this.toIsoDateStr(dateStr);
+    if (!normalized) return null;
+    dateStr = normalized;
+    const allRows = this.rowData as any[];
+
+    const toRow = (r: any, d: string) => {
+      const time = (r.checkTime || '').split('.')[0];
+      const hour = time ? parseInt(time.split(':')[0], 10) : -1;
+      return { time, type: r.type as string, hour, date: d };
+    };
+
+    // Registros de la madrugada del día actual (00:00–08:59) → pertenecen a la ventana que empezó la noche anterior
+    const morningRows = allRows
+      .filter(r => r.date === dateStr && r.active !== false && r.checkTime)
+      .map(r => toRow(r, dateStr))
+      .filter(r => r.hour >= 0 && r.hour < 9)
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+    // Registros nocturnos del día anterior (21:00–23:59)
+    const prev = new Date(dateStr + 'T00:00:00');
+    prev.setDate(prev.getDate() - 1);
+    const prevDateStr = prev.toISOString().split('T')[0];
+    const nightRows = allRows
+      .filter(r => r.date === prevDateStr && r.active !== false && r.checkTime)
+      .map(r => toRow(r, prevDateStr))
+      .filter(r => r.hour >= 21)
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+    // Registros nocturnos del día actual (21:00–23:59)
+    const lateRows = allRows
+      .filter(r => r.date === dateStr && r.active !== false && r.checkTime)
+      .map(r => toRow(r, dateStr))
+      .filter(r => r.hour >= 21)
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+    // Validar ventana que TERMINA esta madrugada: noche anterior + madrugada actual
+    if (morningRows.length > 0) {
+      const window = [...nightRows, ...morningRows];
+      if (window[0].type !== 'IN')
+        return `Ventana de horas extra (21:00–09:00): el primer registro debe ser una entrada (IN).`;
+      for (let i = 1; i < window.length; i++) {
+        if (window[i].type === window[i - 1].type)
+          return `Ventana de horas extra (21:00–09:00): dos registros "${window[i].type}" consecutivos.`;
+      }
+    }
+
+    // Validar ventana que EMPIEZA esta noche: noche actual + madrugada del día siguiente
+    if (lateRows.length > 0) {
+      const next = new Date(dateStr + 'T00:00:00');
+      next.setDate(next.getDate() + 1);
+      const nextDateStr = next.toISOString().split('T')[0];
+      const nextMorningRows = allRows
+        .filter(r => r.date === nextDateStr && r.active !== false && r.checkTime)
+        .map(r => toRow(r, nextDateStr))
+        .filter(r => r.hour >= 0 && r.hour < 9)
+        .sort((a, b) => a.time.localeCompare(b.time));
+
+      const window = [...lateRows, ...nextMorningRows];
+      if (window[0].type !== 'IN')
+        return `Ventana de horas extra nocturna: el primer registro debe ser una entrada (IN).`;
+      for (let i = 1; i < window.length; i++) {
+        if (window[i].type === window[i - 1].type)
+          return `Ventana de horas extra nocturna: dos registros "${window[i].type}" consecutivos.`;
+      }
+    }
+
+    return null;
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -801,12 +905,41 @@ export default class DetailClock2Component implements OnInit {
       (row) => row.__modified && !row.__isNew
     );
 
-    // Reglas 2 y 3: validar patrón por día afectado
-    const affectedDates = [...new Set(
-      [...newRows, ...modifiedRows].map(r => r.date).filter(Boolean)
-    )];
-    for (const date of affectedDates) {
-      const error = this.validateDayPattern(date as string);
+    // Regla de horario normal: validar solo fechas con filas nuevas/modificadas
+    const primaryDates = [...new Set(
+      [...newRows, ...modifiedRows].map(r => this.toIsoDateStr(r.date)).filter(Boolean)
+    )] as string[];
+
+    for (const date of primaryDates) {
+      const error = this.validateDayPattern(date);
+      if (error) {
+        alerts.basicAlert('Error de validación', error, 'error');
+        return;
+      }
+    }
+
+    // Horas extra: solo validar si la fila nueva/modificada toca esa ventana (hour < 9 o >= 21)
+    const extraHoursDatesToCheck = new Set<string>();
+    for (const row of [...newRows, ...modifiedRows]) {
+      const dateStr = this.toIsoDateStr(row.date);
+      if (!dateStr || !row.checkTime) continue;
+      const hour = parseInt((row.checkTime.split('.')[0] || '').split(':')[0] ?? '-1', 10);
+      if (isNaN(hour)) continue;
+      if (hour >= 0 && hour < 9) {
+        extraHoursDatesToCheck.add(dateStr);
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        extraHoursDatesToCheck.add(d.toISOString().split('T')[0]);
+      } else if (hour >= 21) {
+        extraHoursDatesToCheck.add(dateStr);
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() + 1);
+        extraHoursDatesToCheck.add(d.toISOString().split('T')[0]);
+      }
+    }
+
+    for (const date of extraHoursDatesToCheck) {
+      const error = this.validateExtraHoursWindow(date);
       if (error) {
         alerts.basicAlert('Error de validación', error, 'error');
         return;
@@ -884,6 +1017,9 @@ export default class DetailClock2Component implements OnInit {
   }
 
   private validateDayPattern(dateStr: string): string | null {
+    const normalized = this.toIsoDateStr(dateStr);
+    if (!normalized) return null;
+    dateStr = normalized;
     const dayRows = (this.rowData as any[])
       .filter(r => r.date === dateStr && r.active !== false)
       .map(r => {
@@ -903,6 +1039,10 @@ export default class DetailClock2Component implements OnInit {
       return `No se pueden registrar más de 2 entradas en horario normal para el día ${dateStr}.`;
     if (outCount > 2)
       return `No se pueden registrar más de 2 salidas en horario normal para el día ${dateStr}.`;
+
+    // Regla 3: el primer registro del día debe ser IN
+    if (normalRows.length > 0 && normalRows[0].type !== 'IN')
+      return `El primer registro del día ${dateStr} debe ser una entrada (IN).`;
 
     // Regla 3: no puede haber dos IN o dos OUT consecutivos
     for (let i = 1; i < normalRows.length; i++) {

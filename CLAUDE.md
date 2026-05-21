@@ -284,6 +284,69 @@ When compacting this conversation, always preserve:
 - **Backend field naming**: DB usa snake_case/lowercase, frontend usa camelCase. Siempre verificar antes de enviar al backend.
 - **Signals para colores**: `signalsService.setReqTypeOcBulk(flags)` llena el mapa, `effect()` hace `refreshCells()`, `cellStyle` lee el mapa.
 
+## Módulo Reloj Checador — detail-clock-2
+
+Componente: `src/app/domains/ModReshumans/components/checkout/detail-clock-2/detail-clock-2.component.ts`
+
+### Validación de patrón IN/OUT
+
+Al editar cualquier celda de `type`, `checkTime` o `date`, se disparan dos validaciones:
+
+1. **`validateDayPattern(dateStr)`**: Para días con hora entre 09:00 y 21:00 (horario normal):
+   - Máximo 2 IN y 2 OUT por día
+   - El primer registro del día debe ser IN
+   - No puede haber dos del mismo tipo consecutivos (IN-IN o OUT-OUT)
+
+2. **`validateExtraHoursWindow(dateStr)`**: Para filas con hora < 9 o ≥ 21 (horas extra):
+   - Ventana nocturna: INs a partir de 21:00 del día D deben tener OUT antes de 09:00 del día D+1
+   - Ventana matutina: OUTs antes de 09:00 del día D deben tener un IN desde 21:00 del día D-1
+
+Si falla alguna validación, se muestra un **Bootstrap Toast** (no banner) con el mensaje. El toast se llama con `showPatternToast(message)`.
+
+### `agDateCellEditor` devuelve objeto `Date`
+
+El `valueParser` de la columna fecha debe manejar tanto strings como objetos `Date`:
+
+```typescript
+valueParser: (params) => {
+  if (!params.newValue) return null;
+  try {
+    if ((params.newValue as any) instanceof Date) {
+      const d = params.newValue as any as Date;
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    // ... manejo de string
+  } catch { return null; }
+}
+```
+
+**Por qué:** `agDateCellEditor` entrega un `Date` object al `valueParser`, no un string. Si se llama `.split('-')` sobre un `Date`, lanza excepción y la celda queda con `null`.
+
+### Helper `toIsoDateStr`
+
+Normaliza cualquier valor de fecha (Date object, string ISO, string DD-MM-YYYY) a `YYYY-MM-DD`. Se usa al inicio de `validateDayPattern` y `validateExtraHoursWindow` para evitar `RangeError: Invalid time value`.
+
+### Ajuste horario en entradas manuales
+
+Al guardar filas nuevas, se llama `POST /calculate-adjustment` para cada una y se aplica `realTimeBySystem`/`adjustedTimeBySystem` en `cleanDataForServer(data, adjustment?)`.
+
+### `pendingExits` cellRenderer — filtro de hora
+
+`validOutCount` también filtra `hour >= 9 && hour < 21` para que los OUTs de horas extra no cancelen INs de horario normal:
+
+```typescript
+const validOutCount = [...groupData].filter(node => {
+  const record = node.data;
+  if (!record.valid || record.type !== 'OUT') return false;
+  const hour = record.checkTime ? parseInt(record.checkTime.split(':')[0], 10) : -1;
+  return hour >= 9 && hour < 21;
+}).length;
+```
+
+**Nota:** El cálculo definitivo de `pendingOuts` en el backend usa `lastIn.HasValue` post-loop (ver CLAUDE.md de MicroServicioTracking), no conteo por hora. El cellRenderer del frontend es solo visual.
+
+---
+
 ## Project Memories
 
 - Hasta aaqui funciona relativamente bien
