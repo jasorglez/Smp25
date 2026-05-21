@@ -577,14 +577,14 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       },
       {
         field: 'numeroArticulo',
-        headerName: '# Articulo',
+        headerName: '# Interno de Articulo',
         width: 100,
         flex: 0,
         suppressSizeToFit: true
       },
       {
         field: 'cantidad',
-        headerName: 'Cantidad',
+        headerName: 'Cantidad Requerida',
         width: 85,
         flex: 0,
         suppressSizeToFit: true,

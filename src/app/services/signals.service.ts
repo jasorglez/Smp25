@@ -369,6 +369,7 @@ getMasterUpdateTrigger() {
   private companyNameSmall = signal<string>(null);
   private selectedContract = signal<number>(null);
   idUser = signal<number>(0);
+  lecturaAmplia = signal<boolean>(false);
   private displayName = signal<string>(null);
   private userRoot = signal<number>(null);
   private selectedProject = signal<number>(null);

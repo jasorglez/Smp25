@@ -9,6 +9,8 @@ import { ProvidersService } from 'app/services/providers.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { UsersService } from 'app/services/users.service';
+import { AutorizacionMontoService } from 'app/services/autorizacion-monto.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -86,14 +88,19 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
               </span>
             </button>
 
-            <button
-              type="button"
-              class="btn btn-sm btn-primary position-relative"
-              (click)="generateOC()"
-              [disabled]="rowData.length === 0 || ocGenerada || !savedAtLeastOnce || hasUnsavedChanges"
-              [title]="ocGenerada ? 'Comparación cerrada' : (!savedAtLeastOnce || hasUnsavedChanges) ? 'Guarda los cambios antes de generar OC' : 'Generar Orden(es) de Compra'">
-              <i class="bi bi-file-earmark-check me-1"></i>Generar OC
-            </button>
+            <span
+              (mouseenter)="showGenerarOcTooltip($event)"
+              (mouseleave)="hideGenerarOcTooltip()"
+              style="display: inline-block;">
+              <button
+                type="button"
+                class="btn btn-sm btn-primary position-relative"
+                (click)="generateOC()"
+                [disabled]="rowData.length === 0 || ocGenerada || !savedAtLeastOnce || hasUnsavedChanges || userHasNoNivelMonto || ocAmountExceedsUserLevel"
+                [style.pointer-events]="(rowData.length === 0 || ocGenerada || !savedAtLeastOnce || hasUnsavedChanges || userHasNoNivelMonto || ocAmountExceedsUserLevel) ? 'none' : 'auto'">
+                <i class="bi bi-file-earmark-check me-1"></i>Generar OC
+              </button>
+            </span>
 
             <button
               type="button"
@@ -138,8 +145,26 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
             (cellValueChanged)="onCellValueChanged($event)"
             (cellMouseOver)="onCellMouseOver($event)"
             (cellMouseOut)="onCellMouseOut($event)"
-            style="width: 100%; flex: 1 1 auto; min-height: 0;">
+            (columnResized)="onColumnResized()"
+            style="width: 100%; flex: 0 0 auto;">
           </ag-grid-angular>
+
+          <!-- Footer "Total x Pedimento" - anchos sincronizados dinámicamente con columnas CANTIDAD X PROV., COSTO TOTAL y CHAT -->
+          <div *ngIf="rowData.length > 0"
+               style="display: flex; align-items: stretch; flex-shrink: 0; height: 40px; font-size: 11px; font-family: inherit;">
+            <div style="flex: 1 1 auto;"></div>
+            <div [style.width.px]="footerLabelWidth"
+                 style="background-color: #e8f5e9; color: #1b5e20; font-weight: 700;
+                        display: flex; align-items: center; justify-content: center; padding: 4px;">
+              Total x Pedimento
+            </div>
+            <div [style.width.px]="footerValueWidth"
+                 style="background-color: #81c784; color: #1b5e20; font-weight: 700;
+                        display: flex; align-items: center; justify-content: center; padding: 4px;">
+              {{ '$' + pinnedTotal.toFixed(2) }}
+            </div>
+            <div [style.width.px]="footerEndWidth"></div>
+          </div>
         </div>
       </div>
 
@@ -299,6 +324,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private ngbModal = inject(NgbModal);
   private materialsService = inject(MaterialsService);
+  private usersService = inject(UsersService);
+  private autorizacionMontoService = inject(AutorizacionMontoService);
   private renderer: Renderer2;
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
@@ -308,6 +335,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private slotFolioMap   = new Map<number, string>();
   private commentSub?: Subscription;
   private tooltipEl: HTMLElement | null = null;
+  private generarOcTooltipEl: HTMLElement | null = null;
 
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
@@ -346,6 +374,16 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   loading = false;
   error: string | null = null;
 
+  /** Nivel de autorización de monto del usuario actual (id de autorizacion_monto).
+   *  null = usuario sin nivel asignado → botón "Generar OC" deshabilitado siempre. */
+  private userNivelMontoId: number | null = null;
+  /** Monto máximo autorizado para el usuario. null = "Sin límite" (autorización abierta). */
+  private userMontoMax: number | null = null;
+  /** Monto mínimo del rango autorizado para el usuario (no se valida actualmente, sólo referencia). */
+  private userMontoMin: number = 0;
+  /** Flag para saber si ya cargamos el nivel del usuario (evita habilitar botón antes de tiempo). */
+  private nivelMontoLoaded: boolean = false;
+
   get hasConflictingTipoOc(): boolean {
     const REJECTION = ['CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
     const byArticulo = new Map<number, any[]>();
@@ -375,18 +413,178 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     'ARTICULO NO AUTORIZADO'
   ];
 
+  /** Tipos OC positivos que exigen "Cantidad x Prov." >= "Compra Mínima" (excluye "SIN LIMITE"). */
+  private readonly POSITIVE_LIMITED_TYPES = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA'];
+
   ngOnInit() {
     this.commentSub = this.itemCommentsService.commentSaved$.subscribe(() => {
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
       }
     });
+    this.loadUserNivelMonto();
     this.loadComparisonData();
+  }
+
+  /**
+   * Carga el nivel de autorización de monto del usuario actual.
+   * - Si el usuario tiene `nivelMonto` (id de autorizacion_monto), busca el rango montoMin/montoMax.
+   * - Si `nivelMonto` es null → no podrá generar OC nunca (tooltip lo explicará).
+   * - Si el monto total de la OC supera `montoMax` → no podrá generar OC (tooltip pide ayuda a supervisión).
+   * No se altera ningún flujo existente: sólo se agregan datos para una validación adicional.
+   */
+  private loadUserNivelMonto(): void {
+    const idUser = this.signalsService.idUser?.() ?? 0;
+    const idCompany = this.signalsService.getRootSelectedBySidebar()() ?? 0;
+    if (!idUser || !idCompany) {
+      // Sin contexto no podemos validar; dejamos como "sin nivel" para deshabilitar el botón con mensaje claro.
+      this.userNivelMontoId = null;
+      this.userMontoMax = null;
+      this.userMontoMin = 0;
+      this.nivelMontoLoaded = true;
+      return;
+    }
+
+    this.usersService.getUserById(idUser).subscribe({
+      next: (resp: any) => {
+        const userData = resp?.data ?? resp ?? {};
+        const nivelId = userData?.nivelMonto;
+        this.userNivelMontoId = (nivelId == null || nivelId === 0) ? null : Number(nivelId);
+
+        if (this.userNivelMontoId == null) {
+          this.userMontoMax = null;
+          this.userMontoMin = 0;
+          this.nivelMontoLoaded = true;
+          return;
+        }
+
+        this.autorizacionMontoService.getByCompany(idCompany).subscribe({
+          next: (niveles: any) => {
+            const list = Array.isArray(niveles) ? niveles : [];
+            const nivel = list.find((n: any) => Number(n.id) === Number(this.userNivelMontoId));
+            if (nivel) {
+              this.userMontoMin = Number(nivel.montoMin) || 0;
+              this.userMontoMax = (nivel.montoMax == null) ? null : Number(nivel.montoMax);
+            } else {
+              // Nivel asignado pero no encontrado en catálogo → trátalo como sin nivel.
+              this.userNivelMontoId = null;
+              this.userMontoMax = null;
+              this.userMontoMin = 0;
+            }
+            this.nivelMontoLoaded = true;
+          },
+          error: () => {
+            this.userMontoMax = null;
+            this.userMontoMin = 0;
+            this.nivelMontoLoaded = true;
+          }
+        });
+      },
+      error: () => {
+        this.userNivelMontoId = null;
+        this.userMontoMax = null;
+        this.userMontoMin = 0;
+        this.nivelMontoLoaded = true;
+      }
+    });
+  }
+
+  /** Indica si el usuario no tiene nivel de autorización de monto asignado. */
+  get userHasNoNivelMonto(): boolean {
+    return this.nivelMontoLoaded && this.userNivelMontoId == null;
+  }
+
+  /** Indica si el monto total de la OC excede el nivel autorizado del usuario. */
+  get ocAmountExceedsUserLevel(): boolean {
+    if (!this.nivelMontoLoaded || this.userNivelMontoId == null) return false;
+    if (this.userMontoMax == null) return false; // Sin límite
+    return (this.pinnedTotal || 0) > Number(this.userMontoMax);
+  }
+
+  /** Tooltip dinámico para el botón "Generar OC" según el estado actual. */
+  get generarOcTooltip(): string {
+    if (this.ocGenerada) return 'Comparación cerrada';
+    if (this.userHasNoNivelMonto) return 'No tienes asignado un nivel para compras';
+    if (this.ocAmountExceedsUserLevel) return 'Tu nivel de liberación no es suficiente para generar OC, pide ayuda a supervisión administrativa';
+    if (!this.savedAtLeastOnce || this.hasUnsavedChanges) return 'Guarda los cambios antes de generar OC';
+    return 'Generar Orden(es) de Compra';
+  }
+
+  /** Indica si el tooltip del botón "Generar OC" representa una restricción (mensaje rojo/alerta). */
+  get isGenerarOcRestriction(): boolean {
+    return this.ocGenerada || this.userHasNoNivelMonto || this.ocAmountExceedsUserLevel ||
+           !this.savedAtLeastOnce || this.hasUnsavedChanges;
+  }
+
+  /** Título del tooltip estilizado según el contexto (autorización vs. acción normal). */
+  get generarOcTooltipTitle(): string {
+    if (this.ocGenerada) return 'Comparación cerrada';
+    if (this.userHasNoNivelMonto) return 'Sin nivel de autorización';
+    if (this.ocAmountExceedsUserLevel) return 'Nivel insuficiente';
+    if (!this.savedAtLeastOnce || this.hasUnsavedChanges) return 'Cambios pendientes';
+    return 'Generar Orden(es) de Compra';
+  }
+
+  showGenerarOcTooltip(event: MouseEvent): void {
+    this.hideGenerarOcTooltip();
+
+    const message = this.generarOcTooltip;
+    if (!message) return;
+
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    this.generarOcTooltipEl = this.renderer.createElement('div');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'position', 'fixed');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'z-index', '10001');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'pointer-events', 'none');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'min-width', '260px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'max-width', '380px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'background', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'border-radius', '8px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'box-shadow', '0 8px 24px rgba(0,0,0,0.4)');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'padding', '12px 16px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'color', '#ffffff');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'font-size', '12px');
+    this.renderer.setStyle(this.generarOcTooltipEl, 'line-height', '1.6');
+
+    const title = this.renderer.createElement('div');
+    this.renderer.setStyle(title, 'font-weight', '600');
+    this.renderer.setStyle(title, 'font-size', '13px');
+    this.renderer.setStyle(title, 'margin-bottom', '6px');
+    this.renderer.setStyle(title, 'color', '#ffffff');
+    this.renderer.appendChild(title, this.renderer.createText(this.generarOcTooltipTitle));
+    this.renderer.appendChild(this.generarOcTooltipEl, title);
+
+    const body = this.renderer.createElement('div');
+    this.renderer.setStyle(body, 'color', 'rgba(255,255,255,0.92)');
+    this.renderer.appendChild(body, this.renderer.createText(message));
+    this.renderer.appendChild(this.generarOcTooltipEl, body);
+
+    this.renderer.appendChild(document.body, this.generarOcTooltipEl);
+
+    // Posicionar debajo del botón, alineado a la derecha si no cabe a la izquierda
+    const tooltipWidth = this.generarOcTooltipEl!.offsetWidth || 280;
+    const viewportWidth = window.innerWidth;
+    let leftPos = rect.left;
+    if (leftPos + tooltipWidth + 10 > viewportWidth) {
+      leftPos = Math.max(10, rect.right - tooltipWidth);
+    }
+    this.renderer.setStyle(this.generarOcTooltipEl, 'top', `${rect.bottom + 8}px`);
+    this.renderer.setStyle(this.generarOcTooltipEl, 'left', `${leftPos}px`);
+  }
+
+  hideGenerarOcTooltip(): void {
+    if (this.generarOcTooltipEl) {
+      this.renderer.removeChild(document.body, this.generarOcTooltipEl);
+      this.generarOcTooltipEl = null;
+    }
   }
 
   ngOnDestroy() {
     this.commentSub?.unsubscribe();
     this.hideArticuloTooltip();
+    this.hideGenerarOcTooltip();
   }
 
   private loadComparisonData() {
@@ -613,6 +811,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.buildRowDataForAllArticulos();
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
+    // Datos cargados desde backend ya están persistidos: equivalente a haber guardado.
+    // Permite habilitar "Generar OC" al reabrir el modal sin exigir un Guardar redundante.
+    // Se resetea a false en onCellValueChanged si el usuario edita algo.
+    this.savedAtLeastOnce = true;
     this.cdr.detectChanges();
     this.pushRowDataToGridIfReady(true);
   }
@@ -665,7 +867,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           Number(slotItemIdsPorProv[provId] ?? slotItemIdsPorProv[provId.toString()] ?? 0) || 0;
         const tipoOc =
           tiposOcPorProv[provId] ?? tiposOcPorProv[provId.toString()] ?? 'SELECCIONE UNA OPCION';
-        const costoTotal = costoUnitario * cantidadComprar;
+        const costoTotal = costoUnitario * cantidadConceptualizada;
         const costoXCompraMinima = costoUnitario * compraMinima;
 
         const providerCodigosMap = this.codigosExternos.get(provId) || new Map();
@@ -711,6 +913,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       if (this.gridApi) {
         this.gridApi.setGridOption('columnDefs', this.colDefs);
         this.gridApi.setGridOption('rowData', this.rowData);
+        this.updatePinnedBottomRow();
       }
     }, 0);
   }
@@ -720,12 +923,41 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.gridApi.setGridOption('columnDefs', this.colDefs);
     if (this.rowData?.length) {
       this.gridApi.setGridOption('rowData', this.rowData);
+      this.updatePinnedBottomRow();
     }
   }
 
-  onFirstDataRendered(_params: any) {}
+  onFirstDataRendered(_params: any) {
+    this.updateFooterWidths();
+  }
 
   onRowDataUpdated() {}
+
+  onColumnResized() {
+    this.updateFooterWidths();
+  }
+
+  public pinnedTotal: number = 0;
+  public footerLabelWidth: number = 135;
+  public footerValueWidth: number = 105;
+  public footerEndWidth: number = 88;
+
+  private updatePinnedBottomRow() {
+    this.pinnedTotal = this.rowData.reduce((acc, r) => acc + (Number(r.costoTotal) || 0), 0);
+  }
+
+  private updateFooterWidths() {
+    if (!this.gridApi) return;
+    const cols = this.gridApi.getColumns?.();
+    if (!cols) return;
+    for (const col of cols) {
+      const field = col.getColDef?.()?.field;
+      const w = col.getActualWidth?.() || 0;
+      if (field === 'cantidadConceptualizada') this.footerLabelWidth = w;
+      else if (field === 'costoTotal') this.footerValueWidth = w;
+      else if (field === 'comentario') this.footerEndWidth = w;
+    }
+  }
 
   private getValidatedCantidadConceptualizada(rawValue: any, row: any) {
     const cantidadComprar = Number(row?.cantidadComprar) || 0;
@@ -746,14 +978,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.savedAtLeastOnce = false;
     const field = event.colDef?.field;
 
-    // Detectar cambio a "COMPRA AUTORIZADA EN OTRA FECHA"
-    if (field === 'tipoOc' && event.newValue === 'COMPRA AUTORIZADA EN OTRA FECHA') {
-      this.currentRowBeingEdited = event.data;
-      this.selectedDate = event.data.datePostpone ? String(event.data.datePostpone).substring(0, 10) : '';
-      this.openDateModal();
-      return;
-    }
-
     // Detectar cambio a "COMPRA AUTORIZADA SIN LIMITE": forzar cantidad = 0 (sin límite, no aplica cantidad)
     if (field === 'tipoOc' && event.newValue === 'COMPRA AUTORIZADA SIN LIMITE') {
       event.data.cantidadConceptualizada = 0;
@@ -769,7 +993,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           continue;
         }
         row.cantidadComprar = qty;
-        row.costoTotal = (Number(row.costoUnitario) || 0) * qty;
+        row.costoTotal = (Number(row.costoUnitario) || 0) * (Number(row.cantidadConceptualizada) || 0);
       }
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
@@ -831,23 +1055,79 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
 
       this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+
+      // Cuando tipoOc cambia a un tipo positivo limitado, verificar que cantidadConceptualizada >= compraMinima
+      if (this.POSITIVE_LIMITED_TYPES.includes(event.newValue)) {
+        const compraMin = Number(event.data?.compraMinima) || 0;
+        const cantActual = Number(event.data?.cantidadConceptualizada) || 0;
+        if (compraMin > 0 && cantActual < compraMin) {
+          const articuloItemId = Number(event.data?.articuloItemId ?? 0);
+          const sumOtros = this.rowData
+            .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
+            .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+          const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
+          const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+          if (maxAllowed < compraMin) {
+            event.data.cantidadConceptualizada = 0;
+            this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+            alerts.basicAlert(
+              'Cantidad insuficiente',
+              `Solo quedan ${maxAllowed.toFixed(2)} piezas por asignar pero se requieren ${compraMin} (compra mínima) para "${event.data?.proveedorNombre ?? 'este proveedor'}". Ajuste la cantidad de los otros proveedores para liberar espacio.`,
+              'warning'
+            );
+          } else {
+            event.data.cantidadConceptualizada = compraMin;
+            this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+            alerts.basicAlert(
+              'Cantidad ajustada',
+              `Con tipo OC "${event.newValue}", la cantidad por proveedor no puede ser menor a la compra mínima (${compraMin}). Se ajustó al mínimo.`,
+              'warning'
+            );
+          }
+        }
+      }
     }
     if (field === 'cantidadConceptualizada') {
       const cantidadValidada = this.getValidatedCantidadConceptualizada(event.newValue, event.data);
       event.data.cantidadConceptualizada = cantidadValidada;
-      if (cantidadValidada < Number(event.newValue)) {
-        const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
-        const articuloItemId = Number(event.data?.articuloItemId ?? 0);
-        const sumOtros = this.rowData
-          .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
-          .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
-        const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+
+      const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
+      const articuloItemId = Number(event.data?.articuloItemId ?? 0);
+      const sumOtros = this.rowData
+        .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
+        .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+      const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+
+      // Tipo OC positivo (excepto SIN LIMITE) exige cantidad por proveedor >= compra mínima
+      const compraMin = Number(event.data?.compraMinima) || 0;
+      const belowMinimo = this.POSITIVE_LIMITED_TYPES.includes(event.data?.tipoOc)
+        && compraMin > 0 && cantidadValidada < compraMin;
+
+      if (belowMinimo) {
+        if (maxAllowed < compraMin) {
+          event.data.cantidadConceptualizada = 0;
+          alerts.basicAlert(
+            'Cantidad insuficiente',
+            `Solo quedan ${maxAllowed.toFixed(2)} piezas por asignar pero se requieren ${compraMin} (compra mínima) para "${event.data?.proveedorNombre ?? 'este proveedor'}". Ajuste la cantidad de los otros proveedores para liberar espacio.`,
+            'warning'
+          );
+        } else {
+          event.data.cantidadConceptualizada = compraMin;
+          alerts.basicAlert(
+            'Cantidad ajustada',
+            `Con tipo OC "${event.data.tipoOc}", la cantidad por proveedor no puede ser menor a la compra mínima (${compraMin}). Se ajustó al mínimo.`,
+            'warning'
+          );
+        }
+      } else if (cantidadValidada < Number(event.newValue)) {
         alerts.basicAlert(
           'Cantidad inválida',
           `La suma de cantidades por proveedor no puede superar la cantidad requerida (${cantidadComprar}). Máximo permitido para este proveedor: ${maxAllowed.toFixed(2)}.`,
           'warning'
         );
       }
+
+      event.data.costoTotal = (Number(event.data.costoUnitario) || 0) * (Number(event.data.cantidadConceptualizada) || 0);
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
       }
@@ -855,7 +1135,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     if (field === 'costoUnitario' || field === 'compraMinima') {
       const row = event.data;
       const cu = Number(row.costoUnitario) || 0;
-      const q = Number(row.cantidadComprar) || 0;
+      const q = Number(row.cantidadConceptualizada) || 0;
       const cm = Number(row.compraMinima) || 0;
       row.costoTotal = cu * q;
       row.costoXCompraMinima = cu * cm;
@@ -863,6 +1143,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }
     }
+    this.updatePinnedBottomRow();
   }
 
   async saveOnly() {
@@ -879,6 +1160,23 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         );
         if (this.gridApi) this.gridApi.refreshCells({ force: true });
         return;
+      }
+    }
+
+    // Validar que filas con tipo OC positivo limitado tengan cantidad >= compra mínima
+    for (const row of this.rowData) {
+      if (this.POSITIVE_LIMITED_TYPES.includes(row.tipoOc)) {
+        const compraMin = Number(row.compraMinima) || 0;
+        const cantidad = Number(row.cantidadConceptualizada) || 0;
+        if (compraMin > 0 && cantidad < compraMin) {
+          alerts.basicAlert(
+            'Cantidad insuficiente',
+            `El proveedor "${row.proveedorNombre ?? ''}" tiene tipo OC "${row.tipoOc}" pero la cantidad asignada (${cantidad}) es menor a la compra mínima (${compraMin}). Corrija antes de guardar.`,
+            'warning'
+          );
+          if (this.gridApi) this.gridApi.refreshCells({ force: true });
+          return;
+        }
       }
     }
 
@@ -1001,6 +1299,26 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
       await this.updatePorAutorizarAfterOC();
       await this.updateMaterialsAfterOC();
+
+      // Marcar como principal=true al PRIMER proveedor procesado por cada artículo nuevo (PRODUCTO NUEVO).
+      // No depende de si el proveedor es nuevo en el sistema, sino de si el artículo es nuevo.
+      try {
+        const materialsPrincipalSet = new Set<number>();
+        for (const [provId, rows] of rowsByProvider) {
+          for (const row of rows) {
+            const nuevoRec = String(row?.nuevoRecurrente ?? '').toLowerCase();
+            if (nuevoRec !== 'nuevo') continue;
+            const idSupplie = Number(row?.idSupplie ?? 0);
+            if (idSupplie <= 0 || materialsPrincipalSet.has(idSupplie)) continue;
+            await lastValueFrom(
+              this.ocAndReqsService.patchProveedorXTablaPrincipal(idSupplie, provId, true)
+            ).catch(() => {});
+            materialsPrincipalSet.add(idSupplie);
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ No se pudo marcar principal en proveedorxtablas:', e);
+      }
     }
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
@@ -1341,7 +1659,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   private async updatePorAutorizarAfterOC(): Promise<void> {
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
-    const idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     for (const row of this.rowData) {
       const isNewArticle = (row.nuevoRecurrente || '').toLowerCase() === 'nuevo';
@@ -1349,30 +1666,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const hasMaterialId = row.idSupplie && row.idSupplie > 0;
 
       if (isNewArticle && hasAuthorizedType && hasMaterialId) {
+        // Partial update: solo aprobamos el producto nuevo (active=true, porAutorizar=false).
+        // No enviamos insumo/articulo/idCategory/idFamilia/idSubfamilia/idMedida/idUbication/costos/stock
+        // para no sobrescribir datos vigentes del maestro. El backend (MaterialService.Update) hace merge
+        // y solo aplica los campos con valor.
         const materialData = {
-          idCompany: idRoot,
-          idBranch: null,
-          idCustomer: null,
-          insumo: row.articulo || '',
-          articulo: row.articulo || '',
-          idCategory: null,
-          idFamilia: null,
-          idSubfamilia: null,
-          idMedida: null,
-          idUbication: null,
-          description: row.articulo || '',
-          merma: 0,
-          fecha: new Date().toISOString(),
-          aplicaResg: false,
-          costoMN: 0,
-          costoDLL: 0,
-          ventaMN: 0,
-          ventaDLL: 0,
-          stockMin: 0,
-          stockMax: 0,
-          picture: '',
-          typeMaterial: 'CONSUMABLE',
-          vigente: true,
           active: true,
           porAutorizar: false
         };
@@ -1659,15 +1957,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
       {
-        field: 'costoTotal',
-        headerName: 'COSTO TOTAL',
-        width: 105,
-        editable: false,
-        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
-        valueFormatter: (params: any) =>
-          params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
-      },
-      {
         field: 'costoXCompraMinima',
         headerName: 'COSTO X COMPRA MIN.',
         width: 120,
@@ -1681,20 +1970,24 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       {
         field: 'tipoOc',
         headerName: 'TIPO OC',
-        width: 150,
-        minWidth: 120,
+        width: 230,
+        minWidth: 200,
         editable: (params: any) => !this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0)),
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
+        cellEditorPopup: true,
         cellEditorParams: () => ({
           values: this.tipoOcOptions.filter(opt => opt !== 'SELECCIONE UNA OPCION'),
           searchable: false,
-          allowTyping: false
+          allowTyping: false,
+          valueListMaxWidth: 280,
+          valueListMaxHeight: 260
         }),
         tooltipValueGetter: (p: any) => p.data?.tipoOc || '',
         cellStyle: (params: any) => {
           const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
           return { textAlign: 'center', padding: '4px', fontSize: '10px', lineHeight: '1.2',
+                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                    backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
         }
       },
@@ -1727,6 +2020,23 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           return { textAlign: 'center', padding: '4px',
                    backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
         }
+      },
+      {
+        field: 'costoTotal',
+        headerName: 'COSTO TOTAL',
+        width: 105,
+        editable: false,
+        // valueGetter calcula en tiempo real desde costoUnitario × cantidadConceptualizada,
+        // así no depende de que row.costoTotal esté sincronizado manualmente.
+        valueGetter: (params: any) => {
+          if (!params.data) return 0;
+          const cu = Number(params.data.costoUnitario) || 0;
+          const q  = Number(params.data.cantidadConceptualizada) || 0;
+          return cu * q;
+        },
+        cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
+        valueFormatter: (params: any) =>
+          params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
       },
       {
         field: 'comentario',
@@ -1765,6 +2075,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
   public gridOptions: any = {
     rowHeight: 40,
+    domLayout: 'autoHeight',
     enableBrowserTooltips: true,
     autoSizeStrategy: { type: 'fitGridWidth' },
     // Obligatorio para que colDef.rowSpan fusione celdas (sin esto cada fila sigue mostrando su propia celda)

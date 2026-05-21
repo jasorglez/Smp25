@@ -24,6 +24,7 @@ import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMater
 import { CustomersService } from 'app/services/customers.service';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/searchable-combobox.component';
+import { RolesService } from 'app/services/roles.service';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
@@ -68,7 +69,8 @@ import { SearchableComboboxComponent } from 'app/shared/searchable-combobox/sear
         </button>
 
         <!-- Botón MultiGuardar (Hardcodeado con validación de permisos) -->
-        <button *ngIf="authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Mul')"
+        <!-- <button *ngIf="authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Mul')" -->
+        <button *ngIf="canMultiguardar"
                 class="btn btn-info btn-sm position-relative"
                 (click)="saveMultiGuardar()"
                 [title]="'Generar múltiples pedimentos de compra'"
@@ -330,9 +332,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private customersService = inject(CustomersService);
   private ngbModal = inject(NgbModal);
+  private rolesService = inject(RolesService);
   private commentSub?: Subscription;
   private sucursalSub?: Subscription;
   authService = inject(AuthService);
+  canMultiguardar: boolean = false;
   // Tooltip
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
@@ -454,9 +458,26 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       this.loadMaterials();
       this.loadData();
       this.loadCatalogs();
+      this.loadCanMultiguardar();
     } else if (this.detailType === 'pdf') {
       this.generatePDF();
     }
+  }
+
+  private loadCanMultiguardar(): void {
+    const idUser = this.signalsService.idUser();
+    if (!idUser) return;
+    this.rolesService.canUserMultiguardar(idUser).subscribe({
+      next: (response: any) => {
+        this.canMultiguardar = response?.data === true;
+        if (this.gridApi) {
+          this.gridApi.setColumnVisible('compraRapida', this.canMultiguardar);
+          this.gridApi.setColumnVisible('pedimiento', this.canMultiguardar);
+          this.gridApi.setColumnVisible('pedimentoNumber', this.canMultiguardar);
+        }
+      },
+      error: () => { this.canMultiguardar = false; }
+    });
   }
 
   loadData() {
@@ -975,7 +996,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       },
       {
         field: 'quantity',
-        headerName: 'Cantidad',
+        headerName: 'Cantidad Requerida',
         width: 100,
         suppressSizeToFit: true,
         editable: true,
@@ -1205,6 +1226,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         wrapHeaderText: true,
         autoHeaderHeight: true,
         suppressSizeToFit: true,
+        hide: true,
         editable: false,
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
         cellRenderer: (params: any) => {
@@ -1242,7 +1264,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         headerName: 'Pedimento',
         width: 112,
         suppressSizeToFit: true,
-        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Ped'),
+        // hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_Ped'),
+        hide: true,
         editable: true,
         cellRenderer: (params: any) => {
           const isInterno = (params.data.intorext || '').toLowerCase() === 'interno';
@@ -1275,7 +1298,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'pedimentoNumber',
         headerName: 'Pedimento #',
-        hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_PeN'),
+        // hide: !this.authService.hasSubDetailedPermission('shoppingDelison', 'requisitions', 'Req_PeN'),
+        hide: true,
         width: 110,
         suppressSizeToFit: true,
         editable: false,
@@ -1529,6 +1553,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           }));
           item.materialId = matResponse.id || matResponse.ID || 0;
           item.idSupplie = item.materialId;
+          // Tomar el num-mat (insumo) del material recién creado para el "# del Articulo"
+          item.numArticle = matResponse.insumo || matResponse.Insumo || item.numArticle || '';
+          item.code = item.numArticle;
         } catch (err) {
           // Silenciar error - idSupplie permanece 0
         }
@@ -1555,6 +1582,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           }));
           item.materialId = matResponse.id || matResponse.ID || 0;
           item.idSupplie = item.materialId;
+          // Tomar el num-mat (insumo) del material recién creado para el "# del Articulo"
+          item.numArticle = matResponse.insumo || matResponse.Insumo || item.numArticle || '';
+          item.code = item.numArticle;
         } catch (err) {
           // Silenciar error - idSupplie permanece 0
         }

@@ -382,3 +382,17 @@ body {
 @keyframes ocFadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.96); } }
 .oc-fadeIn  { animation: ocFadeIn  .18s ease both; }
 .oc-fadeOut { animation: ocFadeOut .15s ease both; }
+
+/* El panel de ng-select (appendTo body) debe quedar sobre los modales (z-index 10000) */
+.ng-dropdown-panel {
+  z-index: 10050 !important;
+  /* El panel crece al ancho del texto más largo (no trunca las opciones) */
+  width: max-content !important;
+  max-width: 90vw !important;
+}
+
+/* Las opciones se muestran completas, en una sola línea */
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}

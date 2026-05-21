@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.143 (18 Mayo 2026 10:20) - Molienda: si un artículo ya tiene registros, borrar ofrece pasarlo a inactivo'
+  version: '2.52.201 (20 Mayo 2026 13:50) - Modificación al master-clock y al detail-clock-2'
 };
