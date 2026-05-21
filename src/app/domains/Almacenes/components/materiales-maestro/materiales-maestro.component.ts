@@ -631,7 +631,74 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return null;
         }
       },
-      { headerName: 'Merma', field: 'merma', editable: true, hide: this.hideNonProductiveColumns },
+      {
+        field: 'providerCount',
+        headerName: 'Proveedor',
+        width: 120,
+        cellRenderer: (params: any) => {
+          return params.value || 0;
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      {
+        field: 'costo',
+        headerName: 'Materiales',
+        width: 150,
+        hide: this.hideNonProductiveColumns,
+        valueFormatter: (params: any) => {
+          return `$${params.value}`;
+        },
+        cellRenderer: (params: any) => {
+          return `$${params.value}`;
+        },
+        cellStyle: (params: any) => {
+          // Bloqueo por `__isNew` removido: el Guardar centralizado del Nivel 1
+          // remapea ID temporal → real antes de persistir cascadas.
+          const familia = this.families?.find((f: any) => f.id === params.data.idFamilia);
+          const familiaDesc = familia?.description || params.data.familia || '';
+          if (familiaDesc.toUpperCase().includes('BASICA')) {
+            return { backgroundColor: '#e8f5e9', cursor: 'not-allowed', color: '#aaa', textDecoration: 'none' };
+          }
+          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
+        }
+      },
+      {
+        field: 'parametros',
+        headerName: 'Parametros',
+        width: 150,
+        hide: this.hideNonProductiveColumns,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+      
+      
+ 
+     {
+        field: 'historico',
+        headerName: 'Historico',
+        width: 150,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+
+
+      {
+        field: 'picture',
+        headerName: 'Imagen',
+        width: 150,
+        cellRenderer: ImageCellRendererComponent,
+        cellRendererParams: {
+          context: {
+            componentParent: this
+          }
+        }
+      },
       {
         headerName: 'Fecha Cambio',
         field: 'fecha',
@@ -679,76 +746,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           }
         },
       },
-
-      {
-        field: 'costo',
-        headerName: 'Materiales',
-        width: 150,
-        hide: this.hideNonProductiveColumns,
-        valueFormatter: (params: any) => {
-          return `$${params.value}`;
-        },
-        cellRenderer: (params: any) => {
-          return `$${params.value}`;
-        },
-        cellStyle: (params: any) => {
-          // Bloqueo por `__isNew` removido: el Guardar centralizado del Nivel 1
-          // remapea ID temporal → real antes de persistir cascadas.
-          const familia = this.families?.find((f: any) => f.id === params.data.idFamilia);
-          const familiaDesc = familia?.description || params.data.familia || '';
-          if (familiaDesc.toUpperCase().includes('BASICA')) {
-            return { backgroundColor: '#e8f5e9', cursor: 'not-allowed', color: '#aaa', textDecoration: 'none' };
-          }
-          return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
-        }
-      },
-      {
-        field: 'parametros',
-        headerName: 'Parametros',
-        width: 150,
-        hide: this.hideNonProductiveColumns,
-        cellRenderer: (params: any) => {
-          const count = params.value || 0;
-          return count;
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
-      },
-      
-      
- 
-      {
-        field: 'providerCount',
-        headerName: 'Proveedor',
-        width: 120,
-        cellRenderer: (params: any) => {
-          return params.value || 0;
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
-      },
-
-     {
-        field: 'historico',
-        headerName: 'Historico',
-        width: 150,
-        cellRenderer: (params: any) => {
-          const count = params.value || 0;
-          return count;
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
-      },
-
-
-      {
-        field: 'picture',
-        headerName: 'Imagen',
-        width: 150,
-        cellRenderer: ImageCellRendererComponent,
-        cellRendererParams: {
-          context: {
-            componentParent: this
-          }
-        }
-      },
+      { headerName: 'Merma', field: 'merma', editable: true, hide: this.hideNonProductiveColumns },
       {
         field: 'subfamilyCount',
         headerName: 'Donde Usa',
@@ -1184,6 +1182,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   async saveChanges(): Promise<void> {
     const hasChildChanges = this.pendingChangesService.hasAnyChanges();
+    // Capturar los saverIds con cambios ANTES de cualquier saveAll (saveAll resetea hasChanges).
+    const changedSaverIds = this.pendingChangesService.getChangedSaverIds();
     if (!this.hasUnsavedChanges && !hasChildChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -1194,6 +1194,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       try {
         // Sin Nivel 1 nuevo, no hay idMap; los hijos guardan con IDs ya conocidos.
         await this.pendingChangesService.saveAll();
+        await this.bumpFechaForCascadeMaterials(changedSaverIds, new Set<number>());
         alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
       } catch (error: any) {
         console.error('Error al guardar cambios de hijos:', error);
@@ -1212,6 +1213,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (hasChildChanges) {
         try {
           await this.pendingChangesService.saveAll();
+          await this.bumpFechaForCascadeMaterials(changedSaverIds, new Set<number>());
           alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
         } catch (error: any) {
           console.error('Error al guardar cambios de hijos:', error);
@@ -1350,6 +1352,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           }
         }
 
+        // Al guardar cambios del artículo, su "Fecha Cambio" se actualiza a hoy.
+        modifiedRow.fecha = new Date().toISOString();
         const materialData = this.prepareMaterialData(modifiedRow);
         await lastValueFrom(this.materialsService.updateMaterial(modifiedRow.id.toString(), materialData));
         if (activeChanged) {
@@ -1371,6 +1375,12 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       // Si fallan, el Nivel 1 ya quedó guardado; reportamos el error sin bloquear el flujo principal.
       try {
         await this.pendingChangesService.saveAll(idMap);
+        // Materiales ya guardados en Nivel 1: su fecha ya se actualizó (modificados) o nació hoy (nuevos).
+        const savedIds = new Set<number>([
+          ...newRows.map((r: any) => Number(r.id)),
+          ...modifiedRows.map((r: any) => Number(r.id)),
+        ]);
+        await this.bumpFechaForCascadeMaterials(changedSaverIds, savedIds);
       } catch (childError: any) {
         console.error('Error al guardar cambios de sub-grids:', childError);
         const childMsg = childError?.error?.message || childError?.message || 'Error desconocido';
@@ -1399,6 +1409,41 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       console.error('Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
+    }
+  }
+
+  /**
+   * Actualiza la columna "Fecha Cambio" (campo `fecha`) a hoy para los materiales que
+   * tuvieron cambios en una cascada nivel-2 (proveedor, parámetros, subfamilia, costos).
+   * - Omite materiales ya guardados en Nivel 1 (su fecha ya se actualizó / nació hoy).
+   * - Omite ids temporales (material nuevo): su fecha ya nace con la de hoy.
+   * Usa un payload mínimo { fecha }: el backend hace partial-merge y no toca otros campos.
+   */
+  private async bumpFechaForCascadeMaterials(changedSaverIds: string[], alreadySavedIds: Set<number>): Promise<void> {
+    const NIVEL2_PREFIXES = ['proveedores', 'parametros', 'subfamilia', 'costos'];
+    const matIds = new Set<number>();
+    for (const sid of changedSaverIds) {
+      const parts = String(sid).split('-');
+      if (parts.length >= 2 && NIVEL2_PREFIXES.includes(parts[0])) {
+        const id = Number(parts[1]);
+        if (Number.isFinite(id) && id > 0 && !alreadySavedIds.has(id)) {
+          matIds.add(id);
+        }
+      }
+    }
+    if (matIds.size === 0) return;
+
+    const nowIso = new Date().toISOString();
+    for (const id of matIds) {
+      await lastValueFrom(this.materialsService.updateMaterial(String(id), { fecha: nowIso }))
+        .catch(e => console.warn(`No se pudo actualizar Fecha Cambio del material ${id}:`, e));
+      const gridRow = this.rowData.find((r: any) => Number(r.id) === id);
+      if (gridRow) gridRow.fecha = nowIso;
+    }
+    // Forzar el re-render de la columna para que el cambio se vea al instante,
+    // sin necesidad de cerrar/reabrir la cascada o el grid.
+    if (this.gridApi) {
+      this.gridApi.refreshCells({ force: true, columns: ['fecha'] });
     }
   }
 
