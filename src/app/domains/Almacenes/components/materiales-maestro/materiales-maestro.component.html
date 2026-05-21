@@ -8,12 +8,13 @@
           <i class="bi bi-plus-lg"></i>
         </button>
 
-        <!-- Botón de guardar (siempre visible) -->
-        <button type="button" class="btn btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges" title="Guardar cambios">
+        <!-- Botón de guardar (siempre visible). También se enciende si hay cambios en sub-grids hijos
+             (Nivel 2 Proveedores, Nivel 3 Sucursales, Nivel 4 Empaque) vía PendingChangesService. -->
+        <button type="button" class="btn btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges && !pendingChangesService.hasAnyPendingChanges()" title="Guardar cambios">
           <i class="bi bi-floppy"></i>
           <span
           class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-          *ngIf="hasUnsavedChanges">
+          *ngIf="hasUnsavedChanges || pendingChangesService.hasAnyPendingChanges()">
           <span class="visually-hidden">Hay cambios sin guardar</span>
         </span>
         </button>

@@ -111,6 +111,14 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.gridApi.refreshCells({ columns: ['requisitionNumber'], force: true });
       }
     });
+
+    // ✅ Re-aplica el filtro externo cuando cambia el flag lecturaAmplia del usuario logueado.
+    effect(() => {
+      this.signalsService.lecturaAmplia(); // suscripción reactiva
+      if (this.gridApi) {
+        this.gridApi.onFilterChanged();
+      }
+    });
   }
 
   rowData: any[] = [];
@@ -135,6 +143,10 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   // ✅ Cache de departamento principal por sucursal: Map<idBranch, {id, description}>
   private primaryDepartmentByBranch: Map<number, any> = new Map();
+
+  // ✅ Catálogo global de roles/departamentos (todos, sin filtrar por usuario).
+  // Se usa para mostrar el nombre del departamento aunque el usuario no tenga ese rol en esa sucursal.
+  private allRolesByIdMap: Map<number, string> = new Map();
 
   // Datos del prefijo actual
   currentPrefixData: any = null;
@@ -243,6 +255,59 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       (error) => console.error('Error fetching departments:', error)
     );
+    this.loadAllRolesForCompany();
+  }
+
+  /**
+   * Carga el catálogo completo de roles/departamentos de la empresa (sin filtrar por usuario).
+   * Permite mostrar el nombre del departamento en filas donde el usuario no tiene ese rol asignado.
+   */
+  private loadAllRolesForCompany(): void {
+    if (!this.idRoot) return;
+    this.rolesService.getRoles(this.idRoot).subscribe({
+      next: (response: any) => {
+        const rolesArr = Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response) ? response : [];
+        this.allRolesByIdMap.clear();
+        for (const r of rolesArr) {
+          const id = Number(r?.id ?? r?.Id);
+          const desc = r?.description ?? r?.Description ?? '';
+          if (Number.isFinite(id) && id > 0) {
+            this.allRolesByIdMap.set(id, String(desc));
+          }
+        }
+        if (this.gridApi) {
+          this.gridApi.refreshCells({ columns: ['departmentId'], force: true });
+        }
+      },
+      error: () => { /* silencioso */ }
+    });
+  }
+
+  /**
+   * Indica si el usuario logueado tiene la combinación exacta (sucursal, departamento)
+   * dada de alta en sus permisos (permissionBydescription).
+   */
+  private userHasBranchDeptCombination(branchId: number, deptId: number): boolean {
+    if (!branchId || !deptId || branchId <= 0 || deptId <= 0) return false;
+    const allowedRoles = this.rolesByBranchCache.get(branchId);
+    if (!allowedRoles) return false;
+    return allowedRoles.some((r: any) => Number(r?.id || 0) === Number(deptId));
+  }
+
+  /**
+   * Determina si el usuario puede editar las columnas Sucursal/Departamento o borrar la fila.
+   * - Filas nuevas (__isNew): siempre permitido (el usuario las está creando).
+   * - lectura_amplia = false: el filtro externo ya garantiza que solo ve filas autorizadas → permitido.
+   * - lectura_amplia = true: solo si tiene la combinación (sucursal, departamento) en sus permisos.
+   */
+  private canUserModifyRow(rowData: any): boolean {
+    if (rowData?.__isNew) return true;
+    if (this.signalsService.lecturaAmplia() === false) return true;
+    const branchId = Number(rowData?.idReference || 0);
+    const deptId = Number(rowData?.departmentId || 0);
+    return this.userHasBranchDeptCombination(branchId, deptId);
   }
 
 
@@ -617,13 +682,30 @@ export class RequisitionsDelisonComponent implements OnInit {
             const timeB = new Date(b.dateModified || b.requestDate).getTime();
             return timeB - timeA;
           });
-          
+
           // Aplicar el nuevo orden al grid
           if (this.gridApi) {
             this.gridApi.setGridOption('rowData', [...this.rowData]);
           }
         }
       }
+    },
+    // ✅ Filtro externo: oculta filas cuyo departamento no está autorizado al usuario logueado
+    // en esa sucursal. Solo aplica cuando lecturaAmplia === false ("Solo mis departamentos").
+    isExternalFilterPresent: () => {
+      return this.signalsService.lecturaAmplia() === false;
+    },
+    doesExternalFilterPass: (node: any) => {
+      // Filas nuevas o sin asignación todavía → pasan (no se restringe la creación).
+      if (node?.data?.__isNew) return true;
+      const branchId = Number(node?.data?.idReference || 0);
+      const deptId = Number(node?.data?.departmentId || 0);
+      if (branchId <= 0 || deptId <= 0) return true;
+      const allowedRoles = this.rolesByBranchCache.get(branchId);
+      // Si la cache aún no terminó de cargar para esa sucursal, ocultar por seguridad.
+      // Al terminar preloadRolesForBranch se dispara onFilterChanged() y se re-evalúa.
+      if (!allowedRoles) return false;
+      return allowedRoles.some((r: any) => Number(r?.id || 0) === deptId);
     }
   };
 
@@ -676,8 +758,13 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'idReference',
         headerName: 'Sucursal',
         width: 250,
-        // ✅ Solo editable si está en modo "Todas las sucursales" (idBranch negativo o no definido)
-        editable: () => !this.idBranch || this.idBranch < 0,
+        // ✅ Editable si:
+        //    1) Está en modo "Todas las sucursales" (idBranch negativo o no definido), Y
+        //    2) El usuario tiene la combinación (sucursal, departamento) autorizada en sus permisos.
+        editable: (params: any) => {
+          if (!(!this.idBranch || this.idBranch < 0)) return false;
+          return this.canUserModifyRow(params.data);
+        },
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => {
           return {
@@ -703,10 +790,14 @@ export class RequisitionsDelisonComponent implements OnInit {
           return branch?.name || branch?.description || '';
         },
         // ✅ Estilo visual para indicar si es editable o no
-        cellStyle: () => {
+        cellStyle: (params: any) => {
           // Si hay una sucursal específica seleccionada (no es "Todas"), hacer fondo gris
           if (this.idBranch && this.idBranch > 0) {
             return { backgroundColor: '#f0f0f0' }; // Gris = no editable
+          }
+          // En modo "Todas las sucursales": gris si el usuario no tiene la combinación autorizada
+          if (!this.canUserModifyRow(params.data)) {
+            return { backgroundColor: '#f0f0f0' };
           }
           return {}; // Sin estilo = editable
         },
@@ -838,6 +929,13 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'departmentId',
         headerName: 'Departamento que solicita',
         width: 280,
+        // ✅ Fondo gris cuando el usuario no puede editar la celda (sin la combinación autorizada).
+        cellStyle: (params: any) => {
+          if (!this.canUserModifyRow(params.data)) {
+            return { backgroundColor: '#f0f0f0' };
+          }
+          return {};
+        },
         valueFormatter: (params: any) => {
           if (!params.value) return '';
 
@@ -849,10 +947,17 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (role) return role.description;
           }
 
+          // ✅ Fallback: catálogo global de roles de la empresa. Permite mostrar el nombre
+          //    aunque el usuario no tenga ese rol en esa sucursal (modo lectura amplia).
+          const globalName = this.allRolesByIdMap.get(Number(params.value));
+          if (globalName) return globalName;
+
           return params.value?.toString() || '';
         },
         editable: (params: any) => {
-          return params.data && params.data.idReference > 0;
+          if (!params.data || params.data.idReference <= 0) return false;
+          // ✅ Solo editable si el usuario tiene la combinación (sucursal, departamento) autorizada.
+          return this.canUserModifyRow(params.data);
         },
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
@@ -920,6 +1025,11 @@ export class RequisitionsDelisonComponent implements OnInit {
               return role.description;
             }
           }
+
+          // ✅ Fallback: catálogo global de roles (cuando el usuario no tiene ese rol
+          //    en esa sucursal, pero el departamento sí existe en la empresa).
+          const globalName = this.allRolesByIdMap.get(Number(departmentId));
+          if (globalName) return globalName;
 
           return null;
         },
@@ -1545,6 +1655,16 @@ export class RequisitionsDelisonComponent implements OnInit {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
+    // ✅ Verificar permiso por combinación (sucursal, departamento) cuando aplica.
+    if (!this.canUserModifyRow(selectedData)) {
+      alerts.reqBasicAlert(
+        'Eliminar requisición',
+        'No tienes esta combinación de sucursal + departamento asignada en tu usuario, por lo que no puedes eliminar esta requisición.',
+        'error'
+      );
+      return;
+    }
+
     // Verificar si tiene artículos asociados
     if (selectedData.articlesCount > 0) {
       alerts.reqBasicAlert(
@@ -1674,6 +1794,8 @@ export class RequisitionsDelisonComponent implements OnInit {
         })));
         if (this.gridApi) {
           this.gridApi.refreshCells({ force: true });
+          // ✅ Re-evaluar filtro externo: la cache ya tiene los roles autorizados de esta sucursal.
+          this.gridApi.onFilterChanged();
         }
       },
       error: () => {}

@@ -96,6 +96,7 @@ export class DocumentPreviewDetailComponent {
 export class DetailEntradaDocumentsComponent {
   private attachHandlerService = inject(AttachHandlerService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
+  private parentParams: any = null;
 
   idParent: number | null = null;
   rowData: any[] = [];
@@ -109,6 +110,7 @@ export class DetailEntradaDocumentsComponent {
   components = { documentPreview: DocumentPreviewDetailComponent };
 
   agInit(params: any) {
+    this.parentParams = params;
     this.idParent = params.data?.idEntrada ?? params.data?.id ?? null;
     this.loadData();
   }
@@ -209,10 +211,13 @@ export class DetailEntradaDocumentsComponent {
     defaultColDef: { resizable: true, sortable: true },
     masterDetail: true,
     isRowMaster: (data: any) => !!data?.urlDocument,
-    detailCellRendererSelector: () => ({ component: 'documentPreview' }),
+    detailCellRenderer: 'documentPreview',
     detailRowHeight: 516,
     isExternalFilterPresent: () => this.expandedRowId !== null,
     doesExternalFilterPass: (node: any) => node.data?.id === this.expandedRowId,
+    onGridPreDestroyed: () => {
+      this.gridApi = undefined as any;
+    },
     onRowGroupOpened: (event: any) => {
       event.api.refreshCells({ rowNodes: [event.node], columns: ['urlDocument'], force: true });
     },
@@ -221,7 +226,10 @@ export class DetailEntradaDocumentsComponent {
   loadData() {
     if (!this.idParent) return;
     this.intandoutDocumentsService.getIntandoutDocumentsById(this.idParent, 'entrada').subscribe({
-      next: (data) => { this.rowData = data ?? []; },
+      next: (data) => {
+        this.rowData = data ?? [];
+        this.syncParentDocumentCount(this.rowData.length);
+      },
       error: (err) => console.error('Error cargando documentos:', err),
     });
   }
@@ -246,6 +254,7 @@ export class DetailEntradaDocumentsComponent {
 
   addRow() {
     const newRow = {
+      id: `temp_${++this.tempIdCounter}`,
       idDoc: this.idParent,
       documentName: null,
       urlDocument: null,
@@ -255,8 +264,9 @@ export class DetailEntradaDocumentsComponent {
     this.rowData = [newRow, ...this.rowData];
     this.hasUnsavedChanges = true;
     setTimeout(() => {
-      this.gridApi?.getDisplayedRowAtIndex(0)?.setSelected(true);
-      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'documentName' });
+      if (!this.gridApi || this.gridApi.isDestroyed()) return;
+      this.gridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'documentName' });
     });
   }
 
@@ -343,5 +353,27 @@ export class DetailEntradaDocumentsComponent {
     delete clean.__pendingFileExt;
     if (typeof clean.id === 'string' && clean.id.startsWith('temp_')) delete clean.id;
     return clean;
+  }
+
+  private syncParentDocumentCount(count: number): void {
+    const rowNode = this.parentParams?.node;
+    const api = this.parentParams?.api;
+    const rowData = rowNode?.data;
+
+    if (!rowNode || !api || !rowData) return;
+    const currentCount = Number(rowData.pdfCount ?? 0);
+    if (currentCount === count) return;
+
+    if (typeof rowNode.setDataValue === 'function') {
+      rowNode.setDataValue('pdfCount', count);
+      return;
+    }
+
+    rowData.pdfCount = count;
+
+    api.refreshCells({
+      rowNodes: [rowNode],
+      columns: ['pdfCount'],
+    });
   }
 }

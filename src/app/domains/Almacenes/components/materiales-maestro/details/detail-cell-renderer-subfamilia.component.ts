@@ -10,6 +10,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
+import { PendingChangesService } from 'app/services/pending-changes.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-subfamilia',
@@ -21,16 +22,7 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
     <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
       <strong><i class="bi bi-cup-straw"></i> Variantes de: {{ materialName }}</strong>
       <div class="d-flex gap-2">
-        <button
-          class="btn btn-sm btn-primary me-2 position-relative"
-          (click)="saveChanges()"
-          [disabled]="!hasUnsavedChanges">
-          <i class="bi bi-floppy"></i> Guardar
-          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="hasUnsavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span>
-        </button>
+        <!-- Guardar centralizado en Nivel 1 (materiales-maestro). Ver PendingChangesService. -->
         <button
           class="btn btn-sm btn-warning me-2"
           (click)="revertChanges()">
@@ -63,13 +55,20 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   private materialsService = inject(MaterialsService);
   private modalService = inject(SubfamiliaModalService);
   private ngZone = inject(NgZone);
+  private pendingChangesService = inject(PendingChangesService);
   private modalSubscription?: Subscription;
+  private saverId: string = '';
 
   params: any;
   materialId: number;
   materialName: string;
   idRoot: number;
   idFamilia: number;
+
+  /** True si el materialId todavía es temporal (material aún no guardado en BD). */
+  private isTempMaterialId(): boolean {
+    return typeof this.materialId === 'string' && String(this.materialId).startsWith('temp_');
+  }
 
   autoGroupColumnDef = {
     cellRendererParams: {
@@ -83,7 +82,17 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   // Datos planos de productos finales
   treeData: any[] = [];
   originalTreeData: any[] = []; // Para revertir cambios
-  hasUnsavedChanges: boolean = false;
+
+  /** Cambios pendientes. El setter notifica al servicio central para que el botón
+   *  Guardar del Nivel 1 encienda su badge rojo. */
+  private _hasUnsavedChanges: boolean = false;
+  get hasUnsavedChanges(): boolean { return this._hasUnsavedChanges; }
+  set hasUnsavedChanges(value: boolean) {
+    this._hasUnsavedChanges = value;
+    if (this.saverId) {
+      this.pendingChangesService.notifyChanges(this.saverId, value);
+    }
+  }
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -103,6 +112,13 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       this.handleModalSave(data);
     });
 
+    // Registro en el bus central para que el Guardar único del Nivel 1 invoque saveChanges().
+    this.saverId = `subfamilia-${this.materialId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    this.pendingChangesService.register(this.saverId, {
+      hasChanges: false,
+      save: (idMap?: Map<string, number>) => this.saveChanges(idMap)
+    });
+
     // Cargar datos
     this.loadCatalogData();
   }
@@ -114,6 +130,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   ngOnDestroy() {
     if (this.modalSubscription) {
       this.modalSubscription.unsubscribe();
+    }
+    if (this.saverId) {
+      this.pendingChangesService.unregister(this.saverId);
     }
   }
 
@@ -349,8 +368,18 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // Modal handlers removed - not used in flat structure
 
-  async saveChanges() {
+  async saveChanges(idMap?: Map<string, number>) {
+    // Remapeo de ID temporal → real cuando el Nivel 1 acaba de crear el material padre.
+    if (this.isTempMaterialId() && idMap) {
+      const realId = idMap.get(String(this.materialId));
+      if (realId) {
+        this.materialId = realId;
+      }
+    }
+
     if (!this.hasUnsavedChanges) {
+      // Cuando se invoca desde el Guardar centralizado sin cambios reales, sólo retornar.
+      if (idMap) return;
       alerts.basicAlert('Info', 'No hay cambios sin guardar.', 'info');
       return;
     }
@@ -428,6 +457,20 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
 
     if (this.treeData.length === 0) {
+      return;
+    }
+
+    // Si el material aún no existe en BD (id temporal), no hay relaciones que consultar;
+    // todos quedan en false hasta que el Guardar del Nivel 1 cree el material.
+    if (this.isTempMaterialId()) {
+      this.treeData.forEach(product => {
+        product.seUsaAqui = false;
+        product.isLoadingSeUsa = false;
+      });
+      this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      }
       return;
     }
 

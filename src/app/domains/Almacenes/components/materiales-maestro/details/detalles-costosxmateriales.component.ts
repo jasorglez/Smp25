@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
+import { Component, ElementRef, ViewChild, effect, inject, OnDestroy } from '@angular/core';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { CellFocusedEvent, CellClickedEvent, ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, CellKeyDownEvent, Column, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ICellRendererParams } from 'ag-grid-community';
@@ -14,6 +14,7 @@ import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { RawMaterialsService } from 'app/services/raw-materials.service';
 import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
+import { PendingChangesService } from 'app/services/pending-changes.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-costos',
@@ -32,16 +33,7 @@ import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
               >
               <i class="bi bi-person-plus"></i> Agregar
             </button>
-            <button
-              class="btn btn-sm btn-primary me-2 position-relative"
-              (click)="onStartEditing()"
-              >
-              <i class="bi bi-floppy"></i> Guardar
-              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                *ngIf="">
-                <span class="visually-hidden">Hay cambios sin guardar</span>
-              </span>
-            </button>
+            <!-- Guardar centralizado en Nivel 1 (materiales-maestro). Ver PendingChangesService. -->
             <button
               class="btn btn-sm btn-warning me-2"
               (click)="onUndo()">
@@ -91,9 +83,26 @@ import { MateriaByCatalogService } from 'app/services/MateriaByCatalog.service';
     }
   `]
 })
-export class DetallesCostosxmaterialesComponent implements ICellRendererAngularComp {
+export class DetallesCostosxmaterialesComponent implements ICellRendererAngularComp, OnDestroy {
   private currencyPipe = inject(CurrencyPipe);
+  private pendingChangesService = inject(PendingChangesService);
   private rawMaterialsService = inject(RawMaterialsService);
+  private saverId: string = '';
+
+  /** True si el idSelect (materialId) todavía es temporal. */
+  private isTempMaterialId(): boolean {
+    return typeof this.idSelect === 'string' && String(this.idSelect).startsWith('temp_');
+  }
+
+  /** Cambios pendientes. El setter notifica al servicio central. */
+  private _hasCostosChanges: boolean = false;
+  get hasCostosChanges(): boolean { return this._hasCostosChanges; }
+  set hasCostosChanges(value: boolean) {
+    this._hasCostosChanges = value;
+    if (this.saverId) {
+      this.pendingChangesService.notifyChanges(this.saverId, value);
+    }
+  }
   private materiaByCatalogService = inject(MateriaByCatalogService);
   private signalsService = inject(SignalsService);
   @ViewChild('formulaBar') formulaBar!: ElementRef<HTMLInputElement>;
@@ -234,6 +243,14 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
     this.data = params.data;
     // ✅ Usar params.data.id para el select (como hace el componente de Proveedores)
     this.idSelect = params.data.id;
+
+    // Registro en el bus central para que el Guardar único del Nivel 1 invoque onStartEditing().
+    this.saverId = `costos-${this.idSelect}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    this.pendingChangesService.register(this.saverId, {
+      hasChanges: false,
+      save: (idMap?: Map<string, number>) => this.onStartEditing(idMap)
+    });
+
     this.obtenerDatos();
     this.familias(this.data);
     this.familiasVigentes(this.data);
@@ -522,6 +539,16 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
     };
   }
   obtenerDatos() {
+    // Si el material aún no fue guardado en BD (id temporal), no hay datos que cargar;
+    // el usuario puede agregar costos en memoria y se persistirán cuando el Guardar del
+    // Nivel 1 primero cree el material y luego propague el ID real vía idMap.
+    if (this.isTempMaterialId()) {
+      this.costosRowData = [];
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.costosRowData);
+      }
+      return Promise.resolve(true);
+    }
     return new Promise((resolve) => {
       this.materiaByCatalogService.getMateriaByCatalog(this.idRoot, this.idSelect).subscribe(
         (data: any) => {
@@ -640,6 +667,7 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
     };
     this.gridApi.applyTransaction({ add: [newRow] });
     this.costosRowData = [...this.costosRowData, newRow];
+    this.hasCostosChanges = true;
     this.updatePinnedRowTotals();
     setTimeout(() => {
     this.gridApi.startEditingCell({
@@ -733,7 +761,23 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
       });
   }
 
-  async onStartEditing() {
+  async onStartEditing(idMap?: Map<string, number>) {
+        // Remapeo de ID temporal → real cuando el Nivel 1 acaba de crear el material padre.
+        if (this.isTempMaterialId() && idMap) {
+          const realId = idMap.get(String(this.idSelect));
+          if (realId) {
+            this.idSelect = realId;
+            this.costosRowData.forEach((row: any) => {
+              if (row.idConcep && String(row.idConcep).startsWith('temp_')) {
+                row.idConcep = realId;
+              }
+            });
+          }
+        }
+
+        // Cuando se invoca desde el Guardar centralizado sin cambios reales, salir silencioso.
+        if (!this.hasCostosChanges && idMap) return;
+
         const newRows = this.costosRowData.filter((row) => row.__isNew);
         const modifiedRows = this.costosRowData.filter(
           (row) => row.__modified && !row.__isNew
@@ -759,6 +803,8 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
             'Se han actualizado los datos correctamente.',
             'success'
           );
+
+          this.hasCostosChanges = false;
 
           // ✅ Opción C: NO recargar datos del servidor para evitar sobrescribir el valor calculado
           // await this.obtenerDatos(); // ELIMINADO - causaba duplicación del costo
@@ -845,6 +891,7 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
   onCellValueChanged(params: any) {
     // Refrescamos todas las celdas para recalcular fórmulas que dependan de esta celda.
     params.data.__modified = true;
+    this.hasCostosChanges = true;
 
     // Actualizar campos calculados cuando cambian sus dependencias
     if (['costoUni', 'cantidad', 'merma'].includes(params.colDef.field)) {
@@ -1028,6 +1075,12 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
 
   refresh(): boolean {
     return false;
+  }
+
+  ngOnDestroy(): void {
+    if (this.saverId) {
+      this.pendingChangesService.unregister(this.saverId);
+    }
   }
 
   onGridReady(params: GridReadyEvent) {

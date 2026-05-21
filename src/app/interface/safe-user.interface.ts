@@ -27,6 +27,7 @@ export interface SafeUserData {
   allowWhatsapp: boolean;
   isRoot: boolean;
   invited: boolean;
+  lecturaAmplia: boolean;
 }
 
 /**
@@ -72,7 +73,8 @@ export function sanitizeUserData(userData: any): SafeUserData {
     project: userData.project ?? null,
     allowWhatsapp: userData.allowWhatsapp ?? false,
     isRoot: userData.isRoot ?? false,
-    invited: userData.invited ?? false
+    invited: userData.invited ?? false,
+    lecturaAmplia: userData.lecturaAmplia ?? false
   };
 
   return safeData;

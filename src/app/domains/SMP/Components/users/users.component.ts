@@ -864,6 +864,20 @@ export class UsersComponent implements OnDestroy {
         width: 90,
       },
       {
+        field: 'lecturaAmplia',
+        headerName: 'Lectura amplia',
+        width: 220,
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [false, true],
+          formatValue: (value: any) => value === true ? 'Todas mis sucursales' : 'Solo mis departamentos',
+          cellHeight: 30
+        }),
+        valueFormatter: (params: any) => params.value === true ? 'Todas mis sucursales' : 'Solo mis departamentos',
+        cellStyle: { cursor: 'pointer' }
+      },
+      {
         field: 'nivelMonto',
         headerName: 'Nivel x monto',
         width: 280,
@@ -1085,6 +1099,7 @@ export class UsersComponent implements OnDestroy {
       allowWhatsapp: true,
       isRoot: false,
       nivelMonto: null,
+      lecturaAmplia: false,
       __isNew: true
     };
 

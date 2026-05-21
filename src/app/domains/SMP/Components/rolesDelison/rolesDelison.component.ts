@@ -194,8 +194,13 @@ export class RolesDelisonComponent {
   }
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
-    headerHeight: 25,
     rowHeight: 20,
+    defaultColDef: {
+      resizable: true,
+      sortable: true,
+      wrapHeaderText: true,
+      autoHeaderHeight: true,
+    },
     rowBuffer: 20,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
@@ -335,8 +340,12 @@ export class RolesDelisonComponent {
       {
         field: 'visualizadorAlmacenMoliendaDepto',
         headerName: 'Visualizador Almacen molienda Depto',
-        width: 120,
-        maxWidth: 140,
+        headerTooltip: 'Visualizador Almacen molienda Depto',
+        minWidth: 220,
+        width: 240,
+        maxWidth: 320,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
         cellRenderer: (params: any) => {
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
@@ -349,12 +358,36 @@ export class RolesDelisonComponent {
         },
       },
       {
+        field: 'visualizadorMultiguardar',
+        headerName: 'Visualizador multiguardar',
+        headerTooltip: 'Visualizador multiguardar',
+        minWidth: 220,
+        width: 240,
+        maxWidth: 320,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
+        cellRenderer: (params: any) => {
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = !!params.value;
+          checkbox.style.cursor = 'pointer';
+          checkbox.addEventListener('change', () => {
+            params.node.setDataValue('visualizadorMultiguardar', checkbox.checked);
+          });
+          return checkbox;
+        },
+      },
+      {
         field: 'posiciones',
-        headerName: 'Posiciones*',
-
+        headerName: 'Posiciones *',
+        headerTooltip: 'Posiciones',
         hide: false,
         cellRenderer: this.createDetailToggleCellRenderer('posiciones'),
-        flex: 1,
+        minWidth: 140,
+        width: 150,
+        flex: 0,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
         cellStyle: { backgroundColor: '#d4edda' },
       },
     ];
@@ -445,6 +478,7 @@ export class RolesDelisonComponent {
       comment: '',
       active: true,
       visualizadorAlmacenMoliendaDepto: false,
+      visualizadorMultiguardar: false,
       __isNew: true
     };
 

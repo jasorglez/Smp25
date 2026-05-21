@@ -126,6 +126,7 @@ export class UsersService {
         this.signalsService.setUserRoot(safeUser.isRoot);
         this.signalsService.setidUser(safeUser.id);
         this.signalsService.setInvited(safeUser.invited);
+        this.signalsService.lecturaAmplia.set(safeUser.lecturaAmplia);
 
         // Devolver solo los campos necesarios (compatibilidad con código existente)
         return {
