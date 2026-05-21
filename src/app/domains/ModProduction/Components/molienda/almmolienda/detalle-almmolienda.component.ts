@@ -10,8 +10,8 @@ import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
 import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
 import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
+import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { alerts } from 'app/helpers/alerts';
-import { FechaEditorComponent } from '../../../../../shared/fecha-editor.component';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
 
 interface ReqOption {
@@ -158,6 +158,7 @@ export class DetalleMoliendaComponent {
   private trackingService = inject(TrackingService);
   private entradaService = inject(EntradaMoliendaService);
   private caracteristicasService = inject(CaracteristicasEntradaService);
+  private intandoutDocumentsService = inject(IntandoutDocumentsService);
 
   private internalParams: any;
   private gridApi!: GridApi;
@@ -184,7 +185,7 @@ export class DetalleMoliendaComponent {
   hasUnsavedChangesCaracteristicas = false;
   private originalCaracteristicasData: any[] = [];
   private existingCaratIds = new Map<number, number>(); // categoryId → recordId en BD
-  private editableEntradaColumnOrder = ['fechaRecepcion', 'cantidadEntrada', 'bultos', 'revisionConfigu', 'liberacion'];
+  private editableEntradaColumnOrder = ['fechaRecepcion', 'cantidadEntrada', 'bultos', 'revisionConfigu', 'comentario', 'liberacion'];
   private enterPressed = false;
   bultosCantidad: number | null = null;
   bultosCantidadARevisar: number | null = null;
@@ -305,20 +306,53 @@ export class DetalleMoliendaComponent {
     {
       field: 'fechaRecepcion',
       headerName: 'Fecha recepción',
-      width: 120,
+      filter: 'agDateColumnFilter',
+      filterParams: {
+        defaultToNothingSelected: true,
+      },
+      width: 150,
       editable: true,
-      cellEditor: 'fechaEditor',
-      valueFormatter: (p) => this.fmtFecha(p.value),
-      valueSetter: (params) => {
-        if (params.newValue instanceof Date || typeof params.newValue === 'string') {
-          const date = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
-          if (!isNaN(date.getTime())) {
-            params.data.fechaRecepcion = date;
-            this.onEntradaCellValueChanged(params);
-            return true;
-          }
+      cellEditor: 'agDateCellEditor',
+      valueGetter: (params) => {
+        if (!params.data?.fechaRecepcion) {
+          return new Date();
         }
-        return false;
+
+        return params.data.fechaRecepcion instanceof Date
+          ? params.data.fechaRecepcion
+          : new Date(params.data.fechaRecepcion);
+      },
+      valueSetter: (params) => {
+        if (!params.newValue) {
+          params.data.fechaRecepcion = new Date();
+          this.onEntradaCellValueChanged(params);
+          return true;
+        }
+
+        const date = params.newValue instanceof Date
+          ? params.newValue
+          : new Date(params.newValue);
+
+        if (isNaN(date.getTime())) {
+          void alerts.basicAlert('Error', 'Fecha inválida', 'error');
+          return false;
+        }
+
+        params.data.fechaRecepcion = date;
+        this.onEntradaCellValueChanged(params);
+        return true;
+      },
+      valueFormatter: (params) => {
+        try {
+          if (!params.value) return '';
+
+          const date = params.value instanceof Date ? params.value : new Date(params.value);
+          if (isNaN(date.getTime())) return '';
+
+          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+        } catch {
+          return '';
+        }
       },
     },
     {
@@ -465,13 +499,46 @@ export class DetalleMoliendaComponent {
       valueFormatter: (p) => this.fmtMoneda(p.value),
     },
     {
+      field: 'comentario',
+      headerName: 'Comentario',
+      minWidth: 180,
+      flex: 1,
+      editable: true,
+      valueSetter: (params) => {
+        params.data.comentario = params.newValue ?? '';
+        this.onEntradaCellValueChanged(params);
+        return true;
+      },
+    },
+    {
       field: 'pdfCount',
       headerName: '📤 PDF',
       editable: false,
       suppressMovable: true,
-      width: 70,
+      width: 90,
       flex: 0,
-      cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos de la entrada"></i>`,
+      cellRenderer: (params: any) => {
+        const count = Number(params.value ?? 0);
+        const color = count > 0 ? '#0d6efd' : '#6c757d';
+
+        const container = document.createElement('div');
+        container.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;width:100%;height:100%;';
+
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-file-earmark-text';
+        icon.title = 'Ver documentos de la entrada';
+        icon.style.color = color;
+
+        const badge = document.createElement('span');
+        badge.textContent = String(count);
+        badge.style.cssText = 'font-size:0.72rem;font-weight:700;color:#0d3b66;line-height:1;';
+
+        
+        container.appendChild(badge);
+        container.appendChild(icon);
+
+        return container;
+      },
       cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
       onCellClicked: (params) => this.toggleDetailColumn(params, 'documents'),
     },
@@ -486,9 +553,6 @@ export class DetalleMoliendaComponent {
   ];
 
   nivel4GridOptions: any = {
-    components: {
-      fechaEditor: FechaEditorComponent,
-    },
     headerHeight: 25,
     rowHeight: 25,
     masterDetail: true,
@@ -771,6 +835,7 @@ export class DetalleMoliendaComponent {
       const entradas = idMaterial
         ? await lastValueFrom(this.entradaService.getByOcAndMaterial(row.id, idMaterial))
         : await lastValueFrom(this.entradaService.getByOc(row.id));
+
       this.cascadeEntradaData = (Array.isArray(entradas) ? entradas : []).map((e: EntradaMolienda) => ({
         id: e.id,
         idEntrada: e.id,
@@ -783,7 +848,9 @@ export class DetalleMoliendaComponent {
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
         carat: '',
+        comentario: e.comentario ?? '',
       }));
+      console.log('Entradas cargadas para OC', row.folio, this.cascadeEntradaData);
 
       // Cargar abreviaciones de características para cada entrada en paralelo
       const familyAbrevMap = new Map<string, string>();
@@ -792,6 +859,10 @@ export class DetalleMoliendaComponent {
       );
 
       await Promise.all(this.cascadeEntradaData.map(async (entradaRow: any) => {
+        const documents = await lastValueFrom(
+          this.intandoutDocumentsService.getIntandoutDocumentsById(entradaRow.idEntrada, 'entrada')
+        ).catch(() => []);
+        entradaRow.pdfCount = Array.isArray(documents) ? documents.length : 0;
         try {
           const carats = await lastValueFrom(this.caracteristicasService.getByEntrada(entradaRow.idEntrada));
           if (carats && carats.length > 0) {
@@ -853,16 +924,10 @@ export class DetalleMoliendaComponent {
         pago: b.pago,
         pdfCount: 1,
         usuario: usuarios[b.u % usuarios.length],
+        comentario: '',
         liberacion: b.lib,
       };
     });
-  }
-
-  private fmtFecha(v: any): string {
-    if (!v) return '';
-    const d = v instanceof Date ? v : new Date(v);
-    if (Number.isNaN(d.getTime())) return String(v);
-    return d.toLocaleDateString('es-MX', { day: 'numeric', month: '2-digit', year: '2-digit' });
   }
 
   private fmtEntero(v: any): string {
@@ -1071,6 +1136,7 @@ export class DetalleMoliendaComponent {
       pago: 0,
       pdfCount: 0,
       usuario: usuarioLogueado,
+      comentario: '',
       liberacion: false,
       __isNew: true,
     };
@@ -1105,6 +1171,7 @@ export class DetalleMoliendaComponent {
           revisionConfigu: row.revisionConfigu ?? 0,
           pago: row.pago ?? 0,
           usuario: row.usuario ?? '',
+          comentario: row.comentario ?? '',
           liberacion: row.liberacion ?? false,
         };
 
