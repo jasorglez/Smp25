@@ -345,6 +345,15 @@ const validOutCount = [...groupData].filter(node => {
 
 **Nota:** El cálculo definitivo de `pendingOuts` en el backend usa `lastIn.HasValue` post-loop (ver CLAUDE.md de MicroServicioTracking), no conteo por hora. El cellRenderer del frontend es solo visual.
 
+### Discrepancia de faltas entre `detail-clock-2` y `master-clock` (resuelto en backend)
+
+`detail-clock-2` usa `IncidentsByEmployee`; `master-clock` usa `IncidentsByCompany`. Ambos delegan a `ShouldCountAsAbsence`. Los bugs que causaban diferencias ya fueron corregidos en el backend:
+- `c.Holiday == false` → `c.Holiday != true` (el campo es `bool?`, `null != false`)
+- Loop de `IncidentsByEmployee` usaba `< endDate` en vez de `<= endDate`
+- Branch `OUT` en `IncidentsByEmployee` no tenía `&& lastIn.HasValue` (causaba excepción con datos inconsistentes)
+
+Si los números vuelven a diferir, verificar primero que `ShouldCountAsAbsence` recibe el mismo rango de fechas en ambos métodos.
+
 ---
 
 ## Project Memories

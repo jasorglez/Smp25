@@ -59,6 +59,15 @@ export class PendingChangesService {
     return this._hasAnyPendingChanges();
   }
 
+  /** saverIds de los hijos que actualmente tienen cambios pendientes. */
+  getChangedSaverIds(): string[] {
+    const ids: string[] = [];
+    this.savers.forEach((saver, saverId) => {
+      if (saver.hasChanges) ids.push(saverId);
+    });
+    return ids;
+  }
+
   /**
    * Orquesta el guardado de TODOS los hijos con cambios pendientes.
    *
