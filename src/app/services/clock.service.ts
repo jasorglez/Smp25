@@ -97,9 +97,24 @@ export class ClockService {
     });
   }
 
+  getSpecialExtraHoursByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
+    return this.http.get(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}/special-extra-hours?start=${start}&end=${end}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getSpecialExtraHoursByBranch(idBranch: number, start: string, end: string): Observable<any> {
     return this.http.get(
       `${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/special-extra-hours?start=${start}&end=${end}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  updateSpecialExtraHours(id: number, data: { allowSpecialExtra: boolean | null; specialExtraApprovedBy: string | null }): Observable<any> {
+    return this.http.patch(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/${id}/special-extra`,
+      data,
       { headers: this.trackingService.getHeaders() }
     );
   }

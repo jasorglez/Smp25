@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.201 (20 Mayo 2026 13:50) - Modificación al master-clock y al detail-clock-2'
+  version: '2.52.202 (21 Mayo 2026 14:55) - Horas Extra Especiales'
 };
