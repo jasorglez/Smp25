@@ -96,6 +96,13 @@ export class ClockService {
       headers: this.trackingService.getHeaders(),
     });
   }
+
+  getSpecialExtraHoursByBranch(idBranch: number, start: string, end: string): Observable<any> {
+    return this.http.get(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/special-extra-hours?start=${start}&end=${end}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
   getCatalogs(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogsAll?idCompany=${idCompany}`, {
       headers: this.trackingService.getHeaders(),

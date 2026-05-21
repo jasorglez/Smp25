@@ -1907,6 +1907,17 @@ export const routes: Routes = [
                 }
               },
               {
+                path: 'special-extra-hours-master',
+                loadComponent: () => import('./domains/ModReshumans/components/checkout/special-extra-hours-master/special-extra-hours-master.component'),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Pestaña Horas Extra Especiales Módulo Checador',
+                    category: 'HR'
+                  }
+                }
+              },
+              {
                 path: 'history-clock',
                 loadComponent: () => import('./domains/ModReshumans/components/checkout/db/db.component'),
                 canActivate: [TrackingGuard],
