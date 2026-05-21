@@ -821,7 +821,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         {
           field: 'ingressDate',
-          headerName: 'Fecha de ingreso',
+          headerName: 'Fecha de ingreso 2',
           editable: (params) => {
             if (params.data.__isNew) {
               return true;

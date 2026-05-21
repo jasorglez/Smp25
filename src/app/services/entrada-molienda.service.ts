@@ -14,6 +14,7 @@ export interface EntradaMolienda {
   revisionConfigu?: number | null;
   pago?: number | null;
   usuario?: string | null;
+  comentario?: string | null;
   liberacion?: boolean;
   active?: boolean;
   dateModified?: string;
