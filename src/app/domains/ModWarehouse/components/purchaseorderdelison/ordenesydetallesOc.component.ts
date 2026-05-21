@@ -140,28 +140,6 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         return `${d}/${m}/${y}`;
       },
     },
-    {
-      field: 'typeoc',
-      headerName: 'Tipo',
-      width: 120,
-    },
-    {
-      field: 'conditions',
-      headerName: 'Condic. Compra',
-      width: 140,
-      cellStyle: { backgroundColor: '#e0f2f1' },
-    },
-    {
-      headerName: 'PDF',
-      width: 60,
-      sortable: false,
-      cellRenderer: (params: any) => {
-        const div = document.createElement('div');
-        div.style.cssText = 'text-align: center; cursor: pointer;';
-        div.innerHTML = '<i class="bi bi-file-pdf" style="color: #d32f2f; font-size: 1.2rem;" title="Descargar PDF"></i>';
-        return div;
-      },
-    },
   ];
 
   gridOptions: any = {
@@ -175,14 +153,15 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   };
 
   itemsColDefs: ColDef[] = [
-    { field: 'numarticle', headerName: '# Item OC', width: 140 },
+    { field: 'conditions', headerName: 'Condic. Compra', width: 140, cellStyle: { backgroundColor: '#e0f2f1' } },
+    { field: 'numarticle', headerName: '# Item OC', width: 140, hide: true },
     { field: 'namearticle', headerName: 'Artículo', flex: 2, minWidth: 140 },
     { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
-    { field: 'caducidadMinimaRequerida', headerName: 'Caducidad Minima Requerida', width: 180 },
+    { field: 'typeoc', headerName: 'Tipo', width: 120 },
     { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
     { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
     { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
-    { field: 'dateuse', headerName: 'Fecha Entrada Almacén', width: 150 },
+    { field: 'caducidadMinimaRequerida', headerName: 'Caducidad Minima Requerida', width: 180 },
     { field: 'datepostpone', headerName: 'Fecha Entrega', width: 130,
       valueFormatter: (p) => {
         if (!p.value) return '';
@@ -192,6 +171,18 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         const y = date.getFullYear();
         return `${d}/${m}/${y}`;
       }
+    },
+    { field: 'dateuse', headerName: 'Fecha Entrada Almacén', width: 150 },
+    {
+      headerName: 'PDF',
+      width: 60,
+      sortable: false,
+      cellRenderer: (params: any) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'text-align: center; cursor: pointer;';
+        div.innerHTML = '<i class="bi bi-file-pdf" style="color: #d32f2f; font-size: 1.2rem;" title="Descargar PDF"></i>';
+        return div;
+      },
     },
   ];
 
@@ -519,7 +510,12 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
 
     this.ocAndReqsService.getReqItems(row.id).subscribe({
       next: (items: any[]) => {
-        this.itemsData = Array.isArray(items) ? items : [];
+        // Inyecta Condic. Compra y Tipo de la OC padre en cada ítem (el ítem no trae esos datos).
+        this.itemsData = (Array.isArray(items) ? items : []).map((it: any) => ({
+          ...it,
+          conditions: row.conditions || '',
+          typeoc: row.typeoc || '',
+        }));
         if (this.itemsGridApi) {
           this.itemsGridApi.setGridOption('rowData', this.itemsData);
         }
