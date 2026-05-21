@@ -728,14 +728,21 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
 
       if (isCurrentlyExpanded) {
+        // Colapsar: cerrar el detalle y restaurar la altura de todas las filas.
         node.setExpanded(false);
+        api.forEachNode((n: any) => n.setRowHeight(undefined));
+        api.onRowHeightChanged();
       } else {
-        // Patrón acordeón: colapsa los demás antes de expandir éste.
+        // Patrón acordeón: ocultar las demás filas (altura 0) y mostrar sólo ésta + su detalle.
         api.forEachNode((otherNode: any) => {
-          if (otherNode.expanded && otherNode.id !== node.id) {
-            otherNode.setExpanded(false);
+          if (otherNode.id === node.id) {
+            otherNode.setRowHeight(undefined);
+          } else {
+            if (otherNode.expanded) otherNode.setExpanded(false);
+            otherNode.setRowHeight(0);
           }
         });
+        api.onRowHeightChanged();
         event.data.detailType = detailType;
         setTimeout(() => node.setExpanded(true), 0);
       }
