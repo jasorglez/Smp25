@@ -142,6 +142,14 @@ export class OcAndReqsService {
     );
   }
 
+  patchTotalPedimento(id: number, totalPedimento: number): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Ocandreq/${id}/total-pedimento`,
+      { totalPedimento: totalPedimento },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getOcsByReqMaterial(idReq: number, idMaterial: number, depts?: string): Observable<any[]> {
     const deptsParam = depts ? `&depts=${encodeURIComponent(depts)}` : '';
     return this.http.get<any[]>(

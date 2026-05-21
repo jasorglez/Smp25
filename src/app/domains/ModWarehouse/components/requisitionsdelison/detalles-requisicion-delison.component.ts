@@ -337,6 +337,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private sucursalSub?: Subscription;
   authService = inject(AuthService);
   canMultiguardar: boolean = false;
+  // ✅ Controla si el usuario puede editar las columnas restringidas (Recurrente, Artículos,
+  //    Cantidad Requerida, Proveedor, Prioridad) y borrar ítems de esta requisición.
+  //    Cuando lectura_amplia = true, solo es true si el usuario tiene la combinación
+  //    (sucursal, departamento) del REQ padre dada de alta en sus permisos.
+  //    Cuando lectura_amplia = false, siempre true (el filtro del nivel 1 ya restringe la vista).
+  canEditItemsInThisReq: boolean = true;
   // Tooltip
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
@@ -459,9 +465,54 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       this.loadData();
       this.loadCatalogs();
       this.loadCanMultiguardar();
+      this.loadCanEditItems();
     } else if (this.detailType === 'pdf') {
       this.generatePDF();
     }
+  }
+
+  /**
+   * Determina si el usuario puede editar columnas restringidas y borrar ítems de esta requisición.
+   * Regla:
+   *  - lectura_amplia = false → siempre true (el filtro del nivel 1 ya garantiza que solo ve sus reqs).
+   *  - lectura_amplia = true  → true sólo si tiene la combinación (idReference, departmentId) del padre
+   *                              dada de alta en sus permisos (permissionBydescription).
+   */
+  private loadCanEditItems(): void {
+    const lecturaAmplia = this.signalsService.lecturaAmplia();
+    if (!lecturaAmplia) {
+      this.canEditItemsInThisReq = true;
+      return;
+    }
+    const idUser = this.signalsService.idUser();
+    const idBranch = Number(this.params?.data?.idReference || 0);
+    const idDept = Number(this.params?.data?.departmentId || 0);
+    if (!idUser || idBranch <= 0 || idDept <= 0) {
+      // Sin datos suficientes para validar: por seguridad, no autorizar.
+      this.canEditItemsInThisReq = false;
+      this.refreshRestrictedColumns();
+      return;
+    }
+    this.rolesService.getRolesByBranchDelison(idUser, idBranch).subscribe({
+      next: (roles: any[]) => {
+        const arr = Array.isArray(roles) ? roles : [];
+        this.canEditItemsInThisReq = arr.some((r: any) => Number(r?.id || 0) === idDept);
+        this.refreshRestrictedColumns();
+      },
+      error: () => {
+        this.canEditItemsInThisReq = false;
+        this.refreshRestrictedColumns();
+      }
+    });
+  }
+
+  /** Re-pinta las 5 columnas restringidas para que cambien estilo/edición cuando el flag se resuelve. */
+  private refreshRestrictedColumns(): void {
+    if (!this.gridApi) return;
+    this.gridApi.refreshCells({
+      force: true,
+      columns: ['recurrent', 'article', 'quantity', 'intorext', 'typePriority']
+    });
   }
 
   private loadCanMultiguardar(): void {
@@ -799,7 +850,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         headerName: 'Recurrente',
         width: 110,
         suppressSizeToFit: true,
-        editable: true,
+        // ✅ Bloqueada cuando el usuario no tiene la combinación (sucursal, depto) del REQ padre.
+        editable: (params: any) => params.data?.__isNew || this.canEditItemsInThisReq,
+        cellStyle: (params: any) => (params.data?.__isNew || this.canEditItemsInThisReq)
+          ? null : { backgroundColor: '#f0f0f0' },
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['Recurrente', 'Nuevo']
@@ -815,6 +869,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         cellDataType: false, // Desactivar auto-detección de tipo
         editable: (params) => {
           // Solo es editable con SelectWithTooltipEditorV2 si es "Recurrente"
+          // ✅ Y solo si el usuario tiene la combinación (sucursal, depto) del REQ padre.
+          if (!(params.data?.__isNew || this.canEditItemsInThisReq)) return false;
           return params.data.recurrent !== 'Nuevo';
         },
         cellEditor: SelectWithTooltipEditorV2Component,
@@ -967,6 +1023,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           }
         },
         cellStyle: (params: any) => {
+          // ✅ Bloqueo por permiso: gris cuando no se puede editar (sin combinación sucursal+depto del REQ padre).
+          if (!(params.data?.__isNew || this.canEditItemsInThisReq)) {
+            return { backgroundColor: '#f0f0f0' };
+          }
           if (!params.value && !params?.data?.article) {
             return { backgroundColor: '#f9f9f9', color: '#777' };
           }
@@ -999,10 +1059,17 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         headerName: 'Cantidad Requerida',
         width: 100,
         suppressSizeToFit: true,
-        editable: true,
+        // ✅ Bloqueada cuando el usuario no tiene la combinación (sucursal, depto) del REQ padre.
+        editable: (params: any) => params.data?.__isNew || this.canEditItemsInThisReq,
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
-        cellStyle: { textAlign: 'right' },
+        cellStyle: (params: any) => {
+          const base: any = { textAlign: 'right' };
+          if (!(params.data?.__isNew || this.canEditItemsInThisReq)) {
+            base.backgroundColor = '#f0f0f0';
+          }
+          return base;
+        },
         cellEditorParams: {
           min: 0,
           precision: 3
@@ -1044,7 +1111,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         headerName: 'Proveedor',
         width: 110,
         suppressSizeToFit: true,
-        editable: (params) => params.data.recurrent !== 'Nuevo',
+        editable: (params) => {
+          // ✅ Bloqueada cuando el usuario no tiene la combinación (sucursal, depto) del REQ padre.
+          if (!(params.data?.__isNew || this.canEditItemsInThisReq)) return false;
+          return params.data.recurrent !== 'Nuevo';
+        },
+        cellStyle: (params: any) => (params.data?.__isNew || this.canEditItemsInThisReq)
+          ? null : { backgroundColor: '#f0f0f0' },
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['Externo', 'Interno'] // ✅ CAMBIO 2: Externo primero para que sea el default
@@ -1178,7 +1251,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         field: 'typePriority',
         headerName: 'Prioridad',
         width: 135,
-        editable: true,
+        // ✅ Bloqueada cuando el usuario no tiene la combinación (sucursal, depto) del REQ padre.
+        editable: (params: any) => params.data?.__isNew || this.canEditItemsInThisReq,
+        cellStyle: (params: any) => (params.data?.__isNew || this.canEditItemsInThisReq)
+          ? null : { backgroundColor: '#f0f0f0' },
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: ['Normal', 'Urgente']
@@ -1416,6 +1492,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
 
     const selectedItem = selectedRows[0];
+
+    // ✅ Bloquear borrado si el usuario no tiene la combinación (sucursal, depto) del REQ padre.
+    //    Excepción: ítems nuevos (__isNew) siempre pueden retirarse del listado.
+    if (!selectedItem.__isNew && !this.canEditItemsInThisReq) {
+      alerts.reqWarningToast(
+        'Eliminar ítem',
+        'No tienes esta combinación de sucursal + departamento asignada en tu usuario, por lo que no puedes eliminar ítems de esta requisición.'
+      );
+      return;
+    }
 
     // Si es un item nuevo (no guardado en BD), solo eliminarlo del grid
     if (selectedItem.__isNew) {

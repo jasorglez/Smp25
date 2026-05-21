@@ -1069,6 +1069,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
           if (maxAllowed < compraMin) {
             event.data.cantidadConceptualizada = 0;
+            event.data.costoTotal = (Number(event.data.costoUnitario) || 0) * (Number(event.data.cantidadConceptualizada) || 0);
             this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
             alerts.basicAlert(
               'Cantidad insuficiente',
@@ -1077,6 +1078,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
             );
           } else {
             event.data.cantidadConceptualizada = compraMin;
+            event.data.costoTotal = (Number(event.data.costoUnitario) || 0) * (Number(event.data.cantidadConceptualizada) || 0);
             this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
             alerts.basicAlert(
               'Cantidad ajustada',
@@ -1181,6 +1183,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
 
     await this.patchTypeOcAndQuantityOnly();
+
+    // Persistir el total global del pedimento (suma de Costo Total) en ocandreq.total_pedimento.
+    if (this.cotizacionId > 0) {
+      await lastValueFrom(
+        this.ocAndReqsService.patchTotalPedimento(this.cotizacionId, this.pinnedTotal || 0)
+      ).catch(e => console.warn('⚠️ No se pudo guardar total_pedimento:', e));
+    }
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;

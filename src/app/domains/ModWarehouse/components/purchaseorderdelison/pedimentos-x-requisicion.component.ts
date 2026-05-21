@@ -4,6 +4,8 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { OrdenesydetallesOcComponent } from './ordenesydetallesOc.component';
+import { forkJoin, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-pedimentos-x-requisicion',
@@ -77,10 +79,18 @@ export class PedimentosXRequisicionComponent {
       headerName: '# OC',
       width: 130,
       editable: false,
-      valueGetter: (params) => {
-        return (params.node?.rowIndex ?? 0) + 1;
-      },
       cellStyle: { fontWeight: 'bold', textAlign: 'center' },
+    },
+    {
+      field: 'totalPedimento',
+      headerName: '$ Total x Pedimento',
+      width: 180,
+      editable: false,
+      valueFormatter: (p) => {
+        const n = Number(p.value) || 0;
+        return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      },
+      cellStyle: { fontWeight: 'bold', textAlign: 'right', backgroundColor: '#e8f5e9', color: '#1b5e20' },
     },
   ];
 
@@ -130,18 +140,36 @@ export class PedimentosXRequisicionComponent {
       next: (pedimentos: any[]) => {
         const peds = Array.isArray(pedimentos) ? pedimentos : [];
 
-        // Mapear datos directamente del backend
-        this.rowData = peds.map((p: any) => ({
-          id:        p.id,
-          folio:     p.folio || '',
-          pedimento: p.pedimento || 0,
-          ocNumber:  p.pedimento || 0,
-          idCompany: idCompany,
-        }));
-
-        if (this.gridApi && !this.gridApi.isDestroyed()) {
-          this.gridApi.setGridOption('rowData', this.rowData);
+        if (peds.length === 0) {
+          this.rowData = [];
+          if (this.gridApi && !this.gridApi.isDestroyed()) {
+            this.gridApi.setGridOption('rowData', []);
+          }
+          return;
         }
+
+        // Por cada pedimento, contar sus OCs reales (las mismas que muestra el grid de detalle).
+        forkJoin(
+          peds.map((p: any) =>
+            this.ocAndReqsService.getOcsByPedimento(p.id).pipe(
+              map((ocs: any[]) => (Array.isArray(ocs) ? ocs.length : 0)),
+              catchError(() => of(0))
+            )
+          )
+        ).subscribe((counts: number[]) => {
+          this.rowData = peds.map((p: any, i: number) => ({
+            id:        p.id,
+            folio:     p.folio || '',
+            pedimento: p.pedimento || 0,
+            ocNumber:  counts[i] ?? 0,
+            totalPedimento: p.totalPedimento ?? p.TotalPedimento ?? 0,
+            idCompany: idCompany,
+          }));
+
+          if (this.gridApi && !this.gridApi.isDestroyed()) {
+            this.gridApi.setGridOption('rowData', this.rowData);
+          }
+        });
       },
       error: () => {
         this.rowData = [];
