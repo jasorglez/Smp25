@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.13 (19 Mayo 2026 19:30) fix(egresos): evitar duplicados al guardar con doble clic',
+  version: '6.14 (22 Mayo 2026 10:00) fix(productos): insumo respeta valor escrito por usuario al dar de alta',
 };
