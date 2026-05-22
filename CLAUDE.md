@@ -347,12 +347,112 @@ const validOutCount = [...groupData].filter(node => {
 
 ### Discrepancia de faltas entre `detail-clock-2` y `master-clock` (resuelto en backend)
 
-`detail-clock-2` usa `IncidentsByEmployee`; `master-clock` usa `IncidentsByCompany`. Ambos delegan a `ShouldCountAsAbsence`. Los bugs que causaban diferencias ya fueron corregidos en el backend:
-- `c.Holiday == false` → `c.Holiday != true` (el campo es `bool?`, `null != false`)
-- Loop de `IncidentsByEmployee` usaba `< endDate` en vez de `<= endDate`
-- Branch `OUT` en `IncidentsByEmployee` no tenía `&& lastIn.HasValue` (causaba excepción con datos inconsistentes)
+`detail-clock-2` usa `IncidentsByEmployee`; `master-clock` usa `IncidentsByCompany`. La fuente de verdad para faltas son los **registros marker `valid=false, type=IN`** (`AUTO_ABSENCE_T1`/`T2`).
 
-Si los números vuelven a diferir, verificar primero que `ShouldCountAsAbsence` recibe el mismo rango de fechas en ambos métodos.
+Correcciones aplicadas en el backend:
+- Lógica de faltas reemplaza `ShouldCountAsAbsence` con: `checks.Any(c => !c.Valid && c.Type=="IN" && c.Holiday != true)` para el día
+- `IncidentsByCompany` eliminó el `AddDays(-1)` que recortaba el cap de `today` — ya usa `today` directo
+- `IncidentsByEmployee` usa `<= endDate` (antes `< endDate` excluía el último día)
+
+Si los números vuelven a diferir, verificar que ambos métodos usen el mismo rango de fechas y la misma lógica de marker.
+
+### `master-clock` — Panel lateral con click en celda (colDef-level)
+
+El patrón correcto es definir `onCellClicked` **dentro de la definición de columna**, no como evento global en el template. Ver `employees/table.component.ts` como referencia.
+
+```typescript
+// master-clock.component.ts — en columnDefs
+{
+  field: 'baseHours',
+  onCellClicked: (params: any) => this.togglePanel(params, 'details'),
+  cellStyle: { cursor: 'pointer' }
+},
+{
+  field: 'specialExtraHours',
+  onCellClicked: (params: any) => this.togglePanel(params, 'special'),
+  cellStyle: { cursor: 'pointer' }
+},
+```
+
+```typescript
+// Estado del panel — reemplaza isOpen: boolean
+openPanel: 'details' | 'special' | null = null;
+
+private togglePanel(params: any, panel: 'details' | 'special'): void {
+  if (!params.data) return;
+  this.selectedRowData = params.data;
+  if (this.openPanel === panel) {
+    this.closePanel();
+  } else {
+    if (this.openPanel === null) this.adjustGridSize();
+    this.showDetailsTab = panel === 'details';
+    this.showSpecialTimesTab = panel === 'special';
+    this.openPanel = panel;
+  }
+}
+
+private closePanel(): void {
+  this.gridHeight = '80vh';
+  this.showDetailsTab = false;
+  this.showSpecialTimesTab = false;
+  this.openPanel = null;
+  this.gridApi.setFilterModel(null);
+  this.gridApi.onFilterChanged();
+}
+```
+
+- Click en `baseHours` → abre/cierra panel de detalles
+- Click en `specialExtraHours` → abre/cierra panel de horas extra especiales
+- Click en la celda ya abierta → cierra
+- Click en celda distinta mientras hay panel abierto → cambia al otro panel
+- `(cellClicked)` en el template HTML ya **no existe** — todo es via colDef
+
+### `special-extra-hours-master` — Modo doble (branch / employee)
+
+Accesible solo desde `master-clock` (removido del menú de checkout y de `app.routes.ts`).
+
+```typescript
+// Dos modos — determinados por signals en constructor
+mode: 'branch' | 'employee' = 'branch';
+idEmployee: number | null = null;
+
+constructor() {
+  effect(() => {
+    const emp = this.signalsService.getDetailClockForEmployee()();
+    if (emp?.idEmployee) {
+      this.mode = 'employee';
+      this.idEmployee = emp.idEmployee;
+      // usar emp.start / emp.end como rango
+      this.obtenerDatos();
+    }
+  });
+  effect(() => {
+    const branch = this.signalsService.getBranchSelectedBySidebar()();
+    if (this.mode === 'branch') {
+      // react to branch change
+      this.obtenerDatos();
+    }
+  });
+}
+```
+
+`obtenerDatos()` despacha a `getSpecialExtraHoursByEmployee` o `getSpecialExtraHoursByBranch` según `mode`.
+
+El date picker y botón "Consultar" solo se muestran en `*ngIf="mode === 'branch'"`.
+
+### Botonera en componentes de reloj
+
+La botonera (Agregar, Guardar, Deshacer, Borrar) va **arriba a la derecha del ag-grid, en horizontal**:
+
+```html
+<div class="d-flex justify-content-end gap-1 mb-1">
+  <button class="btn btn-sm btn-success" ...>Agregar</button>
+  <button class="btn btn-sm btn-primary" ...>Guardar</button>
+  <!-- etc -->
+</div>
+```
+
+Aplica a: `detail-clock-2` y `special-extra-hours-master`. No va en columna vertical al costado.
 
 ---
 
