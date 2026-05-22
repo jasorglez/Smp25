@@ -345,7 +345,13 @@ export default class MasterClockComponent implements OnInit {
         hide: !this.authService.hasSubDetailedPermission('hr', 'clock', 'MaeChe_HorEsp'),
         cellStyle: (params) => {
           if (params.value !== null && params.value !== undefined && params.value !== '') {
-            return { backgroundColor: '#d4edda', cursor: 'pointer' };
+            if (params.data.specialExtraStatus === true) {
+              return { backgroundColor: '#d4edda', cursor: 'pointer' };
+            } else if (params.data.specialExtraStatus === false) {
+              return { backgroundColor: '#ffcccc', cursor: 'pointer' };
+            } else {
+              return { backgroundColor: '#fff3cd', cursor: 'pointer' };
+            }
           }
           return { cursor: 'pointer' };
         },

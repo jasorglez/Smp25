@@ -1,6 +1,6 @@
-# CLAUDE.md
+# GEMINI.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Gemini CLI when working with code in this repository.
 
 ## Development Commands
 
@@ -466,3 +466,4 @@ Aplica a: `detail-clock-2` y `special-extra-hours-master`. No va en columna vert
 - Interfaz para OT añadida, con Capacitor
 - Se ha cambiado el formato de la lista de OT en ot/ordenes
 - Se ha modificado reportes-estimaciones
+
