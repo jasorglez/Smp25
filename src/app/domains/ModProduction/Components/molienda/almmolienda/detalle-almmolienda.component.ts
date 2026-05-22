@@ -13,6 +13,7 @@ import { CaracteristicasEntradaService } from '../../../../../services/caracteri
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { alerts } from 'app/helpers/alerts';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
+import { CustomOcTooltipComponent } from './custom-oc-tooltip.component';
 
 interface ReqOption {
   id: number;
@@ -24,7 +25,7 @@ interface ReqOption {
 @Component({
   selector: 'app-detalle-almmolienda',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetailEntradaDocumentsComponent],
+  imports: [CommonModule, AgGridAngular, DetailEntradaDocumentsComponent, CustomOcTooltipComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;"
          [style.backgroundColor]="detailType === 'entradas' ? '#e8f5e9' : '#fce4ec'">
@@ -203,26 +204,35 @@ export class DetalleMoliendaComponent {
       cellStyle: { fontWeight: 'bold' },
     },
     {
-      field: 'folio',
-      headerName: 'Folio / Req',
-      width: 160,
-      editable: false,
-      cellRenderer: (params: any) => {
-        const val = params.value ?? '';
-        const div = document.createElement('div');
-        div.style.cssText = val
-          ? 'cursor:pointer;color:#2e7d32;text-decoration:underline;'
-          : 'color:#999;';
-        div.textContent = val || '—';
-        return div;
-      },
-      cellStyle: { backgroundColor: '#e8f5e9' },
-      tooltipValueGetter: (p) => {
-        const req = this.reqOptions.find(r => r.id === p.data?.idRequisition);
-        if (!req) return null;
-        return `Requisición: ${req.folio}\nCant. Req: ${req.cantidadReq}\n# OC: ${req.numCantidadOc}`;
-      },
-    },
+  field: 'folio',
+  headerName: 'Folio / Req',
+  width: 160,
+  editable: false,
+
+  cellRenderer: (params: any) => {
+    const val = params.value ?? '';
+
+    const div = document.createElement('div');
+
+    div.style.cssText = val
+      ? `
+        cursor:pointer;
+        color:#2e7d32;
+        text-decoration:underline;
+        font-weight:600;
+      `
+      : 'color:#999;';
+
+    div.textContent = val || '—';
+
+    return div;
+  },
+  cellStyle: {
+    backgroundColor: '#e8f5e9'
+  },
+  tooltipValueGetter: (p: any) => p.data?.ocs || [],
+  tooltipComponent: 'customOcTooltip'
+},
     {
       field: 'cantidadReq',
       headerName: 'Cant Req',
@@ -250,6 +260,9 @@ export class DetalleMoliendaComponent {
   ];
 
   gridOptions: any = {
+    components: {
+      customOcTooltip: CustomOcTooltipComponent
+    },
     headerHeight: 25,
     rowHeight: 25,
     rowClassRules: {
@@ -277,6 +290,20 @@ export class DetalleMoliendaComponent {
           : 'color:#999;';
         div.textContent = val || '—';
         return div;
+      },
+      tooltipValueGetter: (p) => {
+        if (!p.data) return null;
+        // Generar dinámicamente el tooltip con todas las propiedades del objeto OC (cascadeOcData)
+        return Object.entries(p.data)
+          .filter(([key, val]) => 
+            val !== null && val !== undefined && val !== '' && 
+            !['id', 'idRoot', 'idReference', 'active', 'type', 'resta', '__modified', '__isNew'].includes(key)
+          )
+          .map(([key, val]) => {
+            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            return `${label}: ${val}`;
+          })
+          .join('\n');
       },
     },
     { field: 'proveedor', headerName: 'Proveedor', flex: 2, minWidth: 140 },
@@ -1095,7 +1122,7 @@ export class DetalleMoliendaComponent {
           );
 
           const resta = ocsWithResta.reduce((acc: number, oc: any) => acc + Number(oc?.resta ?? 0), 0);
-          return { ...row, resta };
+          return { ...row, resta, ocs: ocsWithResta };
         } catch (error) {
           console.error(`Error calculando resta para la requisición ${row?.idRequisition}:`, error);
           return { ...row, resta: 0 };
