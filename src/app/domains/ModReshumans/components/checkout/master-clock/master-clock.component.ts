@@ -344,16 +344,10 @@ export default class MasterClockComponent implements OnInit {
         colId: 'specialExtraHours',
         hide: !this.authService.hasSubDetailedPermission('hr', 'clock', 'MaeChe_HorEsp'),
         cellStyle: (params) => {
-          if (params.value !== null && params.value !== undefined && params.value !== '') {
-            if (params.data.specialExtraStatus === true) {
-              return { backgroundColor: '#d4edda', cursor: 'pointer' };
-            } else if (params.data.specialExtraStatus === false) {
-              return { backgroundColor: '#ffcccc', cursor: 'pointer' };
-            } else {
-              return { backgroundColor: '#fff3cd', cursor: 'pointer' };
-            }
+          if (params.data && params.data.specialExtraStatus === 1) {
+            return { backgroundColor: '#fff3cd', cursor: 'pointer' }; // Requires attention (Yellow)
           }
-          return { cursor: 'pointer' };
+          return { backgroundColor: '#d4edda', cursor: 'pointer' }; // No attention required (Green)
         },
         editable: false,
         onCellClicked: (params: any) => this.togglePanel(params, 'special'),
